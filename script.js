@@ -15111,15 +15111,30 @@ function updateFilterDropdown(isTVET) {
 function togglePastPaperFields() {
     const isPastPaper = document.getElementById('resource_is_pastpaper')?.checked || false;
     const pastpaperFields = document.getElementById('pastpaper-fields');
-    
+    const notificationPanel = document.getElementById('resource-email-notification-settings');
+    const notificationCheckbox = document.getElementById('resource_notify_students');
+
     if (pastpaperFields) {
         pastpaperFields.style.display = isPastPaper ? 'block' : 'none';
     }
-    
+
+    // Email notifications apply to NEW learning materials only.
+    if (notificationPanel) {
+        notificationPanel.style.display = isPastPaper ? 'none' : 'block';
+    }
+    if (isPastPaper && notificationCheckbox) {
+        notificationCheckbox.checked = false;
+    }
+    if (!isPastPaper && notificationCheckbox && !document.getElementById('resource_edit_id')?.value) {
+        notificationCheckbox.checked = true;
+    }
+    updateResourceNotificationToggleVisual();
+    updateResourceNotificationCount();
+
     const yearInput = document.getElementById('resource_pastpaper_year');
     const examTypeSelect = document.getElementById('resource_exam_type');
     const courseInput = document.getElementById('resource_course_name');
-    
+
     if (yearInput) yearInput.required = isPastPaper;
     if (examTypeSelect) examTypeSelect.required = isPastPaper;
     if (courseInput) courseInput.required = isPastPaper;
@@ -15159,6 +15174,7 @@ function initResourcesSection() {
         uploadForm.removeEventListener('submit', handleResourceUpload);
         uploadForm.addEventListener('submit', handleResourceUpload);
     }
+    initializeResourceNotificationUI();
     
     const searchInput = document.getElementById('resource-search');
     if (searchInput) {
@@ -15184,6 +15200,337 @@ function initResourcesSection() {
     loadAllResources();
     
     console.log('✅ Super Admin Resources Section initialized');
+}
+
+// =====================================================
+// EMAIL NOTIFICATIONS FOR NEW LEARNING MATERIALS
+// Reuses the same Supabase Edge Function used by Exams.
+// Notifications are sent ONLY for new learning materials,
+// never when an existing resource is edited.
+// =====================================================
+
+let selectedResourceStudents = [];
+let allResourceStudents = [];
+
+function getResourceNotificationTarget() {
+    return document.getElementById('resource_notify_target')?.value || 'all';
+}
+
+function getResourceNotifyEnabled() {
+    return document.getElementById('resource_notify_students')?.checked !== false;
+}
+
+function updateResourceNotificationToggleVisual() {
+    const checkbox = document.getElementById('resource_notify_students');
+    const toggle = document.getElementById('resource-notification-toggle');
+    const label = document.getElementById('resource-notification-toggle-label');
+    const status = document.getElementById('resource-notification-status');
+    if (!checkbox) return;
+
+    const enabled = checkbox.checked;
+    if (toggle) {
+        toggle.style.background = enabled ? '#10b981' : '#94a3b8';
+        toggle.style.justifyContent = enabled ? 'flex-end' : 'flex-start';
+    }
+    if (label) {
+        label.textContent = enabled ? 'ON' : 'OFF';
+        label.style.color = enabled ? '#047857' : '#64748b';
+    }
+    if (status) {
+        status.innerHTML = enabled
+            ? '<i class="fas fa-check-circle"></i> Notifications Enabled'
+            : '<i class="fas fa-bell-slash"></i> Notifications Disabled';
+        status.style.color = enabled ? '#047857' : '#64748b';
+        status.style.background = enabled ? '#dcfce7' : '#f1f5f9';
+        status.style.borderColor = enabled ? '#86efac' : '#cbd5e1';
+    }
+}
+
+function syncResourceNotificationTargetUI() {
+    const target = getResourceNotificationTarget();
+    document.querySelectorAll('input[name="resource_notify_target"]').forEach(radio => {
+        radio.checked = radio.value === target;
+    });
+
+    const specific = document.getElementById('resource-specific-students');
+    if (specific) specific.style.display = target === 'specific' ? 'block' : 'none';
+
+    updateResourceSelectedStudentsDisplay();
+    updateResourceNotificationCount();
+}
+
+function initializeResourceNotificationUI() {
+    const form = document.getElementById('upload-resource-form');
+    const panel = document.getElementById('resource-email-notification-settings');
+    if (!form || !panel) return;
+
+    // The HTML already contains the styled notification panel.
+    // This function only wires the controls; it does NOT create duplicate markup.
+    const notifyCheckbox = document.getElementById('resource_notify_students');
+    const targetSelect = document.getElementById('resource_notify_target');
+    const programSelect = document.getElementById('resource_program');
+    const blockSelect = document.getElementById('resource_block');
+    const studentSearch = document.getElementById('resource_student_search');
+
+    if (notifyCheckbox && !notifyCheckbox.dataset.resourceBound) {
+        notifyCheckbox.dataset.resourceBound = '1';
+        notifyCheckbox.addEventListener('change', () => {
+            updateResourceNotificationToggleVisual();
+            updateResourceNotificationCount();
+        });
+    }
+
+    if (targetSelect && !targetSelect.dataset.resourceBound) {
+        targetSelect.dataset.resourceBound = '1';
+        targetSelect.addEventListener('change', syncResourceNotificationTargetUI);
+    }
+
+    // The visible radio buttons are already wired inline in the HTML.
+    // We also keep their state synchronized with the hidden select.
+    document.querySelectorAll('input[name="resource_notify_target"]').forEach(radio => {
+        if (!radio.dataset.resourceBound) {
+            radio.dataset.resourceBound = '1';
+            radio.addEventListener('change', () => {
+                if (targetSelect) targetSelect.value = radio.value;
+                syncResourceNotificationTargetUI();
+            });
+        }
+    });
+
+    if (studentSearch && !studentSearch.dataset.resourceBound) {
+        studentSearch.dataset.resourceBound = '1';
+        studentSearch.addEventListener('input', searchStudentsForResourceNotification);
+    }
+
+    if (programSelect && !programSelect.dataset.resourceNotifyBound) {
+        programSelect.dataset.resourceNotifyBound = '1';
+        programSelect.addEventListener('change', async () => {
+            selectedResourceStudents = [];
+            updateResourceSelectedStudentsDisplay();
+            await loadStudentsForResourceNotification();
+        });
+    }
+
+    if (blockSelect && !blockSelect.dataset.resourceNotifyBound) {
+        blockSelect.dataset.resourceNotifyBound = '1';
+        blockSelect.addEventListener('change', async () => {
+            await loadStudentsForResourceNotification();
+        });
+    }
+
+    updateResourceNotificationToggleVisual();
+    syncResourceNotificationTargetUI();
+
+    // Load the initial program's students once the section is ready.
+    setTimeout(loadStudentsForResourceNotification, 250);
+}
+
+async function loadStudentsForResourceNotification() {
+    const program = document.getElementById('resource_program')?.value;
+    const count = document.getElementById('resource_notify_count');
+    if (!program || !count) return;
+
+    try {
+        // IMPORTANT: load the complete approved student list for the selected
+        // program. Block filtering is applied later according to the recipient
+        // target, so the "Program" option can include every block/term.
+        const { data, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, student_id, full_name, email, program, block')
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .eq('program', program)
+            .limit(500);
+
+        if (error) throw error;
+
+        allResourceStudents = data || [];
+        updateResourceNotificationCount();
+        updateResourceSelectedStudentsDisplay();
+        searchStudentsForResourceNotification();
+
+        console.log(`📧 Resource notification pool: ${allResourceStudents.length} approved ${program} students`);
+    } catch (error) {
+        console.error('❌ Could not load resource notification students:', error);
+        allResourceStudents = [];
+        count.innerHTML = '<i class="fas fa-users"></i> 0';
+    }
+}
+
+function getResourceNotificationRecipients() {
+    const target = getResourceNotificationTarget();
+    const block = document.getElementById('resource_block')?.value;
+
+    if (target === 'specific') {
+        return selectedResourceStudents.filter(student => student?.email);
+    }
+
+    if (target === 'program') {
+        return allResourceStudents.filter(student => student?.email);
+    }
+
+    // "all" means Program + currently selected Block/Term.
+    // "block" also means currently selected Block/Term.
+    return allResourceStudents.filter(student => {
+        if (!block || block === '-- Select --' || block === '-- Select Block/Term --') return false;
+        return String(student.block || '').trim().toLowerCase() === String(block).trim().toLowerCase() && !!student.email;
+    });
+}
+
+function updateResourceNotificationCount() {
+    const count = document.getElementById('resource_notify_count');
+    if (!count) return;
+
+    if (!getResourceNotifyEnabled()) {
+        count.innerHTML = '<i class="fas fa-bell-slash"></i> 0';
+        return;
+    }
+
+    const recipients = getResourceNotificationRecipients();
+    count.textContent = String(recipients.length);
+}
+
+function searchStudentsForResourceNotification() {
+    const term = document.getElementById('resource_student_search')?.value?.toLowerCase().trim() || '';
+    const box = document.getElementById('resource_student_results');
+    if (!box) return;
+
+    if (getResourceNotificationTarget() !== 'specific') {
+        box.style.display = 'none';
+        return;
+    }
+
+    const results = term
+        ? allResourceStudents.filter(s =>
+            (s.full_name || '').toLowerCase().includes(term) ||
+            (s.email || '').toLowerCase().includes(term) ||
+            (s.student_id || '').toLowerCase().includes(term))
+        : [];
+
+    if (!results.length) {
+        box.innerHTML = term
+            ? '<div style="padding:12px;color:#94a3b8;text-align:center;font-size:12px;"><i class="fas fa-search"></i> No students found</div>'
+            : '<div style="padding:12px;color:#94a3b8;text-align:center;font-size:12px;">Type a name, admission number or email to search.</div>';
+        box.style.display = 'block';
+        return;
+    }
+
+    box.innerHTML = results.slice(0, 30).map(student => {
+        const selected = selectedResourceStudents.some(s => s.user_id === student.user_id);
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 11px;border-bottom:1px solid #f1f5f9;${selected ? 'background:#ecfdf5;' : 'background:white;'}">
+            <div style="min-width:0;">
+                <strong style="font-size:12px;color:#334155;">${escapeHtml(student.full_name || 'Unknown')}</strong>
+                <br><small style="color:#64748b;">${escapeHtml(student.student_id || 'No admission no.')} · ${escapeHtml(student.email || '')}</small>
+            </div>
+            <button type="button" onclick="toggleResourceStudentNotification('${student.user_id}')" style="flex:0 0 auto;border:0;border-radius:7px;padding:5px 10px;cursor:pointer;background:${selected ? '#dc2626' : '#059669'};color:white;font-size:11px;font-weight:700;">
+                ${selected ? 'Remove' : 'Add'}
+            </button>
+        </div>`;
+    }).join('');
+    box.style.display = 'block';
+}
+
+function toggleResourceStudentNotification(studentId) {
+    const student = allResourceStudents.find(s => s.user_id === studentId);
+    if (!student) return;
+
+    const index = selectedResourceStudents.findIndex(s => s.user_id === studentId);
+    if (index >= 0) selectedResourceStudents.splice(index, 1);
+    else selectedResourceStudents.push(student);
+
+    updateResourceSelectedStudentsDisplay();
+    updateResourceNotificationCount();
+    searchStudentsForResourceNotification();
+}
+
+function updateResourceSelectedStudentsDisplay() {
+    const box = document.getElementById('resource_selected_students');
+    if (!box) return;
+
+    if (!selectedResourceStudents.length) {
+        box.innerHTML = '<span style="font-size:11px;color:#94a3b8;">No students selected yet.</span>';
+        return;
+    }
+
+    box.innerHTML = selectedResourceStudents.map(student => `
+        <span style="background:#ede9fe;color:#4c1d95;padding:5px 9px;border-radius:16px;font-size:11px;display:inline-flex;align-items:center;gap:5px;border:1px solid #ddd6fe;">
+            <i class="fas fa-user"></i> ${escapeHtml(student.full_name || 'Student')}
+            <button type="button" onclick="toggleResourceStudentNotification('${student.user_id}')" style="border:0;background:none;color:#dc2626;cursor:pointer;font-weight:800;padding:0 2px;">×</button>
+        </span>`).join('');
+}
+
+async function sendResourceNotificationEmail(resourceData, recipients) {
+    if (!recipients?.length) return { sent: 0, failed: 0, total: 0 };
+
+    const sender = window.sendEmailWithBrevo;
+    if (typeof sender !== 'function') {
+        console.error('❌ Exam email sender is not available. Load the Exams module before Resources.');
+        return { sent: 0, failed: recipients.length, total: recipients.length };
+    }
+
+    const isTVET = TVET_PROGRAMS.includes(resourceData.program_type || '');
+    const blockLabel = isTVET ? 'Term' : 'Block';
+    const portalUrl = resourceData.file_url || 'https://nchsm.co.ke';
+    const materialTitle = escapeHtml(resourceData.title || 'New Learning Material');
+    const program = escapeHtml(resourceData.program_type || 'N/A');
+    const block = escapeHtml(resourceData.block || 'N/A');
+    const description = escapeHtml(resourceData.description || 'A new learning material has been posted for your class.');
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>New Learning Material Posted</title>
+<style>
+body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8}.container{max-width:580px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.1)}.header{background:linear-gradient(135deg,#4C1D95,#6d28d9);padding:30px 35px;text-align:center;color:#fff}.header h1{margin:0;font-size:24px}.header p{margin:5px 0 0;opacity:.85}.body{padding:30px 35px}.greeting{background:#f3e8ff;border-radius:12px;padding:16px;margin-bottom:20px;border-left:4px solid #7c3aed}.details{background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px}.details table{width:100%;border-collapse:collapse;font-size:14px}.details td{padding:8px 0;border-bottom:1px solid #e2e8f0}.details tr:last-child td{border-bottom:none}.label{color:#64748b;font-weight:500}.value{color:#4C1D95;font-weight:600;text-align:right}.btn{display:inline-block;background:#4C1D95;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:600}.footer{background:#F8FAFC;padding:20px;text-align:center;border-top:1px solid #E2E8F0;font-size:.85rem;color:#64748B}
+</style></head><body><div class="container"><div class="card">
+<div class="header"><h1>📚 New Learning Material</h1><p>Nakuru College of Health Sciences and Management</p></div>
+<div class="body"><div class="greeting"><p style="margin:0;font-size:16px;color:#4C1D95;"><strong>👋 Dear Student,</strong></p><p style="margin:8px 0 0;color:#334155;">A new learning material has been posted for your class. Please log in or use the button below to access it.</p></div>
+<div class="details"><table>
+<tr><td class="label">📚 Title</td><td class="value">${materialTitle}</td></tr>
+<tr><td class="label">🎓 Program</td><td class="value">${program}</td></tr>
+<tr><td class="label">📖 ${blockLabel}</td><td class="value">${block}</td></tr>
+<tr><td class="label">📝 Description</td><td class="value">${description}</td></tr>
+</table></div>
+<div style="text-align:center;margin:22px 0;"><a href="${escapeHtml(portalUrl)}" target="_blank" class="btn">📖 View Learning Material</a></div>
+<div style="background:#fef3c7;border-radius:12px;padding:12px 16px;border-left:4px solid #f59e0b;"><p style="margin:0;font-size:13px;color:#78350F;"><strong>Important:</strong> Please check the student portal regularly for new notes, announcements and academic resources.</p></div>
+</div><div class="footer"><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p style="font-size:.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p></div>
+</div></div></body></html>`;
+
+    let sent = 0, failed = 0;
+    for (const student of recipients) {
+        if (!student?.email) { failed++; continue; }
+        try {
+            const result = await sender(student.email, `📚 New Learning Material: ${resourceData.title || 'New Note'}`, emailHtml);
+            if (result?.success) sent++; else failed++;
+        } catch (error) {
+            failed++;
+            console.error(`❌ Resource email failed for ${student.email}:`, error);
+        }
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    return { sent, failed, total: recipients.length };
+}
+
+async function notifyStudentsAboutNewResource(resourceData) {
+    if (!resourceData || resourceData.resource_type !== 'material' || !getResourceNotifyEnabled()) return;
+
+    const recipients = getResourceNotificationRecipients();
+    if (!recipients.length) {
+        console.log('📧 No students matched the resource notification target.');
+        return;
+    }
+
+    showFeedback(`📧 Sending learning material notification to ${recipients.length} students...`, 'info');
+    const result = await sendResourceNotificationEmail(resourceData, recipients);
+    console.log(`📚 Resource notifications: ${result.sent} sent, ${result.failed} failed, ${result.total} total`);
+
+    if (result.sent > 0 && result.failed === 0) {
+        showFeedback(`✅ "${resourceData.title}" posted. ${result.sent} student email notification(s) sent.`, 'success');
+    } else if (result.sent > 0) {
+        showFeedback(`✅ "${resourceData.title}" posted. 📧 ${result.sent} emails sent, ${result.failed} failed.`, 'warning');
+    } else {
+        showFeedback(`⚠️ "${resourceData.title}" posted, but email notifications failed.`, 'warning');
+    }
 }
 
 // =====================================================
@@ -15340,13 +15687,23 @@ async function handleResourceUpload(e) {
             if (result.error) throw result.error;
             
             await logAudit('RESOURCE_UPLOAD', `Uploaded ${isPastPaper ? 'past paper' : 'material'}: ${title}`, result.data?.[0]?.id, 'SUCCESS');
-            showFeedback(`✅ "${title}" uploaded successfully!`, 'success');
+
+            // 📧 Notify students only for NEW learning materials.
+            // Past papers and edits do not trigger this notification.
+            if (!isPastPaper && result.data?.[0]) {
+                await notifyStudentsAboutNewResource(result.data[0]);
+            } else {
+                showFeedback(`✅ "${title}" uploaded successfully!`, 'success');
+            }
             
             document.getElementById('upload-resource-form').reset();
+            selectedResourceStudents = [];
+            allResourceStudents = [];
             if (document.getElementById('resource_is_pastpaper')) {
                 document.getElementById('resource_is_pastpaper').checked = false;
             }
             togglePastPaperFields();
+            initializeResourceNotificationUI();
         }
 
         loadAllResources();
@@ -15402,6 +15759,8 @@ async function editResource(resourceId) {
         
         const isPastPaper = resource.resource_type === 'pastpaper';
         document.getElementById('resource_is_pastpaper').checked = isPastPaper;
+        selectedResourceStudents = [];
+        updateResourceSelectedStudentsDisplay();
         togglePastPaperFields();
         
         if (isPastPaper) {
@@ -15441,7 +15800,10 @@ function cancelEditResource() {
     document.getElementById('file-edit-info').style.display = 'none';
     document.getElementById('resource-file').required = true;
     document.getElementById('upload-resource-form').reset();
+    selectedResourceStudents = [];
+    allResourceStudents = [];
     togglePastPaperFields();
+    initializeResourceNotificationUI();
     editingResourceId = null;
     showFeedback('Edit cancelled', 'info');
 }
@@ -15691,8 +16053,15 @@ window.switchAdminProgram = switchAdminProgram;
 window.exportResourcesToCSV = exportResourcesToCSV;
 window.updateBlockOptions = updateBlockOptions;
 window.updateFilterDropdown = updateFilterDropdown;
+window.loadStudentsForResourceNotification = loadStudentsForResourceNotification;
+window.searchStudentsForResourceNotification = searchStudentsForResourceNotification;
+window.toggleResourceStudentNotification = toggleResourceStudentNotification;
+window.updateResourceSelectedStudentsDisplay = updateResourceSelectedStudentsDisplay;
+window.getResourceNotificationRecipients = getResourceNotificationRecipients;
+window.sendResourceNotificationEmail = sendResourceNotificationEmail;
+window.notifyStudentsAboutNewResource = notifyStudentsAboutNewResource;
 
-console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support and Edit functionality!');
+console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support, Edit functionality and email notifications!');
 /*******************************************************
  * 13. SECURITY & SYSTEM STATUS - COMPLETE FIXED VERSION
  * With proper password reset flow & session management
