@@ -6426,15 +6426,7 @@ window.LecturerOnlineLearning = (() => {
         const ids=[...new Set(state.submissions.map(s=>s.student_id).filter(Boolean))]; let profiles=[];
         if(ids.length){const r=await db.from('consolidated_user_profiles_table').select('user_id,full_name,student_id,admission_number,email').in('user_id',ids);profiles=r.data||[];}
         const map=new Map(profiles.map(p=>[p.user_id,p]));
-        const assignmentMap=new Map(state.assignments.map(a=>[String(a.id),a]));
-        body.innerHTML=state.submissions.map(s=>{
-            const p=map.get(s.student_id)||{};
-            const a=assignmentMap.get(String(s.assignment_id))||{};
-            const maxMarks=Number(s.max_marks||a.max_marks||a.online_marking_keys?.max_marks||0);
-            const mark=s.marks_obtained==null?'—':`${s.marks_obtained}/${maxMarks||'?'}`;
-            const pct=s.marks_obtained==null?'—':formatPercentage(s.marks_obtained,maxMarks);
-            return `<tr><td><b>${esc(p.full_name||'Student')}</b><div style="font-size:11px;color:#64748b">${esc(p.admission_number||p.student_id||s.student_id||'')}</div></td><td>${esc(s.online_assignments?.title||a.title||s.assignment_id)}</td><td>${fmtDate(s.submitted_at)}</td><td>${esc(s.attempt_number||1)}</td><td><b>${mark}</b><div style="font-size:11px;color:#64748b;margin-top:2px">${pct}</div></td><td><span class="ol-badge ${s.result_released?'ol-returned':s.review_required?'ol-review':'ol-draft'}">${s.result_released?'RELEASED':s.review_required?'REVIEW':'SUBMITTED'}</span></td><td><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.reviewSubmission('${s.id}')">Review</button></td></tr>`;
-        }).join('');updateStats();
+        body.innerHTML=state.submissions.map(s=>{const p=map.get(s.student_id)||{};const mark=s.marks_obtained==null?'—':`${s.marks_obtained}/${s.max_marks||'?'}`;const pct=s.marks_obtained==null?'—':formatPercentage(s.marks_obtained,s.max_marks);return `<tr><td><b>${esc(p.full_name||'Student')}</b><div style="font-size:11px;color:#64748b">${esc(p.admission_number||p.student_id||s.student_id||'')}</div></td><td>${esc(s.online_assignments?.title||s.assignment_id)}</td><td>${fmtDate(s.submitted_at)}</td><td>${esc(s.attempt_number||1)}</td><td><b>${mark}</b><div style="font-size:11px;color:#64748b;margin-top:2px">${pct}</div></td><td><span class="ol-badge ${s.result_released?'ol-returned':s.review_required?'ol-review':'ol-draft'}">${s.result_released?'RELEASED':s.review_required?'REVIEW':'SUBMITTED'}</span></td><td><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.reviewSubmission('${s.id}')">Review</button></td></tr>`}).join('');updateStats();
     }
     function resetQuestionEditors(questions=[]){const c=$('olQuestions');if(!c)return;c.innerHTML='';(questions.length?questions:[{}]).forEach(q=>addQuestionEditor(q));}
     function addQuestionEditor(q={}){const c=$('olQuestions');if(!c)return;const n=c.children.length+1;const d=document.createElement('div');d.className='ol-q';d.dataset.index=n;d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b>Question ${n}</b><button type="button" class="ol-btn ol-danger" onclick="this.closest('.ol-q').remove();LecturerOnlineLearning.renumberQuestions()"><i class="fas fa-trash"></i></button></div><div class="ol-form" style="margin-top:10px"><div class="ol-full"><label>Question *</label><textarea class="ol-q-text" rows="3" required>${esc(q.question_text||'')}</textarea></div><div><label>Type *</label><select class="ol-q-type"><option value="mcq" ${q.question_type==='mcq'?'selected':''}>MCQ</option><option value="true_false" ${q.question_type==='true_false'?'selected':''}>True / False</option><option value="short_answer" ${q.question_type==='short_answer'?'selected':''}>Short Answer</option><option value="case_study" ${q.question_type==='case_study'?'selected':''}>Case Study</option></select></div><div><label>Marks *</label><input class="ol-q-marks" type="number" min="0.1" step="0.1" value="${esc(q.marks??1)}"></div><div class="ol-full"><label>Options (MCQ only, one per line)</label><textarea class="ol-q-options" rows="3" placeholder="A. ...\nB. ...\nC. ...\nD. ...">${esc(Array.isArray(q.options)?q.options.join('\n'):(q.options||''))}</textarea></div><div><label>Correct Answer / Expected Answer</label><input class="ol-q-correct" value="${esc(q.correct_answer||'')}"></div><div><label>Accepted Answers (comma separated)</label><input class="ol-q-accepted" value="${esc(Array.isArray(q.accepted_answers)?q.accepted_answers.join(', '):(q.accepted_answers||''))}"></div><div><label>Keywords (comma separated)</label><input class="ol-q-keywords" value="${esc(Array.isArray(q.keywords)?q.keywords.join(', '):(q.keywords||''))}"></div><div><label>Keyword Marks</label><input class="ol-q-keywordmarks" type="number" min="0" step="0.1" value="${esc(q.keyword_marks??0)}"></div></div>`;c.appendChild(d);}
@@ -6971,6 +6963,56 @@ window.LecturerOnlineLearning = (() => {
         };
     }
 
+    // ============================================================
+    // DIRECT SUPABASE MARKING-KEY FETCH FOR SUBMISSION REVIEW
+    // ============================================================
+    async function fetchSubmissionMarkingKey(id){
+        const db=client();
+        const s=state.submissions.find(x=>x.id===id);
+        if(!s) throw new Error('Submission could not be found.');
+        const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+        const box=$('olSubmissionMarkingKey');
+        const btn=$('olFetchMarkingKeyBtn');
+        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Fetching…';}
+        try{
+            if(!assignment.marking_key_id){
+                throw new Error('No marking key is attached to this assignment. Edit the assignment and select a Formal Marking Key first.');
+            }
+            const r=await db.from('online_marking_keys')
+                .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,created_by')
+                .eq('id',assignment.marking_key_id)
+                .eq('is_active',true)
+                .maybeSingle();
+            if(r.error) throw r.error;
+            const key=r.data;
+            if(!key) throw new Error('The attached marking key was not found or is inactive.');
+            if(box){
+                const criteria=Array.isArray(key.criteria)?key.criteria:parseJsonArray(key.criteria);
+                const keywords=Array.isArray(key.keywords)?key.keywords:parseJsonArray(key.keywords);
+                const topics=Array.isArray(key.expected_topics)?key.expected_topics:parseJsonArray(key.expected_topics);
+                box.innerHTML=`<div style="font-weight:800;color:#18304d;font-size:14px"><i class="fas fa-clipboard-check"></i> ${esc(key.title||'Marking Key')}</div>
+                  <div style="font-size:12px;color:#64748b;margin-top:3px">Version ${esc(key.version||'1')} · Maximum ${esc(key.max_marks||100)} marks</div>
+                  ${key.description?`<div style="margin-top:8px">${esc(key.description)}</div>`:''}
+                  <details open style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Marking Criteria (${esc(criteria.length)})</summary><div style="margin-top:7px">${criteria.length?criteria.map((c,i)=>{const title=c?.criterion||c?.title||c?.description||c?.name||String(c);const marks=c?.marks??c?.max_marks??c?.score??'';return `<div style="padding:7px 0;border-bottom:1px solid #e5e7eb"><b>${esc(i+1)}. ${esc(title)}</b>${marks!==''?` <span style="color:#64748b">(${esc(marks)} marks)</span>`:''}</div>`}).join(''):'<span style="color:#64748b">No structured criteria stored.</span>'}</div></details>
+                  ${keywords.length?`<div style="margin-top:9px"><b>Keywords:</b> ${esc(keywords.join(', '))}</div>`:''}
+                  ${topics.length?`<div style="margin-top:7px"><b>Expected topics:</b> ${esc(topics.join(' · '))}</div>`:''}
+                  ${key.grading_guidance?`<div style="margin-top:9px"><b>Grading guidance:</b><div style="white-space:pre-wrap;margin-top:3px">${esc(key.grading_guidance)}</div></div>`:''}`;
+                box.dataset.keyId=key.id;
+            }
+            window._activeSubmissionMarkingKey=key;
+            window._activeSubmissionMarkingKeyId=key.id;
+            notify(`Marking key fetched from Supabase: ${key.title}`,'success');
+            return key;
+        }catch(e){
+            console.error('Fetch marking key:',e);
+            if(box) box.innerHTML=`<div style="color:#b91c1c"><b>Could not fetch marking key.</b><div style="margin-top:4px">${esc(e.message||e)}</div></div>`;
+            notify(e.message||'Could not fetch marking key.','error');
+            return null;
+        }finally{
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-database"></i> Fetch Marking Key from Supabase';}
+        }
+    }
+
     function localObjectiveGrade(items){
         let earned=0,max=0; const grades=[];
         for(const q of items){
@@ -7000,8 +7042,13 @@ window.LecturerOnlineLearning = (() => {
                 try{documentText=await extractSubmissionText(s);}catch(e){console.warn('AI grade document extraction:',e);}
             }
 
-            const grading=await getAssignmentGradingConfig(assignment);
-            const markingKey=grading.markingKey;
+            let grading=await getAssignmentGradingConfig(assignment);
+            let markingKey=grading.markingKey;
+            if(window._activeSubmissionMarkingKey && String(window._activeSubmissionMarkingKeyId)===String(assignment.marking_key_id||'')) markingKey=window._activeSubmissionMarkingKey;
+            if(assignment.marking_key_id && !markingKey) markingKey=await fetchSubmissionMarkingKey(id);
+            if(markingKey){
+                grading={...grading,mode:'marking_key',markingKey,keywords:parseJsonArray(markingKey.keywords),expectedTopics:parseJsonArray(markingKey.expected_topics),guidance:String(markingKey.grading_guidance||'')};
+            }
             const maxMarks=Number(assignment.max_marks||s.max_marks||markingKey?.max_marks||0);
             if(!maxMarks)throw new Error('Assignment maximum marks are not configured.');
 
@@ -7062,7 +7109,7 @@ window.LecturerOnlineLearning = (() => {
             if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i> AI Grade Work';}
         }
     }
-    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> AI Grade Work</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
+    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><div id="olSubmissionMarkingKey" style="margin-top:14px;padding:12px;border:1px solid #dbe3ee;border-radius:10px;background:#f8fafc"><div style="font-weight:700;color:#475569">Marking Key</div><div style="font-size:11px;color:#64748b;margin-top:3px">Fetch the institutional marking key directly from Supabase before grading.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px"><button id="olFetchMarkingKeyBtn" class="ol-btn" style="background:#0f766e;color:#fff" onclick="LecturerOnlineLearning.fetchSubmissionMarkingKey('${s.id}')"><i class="fas fa-database"></i> Fetch Marking Key from Supabase</button></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> AI Grade Work</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
     function updateGradePercentage(){const s=state.submissions.find(x=>x.id===$('olSubmissionModal')?.dataset?.submissionId);const max=Number(s?.max_marks||state.assignments.find(a=>a.id===s?.assignment_id)?.max_marks||0);const pct=formatPercentage($('olReviewMarks')?.value,max);if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;}
     // ============================================================
     // 📧 ASSIGNMENT RESULT EMAIL NOTIFICATION
@@ -7134,9 +7181,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f
         const s=state.submissions.find(x=>x.id===id);
         if(!s)return;
         const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
-        const gradingConfig=await getAssignmentGradingConfig(assignment);
-        const maxMarks=Number(s.max_marks||assignment.max_marks||gradingConfig.markingKey?.max_marks||0);
-        if(!maxMarks){notify('This assignment has no maximum mark configured. Open Edit Assignment and set Max Marks before grading.','error');return;}
+        const maxMarks=Number(s.max_marks||assignment.max_marks||0);
         const marks=clampMarks($('olReviewMarks').value,maxMarks);
         const feedback=$('olReviewFeedback').value.trim()||null;
         const percentage=Number(formatPercentage(marks,maxMarks).replace('%',''));
@@ -8566,8 +8611,9 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         await loadResearch();
     }
 
-    return {loadMarkingKeys,getAssignmentGradingConfig,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
+    return {loadMarkingKeys,getAssignmentGradingConfig,fetchSubmissionMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
+;
 
 </script>
 <script src="js/lecturer-main.js"></script>
