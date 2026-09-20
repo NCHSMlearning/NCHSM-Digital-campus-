@@ -1,20 +1,11 @@
 // ============================================
-// ✅ attendance.js - FIXED FOR STUDENT SELF CHECK-IN
-// ✅ Works like exams.js - waits for profile before loading
-// ✅ Captures student ID from logged-in user profile
-// ✅ Multi-reading GPS averaging (5+ readings)
-// ✅ Confidence scoring & verification
-// ✅ Anti-spoofing protection
-// ✅ Clinical radius: Nakuru = 250m, Others = 200m
-// ✅ 50m radius for classroom/lab
+// ✅ attendance.js - FULLY FIXED
+// ✅ Students see ONLY sessions for THEIR block + intake year
+// ✅ Quick check-in from session card
+// ✅ Ultra-accurate GPS with 5+ readings
 // ✅ Beautiful modals - NO "This site says" popups!
-// ✅ Working navigation and filters
-// ✅ FULLY SELF-CONTAINED
-// ✅ FILTERS BY BLOCK & INTAKE YEAR
-// ✅ WAITS FOR PROFILE TO LOAD (like exams.js)
-// ✅ CAPTURES BOTH user_id (UUID) AND admission_number
-// ✅ STUDENT-FRIENDLY - No distance warnings
-// ✅ READS FROM DATABASE ONLY - NO localStorage!
+// ✅ Reads from database only - NO localStorage for identity
+// ✅ Captures both user_id (UUID) AND admission_number
 // ============================================
 
 (function() {
@@ -51,6 +42,7 @@
     let selectedTarget = null;
     let currentStudent = null;
     let activeSessions = [];
+    let currentSession = null;   // ✅ NEW: which session the student is checking into
     let attendanceStats = {
         present: 0,
         pending: 0,
@@ -82,7 +74,7 @@
     }
     
     // ============================================
-    // ✅ GET CURRENT STUDENT INFO - LIKE EXAMS.JS
+    // ✅ GET CURRENT STUDENT INFO
     // ============================================
     
     async function getCurrentStudentInfo() {
@@ -90,30 +82,24 @@
         let source = 'none';
         const supabase = getSupabase();
         
-        // ✅ 1. FIRST: Try from Supabase Auth (like exams.js)
+        // ✅ 1. Try Supabase Auth first
         if (supabase) {
             try {
                 const { data: { user }, error: authError } = await supabase.auth.getUser();
                 
-                if (authError) {
-                    console.warn('⚠️ Auth error:', authError);
-                } else if (user) {
+                if (!authError && user) {
                     console.log(`✅ Found authenticated user:`, user.id);
                     
-                    // ✅ Fetch the full profile from database
                     const { data: profileData, error: profileError } = await supabase
                         .from('consolidated_user_profiles_table')
                         .select('*')
                         .eq('user_id', user.id)
                         .single();
                     
-                    if (profileError) {
-                        console.warn('⚠️ Profile fetch error:', profileError);
-                    } else if (profileData) {
+                    if (!profileError && profileData) {
                         profile = profileData;
                         source = 'supabase.auth + database';
-                        console.log(`📋 Found profile in ${source}:`, profileData);
-                        console.log(`📋 Admission Number:`, profileData.admission_number);
+                        console.log(`📋 Found profile in ${source}`);
                     }
                 }
             } catch(e) {
@@ -121,101 +107,51 @@
             }
         }
         
-        // ✅ 2. SECOND: Try from window.db.currentUser (fallback)
+        // ✅ 2. Fallbacks
         if (!profile && window.db?.currentUser) {
             profile = window.db.currentUser;
             source = 'window.db.currentUser';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
-        
-        // ✅ 3. THIRD: Try from window.currentUser
         if (!profile && window.currentUser) {
             profile = window.currentUser;
             source = 'window.currentUser';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
-        
-        // ✅ 4. FOURTH: Try from window.db.currentUserProfile
         if (!profile && window.db?.currentUserProfile) {
             profile = window.db.currentUserProfile;
             source = 'window.db.currentUserProfile';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
-        
-        // ✅ 5. FIFTH: Try from window.currentUserProfile
         if (!profile && window.currentUserProfile) {
             profile = window.currentUserProfile;
             source = 'window.currentUserProfile';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
-        
-        // ✅ 6. SIXTH: Try from window.dashboardModule
         if (!profile && window.dashboardModule?.userData) {
             profile = window.dashboardModule.userData;
             source = 'window.dashboardModule.userData';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
-        
-        // ✅ 7. SEVENTH: Try from window.userData
         if (!profile && window.userData) {
             profile = window.userData;
             source = 'window.userData';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 8. EIGHTH: Check if we have a user ID from anywhere
+        // ✅ 3. Try userId fallback
         if (!profile) {
             const userId = window.userId || window.currentUserId || 
                           window.db?.currentUser?.id || 
                           window.currentUser?.id || 
                           null;
-            if (userId) {
-                source = 'userId fallback';
-                console.log(`📋 Found userId in ${source}:`, userId);
-                
-                // ✅ Try one more time to fetch from database with this userId
-                if (supabase) {
-                    try {
-                        const { data: profileData, error: profileError } = await supabase
-                            .from('consolidated_user_profiles_table')
-                            .select('*')
-                            .eq('user_id', userId)
-                            .single();
-                        
-                        if (profileData && !profileError) {
-                            profile = profileData;
-                            source = 'database by userId';
-                            console.log(`📋 Found profile in ${source}:`, profileData);
-                            console.log(`📋 Admission Number:`, profileData.admission_number);
-                        }
-                    } catch(e) {
-                        console.warn('⚠️ Could not fetch by userId:', e);
+            if (userId && supabase) {
+                try {
+                    const { data: profileData } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .single();
+                    
+                    if (profileData) {
+                        profile = profileData;
+                        source = 'database by userId';
                     }
-                }
-            }
-        }
-        
-        // ✅ 9. ABSOLUTE LAST RESORT: Try localStorage
-        if (!profile) {
-            try {
-                const stored = localStorage.getItem('userProfile');
-                if (stored) {
-                    const localProfile = JSON.parse(stored);
-                    if (localProfile.user_id) {
-                        profile = localProfile;
-                        source = 'localStorage (ABSOLUTE LAST RESORT)';
-                        console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-                        console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
-                    }
-                }
-            } catch(e) {
-                console.warn('⚠️ Could not read localStorage:', e);
+                } catch(e) {}
             }
         }
         
@@ -224,13 +160,13 @@
                          profile.current_block || 
                          profile.blockTerm || 
                          profile.userBlock || 
-                         'Block 4';
+                         null;
             
             const intakeYear = profile.intake_year || 
                               profile.intakeYear || 
                               profile.intake || 
                               profile.academic_year || 
-                              '2024';
+                              null;
             
             const userId = profile.user_id || profile.id || null;
             const admissionNumber = profile.admission_number ||   
@@ -258,7 +194,7 @@
             };
         }
         
-        console.warn('⚠️ No student profile found! Using defaults.');
+        console.warn('⚠️ No student profile found!');
         return {
             user_id: null,
             student_id: null,
@@ -266,45 +202,39 @@
             registration_number: null,
             full_name: 'Student',
             program: 'KRCHN',
-            block: 'Block 4',
-            intake_year: '2024'
+            block: null,
+            intake_year: null
         };
     }
-
-    // ✅ Get student ID - use user_id from profile (ASYNC)
+    
     async function getCurrentStudentId() {
         const info = await getCurrentStudentInfo();
         return info?.user_id || null;
     }
 
-    // ✅ Get student registration number (ASYNC)
     async function getCurrentStudentRegNumber() {
         const info = await getCurrentStudentInfo();
         return info?.admission_number || info?.student_id || null;
     }
 
-    // ✅ Get student name (ASYNC)
     async function getCurrentStudentName() {
         const info = await getCurrentStudentInfo();
         return info?.full_name || 'Student';
     }
 
-    // ✅ Get student program (ASYNC)
     async function getCurrentStudentProgram() {
         const info = await getCurrentStudentInfo();
         return info?.program || 'KRCHN';
     }
 
-    // ✅ Get student block (ASYNC)
     async function getCurrentStudentBlock() {
         const info = await getCurrentStudentInfo();
-        return info?.block || 'Block 4';
+        return info?.block || null;
     }
 
-    // ✅ Get student intake year (ASYNC)
     async function getCurrentStudentIntakeYear() {
         const info = await getCurrentStudentInfo();
-        return info?.intake_year || '2024';
+        return info?.intake_year || null;
     }
     
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -334,7 +264,7 @@
             return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         }
     }
-
+    
     // ============================================
     // 📍 ULTRA-ACCURATE GPS CLASS
     // ============================================
@@ -464,9 +394,7 @@
                             this.updateGPSProgress(readings.length, minReadings);
                         }
                         
-                        if (readings.length >= minReadings) {
-                            break;
-                        }
+                        if (readings.length >= minReadings) break;
                     }
 
                     const finalLocation = calculateWeightedAverage(readings);
@@ -524,27 +452,22 @@
                 passed = false;
                 reason = `GPS accuracy too low (±${location.accuracy.toFixed(0)}m). Need ±${ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY}m`;
             }
-
             if (location.stdDev > ACCURACY_CONFIG.MAX_DRIFT) {
                 passed = false;
                 reason = `GPS readings inconsistent (drift: ${location.stdDev.toFixed(0)}m)`;
             }
-
             if (location.readingsCount < 3) {
                 passed = false;
                 reason = `Not enough GPS readings (${location.readingsCount}/3)`;
             }
-
             if (location.confidence < 50) {
                 passed = false;
                 reason = `Low confidence score (${location.confidence.toFixed(0)}%)`;
             }
-
             if (!this.isPlausibleLocation(location.lat, location.lon)) {
                 passed = false;
                 reason = 'Location appears implausible';
             }
-
             return { passed, reason };
         }
 
@@ -582,9 +505,6 @@
                 statusEl.innerHTML = `<i class="fas fa-satellite-dish" style="color: #f59e0b;"></i> <span>Acquiring GPS signal... ${current}/${total}</span>`;
                 statusEl.style.background = '#fef3c7';
                 statusEl.style.color = '#92400e';
-                statusEl.style.padding = '6px 12px';
-                statusEl.style.borderRadius = '8px';
-                statusEl.style.fontSize = '13px';
             }
         }
 
@@ -598,14 +518,10 @@
         }
     }
 
-    // ============================================
-    // 🎯 CREATE GPS INSTANCE
-    // ============================================
-    
     const ultraGPS = new UltraAccurateGPS();
 
     // ============================================
-    // 🍞 BEAUTIFUL TOAST
+    // 🍞 TOAST
     // ============================================
     
     function showToast(message, type = 'success', duration = 3500) {
@@ -632,7 +548,6 @@
             gap: 12px;
             max-width: 90%;
             animation: slideUpToast 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            font-family: 'Inter', system-ui, sans-serif;
             pointer-events: none;
         `;
         const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
@@ -645,13 +560,205 @@
     }
 
     // ============================================
-    // 📚 LOAD DATA WITH BLOCK & INTAKE YEAR FILTERING
+    // 🎓 ACTIVE SESSIONS — FILTERED BY BLOCK + INTAKE + PROGRAM
+    // ============================================
+    
+    async function loadActiveSessions() {
+        try {
+            const supabase = getSupabase();
+            if (!supabase) {
+                activeSessions = [];
+                return [];
+            }
+
+            const studentInfo = await getCurrentStudentInfo();
+            const studentProgram = studentInfo?.program || 'KRCHN';
+            const studentBlock   = studentInfo?.block;
+            const studentIntake  = studentInfo?.intake_year;
+
+            console.log(`🎓 Loading sessions for: program=${studentProgram}, block=${studentBlock}, intake=${studentIntake}`);
+
+            if (!studentBlock) {
+                console.warn('⚠️ Student has no block — cannot filter sessions');
+                activeSessions = [];
+                return [];
+            }
+
+            let query = supabase
+                .from('scheduled_sessions')
+                .select('*')
+                .eq('status', 'active')
+                .eq('is_active', true)
+                .gte('session_date', new Date().toISOString().split('T')[0])
+                .order('session_date', { ascending: true });
+
+            // ✅ Filter by block
+            query = query.eq('block_term', studentBlock);
+
+            // ✅ Filter by intake year if student has one
+            if (studentIntake) {
+                query = query.eq('intake_year', String(studentIntake));
+            }
+
+            // ✅ Filter by program
+            query = query.eq('target_program', studentProgram);
+
+            const { data: sessions, error } = await query;
+            if (error) throw error;
+
+            activeSessions = sessions || [];
+
+            console.log(`✅ Loaded ${activeSessions.length} active session(s)`);
+            if (activeSessions.length > 0) {
+                console.log('📋 Sessions:', activeSessions.map(s => 
+                    `${s.unit_name} (${s.block_term}, ${s.intake_year})`
+                ));
+            }
+
+            return activeSessions;
+        } catch (error) {
+            console.error('Error loading active sessions:', error);
+            activeSessions = [];
+            return [];
+        }
+    }
+
+    // ============================================
+    // 🎨 RENDER ACTIVE SESSIONS PANEL
+    // ============================================
+    
+    async function renderActiveSessions() {
+        const container = document.getElementById('active-sessions-list');
+        const countBadge = document.getElementById('active-sessions-count');
+        
+        if (!container) {
+            console.warn('⚠️ active-sessions-list container not found');
+            return;
+        }
+
+        // Show loading
+        container.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 13px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 20px; display: block; margin-bottom: 8px; color: #4C1D95;"></i>
+                Loading your sessions...
+            </div>
+        `;
+
+        await loadActiveSessions();
+
+        if (countBadge) countBadge.textContent = activeSessions.length;
+
+        if (activeSessions.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 24px 20px; text-align: center; color: #94a3b8; background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1;">
+                    <i class="fas fa-calendar-times" style="font-size: 32px; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
+                    <div style="font-weight: 600; color: #475569; margin-bottom: 4px;">No active sessions right now</div>
+                    <div style="font-size: 12px;">When your lecturer opens a session for your block, it will appear here.</div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = activeSessions.map(session => {
+            const sessionType = (session.session_type || 'class').toLowerCase();
+            const icon = sessionType === 'clinical' ? '🏥' : sessionType === 'lab' ? '🔬' : sessionType === 'tutorial' ? '📖' : '📚';
+            const unit = session.unit_name || session.session_title || session.title || 'Session';
+            const safeUnit = unit.replace(/'/g, "\\'");
+            const safeLoc = (session.location_name || '').replace(/'/g, "\\'");
+            const displayDate = session.session_date 
+                ? new Date(session.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) 
+                : '';
+            const displayTime = session.session_time || '09:00';
+            const blockDisplay = session.block_display || session.block_term || '';
+
+            return `
+                <div style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid #10b981; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="font-weight: 600; color: #1e293b; font-size: 15px;">
+                            ${icon} ${unit}
+                        </div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <span><i class="fas fa-layer-group" style="color: #4C1D95;"></i> ${blockDisplay}</span>
+                            <span><i class="fas fa-calendar"></i> ${displayDate}</span>
+                            <span><i class="fas fa-clock"></i> ${displayTime}</span>
+                            <span><i class="fas fa-map-marker-alt"></i> ${session.location_name || 'Lecture Hall'}</span>
+                        </div>
+                    </div>
+                    <button onclick="quickCheckIn('${session.id}', '${sessionType}', '${safeUnit}', '${safeLoc}')"
+                            onmouseout="this.style.background='linear-gradient(135deg, #4f46e5, #7c3aed)'; this.style.transform='none';"
+                            onmouseover="this.style.background='linear-gradient(135deg, #4338ca, #6d28d9)'; this.style.transform='translateY(-1px)';"
+                            style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 13px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(79,70,229,0.3);">
+                        <i class="fas fa-fingerprint"></i> Check In
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ============================================
+    // ⚡ QUICK CHECK-IN — pre-fills form from session card
+    // ============================================
+    
+    async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
+        console.log(`⚡ Quick check-in for session ${sessionId}`);
+        
+        // Find the session
+        currentSession = activeSessions.find(s => s.id === sessionId) || null;
+        
+        if (!currentSession) {
+            showToast('Session not found — refreshing...', 'warning');
+            await renderActiveSessions();
+            return;
+        }
+
+        // Set session type
+        const typeSelect = document.getElementById('session-type');
+        if (typeSelect) {
+            typeSelect.value = sessionType === 'clinical' ? 'clinical' : 
+                              sessionType === 'lab' ? 'lab' : 
+                              sessionType === 'tutorial' ? 'tutorial' : 'class';
+            typeSelect.dispatchEvent(new Event('change'));
+        }
+
+        // Wait for targets to populate, then match by unit name
+        setTimeout(() => {
+            const targetSelect = document.getElementById('attendance-target');
+            if (targetSelect) {
+                const lowerUnit = unitName.toLowerCase();
+                const lowerLoc = (locationName || '').toLowerCase();
+                
+                const match = Array.from(targetSelect.options).find(o => {
+                    const text = o.textContent.toLowerCase();
+                    return text.includes(lowerUnit) || (lowerLoc && text.includes(lowerLoc));
+                });
+                
+                if (match) {
+                    targetSelect.value = match.value;
+                    targetSelect.dispatchEvent(new Event('change'));
+                    console.log('✅ Auto-selected target:', match.textContent);
+                    showToast(`Ready to check in: ${unitName}`, 'info', 2500);
+                } else {
+                    console.warn('⚠️ No matching target found — student must pick manually');
+                    showToast('Please select the target manually', 'warning');
+                }
+            }
+            
+            // Scroll to check-in button
+            document.getElementById('check-in-button')?.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }, 600);
+    }
+
+    // ============================================
+    // 📚 LOAD UNITS / CLINICAL LOCATIONS
     // ============================================
     
     async function loadApprovedUnits() {
         try {
             const supabase = getSupabase();
-            const studentId = await getCurrentStudentId(); // ✅ AWAIT
+            const studentId = await getCurrentStudentId();
             if (!supabase || !studentId) return [];
             const { data, error } = await supabase
                 .from('student_unit_registrations')
@@ -677,7 +784,6 @@
             const supabase = getSupabase();
             if (!supabase) return [];
             
-            // ✅ AWAIT the async function
             const studentInfo = await getCurrentStudentInfo();
             const intakeYear = studentInfo?.intake_year || '2024';
             const blockTerm = studentInfo?.block || 'Block 4';
@@ -718,36 +824,6 @@
             return []; 
         }
     }
-    
-    async function loadActiveSessions() {
-        try {
-            const supabase = getSupabase();
-            if (!supabase) return [];
-            
-            const studentId = await getCurrentStudentId(); // ✅ AWAIT
-            if (!studentId) return [];
-            
-            const profile = await getCurrentStudentInfo(); // ✅ AWAIT
-            const program = profile?.program || 'KRCHN';
-            
-            const { data: sessions, error } = await supabase
-                .from('scheduled_sessions')
-                .select('*')
-                .eq('target_program', program)
-                .eq('status', 'active')
-                .eq('is_active', true)
-                .gte('session_date', new Date().toISOString().split('T')[0])
-                .order('session_date', { ascending: true });
-            
-            if (error) throw error;
-            activeSessions = sessions || [];
-            console.log(`✅ Loaded ${activeSessions.length} active sessions`);
-            return activeSessions;
-        } catch (error) {
-            console.error('Error loading active sessions:', error);
-            return [];
-        }
-    }
 
     // ============================================
     // 🎯 POPULATE TARGET OPTIONS
@@ -769,12 +845,9 @@
         console.log(`📋 Populating targets for session type: ${sessionType}`);
         
         if (sessionType === 'clinical') {
-            // ✅ AWAIT the async function
             const studentInfo = await getCurrentStudentInfo();
             const blockTerm = studentInfo?.block || 'Block 4';
             const intakeYear = studentInfo?.intake_year || '2024';
-            
-            console.log(`🏥 Loading clinical locations for ${blockTerm}, ${intakeYear}`);
             
             if (clinicalLocations.length === 0) {
                 await loadClinicalLocations();
@@ -794,8 +867,6 @@
                     longitude: loc.longitude,
                     radius: loc.radius || 200
                 }));
-            
-            console.log(`🏥 Found ${options.length} clinical locations for ${blockTerm}, ${intakeYear}`);
         } else if (sessionType === 'class' || sessionType === 'lab' || sessionType === 'tutorial') {
             if (approvedUnits.length === 0) await loadApprovedUnits();
             options = approvedUnits.map(unit => ({
@@ -806,7 +877,6 @@
                 longitude: unit.longitude || CAMPUS_COORDINATES.longitude,
                 radius: unit.radius || 50
             }));
-            console.log(`📚 Found ${options.length} units`);
         }
         
         if (options.length === 0) {
@@ -832,215 +902,156 @@
         }
     }
 
-  // ============================================
-// 📊 LOAD HISTORY - COMPLETE FIX
-// ============================================
-
-async function loadHistory() {
-    const table = document.getElementById('geo-attendance-history');
-    if (!table) return;
+    // ============================================
+    // 📊 LOAD HISTORY
+    // ============================================
     
-    table.innerHTML = `
-        <tr>
-            <td colspan="6" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
-                <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
-                <p style="margin: 0; font-size: 13px;">Loading attendance history...</p>
-            </td>
-        </tr>
-    `;
-    
-    const supabase = getSupabase();
-    if (!supabase) {
-        table.innerHTML = `<tr><td colspan="6">Database not available</td></tr>`;
-        return;
-    }
-    
-    try {
-        const studentInfo = await getCurrentStudentInfo();
-        const userId = studentInfo?.user_id;
-        const admissionNumber = studentInfo?.admission_number || studentInfo?.student_id;
-        const studentName = studentInfo?.full_name;
+    async function loadHistory() {
+        const table = document.getElementById('geo-attendance-history');
+        if (!table) return;
         
-        console.log('👤 Loading history for:', { userId, admissionNumber, studentName });
-        
-        let allRecords = [];
-        
-        // ✅ 1. Get by user_id (NEW records)
-        if (userId) {
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('user_id', userId)
-                .order('check_in_time', { ascending: false });
-            
-            if (!error && data) {
-                allRecords = [...allRecords, ...data];
-                console.log(`✅ Found ${data.length} records by user_id`);
-            }
-        }
-        
-        // ✅ 2. Get by registration_number
-        if (admissionNumber) {
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('registration_number', admissionNumber)
-                .order('check_in_time', { ascending: false });
-            
-            if (!error && data) {
-                const existingIds = new Set(allRecords.map(r => r.id));
-                const newRecords = data.filter(r => !existingIds.has(r.id));
-                allRecords = [...allRecords, ...newRecords];
-                console.log(`✅ Added ${newRecords.length} records by registration_number`);
-            }
-        }
-        
-        // ✅ 3. Get by student_name (fallback)
-        if (studentName) {
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('student_name', studentName)
-                .order('check_in_time', { ascending: false });
-            
-            if (!error && data) {
-                const existingIds = new Set(allRecords.map(r => r.id));
-                const newRecords = data.filter(r => !existingIds.has(r.id));
-                allRecords = [...allRecords, ...newRecords];
-                console.log(`✅ Added ${newRecords.length} records by student_name`);
-            }
-        }
-        
-        // ✅ 4. Get by student_id (admission number)
-        if (admissionNumber) {
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('student_id', admissionNumber)
-                .order('check_in_time', { ascending: false });
-            
-            if (!error && data) {
-                const existingIds = new Set(allRecords.map(r => r.id));
-                const newRecords = data.filter(r => !existingIds.has(r.id));
-                allRecords = [...allRecords, ...newRecords];
-                console.log(`✅ Added ${newRecords.length} records by student_id (admission)`);
-            }
-        }
-        
-        // ✅ 5. Get by student_id (UUID) - for OLD records
-        if (userId) {
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('student_id', userId)
-                .order('check_in_time', { ascending: false });
-            
-            if (!error && data) {
-                const existingIds = new Set(allRecords.map(r => r.id));
-                const newRecords = data.filter(r => !existingIds.has(r.id));
-                allRecords = [...allRecords, ...newRecords];
-                console.log(`✅ Added ${newRecords.length} records by student_id (UUID)`);
-            }
-        }
-        
-        // ✅ Remove duplicates and sort
-        const seenIds = new Set();
-        const uniqueRecords = allRecords
-            .filter(r => {
-                if (seenIds.has(r.id)) return false;
-                seenIds.add(r.id);
-                return true;
-            })
-            .sort((a, b) => new Date(b.check_in_time) - new Date(a.check_in_time));
-        
-        console.log(`📊 TOTAL UNIQUE RECORDS: ${uniqueRecords.length}`);
-        
-        if (uniqueRecords.length === 0) {
-            table.innerHTML = `
-                <tr>
-                    <td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
-                        <i class="fas fa-calendar-times" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                        No attendance records found.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-        
-        attendanceHistory = uniqueRecords;
-        updateHistoryStats(uniqueRecords);
-        
-        // ✅ Render ALL records
-        table.innerHTML = uniqueRecords.map(log => {
-            const accuracy = log.accuracy_m || log.accuracy_meters || 0;
-            const distance = log.distance_meters || 0;
-            const dist = distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m';
-            const time = new Date(log.check_in_time).toLocaleString('en-KE', {
-                timeZone: 'Africa/Nairobi',
-                day: '2-digit', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            });
-            
-            let status = log.attendance_status || 'Pending';
-            let statusClass = 'status-badge-pending';
-            let statusIcon = '⏳';
-            if (status === 'Present' || status === 'Verified') { 
-                statusClass = 'status-badge-present'; 
-                statusIcon = '✅'; 
-            } else if (status === 'Absent') { 
-                statusClass = 'status-badge-absent'; 
-                statusIcon = '❌'; 
-            }
-            
-            const sessionIcon = log.session_type === 'class' ? '📚' : log.session_type === 'clinical' ? '🏥' : '📅';
-            const targetName = log.target_name || log.location_name || 'Unknown';
-            const distanceClass = distance < 100 ? 'distance-verified' : distance < 200 ? 'distance-pending' : 'distance-absent';
-            
-            return `
-                <tr>
-                    <td style="padding: 10px 14px; white-space: nowrap; font-size: 12px; color: #475569;">${time}</td>
-                    <td style="padding: 10px 14px;">${sessionIcon} <span style="font-weight: 500; color: #1e293b;">${log.session_type || 'Unknown'}</span></td>
-                    <td style="padding: 10px 14px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
-                        <span style="font-weight: 500; color: #1e293b;">${targetName}</span>
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span class="${statusClass}">${statusIcon} ${status}</span>
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span class="${distanceClass}" style="font-weight: 600;">${dist}</span>
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span style="color: #64748b;">±${accuracy.toFixed(0)}m</span>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-        
-        const countEl = document.getElementById('history-count');
-        if (countEl) countEl.textContent = `${uniqueRecords.length} records`;
-        
-        console.log(`✅ History loaded: ${uniqueRecords.length} records (${uniqueRecords.filter(r => r.attendance_status === 'Absent').length} absent, ${uniqueRecords.filter(r => r.attendance_status === 'Present' || r.attendance_status === 'Verified').length} present)`);
-        
-    } catch (error) {
-        console.error('History error:', error);
         table.innerHTML = `
             <tr>
-                <td colspan="6" style="padding: 40px; text-align: center; color: #ef4444;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                    Error loading history: ${error.message}
+                <td colspan="6" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
+                    <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
+                    <p style="margin: 0; font-size: 13px;">Loading attendance history...</p>
                 </td>
             </tr>
         `;
+        
+        const supabase = getSupabase();
+        if (!supabase) {
+            table.innerHTML = `<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">Database not available</td></tr>`;
+            return;
+        }
+        
+        try {
+            const studentInfo = await getCurrentStudentInfo();
+            const userId = studentInfo?.user_id;
+            const admissionNumber = studentInfo?.admission_number || studentInfo?.student_id;
+            const studentName = studentInfo?.full_name;
+            
+            console.log('👤 Loading history for:', { userId, admissionNumber, studentName });
+            
+            let allRecords = [];
+            
+            if (userId) {
+                const { data, error } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('check_in_time', { ascending: false });
+                if (!error && data) allRecords = [...allRecords, ...data];
+            }
+            
+            if (admissionNumber) {
+                const { data } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('*')
+                    .eq('registration_number', admissionNumber)
+                    .order('check_in_time', { ascending: false });
+                if (data) {
+                    const existingIds = new Set(allRecords.map(r => r.id));
+                    allRecords = [...allRecords, ...data.filter(r => !existingIds.has(r.id))];
+                }
+            }
+            
+            if (studentName) {
+                const { data } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('*')
+                    .eq('student_name', studentName)
+                    .order('check_in_time', { ascending: false });
+                if (data) {
+                    const existingIds = new Set(allRecords.map(r => r.id));
+                    allRecords = [...allRecords, ...data.filter(r => !existingIds.has(r.id))];
+                }
+            }
+            
+            const seenIds = new Set();
+            const uniqueRecords = allRecords
+                .filter(r => {
+                    if (seenIds.has(r.id)) return false;
+                    seenIds.add(r.id);
+                    return true;
+                })
+                .sort((a, b) => new Date(b.check_in_time) - new Date(a.check_in_time));
+            
+            console.log(`📊 TOTAL UNIQUE RECORDS: ${uniqueRecords.length}`);
+            
+            if (uniqueRecords.length === 0) {
+                table.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <i class="fas fa-calendar-times" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                            No attendance records found.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            attendanceHistory = uniqueRecords;
+            updateHistoryStats(uniqueRecords);
+            
+            table.innerHTML = uniqueRecords.map(log => {
+                const accuracy = log.accuracy_m || log.accuracy_meters || 0;
+                const distance = log.distance_meters || 0;
+                const dist = distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m';
+                const time = new Date(log.check_in_time).toLocaleString('en-KE', {
+                    timeZone: 'Africa/Nairobi',
+                    day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+                
+                let status = log.attendance_status || 'Pending';
+                let statusClass = 'status-badge-pending';
+                let statusIcon = '⏳';
+                if (status === 'Present' || status === 'Verified') { statusClass = 'status-badge-present'; statusIcon = '✅'; }
+                else if (status === 'Absent') { statusClass = 'status-badge-absent'; statusIcon = '❌'; }
+                
+                const sessionIcon = log.session_type === 'class' ? '📚' : log.session_type === 'clinical' ? '🏥' : '📅';
+                const targetName = log.target_name || log.location_name || 'Unknown';
+                const distanceClass = distance < 100 ? 'distance-verified' : distance < 200 ? 'distance-pending' : 'distance-absent';
+                
+                return `
+                    <tr>
+                        <td style="padding: 10px 14px; white-space: nowrap; font-size: 12px; color: #475569;">${time}</td>
+                        <td style="padding: 10px 14px;">${sessionIcon} <span style="font-weight: 500; color: #1e293b;">${log.session_type || 'Unknown'}</span></td>
+                        <td style="padding: 10px 14px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
+                            <span style="font-weight: 500; color: #1e293b;">${targetName}</span>
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            <span class="${statusClass}">${statusIcon} ${status}</span>
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            <span class="${distanceClass}" style="font-weight: 600;">${dist}</span>
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            <span style="color: #64748b;">±${accuracy.toFixed(0)}m</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            const countEl = document.getElementById('history-count');
+            if (countEl) countEl.textContent = `${uniqueRecords.length} records`;
+            
+        } catch (error) {
+            console.error('History error:', error);
+            table.innerHTML = `
+                <tr>
+                    <td colspan="6" style="padding: 40px; text-align: center; color: #ef4444;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                        Error loading history: ${error.message}
+                    </td>
+                </tr>
+            `;
+        }
     }
-}
     
     function updateHistoryStats(records) {
-        const stats = {
-            present: 0,
-            pending: 0,
-            absent: 0,
-            total: records.length
-        };
+        const stats = { present: 0, pending: 0, absent: 0, total: records.length };
         
         records.forEach(log => {
             const status = log.attendance_status || 'Pending';
@@ -1081,7 +1092,7 @@ async function loadHistory() {
         if (!filter) return;
         
         const supabase = getSupabase();
-        const studentId = await getCurrentStudentId(); // ✅ AWAIT
+        const studentId = await getCurrentStudentId();
         if (!supabase || !studentId) return;
         
         const table = document.getElementById('geo-attendance-history');
@@ -1091,7 +1102,7 @@ async function loadHistory() {
             let query = supabase
                 .from('geo_attendance_logs')
                 .select('*')
-                .eq('student_id', studentId)
+                .eq('user_id', studentId)
                 .order('check_in_time', { ascending: false });
             
             const now = new Date();
@@ -1113,16 +1124,14 @@ async function loadHistory() {
             if (error) throw error;
             
             if (!data || data.length === 0) {
-                table.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
-                            No records for this period
-                        </td>
-                    </tr>
-                `;
+                table.innerHTML = `<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">No records for this period</td></tr>`;
                 return;
             }
             
+            // Re-render using same template as loadHistory — reuse by temporarily swapping
+            const oldRecords = attendanceHistory;
+            attendanceHistory = data;
+            // Simple re-render
             table.innerHTML = data.map(log => {
                 const accuracy = log.accuracy_m || log.accuracy_meters || 0;
                 const distance = log.distance_meters || 0;
@@ -1135,18 +1144,11 @@ async function loadHistory() {
                 let status = log.attendance_status || 'Pending';
                 let statusClass = 'status-badge-pending';
                 let statusIcon = '⏳';
-                if (status === 'Present' || status === 'Verified') { 
-                    statusClass = 'status-badge-present'; 
-                    statusIcon = '✅'; 
-                } else if (status === 'Absent') { 
-                    statusClass = 'status-badge-absent'; 
-                    statusIcon = '❌'; 
-                }
-                
+                if (status === 'Present' || status === 'Verified') { statusClass = 'status-badge-present'; statusIcon = '✅'; }
+                else if (status === 'Absent') { statusClass = 'status-badge-absent'; statusIcon = '❌'; }
                 const sessionIcon = log.session_type === 'class' ? '📚' : log.session_type === 'clinical' ? '🏥' : '📅';
                 const targetName = log.target_name || log.location_name || 'Unknown';
                 const distanceClass = distance < 100 ? 'distance-verified' : distance < 200 ? 'distance-pending' : 'distance-absent';
-                
                 return `
                     <tr>
                         <td style="padding: 10px 14px; white-space: nowrap; font-size: 12px; color: #475569;">${time}</td>
@@ -1186,8 +1188,8 @@ async function loadHistory() {
             const modal = document.createElement('div');
             modal.id = 'confirmModal';
             modal.innerHTML = `
-                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 999998; display: flex; align-items: center; justify-content: center; animation: fadeInBackdrop 0.25s ease;">
-                    <div style="background: white; border-radius: 20px; max-width: 440px; width: 92%; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUpModal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 999998; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; border-radius: 20px; max-width: 440px; width: 92%; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
                         <div style="text-align: center; margin-bottom: 12px;">
                             <div style="width: 64px; height: 64px; border-radius: 50%; background: #ede9fe; display: inline-flex; align-items: center; justify-content: center; font-size: 32px;">${options.icon || '📍'}</div>
                         </div>
@@ -1214,15 +1216,10 @@ async function loadHistory() {
             
             window._closeConfirmModal = function(result) {
                 const modal = document.getElementById('confirmModal');
-                if (modal) {
-                    modal.style.animation = 'slideUpModal 0.25s ease reverse';
-                    setTimeout(() => {
-                        modal.remove();
-                        if (window._confirmResolve) {
-                            window._confirmResolve(result);
-                            window._confirmResolve = null;
-                        }
-                    }, 250);
+                if (modal) modal.remove();
+                if (window._confirmResolve) {
+                    window._confirmResolve(result);
+                    window._confirmResolve = null;
                 }
             };
         });
@@ -1232,84 +1229,6 @@ async function loadHistory() {
     // ✅ SUCCESS MODAL
     // ============================================
     
-    function showSuccessModal(data) {
-        const existing = document.getElementById('successModal');
-        if (existing) existing.remove();
-        
-        const statusMap = {
-            'Present': { emoji: '🎉', color: '#10b981', bg: '#d1fae5', title: '✨ Verified Check-in!', message: `✅ Verified within ${data.distance}m • ${data.confidence || 95}% confidence` },
-            'Absent': { emoji: '📍', color: '#f59e0b', bg: '#fef3c7', title: '📍 Not at Location', message: `You are ${data.distance}m from the target area.` },
-            'Pending': { emoji: '⏳', color: '#3b82f6', bg: '#dbeafe', title: '⏳ Pending Review', message: `GPS accuracy: ±${data.accuracy}m • ${data.confidence || 50}% confidence` }
-        };
-        const status = statusMap[data.status] || statusMap['Pending'];
-        
-        const modal = document.createElement('div');
-        modal.id = 'successModal';
-        modal.innerHTML = `
-            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 999999; display: flex; align-items: center; justify-content: center; animation: fadeInBackdrop 0.3s ease;">
-                <div style="background: white; border-radius: 24px; max-width: 420px; width: 92%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);">
-                    <div style="background: ${status.color}; padding: 20px 24px 16px; text-align: center; color: white;">
-                        <div style="font-size: 48px; margin-bottom: 4px;">${status.emoji}</div>
-                        <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: white;">${status.title}</h2>
-                        <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">${status.message}</p>
-                    </div>
-                    <div style="padding: 24px 24px 20px;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px 4px;">
-                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.distance}m</div>
-                                <div style="font-size: 10px; color: #94a3b8;">Distance</div>
-                            </div>
-                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px 4px;">
-                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">±${data.accuracy}m</div>
-                                <div style="font-size: 10px; color: #94a3b8;">Accuracy</div>
-                            </div>
-                            <div style="text-align: center; background: ${status.bg}; border-radius: 10px; padding: 10px 4px;">
-                                <div style="font-size: 18px; font-weight: 700; color: ${status.color};">${data.confidence || 95}%</div>
-                                <div style="font-size: 10px; color: ${status.color};">Confidence</div>
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                            <div style="text-align: center; background: #f1f5f9; border-radius: 8px; padding: 6px;">
-                                <div style="font-size: 11px; color: #64748b;">Status</div>
-                                <div style="font-size: 14px; font-weight: 600; color: ${status.color};">${data.status}</div>
-                            </div>
-                            <div style="text-align: center; background: #f1f5f9; border-radius: 8px; padding: 6px;">
-                                <div style="font-size: 11px; color: #64748b;">Readings</div>
-                                <div style="font-size: 14px; font-weight: 600; color: #0f172a;">${data.readings || 5}</div>
-                            </div>
-                        </div>
-                        <div style="background: #f8fafc; border-radius: 10px; padding: 8px 14px; margin-bottom: 16px; text-align: center;">
-                            <div style="font-size: 11px; color: #94a3b8;">📍 Target</div>
-                            <div style="font-weight: 600; font-size: 14px; color: #0f172a;">${data.target}</div>
-                            <div style="font-size: 11px; color: #64748b;">${data.type}</div>
-                        </div>
-                        ${data.points > 0 ? `
-                            <div style="background: linear-gradient(135deg, #fbbf24, #f59e0b); border-radius: 10px; padding: 10px; text-align: center; color: white; margin-bottom: 16px;">
-                                <span style="font-size: 20px;">⭐</span>
-                                <span style="font-weight: 700; font-size: 16px;">+${data.points} points</span>
-                                <span style="font-size: 13px; opacity: 0.9;"> awarded!</span>
-                            </div>
-                        ` : ''}
-                        <button onclick="window._closeSuccessModal()" style="width: 100%; padding: 14px; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; background: ${status.color}; color: white;">👍 Done</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        window._closeSuccessModal = function() {
-            const modal = document.getElementById('successModal');
-            if (modal) {
-                modal.style.animation = 'slideUpModal 0.25s ease reverse';
-                setTimeout(() => modal.remove(), 250);
-            }
-        };
-    }
-
-    // ============================================
-    // ✅ SIMPLE SUCCESS MODAL - No distance warnings
-    // ============================================
-    
     function showSimpleSuccessModal(data) {
         const existing = document.getElementById('successModal');
         if (existing) existing.remove();
@@ -1317,8 +1236,8 @@ async function loadHistory() {
         const modal = document.createElement('div');
         modal.id = 'successModal';
         modal.innerHTML = `
-            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 999999; display: flex; align-items: center; justify-content: center; animation: fadeInBackdrop 0.3s ease;">
-                <div style="background: white; border-radius: 24px; max-width: 420px; width: 92%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);">
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 999999; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; border-radius: 24px; max-width: 420px; width: 92%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
                     <div style="background: #10b981; padding: 20px 24px 16px; text-align: center; color: white;">
                         <div style="font-size: 48px; margin-bottom: 4px;">✅</div>
                         <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: white;">Check-in Complete!</h2>
@@ -1342,10 +1261,7 @@ async function loadHistory() {
         
         window._closeSuccessModal = function() {
             const modal = document.getElementById('successModal');
-            if (modal) {
-                modal.style.display = 'none';
-                setTimeout(() => modal.remove(), 300);
-            }
+            if (modal) modal.remove();
         };
     }
 
@@ -1355,7 +1271,7 @@ async function loadHistory() {
     
     async function exportAttendanceHistory() {
         const supabase = getSupabase();
-        const studentId = await getCurrentStudentId(); // ✅ AWAIT
+        const studentId = await getCurrentStudentId();
         if (!supabase || !studentId) {
             showToast('Please log in to export', 'error');
             return;
@@ -1365,7 +1281,7 @@ async function loadHistory() {
             const { data, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
-                .eq('student_id', studentId)
+                .eq('user_id', studentId)
                 .order('check_in_time', { ascending: false });
             
             if (error) throw error;
@@ -1441,7 +1357,7 @@ async function loadHistory() {
         
         if (reqLocation) {
             if (location && location.accuracy < 50) {
-                reqLocation.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981; font-size: 11px;"></i> High-accuracy GPS: ${location.accuracy.toFixed(0)}m (${location.confidence?.toFixed(0) || 0}% confidence)`;
+                reqLocation.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981; font-size: 11px;"></i> High-accuracy GPS: ${location.accuracy.toFixed(0)}m`;
                 reqLocation.style.color = '#065f46';
             } else if (location && location.accuracy < 100) {
                 reqLocation.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #f59e0b; font-size: 11px;"></i> GPS OK: ${location.accuracy.toFixed(0)}m`;
@@ -1503,30 +1419,12 @@ async function loadHistory() {
         
         if (gpsStatus) {
             const icon = location.accuracy < 20 ? '✅' : location.accuracy < 50 ? '📍' : '⚠️';
-            const color = location.accuracy < 20 ? '#10b981' : location.accuracy < 50 ? '#f59e0b' : '#ef4444';
             const bg = location.accuracy < 20 ? '#d1fae5' : location.accuracy < 50 ? '#fef3c7' : '#fee2e2';
             const textColor = location.accuracy < 20 ? '#065f46' : location.accuracy < 50 ? '#92400e' : '#991b1b';
             
-            gpsStatus.innerHTML = `${icon} <span>GPS Locked (${location.accuracy.toFixed(0)}m) • ${location.readingsCount} readings • ${location.confidence?.toFixed(0) || 0}% confidence</span>`;
+            gpsStatus.innerHTML = `${icon} <span>GPS Locked (${location.accuracy.toFixed(0)}m) • ${location.readingsCount} readings</span>`;
             gpsStatus.style.background = bg;
             gpsStatus.style.color = textColor;
-            gpsStatus.style.padding = '6px 12px';
-            gpsStatus.style.borderRadius = '8px';
-            gpsStatus.style.fontSize = '13px';
-        }
-        
-        const reqLocation = document.getElementById('req-location');
-        if (reqLocation) {
-            if (location.accuracy < 50) {
-                reqLocation.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981; font-size: 11px;"></i> High-accuracy GPS: ${location.accuracy.toFixed(0)}m (${location.confidence?.toFixed(0) || 0}% confidence)`;
-                reqLocation.style.color = '#065f46';
-            } else if (location.accuracy < 100) {
-                reqLocation.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #f59e0b; font-size: 11px;"></i> GPS OK: ${location.accuracy.toFixed(0)}m`;
-                reqLocation.style.color = '#92400e';
-            } else {
-                reqLocation.innerHTML = `<i class="fas fa-circle" style="color: #dc2626; font-size: 6px;"></i> GPS weak: ${location.accuracy.toFixed(0)}m`;
-                reqLocation.style.color = '#94a3b8';
-            }
         }
     }
 
@@ -1536,7 +1434,7 @@ async function loadHistory() {
     
     async function updateStats() {
         const supabase = getSupabase();
-        const studentId = await getCurrentStudentId(); // ✅ AWAIT
+        const studentId = await getCurrentStudentId();
         if (!supabase || !studentId) return;
         
         try {
@@ -1546,29 +1444,19 @@ async function loadHistory() {
             const { data, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('attendance_status, is_verified')
-                .eq('student_id', studentId)
+                .eq('user_id', studentId)
                 .gte('check_in_time', today.toISOString());
             
             if (error) throw error;
             
-            const stats = {
-                present: 0,
-                pending: 0,
-                absent: 0,
-                total: data?.length || 0
-            };
+            const stats = { present: 0, pending: 0, absent: 0, total: data?.length || 0 };
             
             data?.forEach(log => {
                 const status = log.attendance_status || 'Pending';
                 const isVerified = log.is_verified === true;
-                
-                if (status === 'Present' || status === 'Verified' || isVerified) {
-                    stats.present++;
-                } else if (status === 'Pending') {
-                    stats.pending++;
-                } else if (status === 'Absent') {
-                    stats.absent++;
-                }
+                if (status === 'Present' || status === 'Verified' || isVerified) stats.present++;
+                else if (status === 'Pending') stats.pending++;
+                else if (status === 'Absent') stats.absent++;
             });
             
             const presentCount = document.getElementById('presentCount');
@@ -1580,7 +1468,6 @@ async function loadHistory() {
             if (pendingCount) pendingCount.textContent = stats.pending;
             if (absentCount) absentCount.textContent = stats.absent;
             if (totalCount) totalCount.textContent = stats.total;
-            
         } catch (error) {
             console.error('Stats error:', error);
         }
@@ -1591,7 +1478,7 @@ async function loadHistory() {
     // ============================================
     
     async function getAccurateLocation() {
-        console.log('📍 Getting ULTRA-ACCURATE GPS with 5-point verification...');
+        console.log('📍 Getting ULTRA-ACCURATE GPS...');
         showToast('📡 Acquiring accurate GPS signal...', 'info', 2000);
         
         try {
@@ -1603,23 +1490,13 @@ async function loadHistory() {
             });
             
             if (!location) {
-                showToast('❌ Could not get accurate GPS. Please try again in an open area.', 'error', 5000);
+                showToast('❌ Could not get accurate GPS. Try again in an open area.', 'error', 5000);
                 return null;
             }
             
-            console.log('✅ Ultra-accurate GPS acquired:', {
-                lat: location.lat,
-                lon: location.lon,
-                accuracy: location.accuracy,
-                confidence: location.confidence,
-                readings: location.readingsCount
-            });
-            
             const confidenceEmoji = location.confidence > 80 ? '🟢' : location.confidence > 60 ? '🟡' : '🔴';
-            showToast(`${confidenceEmoji} GPS locked! Accuracy: ±${location.accuracy.toFixed(0)}m (${location.confidence.toFixed(0)}% confidence)`, 'success', 3000);
-            
+            showToast(`${confidenceEmoji} GPS locked! ±${location.accuracy.toFixed(0)}m`, 'success', 3000);
             return location;
-            
         } catch (error) {
             console.error('GPS Error:', error);
             showToast('❌ GPS error: ' + error.message, 'error', 5000);
@@ -1630,21 +1507,14 @@ async function loadHistory() {
     // ============================================
     // 🏆 AWARD ATTENDANCE POINTS
     // ============================================
-
+    
     async function awardAttendancePoints(studentId, targetName, distance) {
         try {
             const supabase = getSupabase();
-            if (!supabase) {
-                console.warn('No Supabase client available');
-                return 0;
-            }
+            if (!supabase) return 0;
             
             let points = 10;
-            
-            if (distance < 20) {
-                points += 5;
-                console.log('🎯 Super accurate! +5 bonus points!');
-            }
+            if (distance < 20) points += 5;
             
             const { data: profile, error: fetchError } = await supabase
                 .from('consolidated_user_profiles_table')
@@ -1652,10 +1522,7 @@ async function loadHistory() {
                 .eq('user_id', studentId)
                 .single();
             
-            if (fetchError) {
-                console.warn('Could not fetch profile:', fetchError);
-                return 0;
-            }
+            if (fetchError) return 0;
             
             const currentPoints = profile?.gamification_points || 0;
             const currentAttendancePoints = profile?.attendance_points || 0;
@@ -1664,7 +1531,7 @@ async function loadHistory() {
             const newAttendancePoints = currentAttendancePoints + points;
             const newTotal = newPoints + (loginCount * 10);
             
-            const { error: updateError } = await supabase
+            await supabase
                 .from('consolidated_user_profiles_table')
                 .update({
                     gamification_points: newPoints,
@@ -1673,13 +1540,6 @@ async function loadHistory() {
                     updated_at: new Date().toISOString()
                 })
                 .eq('user_id', studentId);
-            
-            if (updateError) {
-                console.error('❌ Error updating points:', updateError);
-                return 0;
-            }
-            
-            console.log(`✅ Awarded ${points} points for attendance at ${targetName}`);
             
             document.dispatchEvent(new CustomEvent('attendanceCheckedIn', {
                 detail: { points, target: targetName, distance, newTotal }
@@ -1690,7 +1550,6 @@ async function loadHistory() {
             }
             
             return points;
-            
         } catch (error) {
             console.error('❌ Error awarding attendance points:', error);
             return 0;
@@ -1698,7 +1557,7 @@ async function loadHistory() {
     }
 
     // ============================================
-    // ✅ DO CHECK-IN - STUDENT FRIENDLY
+    // ✅ DO CHECK-IN
     // ============================================
     
     async function doCheckIn() {
@@ -1730,13 +1589,12 @@ async function loadHistory() {
         btn.style.opacity = '0.6';
         
         try {
-            // ✅ AWAIT the async function
             const studentInfo = await getCurrentStudentInfo();
             
             if (!studentInfo || !studentInfo.user_id) {
                 showToast('Please log in first', 'error');
                 btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
+                btn.innerHTML = '<i class="fas fa-fingerprint" style="font-size: 18px;"></i> Check In Now';
                 btn.style.opacity = '1';
                 return;
             }
@@ -1748,32 +1606,21 @@ async function loadHistory() {
             const studentProgram = studentInfo.program || 'KRCHN';
             const studentIntakeYear = studentInfo.intake_year || '2024';
             
-            console.log('👤 Student info:', {
-                user_id: userId,
-                admission_number: admissionNumber,
-                full_name: studentFullName,
-                block: studentBlock,
-                intake_year: studentIntakeYear
-            });
-            
-            // ✅ Update the student info badge
             updateStudentInfoBadge(studentBlock, studentIntakeYear, admissionNumber || 'N/A');
             
             const supabase = getSupabase();
             if (!supabase) {
                 showToast('Database not available', 'error');
                 btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
+                btn.innerHTML = '<i class="fas fa-fingerprint" style="font-size: 18px;"></i> Check In Now';
                 btn.style.opacity = '1';
                 return;
             }
             
-            // 🚀 Get ULTRA-ACCURATE location
             const location = await getAccurateLocation();
-            
             if (!location) {
                 btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
+                btn.innerHTML = '<i class="fas fa-fingerprint" style="font-size: 18px;"></i> Check In Now';
                 btn.style.opacity = '1';
                 return;
             }
@@ -1786,16 +1633,10 @@ async function loadHistory() {
             );
             
             let radius = selectedTarget.radius || 200;
-            
             if (selectedTarget.type === 'clinical') {
                 const lowerName = selectedTarget.name.toLowerCase();
-                if (lowerName.includes('nakuru county referral hospital')) {
-                    radius = 250;
-                } else {
-                    radius = 200;
-                }
+                radius = lowerName.includes('nakuru county referral hospital') ? 250 : 200;
             }
-            
             if (selectedTarget.type === 'class' || selectedTarget.type === 'lab' || selectedTarget.type === 'tutorial') {
                 radius = ACCURACY_CONFIG.CLASSROOM_RADIUS;
             }
@@ -1803,37 +1644,16 @@ async function loadHistory() {
             const accuracy = location.accuracy || 0;
             
             let status = 'Absent';
-            let statusMessage = '';
-            
-            if (accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) {
-                status = 'Pending';
-                statusMessage = 'GPS accuracy needs review';
-            }
+            if (accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) status = 'Pending';
             
             if (distance <= radius) {
-                if (status !== 'Pending') {
-                    status = 'Present';
-                    statusMessage = `✅ Verified within ${radius}m`;
-                }
+                if (status !== 'Pending') status = 'Present';
             } else if (distance <= radius * 2) {
-                if (status !== 'Pending') {
-                    status = 'Pending';
-                    statusMessage = `Distance needs review`;
-                }
-            } else {
-                status = 'Absent';
-                statusMessage = `Location needs verification`;
+                if (status !== 'Pending') status = 'Pending';
             }
             
-            if (location.confidence < 50) {
-                status = 'Pending';
-                statusMessage = 'GPS confidence needs review';
-            }
-            
-            if (location.readingsCount < 3) {
-                status = 'Pending';
-                statusMessage = 'GPS readings need review';
-            }
+            if (location.confidence < 50) status = 'Pending';
+            if (location.readingsCount < 3) status = 'Pending';
             
             const details = {
                 'Student': studentFullName,
@@ -1854,7 +1674,7 @@ async function loadHistory() {
             
             if (!confirmed) {
                 btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
+                btn.innerHTML = '<i class="fas fa-fingerprint" style="font-size: 18px;"></i> Check In Now';
                 btn.style.opacity = '1';
                 showToast('Check-in cancelled', 'warning');
                 return;
@@ -1864,24 +1684,19 @@ async function loadHistory() {
             
             const sessionType = sessionTypeSelect?.value || 'class';
             
-            // ✅ Record with CORRECT identifiers
             const record = {
-                // ✅ user_id = UUID (for RLS)
                 user_id: userId,
-                
-                // ✅ student_id = admission_number (for display)
                 student_id: admissionNumber,
-                
-                // ✅ registration_number = admission_number (for display)
                 registration_number: admissionNumber,
-                
                 student_name: studentFullName,
                 block: studentBlock,
                 intake_year: studentIntakeYear,
                 program: studentProgram,
                 check_in_time: new Date().toISOString(),
                 session_type: sessionType,
-                target_id: selectedTarget.id,
+                // ✅ link to the session if quick check-in
+                target_id: currentSession?.id || selectedTarget.id,
+                session_id: currentSession?.id || null,
                 target_name: selectedTarget.name,
                 latitude: location.lat,
                 longitude: location.lon,
@@ -1897,7 +1712,6 @@ async function loadHistory() {
                 gps_confidence: location.confidence,
                 gps_readings: location.readingsCount,
                 gps_std_dev: location.stdDev,
-                verification_checks: JSON.stringify(location.verification?.checks || []),
                 location_type: selectedTarget.type,
                 clinical_radius: selectedTarget.type === 'clinical' ? radius : null,
                 created_at: new Date().toISOString()
@@ -1905,9 +1719,7 @@ async function loadHistory() {
             
             console.log('📝 Saving record:', {
                 user_id: record.user_id,
-                student_id: record.student_id,
-                registration_number: record.registration_number,
-                student_name: record.student_name,
+                session_id: record.session_id,
                 status: record.attendance_status,
                 distance: record.distance_meters
             });
@@ -1921,16 +1733,10 @@ async function loadHistory() {
                 throw error;
             }
             
-            let successMessage = 'Check-in recorded successfully!';
-            if (status === 'Present') {
-                successMessage = '✅ Check-in verified! You are within the required range.';
-            } else if (status === 'Pending') {
-                successMessage = '⏳ Check-in recorded for review. You will be notified once verified.';
-            } else {
-                successMessage = '📝 Check-in recorded. Your location will be verified by staff.';
-            }
-            
-            showToast('✅ Check-in recorded!', 'success', 3000);
+            let successMessage = 'Check-in recorded!';
+            if (status === 'Present') successMessage = '✅ Check-in verified!';
+            else if (status === 'Pending') successMessage = '⏳ Check-in recorded for review.';
+            else successMessage = '📝 Check-in recorded. Awaiting verification.';
             
             showSimpleSuccessModal({
                 message: successMessage,
@@ -1939,15 +1745,22 @@ async function loadHistory() {
                 time: new Date().toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi' })
             });
             
+            // ✅ Award points (fire-and-forget)
+            awardAttendancePoints(userId, selectedTarget.name, distance).catch(() => {});
+            
+            // ✅ Reset quick check-in session after successful check-in
+            currentSession = null;
+            
             await loadHistory();
             await updateStats();
+            await renderActiveSessions();
             
         } catch (error) {
             console.error('❌ Check-in error:', error);
             showToast('Check-in failed: ' + error.message, 'error');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '📍 Check In Now';
+            btn.innerHTML = '<i class="fas fa-fingerprint" style="font-size: 18px;"></i> Check In Now';
             btn.style.opacity = '1';
         }
     }
@@ -1967,25 +1780,20 @@ async function loadHistory() {
     }
 
     // ============================================
-    // ✅ WAIT FOR PROFILE TO LOAD (like exams.js)
+    // ✅ WAIT FOR PROFILE
     // ============================================
     
     async function waitForProfile(maxAttempts = MAX_PROFILE_ATTEMPTS) {
         console.log('⏳ Waiting for student profile to load...');
         
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            // ✅ AWAIT the async function
             const info = await getCurrentStudentInfo();
-            
             if (info && info.user_id) {
-                console.log(`✅ Profile loaded after ${attempt} attempts:`, info.block, info.intake_year);
-                console.log(`📋 Admission Number:`, info.admission_number);
+                console.log(`✅ Profile loaded after ${attempt} attempts`);
                 return info;
             }
-            
             if (attempt < maxAttempts) {
                 await new Promise(r => setTimeout(r, 300));
-                console.log(`⏳ Attempt ${attempt}/${maxAttempts} - waiting for profile...`);
             }
         }
         
@@ -1994,28 +1802,24 @@ async function loadHistory() {
     }
 
     // ============================================
-    // 🚀 INIT (like exams.js)
+    // 🚀 INIT
     // ============================================
     
     async function init() {
-        console.log('🚀 Initializing ULTRA-ACCURATE attendance system...');
-        console.log('🏥 Clinical radius: Nakuru = 250m, Others = 200m');
-        console.log('📚 Classroom radius: 50m for classes/labs');
+        console.log('🚀 Initializing attendance system...');
         
-        // ✅ AWAIT the profile (like exams.js)
         const studentInfo = await waitForProfile(MAX_PROFILE_ATTEMPTS);
         
         if (!studentInfo || !studentInfo.user_id) {
-            console.warn('⚠️ No student logged in. Please log in first.');
+            console.warn('⚠️ No student logged in');
             showToast('Please log in to check in', 'warning', 5000);
         } else {
             console.log('👤 Student logged in:', studentInfo.full_name);
-            console.log('📋 Student ID (UUID):', studentInfo.user_id);
-            console.log('📋 Registration Number:', studentInfo.admission_number || studentInfo.student_id || 'N/A');
-            console.log('📋 Block:', studentInfo.block);
-            console.log('📋 Intake Year:', studentInfo.intake_year);
-            
-            updateStudentInfoBadge(studentInfo.block, studentInfo.intake_year, studentInfo.admission_number || studentInfo.student_id || 'N/A');
+            updateStudentInfoBadge(
+                studentInfo.block || '--', 
+                studentInfo.intake_year || '--', 
+                studentInfo.admission_number || studentInfo.student_id || 'N/A'
+            );
         }
         
         let retries = 0;
@@ -2028,12 +1832,14 @@ async function loadHistory() {
         await loadApprovedUnits();
         await loadActiveSessions();
         
+        // ✅ Render the Active Sessions panel
+        await renderActiveSessions();
+        
         // Setup event listeners
         const sessionType = document.getElementById('session-type');
         if (sessionType) {
             sessionType.addEventListener('change', function() {
                 const value = this.value;
-                console.log(`📋 Session type changed to: ${value}`);
                 const targetGroup = document.getElementById('target-control-group');
                 
                 if (value && value !== '') {
@@ -2066,8 +1872,6 @@ async function loadHistory() {
                             longitude: parseFloat(parts[4]),
                             radius: parseFloat(parts[5])
                         };
-                        console.log('✅ Target selected:', selectedTarget.name);
-                        console.log(`📏 Radius: ${selectedTarget.radius}m`);
                     }
                 } else {
                     selectedTarget = null;
@@ -2096,37 +1900,41 @@ async function loadHistory() {
         
         setInterval(updateStats, 30000);
         
-        // Listen for profile updates
-        document.addEventListener('profileLoaded', function(event) {
-            console.log('🔄 Profile updated, reloading clinical locations...');
-            loadClinicalLocations();
+        // ✅ Auto-refresh sessions when tab regains focus
+        window.addEventListener('focus', () => {
+            loadActiveSessions().then(() => renderActiveSessions());
         });
         
-        document.addEventListener('appReady', function(event) {
-            console.log('🔄 App ready, refreshing clinical locations...');
+        // Refresh sessions every 60 seconds
+        setInterval(() => {
+            renderActiveSessions();
+        }, 60000);
+        
+        document.addEventListener('profileLoaded', function() {
+            console.log('🔄 Profile updated, reloading...');
+            loadClinicalLocations();
+            renderActiveSessions();
+        });
+        
+        document.addEventListener('appReady', function() {
             setTimeout(() => {
                 loadClinicalLocations();
+                renderActiveSessions();
             }, 500);
         });
         
         isInitialized = true;
-        console.log('✅ Ultra-accurate attendance system ready!');
-        console.log(`🏥 Clinical radius: Nakuru = 250m, Others = 200m`);
-        console.log(`📚 Classroom radius: ${ACCURACY_CONFIG.CLASSROOM_RADIUS}m`);
-        showToast(`🎯 Ultra-accurate attendance ready!`, 'success', 3000);
+        console.log('✅ Attendance system ready!');
+        showToast('🎯 Attendance ready!', 'success', 3000);
         
-        // Dispatch event like exams.js
         const event = new CustomEvent('attendanceModuleReady', {
-            detail: { 
-                count: clinicalLocations.length,
-                timestamp: new Date().toISOString()
-            }
+            detail: { count: clinicalLocations.length, timestamp: new Date().toISOString() }
         });
         document.dispatchEvent(event);
     }
     
     // ============================================
-    // 🌐 EXPOSE GLOBALLY (like exams.js)
+    // 🌐 EXPOSE GLOBALLY
     // ============================================
     
     window.loadAttendanceHistory = loadHistory;
@@ -2141,9 +1949,11 @@ async function loadHistory() {
     window.getCurrentStudentIntakeYear = getCurrentStudentIntakeYear;
     window.updateStudentInfoBadge = updateStudentInfoBadge;
     window.waitForProfile = waitForProfile;
+    window.renderActiveSessions = renderActiveSessions;   // ✅ NEW
+    window.quickCheckIn = quickCheckIn;                   // ✅ NEW
     
     // ============================================
-    // 🏁 START (like exams.js)
+    // 🏁 START
     // ============================================
     
     if (document.readyState === 'loading') {
@@ -2152,15 +1962,8 @@ async function loadHistory() {
         setTimeout(init, 500);
     }
     
-    console.log('✅ ULTRA-ACCURATE attendance system module loaded!');
-    console.log('🎯 5-point GPS verification enabled!');
-    console.log('📡 Multi-reading averaging active!');
-    console.log('🏥 Clinical radius: Nakuru = 250m, Others = 200m');
-    console.log('📚 Classroom radius: 50m (classes/labs)');
-    console.log('📋 Filtering by Block & Intake Year enabled!');
-    console.log('👤 Student ID capture: FIXED!');
-    console.log('⏳ Waiting for profile to load before initializing...');
-    console.log('❌ NO localStorage - Reading from database only!');
+    console.log('✅ Attendance system module loaded');
+    console.log('🎓 Sessions filtered by block_term + intake_year + target_program');
     
 })();
 
@@ -2168,18 +1971,12 @@ async function loadHistory() {
 // 🔄 FORCE DISPATCH ATTENDANCE READY EVENT
 // ============================================
 (function ensureAttendanceReadyEvent() {
-    console.log('📣 Ensuring attendanceModuleReady event...');
-    
     const dispatchEvent = () => {
         if (window.attendanceSystemReady) {
             const event = new CustomEvent('attendanceModuleReady', {
-                detail: { 
-                    ready: true,
-                    timestamp: new Date().toISOString()
-                }
+                detail: { ready: true, timestamp: new Date().toISOString() }
             });
             document.dispatchEvent(event);
-            console.log('✅ attendanceModuleReady event dispatched');
             return true;
         }
         return false;
