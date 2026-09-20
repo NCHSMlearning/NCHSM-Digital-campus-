@@ -452,7 +452,7 @@ async function lecturerNCKLoadData() {
         // Get KRCHN students
         var { data: allStudents, error: studentsError } = await supabase
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, admission_number, intake_year, program, status')
+            .select('id, user_id, student_uuid, student_id, full_name, admission_number, intake_year, program, status')
             .eq('role', 'student')
             .eq('program', 'KRCHN')
             .eq('intake_year', parseInt(intake))
@@ -821,9 +821,45 @@ async function lecturerNCKSaveStudentToDatabase(student, scores, options) {
     var admissionNumber = student.admission_number
         ? String(student.admission_number).trim()
         : null;
-    var studentId = student.student_id
-        ? String(student.student_id).trim()
-        : null;
+    // nck_marks.student_id is a UUID. The consolidated profile's `id` is the
+    // actual UUID; `student.student_id` may contain an admission number such as
+    // KRCHN/0048/MAR/24 and must NEVER be written into the UUID column.
+    // IMPORTANT: nck_marks.student_id is UUID.
+    // In SWL, `student_id` is the admission number (e.g. KRCHN/0048/MAR/24).
+    // The correct UUID is stored in `student_uuid` on the consolidated profile.
+    var studentId = null;
+    var uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    if (student.student_uuid && uuidPattern.test(String(student.student_uuid).trim())) {
+        studentId = String(student.student_uuid).trim();
+    } else if (student.id && uuidPattern.test(String(student.id).trim())) {
+        studentId = String(student.id).trim();
+    } else if (student.user_id && uuidPattern.test(String(student.user_id).trim())) {
+        studentId = String(student.user_id).trim();
+    }
+
+    // Never use student.student_id here: SWL stores the admission number in that field.
+    if (!studentId && admissionNumber) {
+        var profileLookup = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('student_uuid, id, user_id')
+            .eq('admission_number', admissionNumber)
+            .eq('program', 'KRCHN')
+            .limit(1);
+
+        if (profileLookup.error) throw profileLookup.error;
+
+        var profile = profileLookup.data && profileLookup.data[0];
+        if (profile) {
+            if (profile.student_uuid && uuidPattern.test(String(profile.student_uuid).trim())) {
+                studentId = String(profile.student_uuid).trim();
+            } else if (profile.id && uuidPattern.test(String(profile.id).trim())) {
+                studentId = String(profile.id).trim();
+            } else if (profile.user_id && uuidPattern.test(String(profile.user_id).trim())) {
+                studentId = String(profile.user_id).trim();
+            }
+        }
+    }
 
     var totalScore = 0;
     var scoredCount = 0;
@@ -855,7 +891,7 @@ async function lecturerNCKSaveStudentToDatabase(student, scores, options) {
     } else if (studentId) {
         existingQuery = existingQuery.eq('student_id', studentId);
     } else {
-        throw new Error('Student has neither admission number nor student ID');
+        throw new Error('Student UUID not found for ' + (admissionNumber || student.student_id || 'student') + '. Refresh the NCK list and try again.');
     }
 
     var { data: existingRows, error: findError } = await existingQuery;
@@ -866,7 +902,7 @@ async function lecturerNCKSaveStudentToDatabase(student, scores, options) {
         : null;
 
     var markData = {
-        student_id: studentId || admissionNumber,
+        student_id: studentId,
         student_name: student.full_name || student.student_name || 'Unknown',
         admission_number: admissionNumber,
         academic_year: LecturerNCK.currentIntake,
@@ -1089,9 +1125,7 @@ async function lecturerNCKSubmitForApproval() {
         var { error: updateError } = await supabase
             .from('nck_marks')
             .update({
-                approval_status: 'pending',
-                submitted_at: new Date().toISOString(),
-                submitted_by: LecturerNCK.lecturerId
+                approval_status: 'pending'
             })
             .in('id', ids);
 
@@ -1167,9 +1201,7 @@ async function lecturerNCKWithdrawApproval() {
         var { error: updateError } = await supabase
             .from('nck_marks')
             .update({
-                approval_status: 'draft',
-                submitted_at: null,
-                submitted_by: null
+                approval_status: 'draft'
             })
             .in('id', ids);
         
