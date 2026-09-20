@@ -230,7 +230,7 @@ async function viewResearch(id){
 }
 
 /* ============================================================
-   RESEARCH CORRECTION WORKFLOW — DOCX ONLY
+   RESEARCH CORRECTION WORKFLOW — ORIGINAL FORMAT PRESERVED
    ============================================================ */
 function researchCanCorrect(r){
   return String(r.status||'').toLowerCase()==='revision_required';
@@ -257,12 +257,34 @@ function ensureResearchCorrectionModal(){
     '</div>'+
     '<div id="ol-research-correction-editor" contenteditable="true" spellcheck="true" style="height:calc(94vh - 180px);overflow:auto;padding:35px;max-width:900px;margin:0 auto;background:#fff;line-height:1.6;font-size:14px;outline:none"></div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid #e5edf4;background:#f8fafc">'+
-    '<span id="ol-rce-file-label" style="font-size:11px;color:#64748b">DOCX only</span>'+
+    '<span id="ol-rce-file-label" style="font-size:11px;color:#64748b">Original document format</span>'+
     '<div style="display:flex;gap:7px"><button type="button" class="ol-btn ol-btn-secondary" id="ol-rce-save"><i class="fas fa-floppy-disk"></i> Save Draft</button>'+
     '<button type="button" class="ol-btn ol-btn-primary" id="ol-rce-submit"><i class="fas fa-paper-plane"></i> Submit Correction for Review</button></div></div>'+
     '</div>';
   document.body.appendChild(m);
   document.getElementById('ol-research-correction-close').onclick=function(){m.classList.remove('open');m.setAttribute('aria-hidden','true')};
+  var savedRange=null;
+  function saveEditorSelection(){
+    var e=document.getElementById('ol-research-correction-editor'),s=window.getSelection();
+    if(!e||!s||!s.rangeCount)return;
+    var rg=s.getRangeAt(0);
+    if(e.contains(rg.commonAncestorContainer))savedRange=rg.cloneRange();
+  }
+  function restoreEditorSelection(){
+    var e=document.getElementById('ol-research-correction-editor');
+    if(!e)return;
+    e.focus({preventScroll:true});
+    if(savedRange){
+      var s=window.getSelection();s.removeAllRanges();s.addRange(savedRange);
+    }
+  }
+  function applyEditorColor(cmd,color){
+    restoreEditorSelection();
+    try{document.execCommand(cmd,false,color)}catch(e){}
+    saveEditorSelection();
+    markResearchCorrectionDirty();
+  }
+
   m.querySelectorAll('[data-rce-cmd]').forEach(function(b){
     b.onclick=function(){var e=document.getElementById('ol-research-correction-editor');e.focus();document.execCommand(this.dataset.rceCmd,false,null);markResearchCorrectionDirty()};
   });
@@ -284,7 +306,7 @@ async function openResearchCorrection(id){
   var m=document.getElementById('ol-research-correction-modal');
   var ed=document.getElementById('ol-research-correction-editor');
   document.getElementById('ol-research-correction-title').textContent=(r.title||'Research Paper')+' — Correction';
-  document.getElementById('ol-rce-file-label').textContent='DOCX only · Current version V'+(r.version_number||1);
+  document.getElementById('ol-rce-file-label').textContent=(rootExt==='docx'?'DOCX':'HTML')+' · Current version V'+(r.version_number||1);
   document.getElementById('ol-research-correction-state').textContent='Opening document…';
   m.classList.add('open');m.setAttribute('aria-hidden','false');
   try{
@@ -311,6 +333,117 @@ function markResearchCorrectionDirty(){
   localStorage.setItem(researchDraftKey(r),ed.innerHTML);
   var st=document.getElementById('ol-research-correction-state');if(st)st.textContent='Draft saved locally · unsent changes';
 }
+
+function researchFileExtension(item){
+  var raw=String((item&&item.document_name)||(item&&item.document_path)||'').toLowerCase();
+  var m=raw.match(/\.([a-z0-9]+)(?:[?#].*)?$/);
+  return m?m[1]:'';
+}
+
+function researchRootVersion(current){
+  var group=String((current&&current.research_group_id)||((current&&current.id)||''));
+  var versions=(state.research||[]).filter(function(x){
+    return String(x.research_group_id||x.id||'')===group;
+  }).sort(function(a,b){
+    return Number(a.version_number||1)-Number(b.version_number||1);
+  });
+  return versions[0]||current;
+}
+
+async function ensureStudentDocxGenerator(){
+  if(window.docx&&window.docx.Document&&window.docx.Packer)return window.docx;
+  return await new Promise(function(resolve,reject){
+    var existing=document.querySelector('script[data-nchsm-student-docx-generator]');
+    if(existing){
+      existing.addEventListener('load',function(){
+        window.docx?resolve(window.docx):reject(new Error('DOCX generator unavailable.'));
+      });
+      existing.addEventListener('error',function(){reject(new Error('DOCX generator could not load.'));});
+      return;
+    }
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/docx@9.5.1/build/index.umd.js';
+    s.dataset.nchsmStudentDocxGenerator='1';
+    s.onload=function(){window.docx?resolve(window.docx):reject(new Error('DOCX generator unavailable.'));};
+    s.onerror=function(){reject(new Error('DOCX generator could not load.'));};
+    document.head.appendChild(s);
+  });
+}
+
+function studentDocxRuns(node,docx){
+  var runs=[];
+  function walk(n,style){
+    style=style||{};
+    Array.prototype.forEach.call(n.childNodes||[],function(ch){
+      if(ch.nodeType===3){
+        if(ch.nodeValue)runs.push(new docx.TextRun({
+          text:ch.nodeValue,
+          bold:!!style.bold,
+          italics:!!style.italics,
+          underline:style.underline?'single':undefined,
+          strike:!!style.strike,
+          color:style.color||undefined,
+          highlight:style.highlight||undefined
+        }));
+        return;
+      }
+      if(ch.nodeType!==1)return;
+      var tag=String(ch.tagName||'').toLowerCase();
+      var next={
+        bold:style.bold||tag==='strong'||tag==='b',
+        italics:style.italics||tag==='em'||tag==='i',
+        underline:style.underline||tag==='u',
+        strike:style.strike||tag==='s'||tag==='strike',
+        color:style.color,
+        highlight:style.highlight
+      };
+      var cs=ch.style||{};
+      if(cs.color){
+        var c=cs.color.match(/^#([0-9a-f]{6})$/i);
+        if(c)next.color=c[1].toUpperCase();
+      }
+      if(cs.backgroundColor){
+        var h=cs.backgroundColor.match(/^#([0-9a-f]{6})$/i);
+        if(h)next.highlight=h[1].toUpperCase();
+      }
+      if(tag==='br'){runs.push(new docx.TextRun({text:'\\n'}));return;}
+      walk(ch,next);
+    });
+  }
+  walk(node,{});
+  return runs.length?runs:[new docx.TextRun({text:''})];
+}
+
+async function researchHtmlToDocxBlob(html,title){
+  var docx=await ensureStudentDocxGenerator();
+  var parsed=new DOMParser().parseFromString(String(html||''),'text/html');
+  var children=[];
+  Array.prototype.forEach.call(parsed.body&&parsed.body.children||[],function(el){
+    var tag=String(el.tagName||'').toLowerCase();
+    var runs=studentDocxRuns(el,docx);
+    var opts={children:runs};
+    if(/^h[1-6]$/.test(tag)){
+      var level=Number(tag.slice(1));
+      opts.heading=level===1?docx.HeadingLevel.HEADING_1:
+        level===2?docx.HeadingLevel.HEADING_2:
+        level===3?docx.HeadingLevel.HEADING_3:
+        level===4?docx.HeadingLevel.HEADING_4:
+        level===5?docx.HeadingLevel.HEADING_5:
+        docx.HeadingLevel.HEADING_6;
+    }
+    children.push(new docx.Paragraph(opts));
+  });
+  if(!children.length){
+    children.push(new docx.Paragraph({
+      children:[new docx.TextRun({text:String(parsed.body&&parsed.body.textContent||'')})]
+    }));
+  }
+  var document=new docx.Document({
+    sections:[{properties:{},children:children}]
+  });
+  return await docx.Packer.toBlob(document);
+}
+
 async function saveResearchCorrection(submit){
   var r=state.researchCurrent,sb=client(),id=uid(),ed=document.getElementById('ol-research-correction-editor');
   if(!r||!sb||!id||!ed)return;
