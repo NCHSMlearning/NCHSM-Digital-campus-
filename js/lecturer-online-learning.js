@@ -669,7 +669,8 @@ window.LecturerOnlineLearning = (() => {
                 key=await fetchSubmissionMarkingKey(id);
             }
             if(!key)throw new Error('No marking key is linked to this assignment. Select a marking key in the assignment first.');
-            await aiGradeSubmission(id);
+            const graded=await aiGradeSubmission(id);
+            if(!graded) throw new Error('Automatic grading did not produce a grade.');
             notify('Work automatically graded using the Supabase marking key. Review the suggested mark before saving or releasing.','success');
         }catch(e){
             console.error('Automatic marking-key grading:',e);
@@ -756,9 +757,11 @@ window.LecturerOnlineLearning = (() => {
                 </div>`;
             }
             notify(`AI score: ${marks}/${maxMarks} (${pct}). Review the score and marking evidence before saving or releasing.`,'success');
+            return true;
         }catch(e){
             console.error('AI grading:',e);
             notify('AI grading could not be completed: '+(e?.message||String(e)),'error');
+            return false;
         }finally{
             if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i> AI Grade Work';}
         }
