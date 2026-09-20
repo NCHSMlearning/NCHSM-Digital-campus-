@@ -189,13 +189,75 @@ window.LecturerOnlineLearning = (() => {
         resetQuestionEditors([]);
         $('olAssignmentModal').style.display='flex';
         await loadAssignmentTargeting(preferred);
+        await populateAssignmentGradingFields(a);
     }
     async function editAssignment(id){const a=state.assignments.find(x=>x.id===id);if(!a)return;const db=client();const {data}=await db.from('online_assignment_questions').select('*').eq('assignment_id',id).order('question_order');openAssignmentModal(a);resetQuestionEditors(data||[]);}
-    async function saveAssignment(e,forcePublish=false){e?.preventDefault();const db=client();if(!db)return false;await resolveUser();if(!state.userId){notify('Lecturer user ID could not be resolved.','error');return false;}
-        const id=$('olAssignmentId').value;const payload={title:$('olTitle').value.trim(),assignment_type:$('olType').value,unit_code:$('olUnitCode').value.trim(),unit_name:$('olUnitName').value.trim()||null,program:$('olProgram').value.trim(),intake:$('olIntake').value.trim(),block:$('olBlock').value.trim()||null,due_at:new Date($('olDueAt').value).toISOString(),max_marks:Number($('olMaxMarks').value),max_attempts:Number($('olMaxAttempts').value)||1,instructions:$('olInstructions').value.trim()||null,allow_document_upload:$('olAllowUpload').checked,allow_resubmission:$('olAllowResubmit').checked,created_by:state.userId,published:!!forcePublish};
-        let assignment,err;if(id){const r=await db.from('online_assignments').update(payload).eq('id',id).select().single();assignment=r.data;err=r.error;}else{const r=await db.from('online_assignments').insert(payload).select().single();assignment=r.data;err=r.error;}if(err){console.error(err);notify('Could not save assignment: '+err.message,'error');return false;}
-        await db.from('online_assignment_questions').delete().eq('assignment_id',assignment.id);const qs=collectQuestions();if(qs.length){const rows=qs.map(q=>({...q,assignment_id:assignment.id}));const r=await db.from('online_assignment_questions').insert(rows);if(r.error){notify('Assignment saved, but questions failed: '+r.error.message,'warning');return false;}}
-        closeModal('olAssignmentModal');notify(forcePublish?'Assignment published.':'Assignment saved as draft.','success');await load();return true;
+    async function saveAssignment(e,forcePublish=false){
+        e?.preventDefault();
+        const db=client(); if(!db)return false;
+        await resolveUser();
+        if(!state.userId){notify('Lecturer user ID could not be resolved.','error');return false;}
+
+        const id=$('olAssignmentId').value;
+        const gradingMode=$('olGradingMode')?.value||'topic_keywords';
+        const markingKeyId=$('olMarkingKeyId')?.value||null;
+        const keywords=parseJsonArray($('olGradingKeywords')?.value||'');
+        const expectedTopics=String($('olExpectedTopics')?.value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+        const guidance=$('olGradingGuidance')?.value.trim()||null;
+
+        const dueValue=$('olDueAt').value;
+        const dueDate=dueValue?new Date(dueValue):null;
+        if(!dueDate || Number.isNaN(dueDate.getTime())){notify('Please enter a valid due date/time.','error');return false;}
+
+        const payload={
+            title:$('olTitle').value.trim(),
+            assignment_type:$('olType').value,
+            unit_code:$('olUnitCode').value.trim(),
+            unit_name:$('olUnitName').value.trim()||null,
+            program:$('olProgram').value.trim(),
+            intake:$('olIntake').value.trim(),
+            block:$('olBlock').value.trim()||null,
+            due_at:dueDate.toISOString(),
+            max_marks:Number($('olMaxMarks').value),
+            max_attempts:Number($('olMaxAttempts').value)||1,
+            instructions:$('olInstructions').value.trim()||null,
+            allow_document_upload:$('olAllowUpload').checked,
+            allow_resubmission:$('olAllowResubmit').checked,
+            grading_mode:gradingMode,
+            marking_key_id:gradingMode==='marking_key'?markingKeyId:null,
+            grading_keywords:keywords,
+            expected_topics:expectedTopics,
+            grading_guidance:guidance,
+            created_by:state.userId,
+            published:!!forcePublish
+        };
+
+        if(gradingMode==='marking_key' && !markingKeyId){
+            notify('Select a formal marking key or switch Grading Mode to Topic / Keywords.','error');
+            return false;
+        }
+
+        let assignment,err;
+        if(id){
+            const r=await db.from('online_assignments').update(payload).eq('id',id).select().single();
+            assignment=r.data;err=r.error;
+        }else{
+            const r=await db.from('online_assignments').insert(payload).select().single();
+            assignment=r.data;err=r.error;
+        }
+        if(err){console.error(err);notify('Could not save assignment: '+err.message,'error');return false;}
+
+        await db.from('online_assignment_questions').delete().eq('assignment_id',assignment.id);
+        const qs=collectQuestions();
+        if(qs.length){
+            const rows=qs.map(q=>({...q,assignment_id:assignment.id}));
+            const r=await db.from('online_assignment_questions').insert(rows);
+            if(r.error){notify('Assignment saved, but questions failed: '+r.error.message,'warning');return false;}
+        }
+        closeModal('olAssignmentModal');
+        notify(forcePublish?'Assignment published.':'Assignment saved as draft.','success');
+        await load();
+        return true;
     }
     async function saveAndPublish(){return saveAssignment(null,true);}
     async function togglePublish(id,publish){const db=client();const {error}=await db.from('online_assignments').update({published:publish}).eq('id',id);if(error)notify(error.message,'error');else{notify(publish?'Published to eligible students.':'Assignment unpublished.','success');load();}}
@@ -392,6 +454,141 @@ window.LecturerOnlineLearning = (() => {
             answer:answers?.[q.id] ?? answers?.[String(q.id)] ?? ''
         }));
     }
+    // ============================================================
+    // SUPABASE-DRIVEN ASSIGNMENT GRADING
+    // Formal marking keys are stored in online_marking_keys.
+    // Ordinary assignments use topic/keywords/expected topics.
+    // ============================================================
+    const markingKeyState = { keys: [], loaded:false };
+
+    function parseJsonArray(value){
+        if(Array.isArray(value)) return value;
+        if(value == null || value === '') return [];
+        try{
+            const parsed=JSON.parse(value);
+            return Array.isArray(parsed)?parsed:[];
+        }catch(e){
+            return String(value).split(',').map(x=>x.trim()).filter(Boolean);
+        }
+    }
+
+    async function loadMarkingKeys(){
+        const db=client(); if(!db) return [];
+        const r=await db.from('online_marking_keys')
+            .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,created_by')
+            .eq('is_active',true)
+            .order('title',{ascending:true});
+        if(r.error){
+            console.warn('Marking keys could not load:',r.error.message);
+            markingKeyState.keys=[];
+            return [];
+        }
+        markingKeyState.keys=r.data||[];
+        markingKeyState.loaded=true;
+        return markingKeyState.keys;
+    }
+
+    async function ensureAssignmentGradingFields(){
+        let wrap=$('olAssignmentGradingFields');
+        if(wrap) return wrap;
+
+        const anchor=$('olInstructions');
+        if(!anchor) return null;
+        const host=anchor.closest('.ol-form') || anchor.parentElement?.parentElement || anchor.parentElement;
+        if(!host) return null;
+
+        wrap=document.createElement('div');
+        wrap.id='olAssignmentGradingFields';
+        wrap.className='ol-full';
+        wrap.style.cssText='margin-top:12px;padding:14px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc';
+        wrap.innerHTML=`
+          <div style="font-weight:800;color:#18304d;margin-bottom:4px">
+            <i class="fas fa-robot"></i> AI Grading Configuration
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:12px">
+            Use a formal marking key when one applies. Otherwise the AI grades from the assignment topic, instructions, keywords and expected topics.
+          </div>
+          <div class="ol-form">
+            <div>
+              <label>Grading Mode</label>
+              <select id="olGradingMode">
+                <option value="topic_keywords">Topic / Keywords</option>
+                <option value="marking_key">Formal Marking Key</option>
+              </select>
+            </div>
+            <div>
+              <label>Formal Marking Key</label>
+              <select id="olMarkingKeyId">
+                <option value="">No marking key</option>
+              </select>
+            </div>
+            <div class="ol-full">
+              <label>Keywords / Key Concepts <span style="font-weight:400;color:#64748b">(comma separated)</span></label>
+              <textarea id="olGradingKeywords" rows="2" placeholder="e.g. family assessment, home visiting, health education, intervention, evaluation"></textarea>
+            </div>
+            <div class="ol-full">
+              <label>Expected Topics / Areas <span style="font-weight:400;color:#64748b">(one per line)</span></label>
+              <textarea id="olExpectedTopics" rows="3" placeholder="Family health status&#10;Identification of health needs&#10;Planning interventions&#10;Evaluation"></textarea>
+            </div>
+            <div class="ol-full">
+              <label>Grading Guidance</label>
+              <textarea id="olGradingGuidance" rows="2" placeholder="Explain what a good answer should demonstrate and any special marking instructions."></textarea>
+            </div>
+          </div>`;
+        host.parentElement?.insertBefore(wrap,host.nextSibling) || host.appendChild(wrap);
+
+        const mode=$('olGradingMode'), key=$('olMarkingKeyId');
+        mode?.addEventListener('change',()=>{
+            const formal=mode.value==='marking_key';
+            if(key) key.disabled=!formal;
+        });
+        key?.addEventListener('change',()=>{
+            const selected=markingKeyState.keys.find(k=>String(k.id)===String(key.value));
+            if(!selected) return;
+            if(mode) mode.value='marking_key';
+            $('olMaxMarks').value=selected.max_marks||$('olMaxMarks').value;
+            const criteria=Array.isArray(selected.criteria)?selected.criteria:[];
+            $('olGradingKeywords').value=(Array.isArray(selected.keywords)?selected.keywords:[]).join(', ');
+            $('olExpectedTopics').value=(Array.isArray(selected.expected_topics)?selected.expected_topics:[]).join('\n');
+            $('olGradingGuidance').value=selected.grading_guidance||'';
+        });
+        await loadMarkingKeys();
+        key.innerHTML='<option value="">No marking key</option>'+markingKeyState.keys.map(k=>`<option value="${esc(k.id)}">${esc(k.title)}${k.version?` — v${esc(k.version)}`:''}</option>`).join('');
+        return wrap;
+    }
+
+    async function populateAssignmentGradingFields(a=null){
+        await ensureAssignmentGradingFields();
+        const mode=$('olGradingMode'), key=$('olMarkingKeyId');
+        if(!mode||!key)return;
+        mode.value=a?.grading_mode||((a?.marking_key_id)?'marking_key':'topic_keywords');
+        key.value=a?.marking_key_id||'';
+        key.disabled=mode.value!=='marking_key';
+        $('olGradingKeywords').value=parseJsonArray(a?.grading_keywords||a?.keywords).join(', ');
+        $('olExpectedTopics').value=parseJsonArray(a?.expected_topics).join('\n');
+        $('olGradingGuidance').value=a?.grading_guidance||'';
+    }
+
+    async function getAssignmentGradingConfig(assignment){
+        const db=client();
+        let markingKey=null;
+        if(assignment?.marking_key_id){
+            const r=await db.from('online_marking_keys')
+                .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active')
+                .eq('id',assignment.marking_key_id)
+                .maybeSingle();
+            if(r.error) console.warn('Marking key lookup:',r.error.message);
+            markingKey=r.data||null;
+        }
+        return {
+            mode:assignment?.grading_mode||'topic_keywords',
+            markingKey,
+            keywords:parseJsonArray(assignment?.grading_keywords||assignment?.keywords),
+            expectedTopics:parseJsonArray(assignment?.expected_topics),
+            guidance:String(assignment?.grading_guidance||'')
+        };
+    }
+
     function localObjectiveGrade(items){
         let earned=0,max=0; const grades=[];
         for(const q of items){
@@ -406,34 +603,82 @@ window.LecturerOnlineLearning = (() => {
     }
     async function aiGradeSubmission(id){
         const db=client(); const s=state.submissions.find(x=>x.id===id); if(!s)return;
-        const btn=$('olAIGradeBtn'); if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> AI Grading…';}
+        const btn=$('olAIGradeBtn');
+        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> AI Grading…';}
         try{
-            let questions=[]; const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');
-            if(qr.error)throw qr.error; questions=qr.data||[]; const answers=s.answers||{};
+            let questions=[];
+            const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');
+            if(qr.error)throw qr.error;
+            questions=qr.data||[];
+            const answers=s.answers||{};
             const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+
             let documentText='';
             if(s.file_path){
                 try{documentText=await extractSubmissionText(s);}catch(e){console.warn('AI grade document extraction:',e);}
             }
+
+            const grading=await getAssignmentGradingConfig(assignment);
+            const markingKey=grading.markingKey;
+            const maxMarks=Number(assignment.max_marks||s.max_marks||markingKey?.max_marks||0);
+            if(!maxMarks)throw new Error('Assignment maximum marks are not configured.');
+
             const payload={
-                mode:'assignment_grading', submission_id:s.id, assignment_id:s.assignment_id, student_id:s.student_id,
-                assignment:{title:assignment.title||s.online_assignments?.title||'',unit_code:assignment.unit_code||'',instructions:assignment.instructions||'',max_marks:Number(assignment.max_marks||s.max_marks)||0},
-                questions:collectSubmissionQuestions(questions,answers), extracted_text:String(documentText||'').slice(0,120000),
+                mode:'assignment_grading',
+                submission_id:s.id,
+                assignment_id:s.assignment_id,
+                student_id:s.student_id,
+                grading_mode:grading.mode,
+                marking_key_id:markingKey?.id||assignment.marking_key_id||null,
+                assignment:{
+                    title:String(assignment.title||s.online_assignments?.title||''),
+                    unit_code:assignment.unit_code||'',
+                    instructions:assignment.instructions||'',
+                    max_marks:maxMarks,
+                    grading_mode:grading.mode,
+                    grading_keywords:grading.keywords,
+                    expected_topics:grading.expectedTopics,
+                    grading_guidance:grading.guidance
+                },
+                questions:collectSubmissionQuestions(questions,answers),
+                extracted_text:String(documentText||'').slice(0,120000),
                 existing_feedback:s.feedback||''
             };
+
             let report=null;
             if(typeof window.runAIAssignmentGrade==='function') report=await window.runAIAssignmentGrade(payload);
-            else if(db?.functions?.invoke){const r=await db.functions.invoke('ai-grade-assignment',{body:payload});if(r.error)throw r.error;report=r.data;}
-            else throw new Error('Secure AI grading service is unavailable.');
-            if(!report || !Number.isFinite(Number(report.marks_awarded))) throw new Error('AI grading service returned no valid marks.');
-            const maxMarks=Number(assignment.max_marks||s.max_marks||report.max_marks); const marks=clampMarks(report.marks_awarded,maxMarks);
-            $('olReviewMarks').value=marks; const pct=formatPercentage(marks,maxMarks);
-            if($('olReviewPercentage')) $('olReviewPercentage').textContent=pct;
-            if($('olReviewFeedback') && report.feedback) $('olReviewFeedback').value=report.feedback;
-            const box=$('olAIGradeReport'); if(box){box.innerHTML=`<div style="margin-top:10px;padding:10px 12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;color:#3730a3"><b>AI grading suggestion:</b> ${esc(marks)}/${esc(maxMarks||'?')} (${esc(pct)})${report.confidence!=null?` · Confidence ${esc(report.confidence)}%`:''}. ${esc(report.note||'Review the suggested grade before saving.')}</div>`;}
-            notify('AI grade generated. Review it and click Save Grade or Grade & Release.','success');
-        }catch(e){console.error('AI grading:',e);notify('AI grading could not be completed: '+(e?.message||String(e)),'error');}
-        finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i> AI Grade Work';}}
+            else if(db?.functions?.invoke){
+                const r=await db.functions.invoke('ai-grade-assignment',{body:payload});
+                if(r.error)throw r.error;
+                report=r.data;
+            }else throw new Error('Secure AI grading service is unavailable.');
+
+            if(!report || !Number.isFinite(Number(report.marks_awarded)))throw new Error('AI grading service returned no valid marks.');
+
+            const marks=clampMarks(report.marks_awarded,maxMarks);
+            const pct=formatPercentage(marks,maxMarks);
+            $('olReviewMarks').value=marks;
+            if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;
+            if($('olReviewFeedback') && report.feedback)$('olReviewFeedback').value=report.feedback;
+
+            const box=$('olAIGradeReport');
+            if(box){
+                const evidence=Array.isArray(report.rubric_grades)?report.rubric_grades:
+                    Array.isArray(report.topic_grades)?report.topic_grades:[];
+                box.innerHTML=`<div style="margin-top:10px;padding:12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;color:#3730a3">
+                  <b>AI grading suggestion:</b> ${esc(marks)}/${esc(maxMarks)} (${esc(pct)})
+                  ${report.confidence!=null?` · Confidence ${esc(report.confidence)}%`:''}
+                  <div style="margin-top:7px;color:#475569">${esc(report.note||'Review the score and marking evidence before saving or releasing.')}</div>
+                  ${evidence.length?`<div style="margin-top:9px;color:#334155"><b>Marking evidence:</b><ul style="margin:5px 0 0 18px">${evidence.slice(0,20).map(x=>`<li>${esc(x.criterion||x.topic||'Area')}: ${esc(x.marks_awarded??x.marks??0)}/${esc(x.max_marks??x.maximum??0)} — ${esc(x.evidence||x.reason||'')}</li>`).join('')}</ul></div>`:''}
+                </div>`;
+            }
+            notify(`AI score: ${marks}/${maxMarks} (${pct}). Review the score and marking evidence before saving or releasing.`,'success');
+        }catch(e){
+            console.error('AI grading:',e);
+            notify('AI grading could not be completed: '+(e?.message||String(e)),'error');
+        }finally{
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i> AI Grade Work';}
+        }
     }
     async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> AI Grade Work</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
     function updateGradePercentage(){const s=state.submissions.find(x=>x.id===$('olSubmissionModal')?.dataset?.submissionId);const max=Number(s?.max_marks||state.assignments.find(a=>a.id===s?.assignment_id)?.max_marks||0);const pct=formatPercentage($('olReviewMarks')?.value,max);if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;}
@@ -511,22 +756,29 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f
         const marks=clampMarks($('olReviewMarks').value,maxMarks);
         const feedback=$('olReviewFeedback').value.trim()||null;
         const percentage=Number(formatPercentage(marks,maxMarks).replace('%',''));
+
+        // ALWAYS show the exact score before a release can happen.
+        if(release){
+            const confirmed=window.confirm(
+                `RELEASE RESULT\n\nStudent: ${s.student_id||'Student'}\nAssignment: ${assignment.title||s.online_assignments?.title||'Assignment'}\nScore: ${marks}/${maxMarks}\nPercentage: ${percentage}%\n\nThe student will be notified by email after release.\n\nClick OK to release this exact score, or Cancel to return to the review.`
+            );
+            if(!confirmed)return;
+        }
+
         const now=new Date().toISOString();
         let payload={marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:now,result_released:release,released_at:release?now:null,review_required:false};
         let {error}=await db.from('online_submissions').update({...payload,percentage}).eq('id',id);
         if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}
         if(error){notify(error.message,'error');return;}
 
-        // Only notify the student after the lecturer explicitly releases the result.
-        // Saving a grade as a draft does not send an email.
         if(release){
             const emailSent=await sendAssignmentResultNotification(s,assignment);
             notify(emailSent
-                ? `Grade saved and result released (${percentage}%). Student email notification sent.`
-                : `Grade saved and result released (${percentage}%), but the student email notification could not be sent.`,
+                ? `Released: ${marks}/${maxMarks} (${percentage}%). Student email notification sent.`
+                : `Released: ${marks}/${maxMarks} (${percentage}%), but the student email notification could not be sent.`,
                 emailSent?'success':'warning');
         }else{
-            notify(`Grade saved (${percentage}%).`,'success');
+            notify(`Grade saved: ${marks}/${maxMarks} (${percentage}%).`,'success');
         }
         closeModal('olSubmissionModal');
         await loadSubmissions();
@@ -1930,5 +2182,5 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         await loadResearch();
     }
 
-    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
+    return {loadMarkingKeys,getAssignmentGradingConfig,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
