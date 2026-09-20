@@ -8,17 +8,18 @@
     <!-- ========== SECURITY HEADERS ========== -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com https://unpkg.com https://www.gstatic.com https://cdn.jsdelivr.net https://challenges.cloudflare.com;
-        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com https://unpkg.com https://www.gstatic.com https://challenges.cloudflare.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com;
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' data: https://raw.githubusercontent.com https://www.gstatic.com https://img.icons8.com https://api.qrserver.com;
-        connect-src 'self' https://*.supabase.co https://api.brevo.com https://api.ipify.org https://api.pwnedpasswords.com https://challenges.cloudflare.com;
+        connect-src 'self' https://*.supabase.co https://api.brevo.com https://api.ipify.org https://api.pwnedpasswords.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://accounts.google.com;
         frame-src https://accounts.google.com https://challenges.cloudflare.com;
+        worker-src 'self' blob:;
+        child-src 'self' blob: https://challenges.cloudflare.com;
         base-uri 'self';
         form-action 'self';
     ">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     <meta name="csrf-token" content="">
     
@@ -29,6 +30,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://accounts.google.com">
+    <link rel="preconnect" href="https://challenges.cloudflare.com">
     
     <!-- Preload background -->
     <link rel="preload" 
@@ -38,7 +40,10 @@
     <!-- External CSS -->
     
     <!-- TOTP Library for 2FA -->
-    <script src="https://cdn.jsdelivr.net/npm/otplib@12.0.1/otplib-browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/otplib@13.5.0/dist/index.global.js"></script>
+    
+    <!-- Cloudflare Turnstile -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     
     <!-- Feather Icons -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
@@ -47,9 +52,7 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
     <!-- Supabase -->
-    <link rel="preconnect" href="https://challenges.cloudflare.com" crossorigin>
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
     <!-- ============================================ -->
     <!-- ===== INLINE STYLES FOR TOP CONTROLS ===== -->
@@ -107,6 +110,37 @@
     </script>
 
 <style>
+.turnstile-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px 0 18px;
+    min-height: 65px;
+}
+.turnstile-wrapper .cf-turnstile {
+    max-width: 100%;
+}
+
+/* Anti-bot honeypot: kept in DOM but never visible or interactive */
+.honeypot-container {
+    position: absolute !important;
+    left: -10000px !important;
+    top: -10000px !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+.honeypot-container input {
+    position: absolute !important;
+    left: -10000px !important;
+    width: 1px !important;
+    height: 1px !important;
+}
+
 /* ==========================================================
    NCHSM DIGITAL PORTAL — PREMIUM RESPONSIVE LOGIN
    Visual system is intentionally inline so the login page
@@ -932,21 +966,6 @@ body:before{
 @media(prefers-reduced-motion:reduce){
   *,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
-
-/* ---------- Cloudflare Turnstile ---------- */
-.turnstile-wrapper{
-  width:100%;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:65px;
-  margin:14px 0 18px;
-  overflow:visible;
-}
-.turnstile-wrapper .cf-turnstile{max-width:100%}
-@media(max-width:520px){
-  .turnstile-wrapper{margin:12px 0 16px;min-height:65px}
-}
 </style>
 
 
@@ -1626,22 +1645,20 @@ body{margin:0!important;background:#edf4f8!important;font-family:Inter,system-ui
                         </div>
                         
                         <!-- Honeypot -->
-                        <div class="honeypot-container" style="position: absolute; left: -9999px; top: -9999px;">
+                        <div class="honeypot-container" aria-hidden="true">
                             <label for="honeypot">Leave this empty</label>
                             <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
                         </div>
                         
                         <!-- Cloudflare Turnstile -->
-                        <div class="turnstile-wrapper" aria-label="Cloudflare security verification">
-                            <div
-                                class="cf-turnstile"
-                                data-sitekey="0x4AAAAAAE9nlZz-bjhK0OB4"
-                                data-theme="auto"
-                                data-size="flexible"
-                                data-action="login">
-                            </div>
+                        <div class="turnstile-wrapper">
+                            <div class="cf-turnstile"
+                                 data-sitekey="0x4AAAAAAE9nlZz-bjhK0OB4"
+                                 data-theme="auto"
+                                 data-size="flexible"
+                                 data-action="login"></div>
                         </div>
-
+                        
                         <!-- Login Button -->
                         <button type="submit" 
                                 id="loginButton" 
@@ -1671,7 +1688,7 @@ body{margin:0!important;background:#edf4f8!important;font-family:Inter,system-ui
                             <span>Microsoft</span>
                         </button>
                         <button class="sso-btn apple" id="appleSignIn" aria-label="Sign in with Apple">
-                            <i data-feather="apple"></i>
+                            <i data-feather="smartphone"></i>
                             <span>Apple</span>
                         </button>
                     </div>
@@ -1863,41 +1880,10 @@ body{margin:0!important;background:#edf4f8!important;font-family:Inter,system-ui
       <div class="nchsm-loading-step" id="nchsmStepVerify"><span class="nchsm-step-icon">◌</span><span>Verifying your credentials</span></div>
       <div class="nchsm-loading-step" id="nchsmStepSession"><span class="nchsm-step-icon">◌</span><span>Preparing your secure session</span></div>
     </div>
-    <div class="nchsm-loading-security"><i data-feather="shield-check"></i><span>Protected authentication session</span></div>
+    <div class="nchsm-loading-security"><i data-feather="shield"></i><span>Protected authentication session</span></div>
     <div class="nchsm-cloudflare-note"><strong>Cloudflare</strong> security may verify this connection when enabled on the site.</div>
   </div>
 </div>
-
-
-<script id="nchsm-turnstile-guard">
-(function(){
-  "use strict";
-  const form=document.getElementById("loginForm");
-  if(!form)return;
-
-  form.addEventListener("submit",function(event){
-    const token=form.querySelector('[name="cf-turnstile-response"]')?.value?.trim()||"";
-    if(token)return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    const button=document.getElementById("loginButton");
-    if(button){
-      button.disabled=false;
-      button.removeAttribute("aria-busy");
-    }
-
-    const note=document.querySelector(".nchsm-cloudflare-note");
-    if(note)note.textContent="Please complete the Cloudflare security verification before signing in.";
-
-    const widget=form.querySelector(".cf-turnstile");
-    if(window.turnstile && widget){
-      try{ window.turnstile.reset(widget); }catch(_){}
-    }
-  },true);
-})();
-</script>
 
 <script id="nchsm-loading-controller">
 (function(){
