@@ -508,7 +508,7 @@ async function sbSignedResearchUrl(path){
 }
 function ensureResearchModal(){
   if(document.getElementById('ol-research-modal'))return;
-  var m=document.createElement('div');m.id='ol-research-modal';m.className='ol-modal';m.setAttribute('aria-hidden','true');
+  var m=document.createElement('div');m.id='ol-research-modal';m.className='ol-modal';m.setAttribute('aria-hidden','true');m.style.display='none';
   m.innerHTML='<div class="ol-modal-dialog" style="max-width:1200px;width:96vw"><div class="ol-modal-head"><h3 id="ol-research-title">Research Paper</h3><button class="ol-close" type="button" id="ol-research-close"><i class="fas fa-times"></i></button></div><div class="ol-modal-body" id="ol-research-body"></div></div>';
   document.body.appendChild(m);
   document.getElementById('ol-research-close').onclick=function(){m.classList.remove('open');m.setAttribute('aria-hidden','true')};
@@ -877,6 +877,13 @@ function ensureResearchStyles(){
     }
 
     /* FINAL RESEARCH VIEWER POSITIONING — viewport centered, independent of sidebar/main */
+    /* IMPORTANT: the modal is appended directly to <body>, not inside #hub-online-learning.
+       Keep it completely hidden until openResearchModal() explicitly adds .open. */
+    body > #ol-research-modal:not(.open){
+      display:none!important;
+      visibility:hidden!important;
+      pointer-events:none!important;
+    }
     body > #ol-research-modal{
       position:fixed!important;
       inset:0!important;
@@ -1041,7 +1048,7 @@ function researchEnsureUI(){
     var b=document.createElement('button');b.className='ol-tab';b.type='button';b.dataset.olTab='research';b.innerHTML='<i class="fas fa-file-signature"></i> Research Papers';tabs.appendChild(b);
   }
   if(document.getElementById('ol-research-modal'))return;
-  var modal=document.createElement('div');modal.className='ol-research-modal';modal.id='ol-research-modal';modal.setAttribute('aria-hidden','true');
+  var modal=document.createElement('div');modal.className='ol-research-modal';modal.id='ol-research-modal';modal.setAttribute('aria-hidden','true');modal.style.display='none';
   modal.innerHTML='<div class="ol-research-dialog" id="ol-research-dialog"><div class="ol-research-dialog-head"><div style="min-width:0"><h3 id="ol-research-modal-title">Research Paper</h3><div id="ol-research-modal-subtitle" style="font-size:9px;color:#71859c;margin-top:3px">Online Learning · Research Papers</div></div><div class="ol-rs-view-actions"><button class="ol-rs-back-online" type="button" data-rs-back-online><i class="fas fa-arrow-left"></i> Back to Online Learning</button><button class="ol-rs-fullscreen-btn" type="button" data-rs-fullscreen><i class="fas fa-expand"></i> Full Screen</button><button class="ol-rs-close-paper" type="button" data-research-close title="Close"><i class="fas fa-times"></i></button></div></div><div class="ol-research-body" id="ol-research-modal-body"></div></div>';
   document.body.appendChild(modal);
 }
