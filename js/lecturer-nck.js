@@ -136,19 +136,33 @@ function showToast(message, type) {
 }
 
 function showLoading(message) {
-    if (typeof window.showLoading === 'function') {
-        window.showLoading(message);
-        return;
-    }
-    console.log('⏳ ' + message);
+    // Never call window.showLoading() here: this function is itself exposed
+    // globally and doing so causes infinite recursion.
+    try {
+        if (window.lecturerUI && typeof window.lecturerUI.showLoading === 'function') {
+            window.lecturerUI.showLoading(message);
+            return;
+        }
+        if (typeof window.showLoadingOverlay === 'function') {
+            window.showLoadingOverlay(message);
+            return;
+        }
+    } catch (e) {}
+    console.log('⏳ [NCK] ' + message);
 }
 
 function hideLoading() {
-    if (typeof window.hideLoading === 'function') {
-        window.hideLoading();
-        return;
-    }
-    console.log('✅ Loading complete');
+    try {
+        if (window.lecturerUI && typeof window.lecturerUI.hideLoading === 'function') {
+            window.lecturerUI.hideLoading();
+            return;
+        }
+        if (typeof window.hideLoadingOverlay === 'function') {
+            window.hideLoadingOverlay();
+            return;
+        }
+    } catch (e) {}
+    console.log('✅ [NCK] Loading complete');
 }
 
 // ============================================================
@@ -753,128 +767,250 @@ function lecturerNCKUpdateAverage(studentId) {
 }
 
 // ============================================================
+// DATABASE SAVE HELPERS
+// ============================================================
+function lecturerNCKGetScoresForStudent(student) {
+    var scores = {};
+    var studentId = String(student.admission_number || student.student_id || '');
+
+    var inputs = Array.prototype.slice.call(document.querySelectorAll('.nck-score-input'))
+        .filter(function(input) {
+            return String(input.dataset.student || '') === studentId;
+        });
+
+    // Prefer the visible table when it exists.
+    if (inputs.length > 0) {
+        inputs.forEach(function(input) {
+            var column = String(input.dataset.column || '');
+            if (!column) return;
+            var raw = input.value;
+            var value = raw === '' ? 0 : parseFloat(raw);
+            if (!Number.isFinite(value)) value = 0;
+            value = Math.max(0, Math.min(100, value));
+            scores[column] = value;
+        });
+        return scores;
+    }
+
+    // Fast Entry can save without relying on a table cell.
+    var lookup = student.admission_number
+        ? 'adm:' + String(student.admission_number).trim().toUpperCase()
+        : 'id:' + String(student.student_id || '').trim();
+
+    var existing = LecturerNCK.marks[lookup] || {};
+    try {
+        if (existing.scores) {
+            scores = typeof existing.scores === 'string'
+                ? JSON.parse(existing.scores)
+                : Object.assign({}, existing.scores);
+        }
+    } catch (e) {
+        scores = {};
+    }
+
+    return scores || {};
+}
+
+async function lecturerNCKSaveStudentToDatabase(student, scores, options) {
+    options = options || {};
+
+    var supabase = window.lecturerDB?.supabase || window.sb;
+    if (!supabase) throw new Error('Database not available');
+
+    var block = LECTURER_BLOCK_MAP[LecturerNCK.currentIntake] || 'Block 1';
+    var admissionNumber = student.admission_number
+        ? String(student.admission_number).trim()
+        : null;
+    var studentId = student.student_id
+        ? String(student.student_id).trim()
+        : null;
+
+    var totalScore = 0;
+    var scoredCount = 0;
+
+    Object.keys(scores || {}).forEach(function(key) {
+        var value = parseFloat(scores[key]);
+        if (Number.isFinite(value) && value > 0) {
+            totalScore += value;
+            scoredCount++;
+        }
+    });
+
+    var avg = scoredCount > 0 ? totalScore / scoredCount : 0;
+    var grade = calculateNursingGrade(avg);
+    var status = avg > 0 ? (avg >= 60 ? 'passed' : 'failed') : 'pending';
+    var isAdmin = isNckAdmin();
+
+    var existingQuery = supabase
+        .from('nck_marks')
+        .select('id, approval_status')
+        .eq('academic_year', LecturerNCK.currentIntake)
+        .eq('block', block)
+        .eq('subject_name', LecturerNCK.currentSheet)
+        .eq('program', 'KRCHN')
+        .limit(1);
+
+    if (admissionNumber) {
+        existingQuery = existingQuery.eq('admission_number', admissionNumber);
+    } else if (studentId) {
+        existingQuery = existingQuery.eq('student_id', studentId);
+    } else {
+        throw new Error('Student has neither admission number nor student ID');
+    }
+
+    var { data: existingRows, error: findError } = await existingQuery;
+    if (findError) throw findError;
+
+    var existing = Array.isArray(existingRows) && existingRows.length
+        ? existingRows[0]
+        : null;
+
+    var markData = {
+        student_id: studentId || admissionNumber,
+        student_name: student.full_name || student.student_name || 'Unknown',
+        admission_number: admissionNumber,
+        academic_year: LecturerNCK.currentIntake,
+        block: block,
+        subject_name: LecturerNCK.currentSheet,
+        program: 'KRCHN',
+        scores: JSON.stringify(scores || {}),
+        final_score: Math.round(avg * 10) / 10,
+        grade: grade,
+        status: status,
+        graded_by: LecturerNCK.lecturerName,
+        updated_at: new Date().toISOString()
+    };
+
+    if (existing) {
+        // Lecturer edits return a pending/draft record to draft unless admin.
+        if (isAdmin) {
+            markData.approval_status = 'approved';
+        } else if (existing.approval_status === 'approved' || existing.approval_status === 'pending') {
+            markData.approval_status = 'draft';
+        } else {
+            markData.approval_status = existing.approval_status || 'draft';
+        }
+
+        var { data: updatedRows, error: updateError } = await supabase
+            .from('nck_marks')
+            .update(markData)
+            .eq('id', existing.id)
+            .select('*');
+
+        if (updateError) throw updateError;
+        existing = updatedRows && updatedRows[0] ? updatedRows[0] : Object.assign({}, existing, markData);
+    } else {
+        markData.approval_status = isAdmin ? 'approved' : 'draft';
+        markData.created_at = new Date().toISOString();
+
+        var { data: insertedRows, error: insertError } = await supabase
+            .from('nck_marks')
+            .insert([markData])
+            .select('*');
+
+        if (insertError) throw insertError;
+        existing = insertedRows && insertedRows[0] ? insertedRows[0] : markData;
+    }
+
+    // Update local state immediately so the UI and subsequent Fast Entry
+    // operations always use the database version.
+    if (existing) {
+        if (admissionNumber) {
+            LecturerNCK.marks['adm:' + admissionNumber.toUpperCase()] = existing;
+        }
+        if (studentId) {
+            LecturerNCK.marks['id:' + studentId] = existing;
+        }
+    }
+
+    if (!options.silent) {
+        showToast('✅ ' + (student.full_name || 'Student') + ' marks saved to database.', 'success');
+    }
+
+    return existing;
+}
+
+// ============================================================
 // SAVE ALL MARKS
 // ============================================================
-async function lecturerNCKSaveAll() {
-    if (LecturerNCK.isSaving) return;
-    LecturerNCK.isSaving = true;
-    
+async function lecturerNCKSaveAll(silent) {
+    if (LecturerNCK.isSaving) return false;
+
     if (!LecturerNCK.accessGranted) {
         showToast('⛔ Access denied.', 'error');
-        LecturerNCK.isSaving = false;
-        return;
+        return false;
     }
-    
+
     var supabase = window.lecturerDB?.supabase || window.sb;
     if (!supabase) {
         showToast('Database not available', 'error');
-        LecturerNCK.isSaving = false;
-        return;
+        return false;
     }
-    
-    var students = LecturerNCK.students;
-    if (!students || students.length === 0) {
+
+    var students = LecturerNCK.students || [];
+    if (!students.length) {
         showToast('No students loaded', 'warning');
-        LecturerNCK.isSaving = false;
-        return;
+        return false;
     }
-    
-    var block = LECTURER_BLOCK_MAP[LecturerNCK.currentIntake] || 'Block 1';
-    var isAdmin = isNckAdmin();
-    
+
+    LecturerNCK.isSaving = true;
     showLoading('Saving NCK marks...');
-    var savedCount = 0, errorCount = 0;
-    
-    for (var s = 0; s < students.length; s++) {
-        var student = students[s];
-        var studentId = student.admission_number || student.student_id;
-        var scores = {};
-        var inputs = document.querySelectorAll(`.nck-score-input[data-student="${studentId}"]`);
-        
-        inputs.forEach(function(input) {
-            var column = input.dataset.column;
-            var val = parseFloat(input.value) || 0;
-            scores[column] = val;
-        });
-        
-        var totalScore = 0, scoredCount = 0;
-        Object.keys(scores).forEach(function(key) {
-            if (scores[key] > 0) {
-                totalScore += scores[key];
-                scoredCount++;
-            }
-        });
-        var avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
-        var grade = calculateNursingGrade(avg);
-        var status = avg > 0 ? (avg >= 60 ? 'passed' : 'failed') : 'pending';
-        
-        try {
-            var { data: existing, error: findError } = await supabase
-                .from('nck_marks')
-                .select('id, approval_status')
-                .eq('admission_number', studentId)
-                .eq('academic_year', LecturerNCK.currentIntake)
-                .eq('block', block)
-                .eq('subject_name', LecturerNCK.currentSheet)
-                .eq('program', 'KRCHN')
-                .maybeSingle();
-            
-            if (findError) throw findError;
-            
-            var markData = {
-                student_id: student.student_id || studentId,
-                student_name: student.full_name || student.student_name || 'Unknown',
-                admission_number: studentId,
-                academic_year: LecturerNCK.currentIntake,
-                block: block,
-                subject_name: LecturerNCK.currentSheet,
-                program: 'KRCHN',
-                scores: JSON.stringify(scores),
-                final_score: Math.round(avg * 10) / 10,
-                grade: grade,
-                status: status,
-                graded_by: LecturerNCK.lecturerName,
-                updated_at: new Date().toISOString()
-            };
-            
-            if (existing) {
-                var newStatus = existing.approval_status || 'draft';
-                if (isAdmin) {
-                    newStatus = 'approved';
-                } else if (existing.approval_status === 'approved' || existing.approval_status === 'pending') {
-                    newStatus = 'draft';
+
+    var savedCount = 0;
+    var errorCount = 0;
+    var errors = [];
+
+    try {
+        for (var s = 0; s < students.length; s++) {
+            var student = students[s];
+
+            try {
+                var scores = lecturerNCKGetScoresForStudent(student);
+
+                // Do not create empty records unless the user actually has
+                // something in the table/local state for this student.
+                var hasAnyScore = Object.keys(scores).some(function(key) {
+                    return scores[key] !== '' && Number.isFinite(parseFloat(scores[key]));
+                });
+
+                var lookup = student.admission_number
+                    ? 'adm:' + String(student.admission_number).trim().toUpperCase()
+                    : 'id:' + String(student.student_id || '').trim();
+
+                var existingLocal = LecturerNCK.marks[lookup];
+
+                if (!hasAnyScore && !existingLocal) {
+                    continue;
                 }
-                markData.approval_status = newStatus;
-                
-                var { error: updateError } = await supabase
-                    .from('nck_marks')
-                    .update(markData)
-                    .eq('id', existing.id);
-                if (updateError) throw updateError;
-            } else {
-                markData.approval_status = isAdmin ? 'approved' : 'draft';
-                markData.created_at = new Date().toISOString();
-                
-                var { error: insertError } = await supabase
-                    .from('nck_marks')
-                    .insert([markData]);
-                if (insertError) throw insertError;
+
+                await lecturerNCKSaveStudentToDatabase(student, scores, { silent: true });
+                savedCount++;
+            } catch (err) {
+                errorCount++;
+                errors.push((student.full_name || student.admission_number || student.student_id) + ': ' + err.message);
+                console.error('❌ [NCK] Error saving student:', student, err);
             }
-            savedCount++;
-        } catch (err) {
-            console.error('Error saving student:', studentId, err);
-            errorCount++;
         }
+    } finally {
+        hideLoading();
+        LecturerNCK.isSaving = false;
     }
-    
-    hideLoading();
+
     if (errorCount > 0) {
-        showToast('⚠️ Saved ' + savedCount + ' records, ' + errorCount + ' errors', 'warning');
+        showToast('⚠️ Saved ' + savedCount + ' records, ' + errorCount + ' errors. Check console.', 'warning');
+        console.error('❌ [NCK] Save errors:', errors);
+    } else if (savedCount > 0) {
+        showToast('✅ Saved ' + savedCount + ' NCK records to database!', 'success');
     } else {
-        showToast('✅ Saved ' + savedCount + ' records successfully!', 'success');
+        showToast('⚠️ No marks found to save.', 'warning');
     }
-    await lecturerNCKLoadData();
-    LecturerNCK.isSaving = false;
+
+    // Reload only after the operation completes.
+    if (savedCount > 0 && !silent) {
+        await lecturerNCKLoadData();
+    }
+
+    return errorCount === 0;
 }
 
 // ============================================================
@@ -882,65 +1018,74 @@ async function lecturerNCKSaveAll() {
 // ============================================================
 async function lecturerNCKSubmitForApproval() {
     if (LecturerNCK.isSubmitting) return;
-    LecturerNCK.isSubmitting = true;
-    
+
     if (!LecturerNCK.accessGranted) {
         showToast('⛔ Access denied.', 'error');
-        LecturerNCK.isSubmitting = false;
         return;
     }
-    
+
     var supabase = window.lecturerDB?.supabase || window.sb;
     if (!supabase) {
         showToast('Database not available', 'error');
-        LecturerNCK.isSubmitting = false;
         return;
     }
-    
-    var students = LecturerNCK.students;
-    if (!students || students.length === 0) {
+
+    var students = LecturerNCK.students || [];
+    if (!students.length) {
         showToast('No students loaded', 'warning');
-        LecturerNCK.isSubmitting = false;
         return;
     }
-    
-    showLoading('Checking marks for submission...');
-    
+
+    LecturerNCK.isSubmitting = true;
+
     try {
+        // IMPORTANT: persist everything currently visible before submission.
+        var savedOK = await lecturerNCKSaveAll(true);
+        if (!savedOK) {
+            showToast('❌ Some marks could not be saved. Submission stopped.', 'error');
+            return;
+        }
+
+        showLoading('Checking saved marks for submission...');
+
         var block = LECTURER_BLOCK_MAP[LecturerNCK.currentIntake] || 'Block 1';
-        var studentIds = students.map(function(s) { return s.admission_number || s.student_id; });
-        
+
+        // The current intake/block/sheet uniquely identifies this NCK sheet.
+        // Do not filter only by admission_number because some valid students
+        // may only have student_id.
         var { data: marks, error } = await supabase
             .from('nck_marks')
             .select('*')
-            .in('admission_number', studentIds)
             .eq('academic_year', LecturerNCK.currentIntake)
             .eq('block', block)
             .eq('subject_name', LecturerNCK.currentSheet)
             .eq('program', 'KRCHN');
-        
+
         if (error) throw error;
-        
+
         var draftMarks = (marks || []).filter(function(m) {
             return m.approval_status === 'draft' || m.approval_status === 'rejected';
         });
-        
+
         hideLoading();
-        
-        if (draftMarks.length === 0) {
-            showToast('No marks to submit. Please enter marks first.', 'warning');
-            LecturerNCK.isSubmitting = false;
+
+        if (!draftMarks.length) {
+            showToast('No draft marks are available for submission.', 'warning');
             return;
         }
-        
-        if (!confirm('📤 Submit ' + draftMarks.length + ' marks for approval?')) {
-            LecturerNCK.isSubmitting = false;
+
+        if (!confirm('📤 Submit ' + draftMarks.length + ' saved marks for approval?')) {
             return;
         }
-        
+
         showLoading('Submitting ' + draftMarks.length + ' marks...');
-        
-        var ids = draftMarks.map(function(m) { return m.id; });
+
+        var ids = draftMarks.map(function(m) { return m.id; }).filter(Boolean);
+
+        if (!ids.length) {
+            throw new Error('No valid mark IDs found for submission.');
+        }
+
         var { error: updateError } = await supabase
             .from('nck_marks')
             .update({
@@ -949,23 +1094,21 @@ async function lecturerNCKSubmitForApproval() {
                 submitted_by: LecturerNCK.lecturerId
             })
             .in('id', ids);
-        
+
+        if (updateError) throw updateError;
+
         hideLoading();
-        
-        if (updateError) {
-            showToast('❌ Error submitting: ' + updateError.message, 'error');
-        } else {
-            showToast('✅ ' + draftMarks.length + ' marks submitted for approval!', 'success');
-        }
-        
+        showToast('✅ ' + ids.length + ' marks submitted for approval!', 'success');
+
         await lecturerNCKLoadData();
-        
+
     } catch (error) {
         hideLoading();
+        console.error('❌ [NCK] Submit error:', error);
         showToast('❌ Error submitting: ' + error.message, 'error');
+    } finally {
+        LecturerNCK.isSubmitting = false;
     }
-    
-    LecturerNCK.isSubmitting = false;
 }
 
 // ============================================================
@@ -1415,18 +1558,26 @@ function lecturerNCKOpenFastEntry() {
         }
     }
 
-    function writeFastValue(student, column, value) {
+    async function writeFastValue(student, column, value) {
         var key = student.admission_number || student.student_id || '';
         var input = Array.prototype.slice.call(document.querySelectorAll('.nck-score-input')).find(function(el) {
             return String(el.dataset.student || '') === String(key) &&
                    String(el.dataset.column || '') === String(column);
         });
 
-        if (!input) return false;
+        // Update the main table when this student/column is visible.
+        if (input) {
+            input.value = value;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            lecturerNCKUpdateAverage(key);
+        }
 
-        input.value = value;
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        lecturerNCKUpdateAverage(key);
+        // Build the complete score object from the current student state,
+        // merge the Fast Entry value, then persist it immediately.
+        var scores = lecturerNCKGetScoresForStudent(student);
+        scores[column] = value;
+
+        await lecturerNCKSaveStudentToDatabase(student, scores, { silent: true });
         return true;
     }
 
@@ -1434,7 +1585,7 @@ function lecturerNCKOpenFastEntry() {
     if (columnSelect) columnSelect.addEventListener('change', updateFastEntryValue);
 
     if (nextBtn) {
-        nextBtn.addEventListener('click', function() {
+        nextBtn.addEventListener('click', async function() {
             var student = selectedStudent();
             var value = markInput ? parseFloat(markInput.value) : NaN;
 
@@ -1445,12 +1596,28 @@ function lecturerNCKOpenFastEntry() {
             }
 
             var column = columnSelect ? columnSelect.value : '';
-            if (!writeFastValue(student, column, value)) {
-                showToast('The selected mark cell was not found in the main table.', 'error');
+            if (!column) {
+                showToast('Select an assessment area.', 'warning');
                 return;
             }
 
-            showToast('✅ ' + (student.full_name || 'Student') + ' — ' + column + ': ' + value, 'success');
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'Saving...';
+
+            try {
+                await writeFastValue(student, column, value);
+                showToast('✅ Saved to database: ' + (student.full_name || 'Student') +
+                          ' — ' + column + ': ' + value, 'success');
+            } catch (err) {
+                console.error('❌ [NCK] Fast Entry save error:', err);
+                showToast('❌ Database save failed: ' + err.message, 'error');
+                nextBtn.disabled = false;
+                nextBtn.textContent = 'Save & Next →';
+                return;
+            }
+
+            nextBtn.disabled = false;
+            nextBtn.textContent = 'Save & Next →';
 
             var nextIndex = students.indexOf(student) + 1;
             if (nextIndex < students.length && studentSelect) {
