@@ -8515,401 +8515,396 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
 </style>
 <!-- ==================== ATTENDANCE TAB - ULTRA ACCURATE ==================== -->
 <section class="tab-content" id="attendance" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
+
 <!-- ========== HEADER ========== -->
 <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-<div>
-<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-<h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px; font-size: clamp(1.2rem, 2.5vw, 1.8rem);">
-<i class="fas fa-calendar-check" style="color: #FDB913;"></i> Daily Attendance Check-in
-                </h2>
-<div style="background: rgba(253,185,19,0.15); padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(253,185,19,0.2);">
-<span style="color: #FDB913; font-size: 11px; font-weight: 600;">
-<i class="fas fa-robot"></i> Ultra-Accurate GPS
-                    </span>
-</div>
-</div>
-<p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 13px;">
-<i class="fas fa-map-marker-alt"></i> Mark your attendance with 5-point GPS verification
-                <span style="background: rgba(255,255,255,0.12); padding: 2px 12px; border-radius: 12px; font-size: 10px; margin-left: 6px; display: inline-flex; align-items: center; gap: 4px;">
-<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
-                    200m
-                    <span style="color: rgba(255,255,255,0.4);">•</span>
-<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
-                    250m
+    <div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px; font-size: clamp(1.2rem, 2.5vw, 1.8rem);">
+                <i class="fas fa-calendar-check" style="color: #FDB913;"></i> Daily Attendance Check-in
+            </h2>
+            <div style="background: rgba(253,185,19,0.15); padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(253,185,19,0.2);">
+                <span style="color: #FDB913; font-size: 11px; font-weight: 600;">
+                    <i class="fas fa-robot"></i> Ultra-Accurate GPS
                 </span>
-</p>
+            </div>
+        </div>
+        <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 13px;">
+            <i class="fas fa-map-marker-alt"></i> Mark your attendance with 5-point GPS verification
+            <span style="background: rgba(255,255,255,0.12); padding: 2px 12px; border-radius: 12px; font-size: 10px; margin-left: 6px; display: inline-flex; align-items: center; gap: 4px;">
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span> 200m
+                <span style="color: rgba(255,255,255,0.4);">•</span>
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span> 250m
+            </span>
+        </p>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <div id="student-info-badge" style="background: rgba(255,255,255,0.12); padding: 6px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Reg:</span>
+            <span id="student-reg-display" style="color: #FDB913; font-weight: 600; font-size: 12px;">--</span>
+            <span style="color: rgba(255,255,255,0.2);">|</span>
+            <span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Block:</span>
+            <span id="student-block-display" style="color: #FDB913; font-weight: 600; font-size: 12px;">--</span>
+            <span style="color: rgba(255,255,255,0.2);">|</span>
+            <span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Intake:</span>
+            <span id="student-intake-display" style="color: #FDB913; font-weight: 600; font-size: 12px;">--</span>
+        </div>
+        <button onclick="window.loadAttendanceHistory?.()" onmouseout="this.style.background='rgba(255,255,255,0.12)'" onmouseover="this.style.background='rgba(255,255,255,0.25)'" style="background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.15); padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <button onclick="window.exportAttendanceHistory?.()" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(253,185,19,0.25)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(253,185,19,0.35)'" style="background: #FDB913; color: #0A3D62; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(253,185,19,0.25);">
+            <i class="fas fa-file-export"></i> Export
+        </button>
+    </div>
 </div>
-<div style="display: flex; gap: 8px; flex-wrap: wrap;">
-<!-- ✅ Student Info Badge - Shows Block, Intake, and Registration Number -->
-<div id="student-info-badge" style="background: rgba(255,255,255,0.12); padding: 6px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-<span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Reg:</span>
-<span id="student-reg-display" style="color: #FDB913; font-weight: 600; font-size: 12px;">--</span>
-<span style="color: rgba(255,255,255,0.2);">|</span>
-<span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Block:</span>
-<span id="student-block-display" style="color: #FDB913; font-weight: 600; font-size: 12px;">--</span>
-<span style="color: rgba(255,255,255,0.2);">|</span>
-<span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Intake:</span>
-<span id="student-intake-display" style="color: #FDB913; font-weight: 600; font-size: 12px;">--</span>
+
+<!-- ========== 🎓 ACTIVE SESSIONS FOR THIS STUDENT ========== -->
+<div id="active-sessions-container" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 25px;">
+    <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: #10b981; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-broadcast-tower" style="color: white; font-size: 16px;"></i>
+            </div>
+            <h3 style="margin: 0; color: #0A3D62; font-size: 15px;">Your Active Sessions</h3>
+            <span id="active-sessions-count" style="background: #10b981; color: white; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;">0</span>
+        </div>
+        <button onclick="window.renderActiveSessions?.()" onmouseout="this.style.background='#f1f5f9'" onmouseover="this.style.background='#e2e8f0'" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; display: flex; align-items: center; gap: 4px; transition: all 0.3s ease;">
+            <i class="fas fa-sync-alt" style="font-size: 11px;"></i> Refresh
+        </button>
+    </div>
+    <div id="active-sessions-list" style="padding: 16px 20px;">
+        <div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 13px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 20px; display: block; margin-bottom: 8px; color: #4C1D95;"></i>
+            Loading your sessions...
+        </div>
+    </div>
 </div>
-<button onclick="window.loadAttendanceHistory?.()" onmouseout="this.style.background='rgba(255,255,255,0.12)'" onmouseover="this.style.background='rgba(255,255,255,0.25)'" style="background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.15); padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px;">
-<i class="fas fa-sync-alt"></i> Refresh
-            </button>
-<button onclick="window.exportAttendanceHistory?.()" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(253,185,19,0.25)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(253,185,19,0.35)'" style="background: #FDB913; color: #0A3D62; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(253,185,19,0.25);">
-<i class="fas fa-file-export"></i> Export
-            </button>
-</div>
-</div>
+<!-- ========== END ACTIVE SESSIONS ========== -->
+
 <!-- ========== STATS CARDS ========== -->
 <div id="attendanceStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 25px;">
-<div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-top: 3px solid #0A3D62;">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<h3 style="color: #0A3D62; font-size: 10px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-<i class="fas fa-check-circle" style="font-size: 11px;"></i> Present
-                </h3>
-<span style="font-size: 10px; color: #94a3b8;">Today</span>
+    <div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-top: 3px solid #0A3D62;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="color: #0A3D62; font-size: 10px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                <i class="fas fa-check-circle" style="font-size: 11px;"></i> Present
+            </h3>
+            <span style="font-size: 10px; color: #94a3b8;">Today</span>
+        </div>
+        <p class="data" id="presentCount" style="font-size: 28px; font-weight: 700; color: #0A3D62; margin: 4px 0 0 0;">0</p>
+        <div style="font-size: 10px; color: #94a3b8;">Verified</div>
+    </div>
+    <div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-top: 3px solid #f59e0b;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="color: #d97706; font-size: 10px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                <i class="fas fa-clock" style="font-size: 11px;"></i> Pending
+            </h3>
+            <span style="font-size: 10px; color: #94a3b8;">Review</span>
+        </div>
+        <p class="data" id="pendingCount" style="font-size: 28px; font-weight: 700; color: #d97706; margin: 4px 0 0 0;">0</p>
+        <div style="font-size: 10px; color: #94a3b8;">Needs approval</div>
+    </div>
+    <div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-top: 3px solid #dc2626;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="color: #dc2626; font-size: 10px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                <i class="fas fa-times-circle" style="font-size: 11px;"></i> Absent
+            </h3>
+            <span style="font-size: 10px; color: #94a3b8;">Today</span>
+        </div>
+        <p class="data" id="absentCount" style="font-size: 28px; font-weight: 700; color: #dc2626; margin: 4px 0 0 0;">0</p>
+        <div style="font-size: 10px; color: #94a3b8;">Missed</div>
+    </div>
+    <div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-top: 3px solid #8B5CF6;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="color: #6d28d9; font-size: 10px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                <i class="fas fa-calendar-alt" style="font-size: 11px;"></i> Total
+            </h3>
+            <span style="font-size: 10px; color: #94a3b8;">Month</span>
+        </div>
+        <p class="data" id="totalCount" style="font-size: 28px; font-weight: 700; color: #6d28d9; margin: 4px 0 0 0;">0</p>
+        <div style="font-size: 10px; color: #94a3b8;">This month</div>
+    </div>
 </div>
-<p class="data" id="presentCount" style="font-size: 28px; font-weight: 700; color: #0A3D62; margin: 4px 0 0 0;">0</p>
-<div style="font-size: 10px; color: #94a3b8;">Verified</div>
-</div>
-<div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-top: 3px solid #f59e0b;">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<h3 style="color: #d97706; font-size: 10px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-<i class="fas fa-clock" style="font-size: 11px;"></i> Pending
-                </h3>
-<span style="font-size: 10px; color: #94a3b8;">Review</span>
-</div>
-<p class="data" id="pendingCount" style="font-size: 28px; font-weight: 700; color: #d97706; margin: 4px 0 0 0;">0</p>
-<div style="font-size: 10px; color: #94a3b8;">Needs approval</div>
-</div>
-<div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-top: 3px solid #dc2626;">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<h3 style="color: #dc2626; font-size: 10px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-<i class="fas fa-times-circle" style="font-size: 11px;"></i> Absent
-                </h3>
-<span style="font-size: 10px; color: #94a3b8;">Today</span>
-</div>
-<p class="data" id="absentCount" style="font-size: 28px; font-weight: 700; color: #dc2626; margin: 4px 0 0 0;">0</p>
-<div style="font-size: 10px; color: #94a3b8;">Missed</div>
-</div>
-<div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-top: 3px solid #8B5CF6;">
-<div style="display: flex; justify-content: space-between; align-items: center;">
-<h3 style="color: #6d28d9; font-size: 10px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-<i class="fas fa-calendar-alt" style="font-size: 11px;"></i> Total
-                </h3>
-<span style="font-size: 10px; color: #94a3b8;">Month</span>
-</div>
-<p class="data" id="totalCount" style="font-size: 28px; font-weight: 700; color: #6d28d9; margin: 4px 0 0 0;">0</p>
-<div style="font-size: 10px; color: #94a3b8;">This month</div>
-</div>
-</div>
+
 <!-- ========== CHECK-IN CARD ========== -->
 <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 25px;">
-<div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-<div style="display: flex; align-items: center; gap: 10px;">
-<div style="width: 36px; height: 36px; border-radius: 50%; background: #4C1D95; display: flex; align-items: center; justify-content: center;">
-<i class="fas fa-map-marker-alt" style="color: white; font-size: 16px;"></i>
+    <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: #4C1D95; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-map-marker-alt" style="color: white; font-size: 16px;"></i>
+            </div>
+            <h3 style="margin: 0; color: #0A3D62; font-size: 15px;">Check-in Now</h3>
+            <div id="gps-status" style="display: flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 20px; background: #f1f5f9; font-size: 11px; color: #64748b;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 12px;"></i> <span>Getting location...</span>
+            </div>
+        </div>
+        <span style="font-size: 11px; color: #94a3b8;">
+            <i class="fas fa-shield-alt"></i> 5-Point GPS Verification
+        </span>
+    </div>
+    <div style="padding: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+            <div>
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-graduation-cap"></i> Session Type
+                </label>
+                <select id="session-type" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s ease; appearance: none;">
+                    <option value="">-- Select session type --</option>
+                    <option value="clinical">🏥 Clinical Session</option>
+                    <option value="class">📚 Classroom Session</option>
+                    <option value="lab">🧪 Laboratory Session</option>
+                    <option value="tutorial">📖 Tutorial Session</option>
+                </select>
+            </div>
+            <div id="target-control-group" style="display:none;">
+                <label id="target-label" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-bullseye"></i> <span id="target-text">Select Target:</span>
+                </label>
+                <select disabled="" id="attendance-target" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s ease; appearance: none;">
+                    <option value="">Loading options...</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-location-dot"></i> Your Location
+                </label>
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px;">
+                        <span><span style="color: #94a3b8;">Lat:</span> <strong id="latitude" style="color: #0A3D62;">--</strong></span>
+                        <span><span style="color: #94a3b8;">Long:</span> <strong id="longitude" style="color: #0A3D62;">--</strong></span>
+                        <span><span style="color: #94a3b8;">Accuracy:</span> <strong id="accuracy-value" style="color: #0A3D62;">--</strong>m</span>
+                        <span><span style="color: #94a3b8;">Confidence:</span> <strong id="gps-confidence" style="color: #0A3D62;">--</strong></span>
+                    </div>
+                    <div id="gps-progress" style="margin-top: 4px;"></div>
+                    <div id="accuracy-warning" style="display:none; margin-top: 4px; font-size: 11px; color: #f59e0b;">
+                        <i class="fas fa-exclamation-triangle"></i> Low accuracy - GPS signal weak
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="distance-status" style="display:none; margin-top: 12px;"></div>
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #e5e7eb;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+                <div>
+                    <button class="btn-checkin" disabled="" id="check-in-button" style="width: 100%; padding: 14px 24px; background: #94a3b8; color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: not-allowed; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s ease; opacity: 0.6;">
+                        <i class="fas fa-fingerprint" style="font-size: 18px;"></i>
+                        <span>Check In Now</span>
+                    </button>
+                    <div style="text-align: center; margin-top: 6px; font-size: 11px; color: #94a3b8;">
+                        <i class="fas fa-info-circle"></i> 5-point GPS verification required
+                    </div>
+                </div>
+                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: #475569;">
+                        <i class="fas fa-list-check"></i> Requirements:
+                    </p>
+                    <ul style="margin: 0; padding: 0; list-style: none; font-size: 11px;">
+                        <li id="req-session" style="padding: 2px 0; display: flex; align-items: center; gap: 6px; color: #94a3b8;">
+                            <i class="fas fa-circle" style="color: #dc2626; font-size: 6px;"></i> Select session type
+                        </li>
+                        <li id="req-target" style="padding: 2px 0; display: flex; align-items: center; gap: 6px; color: #94a3b8;">
+                            <i class="fas fa-circle" style="color: #dc2626; font-size: 6px;"></i> Select target
+                        </li>
+                        <li id="req-location" style="padding: 2px 0; display: flex; align-items: center; gap: 6px; color: #94a3b8;">
+                            <i class="fas fa-circle" style="color: #dc2626; font-size: 6px;"></i> GPS location acquired
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div style="margin-top: 14px; background: #f0f7ff; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #3B82F6;">
+                <div style="display: flex; gap: 8px; font-size: 12px; color: #475569;">
+                    <i class="fas fa-lightbulb" style="color: #3B82F6; margin-top: 1px; font-size: 14px;"></i>
+                    <div>
+                        <strong>How it works:</strong>
+                        <span style="display: block; font-size: 11px; color: #64748b; margin-top: 1px;">
+                            📡 5 GPS readings averaged • 🏥 Clinical: 200-250m radius • 📚 Class: 50m radius
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div id="error-message" style="display:none; margin-top: 12px; background: #fef2f2; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #dc2626;">
+                <div style="display: flex; gap: 8px; color: #991b1b; font-size: 13px;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p id="error-text" style="margin: 0;"></p>
+                </div>
+            </div>
+            <div id="success-message" style="display:none; margin-top: 12px; background: #ecfdf5; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #10b981;">
+                <div style="display: flex; gap: 8px; color: #065f46; font-size: 13px;">
+                    <i class="fas fa-check-circle"></i>
+                    <p id="success-text" style="margin: 0;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-<h3 style="margin: 0; color: #0A3D62; font-size: 15px;">Check-in Now</h3>
-<div id="gps-status" style="display: flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 20px; background: #f1f5f9; font-size: 11px; color: #64748b;">
-<i class="fas fa-spinner fa-spin" style="font-size: 12px;"></i> <span>Getting location...</span>
-</div>
-</div>
-<span style="font-size: 11px; color: #94a3b8;">
-<i class="fas fa-shield-alt"></i> 5-Point GPS Verification
-            </span>
-</div>
-<div style="padding: 20px;">
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
-<!-- Session Type -->
-<div>
-<label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-graduation-cap"></i> Session Type
-                    </label>
-<select id="session-type" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s ease; appearance: none;">
-<option value="">-- Select session type --</option>
-<option value="clinical">🏥 Clinical Session</option>
-<option value="class">📚 Classroom Session</option>
-<option value="lab">🧪 Laboratory Session</option>
-<option value="tutorial">📖 Tutorial Session</option>
-</select>
-</div>
-<!-- Target Selection -->
-<div id="target-control-group" style="display:none;">
-<label id="target-label" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-bullseye"></i> <span id="target-text">Select Target:</span>
-</label>
-<select disabled="" id="attendance-target" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s ease; appearance: none;">
-<option value="">Loading options...</option>
-</select>
-</div>
-<!-- Location -->
-<div>
-<label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-location-dot"></i> Your Location
-                    </label>
-<div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
-<div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px;">
-<span><span style="color: #94a3b8;">Lat:</span> <strong id="latitude" style="color: #0A3D62;">--</strong></span>
-<span><span style="color: #94a3b8;">Long:</span> <strong id="longitude" style="color: #0A3D62;">--</strong></span>
-<span><span style="color: #94a3b8;">Accuracy:</span> <strong id="accuracy-value" style="color: #0A3D62;">--</strong>m</span>
-<span><span style="color: #94a3b8;">Confidence:</span> <strong id="gps-confidence" style="color: #0A3D62;">--</strong></span>
-</div>
-<div id="gps-progress" style="margin-top: 4px;"></div>
-<div id="accuracy-warning" style="display:none; margin-top: 4px; font-size: 11px; color: #f59e0b;">
-<i class="fas fa-exclamation-triangle"></i> Low accuracy - GPS signal weak
-                        </div>
-</div>
-</div>
-</div>
-<!-- Distance Status - HIDDEN from students -->
-<div id="distance-status" style="display:none; margin-top: 12px;"></div>
-<!-- Check-in Button & Requirements -->
-<div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #e5e7eb;">
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
-<div>
-<button class="btn-checkin" disabled="" id="check-in-button" style="
-                            width: 100%;
-                            padding: 14px 24px;
-                            background: #94a3b8;
-                            color: white;
-                            border: none;
-                            border-radius: 10px;
-                            font-size: 15px;
-                            font-weight: 600;
-                            cursor: not-allowed;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            gap: 10px;
-                            transition: all 0.3s ease;
-                            opacity: 0.6;
-                        ">
-<i class="fas fa-fingerprint" style="font-size: 18px;"></i>
-<span>Check In Now</span>
-</button>
-<div style="text-align: center; margin-top: 6px; font-size: 11px; color: #94a3b8;">
-<i class="fas fa-info-circle"></i> 5-point GPS verification required
-                        </div>
-</div>
-<!-- Requirements -->
-<div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e5e7eb;">
-<p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: #475569;">
-<i class="fas fa-list-check"></i> Requirements:
-                        </p>
-<ul style="margin: 0; padding: 0; list-style: none; font-size: 11px;">
-<li id="req-session" style="padding: 2px 0; display: flex; align-items: center; gap: 6px; color: #94a3b8;">
-<i class="fas fa-circle" style="color: #dc2626; font-size: 6px;"></i> Select session type
-                            </li>
-<li id="req-target" style="padding: 2px 0; display: flex; align-items: center; gap: 6px; color: #94a3b8;">
-<i class="fas fa-circle" style="color: #dc2626; font-size: 6px;"></i> Select target
-                            </li>
-<li id="req-location" style="padding: 2px 0; display: flex; align-items: center; gap: 6px; color: #94a3b8;">
-<i class="fas fa-circle" style="color: #dc2626; font-size: 6px;"></i> GPS location acquired
-                            </li>
-</ul>
-</div>
-</div>
-<!-- Info Message - Updated -->
-<div style="margin-top: 14px; background: #f0f7ff; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #3B82F6;">
-<div style="display: flex; gap: 8px; font-size: 12px; color: #475569;">
-<i class="fas fa-lightbulb" style="color: #3B82F6; margin-top: 1px; font-size: 14px;"></i>
-<div>
-<strong>How it works:</strong>
-<span style="display: block; font-size: 11px; color: #64748b; margin-top: 1px;">
-                                📡 5 GPS readings averaged • 🏥 Clinical: 200-250m radius • 📚 Class: 50m radius
-                            </span>
-</div>
-</div>
-</div>
-<!-- Status Messages -->
-<div id="error-message" style="display:none; margin-top: 12px; background: #fef2f2; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #dc2626;">
-<div style="display: flex; gap: 8px; color: #991b1b; font-size: 13px;">
-<i class="fas fa-exclamation-triangle"></i>
-<p id="error-text" style="margin: 0;"></p>
-</div>
-</div>
-<div id="success-message" style="display:none; margin-top: 12px; background: #ecfdf5; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #10b981;">
-<div style="display: flex; gap: 8px; color: #065f46; font-size: 13px;">
-<i class="fas fa-check-circle"></i>
-<p id="success-text" style="margin: 0;"></p>
-</div>
-</div>
-</div>
-</div>
-</div>
+
 <!-- ========== HISTORY SECTION ========== -->
 <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden;">
-<div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-<div style="display: flex; align-items: center; gap: 10px;">
-<div style="width: 32px; height: 32px; border-radius: 50%; background: #4C1D95; display: flex; align-items: center; justify-content: center;">
-<i class="fas fa-history" style="color: white; font-size: 14px;"></i>
+    <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4C1D95; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-history" style="color: white; font-size: 14px;"></i>
+            </div>
+            <h3 style="margin: 0; color: #0A3D62; font-size: 15px;">Attendance History</h3>
+            <span id="history-count" style="background: #4C1D95; color: white; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;">0 records</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <select id="history-filter" onblur="this.style.borderColor='#e2e8f0'" onfocus="this.style.borderColor='#4C1D95'" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12px; transition: all 0.3s ease; appearance: none;">
+                <option value="today">📅 Today</option>
+                <option value="week">📆 This Week</option>
+                <option value="month">📆 This Month</option>
+                <option value="all">📅 All Time</option>
+            </select>
+            <button onclick="window.loadAttendanceHistory?.()" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" style="padding: 6px 14px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; display: flex; align-items: center; gap: 4px; transition: all 0.3s ease;">
+                <i class="fas fa-redo" style="font-size: 11px;"></i> Refresh
+            </button>
+            <button onclick="window.exportAttendanceHistory?.()" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(5,150,105,0.3)'" style="padding: 6px 14px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; display: flex; align-items: center; gap: 4px; transition: all 0.3s ease;">
+                <i class="fas fa-download" style="font-size: 11px;"></i> Export
+            </button>
+        </div>
+    </div>
+    <div id="history-stats" style="padding: 10px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0A3D62;"></span>
+            <span style="font-size: 11px; color: #94a3b8;">Present:</span>
+            <strong id="hist-present" style="color: #0A3D62; font-size: 13px;">0</strong>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span>
+            <span style="font-size: 11px; color: #94a3b8;">Pending:</span>
+            <strong id="hist-pending" style="color: #d97706; font-size: 13px;">0</strong>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #dc2626;"></span>
+            <span style="font-size: 11px; color: #94a3b8;">Absent:</span>
+            <strong id="hist-absent" style="color: #dc2626; font-size: 13px;">0</strong>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; grid-column: auto / span 1;">
+            <span style="font-size: 11px; color: #94a3b8;">Rate:</span>
+            <strong id="hist-rate" style="color: #059669; font-size: 14px;">0%</strong>
+        </div>
+    </div>
+    <div style="overflow-x: auto; padding: 0;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                <tr>
+                    <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
+                        <i class="fas fa-clock"></i> Date &amp; Time
+                    </th>
+                    <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
+                        <i class="fas fa-graduation-cap"></i> Session Type
+                    </th>
+                    <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
+                        <i class="fas fa-bullseye"></i> Target
+                    </th>
+                    <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
+                        <i class="fas fa-check-circle"></i> Status
+                    </th>
+                    <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
+                        <i class="fas fa-map-marker-alt"></i> Distance
+                    </th>
+                    <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
+                        <i class="fas fa-chart-line"></i> Accuracy
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="geo-attendance-history">
+                <tr class="loading-row">
+                    <td colspan="6" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
+                        <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
+                        <p style="margin: 0; font-size: 13px;">Loading attendance history...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
-<h3 style="margin: 0; color: #0A3D62; font-size: 15px;">Attendance History</h3>
-<span id="history-count" style="background: #4C1D95; color: white; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;">0 records</span>
-</div>
-<div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-<select id="history-filter" onblur="this.style.borderColor='#e2e8f0'" onfocus="this.style.borderColor='#4C1D95'" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12px; transition: all 0.3s ease; appearance: none;">
-<option value="today">📅 Today</option>
-<option value="week">📆 This Week</option>
-<option value="month">📆 This Month</option>
-<option value="all">📅 All Time</option>
-</select>
-<button onclick="window.loadAttendanceHistory?.()" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" style="padding: 6px 14px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; display: flex; align-items: center; gap: 4px; transition: all 0.3s ease;">
-<i class="fas fa-redo" style="font-size: 11px;"></i> Refresh
-                </button>
-<button onclick="window.exportAttendanceHistory?.()" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(5,150,105,0.3)'" style="padding: 6px 14px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; display: flex; align-items: center; gap: 4px; transition: all 0.3s ease;">
-<i class="fas fa-download" style="font-size: 11px;"></i> Export
-                </button>
-</div>
-</div>
-<!-- History Stats -->
-<div id="history-stats" style="padding: 10px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px;">
-<div style="display: flex; align-items: center; gap: 6px;">
-<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0A3D62;"></span>
-<span style="font-size: 11px; color: #94a3b8;">Present:</span>
-<strong id="hist-present" style="color: #0A3D62; font-size: 13px;">0</strong>
-</div>
-<div style="display: flex; align-items: center; gap: 6px;">
-<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span>
-<span style="font-size: 11px; color: #94a3b8;">Pending:</span>
-<strong id="hist-pending" style="color: #d97706; font-size: 13px;">0</strong>
-</div>
-<div style="display: flex; align-items: center; gap: 6px;">
-<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #dc2626;"></span>
-<span style="font-size: 11px; color: #94a3b8;">Absent:</span>
-<strong id="hist-absent" style="color: #dc2626; font-size: 13px;">0</strong>
-</div>
-<div style="display: flex; align-items: center; gap: 6px; grid-column: auto / span 1;">
-<span style="font-size: 11px; color: #94a3b8;">Rate:</span>
-<strong id="hist-rate" style="color: #059669; font-size: 14px;">0%</strong>
-</div>
-</div>
-<!-- History Table -->
-<div style="overflow-x: auto; padding: 0;">
-<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-<thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-<tr>
-<th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-<i class="fas fa-clock"></i> Date &amp; Time
-                        </th>
-<th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-<i class="fas fa-graduation-cap"></i> Session Type
-                        </th>
-<th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-<i class="fas fa-bullseye"></i> Target
-                        </th>
-<th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-<i class="fas fa-check-circle"></i> Status
-                        </th>
-<th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-<i class="fas fa-map-marker-alt"></i> Distance
-                        </th>
-<th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-<i class="fas fa-chart-line"></i> Accuracy
-                        </th>
-</tr>
-</thead>
-<tbody id="geo-attendance-history">
-<tr class="loading-row">
-<td colspan="6" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
-<div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
-<p style="margin: 0; font-size: 13px;">Loading attendance history...</p>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
+
 <!-- ========== STYLES ========== -->
 <style>
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        @keyframes slideUpToast {
-            from { opacity: 0; transform: translateX(-50%) translateY(30px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        
-        @keyframes slideDownToast {
-            from { opacity: 1; transform: translateX(-50%) translateY(0); }
-            to { opacity: 0; transform: translateX(-50%) translateY(30px); }
-        }
-        
-        @keyframes fadeInBackdrop {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        @keyframes fadeOutBackdrop {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-        
-        @keyframes slideUpModal {
-            from { opacity: 0; transform: translateY(40px) scale(0.96); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        
-        /* Status badges for table rows */
-        .status-badge-present {
-            background: #d1fae5;
-            color: #065f46;
-            padding: 3px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            display: inline-block;
-        }
-        .status-badge-pending {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 3px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            display: inline-block;
-        }
-        .status-badge-absent {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 3px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            display: inline-block;
-        }
-        
-        /* Row hover */
-        #geo-attendance-history tr:hover {
-            background: #f8fafc;
-        }
-        
-        /* Distance colors */
-        .distance-verified {
-            color: #059669;
-        }
-        .distance-pending {
-            color: #d97706;
-        }
-        .distance-absent {
-            color: #dc2626;
-        }
-        
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #4C1D95;
-            border-radius: 4px;
-        }
-    </style>
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    @keyframes slideUpToast {
+        from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    
+    @keyframes slideDownToast {
+        from { opacity: 1; transform: translateX(-50%) translateY(0); }
+        to { opacity: 0; transform: translateX(-50%) translateY(30px); }
+    }
+    
+    @keyframes fadeInBackdrop {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes fadeOutBackdrop {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+    
+    @keyframes slideUpModal {
+        from { opacity: 0; transform: translateY(40px) scale(0.96); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    
+    .status-badge-present {
+        background: #d1fae5;
+        color: #065f46;
+        padding: 3px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-badge-pending {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 3px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-badge-absent {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 3px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    #geo-attendance-history tr:hover {
+        background: #f8fafc;
+    }
+    
+    .distance-verified {
+        color: #059669;
+    }
+    .distance-pending {
+        color: #d97706;
+    }
+    .distance-absent {
+        color: #dc2626;
+    }
+    
+    ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #4C1D95;
+        border-radius: 4px;
+    }
+</style>
 </section>
 <!-- END ATTENDANCE -->
 <!-- ==================== RESOURCES TAB ==================== -->
