@@ -697,18 +697,6 @@ window.LecturerOnlineLearning = (() => {
       const key=resolveLocalMarkingKey(assignment||{});
       return {mode:key?'marking_key':'topic_keywords',markingKey:key,keywords:key?.keywords||[],expectedTopics:key?.expected_topics||[],guidance:key?.grading_guidance||''};
     }
-    async function fetchSubmissionMarkingKey(id){
-      const s=state.submissions.find(x=>x.id===id);if(!s)throw new Error('Submission could not be found.');
-      const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
-      const key=resolveLocalMarkingKey(assignment);
-      const box=$('olSubmissionMarkingKey');
-      if(!key)throw new Error('No institutional marking key matches this assignment title/type.');
-      if(box){
-        box.innerHTML=`<div style="font-weight:800;color:#18304d;font-size:14px"><i class="fas fa-clipboard-check"></i> ${esc(key.title)}</div><div style="font-size:12px;color:#64748b;margin-top:3px">Version ${esc(key.version)} · Maximum ${esc(key.max_marks)} marks · Source: ${esc(key.source_document)}</div><div style="margin-top:8px">${esc(key.description||'')}</div><details open style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Marking Criteria (${esc(key.criteria.length)})</summary><div style="margin-top:7px">${key.criteria.map((c,i)=>`<div style="padding:7px 0;border-bottom:1px solid #e5e7eb"><b>${esc(i+1)}. ${esc(c.criterion)}</b> <span style="color:#64748b">(${esc(c.max_marks)} marks)</span></div>`).join('')}</div></details><div style="margin-top:9px"><b>Grading guidance:</b><div style="white-space:pre-wrap;margin-top:3px">${esc(key.grading_guidance||'')}</div></div>`;
-      }
-      window._activeSubmissionMarkingKey=key;window._activeSubmissionMarkingKeyId=key.id;return key;
-    }
-
     function localObjectiveGrade(items){
         let earned=0,max=0; const grades=[];
         for(const q of items){
@@ -722,7 +710,7 @@ window.LecturerOnlineLearning = (() => {
         return {earned,max,grades};
     }
     // ============================================================
-    // DETERMINISTIC SUPABASE MARKING-KEY ENGINE
+    // DETERMINISTIC LOCAL INSTITUTIONAL MARKING-KEY ENGINE
     // ============================================================
     // This is the primary "Automatically Grade" engine. It does NOT
     // call Gemini/OpenAI. The authoritative rubric comes from the institutional marking key
@@ -730,7 +718,7 @@ window.LecturerOnlineLearning = (() => {
     // It behaves like Online Exams: configured answers/rubric -> score.
     // ============================================================
     // ============================================================
-    // DETERMINISTIC SUPABASE MARKING-KEY ENGINE V2
+    // DETERMINISTIC LOCAL INSTITUTIONAL MARKING-KEY ENGINE V2
     // ============================================================
     // The embedded institutional rubric is authoritative. Each criterion contains
     // criterion-specific requirements. The engine NEVER awards marks from
@@ -886,10 +874,10 @@ window.LecturerOnlineLearning = (() => {
 
     function deterministicGradeMarkingKey(text,key,maxMarks){
         const criteria=criterionNodes(markKeyArray(key?.criteria));
-        if(!criteria.length) throw new Error('The Supabase marking key has no numeric criteria to grade against.');
+        if(!criteria.length) throw new Error('The institutional marking key has no numeric criteria to grade against.');
 
         const totalRubricMarks=criteria.reduce((sum,c)=>sum+Number(c.max_marks||0),0);
-        if(totalRubricMarks<=0) throw new Error('The Supabase marking key has no usable mark allocation.');
+        if(totalRubricMarks<=0) throw new Error('The institutional marking key has no usable mark allocation.');
         if(totalRubricMarks>maxMarks+0.001) throw new Error(`Marking key allocation (${totalRubricMarks}) exceeds maximum (${maxMarks}).`);
 
         const rubricGrades=criteria.map(node=>{
@@ -988,7 +976,7 @@ window.LecturerOnlineLearning = (() => {
             const text=await extractSubmissionText(s);
             if(!String(text||'').trim()) throw new Error('No readable text was extracted from the submitted document.');
             const maxMarks=Number(key.max_marks||assignment.max_marks||s.max_marks||0);
-            if(!maxMarks)throw new Error('The Supabase marking key has no maximum mark configured.');
+            if(!maxMarks)throw new Error('The institutional marking key has no maximum mark configured.');
             const report=deterministicGradeMarkingKey(text,key,maxMarks);
             $('olReviewMarks').value=report.marks_awarded;
             if($('olReviewPercentage')) $('olReviewPercentage').textContent=formatPercentage(report.marks_awarded,report.max_marks);
@@ -998,16 +986,15 @@ window.LecturerOnlineLearning = (() => {
             notify(`Automatic marking completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,'success');
             return report;
         }catch(e){
-            console.error('Deterministic Supabase marking:',e);
+            console.error('Deterministic institutional marking:',e);
             notify(e.message||'Automatic marking failed.','error');
             return null;
         }finally{
-            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Supabase Marking Key';}
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Institutional Marking Key';}
         }
     }
 
     async function aiGradeSubmission(id){
-        notify('AI Grade Work is disabled in this configuration. Use Automatically Grade Using Marking Key.','warning');
         return autoGradeUsingMarkingKey(id);
     }
 
@@ -2464,6 +2451,6 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         await loadResearch();
     }
 
-    return {loadMarkingKeys,getAssignmentGradingConfig,fetchSubmissionMarkingKey,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
+    return {getAssignmentGradingConfig,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
 ;
