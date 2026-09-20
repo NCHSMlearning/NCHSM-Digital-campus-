@@ -323,12 +323,11 @@ window.LecturerOnlineLearning = (() => {
           .rs-review-toolbar button.active{background:#dbeafe;color:#087bf0}
           .rs-review-toolbar select{height:28px;border:1px solid #d7e0e8;border-radius:5px;background:#fff;color:#40566f;font-size:9px;padding:0 7px}
           .rs-review-status{margin-left:auto;font-size:8px;color:#71859c;white-space:nowrap}
-          .rs-editor-wrap{flex:1;min-height:0;overflow:auto;padding:26px 18px 40px;background:#f1f3f4;-webkit-overflow-scrolling:touch}
-          .rs-editor-page{width:min(850px,100%);min-height:1050px;margin:0 auto;padding:70px 72px;box-sizing:border-box;background:#fff;color:#202b38;outline:0;line-height:1.7;font-size:13px;box-shadow:0 1px 6px rgba(20,40,60,.16)}
-          .rs-editor-page[contenteditable="true"]{cursor:text;user-select:text;-webkit-user-select:text;pointer-events:auto;-webkit-user-modify:read-write;touch-action:auto}
-          .rs-editor-page[contenteditable="true"]:focus{caret-color:#087bf0}
-          .rs-editor-page *{user-select:text;-webkit-user-select:text}
+          .rs-editor-wrap{flex:1;min-height:0;overflow:auto;padding:26px 18px 40px;background:#f1f3f4;-webkit-overflow-scrolling:touch;position:relative;z-index:1;user-select:text;-webkit-user-select:text}
+          .rs-editor-page{width:min(850px,100%);min-height:1050px;margin:0 auto;padding:70px 72px;box-sizing:border-box;background:#fff;color:#202b38;outline:0;line-height:1.7;font-size:13px;box-shadow:0 1px 6px rgba(20,40,60,.16);position:relative;z-index:2;pointer-events:auto!important;user-select:text!important;-webkit-user-select:text!important;cursor:text;caret-color:#111827;-webkit-touch-callout:default;touch-action:manipulation}
           .rs-editor-page:focus{box-shadow:0 1px 6px rgba(20,40,60,.16),0 0 0 2px rgba(66,133,244,.12)}
+          .rs-editor-page *{user-select:text!important;-webkit-user-select:text!important;cursor:text}
+          .rs-editor-page img,.rs-editor-page table,.rs-editor-page td,.rs-editor-page th{user-select:text!important;-webkit-user-select:text!important}
           .rs-editor-page img{max-width:100%;height:auto}.rs-editor-page table{max-width:100%;border-collapse:collapse}.rs-editor-page td,.rs-editor-page th{padding:4px 6px}
           .rs-editor-page h1,.rs-editor-page h2,.rs-editor-page h3{color:#18304d}
           .rs-review-main{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -580,7 +579,7 @@ window.LecturerOnlineLearning = (() => {
         currentId:null,
         applyingRemote:false,
         lastBroadcast:0
-    };
+    ,localEditing:false,pendingRemoteHtml:null};
 
     function lecturerResearchName(){
         const p=state.profile||{};
@@ -600,85 +599,6 @@ window.LecturerOnlineLearning = (() => {
 
     function lecturerSaveArray(key,value){
         try{localStorage.setItem(key,JSON.stringify(value||[]))}catch(e){}
-    }
-
-    function lecturerResearchUuid(){
-        try{return crypto.randomUUID()}catch(e){return '00000000-0000-4000-8000-'+Math.random().toString(16).slice(2,14).padEnd(12,'0')}
-    }
-
-    async function lecturerLoadPersistentAnnotations(s){
-        const db=client();
-        if(!db||!s)return;
-        try{
-            const [cr,sr]=await Promise.all([
-                db.from('research_document_comments').select('*').eq('research_submission_id',s.id).order('created_at',{ascending:true}),
-                db.from('research_document_suggestions').select('*').eq('research_submission_id',s.id).order('created_at',{ascending:true})
-            ]);
-            if(!cr.error){
-                const comments=(cr.data||[]).filter(x=>x.status!=='resolved').map(x=>({id:x.id,text:x.selected_text,comment:x.comment_text,start:x.start_offset,end:x.end_offset,author_name:x.author_name||'User',created_at:x.created_at}));
-                lecturerSaveArray(lecturerResearchCommentsKey(s),comments);
-            }
-            if(!sr.error){
-                const suggestions=(sr.data||[]).map(x=>({id:x.id,old_text:x.old_text,new_text:x.new_text,start:x.start_offset,end:x.end_offset,status:x.status,author_name:x.author_name||'User',created_at:x.created_at}));
-                lecturerSaveArray(lecturerResearchSuggestionsKey(s),suggestions);
-            }
-        }catch(e){console.warn('Research collaboration data load:',e.message||e)}
-    }
-
-    async function lecturerSaveDraftCloud(s,editor){
-        const db=client();
-        if(!db||!s||!editor||!state.userId)return;
-        try{
-            const {error}=await db.from('research_document_drafts').upsert({
-                research_submission_id:s.id,
-                user_id:state.userId,
-                content_html:editor.innerHTML,
-                updated_at:new Date().toISOString()
-            },{onConflict:'research_submission_id,user_id'});
-            if(error)console.warn('Research draft cloud save:',error.message);
-        }catch(e){console.warn('Research draft cloud save:',e.message||e)}
-    }
-
-    async function lecturerRestoreDraftCloud(s,editor,statusEl){
-        const db=client();
-        if(!db||!s||!editor||!state.userId)return false;
-        try{
-            const {data,error}=await db.from('research_document_drafts').select('content_html,updated_at').eq('research_submission_id',s.id).eq('user_id',state.userId).maybeSingle();
-            if(error||!data||!data.content_html)return false;
-            editor.innerHTML=data.content_html;
-            if(statusEl)statusEl.textContent='Cloud draft restored · '+new Date(data.updated_at).toLocaleTimeString();
-            return true;
-        }catch(e){return false}
-    }
-
-    async function lecturerPersistComment(s,item){
-        const db=client(); if(!db||!s||!state.userId)return;
-        const {error}=await db.from('research_document_comments').upsert({
-            id:item.id,research_submission_id:s.id,user_id:state.userId,author_name:item.author_name||lecturerResearchName(),
-            selected_text:item.text,comment_text:item.comment,start_offset:item.start,end_offset:item.end,status:'open'
-        });
-        if(error)console.warn('Research comment save:',error.message);
-    }
-
-    async function lecturerPersistCommentResolve(s,id){
-        const db=client(); if(!db||!s)return;
-        const {error}=await db.from('research_document_comments').update({status:'resolved',updated_at:new Date().toISOString()}).eq('id',id);
-        if(error)console.warn('Research comment resolve:',error.message);
-    }
-
-    async function lecturerPersistSuggestion(s,item){
-        const db=client(); if(!db||!s||!state.userId)return;
-        const {error}=await db.from('research_document_suggestions').upsert({
-            id:item.id,research_submission_id:s.id,user_id:state.userId,author_name:item.author_name||lecturerResearchName(),
-            old_text:item.old_text,new_text:item.new_text,start_offset:item.start,end_offset:item.end,status:item.status||'pending'
-        });
-        if(error)console.warn('Research suggestion save:',error.message);
-    }
-
-    async function lecturerPersistSuggestionStatus(s,id,status){
-        const db=client(); if(!db)return;
-        const {error}=await db.from('research_document_suggestions').update({status:status,updated_at:new Date().toISOString()}).eq('id',id);
-        if(error)console.warn('Research suggestion status:',error.message);
     }
 
     function lecturerSelection(editor){
@@ -701,9 +621,13 @@ window.LecturerOnlineLearning = (() => {
         return {start:start,end:start+range.toString().length};
     }
 
-    function lecturerCommentId(){return lecturerResearchUuid();}
+    function lecturerCommentId(){
+        return 'lc_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+    }
 
-    function lecturerSuggestionId(){return lecturerResearchUuid();}
+    function lecturerSuggestionId(){
+        return 'ls_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+    }
 
     function lecturerBroadcast(payload){
         if(!lecturerResearchCollab.channel)return;
@@ -761,15 +685,13 @@ window.LecturerOnlineLearning = (() => {
         const item={id:lecturerCommentId(),text:sel.text,comment:comment.trim(),start:offsets.start,end:offsets.end,author_name:lecturerResearchName(),created_at:new Date().toISOString()};
         const list=lecturerStoredArray(lecturerResearchCommentsKey(s));
         list.push(item);lecturerSaveArray(lecturerResearchCommentsKey(s),list);
-        lecturerPersistComment(s,item);
         lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
         lecturerBroadcast({type:'comment-add',comment:item});
     }
 
-    async function lecturerResolveComment(s,id,editor){
+    function lecturerResolveComment(s,id,editor){
         lecturerSaveArray(lecturerResearchCommentsKey(s),lecturerStoredArray(lecturerResearchCommentsKey(s)).filter(function(c){return String(c.id)!==String(id)}));
         lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
-        lecturerPersistCommentResolve(s,id);
         lecturerBroadcast({type:'comment-delete',id:id});
     }
 
@@ -781,7 +703,6 @@ window.LecturerOnlineLearning = (() => {
         if(replacement===null)return;
         const item={id:lecturerSuggestionId(),old_text:sel.text,new_text:String(replacement),start:offsets.start,end:offsets.end,status:'pending',author_name:lecturerResearchName(),created_at:new Date().toISOString()};
         const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));list.push(item);lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
-        lecturerPersistSuggestion(s,item);
         const range=sel.range;
         const span=document.createElement('span');span.className='rs-suggestion';span.dataset.rsSuggestion=item.id;span.innerHTML='<del>'+esc(sel.text)+'</del><ins>'+esc(String(replacement))+'</ins>';
         try{range.deleteContents();range.insertNode(span)}catch(e){}
@@ -797,13 +718,12 @@ window.LecturerOnlineLearning = (() => {
         }).join(''):'<div class="rs-empty" style="padding:16px;font-size:9px">No pending suggestions.</div>';
     }
 
-    async function lecturerApplySuggestion(s,id,accept,editor){
+    function lecturerApplySuggestion(s,id,accept,editor){
         const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));
         const item=list.find(function(x){return String(x.id)===String(id)});
         if(!item)return;
         item.status=accept?'accepted':'rejected';
         lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
-        lecturerPersistSuggestionStatus(s,id,item.status);
         const nodes=Array.from(editor.querySelectorAll('[data-rs-suggestion]')).filter(function(n){return String(n.dataset.rsSuggestion)===String(id)});
         nodes.forEach(function(n){n.outerHTML=accept?esc(item.new_text):esc(item.old_text)});
         lecturerRenderSuggestions(s,editor);
@@ -823,14 +743,17 @@ window.LecturerOnlineLearning = (() => {
             if(!p||p.sender===lecturerResearchCollab.clientId)return;
 
             if(p.type==='document-state'&&typeof p.html==='string'){
-                if(document.activeElement===editor || editor.dataset.dirty==='1'){
-                    if(statusEl)statusEl.textContent='Editing · local changes protected';
+                // Never replace the DOM while the lecturer is placing a caret, selecting text,
+                // or typing. Replacing innerHTML during a selection destroys the selection and
+                // makes the editor appear impossible to click/edit. Queue remote updates instead.
+                if(lecturerResearchCollab.localEditing || document.activeElement===editor){
+                    lecturerResearchCollab.pendingRemoteHtml=p.html;
+                    if(statusEl)statusEl.textContent='Live update queued while you edit';
                     return;
                 }
                 lecturerResearchCollab.applyingRemote=true;
                 if(editor.innerHTML!==p.html)editor.innerHTML=p.html;
                 lecturerResearchCollab.applyingRemote=false;
-                lecturerForceEditorEditable(editor);
                 if(statusEl)statusEl.textContent='Live update received';
                 return;
             }
@@ -876,13 +799,8 @@ window.LecturerOnlineLearning = (() => {
             }
         });
 
-        let cloudDraftTimer=null;
         editor.addEventListener('input',function(){
             if(lecturerResearchCollab.applyingRemote)return;
-            lecturerForceEditorEditable(editor);
-            editor.dataset.dirty='1';
-            clearTimeout(cloudDraftTimer);
-            cloudDraftTimer=setTimeout(function(){lecturerSaveDraftCloud(s,editor)},1000);
             const now=Date.now();
             if(now-lecturerResearchCollab.lastBroadcast<180)return;
             lecturerResearchCollab.lastBroadcast=now;
@@ -897,33 +815,8 @@ window.LecturerOnlineLearning = (() => {
         }
         lecturerResearchCollab.channel=null;
         lecturerResearchCollab.currentId=null;
-    }
-
-    function lecturerForceEditorEditable(editor){
-        if(!editor)return;
-        try{
-            editor.setAttribute('contenteditable','true');
-            editor.contentEditable='true';
-            editor.setAttribute('spellcheck','true');
-            editor.setAttribute('role','textbox');
-            editor.setAttribute('aria-multiline','true');
-            editor.tabIndex=0;
-            editor.style.pointerEvents='auto';
-            editor.style.userSelect='text';
-            editor.style.webkitUserSelect='text';
-            editor.style.webkitUserModify='read-write';
-            editor.style.cursor='text';
-            editor.removeAttribute('disabled');
-            editor.removeAttribute('readonly');
-            editor.querySelectorAll('[contenteditable="false"]').forEach(function(n){n.removeAttribute('contenteditable');});
-            if(!editor.__nchsmEditableBound){
-                editor.__nchsmEditableBound=true;
-                editor.addEventListener('pointerdown',function(e){e.stopPropagation();});
-                editor.addEventListener('click',function(e){e.stopPropagation();editor.focus();});
-                editor.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
-                editor.addEventListener('beforeinput',function(){editor.contentEditable='true';});
-            }
-        }catch(e){console.warn('Could not force research editor editable:',e);}
+        lecturerResearchCollab.localEditing=false;
+        lecturerResearchCollab.pendingRemoteHtml=null;
     }
 
     async function lecturerLoadDocument(s,editor){
@@ -945,7 +838,6 @@ window.LecturerOnlineLearning = (() => {
             }
             const out=await window.mammoth.convertToHtml({arrayBuffer:await resp.arrayBuffer()});
             editor.innerHTML=out.value||'<p></p>';
-            lecturerForceEditorEditable(editor);
             return 'docx';
         }
         if(ext==='html'){
@@ -954,10 +846,75 @@ window.LecturerOnlineLearning = (() => {
             const raw=await resp.text();
             const match=raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
             editor.innerHTML=match?match[1]:raw;
-            lecturerForceEditorEditable(editor);
             return 'html';
         }
         throw new Error('This file type cannot be edited inline.');
+    }
+
+    async function ensureLecturerDocxGenerator(){
+        if(window.docx&&window.docx.Document&&window.docx.Packer)return window.docx;
+        return await new Promise(function(resolve,reject){
+            var existing=document.querySelector('script[data-nchsm-docx-generator]');
+            if(existing){
+                existing.addEventListener('load',function(){if(window.docx&&window.docx.Document&&window.docx.Packer)resolve(window.docx);else reject(new Error('DOCX generator did not load.'))},{once:true});
+                existing.addEventListener('error',function(){reject(new Error('Could not load the DOCX generator.'))},{once:true});
+                return;
+            }
+            var sc=document.createElement('script');
+            sc.src='https://cdn.jsdelivr.net/npm/docx@9.5.1/build/index.umd.js';
+            sc.dataset.nchsmDocxGenerator='1';
+            sc.onload=function(){if(window.docx&&window.docx.Document&&window.docx.Packer)resolve(window.docx);else reject(new Error('DOCX generator did not load correctly.'))};
+            sc.onerror=function(){reject(new Error('Could not load the DOCX generator.'))};
+            document.head.appendChild(sc);
+        });
+    }
+
+    async function lecturerHtmlToDocxBlob(html,title){
+        const docx=await ensureLecturerDocxGenerator();
+        const host=document.createElement('div');
+        host.innerHTML=html||'';
+        const children=[];
+        function runs(node,marks){
+            const out=[];
+            function walk(n,m){
+                if(n.nodeType===3){
+                    if(n.nodeValue)out.push(new docx.TextRun(Object.assign({text:n.nodeValue},m)));
+                    return;
+                }
+                if(n.nodeType!==1)return;
+                const tag=n.tagName.toLowerCase();
+                const nm=Object.assign({},m);
+                if(['strong','b'].includes(tag))nm.bold=true;
+                if(['em','i'].includes(tag))nm.italics=true;
+                if(tag==='u')nm.underline={};
+                if(['s','strike','del'].includes(tag))nm.strike=true;
+                Array.from(n.childNodes).forEach(function(c){walk(c,nm)});
+            }
+            walk(node,marks||{});
+            return out;
+        }
+        Array.from(host.children).forEach(function(el){
+            const tag=el.tagName.toLowerCase();
+            if(/^h[1-6]$/.test(tag)){
+                children.push(new docx.Paragraph({heading:docx.HeadingLevel['HEADING_'+tag.slice(1)],children:runs(el,{bold:true})}));
+            }else if(tag==='li'){
+                children.push(new docx.Paragraph({bullet:{level:0},children:runs(el,{})}));
+            }else if(tag==='hr'){
+                children.push(new docx.Paragraph({children:[new docx.TextRun({text:'____________________________'})]}));
+            }else{
+                const rr=runs(el,{});
+                if(rr.length)children.push(new docx.Paragraph({children:rr}));
+            }
+        });
+        if(!children.length)children.push(new docx.Paragraph({children:[new docx.TextRun({text:title||'Research Paper'})]}));
+        const d=new docx.Document({sections:[{properties:{},children:children}]});
+        return await docx.Packer.toBlob(d);
+    }
+
+    function lecturerCorrectionFileName(s,next,ext){
+        const original=String(s.document_name||s.document_path||'Research Paper').split(/[\\/]/).pop();
+        const stem=original.replace(/\.(docx?|html?)$/i,'').trim()||String(s.title||'Research').replace(/[^a-zA-Z0-9 _-]/g,'').trim()||'Research';
+        return stem+'_Lecturer_Correction_V'+next+'.'+ext;
     }
 
     async function saveLecturerCorrection(){
@@ -970,6 +927,7 @@ window.LecturerOnlineLearning = (() => {
         const feedback=($('rsFeedback')?.value||'').trim()||null;
         const btn=$('rsSendCorrection');
         if(btn)btn.disabled=true;
+        let path=null;
         try{
             await resolveUser();
             if(!state.userId)throw new Error('Lecturer user ID could not be resolved.');
@@ -978,11 +936,24 @@ window.LecturerOnlineLearning = (() => {
                 return String(x.research_group_id||x.id)===String(group);
             });
             const next=rows.reduce(function(mx,x){return Math.max(mx,Number(x.version_number)||1)},Number(s.version_number)||1)+1;
-            const safe=(String(s.title||'Research').replace(/[^a-zA-Z0-9 _-]/g,'').trim()||'Research');
-            const filename=safe+'_Lecturer_Correction_V'+next+'.html';
-            const path=state.userId+'/'+group+'/lecturer-corrections/'+Date.now()+'_'+filename;
-            const wrapper='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(s.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style></head><body>'+html+'</body></html>';
-            const upload=await db.storage.from('research-papers').upload(path,new Blob([wrapper],{type:'text/html'}),{upsert:false,contentType:'text/html'});
+            const original=String(s.document_name||s.document_path||'').toLowerCase();
+            const isDocx=/\.docx?$/.test(original);
+            const isHtml=/\.html?$/.test(original);
+            if(!isDocx&&!isHtml)throw new Error('This document type cannot be corrected inline. PDF files remain view-only.');
+            const ext=isDocx?'docx':'html';
+            const filename=lecturerCorrectionFileName(s,next,ext);
+            path=state.userId+'/'+group+'/lecturer-corrections/'+Date.now()+'_'+filename;
+
+            let blob,contentType;
+            if(isDocx){
+                blob=await lecturerHtmlToDocxBlob(html,s.title||'Research Paper');
+                contentType='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            }else{
+                const wrapper='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(s.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style></head><body>'+html+'</body></html>';
+                blob=new Blob([wrapper],{type:'text/html'});
+                contentType='text/html';
+            }
+            const upload=await db.storage.from('research-papers').upload(path,blob,{upsert:false,contentType:contentType});
             if(upload.error)throw upload.error;
             const now=new Date().toISOString();
             const payload={
@@ -1008,10 +979,11 @@ window.LecturerOnlineLearning = (() => {
                 try{await db.storage.from('research-papers').remove([path])}catch(e){}
                 throw ins.error;
             }
-            notify('Correction sent to the student as Version '+next+'.','success');
+            notify('Correction sent to the student as Version '+next+' ('+ext.toUpperCase()+').','success');
             await loadResearch();
             closeResearchModal();
         }catch(e){
+            if(path){try{await db.storage.from('research-papers').remove([path])}catch(ignore){}}
             console.error('Lecturer correction failed:',e);
             notify('Could not send correction: '+(e.message||e),'error');
         }finally{
@@ -1057,9 +1029,8 @@ window.LecturerOnlineLearning = (() => {
               <button type="button" data-rs-fullscreen title="Full Screen"><i class="fas fa-expand"></i></button>
               <span class="rs-review-status" id="rsCollaborators">Connecting…</span>
             </div>
-            <div style="padding:5px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:8px">Tap inside the document and type to edit. Your changes are saved automatically.</div>
             <div class="rs-editor-wrap">
-              <article id="rsInlineEditor" class="rs-editor-page" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" tabindex="0" style="pointer-events:auto;user-select:text;-webkit-user-select:text;"></article>
+              <article id="rsInlineEditor" class="rs-editor-page" contenteditable="true" spellcheck="true"></article>
             </div>
             <div class="rs-comments-panel">
               <div class="rs-comment-tabs">
@@ -1078,14 +1049,42 @@ window.LecturerOnlineLearning = (() => {
 
         const editor=$('rsInlineEditor');
         const statusEl=$('rsCollaborators');
-        lecturerForceEditorEditable(editor);
+
+        // Force a real browser editing surface. This prevents parent CSS, touch handlers,
+        // or collaboration updates from making the document feel read-only.
+        editor.setAttribute('contenteditable','true');
+        editor.contentEditable='true';
+        editor.spellcheck=true;
+        editor.style.pointerEvents='auto';
+        editor.style.userSelect='text';
+        editor.style.webkitUserSelect='text';
+        editor.style.cursor='text';
+        editor.onfocus=function(){
+            lecturerResearchCollab.localEditing=true;
+        };
+        editor.onblur=function(){
+            lecturerResearchCollab.localEditing=false;
+            if(lecturerResearchCollab.pendingRemoteHtml!==null && lecturerResearchCollab.pendingRemoteHtml!==undefined){
+                const pending=lecturerResearchCollab.pendingRemoteHtml;
+                lecturerResearchCollab.pendingRemoteHtml=null;
+                if(editor.innerHTML!==pending){
+                    lecturerResearchCollab.applyingRemote=true;
+                    editor.innerHTML=pending;
+                    lecturerResearchCollab.applyingRemote=false;
+                }
+            }
+        };
+        editor.addEventListener('mousedown',function(e){
+            // Never cancel normal mouse selection/caret placement inside the document.
+            e.stopPropagation();
+        });
+        editor.addEventListener('pointerdown',function(e){
+            e.stopPropagation();
+        });
 
         try{
             const kind=await lecturerLoadDocument(s,editor);
-            lecturerForceEditorEditable(editor);
-            await lecturerLoadPersistentAnnotations(s);
-            const cloudDraft=await lecturerRestoreDraftCloud(s,editor,statusEl);
-            if(statusEl && !cloudDraft)statusEl.textContent='Editing · '+kind.toUpperCase();
+            if(statusEl)statusEl.textContent='Loaded · '+kind.toUpperCase();
             lecturerRefreshCommentMarks(editor,s);
             lecturerRenderComments(s,editor);
             lecturerRenderSuggestions(s,editor);
@@ -1093,8 +1092,7 @@ window.LecturerOnlineLearning = (() => {
         }catch(e){
             console.error('Research document editor:',e);
             editor.innerHTML='<p style="color:#b42318">'+esc(e.message||e)+'</p>';
-            lecturerForceEditorEditable(editor);
-            if(statusEl)statusEl.textContent='Editor ready · document load warning';
+            if(statusEl)statusEl.textContent='View only';
         }
 
         modal.querySelectorAll('[data-rs-cmd]').forEach(btn=>{
