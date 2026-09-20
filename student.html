@@ -6818,7 +6818,8 @@ async function loadResearchDocumentForViewer(r,editMode){
 
 async function saveInlineResearchCorrection(){
   var base=state.researchCurrent,editor=document.getElementById('ol-rs-inline-editor'),db=researchClient(),id=researchUserId();
-  if(!base||!editor||!db||!id)return;
+  if(!base||!editor){alert('The correction editor is not ready. Please reopen the paper and try again.');return;}
+  if(!db||!id){alert('Your student session is not available. Please sign in again and reload the portal.');return;}
   if(String(base.status||'').toLowerCase()!=='revision_required')return alert('This research is not currently awaiting revision.');
   var html=editor.innerHTML.trim();if(!html)return alert('There is no corrected document content to submit.');
   var next=nextResearchVersion(base),now=new Date().toISOString();
@@ -6866,6 +6867,12 @@ function bindResearch(){
       if(fs){e.preventDefault();researchToggleFullscreen();return}
       var back=e.target.closest('[data-rs-back-online]');
       if(back){e.preventDefault();researchBackToOnlineLearning();return}
+      var submitCorrection=e.target.closest('[data-rs-submit-correction]');
+      if(submitCorrection){e.preventDefault();submitCorrection.disabled=true;Promise.resolve(saveInlineResearchCorrection()).finally(function(){submitCorrection.disabled=false});return}
+      var viewOnly=e.target.closest('[data-rs-view-only]');
+      if(viewOnly){e.preventDefault();if(state.researchCurrent)loadResearchDocumentForViewer(state.researchCurrent,false);return}
+      var closePaper=e.target.closest('[data-research-close]');
+      if(closePaper){e.preventDefault();closeResearchModal();return}
     });
   }
   if(!document.documentElement.dataset.researchFullscreenKeys){
