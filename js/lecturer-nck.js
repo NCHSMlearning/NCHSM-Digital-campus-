@@ -901,31 +901,58 @@ async function lecturerNCKSaveStudentToDatabase(student, scores, options) {
         ? existingRows[0]
         : null;
 
+    // Keep the COMPLETE nck_marks payload. Do not remove database columns.
+    // The SWL/NCK schema contains these fields:
+    // id, admission_number, student_id, student_name, subject_name, block,
+    // assessment_type, scores, cat1_score, cat2_score, exam_score, final_score,
+    // grade, status, graded_by, academic_year, created_at, updated_at,
+    // published, published_at, published_by, approval_status, approved_by,
+    // approved_at, rejection_reason, submitted_at, submitted_by, program.
+    //
+    // student_id MUST remain the SWL student UUID; admission_number remains text.
+    var nowISO = new Date().toISOString();
+
     var markData = {
         student_id: studentId,
         student_name: student.full_name || student.student_name || 'Unknown',
         admission_number: admissionNumber,
-        academic_year: LecturerNCK.currentIntake,
-        block: block,
         subject_name: LecturerNCK.currentSheet,
-        program: 'KRCHN',
-        scores: JSON.stringify(scores || {}),
+        block: block,
+        assessment_type: LecturerNCK.currentSheet,
+        scores: scores || {},
+        cat1_score: null,
+        cat2_score: null,
+        exam_score: null,
         final_score: Math.round(avg * 10) / 10,
         grade: grade,
         status: status,
         graded_by: LecturerNCK.lecturerName,
-        updated_at: new Date().toISOString()
+        academic_year: LecturerNCK.currentIntake,
+        updated_at: nowISO,
+        program: 'KRCHN'
     };
 
     if (existing) {
         // Lecturer edits return a pending/draft record to draft unless admin.
         if (isAdmin) {
             markData.approval_status = 'approved';
+            markData.approved_by = LecturerNCK.lecturerId;
+            markData.approved_at = nowISO;
         } else if (existing.approval_status === 'approved' || existing.approval_status === 'pending') {
             markData.approval_status = 'draft';
+            markData.approved_by = null;
+            markData.approved_at = null;
+            markData.submitted_by = null;
+            markData.submitted_at = null;
+            markData.rejection_reason = null;
         } else {
             markData.approval_status = existing.approval_status || 'draft';
         }
+
+        // Preserve publication state unless this is an explicit admin-approved edit.
+        markData.published = existing.published === true;
+        markData.published_at = existing.published_at || null;
+        markData.published_by = existing.published_by || null;
 
         var { data: updatedRows, error: updateError } = await supabase
             .from('nck_marks')
@@ -937,7 +964,17 @@ async function lecturerNCKSaveStudentToDatabase(student, scores, options) {
         existing = updatedRows && updatedRows[0] ? updatedRows[0] : Object.assign({}, existing, markData);
     } else {
         markData.approval_status = isAdmin ? 'approved' : 'draft';
-        markData.created_at = new Date().toISOString();
+        markData.created_at = nowISO;
+
+        // Complete lifecycle columns for a new record.
+        markData.published = false;
+        markData.published_at = null;
+        markData.published_by = null;
+        markData.approved_by = isAdmin ? LecturerNCK.lecturerId : null;
+        markData.approved_at = isAdmin ? nowISO : null;
+        markData.rejection_reason = null;
+        markData.submitted_at = null;
+        markData.submitted_by = null;
 
         var { data: insertedRows, error: insertError } = await supabase
             .from('nck_marks')
@@ -1125,7 +1162,9 @@ async function lecturerNCKSubmitForApproval() {
         var { error: updateError } = await supabase
             .from('nck_marks')
             .update({
-                approval_status: 'pending'
+                approval_status: 'pending',
+                submitted_at: new Date().toISOString(),
+                submitted_by: LecturerNCK.lecturerId
             })
             .in('id', ids);
 
@@ -1201,7 +1240,9 @@ async function lecturerNCKWithdrawApproval() {
         var { error: updateError } = await supabase
             .from('nck_marks')
             .update({
-                approval_status: 'draft'
+                approval_status: 'draft',
+                submitted_at: null,
+                submitted_by: null
             })
             .in('id', ids);
         
