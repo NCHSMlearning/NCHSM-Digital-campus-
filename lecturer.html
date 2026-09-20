@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6382,6 +6382,11 @@ window.runAIAssignmentGrade = async function(payload) {
 // Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
 // NCHSM Lecturer Dashboard — Online Learning module
 // Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
+/* NCHSM Lecturer Online Learning — integrated latest Research workflow + Assignment Targeting */
+// NCHSM Lecturer Dashboard — Online Learning module
+// Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
+// NCHSM Lecturer Dashboard — Online Learning module
+// Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
 window.LecturerOnlineLearning = (() => {
     const state = { assignments: [], submissions: [], initialized:false, client:null, userId:null, profile:null, publishAfterSave:false };
     const $ = id => document.getElementById(id);
@@ -7074,31 +7079,60 @@ window.LecturerOnlineLearning = (() => {
         return out;
     }
 
-    function deriveCriterionSignals(node,key){
-        const globalKeywords=markKeyArray(key?.keywords).flatMap(v=>keyWords(v));
-        const globalTopics=markKeyArray(key?.expected_topics).flatMap(v=>keyWords(v));
-        const local=uniqueWords(`${node.criterion} ${node.description}`);
-        // Prefer words from the criterion/description. Global topics are
-        // added only when they are distinctive enough to provide evidence.
-        const stop=new Set(['case','study','student','family','health','care','assessment','management','information','description','general','introduction','actual','ideal','marks','marking']);
-        const distinctive=[...new Set(local.filter(w=>!stop.has(w)))];
-        const signals=[...new Set([...distinctive,...globalTopics,...globalKeywords])];
-        return signals.filter(w=>w.length>=4).slice(0,80);
+    function splitEvidenceComponents(node){
+        const desc=String(node?.description||'').trim();
+        if(!desc) return [];
+        return desc
+          .split(/\s*(?:;|\.|\n)\s*/)
+          .map(x=>x.replace(/^\s*\d+(?:st|nd|rd|th)?\s+Visit:\s*/i,'').trim())
+          .flatMap(x=>x.split(/\s+(?=\d+(?:st|nd|rd|th)?\s+Visit:\s*)/i))
+          .map(x=>x.trim())
+          .filter(Boolean);
     }
 
-    function findCriterionEvidence(text,node,key){
+    function phraseTokens(text){
+        const stop=new Set(['the','and','for','with','from','into','that','this','are','was','were','has','have','had','all','any','not','only','also','then','than','their','they','them','your','student','students','case','study','general','description','information','actual','ideal','marks','marking']);
+        return uniqueWords(text).filter(w=>w.length>=4&&!stop.has(w));
+    }
+
+    function deriveCriterionSignals(node){
+        const local=phraseTokens(`${node.criterion} ${node.description}`);
+        return [...new Set(local)].slice(0,80);
+    }
+
+    function phraseCoverage(normalized, phrase){
+        const tokens=phraseTokens(phrase);
+        if(!tokens.length) return 0;
+        const words=new Set(keyWords(normalized));
+        const hits=tokens.filter(w=>words.has(w));
+        return hits.length/tokens.length;
+    }
+
+    function findCriterionEvidence(text,node){
         const normalized=normalizeText(text);
         const words=new Set(keyWords(normalized));
-        const signals=deriveCriterionSignals(node,key);
+        const signals=deriveCriterionSignals(node);
         const matched=signals.filter(w=>words.has(w));
-        const headingTokens=uniqueWords(node.criterion).filter(w=>w.length>=4);
+        const headingTokens=phraseTokens(node.criterion);
         const headingHits=headingTokens.filter(w=>words.has(w));
         const headingScore=headingTokens.length ? headingHits.length/headingTokens.length : 0;
-        const signalScore=signals.length ? matched.length/signals.length : 0;
-        // A heading alone must never award full marks. Content coverage is
-        // required; heading evidence contributes only a small boost.
-        const coverage=Math.min(1,signalScore*0.82+headingScore*0.18);
-        return {signals,matched,headingHits,coverage};
+        const components=splitEvidenceComponents(node);
+        const componentResults=components.map(component=>({component,coverage:phraseCoverage(normalized,component)}));
+        const componentCoverage=componentResults.length
+          ? componentResults.reduce((sum,x)=>sum+x.coverage,0)/componentResults.length
+          : null;
+        // For detailed criteria, grade from the criterion's own required
+        // components. Global marking-key keywords are never used as marks
+        // because they can otherwise inflate every criterion.
+        let coverage;
+        if(componentCoverage!==null){
+            coverage=Math.min(1,componentCoverage*0.82+headingScore*0.18);
+        }else{
+            // Simple criteria such as "Acknowledgement" or "Recommendations"
+            // are section-presence checks. Require a strong heading/term match.
+            coverage=headingScore>=0.75?1:headingScore>=0.5?0.5:0;
+        }
+        return {signals,matched,headingHits,headingScore,coverage,components:componentResults};
     }
 
     function deterministicGradeMarkingKey(text,key,maxMarks){
@@ -7108,28 +7142,30 @@ window.LecturerOnlineLearning = (() => {
         if(totalRubricMarks<=0) throw new Error('The Supabase marking key has no usable mark allocation.');
 
         const rubricGrades=criteria.map(node=>{
-            const evidence=findCriterionEvidence(text,node,key);
-            // Deterministic proportional scoring. A criterion earns marks only
-            // when its configured content signals occur in the submission.
-            // Round to 0.5 marks for consistency with nursing rubrics.
+            const evidence=findCriterionEvidence(text,node);
             let earned=Math.round((Number(node.max_marks)*evidence.coverage)*2)/2;
             earned=Math.max(0,Math.min(Number(node.max_marks),earned));
-            const evidenceText=evidence.matched.length
-              ? `Matched configured content signals: ${evidence.matched.slice(0,12).join(', ')}.`
-              : 'No configured content signals were found in the submitted text.';
+            const componentHits=evidence.components.filter(x=>x.coverage>=0.5).map(x=>x.component);
+            const evidenceText=componentHits.length
+              ? `Matched criterion-specific evidence: ${componentHits.slice(0,8).join(' | ')}.`
+              : evidence.matched.length
+                ? `Matched criterion terms: ${evidence.matched.slice(0,10).join(', ')}.`
+                : 'No sufficient criterion-specific evidence was found in the submitted text.';
+            const rationale=evidence.components.length
+              ? `Required-content coverage ${(evidence.coverage*100).toFixed(1)}%; ${componentHits.length}/${evidence.components.length} required content area(s) sufficiently evidenced.`
+              : `Criterion evidence coverage ${(evidence.coverage*100).toFixed(1)}%; heading/section evidence used.`;
             return {
                 criterion:node.path||node.criterion,
                 max_marks:Number(node.max_marks),
                 marks_awarded:earned,
                 evidence:evidenceText,
-                rationale:`Coverage ${(evidence.coverage*100).toFixed(1)}%; ${evidence.matched.length} configured signal(s) matched.`,
-                matched_signals:evidence.matched.slice(0,30)
+                rationale,
+                matched_signals:evidence.matched.slice(0,30),
+                component_coverage:evidence.components
             };
         });
 
         let earned=rubricGrades.reduce((sum,g)=>sum+g.marks_awarded,0);
-        // If a supplied key allocates fewer marks than its declared maximum,
-        // do not invent marks. Report the allocated total separately.
         earned=Math.min(earned,totalRubricMarks,maxMarks);
         const percentage=maxMarks>0 ? Math.round((earned/maxMarks)*10000)/100 : 0;
         const allocatedPercentage=maxMarks>0 ? Math.round((totalRubricMarks/maxMarks)*10000)/100 : 0;
@@ -7141,8 +7177,8 @@ window.LecturerOnlineLearning = (() => {
             rubric_allocated_percentage:allocatedPercentage,
             confidence:Math.round(Math.min(100,Math.max(0,(rubricGrades.filter(g=>g.marks_awarded>0).length/criteria.length)*100))),
             rubric_grades:rubricGrades,
-            feedback:`Deterministic Supabase marking-key score. ${rubricGrades.filter(g=>g.marks_awarded>0).length} of ${criteria.length} configured criteria received evidence-based marks.`,
-            note:totalRubricMarks===maxMarks?'All declared marking-key marks are allocated.':`The supplied marking key allocates ${totalRubricMarks} of ${maxMarks} marks. No unallocated marks were invented.`,
+            feedback:`Deterministic Supabase marking-key score using criterion-specific required content. ${rubricGrades.filter(g=>g.marks_awarded>0).length} of ${criteria.length} configured criteria received evidence-based marks.`,
+            note:totalRubricMarks===maxMarks?'All declared marking-key marks are allocated.':'The supplied marking key allocates '+totalRubricMarks+' of '+maxMarks+' marks. No unallocated marks were invented.',
             grading_mode:'SUPABASE_MARKING_KEY_DETERMINISTIC',
             provider:'supabase-marking-key-engine',
             marking_key_id:key?.id||null,
@@ -7152,9 +7188,15 @@ window.LecturerOnlineLearning = (() => {
     }
 
     function renderDeterministicGradeReport(report){
+        const marks=Number(report.marks_awarded)||0;
+        const max=Number(report.max_marks)||0;
+        const pct=max?Math.round((marks/max)*10000)/100:0;
+        if($('olReviewMarks')) $('olReviewMarks').value=marks;
+        if($('olReviewPercentage')) $('olReviewPercentage').textContent=pct+'%';
+        if($('olReviewFeedback') && report.feedback) $('olReviewFeedback').value=report.feedback;
         const box=$('olAIGradeReport'); if(!box)return;
         const rows=(report.rubric_grades||[]).map(g=>`<div style="padding:8px 0;border-bottom:1px solid #e5e7eb"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(g.criterion)}</b><b>${esc(g.marks_awarded)}/${esc(g.max_marks)}</b></div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(g.evidence)}</div><div style="font-size:10px;color:#94a3b8;margin-top:2px">${esc(g.rationale)}</div></div>`).join('');
-        box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Supabase Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(report.marks_awarded)}/${esc(report.max_marks)} (${esc(report.percentage)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Marking evidence (${esc((report.rubric_grades||[]).length)} criteria)</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
+        box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Supabase Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(marks)}/${esc(max)} (${esc(pct)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Marking evidence (${esc((report.rubric_grades||[]).length)} criteria)</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
     }
 
     async function autoGradeUsingMarkingKey(id){
@@ -8796,6 +8838,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
 
     return {loadMarkingKeys,getAssignmentGradingConfig,fetchSubmissionMarkingKey,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
+;
 ;
 ;;
 ;
