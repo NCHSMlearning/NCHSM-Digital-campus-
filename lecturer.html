@@ -2707,6 +2707,26 @@
                     <option value="">-- Select Block --</option>
                 </select>
             </div>
+            <!-- 🆕 NEW: Intake Year / Cohort -->
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="sessionIntakeYear" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-users" style="color: #4C1D95; width: 18px;"></i> Intake Year (Cohort) *
+                </label>
+                <select id="sessionIntakeYear" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">-- Select Intake Year --</option>
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                </select>
+                <span style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                    <i class="fas fa-info-circle"></i> The year students joined (not the academic year)
+                </span>
+            </div>
+        </div>
+        
+        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionUnit" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-book" style="color: #4C1D95; width: 18px;"></i> Unit *
@@ -2715,9 +2735,6 @@
                     <option value="">-- Select Unit --</option>
                 </select>
             </div>
-        </div>
-        
-        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionType" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-tag" style="color: #4C1D95; width: 18px;"></i> Session Type
@@ -2736,7 +2753,10 @@
                 </label>
                 <input type="text" id="sessionLocation" placeholder="e.g., Lecture Hall 3" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
-            <div class="form-group" style="display: flex; flex-direction; column; gap: 5px;">
+        </div>
+        
+        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-users" style="color: #4C1D95; width: 18px;"></i> Capacity
                 </label>
@@ -2815,7 +2835,6 @@
             </table>
         </div>
         
-        <!-- Table Footer -->
         <div style="padding: 12px 18px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <span style="font-size: 13px; color: #64748b;">
                 <i class="fas fa-database"></i> <span id="sessionCountDisplay">0</span> sessions found
