@@ -2143,6 +2143,55 @@ executeLogin: async function(identifier, password) {
     // LOGIN HANDLER - WITH 2FA SUPPORT
     // ============================================
     // ============================================
+    // ============================================
+    // CLOUDFLARE TURNSTILE - SERVER-SIDE VERIFICATION
+    // ============================================
+    verifyCloudflareTurnstile: async function() {
+        const form = document.getElementById('loginForm');
+        const token = form?.querySelector('[name="cf-turnstile-response"]')?.value?.trim() || '';
+
+        if (!token) {
+            throw new Error('Please complete the Cloudflare security verification.');
+        }
+
+        if (!this.supabase) {
+            throw new Error('Authentication service not available');
+        }
+
+        try {
+            const { data, error } = await this.supabase.functions.invoke(
+                'cloudflare-turnstile',
+                { body: { token } }
+            );
+
+            if (error) {
+                console.error('❌ Turnstile Edge Function error:', error);
+                throw new Error('Cloudflare security verification is unavailable. Please try again.');
+            }
+
+            if (!data || data.success !== true) {
+                console.warn('⚠️ Turnstile verification rejected:', data?.error || 'Unknown error');
+                throw new Error('Cloudflare security verification failed. Please try again.');
+            }
+
+            console.log('✅ Cloudflare Turnstile verification passed');
+            return true;
+        } catch (error) {
+            console.error('❌ Cloudflare Turnstile verification error:', error);
+
+            try {
+                const widget = form?.querySelector('.cf-turnstile');
+                if (window.turnstile && widget) {
+                    window.turnstile.reset(widget);
+                }
+            } catch (_) {}
+
+            throw error instanceof Error
+                ? error
+                : new Error('Cloudflare security verification failed. Please try again.');
+        }
+    },
+
     handleLogin: async function(e) {
         e.preventDefault();
         
@@ -2215,6 +2264,10 @@ executeLogin: async function(identifier, password) {
         
         try {
             console.log(`🔐 Logging in: ${identifier}`);
+            // Cloudflare must pass before any credential authentication.
+            console.log('🛡️ Verifying Cloudflare Turnstile...');
+            await this.verifyCloudflareTurnstile();
+
             
             const result = await this.executeLogin(identifier, password);
             
@@ -2255,7 +2308,14 @@ executeLogin: async function(identifier, password) {
                 'error': error.message
             });
             
-            if (this.supabase && !error.message.includes('staff')) {
+            const errorMessage = String(error?.message || '').toLowerCase();
+
+            if (
+                this.supabase &&
+                !errorMessage.includes('cloudflare') &&
+                !errorMessage.includes('turnstile') &&
+                !errorMessage.includes('security verification')
+            ) {
                 try {
                     await this.supabase.auth.signOut();
                 } catch (signOutError) {}
