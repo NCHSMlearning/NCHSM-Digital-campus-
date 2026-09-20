@@ -753,6 +753,30 @@ function ensureResearchStyles(){
       top:0!important;
       z-index:20!important;
     }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions{
+      min-height:48px!important;
+      box-sizing:border-box!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions .ol-research-btn{
+      min-height:34px!important;
+      white-space:nowrap!important;
+    }
+    @media(max-width:760px){
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions{
+        top:43px!important;
+        align-items:flex-start!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions > div:first-child{
+        width:100%!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions > div:last-child{
+        width:100%!important;
+        margin-left:0!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions .ol-research-btn{
+        flex:1 1 auto!important;
+      }
+    }
     body > #ol-research-modal > #ol-research-dialog .ol-rs-tool{
       min-width:30px!important;
       height:30px!important;
@@ -1316,10 +1340,16 @@ async function loadResearchDocumentForViewer(r,editMode){
       if(hp)hp.addEventListener('input',function(){restoreRange();document.execCommand('hiliteColor',false,this.value);saveRange()});
       host.appendChild(toolbar);
     }
-    host.appendChild(editor);
     if(editMode){
-      var save=document.createElement('div');save.style.cssText='display:flex;justify-content:flex-end;gap:6px;padding:9px;background:#fff;border-top:1px solid #dbe6ef';save.innerHTML='<button class="ol-research-btn ol-research-muted" type="button" data-rs-view-only>View Only</button><button class="ol-research-btn ol-research-primary" type="button" data-rs-submit-correction><i class="fas fa-paper-plane"></i> Submit Correction to Lecturer</button>';host.appendChild(save);
+      var save=document.createElement('div');
+      save.className='ol-rs-correction-actions';
+      save.style.cssText='position:sticky;top:43px;z-index:19;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 10px;background:#fff;border-bottom:1px solid #cbd8e5;box-shadow:0 2px 6px rgba(20,40,60,.08)';
+      save.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#173452"><i class="fas fa-pen-to-square"></i><span>Correction Mode</span><span style="font-size:9px;font-weight:600;color:#71859c">Edit the paper, then submit your corrected version.</span></div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-left:auto"><button class="ol-research-btn ol-research-muted" type="button" data-rs-view-only>View Only</button><button class="ol-research-btn ol-research-primary" type="button" data-rs-submit-correction><i class="fas fa-paper-plane"></i> Submit Correction to Lecturer</button></div>';
+      host.appendChild(save);
+      host.appendChild(editor);
       editor.addEventListener('input',function(){editor.dataset.dirty='1'});
+    }else{
+      host.appendChild(editor);
     }
     
     if(!editMode){
