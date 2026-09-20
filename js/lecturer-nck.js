@@ -821,28 +821,24 @@ async function lecturerNCKSaveStudentToDatabase(student, scores, options) {
     var admissionNumber = student.admission_number
         ? String(student.admission_number).trim()
         : null;
-    // nck_marks.student_id is a UUID. The consolidated profile's `id` is the
-    // actual UUID; `student.student_id` may contain an admission number such as
-    // KRCHN/0048/MAR/24 and must NEVER be written into the UUID column.
-    // IMPORTANT: nck_marks.student_id is UUID.
-    // In SWL, `student_id` is the admission number (e.g. KRCHN/0048/MAR/24).
-    // The correct UUID is stored in `student_uuid` on the consolidated profile.
+    // IMPORTANT: nck_marks.student_id has a foreign key to
+    // consolidated_user_profiles_table.user_id.
+    // Therefore ONLY `user_id` may be written to nck_marks.student_id.
+    // `student_id` is the admission number (e.g. KRCHN/0048/MAR/24),
+    // `student_uuid` is a different UUID, and `id` is the profile row UUID.
     var studentId = null;
     var uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-    if (student.student_uuid && uuidPattern.test(String(student.student_uuid).trim())) {
-        studentId = String(student.student_uuid).trim();
-    } else if (student.id && uuidPattern.test(String(student.id).trim())) {
-        studentId = String(student.id).trim();
-    } else if (student.user_id && uuidPattern.test(String(student.user_id).trim())) {
+    if (student.user_id && uuidPattern.test(String(student.user_id).trim())) {
         studentId = String(student.user_id).trim();
     }
 
-    // Never use student.student_id here: SWL stores the admission number in that field.
+    // Resolve by admission number when the loaded student object does not
+    // contain user_id. This follows the actual nck_marks FK exactly.
     if (!studentId && admissionNumber) {
         var profileLookup = await supabase
             .from('consolidated_user_profiles_table')
-            .select('student_uuid, id, user_id')
+            .select('user_id')
             .eq('admission_number', admissionNumber)
             .eq('program', 'KRCHN')
             .limit(1);
@@ -850,16 +846,19 @@ async function lecturerNCKSaveStudentToDatabase(student, scores, options) {
         if (profileLookup.error) throw profileLookup.error;
 
         var profile = profileLookup.data && profileLookup.data[0];
-        if (profile) {
-            if (profile.student_uuid && uuidPattern.test(String(profile.student_uuid).trim())) {
-                studentId = String(profile.student_uuid).trim();
-            } else if (profile.id && uuidPattern.test(String(profile.id).trim())) {
-                studentId = String(profile.id).trim();
-            } else if (profile.user_id && uuidPattern.test(String(profile.user_id).trim())) {
-                studentId = String(profile.user_id).trim();
-            }
+        if (profile && profile.user_id && uuidPattern.test(String(profile.user_id).trim())) {
+            studentId = String(profile.user_id).trim();
         }
     }
+
+    if (!studentId) {
+        throw new Error(
+            'Student user_id not found for ' + (admissionNumber || 'this student') +
+            '. nck_marks.student_id must match consolidated_user_profiles_table.user_id.'
+        );
+    }
+
+    console.log('🔗 [NCK] FK mapping:', admissionNumber, '→ user_id:', studentId);
 
     var totalScore = 0;
     var scoredCount = 0;
@@ -909,7 +908,7 @@ async function lecturerNCKSaveStudentToDatabase(student, scores, options) {
     // published, published_at, published_by, approval_status, approved_by,
     // approved_at, rejection_reason, submitted_at, submitted_by, program.
     //
-    // student_id MUST remain the SWL student UUID; admission_number remains text.
+    // student_id MUST be consolidated_user_profiles_table.user_id; admission_number remains text.
     var nowISO = new Date().toISOString();
 
     var markData = {
