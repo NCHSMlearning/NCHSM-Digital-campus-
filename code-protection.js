@@ -17,10 +17,32 @@
     'use strict';
 
     // --------------------------------------------
-    // 1. Never create a client-side backdoor.
+    // 1. Developer debug mode
     // --------------------------------------------
-    // There is intentionally NO ?dev=true, ?debug=true,
-    // ?bypass=true, ?admin=true or secret URL bypass.
+    // ?debug=true enables normal browser debugging:
+    // right-click, DevTools shortcuts, console and source
+    // inspection are NOT blocked in this mode.
+    //
+    // This is a developer convenience switch, NOT a security
+    // boundary. Anything shipped to a browser can ultimately
+    // be inspected by a determined user.
+    var params = new URLSearchParams(window.location.search);
+    var debugMode =
+        params.get('debug') === 'true' ||
+        params.get('dev') === 'true';
+
+    if (debugMode) {
+        window.NCHSMCodeProtection = {
+            version: '3.1',
+            editorSafe: true,
+            debugMode: true,
+            backdoor: false,
+            frontendOnly: true
+        };
+
+        // Do not install any protection handlers in debug mode.
+        return;
+    }
 
     // --------------------------------------------
     // 2. Detect editable/document areas.
@@ -245,11 +267,12 @@
     // Supabase Auth + RLS + Storage policies.
 
     // --------------------------------------------
-    // 10. Expose a harmless status helper.
+    // 10. Protection status
     // --------------------------------------------
     window.NCHSMCodeProtection = {
-        version: '3.0',
+        version: '3.1',
         editorSafe: true,
+        debugMode: false,
         backdoor: false,
         frontendOnly: true
     };
