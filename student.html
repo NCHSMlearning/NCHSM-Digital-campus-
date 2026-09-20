@@ -5233,6 +5233,36 @@ body.dark-mode #hub-online-learning .ol-research-head p,body.dark-mode #hub-onli
 }
 body.dark-mode #ol-research-correction-modal .ol-research-editor{background:#101b2a}
 body.dark-mode #ol-research-correction-modal .ol-research-editor-page{background:#fff;color:#172b45}
+
+<style id="nchsm-student-research-viewer-final">
+#ol-research-details-modal{z-index:90000!important}
+#ol-research-details-modal .ol-research-dialog{width:min(1500px,98vw)!important;max-width:1500px!important;height:min(94vh,980px)!important;max-height:94vh!important;display:flex!important;flex-direction:column!important}
+#ol-research-details-modal .ol-dialog-head{flex:0 0 auto!important;position:relative!important;z-index:20!important}
+#ol-research-details-modal .ol-dialog-body{flex:1 1 auto!important;min-height:0!important;overflow:auto!important;padding:14px!important}
+#ol-research-details-modal .ol-research-view-layout{min-height:calc(100% - 1px)!important}
+#ol-research-details-modal .ol-research-document-panel{min-width:0!important;display:flex!important;flex-direction:column!important}
+#ol-research-details-modal .ol-research-inline-document{min-height:600px!important;flex:1 1 auto!important;overflow:auto!important;background:#eef3f8!important;border:1px solid #dbe6ef!important;border-radius:10px!important;padding:16px!important;box-sizing:border-box!important}
+#ol-research-details-modal .ol-research-preview-frame{display:block!important;width:100%!important;height:calc(100vh - 260px)!important;min-height:650px!important;border:0!important;border-radius:8px!important;background:#fff!important}
+#ol-research-details-modal .ol-research-docx-preview{max-width:900px!important;min-height:100%!important;margin:0 auto!important;padding:50px!important;box-sizing:border-box!important;background:#fff!important;color:#172b45!important;font:14px/1.75 Georgia,"Times New Roman",serif!important;box-shadow:0 4px 20px rgba(15,23,42,.10)!important}
+#ol-research-details-modal .ol-research-docx-preview img{max-width:100%!important;height:auto!important}
+#ol-research-details-modal .ol-research-docx-preview table{max-width:100%!important;border-collapse:collapse!important}
+#ol-research-details-modal .ol-research-docx-preview td,#ol-research-details-modal .ol-research-docx-preview th{border:1px solid #cbd5e1!important;padding:6px!important}
+#ol-research-details-modal .ol-research-view-actions{display:flex!important;align-items:center!important;gap:7px!important;flex-wrap:wrap!important}
+#ol-research-details-modal .ol-research-view-actions .ol-btn{white-space:nowrap!important}
+#ol-research-details-modal .ol-research-dialog:fullscreen{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;margin:0!important;border-radius:0!important}
+#ol-research-details-modal:has(.ol-research-dialog:fullscreen) .ol-research-review-panel{display:none!important}
+#ol-research-details-modal:has(.ol-research-dialog:fullscreen) .ol-research-view-layout{grid-template-columns:1fr!important}
+#ol-research-details-modal:has(.ol-research-dialog:fullscreen) .ol-research-inline-document{min-height:calc(100vh - 150px)!important;height:calc(100vh - 150px)!important;border-radius:0!important;padding:18px!important}
+#ol-research-details-modal:has(.ol-research-dialog:fullscreen) .ol-research-preview-frame{height:calc(100vh - 190px)!important;min-height:0!important}
+#ol-research-details-modal:has(.ol-research-dialog:fullscreen) .ol-research-docx-preview{max-width:1000px!important;min-height:calc(100vh - 200px)!important}
+@media(max-width:800px){
+#ol-research-details-modal .ol-research-dialog{width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}
+#ol-research-details-modal .ol-dialog-body{padding:8px!important}
+#ol-research-details-modal .ol-research-inline-document{min-height:calc(100dvh - 220px)!important;padding:8px!important}
+#ol-research-details-modal .ol-research-preview-frame{height:calc(100dvh - 260px)!important;min-height:480px!important}
+#ol-research-details-modal .ol-research-docx-preview{padding:24px!important;font-size:13px!important}
+}
+</style>
 </style>
 <section class="tab-content" hidden="" id="hub-online-learning">
 <div class="ol-wrap">
@@ -5370,8 +5400,15 @@ body.dark-mode #ol-research-correction-modal .ol-research-editor-page{background
 <div class="ol-modal" id="ol-research-details-modal" aria-hidden="true">
   <div class="ol-dialog ol-research-dialog">
     <div class="ol-dialog-head">
-      <h3><i class="fas fa-file-lines"></i> Research Submission Details</h3>
-      <button class="ol-close" type="button" data-ol-research-close="details"><i class="fas fa-times"></i></button>
+      <div style="min-width:0;flex:1">
+        <h3><i class="fas fa-file-lines"></i> Research Submission Details</h3>
+        <small id="ol-research-view-status" style="color:#71859c">Research paper viewer</small>
+      </div>
+      <div class="ol-research-view-actions">
+        <button class="ol-btn ol-btn-secondary" id="ol-research-back-online" type="button" title="Back to Online Learning"><i class="fas fa-arrow-left"></i><span>Back to Online Learning</span></button>
+        <button class="ol-btn ol-btn-secondary" id="ol-research-fullscreen" type="button" title="Open paper full screen"><i class="fas fa-expand"></i><span>Full Screen</span></button>
+        <button class="ol-close" type="button" data-ol-research-close="details" title="Close"><i class="fas fa-times"></i></button>
+      </div>
     </div>
     <div class="ol-dialog-body" id="ol-research-details-body"></div>
   </div>
@@ -5474,7 +5511,17 @@ function researchBadge(s){var x=String(s||'submitted').toLowerCase();return '<sp
 function researchTypeLabel(t){var x=String(t||'').toLowerCase();return x==='final_paper'||x==='final_research_paper'?'Research Project / Final Paper':(x==='correction'?'Correction / Revised Paper':'Research Proposal')}
 function researchProfileName(){var p=profile();return p.full_name||p.name||'Student'}
 function researchOpenModal(id){var m=document.getElementById(id);if(m){m.classList.add('open');m.setAttribute('aria-hidden','false')}}
-function researchCloseModal(which){var id=which==='submit'?'ol-research-submit-modal':'ol-research-details-modal';var m=document.getElementById(id);if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}}
+function researchCloseModal(which){
+  var id=which==='submit'?'ol-research-submit-modal':'ol-research-details-modal';
+  var m=document.getElementById(id);
+  if(id==='ol-research-details-modal'){
+    if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});
+    var d=document.querySelector('#ol-research-details-modal .ol-research-dialog');
+    if(d)d.classList.remove('research-css-fullscreen');
+    if(m)m.classList.remove('is-browser-fullscreen');
+  }
+  if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}
+}
 function researchResetForm(){['ol-research-title','ol-research-abstract'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=''});var t=document.getElementById('ol-research-submission-type');if(t)t.value='proposal';var s=document.getElementById('ol-research-supervisor');if(s)s.value='';var f=document.getElementById('ol-research-file');if(f)f.value='';var n=document.getElementById('ol-research-file-name');if(n)n.textContent='';state.researchFile=null}
 async function loadResearchSupervisors(){var sb=client(),sel=document.getElementById('ol-research-supervisor');if(!sb||!sel)return;var current=sel.value;try{var q=await sb.from('consolidated_user_profiles_table').select('user_id,full_name,email,role,program').in('role',['lecturer','Lecturer','LECTURER','supervisor','Supervisor']).order('full_name',{ascending:true});if(q.error)throw q.error;var rows=q.data||[];sel.innerHTML='<option value="">Select your supervisor</option>'+rows.map(function(x){var name=x.full_name||x.email||'Lecturer';return '<option value="'+esc(name)+'">'+esc(name)+'</option>'}).join('');if(current)sel.value=current}catch(e){console.warn('Supervisor list could not be loaded:',e);}}
 function renderResearch(){var box=document.getElementById('ol-research-list'),guides=document.getElementById('ol-research-guidelines');if(!box)return;if(state.researchTab==='guidelines'){box.hidden=true;if(guides)guides.hidden=false;return}box.hidden=false;if(guides)guides.hidden=true;var q=(document.getElementById('ol-research-search')?.value||'').toLowerCase().trim(),tf=document.getElementById('ol-research-type-filter')?.value||'all',sf=document.getElementById('ol-research-status-filter')?.value||'all';var arr=state.research.filter(function(r){var text=[r.title,r.submission_type,r.supervisor_name,r.document_name].join(' ').toLowerCase();return (!q||text.includes(q))&&(tf==='all'||r.submission_type===tf)&&(sf==='all'||r.status===sf)});if(!arr.length){box.innerHTML='<div class="ol-empty"><i class="fas fa-flask"></i><strong>No research submissions found</strong><br>Click <b>Submit New Paper</b> to submit your research proposal or final research paper.</div>';return}box.innerHTML=arr.map(function(r){return '<div class="ol-research-row"><div><strong>'+esc(r.title||'Untitled Research')+'</strong><small>'+esc(r.supervisor_name||'Supervisor not assigned')+'</small></div><div>'+esc(researchTypeLabel(r.submission_type))+'</div><div>'+esc(r.supervisor_name||'—')+'</div><div>'+esc(fmtDate(r.submitted_at||r.created_at))+'</div><div>'+researchBadge(r.status)+'</div><div>v'+esc(r.version_number||1)+'</div><div><button class="ol-btn ol-btn-secondary" type="button" data-research-view="'+esc(r.id)+'"><i class="fas fa-eye"></i> View</button></div></div>'}).join('')}
@@ -5557,6 +5604,44 @@ function renderResearchComments(comments){
 }
 async function addResearchCommentReply(parentId,textValue){var sb=client(),id=uid(),r=state.currentResearch;if(!sb||!id||!r||!String(textValue||'').trim())return;var p=profile();var row={research_submission_id:r.id,research_group_id:r.research_group_id||null,student_id:r.student_id,author_id:id,author_role:'student',author_name:p.full_name||p.name||'Student',comment_text:String(textValue).trim(),status:'open',parent_comment_id:parentId,created_at:new Date().toISOString(),updated_at:new Date().toISOString()};var q=await sb.from('research_comments').insert(row);if(q.error){alert('Could not add reply: '+q.error.message);return}renderResearchComments(await loadResearchComments(r.id));}
 
+
+function researchViewerDialog(){return document.querySelector('#ol-research-details-modal .ol-research-dialog')}
+function researchViewerUpdateFullscreenButton(){
+  var b=document.getElementById('ol-research-fullscreen');if(!b)return;
+  var active=!!document.fullscreenElement||!!document.querySelector('#ol-research-details-modal .research-css-fullscreen');
+  b.innerHTML=active?'<i class="fas fa-compress"></i><span>Exit Full Screen</span>':'<i class="fas fa-expand"></i><span>Full Screen</span>';
+}
+async function researchViewerToggleFullscreen(){
+  var d=researchViewerDialog(),m=document.getElementById('ol-research-details-modal');if(!d)return;
+  if(document.fullscreenElement){
+    try{await document.exitFullscreen()}catch(e){}
+    researchViewerUpdateFullscreenButton();return;
+  }
+  if(d.classList.contains('research-css-fullscreen')){
+    d.classList.remove('research-css-fullscreen');if(m)m.classList.remove('is-browser-fullscreen');researchViewerUpdateFullscreenButton();return;
+  }
+  try{if(d.requestFullscreen)await d.requestFullscreen({navigationUI:'hide'});else throw new Error('Fullscreen API unavailable')}
+  catch(e){d.classList.add('research-css-fullscreen');if(m)m.classList.add('is-browser-fullscreen')}
+  researchViewerUpdateFullscreenButton();
+}
+function researchViewerBackToOnline(){
+  if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(function(){});
+  var d=researchViewerDialog();if(d)d.classList.remove('research-css-fullscreen');
+  var m=document.getElementById('ol-research-details-modal');if(m)m.classList.remove('is-browser-fullscreen');
+  researchCloseModal('details');
+  state.tab='research';
+  var c=document.getElementById('ol-research-content');if(c)c.hidden=false;
+  var main=document.querySelector('#hub-online-learning > .ol-wrap');if(main)main.hidden=true;
+  var hub=document.getElementById('hub-online-learning');if(hub)hub.scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function researchRenderHtmlDocument(area,url){
+  var resp=await fetch(url,{credentials:'omit'});if(!resp.ok)throw new Error('Unable to open the HTML research document.');
+  var source=await resp.text(),doc=new DOMParser().parseFromString(source,'text/html');
+  doc.querySelectorAll('script,iframe,object,embed,form,base').forEach(function(el){el.remove()});
+  var article=document.createElement('article');article.className='ol-research-docx-preview ol-research-html-preview';
+  article.innerHTML=doc.body?doc.body.innerHTML:source;
+  area.innerHTML='';area.appendChild(article);return article;
+}
 async function viewResearch(id){
   var r=state.research.find(function(x){return String(x.id)===String(id)});if(!r)return;state.currentResearch=r;
   var body=document.getElementById('ol-research-details-body');if(!body)return;
@@ -5564,7 +5649,7 @@ async function viewResearch(id){
   body.innerHTML=researchPreviewLoading();
   var p=profile(),url=null,download=null;
   try{url=await researchDocumentUrl(r.document_path,false);download=await researchDocumentUrl(r.document_path,true);}catch(e){console.error(e)}
-  var type=researchTypeLabel(r.submission_type), ext=researchDocExt(r);
+  var type=researchTypeLabel(r.submission_type), ext=researchDocExt(r);var statusLabel=document.getElementById('ol-research-view-status');if(statusLabel)statusLabel.textContent='Version '+(r.version_number||1)+' · '+(ext||'document').toUpperCase();
   body.innerHTML='<div class="ol-research-view-head"><div><h4>'+esc(r.title||'Untitled Research')+'</h4><div class="ol-research-view-tags"><span class="ol-research-badge '+esc(r.status||'submitted')+'">'+esc(type)+'</span><span class="ol-pill">Version '+esc(r.version_number||1)+'</span></div></div>'+researchBadge(r.status)+'</div>'+
     '<div class="ol-research-view-layout">'+
       '<section class="ol-research-document-panel"><div class="ol-research-document-head"><div><strong><i class="fas fa-file-lines"></i> '+esc(r.document_name||'Research document')+'</strong><small>Document preview · same review view used by lecturers</small></div><div class="ol-actions">'+(download?'<a class="ol-btn ol-btn-secondary" href="'+esc(download)+'" target="_blank" rel="noopener"><i class="fas fa-download"></i> Download</a>':'')+'</div></div><div id="ol-research-inline-document" class="ol-research-inline-document">'+researchPreviewLoading()+'</div></section>'+ 
@@ -5572,7 +5657,7 @@ async function viewResearch(id){
         '<div class="ol-research-detail-card"><strong>Student</strong><span>'+esc(p.full_name||p.name||'Student')+'</span><small>'+esc(p.program||'')+(p.current_block||p.block?' · '+esc(p.current_block||p.block):'')+'</small></div>'+ 
         '<div class="ol-research-detail-card"><strong>Supervisor</strong><span>'+esc(r.supervisor_name||'—')+'</span><small>Submitted '+esc(fmtDateTime(r.submitted_at||r.created_at))+'</small></div>'+ 
         '<div class="ol-research-detail-card"><strong>Abstract / Description</strong><p>'+esc(r.abstract||'No abstract provided.').replace(/\n/g,'<br>')+'</p></div>'+ 
-        (researchIsRevisionRequired(r)&&researchIsDocx(r)?'<div class="ol-research-correction-notice"><strong><i class="fas fa-triangle-exclamation"></i> Revision Required</strong><p>Your lecturer has requested corrections. Open the document in the correction workspace, make the required changes and submit a new version.</p><button type="button" class="ol-btn ol-btn-primary" id="ol-start-research-correction"><i class="fas fa-pen-to-square"></i> View &amp; Correct DOCX</button></div>':'')+
+        (researchIsRevisionRequired(r)&&researchIsDocx(r)?'<div class="ol-research-correction-notice"><strong><i class="fas fa-triangle-exclamation"></i> Revision Required</strong><p>Your lecturer has requested corrections. Open the document in the correction workspace, make the required changes and submit a new version.</p><button type="button" class="ol-btn ol-btn-primary" id="ol-start-research-correction"><i class="fas fa-pen-to-square"></i> View &amp; Correct Document</button></div>':'')+
         '<div class="ol-research-detail-card"><strong>Supervisor Feedback</strong><p style="white-space:pre-wrap">'+esc(r.feedback||'No feedback has been provided yet.')+'</p></div>'+ '<div class="ol-research-comments"><h5><i class="fas fa-comments"></i> Inline Lecturer Comments</h5><div id="ol-research-comments-list"><div style="font-size:9px;color:#71859c">Loading comments...</div></div></div>'+ (r.reviewed_at?'<div class="ol-research-reviewed">Reviewed: '+esc(fmtDateTime(r.reviewed_at))+'</div>':'')+
       '</aside></div>';
   var rc=document.getElementById('ol-start-research-correction');if(rc)rc.onclick=function(){openResearchCorrection(r.id)};
@@ -5587,9 +5672,7 @@ async function viewResearch(id){
       var resp=await fetch(url);if(!resp.ok)throw new Error('Unable to download the DOCX document.');
       var out=await window.mammoth.convertToHtml({arrayBuffer:await resp.arrayBuffer()});
       area.innerHTML='<article class="ol-research-docx-preview">'+(out.value||'<p>No readable text found.</p>')+'</article>';
-    }else if(ext==='html'||ext==='htm'){
-      area.innerHTML='<iframe class="ol-research-preview-frame" title="'+esc(r.document_name||'Research document')+'" src="'+esc(url)+'"></iframe>';
-    }else{
+    }else if(ext==='html'||ext==='htm'){await researchRenderHtmlDocument(area,url);}else{
       area.innerHTML='<div class="ol-research-preview-error"><i class="fas fa-file-circle-question"></i> Inline preview is not available for this file type. Use Download to open the original document.</div>';
     }
   }catch(e){console.error('Research document preview:',e);area.innerHTML='<div class="ol-research-preview-error"><i class="fas fa-circle-exclamation"></i> Document could not be opened: '+esc(e.message||e)+'<br>Use Download if available.</div>'}
@@ -5604,11 +5687,14 @@ async function openModal(a){state.current=a;state.file=null;var m=document.getEl
 async function submitCurrent(){var a=state.current,sb=client(),id=uid(),btn=document.getElementById('ol-submit-btn');if(!a||!sb||!id)return;if(a.due_at&&new Date(a.due_at).getTime()<Date.now()){setError('This assignment is past its due date and can no longer be submitted.');close('assignment');return}if(state.file&&state.file.size>10*1024*1024){setError('The selected document is larger than 10 MB.');return}btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';try{var payload={assignment_id:a.id,student_id:id,status:'submitted',submitted_at:new Date().toISOString(),result_released:false};if(state.file){var safe=state.file.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=id+'/'+a.id+'/'+Date.now()+'_'+safe,up=await sb.storage.from('assignment-submissions').upload(path,state.file,{upsert:false,contentType:state.file.type||undefined});if(up.error)throw up.error;payload.file_path=path;payload.file_name=state.file.name;payload.file_type=state.file.type;payload.file_size=state.file.size}var answers=[];(state.currentQuestions||[]).forEach(function(q){var value='';if(q.question_type==='mcq'||q.question_type==='true_false'){var r=document.querySelector('input[name="olq_'+CSS.escape(String(q.id))+'"]:checked');value=r?r.value:''}else{var t=document.querySelector('[data-ol-question="'+CSS.escape(String(q.id))+'"]');value=t?t.value:''}answers.push({question_id:q.id,answer_text:value})});payload.answers=answers;var ins=await sb.from('online_submissions').insert(payload).select().single();if(ins.error)throw ins.error;state.submissions.unshift(ins.data);close('assignment');render();alert('Your work has been submitted successfully. The result will appear after the lecturer grades and releases it.')}catch(e){console.error('Submission failed:',e);setError('Submission failed: '+(e.message||e))}finally{btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Submit Work'}}
 async function viewResult(id){var s=state.submissions.find(function(x){return String(x.id)===String(id)})||state.results.find(function(x){return String(x.id)===String(id)});if(!s)return;var a=state.assignments.find(function(x){return String(x.id)===String(s.assignment_id)})||{},body=document.getElementById('ol-result-body'),pct=s.max_marks?Math.round(Number(s.marks_obtained)/Number(s.max_marks)*100):0;body.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087bf0">'+esc(s.marks_obtained??'—')+'</strong><small style="display:block;color:#71859c">Marks</small></div><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087a4d">'+(s.max_marks?pct+'%':'—')+'</strong><small style="display:block;color:#71859c">Percentage</small></div><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:13px;color:#18304d">'+esc(fmtDate(s.released_at))+'</strong><small style="display:block;color:#71859c">Released</small></div></div><div class="ol-notice"><strong>'+esc(a.title||'Assignment')+'</strong><br>'+esc(a.unit_code||'')+'</div><div style="padding:12px;border:1px solid #e1eaf2;border-radius:10px"><strong style="font-size:11px;color:#18304d">Lecturer Feedback</strong><p style="font-size:11px;line-height:1.55;color:#607994;white-space:pre-wrap">'+esc(s.feedback||'No feedback was added.')+'</p></div>';var m=document.getElementById('ol-result-modal');m.classList.add('open');m.setAttribute('aria-hidden','false')}
 function close(which){var m=document.getElementById(which==='result'?'ol-result-modal':'ol-assignment-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}}
-function bind(){if(state.bound)return;state.bound=true;document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(b){b.addEventListener('click',function(){state.tab=this.dataset.olTab;render()})});document.getElementById('ol-search')?.addEventListener('input',render);document.getElementById('ol-status-filter')?.addEventListener('change',render);document.getElementById('ol-refresh')?.addEventListener('click',loadData);document.getElementById('ol-submit-btn')?.addEventListener('click',submitCurrent);document.querySelectorAll('#hub-online-learning [data-ol-close]').forEach(function(b){b.addEventListener('click',function(){close(this.dataset.olClose)})});document.getElementById('hub-online-learning').addEventListener('click',function(e){var o=e.target.closest('[data-ol-open]');if(o){var a=state.assignments.find(function(x){return String(x.id)===String(o.dataset.olOpen)});if(a)openModal(a);return}var r=e.target.closest('[data-ol-result]');if(r){viewResult(r.dataset.olResult);return}var rv=e.target.closest('[data-research-view]');if(rv){viewResearch(rv.dataset.researchView);return}var rc=e.target.closest('#ol-start-research-correction');if(rc&&state.currentResearch){openResearchCorrection(state.currentResearch.id);return}var rp=e.target.closest('[data-rs-reply]');if(rp){var inp=document.querySelector('[data-rs-reply-input=\"'+CSS.escape(rp.dataset.rsReply)+'\"]');if(inp)addResearchCommentReply(rp.dataset.rsReply,inp.value)}});document.querySelectorAll('#hub-online-learning .ol-modal').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m){if(m.id==='ol-research-submit-modal')researchCloseModal('submit');else if(m.id==='ol-research-details-modal')researchCloseModal('details');else if(m.id==='ol-research-correction-modal')closeResearchCorrection();else close(m.id==='ol-result-modal'?'result':'assignment')}})});document.getElementById('ol-research-submit-open')?.addEventListener('click',function(){researchResetForm();researchOpenModal('ol-research-submit-modal');loadResearchSupervisors()});document.getElementById('ol-research-submit-btn')?.addEventListener('click',submitResearch);document.getElementById('ol-research-refresh')?.addEventListener('click',loadResearch);document.getElementById('ol-research-search')?.addEventListener('input',renderResearch);document.getElementById('ol-research-type-filter')?.addEventListener('change',renderResearch);document.getElementById('ol-research-status-filter')?.addEventListener('change',renderResearch);document.getElementById('ol-research-file')?.addEventListener('change',function(){state.researchFile=this.files&&this.files[0]||null;var n=document.getElementById('ol-research-file-name');if(n)n.textContent=state.researchFile?state.researchFile.name:''});document.querySelectorAll('[data-ol-research-close]').forEach(function(b){b.addEventListener('click',function(){researchCloseModal(this.dataset.olResearchClose)})});
+function bind(){if(state.bound)return;state.bound=true;document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(b){b.addEventListener('click',function(){state.tab=this.dataset.olTab;render()})});document.getElementById('ol-search')?.addEventListener('input',render);document.getElementById('ol-status-filter')?.addEventListener('change',render);document.getElementById('ol-refresh')?.addEventListener('click',loadData);document.getElementById('ol-submit-btn')?.addEventListener('click',submitCurrent);document.querySelectorAll('#hub-online-learning [data-ol-close]').forEach(function(b){b.addEventListener('click',function(){close(this.dataset.olClose)})});document.getElementById('hub-online-learning').addEventListener('click',function(e){var o=e.target.closest('[data-ol-open]');if(o){var a=state.assignments.find(function(x){return String(x.id)===String(o.dataset.olOpen)});if(a)openModal(a);return}var r=e.target.closest('[data-ol-result]');if(r){viewResult(r.dataset.olResult);return}var rv=e.target.closest('[data-research-view]');if(rv){viewResearch(rv.dataset.researchView);return}var rc=e.target.closest('#ol-start-research-correction');if(rc&&state.currentResearch){openResearchCorrection(state.currentResearch.id);return}var rp=e.target.closest('[data-rs-reply]');if(rp){var inp=document.querySelector('[data-rs-reply-input=\"'+CSS.escape(rp.dataset.rsReply)+'\"]');if(inp)addResearchCommentReply(rp.dataset.rsReply,inp.value)}});document.querySelectorAll('#hub-online-learning .ol-modal').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m){if(m.id==='ol-research-submit-modal')researchCloseModal('submit');else if(m.id==='ol-research-details-modal')researchCloseModal('details');else if(m.id==='ol-research-correction-modal')closeResearchCorrection();else close(m.id==='ol-result-modal'?'result':'assignment')}})});document.getElementById('ol-research-submit-open')?.addEventListener('click',function(){researchResetForm();researchOpenModal('ol-research-submit-modal');loadResearchSupervisors()});document.getElementById('ol-research-submit-btn')?.addEventListener('click',submitResearch);document.getElementById('ol-research-fullscreen')?.addEventListener('click',function(e){e.preventDefault();researchViewerToggleFullscreen()});
+document.getElementById('ol-research-back-online')?.addEventListener('click',function(e){e.preventDefault();researchViewerBackToOnline()});
+document.addEventListener('fullscreenchange',function(){researchViewerUpdateFullscreenButton()});
+document.getElementById('ol-research-refresh')?.addEventListener('click',loadResearch);document.getElementById('ol-research-search')?.addEventListener('input',renderResearch);document.getElementById('ol-research-type-filter')?.addEventListener('change',renderResearch);document.getElementById('ol-research-status-filter')?.addEventListener('change',renderResearch);document.getElementById('ol-research-file')?.addEventListener('change',function(){state.researchFile=this.files&&this.files[0]||null;var n=document.getElementById('ol-research-file-name');if(n)n.textContent=state.researchFile?state.researchFile.name:''});document.querySelectorAll('[data-ol-research-close]').forEach(function(b){b.addEventListener('click',function(){researchCloseModal(this.dataset.olResearchClose)})});
 document.querySelectorAll('[data-ol-research-close="correction"]').forEach(function(b){b.addEventListener('click',closeResearchCorrection)});
 document.querySelectorAll('[data-rce-cmd]').forEach(function(b){b.addEventListener('click',function(){var ed=document.getElementById('ol-research-editor-page');if(!ed)return;ed.focus();document.execCommand(this.dataset.rceCmd,false,null);if(state.currentResearch)localStorage.setItem(researchCorrectionDraftKey(state.currentResearch),ed.innerHTML);})});
 document.getElementById('ol-rce-save-draft')?.addEventListener('click',saveResearchCorrectionDraft);
-document.getElementById('ol-rce-submit')?.addEventListener('click',submitResearchCorrection);document.querySelectorAll('[data-research-subtab]').forEach(function(b){b.addEventListener('click',function(){state.researchTab=this.dataset.researchSubtab;document.querySelectorAll('[data-research-subtab]').forEach(function(x){x.classList.toggle('active',x===b)});renderResearch()})});document.addEventListener('keydown',function(e){if(e.key==='Escape'){close('assignment');close('result');researchCloseModal('submit');researchCloseModal('details');closeResearchCorrection()}})}
+document.getElementById('ol-rce-submit')?.addEventListener('click',submitResearchCorrection);document.querySelectorAll('[data-research-subtab]').forEach(function(b){b.addEventListener('click',function(){state.researchTab=this.dataset.researchSubtab;document.querySelectorAll('[data-research-subtab]').forEach(function(x){x.classList.toggle('active',x===b)});renderResearch()})});document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(document.fullscreenElement||document.querySelector('#ol-research-details-modal .research-css-fullscreen')){e.preventDefault();if(document.fullscreenElement)document.exitFullscreen().catch(function(){});var d=researchViewerDialog();if(d)d.classList.remove('research-css-fullscreen');researchViewerUpdateFullscreenButton();return}close('assignment');close('result');researchCloseModal('submit');researchCloseModal('details');closeResearchCorrection()}})}
 function boot(){bind();loadData()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();document.addEventListener('appReady',function(){setTimeout(function(){bind();loadData()},300)});
 })();
