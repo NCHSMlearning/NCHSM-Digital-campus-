@@ -321,7 +321,7 @@ window.LecturerOnlineLearning = (() => {
           .rs-review-toolbar button{min-width:29px;height:28px;border:0;border-radius:5px;background:#fff;color:#40566f;cursor:pointer;font-size:11px}
           .rs-review-toolbar button:hover{background:#edf3f9}
           .rs-review-toolbar button.active{background:#dbeafe;color:#087bf0}
-          .rs-review-toolbar select{height:28px;border:1px solid #d7e0e8;border-radius:5px;background:#fff;color:#40566f;font-size:9px;padding:0 7px}
+          .rs-review-toolbar .rs-color-btn{min-width:31px;height:28px;border:1px solid #d7e0e8;border-radius:5px;background:#fff;color:#40566f;cursor:pointer;font-size:11px;font-weight:700}.rs-color-btn .rs-color-indicator{display:inline-block;width:16px;height:3px;vertical-align:middle;margin-left:3px;border-radius:2px}.rs-highlight-btn .rs-color-indicator{height:8px}.rs-color-popover{position:absolute;z-index:100060;background:#fff;border:1px solid #d7e0e8;border-radius:8px;padding:7px;box-shadow:0 10px 30px rgba(0,0,0,.18);display:grid;grid-template-columns:repeat(8,22px);gap:5px}.rs-color-swatch{width:22px;height:22px;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;padding:0}.rs-color-swatch:hover{outline:2px solid #2563eb;outline-offset:1px}.rs-review-toolbar select{height:28px;border:1px solid #d7e0e8;border-radius:5px;background:#fff;color:#40566f;font-size:9px;padding:0 7px}
           .rs-review-status{margin-left:auto;font-size:8px;color:#71859c;white-space:nowrap}
           .rs-editor-wrap{flex:1;min-height:0;overflow:auto;padding:26px 18px 40px;background:#f1f3f4;-webkit-overflow-scrolling:touch;position:relative;z-index:1;user-select:text;-webkit-user-select:text}
           .rs-editor-page{width:min(850px,100%);min-height:1050px;margin:0 auto;padding:70px 72px;box-sizing:border-box;background:#fff;color:#202b38;outline:0;line-height:1.7;font-size:13px;box-shadow:0 1px 6px rgba(20,40,60,.16);position:relative;z-index:2;pointer-events:auto!important;user-select:text!important;-webkit-user-select:text!important;cursor:text;caret-color:#111827;-webkit-touch-callout:default;touch-action:manipulation}
@@ -482,6 +482,7 @@ window.LecturerOnlineLearning = (() => {
         $('rsSaveReview').addEventListener('click', saveResearchReview);
         $('rsSendCorrection').addEventListener('click', saveLecturerCorrection);
         $('rsDownload').addEventListener('click', downloadCurrentResearch);
+        setTimeout(lecturerInstallResearchEditorEnhancements,50);
     }
 
     async function loadResearch() {
@@ -573,6 +574,136 @@ window.LecturerOnlineLearning = (() => {
     }
 
 
+
+    /* ============================================================
+       RESEARCH EDITOR — COLOR / HIGHLIGHT / SELECTION HELPERS
+       ============================================================ */
+    let lecturerSavedSelection = null;
+
+    function lecturerGetEditor(){
+        return document.querySelector('#rsPreview .rs-editor-page[contenteditable="true"]');
+    }
+
+    function lecturerSaveSelection(){
+        const editor = lecturerGetEditor();
+        const sel = window.getSelection();
+        if(!editor || !sel || !sel.rangeCount) return;
+        const range = sel.getRangeAt(0);
+        if(!editor.contains(range.commonAncestorContainer)) return;
+        lecturerSavedSelection = range.cloneRange();
+    }
+
+    function lecturerRestoreSelection(){
+        const editor = lecturerGetEditor();
+        if(!editor) return false;
+        editor.focus({preventScroll:true});
+        if(!lecturerSavedSelection) return false;
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(lecturerSavedSelection);
+        return true;
+    }
+
+    function lecturerExec(command,value){
+        const editor = lecturerGetEditor();
+        if(!editor) return;
+        lecturerRestoreSelection();
+        try{ document.execCommand(command,false,value); }catch(e){}
+        editor.focus({preventScroll:true});
+        editor.dispatchEvent(new Event('input',{bubbles:true}));
+        lecturerSaveSelection();
+    }
+
+    const NCHSM_RESEARCH_COLORS = [
+      '#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#d9d9d9','#ffffff',
+      '#980000','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#4a86e8','#0000ff',
+      '#9900ff','#ff00ff','#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e0e3',
+      '#c9daf8','#cfe2f3','#d9d2e9','#ead1dc','#e06666','#f6b26b','#ffd966','#93c47d',
+      '#76a5af','#6d9eeb','#8e7cc3','#c27ba0'
+    ];
+
+    function lecturerCloseColorPopovers(){
+        document.querySelectorAll('.rs-color-popover').forEach(x=>x.remove());
+    }
+
+    function lecturerOpenColorPopover(button,command){
+        lecturerCloseColorPopovers();
+        lecturerSaveSelection();
+        const pop = document.createElement('div');
+        pop.className='rs-color-popover';
+        pop.addEventListener('mousedown',e=>e.preventDefault());
+        NCHSM_RESEARCH_COLORS.forEach(function(color){
+            const sw=document.createElement('button');
+            sw.type='button';
+            sw.className='rs-color-swatch';
+            sw.style.background=color;
+            sw.title=color;
+            sw.addEventListener('mousedown',function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                lecturerRestoreSelection();
+                lecturerExec(command,color);
+                lecturerCloseColorPopovers();
+            });
+            pop.appendChild(sw);
+        });
+        document.body.appendChild(pop);
+        const r=button.getBoundingClientRect();
+        pop.style.left=Math.max(6,Math.min(window.innerWidth-pop.offsetWidth-6,r.left))+'px';
+        pop.style.top=Math.min(window.innerHeight-pop.offsetHeight-6,r.bottom+4)+'px';
+    }
+
+    function lecturerInstallColorTools(toolbar){
+        if(!toolbar || toolbar.dataset.colorsInstalled==='1') return;
+        toolbar.dataset.colorsInstalled='1';
+
+        const makeButton=function(title,label,command,highlight){
+            const b=document.createElement('button');
+            b.type='button';
+            b.className='rs-color-btn '+(highlight?'rs-highlight-btn':'');
+            b.title=title;
+            b.innerHTML=label+' <span class="rs-color-indicator" style="background:'+ (highlight?'#ffff00':'#000000') +'"></span>';
+            b.addEventListener('mousedown',function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                lecturerOpenColorPopover(b,command);
+            });
+            return b;
+        };
+
+        toolbar.appendChild(makeButton('Text color','A','foreColor',false));
+        toolbar.appendChild(makeButton('Highlight color','▰','hiliteColor',true));
+
+        document.addEventListener('mousedown',function(e){
+            if(!e.target.closest('.rs-color-popover') && !e.target.closest('.rs-color-btn')) lecturerCloseColorPopovers();
+        });
+    }
+
+    function lecturerInstallEditorProtection(){
+        const editor=lecturerGetEditor();
+        if(!editor || editor.dataset.editorProtectionInstalled==='1') return;
+        editor.dataset.editorProtectionInstalled='1';
+        editor.contentEditable='true';
+        editor.setAttribute('spellcheck','true');
+        editor.style.userSelect='text';
+        editor.style.webkitUserSelect='text';
+        editor.style.pointerEvents='auto';
+        editor.style.cursor='text';
+        editor.addEventListener('mouseup',lecturerSaveSelection);
+        editor.addEventListener('keyup',lecturerSaveSelection);
+        editor.addEventListener('touchend',lecturerSaveSelection,{passive:true});
+        editor.addEventListener('input',function(){
+            lecturerResearchCollab.localEditing=true;
+            editor.dataset.dirty='1';
+        });
+    }
+
+    function lecturerInstallResearchEditorEnhancements(){
+        const toolbar=document.querySelector('#rsReviewModal .rs-review-toolbar');
+        if(toolbar) lecturerInstallColorTools(toolbar);
+        lecturerInstallEditorProtection();
+    }
+
     const lecturerResearchCollab = {
         channel:null,
         clientId:'lecturer-'+Math.random().toString(36).slice(2)+Date.now(),
@@ -606,7 +737,13 @@ window.LecturerOnlineLearning = (() => {
         if(!sel||!sel.rangeCount)return null;
         const range=sel.getRangeAt(0);
         if(!editor.contains(range.commonAncestorContainer))return null;
-        return {text:String(sel.toString()||'').trim(),range:range};
+    
+    const nchsmResearchEditorObserver = new MutationObserver(function(){
+        if(document.getElementById('rsReviewModal')) lecturerInstallResearchEditorEnhancements();
+    });
+    if(document.body) nchsmResearchEditorObserver.observe(document.body,{childList:true,subtree:true});
+
+    return {text:String(sel.toString()||'').trim(),range:range};
     }
 
     function lecturerSelectionOffsets(editor){
@@ -915,6 +1052,103 @@ window.LecturerOnlineLearning = (() => {
         const original=String(s.document_name||s.document_path||'Research Paper').split(/[\\/]/).pop();
         const stem=original.replace(/\.(docx?|html?)$/i,'').trim()||String(s.title||'Research').replace(/[^a-zA-Z0-9 _-]/g,'').trim()||'Research';
         return stem+'_Lecturer_Correction_V'+next+'.'+ext;
+    }
+
+
+    function lecturerResearchExtension(s){
+        const raw=String(s?.document_name||s?.document_path||'').toLowerCase();
+        const m=raw.match(/\.([a-z0-9]+)(?:[?#].*)?$/);
+        return m?m[1]:'';
+    }
+
+    function lecturerResearchRootDocument(current){
+        const group=current?.research_group_id||current?.id;
+        const versions=(researchState.submissions||[]).filter(x=>
+            String(x.research_group_id||x.id)===String(group)
+        ).sort((a,b)=>
+            Number(a.version_number||1)-Number(b.version_number||1)
+        );
+        return versions[0]||current;
+    }
+
+    async function ensureLecturerDocxGenerator(){
+        if(window.docx?.Document && window.docx?.Packer) return window.docx;
+        return await new Promise(function(resolve,reject){
+            const old=document.querySelector('script[data-nchsm-docx-generator]');
+            if(old){
+                old.addEventListener('load',()=>resolve(window.docx));
+                old.addEventListener('error',()=>reject(new Error('DOCX generator could not load.')));
+                return;
+            }
+            const s=document.createElement('script');
+            s.src='https://cdn.jsdelivr.net/npm/docx@9.5.1/build/index.umd.js';
+            s.dataset.nchsmDocxGenerator='1';
+            s.onload=()=>window.docx?resolve(window.docx):reject(new Error('DOCX generator unavailable.'));
+            s.onerror=()=>reject(new Error('DOCX generator could not load.'));
+            document.head.appendChild(s);
+        });
+    }
+
+    function lecturerDocxTextRuns(node,docx){
+        const out=[];
+        function walk(n,style={}){
+            n.childNodes?.forEach(function(ch){
+                if(ch.nodeType===3){
+                    if(ch.nodeValue) out.push(new docx.TextRun({
+                        text:ch.nodeValue,
+                        bold:!!style.bold,
+                        italics:!!style.italics,
+                        underline:style.underline?'single':undefined,
+                        strike:!!style.strike
+                    }));
+                    return;
+                }
+                if(ch.nodeType!==1)return;
+                const tag=ch.tagName.toLowerCase();
+                const next=Object.assign({},style,{
+                    bold:style.bold||tag==='strong'||tag==='b',
+                    italics:style.italics||tag==='em'||tag==='i',
+                    underline:style.underline||tag==='u',
+                    strike:style.strike||tag==='s'||tag==='strike'
+                });
+                if(['br'].includes(tag)){out.push(new docx.TextRun({text:'\\n'}));return;}
+                walk(ch,next);
+            });
+        }
+        walk(node);
+        return out.length?out:[new docx.TextRun({text:''})];
+    }
+
+    async function lecturerHtmlToDocxBlob(html,title){
+        const docx=await ensureLecturerDocxGenerator();
+        const parsed=new DOMParser().parseFromString(String(html||''),'text/html');
+        const children=[];
+        [...(parsed.body?.children||[])].forEach(function(el){
+            const tag=el.tagName.toLowerCase();
+            const runs=lecturerDocxTextRuns(el,docx);
+            if(/^h[1-6]$/.test(tag)){
+                const level=Math.min(6,Number(tag.slice(1)));
+                children.push(new docx.Paragraph({
+                    children:runs,
+                    heading:level===1?docx.HeadingLevel.HEADING_1:
+                            level===2?docx.HeadingLevel.HEADING_2:
+                            level===3?docx.HeadingLevel.HEADING_3:
+                            level===4?docx.HeadingLevel.HEADING_4:
+                            level===5?docx.HeadingLevel.HEADING_5:
+                            docx.HeadingLevel.HEADING_6
+                }));
+            }else{
+                children.push(new docx.Paragraph({children:runs}));
+            }
+        });
+        if(!children.length) children.push(new docx.Paragraph({children:[new docx.TextRun({text:String(parsed.body?.textContent||'')})]}));
+        const document=new docx.Document({
+            sections:[{
+                properties:{},
+                children
+            }]
+        });
+        return await docx.Packer.toBlob(document);
     }
 
     async function saveLecturerCorrection(){
