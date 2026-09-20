@@ -6811,7 +6811,101 @@ window.LecturerOnlineLearning = (() => {
     }
     async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> AI Grade Work</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
     function updateGradePercentage(){const s=state.submissions.find(x=>x.id===$('olSubmissionModal')?.dataset?.submissionId);const max=Number(s?.max_marks||state.assignments.find(a=>a.id===s?.assignment_id)?.max_marks||0);const pct=formatPercentage($('olReviewMarks')?.value,max);if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;}
-    async function gradeSubmission(id,release){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};const maxMarks=Number(s.max_marks||assignment.max_marks||0);const marks=clampMarks($('olReviewMarks').value,maxMarks);const feedback=$('olReviewFeedback').value.trim()||null;const percentage=Number(formatPercentage(marks,maxMarks).replace('%',''));let payload={marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:new Date().toISOString(),result_released:release,released_at:release?new Date().toISOString():null,review_required:false};let {error}=await db.from('online_submissions').update({...payload,percentage}).eq('id',id);if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}if(error){notify(error.message,'error');return;}notify(release?`Grade saved and result released (${percentage}%).`:`Grade saved (${percentage}%).`,'success');closeModal('olSubmissionModal');await loadSubmissions();updateStats();}
+    // ============================================================
+    // 📧 ASSIGNMENT RESULT EMAIL NOTIFICATION
+    // Sends only when the lecturer RELEASES the graded result.
+    // The email intentionally contains no marks/percentage.
+    // ============================================================
+    async function sendAssignmentResultNotification(submission, assignment){
+        try{
+            const db=client();
+            if(!db || !submission?.student_id) return false;
+
+            let student=null;
+            const lookup=await db.from('consolidated_user_profiles_table')
+                .select('user_id,full_name,student_id,admission_number,email,program,intake_year,current_block,block')
+                .eq('user_id',submission.student_id)
+                .maybeSingle();
+            if(!lookup.error) student=lookup.data;
+
+            if(!student?.email){
+                console.warn('⚠️ No email found for assignment student:',submission.student_id);
+                return false;
+            }
+
+            const name=esc(student.full_name||'Student');
+            const title=esc(assignment?.title||submission?.online_assignments?.title||'Assignment');
+            const unit=esc(assignment?.unit_code||submission?.online_assignments?.unit_code||'');
+            const portalUrl='https://nchsm.co.ke';
+
+            const html=`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Assignment Result Released</title>
+<style>
+body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8;color:#243447}.container{max-width:580px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.1)}
+.header{background:linear-gradient(135deg,#0A3D62,#1a5276);padding:30px 35px;text-align:center;color:#fff}.header img{width:70px;height:70px;border-radius:50%;background:#fff;padding:5px;margin-bottom:10px}.header h1{margin:0;font-size:24px}.header p{margin:4px 0 0;opacity:.82}.body{padding:30px 35px}.notice{background:#EFF6FF;border:2px solid #3B82F6;border-radius:16px;padding:22px;text-align:center;margin:18px 0}.notice .icon{font-size:2.6rem;display:block;margin-bottom:8px}.notice .message{font-size:1.08rem;color:#0A3D62;font-weight:700}.notice .sub{color:#5a6c7d;font-size:.94rem;margin-top:5px}.info{background:#f8fafc;border-radius:14px;padding:20px 24px;margin:18px 0;border-left:4px solid #0A3D62}.info p{margin:7px 0;font-size:14px}.label{color:#64748b;font-weight:500}.value{color:#0A3D62;font-weight:650}.btn{display:inline-block;background:linear-gradient(135deg,#0A3D62,#1a5276);color:#fff!important;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;margin:8px 0}.footer{background:#f8fafc;padding:22px 35px;text-align:center;border-top:1px solid #eef2f7}.footer p{font-size:12px;color:#8a9aa8;margin:4px 0}@media(max-width:480px){.header{padding:22px 18px}.body{padding:22px 18px}.footer{padding:18px}}
+</style></head><body><div class="container"><div class="card">
+<div class="header"><img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo"><h1>📊 Assignment Result Released</h1><p>Nakuru College of Health Sciences and Management</p></div>
+<div class="body"><p>Dear <strong>${name}</strong>,</p><p>Your lecturer has completed grading your assignment and your result is now available on the NCHSM Student Portal.</p>
+<div class="notice"><span class="icon">🔐</span><div class="message">Your Assignment Result Is Ready</div><div class="sub">Log in to the Student Portal to view your result and lecturer feedback securely.</div></div>
+<div class="info"><p><span class="label">📝 Assignment</span><br><span class="value">${title}</span></p>${unit?`<p><span class="label">📚 Unit</span><br><span class="value">${unit}</span></p>`:''}${student.program?`<p><span class="label">🎓 Program</span><br><span class="value">${esc(student.program)}</span></p>`:''}<p><span class="label">👤 Student</span><br><span class="value">${name}</span></p></div>
+<div style="text-align:center;margin:25px 0 10px"><a class="btn" href="${portalUrl}">🔑 View Assignment Result</a></div>
+<div style="background:#fef9e7;border-left:4px solid #f39c12;border-radius:10px;padding:13px 16px;margin-top:18px"><p style="margin:0;font-size:13px;color:#7d6608">💡 <strong>Note:</strong> This is a result notification only. Your marks and lecturer feedback are available securely in the Student Portal.</p></div>
+</div><div class="footer"><p><strong>Nakuru College of Health Sciences and Management</strong></p><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p>This is an automated notification. Please do not reply to this email.</p></div>
+</div></div></body></html>`;
+
+            const result=await db.functions.invoke('send-email',{body:{
+                to:student.email,
+                subject:`📊 Assignment Result Released - ${assignment?.title||submission?.online_assignments?.title||'Assignment'}`,
+                html,
+                from:'NCHSM Academic Office <admin@nchsm.co.ke>'
+            }});
+            if(result.error){
+                console.error('❌ Assignment result email failed:',result.error);
+                return false;
+            }
+            if(result.data && result.data.success===false){
+                console.error('❌ Assignment result email rejected:',result.data.error||result.data);
+                return false;
+            }
+            console.log(`✅ Assignment result notification sent to ${student.email}`);
+            return true;
+        }catch(e){
+            console.error('❌ Assignment result notification error:',e);
+            return false;
+        }
+    }
+
+    async function gradeSubmission(id,release){
+        const db=client();
+        const s=state.submissions.find(x=>x.id===id);
+        if(!s)return;
+        const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+        const maxMarks=Number(s.max_marks||assignment.max_marks||0);
+        const marks=clampMarks($('olReviewMarks').value,maxMarks);
+        const feedback=$('olReviewFeedback').value.trim()||null;
+        const percentage=Number(formatPercentage(marks,maxMarks).replace('%',''));
+        const now=new Date().toISOString();
+        let payload={marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:now,result_released:release,released_at:release?now:null,review_required:false};
+        let {error}=await db.from('online_submissions').update({...payload,percentage}).eq('id',id);
+        if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}
+        if(error){notify(error.message,'error');return;}
+
+        // Only notify the student after the lecturer explicitly releases the result.
+        // Saving a grade as a draft does not send an email.
+        if(release){
+            const emailSent=await sendAssignmentResultNotification(s,assignment);
+            notify(emailSent
+                ? `Grade saved and result released (${percentage}%). Student email notification sent.`
+                : `Grade saved and result released (${percentage}%), but the student email notification could not be sent.`,
+                emailSent?'success':'warning');
+        }else{
+            notify(`Grade saved (${percentage}%).`,'success');
+        }
+        closeModal('olSubmissionModal');
+        await loadSubmissions();
+        updateStats();
+    }
     async function runAIAssignmentGrade(payload){
         const db=client();
         if(typeof window.runAIAssignmentGrade==='function' && window.runAIAssignmentGrade!==runAIAssignmentGrade) return window.runAIAssignmentGrade(payload);
@@ -7861,24 +7955,24 @@ window.LecturerOnlineLearning = (() => {
 
             const html=`<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Research Revision Required</title>
+<title>Research Corrections Required</title>
 <style>
 body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8;color:#243447}.container{max-width:580px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.1)}
 .header{background:linear-gradient(135deg,#0A3D62,#1a5276);padding:30px 35px;text-align:center;color:#fff}.header img{width:70px;height:70px;border-radius:50%;background:#fff;padding:5px;margin-bottom:10px}.header h1{margin:0;font-size:24px}.header p{margin:4px 0 0;opacity:.82}.body{padding:30px 35px}.notice{background:#FFF7ED;border:2px solid #F59E0B;border-radius:16px;padding:22px;text-align:center;margin:18px 0}.notice .icon{font-size:2.6rem;display:block;margin-bottom:8px}.notice .message{font-size:1.08rem;color:#92400E;font-weight:700}.notice .sub{color:#7C5A2B;font-size:.94rem;margin-top:5px}.info{background:#f8fafc;border-radius:14px;padding:20px 24px;margin:18px 0;border-left:4px solid #0A3D62}.info p{margin:7px 0;font-size:14px}.label{color:#64748b;font-weight:500}.value{color:#0A3D62;font-weight:650}.feedback{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px;margin:18px 0}.feedback h3{margin:0 0 8px;color:#1E40AF;font-size:14px}.feedback p{margin:0;white-space:pre-wrap;line-height:1.6;font-size:14px;color:#334155}.btn{display:inline-block;background:linear-gradient(135deg,#0A3D62,#1a5276);color:#fff!important;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;margin:8px 0}.footer{background:#f8fafc;padding:22px 35px;text-align:center;border-top:1px solid #eef2f7}.footer p{font-size:12px;color:#8a9aa8;margin:4px 0}@media(max-width:480px){.header{padding:22px 18px}.body{padding:22px 18px}.footer{padding:18px}}
 </style></head><body><div class="container"><div class="card">
-<div class="header"><img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo"><h1>📝 Revision Required</h1><p>Nakuru College of Health Sciences and Management</p></div>
-<div class="body"><p>Dear <strong>${name}</strong>,</p><p>Your lecturer has reviewed your research submission and has requested <strong>revisions</strong>.</p>
-<div class="notice"><span class="icon">📝</span><div class="message">Please Review and Correct Your Research Paper</div><div class="sub">Log in to the NCHSM Student Portal to view the requested corrections and submit your revised document.</div></div>
+<div class="header"><img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo"><h1>📝 Research Corrections Required</h1><p>Nakuru College of Health Sciences and Management</p></div>
+<div class="body"><p>Dear <strong>${name}</strong>,</p><p>Your lecturer has reviewed your research submission and has provided <strong>corrections that require your attention</strong>.</p>
+<div class="notice"><span class="icon">📝</span><div class="message">Research Corrections Are Ready</div><div class="sub">Log in to the NCHSM Student Portal to view your lecturer's corrections and submit your revised research document.</div></div>
 <div class="info"><p><span class="label">📚 Research Title</span><br><span class="value">${title}</span></p><p><span class="label">📄 Submission Type</span><br><span class="value">${type}</span></p><p><span class="label">🔢 Version</span><br><span class="value">V${version}</span></p>${student.program?`<p><span class="label">🎓 Program</span><br><span class="value">${esc(student.program)}</span></p>`:''}</div>
 ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFeedback}</p></div>`:''}
 <div style="text-align:center;margin:25px 0 10px"><a class="btn" href="${portalUrl}">🔑 Open Student Portal</a></div>
-<p style="font-size:12px;color:#64748b;text-align:center">Please make the requested corrections and submit the revised version through the Research Papers section of the Online Learning portal.</p>
+<p style="font-size:12px;color:#64748b;text-align:center">Please review every correction provided by your lecturer, make the required changes, and submit the corrected version through the Research Papers section of the Online Learning portal.</p>
 </div><div class="footer"><p><strong>Nakuru College of Health Sciences and Management</strong></p><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p>This is an automated notification. Please do not reply to this email.</p></div>
 </div></div></body></html>`;
 
             const result=await db.functions.invoke('send-email',{body:{
                 to:student.email,
-                subject:`📝 Research Revision Required - ${submission.title||'Research Paper'}`,
+                subject:`📝 Research Corrections Required - ${submission.title||'Research Paper'}`,
                 html,
                 from:'NCHSM Research Office <admin@nchsm.co.ke>'
             }});
@@ -7964,8 +8058,8 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
             const studentProfile=researchState.profiles.get(s.student_id)||{};
             const emailSent=await sendResearchRevisionNotification(insertedSubmission,studentProfile,feedback);
             notify(emailSent
-                ? 'Correction sent to the student as Version '+next+' ('+ext.toUpperCase()+'). Email notification sent.'
-                : 'Correction sent to the student as Version '+next+' ('+ext.toUpperCase()+'). The document was saved, but the email notification could not be sent.',
+                ? 'Research corrections sent as Version '+next+' ('+ext.toUpperCase()+'). Student email notification sent.'
+                : 'Research corrections saved as Version '+next+' ('+ext.toUpperCase()+'), but the student email notification could not be sent.',
                 emailSent?'success':'warning');
             await loadResearch();
             closeResearchModal();
@@ -8162,8 +8256,8 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
             const studentProfile=researchState.profiles.get(s.student_id)||{};
             const emailSent=await sendResearchRevisionNotification(s,studentProfile,feedback);
             notify(emailSent
-                ? 'Research review saved. Revision notification sent to the student.'
-                : 'Research review saved, but the revision email notification could not be sent.',
+                ? 'Research review saved. Research corrections notification sent to the student.'
+                : 'Research review saved, but the research corrections email notification could not be sent.',
                 emailSent?'success':'warning');
         }else{
             notify('Research review saved successfully.', 'success');
