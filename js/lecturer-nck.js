@@ -443,15 +443,16 @@ async function lecturerNCKLoadData() {
             .eq('program', 'KRCHN')
             .eq('intake_year', parseInt(intake))
             .eq('status', 'approved');
-        
+
         if (studentsError) {
-            console.warn('⚠️ [NCK] Error loading students:', studentsError);
-            allStudents = [];
+            console.error('❌ [NCK] Error loading students:', studentsError);
+            throw studentsError;
         }
-        
-        console.log('📚 [NCK] Total KRCHN students for', intake, ':', allStudents?.length || 0);
-        
-        // Get marks
+
+        allStudents = Array.isArray(allStudents) ? allStudents : [];
+        console.log('📚 [NCK] Total KRCHN students for', intake, ':', allStudents.length);
+
+        // Get marks for the selected intake/block/sheet.
         var { data: marks, error: marksError } = await supabase
             .from('nck_marks')
             .select('*')
@@ -459,30 +460,41 @@ async function lecturerNCKLoadData() {
             .eq('block', block)
             .eq('subject_name', sheet)
             .eq('program', 'KRCHN');
-        
+
         if (marksError) {
-            console.warn('⚠️ [NCK] Error loading marks:', marksError);
-            marks = [];
+            console.error('❌ [NCK] Error loading marks:', marksError);
+            throw marksError;
         }
-        
-        console.log('📚 [NCK] Total marks for', sheet, ':', marks?.length || 0);
-        
-        // Filter KRCHN students
-        var krchnStudents = (allStudents || []).filter(function(s) {
-            return s.admission_number && s.admission_number.startsWith('KRCHN');
+
+        marks = Array.isArray(marks) ? marks : [];
+        console.log('📚 [NCK] Total marks records for', sheet, ':', marks.length);
+
+        // Do not silently drop a student just because admission_number is blank.
+        // student_id is also a valid identifier for the marks workflow.
+        var krchnStudents = allStudents.filter(function(s) {
+            return s && (
+                (s.admission_number && String(s.admission_number).trim() !== '') ||
+                (s.student_id && String(s.student_id).trim() !== '')
+            );
         });
-        
-        console.log('📚 [NCK] KRCHN students with admission numbers:', krchnStudents.length);
-        
-        // Build marks map
+
+        var withAdmission = krchnStudents.filter(function(s) {
+            return s.admission_number && String(s.admission_number).trim() !== '';
+        }).length;
+
+        console.log('📚 [NCK] KRCHN students with admission numbers:', withAdmission);
+        console.log('📚 [NCK] KRCHN students loaded:', krchnStudents.length);
+
+        // Normalized marks map: supports admission_number and student_id.
         LecturerNCK.marks = {};
         (marks || []).forEach(function(m) {
-            var key = m.admission_number || m.student_id;
-            if (key) {
-                LecturerNCK.marks[key] = m;
-            }
+            var admissionKey = m.admission_number ? String(m.admission_number).trim().toUpperCase() : '';
+            var studentKey = m.student_id ? String(m.student_id).trim() : '';
+
+            if (admissionKey) LecturerNCK.marks['adm:' + admissionKey] = m;
+            if (studentKey) LecturerNCK.marks['id:' + studentKey] = m;
         });
-        
+
         LecturerNCK.allStudents = krchnStudents;
         LecturerNCK.students = krchnStudents;
         LecturerNCK.filteredStudents = krchnStudents;
@@ -580,6 +592,9 @@ function lecturerNCKRenderTable() {
                 <button onclick="window.lecturerNCKExportCSV()" style="background: #0A3D62; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
                     <i class="fas fa-download"></i> Export
                 </button>
+                <button onclick="window.lecturerNCKOpenFastEntry()" style="background: #ea580c; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 700;">
+                    <i class="fas fa-bolt"></i> Fast Entry
+                </button>
             </div>
         </div>
         
@@ -606,7 +621,8 @@ function lecturerNCKRenderTable() {
     `;
     
     students.forEach(function(student, idx) {
-        var mark = LecturerNCK.marks[student.admission_number] || LecturerNCK.marks[student.student_id] || {};
+        var mark = (student.admission_number && LecturerNCK.marks['adm:' + String(student.admission_number).trim().toUpperCase()]) || (student.student_id && LecturerNCK.marks['id:' + String(student.student_id).trim()]) || {};
+        var rowKey = String(student.admission_number || student.student_id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
         var scores = {};
         try {
             if (mark.scores) {
@@ -669,8 +685,8 @@ function lecturerNCKRenderTable() {
         });
         
         html += `
-                <td style="font-weight: bold; text-align: center; background: ${bgColor}; font-size: 14px;" class="nck-avg-cell" id="nck_avg_${student.admission_number || student.student_id}">${avg.toFixed(1)}</td>
-                <td style="text-align: center;" class="nck-status-cell" id="nck_status_${student.admission_number || student.student_id}">
+                <td style="font-weight: bold; text-align: center; background: ${bgColor}; font-size: 14px;" class="nck-avg-cell" id="nck_avg_${rowKey}">${avg.toFixed(1)}</td>
+                <td style="text-align: center;" class="nck-status-cell" id="nck_status_${rowKey}">
                     <span style="background: ${bgColor}; color: ${textColor}; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 12px;">${statusIcon} ${status}</span>
                 </td>
                 <td style="text-align: center;">${badgeHtml}</td>
@@ -1053,7 +1069,7 @@ function lecturerNCKUpdateStats() {
     var approved = 0, pending = 0, draft = 0;
     
     students.forEach(function(student) {
-        var mark = marks[student.admission_number] || marks[student.student_id] || {};
+        var mark = (student.admission_number && marks['adm:' + String(student.admission_number).trim().toUpperCase()]) || (student.student_id && marks['id:' + String(student.student_id).trim()]) || {};
         var scores = {};
         try {
             if (mark.scores) {
@@ -1120,7 +1136,7 @@ function lecturerNCKCheckApprovalStatus() {
     var pendingCount = 0, approvedCount = 0, draftCount = 0, rejectedCount = 0;
     
     students.forEach(function(student) {
-        var mark = marks[student.admission_number] || marks[student.student_id] || {};
+        var mark = (student.admission_number && marks['adm:' + String(student.admission_number).trim().toUpperCase()]) || (student.student_id && marks['id:' + String(student.student_id).trim()]) || {};
         if (mark.approval_status === 'pending') pendingCount++;
         else if (mark.approval_status === 'approved') approvedCount++;
         else if (mark.approval_status === 'rejected') rejectedCount++;
@@ -1199,7 +1215,7 @@ function lecturerNCKExportCSV() {
     
     var rows = [];
     students.forEach(function(student, idx) {
-        var mark = LecturerNCK.marks[student.admission_number] || LecturerNCK.marks[student.student_id] || {};
+        var mark = (student.admission_number && LecturerNCK.marks['adm:' + String(student.admission_number).trim().toUpperCase()]) || (student.student_id && LecturerNCK.marks['id:' + String(student.student_id).trim()]) || {};
         var scores = {};
         try {
             if (mark.scores) {
@@ -1251,7 +1267,213 @@ function lecturerNCKOpenFastEntry() {
         showToast('⛔ Access denied.', 'error');
         return;
     }
-    showToast('Fast Entry feature coming soon!', 'info');
+
+    var students = LecturerNCK.students || [];
+    var columns = LecturerNCK.columns || [];
+
+    if (!students.length) {
+        showToast('Load the NCK students first.', 'warning');
+        return;
+    }
+
+    if (!columns.length) {
+        showToast('No assessment columns are available.', 'warning');
+        return;
+    }
+
+    var modal = document.getElementById('lecturerNCKFastEntryModal');
+
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'lecturerNCKFastEntryModal';
+        modal.style.cssText =
+            'position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:100000;' +
+            'display:flex;align-items:center;justify-content:center;padding:16px;';
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div style="width:min(1050px,100%);max-height:92vh;background:#fff;border-radius:16px;
+                    box-shadow:0 25px 60px rgba(0,0,0,.3);overflow:hidden;display:flex;flex-direction:column;">
+            <div style="padding:16px 20px;background:linear-gradient(135deg,#4C1D95,#7c3aed);color:#fff;
+                        display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <div>
+                    <div style="font-size:18px;font-weight:800;">⚡ Fast Marks Entry</div>
+                    <div style="font-size:12px;opacity:.9;margin-top:3px;">
+                        ${LecturerNCK.currentIntake} Intake ·
+                        ${LECTURER_BLOCK_MAP[LecturerNCK.currentIntake] || 'Block 1'} ·
+                        ${LecturerNCK.currentSheet}
+                    </div>
+                </div>
+                <button type="button" onclick="window.lecturerNCKCloseFastEntry()"
+                        style="border:0;background:rgba(255,255,255,.16);color:#fff;width:36px;height:36px;
+                               border-radius:9px;cursor:pointer;font-size:18px;">&times;</button>
+            </div>
+
+            <div style="padding:18px 20px;overflow:auto;">
+                <div style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr);
+                            gap:14px;margin-bottom:16px;">
+                    <label style="font-size:12px;font-weight:700;color:#475569;">
+                        Student
+                        <select id="nckFastStudent"
+                                style="display:block;width:100%;margin-top:6px;padding:10px;border:1px solid #cbd5e1;
+                                       border-radius:9px;background:#fff;">
+                            ${students.map(function(s, i) {
+                                var id = s.admission_number || s.student_id || '';
+                                return '<option value="' + String(id).replace(/"/g, '&quot;') + '">' +
+                                    (i + 1) + '. ' + (s.full_name || 'Unknown') + ' — ' + id + '</option>';
+                            }).join('')}
+                        </select>
+                    </label>
+
+                    <label style="font-size:12px;font-weight:700;color:#475569;">
+                        Assessment Area
+                        <select id="nckFastColumn"
+                                style="display:block;width:100%;margin-top:6px;padding:10px;border:1px solid #cbd5e1;
+                                       border-radius:9px;background:#fff;">
+                            ${columns.map(function(c) {
+                                return '<option value="' + String(c.id).replace(/"/g, '&quot;') + '">' +
+                                    c.label + '</option>';
+                            }).join('')}
+                        </select>
+                    </label>
+                </div>
+
+                <div id="nckFastStudentInfo"
+                     style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+                            margin-bottom:14px;font-size:12px;color:#475569;"></div>
+
+                <div style="display:flex;align-items:end;gap:12px;flex-wrap:wrap;">
+                    <label style="flex:1;min-width:180px;font-size:12px;font-weight:700;color:#475569;">
+                        Mark (0–100)
+                        <input id="nckFastMark" type="number" min="0" max="100" step="0.5"
+                               placeholder="Enter mark"
+                               style="display:block;width:100%;margin-top:6px;padding:12px;border:2px solid #cbd5e1;
+                                      border-radius:10px;font-size:18px;text-align:center;box-sizing:border-box;">
+                    </label>
+                    <button type="button" id="nckFastNextBtn"
+                            style="padding:12px 20px;border:0;border-radius:10px;
+                                   background:#4C1D95;color:#fff;font-weight:700;cursor:pointer;">
+                        Save & Next →
+                    </button>
+                </div>
+
+                <div style="margin-top:16px;padding:12px;border-radius:10px;background:#f1f5f9;
+                            color:#475569;font-size:12px;">
+                    Enter a mark and press <strong>Save & Next</strong> or <strong>Enter</strong>.
+                    The mark is written into the main table immediately. Use <strong>Save All</strong>
+                    afterwards to persist all entered marks to Supabase.
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+
+    var studentSelect = document.getElementById('nckFastStudent');
+    var columnSelect = document.getElementById('nckFastColumn');
+    var markInput = document.getElementById('nckFastMark');
+    var info = document.getElementById('nckFastStudentInfo');
+    var nextBtn = document.getElementById('nckFastNextBtn');
+
+    function selectedStudent() {
+        var selected = studentSelect ? studentSelect.value : '';
+        return students.find(function(s) {
+            return String(s.admission_number || s.student_id || '') === String(selected);
+        }) || students[0];
+    }
+
+    function updateFastEntryValue() {
+        var student = selectedStudent();
+        if (!student) return;
+
+        var lookup = student.admission_number
+            ? 'adm:' + String(student.admission_number).trim().toUpperCase()
+            : 'id:' + String(student.student_id || '').trim();
+
+        var mark = LecturerNCK.marks[lookup] || {};
+        var scores = {};
+
+        try {
+            scores = mark.scores
+                ? (typeof mark.scores === 'string' ? JSON.parse(mark.scores) : mark.scores)
+                : {};
+        } catch (e) {}
+
+        var column = columnSelect ? columnSelect.value : '';
+        if (markInput) {
+            markInput.value = scores[column] !== undefined && scores[column] !== null ? scores[column] : '';
+            markInput.focus();
+            markInput.select();
+        }
+
+        if (info) {
+            info.innerHTML =
+                '<strong>' + (student.full_name || 'Unknown') + '</strong> · ' +
+                'Admission: ' + (student.admission_number || 'N/A') + ' · ' +
+                'Student ID: ' + (student.student_id || 'N/A');
+        }
+    }
+
+    function writeFastValue(student, column, value) {
+        var key = student.admission_number || student.student_id || '';
+        var input = Array.prototype.slice.call(document.querySelectorAll('.nck-score-input')).find(function(el) {
+            return String(el.dataset.student || '') === String(key) &&
+                   String(el.dataset.column || '') === String(column);
+        });
+
+        if (!input) return false;
+
+        input.value = value;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        lecturerNCKUpdateAverage(key);
+        return true;
+    }
+
+    if (studentSelect) studentSelect.addEventListener('change', updateFastEntryValue);
+    if (columnSelect) columnSelect.addEventListener('change', updateFastEntryValue);
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function() {
+            var student = selectedStudent();
+            var value = markInput ? parseFloat(markInput.value) : NaN;
+
+            if (!Number.isFinite(value) || value < 0 || value > 100) {
+                showToast('Enter a valid mark between 0 and 100.', 'warning');
+                if (markInput) markInput.focus();
+                return;
+            }
+
+            var column = columnSelect ? columnSelect.value : '';
+            if (!writeFastValue(student, column, value)) {
+                showToast('The selected mark cell was not found in the main table.', 'error');
+                return;
+            }
+
+            showToast('✅ ' + (student.full_name || 'Student') + ' — ' + column + ': ' + value, 'success');
+
+            var nextIndex = students.indexOf(student) + 1;
+            if (nextIndex < students.length && studentSelect) {
+                studentSelect.selectedIndex = nextIndex;
+                updateFastEntryValue();
+            } else if (markInput) {
+                markInput.value = '';
+                markInput.focus();
+                showToast('All loaded students have been reached.', 'info');
+            }
+        });
+    }
+
+    if (markInput) {
+        markInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (nextBtn) nextBtn.click();
+            }
+        });
+    }
+
+    updateFastEntryValue();
 }
 
 function lecturerNCKCloseFastEntry() {
