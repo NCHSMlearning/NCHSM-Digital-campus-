@@ -1,23 +1,8 @@
 // ============================================================
-// NCHSM LECTURER ATTENDANCE MODULE - WITH TVET SUPPORT
-// ============================================================
-// Handles:
-//   1. Today's attendance display (with filters)
-//   2. Past attendance records (with filters, last 100)
-//   3. Attendance statistics (present, absent, pending, rate)
-//   4. Lecturer self check-in with GPS
-//   5. Manual student attendance marking
-//   6. Attendance map view (Leaflet)
-//   7. CSV export and print — WITH CONTINUOUS CLASS GROUPING
-//   8. Search and filter (date, block, year, session type, text)
-//   9. Single and Bulk Attendance Verification
-// Supports both Nursing (KRCHN) and TVET programs
+// NCHSM LECTURER ATTENDANCE MODULE — WITH TVET + STYLED XLSX
 // ============================================================
 
 const LecturerAttendance = {
-    // ============================================================
-    // STATE
-    // ============================================================
     todayLogs: [],
     pastLogs: [],
     filteredTodayLogs: [],
@@ -30,36 +15,16 @@ const LecturerAttendance = {
     isProcessing: false,
     isTVET: false,
     currentProgram: 'KRCHN',
-    stats: {
-        total: 0,
-        present: 0,
-        absent: 0,
-        pending: 0,
-        rate: 0
-    },
+    stats: { total: 0, present: 0, absent: 0, pending: 0, rate: 0 },
 
     // ============================================================
     // PROGRAM TYPE DETECTION
     // ============================================================
-    getProgramType() {
-        return window.CURRENT_PROGRAM_TYPE || 'KRCHN';
-    },
-
-    isTVETProgram() {
-        return this.getProgramType() === 'TVET';
-    },
-
-    getProgramTypeLabel() {
-        return this.isTVETProgram() ? '🔧 TVET' : '🎓 Nursing';
-    },
-
-    getProgramEmoji() {
-        return this.isTVETProgram() ? '🔧' : '🎓';
-    },
-
-    getPassingThreshold() {
-        return this.isTVETProgram() ? 50 : 60;
-    },
+    getProgramType() { return window.CURRENT_PROGRAM_TYPE || 'KRCHN'; },
+    isTVETProgram() { return this.getProgramType() === 'TVET'; },
+    getProgramTypeLabel() { return this.isTVETProgram() ? '🔧 TVET' : '🎓 Nursing'; },
+    getProgramEmoji() { return this.isTVETProgram() ? '🔧' : '🎓'; },
+    getPassingThreshold() { return this.isTVETProgram() ? 50 : 60; },
 
     getBlockDisplay(blockValue) {
         if (!blockValue) return 'N/A';
@@ -84,7 +49,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // INITIALIZATION
+    // INIT
     // ============================================================
     async init() {
         console.log('📋 Initializing Lecturer Attendance Module...');
@@ -101,11 +66,8 @@ const LecturerAttendance = {
             this.updateProgramBadge();
 
             console.log('✅ Lecturer Attendance Module initialized successfully');
-            console.log(`📊 ${this.getProgramTypeLabel()} attendance tracking enabled`);
 
-            // Auto-refresh — also re-applies current filters
             setInterval(() => {
-                console.log('🔄 Auto-refreshing attendance...');
                 this.loadAllAttendance().then(() => this.applyFilters());
             }, 60000);
 
@@ -116,7 +78,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // UPDATE PROGRAM BADGE
+    // PROGRAM BADGE
     // ============================================================
     updateProgramBadge() {
         const typeLabel = this.getProgramTypeLabel();
@@ -124,9 +86,7 @@ const LecturerAttendance = {
         const threshold = this.getPassingThreshold();
 
         const programDisplay = document.getElementById('programDisplayName');
-        if (programDisplay) {
-            programDisplay.textContent = `${this.currentProgram} (${typeLabel})`;
-        }
+        if (programDisplay) programDisplay.textContent = `${this.currentProgram} (${typeLabel})`;
 
         const programTypeBadge = document.getElementById('programTypeBadge');
         if (programTypeBadge) {
@@ -138,21 +98,14 @@ const LecturerAttendance = {
         const blockDisplay = document.getElementById('currentBlockDisplay');
         if (blockDisplay) {
             const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-            if (blocks.length > 0) {
-                blockDisplay.textContent = this.getBlockDisplay(blocks[0]);
-            }
+            if (blocks.length > 0) blockDisplay.textContent = this.getBlockDisplay(blocks[0]);
         }
 
         const rateBadge = document.getElementById('attendanceRateBadge');
-        if (rateBadge) {
-            const rate = this.stats.rate || 0;
-            rateBadge.textContent = `${rate}% (Pass: ≥${threshold}%)`;
-        }
+        if (rateBadge) rateBadge.textContent = `${this.stats.rate || 0}% (Pass: ≥${threshold}%)`;
 
         const subtitle = document.querySelector('#attendance-content .subtitle');
-        if (subtitle) {
-            subtitle.textContent = `${emoji} ${typeLabel} - Track and manage student attendance`;
-        }
+        if (subtitle) subtitle.textContent = `${emoji} ${typeLabel} - Track and manage student attendance`;
     },
 
     // ============================================================
@@ -161,52 +114,30 @@ const LecturerAttendance = {
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) { console.warn('⚠️ Supabase not available'); return; }
-
+            if (!supabase) return;
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) { console.warn('⚠️ No lecturer profile found'); return; }
+            if (!profile) return;
 
             const authId = profile.user_id;
             const fullName = profile.full_name;
-
-            console.log('🔍 Auth ID:', authId);
-            console.log('🔍 Lecturer name:', fullName);
-
             this.lecturerUuid = authId;
 
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
+            if (!isUUID && authId) { this.lecturerAssignmentId = authId; return; }
 
-            if (!isUUID && authId) {
-                this.lecturerAssignmentId = authId;
-                console.log('✅ Using non-UUID auth ID:', this.lecturerAssignmentId);
-                return;
-            }
-
-            const { data: assignments, error: assignError } = await supabase
+            const { data: assignments } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .ilike('lecturer_name', `%${fullName}%`);
 
-            if (!assignError && assignments && assignments.length > 0) {
-                const textId = assignments.find(a => {
-                    const id = a.lecturer_id;
-                    return id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
-                });
-                if (textId) {
-                    this.lecturerAssignmentId = textId.lecturer_id;
-                    console.log('✅ Found non-UUID ID:', this.lecturerAssignmentId);
-                    return;
-                }
-                this.lecturerAssignmentId = assignments[0].lecturer_id;
-                console.log('⚠️ Using first match ID:', this.lecturerAssignmentId);
+            if (assignments?.length > 0) {
+                const textId = assignments.find(a => a.lecturer_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(a.lecturer_id)));
+                this.lecturerAssignmentId = textId ? textId.lecturer_id : assignments[0].lecturer_id;
                 return;
             }
-
             this.lecturerAssignmentId = authId;
-            console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
-
         } catch (error) {
-            console.error('❌ Error resolving lecturer ID:', error);
+            console.error('❌ resolveLecturerId:', error);
             this.lecturerAssignmentId = null;
             this.lecturerUuid = null;
         }
@@ -218,10 +149,9 @@ const LecturerAttendance = {
     async loadAssignedUnits() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) { console.warn('⚠️ Supabase not available'); return; }
-
+            if (!supabase) return;
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) { console.warn('⚠️ No lecturer profile found'); return; }
+            if (!profile) return;
 
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
             const program = this.currentProgram || profile.program || 'KRCHN';
@@ -232,16 +162,13 @@ const LecturerAttendance = {
                 .eq('lecturer_id', String(lecturerId))
                 .eq('program', program);
 
-            if (error) { console.error('❌ Error loading assigned units:', error); return; }
+            if (error) { console.error('❌ loadAssignedUnits:', error); return; }
 
             this.assignedUnits = assignments || [];
-            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units (${this.getProgramTypeLabel()})`);
-
             this.populateUnitSelectors();
             this.updateProgramBadge();
-
         } catch (error) {
-            console.error('❌ Failed to load assigned units:', error);
+            console.error('❌ loadAssignedUnits fail:', error);
         }
     },
 
@@ -251,12 +178,11 @@ const LecturerAttendance = {
     populateUnitSelectors() {
         const unitSelect = document.getElementById('attUnit');
         if (!unitSelect) return;
-
         const units = this.assignedUnits;
         const typeLabel = this.getProgramTypeLabel();
         const emoji = this.getProgramEmoji();
 
-        if (units && units.length > 0) {
+        if (units?.length > 0) {
             unitSelect.innerHTML = `<option value="">-- ${emoji} Select Unit --</option>` +
                 units.map(u => {
                     const blockDisplay = this.getBlockDisplay(u.block);
@@ -266,17 +192,15 @@ const LecturerAttendance = {
                         ${this.isTVET ? ' 🔧' : ''}
                     </option>`;
                 }).join('');
-            console.log(`📚 Populated ${units.length} units in dropdown (${typeLabel})`);
         } else {
             unitSelect.innerHTML = `<option value="">-- No ${typeLabel} units assigned --</option>`;
         }
     },
 
     // ============================================================
-    // LOAD ALL ATTENDANCE DATA
+    // LOAD ALL
     // ============================================================
     async loadAllAttendance() {
-        console.log('📊 Loading all attendance data...');
         try {
             await Promise.all([
                 this.loadTodayAttendance(),
@@ -284,28 +208,24 @@ const LecturerAttendance = {
                 this.loadAttendanceStats(),
                 this.loadProgramInfo()
             ]);
-            console.log('✅ All attendance data loaded');
         } catch (error) {
-            console.error('❌ Failed to load attendance data:', error);
+            console.error('❌ loadAllAttendance:', error);
         }
     },
 
     // ============================================================
-    // LOAD TODAY'S ATTENDANCE
+    // LOAD TODAY
     // ============================================================
     async loadTodayAttendance() {
         const tbody = document.getElementById('attendanceTable');
-        if (!tbody) { console.warn('⚠️ attendanceTable not found'); return; }
-
+        if (!tbody) return;
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Database not available</td></tr>';
                 return;
             }
-
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
+            const todayStr = new Date().toISOString().split('T')[0];
 
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
@@ -315,71 +235,46 @@ const LecturerAttendance = {
                 .order('check_in_time', { ascending: false });
 
             if (error) {
-                console.error('❌ Error loading today attendance:', error);
                 tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Error: ${error.message}</td></tr>`;
                 return;
             }
-
             this.todayLogs = logs || [];
             this.filteredTodayLogs = [...this.todayLogs];
-            console.log(`📊 Loaded ${this.todayLogs.length} today's attendance records`);
-
             this.renderTodayAttendance();
             this.updateStats(this.todayLogs);
             this.updateProgramBadge();
-
         } catch (error) {
-            console.error('❌ Failed to load today attendance:', error);
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Error: ${error.message}</td></tr>`;
+            console.error('❌ loadTodayAttendance:', error);
         }
     },
 
     // ============================================================
-    // RENDER TODAY'S ATTENDANCE
+    // RENDER TODAY
     // ============================================================
     renderTodayAttendance() {
         const tbody = document.getElementById('attendanceTable');
         if (!tbody) return;
-
         const logs = this.todayLogs;
         const typeLabel = this.getProgramTypeLabel();
 
         const countEl = document.getElementById('todayLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
 
-        if (!logs || logs.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                        <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                        <p style="margin:0;">No student attendance records today. (${typeLabel})</p>
-                    </td>
-                </tr>
-            `;
+        if (!logs?.length) {
+            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+                <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                <p style="margin:0;">No student attendance records today. (${typeLabel})</p></td></tr>`;
             return;
         }
 
-        const statusColors = {
-            'Present': '#10b981',
-            'Absent': '#ef4444',
-            'Pending': '#f59e0b',
-            'Late': '#f59e0b',
-            'Excused': '#3b82f6',
-            'Verified': '#10b981'
-        };
+        const statusColors = { Present: '#10b981', Absent: '#ef4444', Pending: '#f59e0b', Late: '#f59e0b', Excused: '#3b82f6', Verified: '#10b981' };
+        const isTVET = this.isTVET;
 
-        tbody.innerHTML = logs.map((log) => {
+        tbody.innerHTML = logs.map(log => {
             const hasLocation = log.latitude && log.longitude;
-
-            const isVerified = log.is_verified === true ||
-                              log.is_verified === 'true' ||
-                              log.is_verified === 1 ||
-                              log.attendance_status === 'Verified' ||
-                              (log.attendance_status === 'Present' && log.verified_at !== null);
-
+            const isVerified = log.is_verified === true || log.is_verified === 'true' || log.is_verified === 1 || log.attendance_status === 'Verified' || (log.attendance_status === 'Present' && log.verified_at !== null);
             let displayStatus = log.attendance_status || 'Pending';
             if (isVerified && displayStatus !== 'Absent') displayStatus = 'Verified ✓';
-
             const statusColor = statusColors[displayStatus] || '#6b7280';
 
             const studentName = log.student_name || 'Unknown Student';
@@ -390,64 +285,36 @@ const LecturerAttendance = {
             const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
             const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
             const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' :
-                (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
-
-            const canVerify = !isLecturerCheckin &&
-                              log.session_type !== 'Lecturer Check-in' &&
-                              log.role !== 'lecturer' &&
-                              !isVerified;
-
+            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
+            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified;
             const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
-            const isTVET = this.isTVET;
 
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}"
-                    onmouseover="this.style.background='${isVerified || isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'"
-                    onmouseout="this.style.background='${isVerified || isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
-
+                <tr style="border-bottom: 1px solid #f1f5f9; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}">
                     <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
                         ${this.escapeHtml(studentName)}
                         ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
                         ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
                         ${isTVET && !isLecturerCheckin ? ' <span style="font-size:9px;color:#8b5cf6;padding:1px 6px;border-radius:8px;">TVET</span>' : ''}
                     </td>
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" title="${this.escapeHtml(regNumber)}">${this.escapeHtml(displayReg)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
-                        <span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(programDisplay)}</span>
-                    </td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                        ${this.escapeHtml(blockDisplay)}
-                        ${isTVET ? `<div style="font-size: 8px; color: #8b5cf6;">TVET Term</div>` : ''}
-                    </td>
+                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;">${this.escapeHtml(displayReg)}</td>
+                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;"><span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(programDisplay)}</span></td>
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(blockDisplay)}</td>
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(log.unit_name || log.target_name || 'General')}</td>
-                    <td style="padding: 10px 14px;">
-                        <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(log.session_type || 'Class')}</span>
-                    </td>
+                    <td style="padding: 10px 14px;"><span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(log.session_type || 'Class')}</span></td>
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${timeStr}</td>
                     <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(locationDisplay)}</td>
                     <td style="padding: 10px 14px; text-align: center;">
-                        <div>
-                            <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; color: ${isVerified ? '#10b981' : statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">
-                                ${isVerified ? '✅ Verified' : displayStatus}
-                            </span>
-                            ${isVerified && verifiedByDisplay ? `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
-                        </div>
+                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; color: ${isVerified ? '#10b981' : statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">${isVerified ? '✅ Verified' : displayStatus}</span>
+                        ${isVerified && verifiedByDisplay ? `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
                     </td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ?
-                                `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` :
-                                `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
-                            }
-                            ${canVerify ?
-                                `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` :
-                                `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px; font-weight: ${isVerified ? '600' : 'normal'};">${isVerified ? '✅ Verified' : '—'}</span>`
-                            }
+                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
+                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
                         </div>
                     </td>
-                </tr>
-            `;
+                </tr>`;
         }).join('');
     },
 
@@ -456,24 +323,14 @@ const LecturerAttendance = {
     // ============================================================
     updateStats(logs) {
         if (!logs) logs = this.todayLogs || [];
-
         const total = logs.length;
-        const present = logs.filter(l => {
-            const status = (l.attendance_status || '').toLowerCase();
-            return status === 'present' || l.is_verified === true;
-        }).length;
+        const present = logs.filter(l => (l.attendance_status || '').toLowerCase() === 'present' || l.is_verified === true).length;
         const absent = logs.filter(l => (l.attendance_status || '').toLowerCase() === 'absent').length;
-        const pending = logs.filter(l => {
-            const status = (l.attendance_status || '').toLowerCase();
-            return status === 'pending' || status === '' || l.attendance_status === null;
-        }).length;
+        const pending = logs.filter(l => { const s = (l.attendance_status || '').toLowerCase(); return s === 'pending' || s === '' || l.attendance_status === null; }).length;
         const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
         this.stats = { total, present, absent, pending, rate };
         const threshold = this.getPassingThreshold();
-        const typeLabel = this.getProgramTypeLabel();
-
-        console.log(`📊 Stats: total=${total}, present=${present}, absent=${absent}, pending=${pending}, rate=${rate}% (${typeLabel})`);
 
         const elementMap = {
             'todayTotal': total, 'todayPresent': present, 'todayAbsent': absent, 'todayPending': pending,
@@ -491,7 +348,6 @@ const LecturerAttendance = {
         const progressBar = document.getElementById('attendanceProgressBar');
         if (progressBar) {
             progressBar.style.width = rate + '%';
-            progressBar.setAttribute('aria-valuenow', rate);
             progressBar.style.background = rate >= threshold ? '#10b981' : (rate >= threshold * 0.7 ? '#f59e0b' : '#ef4444');
         }
 
@@ -501,26 +357,19 @@ const LecturerAttendance = {
             rateBadge.style.background = rate >= threshold ? '#d1fae5' : (rate >= threshold * 0.7 ? '#fef3c7' : '#fee2e2');
             rateBadge.style.color = rate >= threshold ? '#065f46' : (rate >= threshold * 0.7 ? '#92400e' : '#991b1b');
         }
-
         return this.stats;
     },
 
     // ============================================================
-    // LOAD PAST ATTENDANCE
+    // LOAD PAST
     // ============================================================
     async loadPastAttendance() {
         const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) { console.warn('⚠️ pastAttendanceTable not found'); return; }
-
+        if (!tbody) return;
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Database not available</td></tr>';
-                return;
-            }
-
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
+            if (!supabase) return;
+            const todayStr = new Date().toISOString().split('T')[0];
 
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
@@ -529,167 +378,105 @@ const LecturerAttendance = {
                 .order('check_in_time', { ascending: false })
                 .limit(100);
 
-            if (error) {
-                console.error('❌ Error loading past attendance:', error);
-                tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Error: ${error.message}</td></tr>`;
-                return;
-            }
-
+            if (error) { console.error(error); return; }
             this.pastLogs = logs || [];
             this.filteredPastLogs = [...this.pastLogs];
-            console.log(`📊 Loaded ${this.pastLogs.length} past attendance records (${this.getProgramTypeLabel()})`);
-
             this.renderPastAttendance();
-
         } catch (error) {
-            console.error('❌ Failed to load past attendance:', error);
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Error: ${error.message}</td></tr>`;
+            console.error('❌ loadPastAttendance:', error);
         }
     },
 
     // ============================================================
-    // RENDER PAST ATTENDANCE
+    // RENDER PAST
     // ============================================================
     renderPastAttendance() {
         const tbody = document.getElementById('pastAttendanceTable');
         if (!tbody) return;
-
         const logs = this.pastLogs;
         const typeLabel = this.getProgramTypeLabel();
 
         const countEl = document.getElementById('pastLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
 
-        if (!logs || logs.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                        <i class="fas fa-history" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                        <p style="margin:0;">No past attendance records found. (${typeLabel})</p>
-                    </td>
-                </tr>
-            `;
+        if (!logs?.length) {
+            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+                <i class="fas fa-history" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                <p style="margin:0;">No past attendance records found. (${typeLabel})</p></td></tr>`;
             return;
         }
 
-        const statusColors = {
-            'Present': '#10b981', 'Absent': '#ef4444', 'Pending': '#f59e0b',
-            'Late': '#f59e0b', 'Excused': '#3b82f6', 'Verified': '#10b981'
-        };
+        const statusColors = { Present: '#10b981', Absent: '#ef4444', Pending: '#f59e0b', Late: '#f59e0b', Excused: '#3b82f6', Verified: '#10b981' };
+        const isTVET = this.isTVET;
 
-        tbody.innerHTML = logs.map((log) => {
+        tbody.innerHTML = logs.map(log => {
             const hasLocation = log.latitude && log.longitude;
-
-            const isVerified = log.is_verified === true ||
-                              log.is_verified === 'true' ||
-                              log.is_verified === 1 ||
-                              log.attendance_status === 'Verified' ||
-                              (log.attendance_status === 'Present' && log.verified_at !== null);
-
+            const isVerified = log.is_verified === true || log.is_verified === 'true' || log.is_verified === 1 || log.attendance_status === 'Verified' || (log.attendance_status === 'Present' && log.verified_at !== null);
             let displayStatus = log.attendance_status || 'Pending';
             if (isVerified && displayStatus !== 'Absent') displayStatus = 'Verified ✓';
-
             const statusColor = statusColors[displayStatus] || '#6b7280';
             const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
-
             const studentName = log.student_name || 'Unknown Student';
             const regNumber = log.registration_number || log.student_id || 'N/A';
             const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
             const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
             const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' :
-                (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
-
-            const canVerify = !isLecturerCheckin &&
-                              log.session_type !== 'Lecturer Check-in' &&
-                              log.role !== 'lecturer' &&
-                              !isVerified;
-
+            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
+            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified;
             const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
-            const isTVET = this.isTVET;
 
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}"
-                    onmouseover="this.style.background='${isVerified || isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'"
-                    onmouseout="this.style.background='${isVerified || isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
+                <tr style="border-bottom: 1px solid #f1f5f9; ${isVerified || isLecturerCheckin ? 'background: #f0fdf4;' : ''}">
                     <td style="padding: 10px 14px; color: #475569; font-size: 12px;">${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                     <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
                         ${this.escapeHtml(studentName)}
                         ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
                         ${isTVET && !isLecturerCheckin ? ' <span style="font-size:9px;color:#8b5cf6;padding:1px 6px;border-radius:8px;">TVET</span>' : ''}
                     </td>
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" title="${this.escapeHtml(regNumber)}">${this.escapeHtml(displayReg)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                        ${this.escapeHtml(blockDisplay)}
-                        ${isTVET ? `<div style="font-size: 8px; color: #8b5cf6;">TVET Term</div>` : ''}
-                    </td>
+                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;">${this.escapeHtml(displayReg)}</td>
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(blockDisplay)}</td>
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(log.unit_name || log.target_name || 'General')}</td>
-                    <td style="padding: 10px 14px;">
-                        <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(log.session_type || 'Class')}</span>
-                    </td>
+                    <td style="padding: 10px 14px;"><span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(log.session_type || 'Class')}</span></td>
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
                     <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(locationDisplay)}</td>
                     <td style="padding: 10px 14px; text-align: center;">
-                        <div>
-                            <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; color: ${isVerified ? '#10b981' : statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">
-                                ${isVerified ? '✅ Verified' : displayStatus}
-                            </span>
-                            ${isVerified && verifiedByDisplay ? `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
-                        </div>
+                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; color: ${isVerified ? '#10b981' : statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">${isVerified ? '✅ Verified' : displayStatus}</span>
+                        ${isVerified && verifiedByDisplay ? `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
                     </td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ?
-                                `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` :
-                                `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
-                            }
-                            ${canVerify ?
-                                `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` :
-                                `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px; font-weight: ${isVerified ? '600' : 'normal'};">${isVerified ? '✅ Verified' : '—'}</span>`
-                            }
+                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
+                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
                         </div>
                     </td>
-                </tr>
-            `;
+                </tr>`;
         }).join('');
     },
 
     // ============================================================
-    // LOAD ATTENDANCE STATS
+    // LOAD STATS
     // ============================================================
     async loadAttendanceStats() {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
+            const todayStr = new Date().toISOString().split('T')[0];
 
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-
-            const { data: logs, error } = await supabase
+            const { data: logs } = await supabase
                 .from('geo_attendance_logs')
                 .select('attendance_status, is_verified')
                 .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .lte('check_in_time', `${todayStr}T23:59:59.999Z`);
 
-            if (error) { console.error('❌ Error loading stats:', error); return; }
-
             const total = logs?.length || 0;
-            const present = logs?.filter(l => {
-                const status = (l.attendance_status || '').toLowerCase();
-                return status === 'present' || l.is_verified === true;
-            }).length || 0;
+            const present = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'present' || l.is_verified === true).length || 0;
             const absent = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'absent').length || 0;
             const pending = total - present - absent;
             const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
-            const typeLabel = this.getProgramTypeLabel();
-            const threshold = this.getPassingThreshold();
-
             const cardMap = {
-                'totalStudentsCount': total,
-                'presentTodayCount': present,
-                'absentTodayCount': absent,
-                'pendingCount': pending,
+                'totalStudentsCount': total, 'presentTodayCount': present,
+                'absentTodayCount': absent, 'pendingCount': pending,
                 'attendanceRate': rate + '%'
             };
 
@@ -697,11 +484,8 @@ const LecturerAttendance = {
                 const el = document.getElementById(id);
                 if (el) el.textContent = value;
             }
-
-            console.log(`📊 Dashboard stats: total=${total}, present=${present}, absent=${absent}, pending=${pending}, rate=${rate}% (${typeLabel}, Pass: ≥${threshold}%)`);
-
         } catch (error) {
-            console.error('❌ Failed to load attendance stats:', error);
+            console.error('❌ loadAttendanceStats:', error);
         }
     },
 
@@ -713,7 +497,6 @@ const LecturerAttendance = {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = this.currentProgram || profile?.program || profile?.department;
             if (!program) return;
-
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
 
@@ -725,9 +508,7 @@ const LecturerAttendance = {
 
             const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
             const currentBlock = blocks.length > 0 ? this.getBlockDisplay(blocks[0]) : 'N/A';
-
             const programDisplay = window.LecturerUtils?.getProgramDisplayName?.(program) || program;
-            const isTVET = this.isTVET;
             const typeLabel = this.getProgramTypeLabel();
             const emoji = this.getProgramEmoji();
 
@@ -740,33 +521,23 @@ const LecturerAttendance = {
 
             for (const [id, value] of Object.entries(displayMap)) {
                 const el = document.getElementById(id);
-                if (el) {
-                    el.textContent = value;
-                    if (id === 'programTypeBadge') {
-                        el.style.background = isTVET ? 'rgba(139,92,246,0.3)' : 'rgba(76,29,149,0.3)';
-                        el.style.color = isTVET ? '#7c3aed' : '#1e40af';
-                    }
-                }
+                if (el) el.textContent = value;
             }
-
         } catch (error) {
-            console.error('❌ Failed to load program info:', error);
+            console.error('❌ loadProgramInfo:', error);
         }
     },
 
     // ============================================================
-    // VIEW ATTENDANCE MAP
+    // MAP
     // ============================================================
     viewAttendanceMap(lat, lng, name) {
         if (!lat || !lng) { this.showNotification('No location data available.', 'warning'); return; }
-
         const latNum = parseFloat(lat);
         const lngNum = parseFloat(lng);
-
         if (isNaN(latNum) || isNaN(lngNum)) { this.showNotification('Invalid location data.', 'warning'); return; }
 
-        this.currentLocation = { lat: latNum, lng: lngNum, name: name };
-
+        this.currentLocation = { lat: latNum, lng: lngNum, name };
         const modal = document.getElementById('attendanceMapModal');
         if (modal) modal.style.display = 'flex';
 
@@ -776,62 +547,36 @@ const LecturerAttendance = {
             infoEl.style.display = 'block';
             textEl.textContent = `📍 ${name} - Latitude: ${latNum.toFixed(6)}, Longitude: ${lngNum.toFixed(6)}`;
         }
-
         setTimeout(() => this.initMap(latNum, lngNum, name), 300);
     },
 
-    // ============================================================
-    // INIT MAP
-    // ============================================================
     initMap(lat, lng, name) {
         const container = document.getElementById('mapContainer');
         if (!container) return;
-
         if (this.mapInstance) { this.mapInstance.remove(); this.mapInstance = null; }
 
-        const loadingEl = document.getElementById('mapLoading');
-        if (loadingEl) loadingEl.style.display = 'none';
-
         if (typeof L === 'undefined') {
-            container.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;flex-direction:column;padding:20px;">
-                    <i class="fas fa-map" style="font-size:48px;margin-bottom:10px;color:#e2e8f0;"></i>
-                    <p style="text-align:center;max-width:300px;">Map library not loaded.</p>
-                    <button onclick="LecturerAttendance.initMap(${lat}, ${lng}, '${name}')" style="margin-top:10px;background:#4C1D95;color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;"><i class="fas fa-sync-alt"></i> Retry</button>
-                </div>
-            `;
+            container.innerHTML = `<div style="padding:20px;text-align:center;color:#94a3b8;">Map library not loaded.</div>`;
             return;
         }
 
         try {
             const accentColor = this.isTVET ? '#8b5cf6' : '#4C1D95';
             this.mapInstance = L.map(container).setView([lat, lng], 16);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                maxZoom: 19
-            }).addTo(this.mapInstance);
-
-            L.marker([lat, lng]).addTo(this.mapInstance)
-                .bindPopup(`<b>${this.escapeHtml(name)}</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
-                .openPopup();
-
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(this.mapInstance);
+            L.marker([lat, lng]).addTo(this.mapInstance).bindPopup(`<b>${this.escapeHtml(name)}</b>`).openPopup();
             L.circle([lat, lng], { radius: 50, color: accentColor, fillColor: accentColor, fillOpacity: 0.1, weight: 2 }).addTo(this.mapInstance);
-
             setTimeout(() => { if (this.mapInstance) this.mapInstance.invalidateSize(); }, 400);
-
         } catch (error) {
-            console.error('❌ Error initializing map:', error);
-            container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ef4444;flex-direction:column;padding:20px;"><i class="fas fa-exclamation-triangle" style="font-size:32px;margin-bottom:10px;"></i><p>Error loading map: ${error.message}</p></div>`;
+            console.error('❌ initMap:', error);
         }
     },
 
     // ============================================================
-    // LECTURER SELF CHECK-IN
+    // LECTURER CHECK-IN
     // ============================================================
     async lecturerCheckIn() {
-        if (this.isProcessing) { this.showNotification('Please wait, processing...', 'warning'); return; }
-
+        if (this.isProcessing) { this.showNotification('Please wait...', 'warning'); return; }
         const btn = document.getElementById('lecturerCheckinBtn');
         const statusEl = document.getElementById('lecturerCheckinStatus');
         if (!btn) return;
@@ -840,125 +585,83 @@ const LecturerAttendance = {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
 
-        if (statusEl) { statusEl.textContent = '⏳ Getting location...'; statusEl.style.color = '#f59e0b'; }
-
         if (!navigator.geolocation) {
-            this.showNotification('Geolocation not supported by your browser.', 'error');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-            if (statusEl) { statusEl.textContent = '❌ Geolocation not supported'; statusEl.style.color = '#ef4444'; }
-            this.isProcessing = false;
-            return;
+            this.showNotification('Geolocation not supported.', 'error');
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
+            this.isProcessing = false; return;
         }
 
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                try {
-                    const supabase = window.lecturerDB?.supabase;
-                    const profile = window.lecturerDB?.getCurrentUserProfile();
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            try {
+                const supabase = window.lecturerDB?.supabase;
+                const profile = window.lecturerDB?.getCurrentUserProfile();
+                const userId = profile?.user_id || this.lecturerUuid;
+                if (!supabase || !userId) throw new Error('Database or user not available');
 
-                    const userId = profile?.user_id || this.lecturerUuid || this.lecturerAssignmentId;
-                    const staffNumber = profile?.staff_id || profile?.staff_number || 'LECTURER';
-                    const fullName = profile?.full_name || 'Lecturer';
+                const today = new Date().toISOString().split('T')[0];
+                const { data: existing } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .eq('session_type', 'Lecturer Check-in')
+                    .gte('check_in_time', `${today}T00:00:00.000Z`)
+                    .lte('check_in_time', `${today}T23:59:59.999Z`)
+                    .limit(1);
 
-                    if (!supabase || !userId) throw new Error('Database or user not available');
-
-                    if (statusEl) { statusEl.textContent = '⏳ Checking in...'; statusEl.style.color = '#f59e0b'; }
-
-                    const today = new Date().toISOString().split('T')[0];
-
-                    const { data: existing } = await supabase
-                        .from('geo_attendance_logs')
-                        .select('id')
-                        .eq('user_id', userId)
-                        .eq('session_type', 'Lecturer Check-in')
-                        .gte('check_in_time', `${today}T00:00:00.000Z`)
-                        .lte('check_in_time', `${today}T23:59:59.999Z`)
-                        .limit(1);
-
-                    if (existing && existing.length > 0) {
-                        this.showNotification('✅ You have already checked in today!', 'success');
-                        if (statusEl) { statusEl.textContent = '✅ Already checked in today'; statusEl.style.color = '#10b981'; }
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-                        this.isProcessing = false;
-                        return;
-                    }
-
-                    const program = this.currentProgram || profile?.program || profile?.department || 'KRCHN';
-                    const programType = this.getProgramTypeLabel();
-
-                    const { error: insertError } = await supabase
-                        .from('geo_attendance_logs')
-                        .insert({
-                            student_id: userId,
-                            user_id: userId,
-                            registration_number: staffNumber,
-                            student_name: fullName,
-                            check_in_time: new Date().toISOString(),
-                            session_type: 'Lecturer Check-in',
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                            accuracy_m: position.coords.accuracy || null,
-                            attendance_status: 'Present',
-                            is_verified: true,
-                            target_name: 'Lecturer Check-in',
-                            location_address: 'Lecturer Check-in',
-                            program: program,
-                            block: profile?.block || 'Staff',
-                            role: 'lecturer',
-                            recorded_by_name: fullName,
-                            program_type: programType,
-                            is_tvet: this.isTVET,
-                            created_at: new Date().toISOString()
-                        });
-
-                    if (insertError) throw new Error(insertError.message);
-
-                    this.showNotification(`✅ ${this.getProgramTypeLabel()} lecturer check-in logged!`, 'success');
-                    if (statusEl) { statusEl.textContent = '✅ Checked in successfully'; statusEl.style.color = '#10b981'; }
-
-                    await this.loadTodayAttendance();
-                    await this.loadAttendanceStats();
-
-                } catch (error) {
-                    console.error('❌ Check-in error:', error);
-                    this.showNotification('Check-in failed: ' + error.message, 'error');
-                    if (statusEl) { statusEl.textContent = '❌ Check-in failed'; statusEl.style.color = '#ef4444'; }
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-                    this.isProcessing = false;
+                if (existing?.length > 0) {
+                    this.showNotification('✅ You have already checked in today!', 'success');
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
+                    this.isProcessing = false; return;
                 }
-            },
-            (error) => {
-                let errorMessage = 'Location unavailable';
-                if (error.code === 1) errorMessage = 'Location access denied.';
-                else if (error.code === 2) errorMessage = 'Location unavailable.';
-                else if (error.code === 3) errorMessage = 'Location request timed out.';
 
-                this.showNotification('Geolocation error: ' + errorMessage, 'error');
-                if (statusEl) { statusEl.textContent = '❌ ' + errorMessage; statusEl.style.color = '#ef4444'; }
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
+                const program = this.currentProgram || profile?.program || 'KRCHN';
+                const programType = this.getProgramTypeLabel();
+
+                const { error: insertError } = await supabase.from('geo_attendance_logs').insert({
+                    student_id: userId, user_id: userId,
+                    registration_number: profile?.staff_id || 'LECTURER',
+                    student_name: profile?.full_name || 'Lecturer',
+                    check_in_time: new Date().toISOString(),
+                    session_type: 'Lecturer Check-in',
+                    latitude: position.coords.latitude, longitude: position.coords.longitude,
+                    accuracy_m: position.coords.accuracy || null,
+                    attendance_status: 'Present', is_verified: true,
+                    target_name: 'Lecturer Check-in', location_address: 'Lecturer Check-in',
+                    program, block: profile?.block || 'Staff', role: 'lecturer',
+                    program_type: programType, is_tvet: this.isTVET,
+                    created_at: new Date().toISOString()
+                });
+
+                if (insertError) throw new Error(insertError.message);
+
+                this.showNotification(`✅ Lecturer check-in logged!`, 'success');
+                await this.loadTodayAttendance();
+                await this.loadAttendanceStats();
+            } catch (error) {
+                console.error('❌ lecturerCheckIn:', error);
+                this.showNotification('Check-in failed: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
                 this.isProcessing = false;
-            },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
-        );
+            }
+        }, (error) => {
+            this.showNotification('Geolocation error.', 'error');
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
+            this.isProcessing = false;
+        }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
     },
 
     // ============================================================
-    // MARK STUDENT ATTENDANCE (Manual)
+    // MANUAL MARK
     // ============================================================
     async markStudentAttendance(e) {
         if (e) e.preventDefault();
-        if (this.isProcessing) { this.showNotification('Please wait, processing...', 'warning'); return; }
+        if (this.isProcessing) return;
 
         const form = document.getElementById('manualAttendanceForm');
         const btn = form?.querySelector('button[type="submit"]');
         const originalText = btn?.innerHTML || 'Mark Student Present';
-
-        if (!form || !btn) { this.showNotification('Form not found.', 'error'); return; }
+        if (!form || !btn) return;
 
         this.isProcessing = true;
         btn.disabled = true;
@@ -972,85 +675,66 @@ const LecturerAttendance = {
             const date = document.getElementById('attDate')?.value;
             const time = document.getElementById('attTime')?.value;
 
-            if (!studentId) { this.showNotification('Please select a student.', 'error'); throw new Error('no-student'); }
-            if (!sessionType) { this.showNotification('Please select a session type.', 'error'); throw new Error('no-type'); }
-            if (!date) { this.showNotification('Please select a date.', 'error'); throw new Error('no-date'); }
+            if (!studentId || !sessionType || !date) throw new Error('Please fill all required fields');
 
             const supabase = window.lecturerDB?.supabase;
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (!supabase || !profile) throw new Error('Database not available');
 
-            const { data: student, error: studentError } = await supabase
+            const { data: student } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('full_name, program, block, intake_year, student_id')
                 .eq('user_id', studentId)
                 .maybeSingle();
 
-            if (studentError) throw new Error('Failed to find student');
             if (!student) throw new Error('Student not found');
 
             const checkInTime = time ? `${date}T${time}:00.000Z` : `${date}T12:00:00.000Z`;
-            const programType = this.getProgramTypeLabel();
-            const blockDisplay = student.block ? this.getBlockDisplay(student.block) : 'N/A';
 
-            const { error: insertError } = await supabase
-                .from('geo_attendance_logs')
-                .insert({
-                    student_id: studentId,
-                    student_name: student.full_name || 'Student',
-                    check_in_time: checkInTime,
-                    session_type: sessionType,
-                    target_name: unit || 'General',
-                    unit_name: unit || 'General',
-                    attendance_status: 'Present',
-                    is_verified: true,
-                    is_manual_entry: true,
-                    location_friendly_name: location || 'Manual Entry',
-                    location_address: `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
-                    program: student.program || profile.program || this.currentProgram || 'KRCHN',
-                    block: student.block || profile.block,
-                    block_display: blockDisplay,
-                    intake_year: student.intake_year || profile.intake_year,
-                    role: 'student',
-                    recorded_by_id: profile.user_id,
-                    recorded_by_name: profile.full_name || 'Lecturer',
-                    program_type: programType,
-                    is_tvet: this.isTVET,
-                    created_at: new Date().toISOString()
-                });
+            const { error: insertError } = await supabase.from('geo_attendance_logs').insert({
+                student_id: studentId,
+                student_name: student.full_name || 'Student',
+                check_in_time: checkInTime,
+                session_type: sessionType,
+                target_name: unit || 'General', unit_name: unit || 'General',
+                attendance_status: 'Present', is_verified: true, is_manual_entry: true,
+                location_friendly_name: location || 'Manual Entry',
+                location_address: `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
+                program: student.program || profile.program || 'KRCHN',
+                block: student.block || profile.block,
+                block_display: student.block ? this.getBlockDisplay(student.block) : 'N/A',
+                intake_year: student.intake_year || profile.intake_year,
+                role: 'student', recorded_by_id: profile.user_id,
+                recorded_by_name: profile.full_name || 'Lecturer',
+                program_type: this.getProgramTypeLabel(),
+                is_tvet: this.isTVET,
+                created_at: new Date().toISOString()
+            });
 
             if (insertError) throw new Error(insertError.message);
 
-            this.showNotification(`✅ ${student.full_name || 'Student'} marked present! (${this.getProgramTypeLabel()})`, 'success');
-
+            this.showNotification(`✅ ${student.full_name} marked present!`, 'success');
             form.reset();
-            const today = new Date();
-            document.getElementById('attDate').value = today.toISOString().split('T')[0];
+            document.getElementById('attDate').value = new Date().toISOString().split('T')[0];
 
             await this.loadTodayAttendance();
             await this.loadAttendanceStats();
-
         } catch (error) {
-            if (!['no-student', 'no-type', 'no-date'].includes(error.message)) {
-                console.error('❌ Mark attendance error:', error);
-                this.showNotification('Failed to mark attendance: ' + error.message, 'error');
-            }
+            console.error('❌ markStudentAttendance:', error);
+            this.showNotification('Failed: ' + error.message, 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            btn.disabled = false; btn.innerHTML = originalText;
             this.isProcessing = false;
         }
     },
 
     // ============================================================
-    // POPULATE FILTERS AND DROPDOWNS
+    // POPULATE FILTERS
     // ============================================================
     populateFilters() {
         const today = new Date().toISOString().split('T')[0];
-
         const filterDate = document.getElementById('filterDate');
         if (filterDate) filterDate.value = today;
-
         const attDate = document.getElementById('attDate');
         if (attDate) attDate.value = today;
 
@@ -1062,30 +746,20 @@ const LecturerAttendance = {
     populateBlockFilter() {
         const blockFilter = document.getElementById('filterBlock');
         if (!blockFilter) return;
-
         const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-
         blockFilter.innerHTML = '<option value="All">All Blocks/Terms</option>';
-
-        if (blocks.length > 0) {
-            blocks.forEach(block => {
-                const option = document.createElement('option');
-                option.value = block;
-                option.textContent = this.getBlockDisplay(block);
-                blockFilter.appendChild(option);
-            });
-        }
-
+        blocks.forEach(block => {
+            const option = document.createElement('option');
+            option.value = block;
+            option.textContent = this.getBlockDisplay(block);
+            blockFilter.appendChild(option);
+        });
         const label = document.getElementById('blockFilterLabel');
-        if (label) {
-            const blockType = this.isTVET ? 'Term' : 'Block';
-            label.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${blockType}`;
-        }
+        if (label) label.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${this.isTVET ? 'Term' : 'Block'}`;
     },
 
     updateFilterLabels() {
         const typeLabel = this.getProgramTypeLabel();
-
         const filterCount = document.getElementById('attendanceFilterCount');
         if (filterCount) filterCount.textContent = `Showing all ${typeLabel} records`;
 
@@ -1099,199 +773,112 @@ const LecturerAttendance = {
     async populateStudentSelect() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = this.currentProgram || profile?.program || profile?.department;
+            const program = this.currentProgram || profile?.program;
             const supabase = window.lecturerDB?.supabase;
             if (!supabase || !program) return;
 
-            const { data: students, error } = await supabase
+            const { data: students } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('user_id, full_name, student_id, block')
                 .eq('program', program)
                 .eq('role', 'student')
-                .order('full_name', { ascending: true });
-
-            if (error) { console.error('❌ Error loading students:', error); return; }
+                .order('full_name');
 
             const select = document.getElementById('attStudentId');
             if (select && students) {
-                const typeLabel = this.getProgramTypeLabel();
-                select.innerHTML = `<option value="">-- Select ${typeLabel} Student --</option>`;
+                select.innerHTML = `<option value="">-- Select ${this.getProgramTypeLabel()} Student --</option>`;
                 students.forEach(s => {
-                    const blockDisplay = s.block ? this.getBlockDisplay(s.block) : '';
                     const option = document.createElement('option');
                     option.value = s.user_id;
-                    const regDisplay = s.student_id || 'N/A';
-                    option.textContent = `${this.escapeHtml(s.full_name)} (${this.escapeHtml(regDisplay)})${blockDisplay ? ' - ' + blockDisplay : ''}`;
+                    option.textContent = `${s.full_name} (${s.student_id || 'N/A'})`;
                     select.appendChild(option);
                 });
-                console.log(`👥 Loaded ${students.length} ${typeLabel} students`);
             }
         } catch (error) {
-            console.error('❌ Failed to populate student select:', error);
+            console.error('❌ populateStudentSelect:', error);
         }
     },
 
     // ============================================================
-    // APPLY FILTERS — reads filter inputs and re-renders filtered data
+    // APPLY / RESET FILTERS
     // ============================================================
     applyFilters() {
-        console.log(`🔍 Applying ${this.getProgramTypeLabel()} filters...`);
-
-        const filterDate        = (document.getElementById('filterDate')?.value || '').trim();
-        const filterBlock       = (document.getElementById('filterBlock')?.value || 'All').trim();
-        const filterYear        = (document.getElementById('filterYear')?.value || 'All').trim();
+        const filterDate = (document.getElementById('filterDate')?.value || '').trim();
+        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
+        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
         const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-        const searchText        = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
+        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
-        console.log('📋 Filter values:', { filterDate, filterBlock, filterYear, filterSessionType, searchText });
-
-        // ---------- TODAY ----------
         let filteredToday = [...(this.todayLogs || [])];
+        if (filterDate) filteredToday = filteredToday.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
+        if (filterBlock !== 'All') filteredToday = filteredToday.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
+        if (filterYear !== 'All') filteredToday = filteredToday.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
+        if (filterSessionType !== 'All') filteredToday = filteredToday.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
+        if (searchText) filteredToday = filteredToday.filter(l => {
+            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
+            return h.includes(searchText);
+        });
 
-        if (filterDate) {
-            filteredToday = filteredToday.filter(log => {
-                if (!log.check_in_time) return false;
-                const logDate = new Date(log.check_in_time).toISOString().split('T')[0];
-                return logDate === filterDate;
-            });
-        }
-        if (filterBlock && filterBlock !== 'All') {
-            filteredToday = filteredToday.filter(log =>
-                String(log.block || '').toLowerCase() === filterBlock.toLowerCase()
-            );
-        }
-        if (filterYear && filterYear !== 'All') {
-            filteredToday = filteredToday.filter(log =>
-                String(log.intake_year || '').toLowerCase() === filterYear.toLowerCase()
-            );
-        }
-        if (filterSessionType && filterSessionType !== 'All') {
-            filteredToday = filteredToday.filter(log =>
-                String(log.session_type || '').toLowerCase() === filterSessionType.toLowerCase()
-            );
-        }
-        if (searchText) {
-            filteredToday = filteredToday.filter(log => {
-                const haystack = [log.student_name, log.registration_number, log.student_id, log.unit_name, log.target_name, log.session_type, log.block, log.program].filter(Boolean).join(' ').toLowerCase();
-                return haystack.includes(searchText);
-            });
-        }
-
-        // ---------- PAST ----------
         let filteredPast = [...(this.pastLogs || [])];
-
-        if (filterBlock && filterBlock !== 'All') {
-            filteredPast = filteredPast.filter(log =>
-                String(log.block || '').toLowerCase() === filterBlock.toLowerCase()
-            );
-        }
-        if (filterYear && filterYear !== 'All') {
-            filteredPast = filteredPast.filter(log =>
-                String(log.intake_year || '').toLowerCase() === filterYear.toLowerCase()
-            );
-        }
-        if (filterSessionType && filterSessionType !== 'All') {
-            filteredPast = filteredPast.filter(log =>
-                String(log.session_type || '').toLowerCase() === filterSessionType.toLowerCase()
-            );
-        }
-        if (searchText) {
-            filteredPast = filteredPast.filter(log => {
-                const haystack = [log.student_name, log.registration_number, log.student_id, log.unit_name, log.target_name, log.session_type, log.block, log.program].filter(Boolean).join(' ').toLowerCase();
-                return haystack.includes(searchText);
-            });
-        }
+        if (filterBlock !== 'All') filteredPast = filteredPast.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
+        if (filterYear !== 'All') filteredPast = filteredPast.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
+        if (filterSessionType !== 'All') filteredPast = filteredPast.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
+        if (searchText) filteredPast = filteredPast.filter(l => {
+            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
+            return h.includes(searchText);
+        });
 
         this.filteredTodayLogs = filteredToday;
         this.filteredPastLogs = filteredPast;
-
-        console.log(`✅ Filtered: today=${filteredToday.length}/${this.todayLogs.length}, past=${filteredPast.length}/${this.pastLogs.length}`);
 
         this.renderFilteredToday(filteredToday);
         this.renderFilteredPast(filteredPast);
 
         const filterCount = document.getElementById('attendanceFilterCount');
-        if (filterCount) {
-            filterCount.textContent = `Showing ${filteredToday.length} of ${this.todayLogs.length} today · ${filteredPast.length} past`;
-        }
+        if (filterCount) filterCount.textContent = `Showing ${filteredToday.length} of ${this.todayLogs.length} today · ${filteredPast.length} past`;
     },
 
-    // ============================================================
-    // RENDER FILTERED TODAY
-    // ============================================================
     renderFilteredToday(logs) {
         const tbody = document.getElementById('attendanceTable');
         if (!tbody) return;
-
         const countEl = document.getElementById('todayLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
-
-        if (!logs || logs.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                        <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                        <p style="margin:0;">No attendance records match your filters.</p>
-                    </td>
-                </tr>
-            `;
+        if (!logs?.length) {
+            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+                <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                <p style="margin:0;">No attendance records match your filters.</p></td></tr>`;
             return;
         }
-
         const original = this.todayLogs;
         this.todayLogs = logs;
         this.renderTodayAttendance();
         this.todayLogs = original;
     },
 
-    // ============================================================
-    // RENDER FILTERED PAST
-    // ============================================================
     renderFilteredPast(logs) {
         const tbody = document.getElementById('pastAttendanceTable');
         if (!tbody) return;
-
         const countEl = document.getElementById('pastLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
-
-        if (!logs || logs.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                        <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                        <p style="margin:0;">No past records match your filters.</p>
-                    </td>
-                </tr>
-            `;
+        if (!logs?.length) {
+            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+                <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                <p style="margin:0;">No past records match your filters.</p></td></tr>`;
             return;
         }
-
         const original = this.pastLogs;
         this.pastLogs = logs;
         this.renderPastAttendance();
         this.pastLogs = original;
     },
 
-    // ============================================================
-    // RESET FILTERS — clear all + re-render unfiltered
-    // ============================================================
     resetFilters() {
-        console.log('🔄 Resetting filters...');
-
-        const filterDate = document.getElementById('filterDate');
-        if (filterDate) filterDate.value = new Date().toISOString().split('T')[0];
-
-        const filterBlock = document.getElementById('filterBlock');
-        if (filterBlock) filterBlock.value = 'All';
-
-        const filterYear = document.getElementById('filterYear');
-        if (filterYear) filterYear.value = 'All';
-
-        const filterSessionType = document.getElementById('filterSessionType');
-        if (filterSessionType) filterSessionType.value = 'All';
-
-        const searchEl = document.getElementById('filterSearch');
-        if (searchEl) searchEl.value = '';
+        const today = new Date().toISOString().split('T')[0];
+        const fDate = document.getElementById('filterDate'); if (fDate) fDate.value = today;
+        const fBlock = document.getElementById('filterBlock'); if (fBlock) fBlock.value = 'All';
+        const fYear = document.getElementById('filterYear'); if (fYear) fYear.value = 'All';
+        const fType = document.getElementById('filterSessionType'); if (fType) fType.value = 'All';
+        const fSearch = document.getElementById('filterSearch'); if (fSearch) fSearch.value = '';
 
         this.renderTodayAttendance();
         this.renderPastAttendance();
@@ -1299,166 +886,355 @@ const LecturerAttendance = {
 
         const filterCount = document.getElementById('attendanceFilterCount');
         if (filterCount) filterCount.textContent = `Showing all ${this.getProgramTypeLabel()} records`;
-
-        this.showNotification(`${this.getProgramTypeLabel()} filters reset!`, 'info');
+        this.showNotification('Filters reset!', 'info');
     },
 
     // ============================================================
-    // ✅ EXPORT CSV — GROUPS CONTINUOUS (SAME-CLASS) RECORDS
+    // ✅ MODERN STYLED XLSX EXPORT (ExcelJS)
     // ============================================================
-    // Continuous classes reuse the same unit + session_type + block + intake
-    // across multiple days. This export groups them into one block per class
-    // and lists each dated occurrence, so the report reads like a class register.
-    // ============================================================
-    exportCSV() {
-        const logs = this.todayLogs.filter(log => log.session_type !== 'Lecturer Check-in');
+    async exportCSV() {
+        if (typeof ExcelJS === 'undefined') {
+            this.showNotification('Excel library still loading — try again in a moment.', 'warning');
+            return;
+        }
 
-        if (!logs || logs.length === 0) {
-            this.showNotification('No data to export.', 'warning');
+        // ---- 1. READ FILTERS ----
+        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
+        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
+        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
+        const filterDate = (document.getElementById('filterDate')?.value || '').trim();
+        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
+
+        const hasFilters = (filterBlock !== 'All') || (filterYear !== 'All') || (filterSessionType !== 'All') || !!searchText;
+
+        // ---- 2. SOURCE ----
+        let source = [...(this.todayLogs || [])].filter(l => l.session_type !== 'Lecturer Check-in');
+        if (filterDate) source = source.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
+        if (filterBlock !== 'All') source = source.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
+        if (filterYear !== 'All') source = source.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
+        if (filterSessionType !== 'All') source = source.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
+        if (searchText) source = source.filter(l => {
+            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
+            return h.includes(searchText);
+        });
+
+        if (!source.length) {
+            this.showNotification(hasFilters ? 'No records match the current filters.' : 'No attendance data to export.', 'warning');
             return;
         }
 
         const typeLabel = this.getProgramTypeLabel();
-        const escapeCsv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
-        // ---------- 1. GROUP BY CLASS IDENTITY ----------
+        // ---- 3. GROUP ----
         const groups = {};
-        logs.forEach(log => {
-            const unit = (log.unit_name || log.target_name || 'General').trim();
-            const sessionType = (log.session_type || 'Class').trim();
+        source.forEach(log => {
             const block = (log.block || 'N/A').trim();
             const intake = String(log.intake_year || 'N/A');
-            const program = (log.program || 'N/A').trim();
+            const unit = (log.unit_name || log.target_name || 'General').trim();
+            const program = (log.program || 'KRCHN').trim();
+            const sessionType = (log.session_type || 'Class').trim();
+            const key = `${block}|${intake}|${program}|${unit}|${sessionType}`.toLowerCase();
 
-            const key = `${program}|${block}|${intake}|${unit}|${sessionType}`.toLowerCase();
-
-            if (!groups[key]) {
-                groups[key] = {
-                    unit,
-                    sessionType,
-                    block,
-                    blockDisplay: this.getBlockDisplay(block),
-                    intake,
-                    program,
-                    programType: typeLabel,
-                    occurrences: []   // each dated row for this class
-                };
-            }
-
-            groups[key].occurrences.push(log);
+            if (!groups[key]) groups[key] = {
+                block, blockDisplay: this.getBlockDisplay(block),
+                intake, program, unit, sessionType, logs: []
+            };
+            groups[key].logs.push(log);
         });
 
-        // ---------- 2. SORT CLASSES BY UNIT NAME ----------
-        const sortedGroups = Object.values(groups).sort((a, b) =>
-            a.unit.localeCompare(b.unit)
-        );
+        const classList = Object.values(groups).sort((a, b) => {
+            const c1 = String(a.block).localeCompare(String(b.block), undefined, { numeric: true });
+            if (c1) return c1;
+            return a.unit.localeCompare(b.unit);
+        });
 
-        // ---------- 3. BUILD CSV ----------
-        const rows = [];
+        // ---- 4. COLORS ----
+        const PURPLE = 'FF4F46E5';
+        const PURPLE_LIGHT = 'FFEEF2FF';
+        const GREEN = 'FF10B981';
+        const GREEN_LIGHT = 'FFD1FAE5';
+        const RED = 'FFEF4444';
+        const RED_LIGHT = 'FFFEE2E2';
+        const AMBER = 'FFF59E0B';
+        const AMBER_LIGHT = 'FFFEF3C7';
+        const GREY = 'FF94A3B8';
+        const GREY_LIGHT = 'FFF1F5F9';
+        const DARK = 'FF0F172A';
+        const BORDER = 'FFE2E8F0';
 
-        // Header band
-        rows.push([
-            escapeCsv(`ATTENDANCE REPORT — ${typeLabel}`),
-            escapeCsv(`Generated: ${new Date().toLocaleString('en-GB')}`),
-            escapeCsv(`Total classes: ${sortedGroups.length}`),
-            escapeCsv(`Total records: ${logs.length}`)
-        ].join(','));
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'NCHSM';
+        wb.created = new Date();
 
-        rows.push(''); // spacer
+        const usedNames = new Set();
 
-        sortedGroups.forEach((group, groupIndex) => {
-            // ---------- Class header ----------
-            rows.push([
-                escapeCsv(`CLASS ${groupIndex + 1}: ${group.unit}`),
-                escapeCsv(`Type: ${group.sessionType}`),
-                escapeCsv(`Block: ${group.blockDisplay}`),
-                escapeCsv(`Program: ${group.program}`),
-                escapeCsv(`Intake: ${group.intake}`),
-                escapeCsv(`Occurrences: ${group.occurrences.length}`)
-            ].join(','));
-
-            // ---------- Column header for this class ----------
-            rows.push([
-                'Date',
-                'Time',
-                'Student Name',
-                'Reg No',
-                'Status',
-                'Verified By',
-                'Location',
-                'Distance (m)',
-                'Accuracy (m)'
-            ].map(escapeCsv).join(','));
-
-            // ---------- Sort occurrences chronologically ----------
-            const sortedOccurrences = [...group.occurrences].sort(
-                (a, b) => new Date(a.check_in_time) - new Date(b.check_in_time)
-            );
-
-            // ---------- Rows for each occurrence ----------
-            sortedOccurrences.forEach(log => {
-                const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
-                const status = log.attendance_status || (log.is_verified ? 'Present' : 'Pending');
-                const verifiedFlag = log.is_verified ? 'Verified ✓' : status;
-
-                rows.push([
-                    escapeCsv(date.toLocaleDateString('en-GB')),
-                    escapeCsv(date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })),
-                    escapeCsv(log.student_name || 'Unknown'),
-                    escapeCsv(log.registration_number || log.student_id || 'N/A'),
-                    escapeCsv(verifiedFlag),
-                    escapeCsv(log.verified_by_name || '—'),
-                    escapeCsv(log.location_address || log.location_friendly_name || log.location_name || 'N/A'),
-                    escapeCsv(log.distance_meters != null ? Math.round(log.distance_meters) : '—'),
-                    escapeCsv(log.accuracy_m != null ? Math.round(log.accuracy_m) : '—')
-                ].join(','));
+        // ---- 5. BUILD EACH SHEET ----
+        for (const cls of classList) {
+            // Unique dates
+            const dateSet = new Set();
+            cls.logs.forEach(log => {
+                if (!log.check_in_time) return;
+                dateSet.add(new Date(log.check_in_time).toISOString().split('T')[0]);
+            });
+            const sortedDates = [...dateSet].sort();
+            const dateDisplayMap = {};
+            sortedDates.forEach(iso => {
+                const [y, m, d] = iso.split('-');
+                dateDisplayMap[iso] = `${d}/${m}`;
             });
 
-            // ---------- Class summary line ----------
-            const presentCount = sortedOccurrences.filter(o => o.is_verified || (o.attendance_status || '').toLowerCase() === 'present').length;
-            const pendingCount = sortedOccurrences.length - presentCount;
+            // Student map
+            const studentMap = {};
+            cls.logs.forEach(log => {
+                const reg = (log.registration_number || log.student_id || 'N/A').trim();
+                const name = (log.student_name || 'Unknown').trim();
+                const iso = log.check_in_time ? new Date(log.check_in_time).toISOString().split('T')[0] : null;
+                if (!studentMap[reg]) studentMap[reg] = { reg, name, byDate: {} };
+                if (!iso) return;
 
-            rows.push([
-                escapeCsv('SUMMARY'),
-                escapeCsv(`Present/Verified: ${presentCount}`),
-                escapeCsv(`Pending: ${pendingCount}`),
-                escapeCsv(`Total: ${sortedOccurrences.length}`)
-            ].join(','));
+                const status = (log.attendance_status || '').toLowerCase();
+                const verified = log.is_verified === true;
+                let mark = '-';
+                if (verified || status === 'present' || status === 'verified') mark = '✓';
+                else if (status === 'absent') mark = 'A';
+                else if (status === 'pending' || status === '') mark = 'P';
 
-            rows.push(''); // spacer between classes
-        });
+                const rank = { '✓': 3, 'P': 2, 'A': 1, '-': 0 };
+                const prev = studentMap[reg].byDate[iso];
+                if (!prev || rank[mark] > rank[prev]) studentMap[reg].byDate[iso] = mark;
+            });
 
-        // ---------- 4. DOWNLOAD ----------
-        const csv = rows.join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `attendance_${typeLabel.replace(/[^\w]/g, '_')}_grouped_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+            const students = Object.values(studentMap).sort((a, b) =>
+                a.reg.localeCompare(b.reg, undefined, { numeric: true })
+            );
 
-        this.showNotification(
-            `✅ Exported ${sortedGroups.length} class${sortedGroups.length === 1 ? '' : 'es'} (${logs.length} records) as grouped CSV`,
-            'success'
-        );
+            // Unique sheet name
+            let sheetName = `${cls.blockDisplay} ${cls.unit}`.slice(0, 28).replace(/[\\\/\?\*\[\]:]/g, '-');
+            if (usedNames.has(sheetName)) {
+                let n = 2;
+                while (usedNames.has(`${sheetName} (${n})`.slice(0, 31))) n++;
+                sheetName = `${sheetName} (${n})`.slice(0, 31);
+            }
+            usedNames.add(sheetName);
+
+            const ws = wb.addWorksheet(sheetName, {
+                pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 } }
+            });
+
+            const totalCols = 3 + sortedDates.length + 1; // S/NO + REG + NAME + dates + TOTAL
+
+            // ---- Header rows ----
+            const mergeRow = (rowNumber, text, opts = {}) => {
+                ws.mergeCells(rowNumber, 1, rowNumber, totalCols);
+                const cell = ws.getCell(rowNumber, 1);
+                cell.value = text;
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                if (opts.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: opts.fill } };
+                if (opts.font) cell.font = opts.font;
+                if (opts.height) ws.getRow(rowNumber).height = opts.height;
+            };
+
+            let r = 1;
+            mergeRow(r++, 'NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT', {
+                fill: PURPLE, font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 14, name: 'Calibri' }, height: 32
+            });
+            mergeRow(r++, 'DEPARTMENT OF NURSING', {
+                fill: PURPLE_LIGHT, font: { bold: true, italic: true, color: { argb: PURPLE }, size: 12 }, height: 22
+            });
+            mergeRow(r++, `${cls.program} CLASS  |  ${cls.blockDisplay}  |  Intake ${cls.intake}`, {
+                font: { bold: true, color: { argb: DARK }, size: 12 }, height: 22
+            });
+            mergeRow(r++, `UNIT: ${cls.unit}  |  SESSION TYPE: ${cls.sessionType}  |  ${typeLabel}`, {
+                font: { bold: true, color: { argb: DARK }, size: 12 }, height: 22
+            });
+
+            if (hasFilters) {
+                const bits = [];
+                if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
+                if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
+                if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
+                if (filterDate) bits.push(`Date ${filterDate}`);
+                if (searchText) bits.push(`Search "${searchText}"`);
+                mergeRow(r++, `Filtered by → ${bits.join('  ·  ')}`, {
+                    fill: AMBER_LIGHT, font: { italic: true, color: { argb: 'FF92400E' }, size: 10 }, height: 18
+                });
+            }
+
+            mergeRow(r++, 'ATTENDANCE SHEET', {
+                fill: PURPLE_LIGHT, font: { bold: true, color: { argb: PURPLE }, size: 13 }, height: 26
+            });
+
+            r++; // spacer
+
+            // ---- Column header row ----
+            const headerRowIdx = r;
+            const header = ['S/NO', 'REG NO', 'FULL NAME', ...sortedDates.map(d => dateDisplayMap[d]), 'TOTAL'];
+            header.forEach((v, i) => {
+                const cell = ws.getCell(r, i + 1);
+                cell.value = v;
+                cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE } };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                cell.border = { top: { style: 'thin', color: { argb: BORDER } }, bottom: { style: 'thin', color: { argb: BORDER } }, left: { style: 'thin', color: { argb: BORDER } }, right: { style: 'thin', color: { argb: BORDER } } };
+            });
+            ws.getRow(r).height = 24;
+            r++;
+
+            // ---- Student rows ----
+            students.forEach((student, idx) => {
+                const row = ws.getRow(r);
+                row.getCell(1).value = idx + 1;
+                row.getCell(2).value = student.reg;
+                row.getCell(3).value = student.name;
+
+                let present = 0;
+                sortedDates.forEach((iso, i) => {
+                    const mark = student.byDate[iso] || '-';
+                    const cell = row.getCell(4 + i);
+                    cell.value = mark;
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                    let fill = GREY_LIGHT, fontColor = GREY;
+                    if (mark === '✓') { fill = GREEN_LIGHT; fontColor = GREEN; }
+                    else if (mark === 'A') { fill = RED_LIGHT; fontColor = RED; }
+                    else if (mark === 'P') { fill = AMBER_LIGHT; fontColor = AMBER; }
+
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+                    cell.font = { bold: mark !== '-', color: { argb: fontColor }, size: 12 };
+                    if (mark === '✓') present++;
+                });
+
+                const totalCell = row.getCell(4 + sortedDates.length);
+                totalCell.value = `${present}/${sortedDates.length}`;
+                totalCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                totalCell.font = { bold: true, color: { argb: DARK }, size: 11 };
+                totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE_LIGHT } };
+
+                // borders across the row
+                for (let c = 1; c <= totalCols; c++) {
+                    row.getCell(c).border = {
+                        top: { style: 'thin', color: { argb: BORDER } },
+                        bottom: { style: 'thin', color: { argb: BORDER } },
+                        left: { style: 'thin', color: { argb: BORDER } },
+                        right: { style: 'thin', color: { argb: BORDER } }
+                    };
+                    row.getCell(c).alignment = row.getCell(c).alignment || { vertical: 'middle' };
+                    if (!row.getCell(c).font) row.getCell(c).font = { size: 11, color: { argb: DARK } };
+                }
+                row.height = 20;
+                r++;
+            });
+
+            // ---- Summary row ----
+            r++;
+            const totalStudents = students.length;
+            const totalSessions = sortedDates.length;
+            const totalPossible = totalStudents * totalSessions;
+            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
+            const rate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
+
+            ws.mergeCells(r, 1, r, totalCols);
+            const sumCell = ws.getCell(r, 1);
+            sumCell.value = `SUMMARY  ·  Students: ${totalStudents}   Sessions: ${totalSessions}   Present: ${totalPresent}/${totalPossible}   Rate: ${rate}%`;
+            sumCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            sumCell.font = { bold: true, color: { argb: 'FF065F46' }, size: 11 };
+            sumCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN_LIGHT } };
+            ws.getRow(r).height = 24;
+            r += 2;
+
+            // ---- Signature footer ----
+            ws.mergeCells(r, 1, r, totalCols);
+            const sigHeader = ws.getCell(r, 1);
+            sigHeader.value = 'AUTHORIZATION & VERIFICATION';
+            sigHeader.alignment = { horizontal: 'center', vertical: 'middle' };
+            sigHeader.font = { bold: true, color: { argb: PURPLE }, size: 12 };
+            sigHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE_LIGHT } };
+            ws.getRow(r).height = 22;
+            r++;
+
+            const sigRow = (label) => {
+                ws.mergeCells(r, 1, r, 2);
+                ws.getCell(r, 1).value = label;
+                ws.getCell(r, 1).font = { bold: true, size: 11, color: { argb: DARK } };
+                ws.mergeCells(r, 3, r, 3);
+                ws.getCell(r, 3).value = '_______________________';
+                ws.getCell(r, 3).alignment = { horizontal: 'center' };
+                ws.mergeCells(r, 4, r, 5);
+                ws.getCell(r, 4).value = 'Signature: ______________';
+                ws.getCell(r, 4).font = { size: 11 };
+                ws.mergeCells(r, 6, r, totalCols);
+                ws.getCell(r, 6).value = 'Date: ______________';
+                ws.getCell(r, 6).font = { size: 11 };
+                ws.getRow(r).height = 26;
+                r++;
+            };
+
+            r++;
+            sigRow('Class Representative:');
+            r++;
+            sigRow('Lecturer:');
+            r++;
+            sigRow('Checked By:');
+
+            // ---- Column widths ----
+            const widths = [];
+            widths.push({ width: 7 });  // S/NO
+            widths.push({ width: 22 }); // REG NO
+            widths.push({ width: 30 }); // NAME
+            sortedDates.forEach(() => widths.push({ width: 8 }));
+            widths.push({ width: 10 }); // TOTAL
+            ws.columns = widths;
+
+            // ---- Freeze header + first 3 cols ----
+            ws.views = [{ state: 'frozen', xSplit: 3, ySplit: headerRowIdx }];
+        }
+
+        // ---- 6. WRITE ----
+        const suffixBits = [];
+        if (filterBlock !== 'All') suffixBits.push(filterBlock.replace(/\s+/g, ''));
+        if (filterYear !== 'All') suffixBits.push(`Intake${filterYear}`);
+        if (filterSessionType !== 'All') suffixBits.push(filterSessionType);
+        const suffix = suffixBits.length ? '_' + suffixBits.join('_') : '';
+        const filename = `AttendanceSheet${suffix}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+        try {
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+            if (typeof saveAs === 'function') {
+                saveAs(blob, filename);
+            } else {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            this.showNotification(
+                `✅ Exported ${classList.length} sheet${classList.length === 1 ? '' : 's'} (${source.length} records)${hasFilters ? ' — filtered view' : ''}`,
+                'success'
+            );
+        } catch (err) {
+            console.error('❌ Export error:', err);
+            this.showNotification('Export failed: ' + err.message, 'error');
+        }
     },
 
     // ============================================================
-    // PRINT REPORT
+    // PRINT
     // ============================================================
     printReport() { window.print(); },
 
     // ============================================================
-    // SHOW NOTIFICATION
+    // TOASTS
     // ============================================================
     showNotification(message, type = 'info') {
         console.log(`[${type}] ${message}`);
         try {
             if (window.LecturerUI?.showNotification) { window.LecturerUI.showNotification(message, type); return; }
-        } catch (e) { /* silent */ }
+        } catch (e) {}
         try {
             const toast = document.createElement('div');
             const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
@@ -1466,7 +1242,7 @@ const LecturerAttendance = {
             toast.textContent = message;
             document.body.appendChild(toast);
             setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 3500);
-        } catch (e) { /* silent */ }
+        } catch (e) {}
     },
 
     showError(message) { console.error('❌', message); this.showNotification(message, 'error'); },
@@ -1479,7 +1255,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // SETUP EVENT LISTENERS — single-bind guards + debounce
+    // EVENT LISTENERS
     // ============================================================
     setupEventListeners() {
         const checkinBtn = document.getElementById('lecturerCheckinBtn');
@@ -1511,15 +1287,12 @@ const LecturerAttendance = {
                 timeout = setTimeout(() => this.applyFilters(), 300);
             });
         }
-
-        console.log('✅ Event listeners setup complete');
     },
 
     // ============================================================
     // REFRESH
     // ============================================================
     async refresh() {
-        console.log(`🔄 Refreshing ${this.getProgramTypeLabel()} attendance...`);
         await this.loadAllAttendance();
         this.applyFilters();
         this.updateProgramBadge();
@@ -1538,183 +1311,94 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // VERIFY ATTENDANCE — SINGLE RECORD
+    // VERIFY / BULK VERIFY
     // ============================================================
     verifyAttendance: async function(recordId) {
-        console.log('🔍 VERIFY called for record:', recordId);
         if (!recordId) { this.showNotification('Error: Record ID is required', 'error'); return; }
-        if (this.isProcessing) { this.showNotification('Please wait, processing...', 'warning'); return; }
-
+        if (this.isProcessing) return;
         this.isProcessing = true;
 
         const verifyBtn = document.querySelector(`[data-verify-id="${recordId}"]`);
-        const row = verifyBtn?.closest('tr');
-
-        if (verifyBtn) {
-            verifyBtn.disabled = true;
-            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-            verifyBtn.style.background = '#8b5cf6';
-        }
+        if (verifyBtn) { verifyBtn.disabled = true; verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
 
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) throw new Error('Database not available');
-
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerName = profile?.full_name || 'Lecturer';
             const lecturerId = profile?.user_id || this.lecturerUuid || 'unknown';
 
-            const { data: record, error: fetchError } = await supabase
-                .from('geo_attendance_logs')
-                .select('id, attendance_status, is_verified, student_name')
-                .eq('id', recordId)
-                .single();
-
-            if (fetchError) throw new Error('Record not found: ' + fetchError.message);
-
-            if (record.is_verified === true) {
-                this.showNotification(`⚠️ ${record.student_name || 'Student'} is already verified`, 'warning');
-                if (verifyBtn) { verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verified ✓'; verifyBtn.style.background = '#10b981'; verifyBtn.disabled = true; }
-                this.isProcessing = false;
-                return;
-            }
-
-            const now = new Date().toISOString();
-
             const { error: updateError } = await supabase
                 .from('geo_attendance_logs')
                 .update({
-                    is_verified: true,
-                    attendance_status: 'Verified',
-                    verified_by: lecturerId,
-                    verified_by_name: lecturerName,
-                    verified_at: now,
+                    is_verified: true, attendance_status: 'Verified',
+                    verified_by: lecturerId, verified_by_name: lecturerName,
+                    verified_at: new Date().toISOString(),
                     verification_source: 'Manual Verification'
                 })
                 .eq('id', recordId);
 
-            if (updateError) throw new Error('Failed to verify: ' + updateError.message);
+            if (updateError) throw new Error(updateError.message);
 
-            this.showNotification(`✅ ${record.student_name || 'Attendance'} verified!`, 'success');
-
-            if (verifyBtn) {
-                verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verified ✓';
-                verifyBtn.style.background = '#10b981';
-                verifyBtn.disabled = true;
-            }
-
-            if (row) {
-                row.style.background = '#f0fdf4';
-                const statusCell = row.querySelectorAll('td')[8];
-                if (statusCell) {
-                    statusCell.innerHTML = `
-                        <div>
-                            <span style="background: #10b98120; color: #10b981; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">✅ Verified</span>
-                            <span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">by ${lecturerName}</span>
-                        </div>
-                    `;
-                }
-            }
-
-            this.todayLogs = [];
-            this.pastLogs = [];
+            this.showNotification('✅ Verified!', 'success');
             await this.loadTodayAttendance();
             await this.loadPastAttendance();
             await this.loadAttendanceStats();
-            this.renderTodayAttendance();
-            this.renderPastAttendance();
-            this.updateStats(this.todayLogs);
-
         } catch (error) {
-            console.error('❌ Verification error:', error);
-            this.showNotification('Failed to verify: ' + error.message, 'error');
-            if (verifyBtn) {
-                verifyBtn.disabled = false;
-                verifyBtn.innerHTML = '<i class="fas fa-check"></i> Verify';
-                verifyBtn.style.background = '#8b5cf6';
-            }
+            console.error('❌ verifyAttendance:', error);
+            this.showNotification('Failed: ' + error.message, 'error');
         } finally {
             this.isProcessing = false;
         }
     },
 
-    // ============================================================
-    // BULK VERIFY ATTENDANCE
-    // ============================================================
     bulkVerifyAttendance: async function(date = null) {
         const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
-
-        if (!targetDate) { this.showNotification('Please select a date to bulk verify', 'warning'); return; }
-        if (!confirm(`Are you sure you want to verify ALL unverified attendance records for ${targetDate}?`)) return;
-        if (this.isProcessing) { this.showNotification('Please wait, processing...', 'warning'); return; }
-
+        if (!confirm(`Verify ALL unverified attendance records for ${targetDate}?`)) return;
+        if (this.isProcessing) return;
         this.isProcessing = true;
-        const btn = document.querySelector('.btn-bulk-verify');
-        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...'; }
 
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) throw new Error('Database not available');
-
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerName = profile?.full_name || 'Lecturer';
             const lecturerId = profile?.user_id || this.lecturerUuid || 'unknown';
-            const typeLabel = this.getProgramTypeLabel();
 
-            const { data: records, error: fetchError } = await supabase
+            const { data: records } = await supabase
                 .from('geo_attendance_logs')
-                .select('id, student_name')
+                .select('id')
                 .eq('is_verified', false)
                 .neq('session_type', 'Lecturer Check-in')
                 .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
                 .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
 
-            if (fetchError) throw new Error('Failed to fetch records: ' + fetchError.message);
-
-            if (!records || records.length === 0) {
-                this.showNotification(`No unverified records found for ${targetDate}`, 'info');
-                this.isProcessing = false;
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Verify'; }
+            if (!records?.length) {
+                this.showNotification('No unverified records found.', 'info');
                 return;
             }
-
-            const now = new Date().toISOString();
-            const recordIds = records.map(r => r.id);
 
             const { error: updateError } = await supabase
                 .from('geo_attendance_logs')
                 .update({
-                    is_verified: true,
-                    attendance_status: 'Verified',
-                    verified_by: lecturerId,
-                    verified_by_name: lecturerName,
-                    verified_at: now,
-                    verification_source: 'Bulk Verification',
-                    program_type: typeLabel,
-                    is_tvet: this.isTVET
+                    is_verified: true, attendance_status: 'Verified',
+                    verified_by: lecturerId, verified_by_name: lecturerName,
+                    verified_at: new Date().toISOString(),
+                    verification_source: 'Bulk Verification'
                 })
-                .in('id', recordIds);
+                .in('id', records.map(r => r.id));
 
-            if (updateError) throw new Error('Failed to bulk verify: ' + updateError.message);
+            if (updateError) throw new Error(updateError.message);
 
-            this.showNotification(`✅ ${records.length} ${typeLabel} records verified successfully!`, 'success');
-
-            this.todayLogs = [];
-            this.pastLogs = [];
+            this.showNotification(`✅ ${records.length} records verified!`, 'success');
             await this.loadTodayAttendance();
             await this.loadPastAttendance();
             await this.loadAttendanceStats();
-            this.renderTodayAttendance();
-            this.renderPastAttendance();
-            this.updateStats(this.todayLogs);
-            this.updateProgramBadge();
-
         } catch (error) {
-            console.error('❌ Bulk verification error:', error);
-            this.showNotification('Bulk verification failed: ' + error.message, 'error');
+            console.error('❌ bulkVerifyAttendance:', error);
+            this.showNotification('Failed: ' + error.message, 'error');
         } finally {
             this.isProcessing = false;
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Verify'; }
         }
     },
 
@@ -1728,21 +1412,17 @@ const LecturerAttendance = {
 };
 
 // ============================================================
-// INITIALIZE
+// INIT + GLOBAL EXPOSURE
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Initializing Lecturer Attendance Module...');
     setTimeout(() => LecturerAttendance.init(), 750);
 });
 
-// ============================================================
-// GLOBAL EXPOSURE
-// ============================================================
 window.LecturerAttendance = LecturerAttendance;
 window.viewAttendanceMap = (lat, lng, name) => LecturerAttendance.viewAttendanceMap(lat, lng, name);
 window.applyAttendanceFilters = () => LecturerAttendance.applyFilters();
 window.resetAttendanceFilters = () => LecturerAttendance.resetFilters();
-window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();
+window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();  // still named CSV for HTML compatibility
 window.printAttendanceReport = () => LecturerAttendance.printReport();
 window.lecturerCheckin = () => LecturerAttendance.lecturerCheckIn();
 window.markAttendance = (e) => LecturerAttendance.markStudentAttendance(e);
@@ -1761,9 +1441,12 @@ window.closeAttendanceMap = () => {
 
 window.openInGoogleMaps = () => {
     const loc = LecturerAttendance.currentLocation;
-    if (loc) window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lng}`, '_blank');
+    if (loc) {
+        window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lng}`, '_blank');
+    }
 };
 
 console.log('✅ LecturerAttendance module loaded');
-console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Export (grouped), Print, Verify, Bulk Verify');
+console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify');
 console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
+console.log('🎨 Export: Modern styled .xlsx with colored cells, merged headers, frozen panes');
