@@ -783,7 +783,7 @@ window.LecturerOnlineLearning = (() => {
     function paragraphize(text){
         return String(text||'')
             .replace(/\r/g,'\n')
-            .split(/\n{1,}|(?<=[.!?])\s{2,}/)
+            .split(/\n+/)
             .map(x=>x.replace(/\s+/g,' ').trim())
             .filter(Boolean);
     }
@@ -798,59 +798,82 @@ window.LecturerOnlineLearning = (() => {
         return !!needle && hay.includes(needle);
     }
 
+    // Strict evidence matching. The old engine used a fallback that awarded
+    // evidence from shared individual words (for example "health", "class",
+    // "conclusion", "investigations"). That can create false positives.
+    // Institutional grading now requires an actual configured phrase.
     function termCoverage(text,terms){
-        const normalized=normalizedPhrase(text);
+        const hay=normalizedPhrase(text);
         const alternatives=(Array.isArray(terms)?terms:[String(terms||'')])
-            .map(x=>String(x||'').trim())
+            .map(x=>normalizedPhrase(x))
             .filter(Boolean);
         if(!alternatives.length) return {score:0,matched:[]};
+        const matched=alternatives.filter(phrase=>hay.includes(phrase));
+        return {
+            score:matched.length ? Math.min(1,matched.length/Math.max(1,alternatives.length)) : 0,
+            matched
+        };
+    }
 
-        // Prefer multi-word/domain-specific phrases. A single generic word
-        // such as "family", "health" or "date" cannot by itself establish
-        // completion of a requirement.
-        const strong=alternatives.filter(x=>phraseTokens(x).length>=2 || x.length>=12);
-        const candidates=strong.length?strong:alternatives;
-        const matched=[];
-        for(const phrase of candidates){
-            if(containsPhrase(normalized,phrase)) matched.push(phrase);
-        }
-        if(matched.length) return {score:Math.min(1,matched.length/Math.max(1,candidates.length)),matched};
+    function looksLikeContentsLine(p){
+        const x=String(p||'').trim();
+        return /(?:\.{3,}|\s\.{2,}\s)\d{1,4}$/.test(x) || /\bpage\s*\d+$/i.test(x);
+    }
 
-        const words=new Set(cleanWords(normalized));
-        const termHits=alternatives.map(x=>phraseTokens(x).filter(w=>words.has(w))).map(h=>h.length?1:0);
-        const hitCount=termHits.reduce((a,b)=>a+b,0);
-        const score=hitCount>=2 ? Math.min(0.65,hitCount/Math.max(2,alternatives.length)) : 0;
-        return {score,matched:[]};
+    function looksLikeHeading(p){
+        const x=String(p||'').trim();
+        if(!x || x.length>140 || looksLikeContentsLine(x)) return false;
+        const words=x.split(/\s+/);
+        if(words.length>18) return false;
+        // Headings often have no terminal punctuation and are relatively short.
+        return !/[.!?]$/.test(x) || /^[A-Z0-9][A-Z0-9\s:()\-\/&]+$/.test(x);
     }
 
     function findCriterionWindow(text,node){
         const paragraphs=paragraphize(text);
-        const criterionTokens=phraseTokens(`${node.criterion} ${node.description}`);
-        const normalizedCriterion=normalizedPhrase(node.criterion);
-        let index=-1;
+        const criterion=normalizedPhrase(node.criterion);
+        const description=normalizedPhrase(node.description);
+        const candidates=[];
 
-        // First try an exact criterion heading/label.
+        // Use the LAST exact heading occurrence. The first occurrence is often
+        // the Table of Contents, which must never be used as grading evidence.
         for(let i=0;i<paragraphs.length;i++){
             const p=normalizedPhrase(paragraphs[i]);
-            if(normalizedCriterion && (p===normalizedCriterion || p.startsWith(normalizedCriterion+':') || p.startsWith(normalizedCriterion+' '))){ index=i; break; }
+            if(criterion && (p===criterion || p.startsWith(criterion+':') || p.startsWith(criterion+' -') || p.startsWith(criterion+' '))){
+                if(!looksLikeContentsLine(paragraphs[i])) candidates.push(i);
+            }
         }
-        // Then use strong criterion terms in a short paragraph as a heading-like signal.
-        if(index<0 && criterionTokens.length){
+        let index=candidates.length ? candidates[candidates.length-1] : -1;
+
+        // If no exact heading exists, use a strong multi-word criterion phrase,
+        // but never a generic one-word token.
+        if(index<0){
+            const phrases=[criterion,description].filter(x=>x && x.split(/\s+/).length>=2);
             let best={score:0,index:-1};
             paragraphs.forEach((p,i)=>{
-                if(p.length>180) return;
-                const r=termCoverage(p,criterionTokens);
+                if(!looksLikeHeading(p)) return;
+                const r=termCoverage(p,phrases);
                 if(r.score>best.score) best={score:r.score,index:i};
             });
-            if(best.score>=0.65) index=best.index;
+            if(best.score>=0.5) index=best.index;
         }
 
         if(index<0){
-            // For cover pages and non-heading documents, use the first part.
-            return {text:String(text||'').slice(0,5000),headingFound:false,paragraphs};
+            // No heading: use the whole document, but cap it. Requirement
+            // matching remains strict, so TOC-only phrases cannot earn marks
+            // unless there is actual configured evidence.
+            return {text:String(text||'').slice(0,30000),headingFound:false,paragraphs,index:-1};
         }
-        const window=paragraphs.slice(index,Math.min(paragraphs.length,index+12)).join('\n');
-        return {text:window,headingFound:true,paragraphs,index};
+
+        // Stop at the next plausible major heading. This prevents evidence
+        // from one rubric section leaking into another.
+        let end=Math.min(paragraphs.length,index+40);
+        for(let i=index+1;i<Math.min(paragraphs.length,index+40);i++){
+            if(i-index<2) continue;
+            if(looksLikeHeading(paragraphs[i]) && paragraphs[i].length<=100){ end=i; break; }
+        }
+        const section=paragraphs.slice(index,end).join('\n');
+        return {text:section,headingFound:true,paragraphs,index};
     }
 
     function scoreRequirement(requirement,criterionWindow){
@@ -858,29 +881,45 @@ window.LecturerOnlineLearning = (() => {
         const evidenceTerms=Array.isArray(req.evidence_terms)?req.evidence_terms:[];
         const context=String(criterionWindow?.text||'');
         const coverage=termCoverage(context,evidenceTerms);
-        const descriptionCoverage=termCoverage(context,phraseTokens(String(req.description||'')));
-        const contentWords=cleanWords(context).length;
         const headingFound=!!criterionWindow?.headingFound;
+        const contentWords=cleanWords(context).length;
+        const matchedText=coverage.matched.join(' | ');
 
+        // A criterion heading by itself is not substantive evidence. There
+        // must be meaningful content in the section as well.
+        if(!coverage.matched.length || contentWords<15){
+            return {
+                id:String(req.id||''), description:String(req.description||''), score:0,
+                matched:[], content_words:contentWords, heading_found:headingFound,
+                evidence_excerpt:''
+            };
+        }
+
+        // If a requirement has several alternatives, each distinct matched
+        // phrase represents only part of the requirement unless the rubric
+        // explicitly gives it one requirement/weight. Never manufacture a
+        // full mark from a single weak word.
         let score=coverage.score;
-        // A requirement attached to a clearly identified criterion section is
-        // stronger than the same phrase occurring randomly elsewhere.
-        if(headingFound && score>0) score=Math.min(1,score+0.12);
-        if(descriptionCoverage.score>0.5) score=Math.max(score,Math.min(1,descriptionCoverage.score));
+        const genericSingles=new Set(['class','conclusion','summary','introduction','references','bibliography','investigations','evaluation','recommendations','assessment','speech','memory','orientation','insight']);
+        const strongMatches=coverage.matched.filter(x=>x.split(/\s+/).length>=2 || x.length>=12);
+        const onlyGeneric=coverage.matched.every(x=>genericSingles.has(x));
+        if(onlyGeneric && !headingFound) score=0;
+        if(!strongMatches.length && !headingFound) score=Math.min(score,0.35);
+        if(headingFound && score>0 && contentWords>=30) score=Math.min(1,score+0.05);
 
-        // A heading alone is not enough for substantive requirements.
-        // Require actual surrounding content for a full score.
-        if(contentWords<12 && score>0) score=Math.min(score,0.5);
-        if(contentWords<6) score=0;
+        // Cap evidence from a single short occurrence. A rubric requirement
+        // must have surrounding substantive text, not just a heading/label.
+        if(contentWords<30) score=Math.min(score,0.6);
 
         return {
             id:String(req.id||''),
             description:String(req.description||''),
             score:Math.round(Math.max(0,Math.min(1,score))*100)/100,
-            matched:coverage.matched.slice(0,8),
+            matched:coverage.matched.slice(0,12),
+            matched_text:matchedText,
             content_words:contentWords,
             heading_found:headingFound,
-            evidence_excerpt:context.slice(0,600)
+            evidence_excerpt:context.slice(0,800)
         };
     }
 
