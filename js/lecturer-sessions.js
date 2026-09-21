@@ -518,6 +518,9 @@ const LecturerSessions = {
     // ============================================
     // EDIT SESSION — update date / time / location
     // ============================================
+    // ============================================
+    // EDIT SESSION — PROPER MODAL (no browser prompts)
+    // ============================================
     async editSession(sessionId) {
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
@@ -531,66 +534,239 @@ const LecturerSessions = {
             return;
         }
 
+        // ---- defaults ----
         const currentDate = session.session_date ? session.session_date.split('T')[0] : '';
         const currentTime = (session.session_time || '09:00').substring(0, 5);
         const currentLocation = session.location_name || '';
+        const title = session.session_title || session.title || 'Session';
+        const unit = session.unit_name || '';
+        const blockDisplay = session.block_display || session.block_term || '';
+        const sessionType = session.session_type || 'Class';
 
-        const newDate = prompt(
-            `📅 Edit date for "${session.session_title || session.title}"\n\nCurrent: ${currentDate}\nFormat: YYYY-MM-DD`,
-            currentDate
-        );
-        if (!newDate) return;
+        // ---- prevent double-modal ----
+        const existing = document.getElementById('editSessionModal');
+        if (existing) existing.remove();
 
-        const newTime = prompt(
-            `🕒 Edit time\n\nCurrent: ${currentTime}\nFormat: HH:MM (24-hour)`,
-            currentTime
-        );
-        if (!newTime) return;
+        // ---- build modal ----
+        const modal = document.createElement('div');
+        modal.id = 'editSessionModal';
+        modal.innerHTML = `
+            <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px);z-index:999998;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeInBackdrop 0.25s ease;">
+                <div style="background:#fff;border-radius:20px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.35);animation:slideUpModal 0.35s cubic-bezier(0.34,1.56,0.64,1);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;">
 
-        const newLocation = prompt(
-            `📍 Edit location (leave blank to keep current)`,
-            currentLocation
-        );
+                    <!-- HEADER -->
+                    <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:20px 24px;color:#fff;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+                            <div style="flex:1;min-width:0;">
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                                    <i class="fas fa-edit" style="font-size:16px;opacity:0.9;"></i>
+                                    <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;opacity:0.85;font-weight:600;">Edit Session</span>
+                                </div>
+                                <h2 style="margin:0;font-size:18px;font-weight:700;line-height:1.3;word-break:break-word;">${this.escapeHtml(title)}</h2>
+                                ${unit ? `<div style="font-size:12px;opacity:0.85;margin-top:4px;word-break:break-word;">${this.escapeHtml(unit)}${blockDisplay ? ' · ' + this.escapeHtml(blockDisplay) : ''}</div>` : ''}
+                            </div>
+                            <button type="button" onclick="window._closeEditSessionModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" aria-label="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
 
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
-            window.showNotification('Invalid date format. Use YYYY-MM-DD', 'error');
-            return;
-        }
-        if (!/^\d{2}:\d{2}$/.test(newTime)) {
-            window.showNotification('Invalid time format. Use HH:MM', 'error');
-            return;
-        }
+                    <!-- BODY -->
+                    <div style="padding:22px 24px;overflow-y:auto;flex:1;">
 
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) throw new Error('Database not available');
+                        <!-- Session type pill -->
+                        <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+                            <span style="background:#eef2ff;color:#4f46e5;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;">${this.escapeHtml(sessionType)}</span>
+                            ${blockDisplay ? `<span style="background:#f3e8ff;color:#7c3aed;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;">${this.escapeHtml(blockDisplay)}</span>` : ''}
+                            ${session.intake_year ? `<span style="background:#ecfdf5;color:#059669;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;">Intake ${this.escapeHtml(String(session.intake_year))}</span>` : ''}
+                        </div>
 
-            const updateData = {
-                session_date: newDate,
-                session_time: newTime + ':00',
-                updated_at: new Date().toISOString()
+                        <!-- DATE FIELD -->
+                        <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
+                            <i class="fas fa-calendar-day" style="color:#4f46e5;margin-right:6px;"></i>Session Date <span style="color:#ef4444;">*</span>
+                        </label>
+                        <input id="editSessionDate" type="date" value="${currentDate}" required
+                               style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;transition:border 0.2s;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"
+                               onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#e2e8f0'" />
+
+                        <!-- TIME FIELD -->
+                        <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
+                            <i class="fas fa-clock" style="color:#4f46e5;margin-right:6px;"></i>Session Time <span style="color:#ef4444;">*</span>
+                        </label>
+                        <input id="editSessionTime" type="time" value="${currentTime}" required
+                               style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;transition:border 0.2s;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"
+                               onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#e2e8f0'" />
+
+                        <!-- LOCATION FIELD -->
+                        <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
+                            <i class="fas fa-map-marker-alt" style="color:#4f46e5;margin-right:6px;"></i>Location <span style="color:#94a3b8;font-weight:400;">(optional)</span>
+                        </label>
+                        <input id="editSessionLocation" type="text" value="${this.escapeHtml(currentLocation)}" placeholder="e.g. Lecture Hall A, Clinical Room 3"
+                               style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;transition:border 0.2s;box-sizing:border-box;font-family:inherit;"
+                               onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#e2e8f0'" />
+
+                        <!-- HELPER TEXT -->
+                        <div style="display:flex;gap:8px;align-items:flex-start;background:#eff6ff;border-radius:10px;padding:10px 12px;margin-top:16px;">
+                            <i class="fas fa-info-circle" style="color:#3b82f6;font-size:13px;margin-top:2px;"></i>
+                            <div style="font-size:12px;color:#1e40af;line-height:1.5;">
+                                Changing the date or time lets you reuse this same class next week.
+                                <strong>All attendance history stays linked to this session.</strong>
+                            </div>
+                        </div>
+
+                        <!-- INLINE ERROR -->
+                        <div id="editSessionError" style="display:none;background:#fee2e2;color:#991b1b;padding:10px 12px;border-radius:10px;font-size:12px;margin-top:12px;"></div>
+
+                    </div>
+
+                    <!-- FOOTER -->
+                    <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;gap:10px;background:#fafafa;">
+                        <button type="button" onclick="window._closeEditSessionModal()"
+                                style="flex:1;padding:12px 18px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:inherit;"
+                                onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
+                            Cancel
+                        </button>
+                        <button type="button" id="editSessionSaveBtn"
+                                style="flex:2;padding:12px 18px;border:none;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;box-shadow:0 4px 12px rgba(79,70,229,0.3);"
+                                onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(79,70,229,0.4)'"
+                                onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(79,70,229,0.3)'">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // ---- focus first field ----
+        setTimeout(() => {
+            const dateInput = document.getElementById('editSessionDate');
+            if (dateInput) dateInput.focus();
+        }, 100);
+
+        // ---- close handler (global so onclick works) ----
+        window._closeEditSessionModal = () => {
+            const el = document.getElementById('editSessionModal');
+            if (el) {
+                el.style.animation = 'fadeInBackdrop 0.2s ease reverse';
+                setTimeout(() => el.remove(), 200);
+            }
+            delete window._closeEditSessionModal;
+            delete window._saveEditSession;
+        };
+
+        // ---- save handler (global so onclick works) ----
+        window._saveEditSession = async () => {
+            const dateEl = document.getElementById('editSessionDate');
+            const timeEl = document.getElementById('editSessionTime');
+            const locEl = document.getElementById('editSessionLocation');
+            const errorEl = document.getElementById('editSessionError');
+            const saveBtn = document.getElementById('editSessionSaveBtn');
+
+            const newDate = (dateEl?.value || '').trim();
+            const newTime = (timeEl?.value || '').trim();
+            const newLocation = (locEl?.value || '').trim();
+
+            // ---- validate ----
+            const showError = (msg) => {
+                if (errorEl) {
+                    errorEl.textContent = msg;
+                    errorEl.style.display = 'block';
+                }
             };
+            if (errorEl) errorEl.style.display = 'none';
 
-            if (newLocation && newLocation.trim() !== '') {
-                updateData.location_name = newLocation.trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+                showError('Please pick a valid date.');
+                return;
+            }
+            if (!/^\d{2}:\d{2}$/.test(newTime)) {
+                showError('Please pick a valid time.');
+                return;
             }
 
-            const { error } = await supabase
-                .from('scheduled_sessions')
-                .update(updateData)
-                .eq('id', sessionId);
+            // ---- loading state ----
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                saveBtn.style.opacity = '0.7';
+            }
 
-            if (error) throw error;
+            try {
+                const supabase = window.lecturerDB?.supabase;
+                if (!supabase) throw new Error('Database not available');
 
-            window.showNotification(`✅ Session updated to ${newDate} at ${newTime}`, 'success');
-            await this.loadSessions();
+                const updateData = {
+                    session_date: newDate,
+                    session_time: newTime + ':00',
+                    updated_at: new Date().toISOString()
+                };
 
-        } catch (error) {
-            console.error('Error editing session:', error);
-            window.showNotification('Failed to edit: ' + error.message, 'error');
+                if (newLocation && newLocation !== currentLocation) {
+                    updateData.location_name = newLocation;
+                }
+
+                const { error } = await supabase
+                    .from('scheduled_sessions')
+                    .update(updateData)
+                    .eq('id', sessionId);
+
+                if (error) throw error;
+
+                window.showNotification(`✅ Session updated to ${newDate} at ${newTime}`, 'success');
+                window._closeEditSessionModal();
+                await this.loadSessions();
+
+            } catch (err) {
+                console.error('Error editing session:', err);
+                showError('Failed to save: ' + err.message);
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+                    saveBtn.style.opacity = '1';
+                }
+            }
+        };
+
+        // ---- wire up buttons ----
+        const saveBtn = document.getElementById('editSessionSaveBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => window._saveEditSession());
         }
-    },
 
+        // ---- keyboard shortcuts ----
+        const keyHandler = (e) => {
+            if (e.key === 'Escape') {
+                window._closeEditSessionModal();
+                document.removeEventListener('keydown', keyHandler);
+            } else if (e.key === 'Enter' && !e.shiftKey) {
+                const tag = document.activeElement?.tagName?.toLowerCase();
+                if (tag !== 'textarea') {
+                    e.preventDefault();
+                    window._saveEditSession();
+                }
+            }
+        };
+        document.addEventListener('keydown', keyHandler);
+
+        // ---- cleanup listener when modal closes ----
+        const observer = new MutationObserver(() => {
+            if (!document.getElementById('editSessionModal')) {
+                document.removeEventListener('keydown', keyHandler);
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true });
+
+        // ---- click backdrop to close ----
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal.firstElementChild) {
+                window._closeEditSessionModal();
+            }
+        });
+    },
     // ============================================
     // OPEN SESSION - OWNER ONLY
     // ============================================
