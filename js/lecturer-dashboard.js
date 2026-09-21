@@ -456,16 +456,20 @@ const LecturerDashboard = {
             this.metrics.pendingAttendance = pending.length || 0;
 
             // ✅ FIX #1 applied: profile is now defined
-            const lecturerId = this.lecturerUuid || profile?.user_id;
-            if (lecturerId) {
-                const { data: messages } = await supabase
-                    .from('messages')
-                    .select('id')
-                    .eq('receiver_id', lecturerId)
-                    .eq('is_read', false);
+           // Messages for this lecturer (unread tracking not available in schema)
+const lecturerId = this.lecturerUuid || profile?.user_id;
+if (lecturerId) {
+    const { data: messages, error: msgErr } = await supabase
+        .from('messages')
+        .select('*')                 // ✅
+        .eq('receiver_id', lecturerId);
 
-                this.metrics.unreadMessages = messages?.length || 0;
-            }
+    if (msgErr) {
+        console.warn('messages query error:', msgErr.message);
+        this.metrics.unreadMessages = 0;
+    } else {
+        this.metrics.unreadMessages = messages?.length || 0;
+    }
 
             const studentIds = this.assignedStudents.map(s => s.user_id);
             if (studentIds.length > 0) {
