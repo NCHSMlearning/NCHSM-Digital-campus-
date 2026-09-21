@@ -2445,11 +2445,38 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
     }
 
     async function initResearch() {
-        if (researchState.initialized) return;
+        if (researchState.initialized) {
+            researchEnsureUI();
+            return;
+        }
         researchState.initialized = true;
         researchEnsureUI();
         await loadResearch();
     }
+
+    // Robust bootstrap: the Lecturer HTML keeps the Online Learning shell,
+    // while this external JS owns all Research Papers functionality.
+    // This retry also protects against other dashboard modules changing the
+    // tab DOM after the external script loads.
+    function bootstrapResearchPapers() {
+        let attempts = 0;
+        const tryInit = () => {
+            attempts++;
+            const section = $('online-learning-content');
+            if (section) {
+                researchEnsureUI();
+                return;
+            }
+            if (attempts < 20) setTimeout(tryInit, 150);
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', tryInit, { once:true });
+        } else {
+            tryInit();
+        }
+    }
+
+    bootstrapResearchPapers();
 
     return {getAssignmentGradingConfig,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
