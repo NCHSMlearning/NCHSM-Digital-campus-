@@ -1028,7 +1028,7 @@ window.LecturerOnlineLearning = (() => {
               <h4 style="margin:0 0 14px">Marking & Feedback</h4>
               <button id="olAutoGradeBtn" type="button" class="ol-btn ol-primary" style="width:100%;margin-bottom:12px" onclick="LecturerOnlineLearning.aiGradeSubmission('${esc(s.id)}')"><i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Institutional Marking Key</button>
               <label style="display:block;font-weight:700;font-size:13px;margin-bottom:5px">Marks Awarded</label>
-              <input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks)}" step="0.5" value="${s.marks_obtained==null?'':esc(s.marks_obtained)}" data-submission-id="${esc(s.id)}" style="width:100%;box-sizing:border-box;margin-bottom:8px">
+              <input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks)}" step="0.5" value="${s.marks_obtained==null?'':esc(s.marks_obtained)}" style="width:100%;box-sizing:border-box;margin-bottom:8px">
               <div style="font-size:13px;color:#475569;margin-bottom:12px">Percentage: <b id="olReviewPercentage">${pct}</b> · Maximum: ${esc(maxMarks)}</div>
               <label style="display:block;font-weight:700;font-size:13px;margin-bottom:5px">Feedback</label>
               <textarea id="olReviewFeedback" rows="8" style="width:100%;box-sizing:border-box;resize:vertical">${esc(s.feedback||'')}</textarea>
@@ -1042,25 +1042,10 @@ window.LecturerOnlineLearning = (() => {
         const marksInput=$('olReviewMarks');
         const pctEl=$('olReviewPercentage');
         if(marksInput&&pctEl){
-            marksInput.addEventListener('input',updateGradePercentage);
+            marksInput.addEventListener('input',()=>{pctEl.textContent=formatPercentage(marksInput.value,maxMarks);});
         }
         $('olSubmissionModal').style.display='flex';
         $('olSubmissionModal').setAttribute('aria-hidden','false');
-    }
-
-    // ============================================================
-    // LIVE PERCENTAGE UPDATE — used by the submission review modal
-    // ============================================================
-    function updateGradePercentage(){
-        const marksEl=$('olReviewMarks');
-        const pctEl=$('olReviewPercentage');
-        if(!marksEl||!pctEl)return;
-        const marks=Number(marksEl.value||0);
-        const activeId=marksEl.dataset.submissionId;
-        const s=activeId?state.submissions.find(x=>String(x.id)===String(activeId)):null;
-        const assignment=s?state.assignments.find(a=>String(a.id)===String(s.assignment_id)):null;
-        const max=Number(s?.max_marks||assignment?.max_marks||marksEl.max||0);
-        pctEl.textContent=max>0?formatPercentage(clampMarks(marks,max),max):'—';
     }
 
     async function gradeSubmission(id,release){
@@ -2507,6 +2492,30 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
                 e.preventDefault();
             }
         });
+    }
+
+    // ============================================================
+    // LIVE GRADE PERCENTAGE UPDATE
+    // ============================================================
+    function updateGradePercentage() {
+        const marksEl = $('olReviewMarks');
+        const pctEl = $('olReviewPercentage');
+        if (!marksEl || !pctEl) return;
+
+        const marks = Number(marksEl.value);
+        const idEl = $('olSubmissionId');
+        const activeId = idEl?.value || window.__nchsmActiveSubmissionId || null;
+        const submission = activeId
+            ? state.submissions.find(s => String(s.id) === String(activeId))
+            : null;
+        const assignment = submission
+            ? (state.assignments.find(a => String(a.id) === String(submission.assignment_id)) || {})
+            : {};
+        const maxMarks = Number(submission?.max_marks || assignment.max_marks || 0);
+
+        pctEl.textContent = Number.isFinite(marks) && maxMarks > 0
+            ? formatPercentage(marks, maxMarks)
+            : '—';
     }
 
     async function initResearch() {
