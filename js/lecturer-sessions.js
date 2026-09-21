@@ -1,12 +1,13 @@
-// js/lecturer-sessions.js - COMPLETE WITH TVET SUPPORT + INTAKE YEAR SELECTION
+// js/lecturer-sessions.js - COMPLETE WITH TVET SUPPORT + INTAKE YEAR SELECTION + EDIT SESSION
 /**
  * NCHSM Lecturer Sessions Module
  * Uses scheduled_sessions table with correct column names
  * Includes session open/close for student attendance sign-in
  * STRICT UNIT ASSIGNMENT FILTERING - Same as Resources and Marks
  * Supports both Nursing (KRCHN) and TVET programs
- * ✅ FIXED: intake_year now taken from lecturer's dropdown selection
- * ✅ FIXED: lecturer_id populated for proper joins
+ * ✅ intake_year now taken from lecturer's dropdown selection
+ * ✅ lecturer_id populated for proper joins
+ * ✅ NEW: editSession() — lecturer can edit date/time/location for continuous attendance
  */
 
 const LecturerSessions = {
@@ -17,21 +18,21 @@ const LecturerSessions = {
     isProcessing: false,
     isTVET: false,
     currentProgram: 'KRCHN',
-    
+
     // ============================================
     // PROGRAM TYPE DETECTION
     // ============================================
     getProgramType() {
         return window.CURRENT_PROGRAM_TYPE || 'KRCHN';
     },
-    
+
     isTVETProgram() {
         return this.getProgramType() === 'TVET';
     },
-    
+
     getBlockDisplay(blockValue) {
         if (!blockValue) return 'N/A';
-        
+
         const programType = this.getProgramType();
         if (programType === 'TVET') {
             const match = blockValue.match(/^Y(\d)T(\d)$/);
@@ -51,7 +52,7 @@ const LecturerSessions = {
             return `Block ${blockValue}`;
         }
     },
-    
+
     getBlockShortName(blockValue) {
         if (!blockValue) return 'N/A';
         const programType = this.getProgramType();
@@ -64,15 +65,15 @@ const LecturerSessions = {
             return `Block ${blockValue}`;
         }
     },
-    
+
     getProgramTypeLabel() {
         return this.isTVETProgram() ? '🔧 TVET' : '🎓 Nursing';
     },
-    
+
     getProgramEmoji() {
         return this.isTVETProgram() ? '🔧' : '🎓';
     },
-    
+
     // ============================================
     // INITIALIZATION
     // ============================================
@@ -81,7 +82,7 @@ const LecturerSessions = {
         this.currentProgram = this.getProgramType();
         this.isTVET = this.isTVETProgram();
         console.log(`📚 Program Type: ${this.getProgramTypeLabel()}`);
-        
+
         await this.resolveLecturerId();
         await this.loadAssignedUnits();
         await this.loadSessions();
@@ -90,7 +91,7 @@ const LecturerSessions = {
         this.updateStats();
         console.log('✅ Lecturer Sessions initialized');
     },
-    
+
     // ============================================
     // RESOLVE THE CORRECT LECTURER ID
     // ============================================
@@ -101,73 +102,73 @@ const LecturerSessions = {
                 console.warn('Supabase not available');
                 return;
             }
-            
+
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (!profile) {
                 console.warn('No lecturer profile found');
                 return;
             }
-            
+
             const authId = profile.user_id;
             const fullName = profile.full_name;
-            
+
             console.log('🔍 Auth ID (UUID):', authId);
             console.log('🔍 Lecturer name:', fullName);
-            
+
             this.lecturerUuid = authId;
-            
+
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
-            
+
             if (!isUUID && authId) {
                 this.lecturerAssignmentId = authId;
                 console.log('✅ Using non-UUID auth ID:', this.lecturerAssignmentId);
                 return;
             }
-            
+
             const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .ilike('lecturer_name', `%${fullName}%`);
-            
+
             if (!assignError && assignments && assignments.length > 0) {
                 const textId = assignments.find(a => {
                     const id = a.lecturer_id;
                     return id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
                 });
-                
+
                 if (textId) {
                     this.lecturerAssignmentId = textId.lecturer_id;
                     console.log('✅ Found non-UUID ID:', this.lecturerAssignmentId);
                     return;
                 }
-                
+
                 this.lecturerAssignmentId = assignments[0].lecturer_id;
                 console.log('⚠️ Using first match ID:', this.lecturerAssignmentId);
                 return;
             }
-            
+
             const nameParts = fullName.split(' ');
             const { data: staff, error: staffError } = await supabase
                 .from('staff_records')
                 .select('id, first_name, other_names')
                 .ilike('first_name', `%${nameParts[0]}%`);
-            
+
             if (!staffError && staff && staff.length > 0) {
                 this.lecturerAssignmentId = staff[0].id;
                 console.log('✅ Found lecturer ID from staff_records:', this.lecturerAssignmentId);
                 return;
             }
-            
+
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
-            
+
         } catch (error) {
             console.error('Error resolving lecturer ID:', error);
             this.lecturerAssignmentId = null;
             this.lecturerUuid = null;
         }
     },
-    
+
     // ============================================
     // LOAD ASSIGNED UNITS - WITH TVET SUPPORT
     // ============================================
@@ -178,43 +179,43 @@ const LecturerSessions = {
                 console.warn('⚠️ Supabase not available');
                 return;
             }
-            
+
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (!profile) {
                 console.warn('⚠️ No lecturer profile found');
                 return;
             }
-            
+
             const fullName = profile.full_name;
             const program = this.currentProgram || profile.program || 'KRCHN';
-            
+
             console.log(`🔍 Loading assigned units for lecturer: ${fullName} (${this.getProgramTypeLabel()})`);
-            
+
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('subject_name, subject_code, block, program, academic_year, lecturer_id')
                 .ilike('lecturer_name', `%${fullName}%`);
-            
+
             if (error) {
                 console.error('❌ Error loading assigned units:', error);
                 this.assignedUnits = [];
                 this.populateUnitDropdowns();
                 return;
             }
-            
+
             const programUnits = assignments?.filter(u => u.program === program) || [];
             const allUnits = assignments || [];
-            
+
             this.assignedUnits = programUnits.length > 0 ? programUnits : allUnits;
-            
+
             console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for ${program}`);
-            console.log('📚 Units:', this.assignedUnits.map(u => 
+            console.log('📚 Units:', this.assignedUnits.map(u =>
                 `${u.subject_name} (${u.block}) - ${this.getBlockDisplay(u.block)} [${u.academic_year}]`
             ));
-            
+
             const lecturerIds = [...new Set(this.assignedUnits.map(u => u.lecturer_id))];
             console.log('📚 Lecturer IDs found:', lecturerIds);
-            
+
             if (lecturerIds.length > 0) {
                 const counts = {};
                 this.assignedUnits.forEach(u => {
@@ -231,26 +232,26 @@ const LecturerSessions = {
                 this.lecturerAssignmentId = primaryId;
                 console.log(`✅ Primary lecturer ID set to: ${primaryId} (${maxCount} units)`);
             }
-            
+
             this.populateUnitDropdowns();
             this.populateBlockDropdown();
-            
+
         } catch (error) {
             console.error('❌ Failed to load assigned units:', error);
             this.assignedUnits = [];
         }
     },
-    
+
     // ============================================
     // POPULATE UNIT DROPDOWNS
     // ============================================
     populateUnitDropdowns() {
         const unitSelect = document.getElementById('sessionUnit');
         if (!unitSelect) return;
-        
+
         const units = this.assignedUnits;
         const typeLabel = this.getProgramTypeLabel();
-        
+
         if (units && units.length > 0) {
             unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
                 units.map(u => {
@@ -267,16 +268,16 @@ const LecturerSessions = {
             console.warn('⚠️ No assigned units to populate');
         }
     },
-    
+
     // ============================================
     // POPULATE BLOCK DROPDOWN
     // ============================================
     populateBlockDropdown() {
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (!blockSelect) return;
-        
+
         const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-        
+
         if (blocks.length > 0) {
             blockSelect.innerHTML = '<option value="">-- Select Block --</option>' +
                 blocks.map(b => {
@@ -287,14 +288,14 @@ const LecturerSessions = {
         } else {
             blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
         }
-        
+
         const label = document.getElementById('blockFilterLabel');
         if (label) {
             const blockType = this.isTVET ? 'Term' : 'Block';
             label.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${blockType}`;
         }
     },
-    
+
     // ============================================
     // LOAD SESSIONS - ONLY THIS LECTURER'S SESSIONS
     // ============================================
@@ -302,35 +303,35 @@ const LecturerSessions = {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const userId = this.lecturerUuid || profile?.user_id;
-            
+
             if (!userId) {
                 console.warn('No user ID found');
                 return;
             }
-            
+
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 console.warn('Supabase not available');
                 return;
             }
-            
+
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
                 .select('*')
                 .eq('created_by', userId)
                 .order('session_date', { ascending: true });
-            
+
             if (error) {
                 console.error('Error loading sessions:', error);
                 return;
             }
-            
+
             this.sessions = sessions || [];
             this.renderSessions();
             this.updateStats();
-            
+
             console.log(`✅ Loaded ${this.sessions.length} sessions (only your sessions) - ${this.getProgramTypeLabel()}`);
-            
+
         } catch (error) {
             console.error('Failed to load sessions:', error);
             if (window.LecturerUI) {
@@ -338,17 +339,17 @@ const LecturerSessions = {
             }
         }
     },
-    
+
     // ============================================
     // RENDER SESSIONS
     // ============================================
     renderSessions() {
         const tbody = document.getElementById('sessionsTable');
         if (!tbody) return;
-        
+
         const sessions = this.sessions;
         const typeLabel = this.getProgramTypeLabel();
-        
+
         if (!sessions || sessions.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -361,10 +362,10 @@ const LecturerSessions = {
             `;
             return;
         }
-        
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         const statusBadges = {
             'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
             'approved': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Approved</span>',
@@ -374,7 +375,7 @@ const LecturerSessions = {
             'closed': '<span style="background: #6b7280; color: #1e293b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🔒 Closed</span>',
             'scheduled': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📅 Scheduled</span>'
         };
-        
+
         const sessionTypeLabels = {
             'Class': '📚 Class',
             'Clinical': '🏥 Clinical',
@@ -382,29 +383,29 @@ const LecturerSessions = {
             'Tutorial': '📝 Tutorial',
             'Exam': '📝 Exam'
         };
-        
+
         tbody.innerHTML = sessions.map(session => {
             const sessionDate = session.session_date ? new Date(session.session_date) : null;
             const isToday = sessionDate && sessionDate.toDateString() === today.toDateString();
             const isPast = sessionDate && sessionDate < today;
             const isActive = session.status === 'active' || session.is_active === true;
-            
-            const dateTime = session.session_date 
+
+            const dateTime = session.session_date
                 ? (this.formatDate(session.session_date)) + (session.session_time ? ' ' + session.session_time : '')
                 : 'N/A';
-            
+
             const status = session.approval_status || 'scheduled';
             const statusBadge = statusBadges[status] || statusBadges.scheduled;
-            
+
             const sessionType = session.session_type || 'Class';
             const sessionTypeLabel = sessionTypeLabels[sessionType] || sessionType;
-            
+
             const unitDisplay = session.unit_name || session.course_name || 'N/A';
             const blockDisplay = session.block_display || (session.block_term ? this.getBlockDisplay(session.block_term) : 'N/A');
-            
+
             const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
             const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
-            
+
             let sessionControls = '';
             if (sessionDate && sessionDate >= today) {
                 if (!isActive && status !== 'closed') {
@@ -425,10 +426,10 @@ const LecturerSessions = {
                     `;
                 }
             }
-            
+
             const titleDisplay = session.session_title || session.title || 'N/A';
             const isTVET = this.isTVET;
-            
+
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle} ${rowClass}" 
                     onmouseover="this.style.background='${isActive ? '#bfdbfe' : (isToday ? '#bfdbfe' : '#f8fafc')}'" 
@@ -466,6 +467,12 @@ const LecturerSessions = {
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            <button onclick="LecturerSessions.editSession('${session.id}')" 
+                                    style="background: #6366f1; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                    onmouseover="this.style.background='#4f46e5'" onmouseout="this.style.background='#6366f1'"
+                                    title="Edit date / time / location">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
                             <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
                                     style="background: #2563eb; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
                                     onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
@@ -484,11 +491,11 @@ const LecturerSessions = {
                 </tr>
             `;
         }).join('');
-        
+
         const countDisplay = document.getElementById('sessionCountDisplay');
         if (countDisplay) countDisplay.textContent = sessions.length;
     },
-    
+
     // ============================================
     // GENERATE ATTENDANCE LINK
     // ============================================
@@ -498,48 +505,124 @@ const LecturerSessions = {
             window.showNotification('Session not found.', 'error');
             return;
         }
-        
+
         const link = `${window.location.origin}/attendance?session=${sessionId}`;
-        
+
         navigator.clipboard?.writeText(link).then(() => {
             window.showNotification('✅ Attendance link copied to clipboard!', 'success');
         }).catch(() => {
             prompt('Copy this link:', link);
         });
     },
-    
+
+    // ============================================
+    // EDIT SESSION — update date / time / location
+    // ============================================
+    async editSession(sessionId) {
+        const session = this.sessions.find(s => s.id === sessionId);
+        if (!session) {
+            window.showNotification('Session not found.', 'error');
+            return;
+        }
+
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
+            window.showNotification('You can only edit your own sessions.', 'warning');
+            return;
+        }
+
+        const currentDate = session.session_date ? session.session_date.split('T')[0] : '';
+        const currentTime = (session.session_time || '09:00').substring(0, 5);
+        const currentLocation = session.location_name || '';
+
+        const newDate = prompt(
+            `📅 Edit date for "${session.session_title || session.title}"\n\nCurrent: ${currentDate}\nFormat: YYYY-MM-DD`,
+            currentDate
+        );
+        if (!newDate) return;
+
+        const newTime = prompt(
+            `🕒 Edit time\n\nCurrent: ${currentTime}\nFormat: HH:MM (24-hour)`,
+            currentTime
+        );
+        if (!newTime) return;
+
+        const newLocation = prompt(
+            `📍 Edit location (leave blank to keep current)`,
+            currentLocation
+        );
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+            window.showNotification('Invalid date format. Use YYYY-MM-DD', 'error');
+            return;
+        }
+        if (!/^\d{2}:\d{2}$/.test(newTime)) {
+            window.showNotification('Invalid time format. Use HH:MM', 'error');
+            return;
+        }
+
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database not available');
+
+            const updateData = {
+                session_date: newDate,
+                session_time: newTime + ':00',
+                updated_at: new Date().toISOString()
+            };
+
+            if (newLocation && newLocation.trim() !== '') {
+                updateData.location_name = newLocation.trim();
+            }
+
+            const { error } = await supabase
+                .from('scheduled_sessions')
+                .update(updateData)
+                .eq('id', sessionId);
+
+            if (error) throw error;
+
+            window.showNotification(`✅ Session updated to ${newDate} at ${newTime}`, 'success');
+            await this.loadSessions();
+
+        } catch (error) {
+            console.error('Error editing session:', error);
+            window.showNotification('Failed to edit: ' + error.message, 'error');
+        }
+    },
+
     // ============================================
     // OPEN SESSION - OWNER ONLY
     // ============================================
     async openSession(sessionId) {
         if (this.isProcessing) return;
         this.isProcessing = true;
-        
+
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
             window.showNotification('Session not found.', 'error');
             this.isProcessing = false;
             return;
         }
-        
+
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only manage your own sessions.', 'warning');
             this.isProcessing = false;
             return;
         }
-        
+
         if (!confirm(`Open "${session.session_title || session.title}" for student attendance?`)) {
             this.isProcessing = false;
             return;
         }
-        
+
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
-            
+
             const { error } = await supabase
                 .from('scheduled_sessions')
                 .update({
@@ -550,12 +633,12 @@ const LecturerSessions = {
                 })
                 .eq('id', sessionId)
                 .eq('created_by', this.lecturerUuid);
-            
+
             if (error) throw error;
-            
+
             window.showNotification('✅ Session opened! Students can now sign in.', 'success');
             await this.loadSessions();
-            
+
         } catch (error) {
             console.error('Error opening session:', error);
             window.showNotification('Failed to open session: ' + error.message, 'error');
@@ -563,39 +646,39 @@ const LecturerSessions = {
             this.isProcessing = false;
         }
     },
-    
+
     // ============================================
     // CLOSE SESSION - OWNER ONLY
     // ============================================
     async closeSession(sessionId) {
         if (this.isProcessing) return;
         this.isProcessing = true;
-        
+
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
             window.showNotification('Session not found.', 'error');
             this.isProcessing = false;
             return;
         }
-        
+
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only manage your own sessions.', 'warning');
             this.isProcessing = false;
             return;
         }
-        
+
         if (!confirm(`Close "${session.session_title || session.title}" and stop attendance?`)) {
             this.isProcessing = false;
             return;
         }
-        
+
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
-            
+
             const { error } = await supabase
                 .from('scheduled_sessions')
                 .update({
@@ -605,12 +688,12 @@ const LecturerSessions = {
                 })
                 .eq('id', sessionId)
                 .eq('created_by', this.lecturerUuid);
-            
+
             if (error) throw error;
-            
+
             window.showNotification('✅ Session closed. Attendance sign-in disabled.', 'success');
             await this.loadSessions();
-            
+
         } catch (error) {
             console.error('Error closing session:', error);
             window.showNotification('Failed to close session: ' + error.message, 'error');
@@ -618,7 +701,7 @@ const LecturerSessions = {
             this.isProcessing = false;
         }
     },
-    
+
     // ============================================
     // VIEW ATTENDEES - OWNER ONLY
     // ============================================
@@ -628,66 +711,66 @@ const LecturerSessions = {
             window.showNotification('Session not found.', 'error');
             return;
         }
-        
+
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only view attendees for your own sessions.', 'warning');
             return;
         }
-        
+
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
-            
+
             const { data: attendees, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
                 .eq('session_id', sessionId)
                 .order('check_in_time', { ascending: false });
-            
+
             if (error) throw error;
-            
+
             if (!attendees || attendees.length === 0) {
                 window.showNotification('No students have signed in yet.', 'info');
                 return;
             }
-            
+
             const attendeeList = attendees.map((a, i) => {
                 const name = a.student_name || 'Unknown';
                 const time = a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
                 const status = a.attendance_status || 'Pending';
                 return `${i + 1}. ${name} - ${status} - ${time}`;
             }).join('\n');
-            
+
             alert(`📋 Attendance for: ${session.session_title || session.title}\n\n${attendeeList}\n\nTotal: ${attendees.length} students`);
-            
+
         } catch (error) {
             console.error('Error viewing attendees:', error);
             window.showNotification('Failed to load attendees: ' + error.message, 'error');
         }
     },
-    
+
     // ============================================
     // OPEN TODAY'S SESSION - OWNER ONLY
     // ============================================
     async openTodaySession() {
         if (this.isProcessing) return;
         this.isProcessing = true;
-        
+
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
-            
+
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = this.currentProgram || profile?.program || profile?.department || 'KRCHN';
             const lecturerId = this.lecturerUuid || profile?.user_id;
-            
+
             const today = new Date().toISOString().split('T')[0];
-            
+
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
                 .select('*')
@@ -697,17 +780,17 @@ const LecturerSessions = {
                 .eq('status', 'scheduled')
                 .order('session_time', { ascending: true })
                 .limit(1);
-            
+
             if (error) throw error;
-            
+
             if (!sessions || sessions.length === 0) {
                 window.showNotification('No sessions scheduled for today.', 'info');
                 this.isProcessing = false;
                 return;
             }
-            
+
             const session = sessions[0];
-            
+
             const { error: updateError } = await supabase
                 .from('scheduled_sessions')
                 .update({
@@ -718,12 +801,12 @@ const LecturerSessions = {
                 })
                 .eq('id', session.id)
                 .eq('created_by', lecturerId);
-            
+
             if (updateError) throw updateError;
-            
+
             window.showNotification(`✅ Session "${session.session_title}" opened! Students can now sign in.`, 'success');
             await this.loadSessions();
-            
+
         } catch (error) {
             console.error('Error opening today\'s session:', error);
             window.showNotification('Failed to open session: ' + error.message, 'error');
@@ -731,28 +814,28 @@ const LecturerSessions = {
             this.isProcessing = false;
         }
     },
-    
+
     // ============================================
     // CLOSE ALL SESSIONS - OWNER ONLY
     // ============================================
     async closeAllSessions() {
         if (this.isProcessing) return;
         this.isProcessing = true;
-        
+
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
-            
+
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerId = this.lecturerUuid || profile?.user_id;
-            
+
             if (!confirm('Close all your active sessions and stop attendance?')) {
                 this.isProcessing = false;
                 return;
             }
-            
+
             const { error } = await supabase
                 .from('scheduled_sessions')
                 .update({
@@ -762,12 +845,12 @@ const LecturerSessions = {
                 })
                 .eq('created_by', lecturerId)
                 .eq('status', 'active');
-            
+
             if (error) throw error;
-            
+
             window.showNotification('✅ All your sessions closed.', 'success');
             await this.loadSessions();
-            
+
         } catch (error) {
             console.error('Error closing all sessions:', error);
             window.showNotification('Failed to close sessions: ' + error.message, 'error');
@@ -775,56 +858,56 @@ const LecturerSessions = {
             this.isProcessing = false;
         }
     },
-    
+
     // ============================================
     // CANCEL SESSION - OWNER ONLY
     // ============================================
     async cancelSession(sessionId) {
         if (this.isProcessing) return;
         this.isProcessing = true;
-        
+
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
             window.showNotification('Session not found.', 'error');
             this.isProcessing = false;
             return;
         }
-        
+
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only cancel your own sessions.', 'warning');
             this.isProcessing = false;
             return;
         }
-        
+
         if (session.approval_status === 'approved') {
             window.showNotification('Approved sessions cannot be cancelled.', 'warning');
             this.isProcessing = false;
             return;
         }
-        
+
         if (!confirm(`Cancel session "${session.session_title || session.title}"?`)) {
             this.isProcessing = false;
             return;
         }
-        
+
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
-            
+
             const { error } = await supabase
                 .from('scheduled_sessions')
                 .delete()
                 .eq('id', sessionId)
                 .eq('created_by', this.lecturerUuid);
-            
+
             if (error) throw error;
-            
+
             window.showNotification('✅ Session cancelled!', 'success');
             await this.loadSessions();
-            
+
         } catch (error) {
             console.error('Error cancelling session:', error);
             window.showNotification('Failed to cancel session: ' + error.message, 'error');
@@ -832,7 +915,7 @@ const LecturerSessions = {
             this.isProcessing = false;
         }
     },
-    
+
     // ============================================
     // POPULATE SESSION FORM
     // ============================================
@@ -841,12 +924,12 @@ const LecturerSessions = {
         const program = this.currentProgram || profile?.program || profile?.department;
         const typeLabel = this.getProgramTypeLabel();
         const emoji = this.getProgramEmoji();
-        
+
         const programSelect = document.getElementById('sessionProgram');
         if (programSelect && program) {
             programSelect.innerHTML = `<option value="${program}">${program} (${typeLabel})</option>`;
         }
-        
+
         const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (blockSelect) {
@@ -860,14 +943,14 @@ const LecturerSessions = {
                 blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
             }
         }
-        
+
         const blockLabel = document.getElementById('sessionBlockLabel');
         if (blockLabel) {
             blockLabel.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${this.isTVET ? 'Term' : 'Block'} *`;
         }
-        
+
         this.populateUnitDropdowns();
-        
+
         const typeSelect = document.getElementById('sessionType');
         if (typeSelect) {
             typeSelect.innerHTML = `
@@ -878,25 +961,25 @@ const LecturerSessions = {
                 <option value="Exam">📝 Exam</option>
             `;
         }
-        
+
         const dateInput = document.getElementById('sessionDate');
         if (dateInput) {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             dateInput.value = tomorrow.toISOString().split('T')[0];
         }
-        
+
         const timeInput = document.getElementById('sessionTime');
         if (timeInput) {
             timeInput.value = '09:00';
         }
-        
+
         const formSubtitle = document.querySelector('#addSessionForm .form-subtitle');
         if (formSubtitle) {
             formSubtitle.textContent = `${emoji} ${typeLabel} - Schedule sessions for your assigned units`;
         }
     },
-    
+
     // ============================================
     // SETUP EVENT LISTENERS
     // ============================================
@@ -905,13 +988,13 @@ const LecturerSessions = {
         if (form) {
             const newForm = form.cloneNode(true);
             form.parentNode.replaceChild(newForm, form);
-            
+
             newForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleAddSession(e);
             });
         }
-        
+
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (blockSelect) {
             blockSelect.addEventListener('change', () => {
@@ -932,26 +1015,26 @@ const LecturerSessions = {
             });
         }
     },
-    
+
     // ============================================
     // HANDLE ADD SESSION - WITH INTAKE YEAR FROM FORM
     // ============================================
     async handleAddSession(e) {
         if (this.isProcessing) return;
         this.isProcessing = true;
-        
+
         if (e && typeof e.preventDefault === 'function') {
             e.preventDefault();
         }
-        
+
         const btn = document.querySelector('#addSessionForm button[type="submit"]');
         const originalText = btn?.innerHTML || 'Schedule Session';
-        
+
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scheduling...';
         }
-        
+
         const formData = {
             title: document.getElementById('sessionTopic')?.value?.trim(),
             date: document.getElementById('sessionDate')?.value,
@@ -962,10 +1045,9 @@ const LecturerSessions = {
             type: document.getElementById('sessionType')?.value || 'Class',
             location: document.getElementById('sessionLocation')?.value || 'Lecture Hall',
             capacity: document.getElementById('sessionCapacity')?.value || 0,
-            intakeYear: document.getElementById('sessionIntakeYear')?.value   // ✅ NEW
+            intakeYear: document.getElementById('sessionIntakeYear')?.value
         };
-        
-        // ✅ Validate intake year too
+
         if (!formData.title || !formData.date || !formData.program || !formData.block || !formData.unit || !formData.intakeYear) {
             window.showNotification('Please fill all required fields including Intake Year.', 'error');
             if (btn) {
@@ -975,29 +1057,27 @@ const LecturerSessions = {
             this.isProcessing = false;
             return;
         }
-        
+
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerUuid = this.lecturerUuid || profile?.user_id;
             const supabase = window.lecturerDB?.supabase;
             const typeLabel = this.getProgramTypeLabel();
-            
+
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
-            
-            // ✅ Use intake year the lecturer selected
+
             const intakeYear = formData.intakeYear;
             console.log('🎓 Using intake_year from form dropdown:', intakeYear);
-            
-            // ✅ Find matched unit (for audit)
+
             const matchedUnit = this.assignedUnits.find(
                 u => u.subject_name === formData.unit && u.block === formData.block
             );
             console.log('🎓 Matched assignment:', matchedUnit);
-            
+
             const blockDisplay = this.getBlockDisplay(formData.block);
-            
+
             const sessionData = {
                 session_title: formData.title,
                 title: formData.title,
@@ -1021,26 +1101,26 @@ const LecturerSessions = {
                 program_type_label: typeLabel,
                 created_at: new Date().toISOString()
             };
-            
+
             console.log(`📤 Scheduling ${typeLabel} session:`, sessionData);
-            
+
             const { data: result, error } = await supabase
                 .from('scheduled_sessions')
                 .insert([sessionData])
                 .select();
-            
+
             if (error) {
                 console.error('DB Error:', error);
                 throw new Error('Failed to schedule session: ' + error.message);
             }
-            
+
             window.showNotification(`✅ ${typeLabel} session scheduled successfully!`, 'success');
-            
+
             const form = document.getElementById('addSessionForm');
             if (form) form.reset();
             this.populateSessionForm();
             await this.loadSessions();
-            
+
         } catch (error) {
             console.error('Error scheduling session:', error);
             window.showNotification('Failed to schedule session: ' + error.message, 'error');
@@ -1052,7 +1132,7 @@ const LecturerSessions = {
             this.isProcessing = false;
         }
     },
-    
+
     // ============================================
     // UPDATE STATS
     // ============================================
@@ -1063,50 +1143,50 @@ const LecturerSessions = {
         today.setHours(0, 0, 0, 0);
         const typeLabel = this.getProgramTypeLabel();
         const emoji = this.getProgramEmoji();
-        
+
         const active = sessions.filter(s => s.status === 'active' || s.is_active === true).length;
         const upcoming = sessions.filter(s => {
             const date = s.session_date ? new Date(s.session_date) : null;
             return date && date >= today && s.approval_status !== 'rejected' && s.status !== 'closed';
         }).length;
-        
+
         const todaySessions = sessions.filter(s => {
             const date = s.session_date ? new Date(s.session_date) : null;
             return date && date.toDateString() === today.toDateString() && s.approval_status !== 'rejected';
         }).length;
-        
+
         const past = sessions.filter(s => {
             const date = s.session_date ? new Date(s.session_date) : null;
             return date && date < today;
         }).length;
-        
+
         const totalEl = document.getElementById('totalSessionsStat');
         if (totalEl) totalEl.textContent = total;
-        
+
         const activeEl = document.getElementById('activeSessionsStat');
         if (activeEl) activeEl.textContent = active;
-        
+
         const todayEl = document.getElementById('todaySessionsStat');
         if (todayEl) todayEl.textContent = todaySessions;
-        
+
         const upcomingEl = document.getElementById('upcomingSessionsStat');
         if (upcomingEl) upcomingEl.textContent = upcoming;
-        
+
         const badge = document.getElementById('sessionsCount');
         if (badge) badge.textContent = upcoming;
-        
+
         const activeBadge = document.getElementById('activeSessionsBadge');
         if (activeBadge) activeBadge.textContent = active;
-        
+
         const countDisplay = document.getElementById('sessionCountDisplay');
         if (countDisplay) countDisplay.textContent = sessions.length;
-        
+
         const titleEl = document.querySelector('#sessions-content h3');
         if (titleEl) {
             titleEl.textContent = `${emoji} My Sessions (${typeLabel})`;
         }
     },
-    
+
     // ============================================
     // EXPORT SESSIONS
     // ============================================
@@ -1116,9 +1196,9 @@ const LecturerSessions = {
             window.showNotification('No sessions to export.', 'warning');
             return;
         }
-        
+
         const typeLabel = this.getProgramTypeLabel();
-        
+
         const headers = ['Topic', 'Date', 'Time', 'Type', 'Program', 'Block', 'Intake Year', 'Unit', 'Block Display', 'Status', 'Approval', 'Program Type'];
         const rows = sessions.map(s => {
             const blockDisplay = s.block_display || (s.block_term ? this.getBlockDisplay(s.block_term) : 'N/A');
@@ -1137,7 +1217,7 @@ const LecturerSessions = {
                 typeLabel
             ];
         });
-        
+
         const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -1148,10 +1228,10 @@ const LecturerSessions = {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
+
         window.showNotification(`✅ ${typeLabel} sessions exported successfully!`, 'success');
     },
-    
+
     // ============================================
     // UTILITY FUNCTIONS
     // ============================================
@@ -1168,14 +1248,14 @@ const LecturerSessions = {
             return dateString;
         }
     },
-    
+
     escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     },
-    
+
     // ============================================
     // REFRESH
     // ============================================
@@ -1209,6 +1289,10 @@ function closeSession(id) {
     LecturerSessions.closeSession(id);
 }
 
+function editSession(id) {
+    LecturerSessions.editSession(id);
+}
+
 function viewAttendees(id) {
     LecturerSessions.viewAttendees(id);
 }
@@ -1238,6 +1322,7 @@ window.scheduleSession = scheduleSession;
 window.generateAttendanceLink = generateAttendanceLink;
 window.openSession = openSession;
 window.closeSession = closeSession;
+window.editSession = editSession;
 window.viewAttendees = viewAttendees;
 window.openTodaySession = openTodaySession;
 window.closeAllSessions = closeAllSessions;
@@ -1249,3 +1334,4 @@ console.log('📚 Unit filtering matches Resources and Marks modules');
 console.log('📊 TVET Support: Enabled (Year X Term Y format)');
 console.log('🎓 Intake Year: Now selected by lecturer from dropdown');
 console.log('🔗 lecturer_id: Populated for proper joins');
+console.log('✏️ Edit Session: Enabled (date / time / location)');
