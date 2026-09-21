@@ -818,115 +818,113 @@
     // ⚡ QUICK CHECK-IN — DIRECT CHECK-IN FLOW
     // ============================================
     
-    async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
-        console.log(`⚡ Quick check-in for session ${sessionId}`);
-        
-        const session = activeSessions.find(s => s.id === sessionId);
-        if (!session) {
-            showToast('Session not found — refreshing...', 'warning');
-            await renderActiveSessions();
-            return;
-        }
-        
-        currentSession = session;
-        
-        const sessionInfo = await getCurrentStudentInfo();
-        if (!sessionInfo?.user_id) {
-            showToast('Please log in first', 'error');
-            return;
-        }
-        
-        // ✅ Duplicate check-in prevention
-        const supabase = getSupabase();
-        if (supabase) {
-            try {
-                const { data: existing } = await supabase
-                    .from('geo_attendance_logs')
-                    .select('id, check_in_time')
-                    .eq('user_id', sessionInfo.user_id)
-                    .eq('session_id', sessionId)
-                    .limit(1);
-                
-                if (existing && existing.length > 0) {
-                    const time = new Date(existing[0].check_in_time).toLocaleTimeString('en-KE', {
-                        hour: '2-digit', minute: '2-digit'
-                    });
-                    showToast(`✅ You already checked in at ${time}`, 'success', 4000);
-                    return;
-                }
-            } catch(e) {
-                console.warn('⚠️ Could not check existing logs:', e);
-            }
-        }
-        
-        const targetType = (session.session_type || 'class').toLowerCase();
-        const sessionType_normalized = 
-            targetType === 'clinical' ? 'clinical' :
-            targetType === 'lab' ? 'lab' :
-            targetType === 'tutorial' ? 'tutorial' :
-            'class';
-        
-        showToast(`📍 Preparing check-in for ${unitName}...`, 'info', 2000);
-        
-        const typeSelect = document.getElementById('session-type');
-        if (typeSelect) {
-            typeSelect.value = sessionType_normalized;
-            typeSelect.dispatchEvent(new Event('change'));
-        }
-        
-        setTimeout(async () => {
-            const targetSelect = document.getElementById('attendance-target');
-            if (!targetSelect) {
-                showToast('Target list not available', 'error');
-                return;
-            }
-            
-            const lowerUnit = unitName.toLowerCase();
-            const lowerLoc = (locationName || '').toLowerCase();
-            
-            const options = Array.from(targetSelect.options);
-            let match = null;
-            
-            match = options.find(o => o.textContent.toLowerCase().includes(lowerUnit));
-            
-            if (!match && lowerLoc) {
-                match = options.find(o => o.textContent.toLowerCase().includes(lowerLoc));
-            }
-            
-            if (!match) {
-                match = options.find(o => o.value && o.value !== '');
-            }
-            
-            if (!match) {
-                showToast('No matching target found. Please select manually.', 'warning');
-                document.getElementById('check-in-button')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return;
-            }
-            
-            targetSelect.value = match.value;
-            targetSelect.dispatchEvent(new Event('change'));
-            
-            const parts = match.value.split('|');
-            if (parts.length >= 6) {
-                selectedTarget = {
-                    id: parts[0],
-                    name: parts[1],
-                    type: parts[2],
-                    latitude: parseFloat(parts[3]),
-                    longitude: parseFloat(parts[4]),
-                    radius: parseFloat(parts[5])
-                };
-            }
-            
-            console.log('✅ Auto-selected target:', match.textContent);
-            showToast(`✅ Ready: ${match.textContent}`, 'success', 2000);
-            
-            setTimeout(() => {
-                doCheckIn(session);
-            }, 400);
-            
-        }, 800);
+   // ============================================
+// ⚡ QUICK CHECK-IN — SESSION-BASED, NO DROPDOWN
+// ============================================
+
+async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
+    console.log(`⚡ Quick check-in for session ${sessionId}`);
+    
+    const session = activeSessions.find(s => s.id === sessionId);
+    if (!session) {
+        showToast('Session not found — refreshing...', 'warning');
+        await renderActiveSessions();
+        return;
     }
+    
+    currentSession = session;
+    
+    const sessionInfo = await getCurrentStudentInfo();
+    if (!sessionInfo?.user_id) {
+        showToast('Please log in first', 'error');
+        return;
+    }
+    
+    // ✅ Duplicate check-in prevention
+    const supabase = getSupabase();
+    if (supabase) {
+        try {
+            const { data: existing } = await supabase
+                .from('geo_attendance_logs')
+                .select('id, check_in_time')
+                .eq('user_id', sessionInfo.user_id)
+                .eq('session_id', sessionId)
+                .limit(1);
+            
+            if (existing && existing.length > 0) {
+                const time = new Date(existing[0].check_in_time).toLocaleTimeString('en-KE', {
+                    hour: '2-digit', minute: '2-digit'
+                });
+                showToast(`✅ You already checked in at ${time}`, 'success', 4000);
+                return;
+            }
+        } catch(e) {
+            console.warn('⚠️ Could not check existing logs:', e);
+        }
+    }
+    
+    // ✅ Build the target DIRECTLY from the session — no dropdown lookup
+    const targetType = (session.session_type || 'class').toLowerCase();
+    const targetType_normalized = 
+        targetType === 'clinical' ? 'clinical' :
+        targetType === 'lab' ? 'lab' :
+        targetType === 'tutorial' ? 'tutorial' :
+        'class';
+    
+    // Coordinate resolution:
+    //   1) session's own target_latitude/longitude if present
+    //   2) else the matched approvedUnit's coords (if we can find it)
+    //   3) else campus center
+    let lat = session.target_latitude ? parseFloat(session.target_latitude) : null;
+    let lon = session.target_longitude ? parseFloat(session.target_longitude) : null;
+    let radius = session.target_radius ? parseInt(session.target_radius) : null;
+    
+    // Try to find a matching approved unit by name (fallback for coords)
+    if (!lat || !lon) {
+        const matchedUnit = approvedUnits.find(u => 
+            (u.unit_name && unitName && 
+             u.unit_name.toLowerCase().includes(unitName.toLowerCase().substring(0, 20))) ||
+            (u.unit_name && session.unit_name && 
+             u.unit_name.toLowerCase() === session.unit_name.toLowerCase())
+        );
+        if (matchedUnit?.latitude && matchedUnit?.longitude) {
+            lat = matchedUnit.latitude;
+            lon = matchedUnit.longitude;
+            if (!radius) radius = matchedUnit.radius || ACCURACY_CONFIG.CLASSROOM_RADIUS;
+            console.log('📍 Using matched unit coords:', matchedUnit.unit_name);
+        }
+    }
+    
+    // Final fallback
+    if (!lat || !lon) {
+        lat = CAMPUS_COORDINATES.latitude;
+        lon = CAMPUS_COORDINATES.longitude;
+        console.log('📍 Using campus center fallback');
+    }
+    
+    if (!radius) {
+        radius = targetType_normalized === 'clinical' 
+            ? ACCURACY_CONFIG.CLINICAL_RADIUS 
+            : ACCURACY_CONFIG.CLASSROOM_RADIUS;
+    }
+    
+    selectedTarget = {
+        id: `session_${session.id}`,
+        name: session.unit_name || session.session_title || session.title || unitName || 'Session',
+        type: targetType_normalized,
+        latitude: lat,
+        longitude: lon,
+        radius: radius
+    };
+    
+    console.log('✅ Built target from session:', selectedTarget);
+    showToast(`📍 Preparing check-in for ${selectedTarget.name}...`, 'info', 2000);
+    
+    // Skip the target dropdown entirely — go straight to GPS + confirm
+    setTimeout(() => {
+        doCheckIn(session);
+    }, 500);
+}
 
     // ============================================
     // 🎯 POPULATE TARGET OPTIONS
