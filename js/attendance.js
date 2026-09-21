@@ -841,28 +841,53 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
     }
     
     // ✅ Duplicate check-in prevention
+       // ✅ Duplicate check-in prevention — once per OPEN WINDOW
+    // If lecturer re-opens the session (e.g. 2nd class same day),
+    // students can check in again. Old check-ins (before opened_at) don't block.
     const supabase = getSupabase();
     if (supabase) {
         try {
-            const { data: existing } = await supabase
+            // Fetch the session's current open timestamp
+            const { data: sessionRow } = await supabase
+                .from('scheduled_sessions')
+                .select('opened_at, status, is_active')
+                .eq('id', sessionId)
+                .single();
+
+            const openedAt = sessionRow?.opened_at || null;
+            const isActiveNow = sessionRow?.is_active === true || sessionRow?.status === 'active';
+
+            if (!isActiveNow) {
+                showToast('This session is not currently open for check-in.', 'warning', 4000);
+                return;
+            }
+
+            // Count check-ins AFTER the session was last opened
+            let dupQuery = supabase
                 .from('geo_attendance_logs')
                 .select('id, check_in_time')
                 .eq('user_id', sessionInfo.user_id)
                 .eq('session_id', sessionId)
+                .order('check_in_time', { ascending: false })
                 .limit(1);
-            
+
+            if (openedAt) {
+                dupQuery = dupQuery.gte('check_in_time', openedAt);
+            }
+
+            const { data: existing } = await dupQuery;
+
             if (existing && existing.length > 0) {
                 const time = new Date(existing[0].check_in_time).toLocaleTimeString('en-KE', {
                     hour: '2-digit', minute: '2-digit'
                 });
-                showToast(`✅ You already checked in at ${time}`, 'success', 4000);
+                showToast(`✅ You already checked in for this class at ${time}`, 'success', 4000);
                 return;
             }
-        } catch(e) {
+        } catch (e) {
             console.warn('⚠️ Could not check existing logs:', e);
         }
     }
-    
     // ✅ Build the target DIRECTLY from the session — no dropdown lookup
     const targetType = (session.session_type || 'class').toLowerCase();
     const targetType_normalized = 
