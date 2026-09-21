@@ -3458,7 +3458,7 @@
 <div class="ol-wrap">
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:15px;flex-wrap:wrap;margin-bottom:22px">
  <div><h2 style="margin:0;font-size:27px"><i class="fas fa-laptop-code" style="color:#4c1d95"></i> Online Learning</h2><p style="margin:5px 0 0;color:#64748b">Create, publish, assess and release assignments, case studies and quizzes.</p></div>
- <button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.openAssignmentModal()"><i class="fas fa-plus"></i> Create Assignment</button>
+ <button class="ol-btn ol-primary" onclick="window.LecturerOnlineLearning.openAssignmentModal()"><i class="fas fa-plus"></i> Create Assignment</button>
 </div>
 <div class="ol-grid">
  <div class="ol-stat"><span style="color:#64748b;font-size:12px">TOTAL</span><b id="olTotal">0</b><span style="font-size:12px;color:#94a3b8">Assignments</span></div>
@@ -3467,18 +3467,18 @@
  <div class="ol-stat"><span style="color:#64748b;font-size:12px">TO REVIEW</span><b id="olToReview">0</b><span style="font-size:12px;color:#94a3b8">Need lecturer review</span></div>
 </div>
 <div class="ol-card"><div class="ol-toolbar">
- <div style="flex:1;min-width:210px"><input id="olSearch" placeholder="Search assignments by title or unit..." oninput="LecturerOnlineLearning.renderAssignments()"></div>
- <select id="olStatusFilter" style="max-width:170px" onchange="LecturerOnlineLearning.renderAssignments()"><option value="">All statuses</option><option value="draft">Draft</option><option value="published">Published</option></select>
- <button class="ol-btn ol-muted" onclick="LecturerOnlineLearning.load()"><i class="fas fa-sync"></i> Refresh</button>
+ <div style="flex:1;min-width:210px"><input id="olSearch" placeholder="Search assignments by title or unit..." oninput="window.LecturerOnlineLearning.renderAssignments()"></div>
+ <select id="olStatusFilter" style="max-width:170px" onchange="window.LecturerOnlineLearning.renderAssignments()"><option value="">All statuses</option><option value="draft">Draft</option><option value="published">Published</option></select>
+ <button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.load()"><i class="fas fa-sync"></i> Refresh</button>
 </div></div>
 <div class="ol-card"><div style="overflow-x:auto"><table class="ol-table"><thead><tr><th>Assignment</th><th>Unit</th><th>Target</th><th>Due</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody id="olAssignmentsTable"></tbody></table></div></div>
-<div class="ol-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h3 style="margin:0">Student Submissions</h3><p style="margin:4px 0;color:#64748b;font-size:13px">Review, grade and release submitted work.</p></div><select id="olSubmissionAssignmentFilter" style="max-width:320px" onchange="LecturerOnlineLearning.loadSubmissions()"><option value="">All assignments</option></select></div><div style="overflow-x:auto;margin-top:14px"><table class="ol-table"><thead><tr><th>Student</th><th>Assignment</th><th>Submitted</th><th>Attempt</th><th>Mark</th><th>Status</th><th>Action</th></tr></thead><tbody id="olSubmissionsTable"></tbody></table></div></div>
+<div class="ol-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h3 style="margin:0">Student Submissions</h3><p style="margin:4px 0;color:#64748b;font-size:13px">Review, grade and release submitted work.</p></div><select id="olSubmissionAssignmentFilter" style="max-width:320px" onchange="window.LecturerOnlineLearning.loadSubmissions()"><option value="">All assignments</option></select></div><div style="overflow-x:auto;margin-top:14px"><table class="ol-table"><thead><tr><th>Student</th><th>Assignment</th><th>Submitted</th><th>Attempt</th><th>Mark</th><th>Status</th><th>Action</th></tr></thead><tbody id="olSubmissionsTable"></tbody></table></div></div>
 </div>
 </section>
 
 <div id="olAssignmentModal" class="ol-modal" onclick="if(event.target===this)LecturerOnlineLearning.closeModal('olAssignmentModal')">
-<div class="ol-modal-box"><div class="ol-modal-head"><h3 id="olAssignmentModalTitle" style="margin:0">Create Assignment</h3><button class="ol-btn ol-muted" onclick="LecturerOnlineLearning.closeModal('olAssignmentModal')"><i class="fas fa-times"></i></button></div>
-<div class="ol-modal-body"><form id="olAssignmentForm" class="ol-form" onsubmit="LecturerOnlineLearning.saveAssignment(event)">
+<div class="ol-modal-box"><div class="ol-modal-head"><h3 id="olAssignmentModalTitle" style="margin:0">Create Assignment</h3><button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olAssignmentModal')"><i class="fas fa-times"></i></button></div>
+<div class="ol-modal-body"><form id="olAssignmentForm" class="ol-form" onsubmit="window.LecturerOnlineLearning.saveAssignment(event)">
 <input type="hidden" id="olAssignmentId">
 <div><label>Title *</label><input id="olTitle" required placeholder="e.g. Cardiovascular System Assignment"></div>
 <div><label>Type *</label><select id="olType" required><option value="assignment">Assignment</option><option value="case_study">Case Study</option><option value="quiz">Quiz</option></select></div>
@@ -3492,12 +3492,12 @@
 <div><label>Max Attempts</label><input id="olMaxAttempts" type="number" min="1" value="1"></div>
 <div class="ol-full"><label>Instructions</label><textarea id="olInstructions" rows="4" placeholder="Instructions students will see..."></textarea></div>
 <div class="ol-full" style="display:flex;gap:16px;flex-wrap:wrap"><label><input id="olAllowUpload" type="checkbox" checked> Allow document upload</label><label><input id="olAllowResubmit" type="checkbox"> Allow resubmission</label></div>
-<div class="ol-full" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h4 style="margin:0">Questions</h4><button type="button" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.addQuestionEditor()"><i class="fas fa-plus"></i> Add Question</button></div>
+<div class="ol-full" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h4 style="margin:0">Questions</h4><button type="button" class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.addQuestionEditor()"><i class="fas fa-plus"></i> Add Question</button></div>
 <div id="olQuestions" class="ol-full"></div>
-<div class="ol-full" style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e5e7eb;padding-top:16px"><button type="button" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.closeModal('olAssignmentModal')">Cancel</button><button type="submit" class="ol-btn ol-primary"><i class="fas fa-save"></i> Save Draft</button><button type="button" class="ol-btn ol-success" onclick="LecturerOnlineLearning.saveAndPublish()"><i class="fas fa-paper-plane"></i> Save & Publish</button></div>
+<div class="ol-full" style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e5e7eb;padding-top:16px"><button type="button" class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olAssignmentModal')">Cancel</button><button type="submit" class="ol-btn ol-primary"><i class="fas fa-save"></i> Save Draft</button><button type="button" class="ol-btn ol-success" onclick="window.LecturerOnlineLearning.saveAndPublish()"><i class="fas fa-paper-plane"></i> Save & Publish</button></div>
 </form></div></div></div>
 
-<div id="olSubmissionModal" class="ol-modal" onclick="if(event.target===this)LecturerOnlineLearning.closeModal('olSubmissionModal')"><div class="ol-modal-box"><div class="ol-modal-head"><h3 style="margin:0">Submission Review</h3><button class="ol-btn ol-muted" onclick="LecturerOnlineLearning.closeModal('olSubmissionModal')"><i class="fas fa-times"></i></button></div><div class="ol-modal-body" id="olSubmissionBody"></div></div></div>
+<div id="olSubmissionModal" class="ol-modal" onclick="if(event.target===this)LecturerOnlineLearning.closeModal('olSubmissionModal')"><div class="ol-modal-box"><div class="ol-modal-head"><h3 style="margin:0">Submission Review</h3><button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olSubmissionModal')"><i class="fas fa-times"></i></button></div><div class="ol-modal-body" id="olSubmissionBody"></div></div></div>
 </section>
             <!-- ========================================== -->
 <!-- 📝 QUESTION BANK - LECTURER WITH ADMIN APPROVAL -->
@@ -6309,16 +6309,21 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <!-- ============================================================ -->
 <!-- ONLINE LEARNING LECTURER MODULE                              -->
 <!-- ============================================================ -->
-<script src="js/lecturer-online-learning.js"></script>
+<script src="js/lecturer-online-learning.js?v=20260922" id="nchsmLecturerOnlineLearningScript"></script>
 <script>
-// Initialize Online Learning only after its dedicated module has loaded.
-document.addEventListener('DOMContentLoaded', function(){
-  setTimeout(function(){
+// ONLINE LEARNING BOOTSTRAP — external JS is the single source of truth.
+// Cache-busting prevents an older cached lecturer-online-learning.js from being used.
+(function(){
+  function boot(){
     if (window.LecturerOnlineLearning && typeof window.LecturerOnlineLearning.init === 'function') {
       window.LecturerOnlineLearning.init();
+      return;
     }
-  }, 150);
-});
+    console.error('NCHSM Online Learning: js/lecturer-online-learning.js loaded but LecturerOnlineLearning was not exposed. Check the deployed JS file/path.');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(boot, 50); }, {once:true});
+  else setTimeout(boot, 50);
+})();
 </script>
 
 <!-- Main Entry Point -->
