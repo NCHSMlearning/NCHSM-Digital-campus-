@@ -59,6 +59,8 @@ const LecturerDashboard = {
     refreshInterval: null,
     currentProgram: null,
     isTVET: false,
+    _chartsLoading: false,
+    _initialized: false,
 
     // ─── GET CURRENT PROGRAM ───
     getCurrentProgram() {
@@ -187,6 +189,7 @@ const LecturerDashboard = {
             this.updateLastUpdated();
             this.updateProgramBadge();
             this.updateDashboardGradingInfo();
+            this._initialized = true;
             console.log('✅ Lecturer Dashboard initialized');
             console.log(`📚 ${this.assignedUnits.length} assigned units`);
             console.log(`👨‍🎓 ${this.assignedStudents.length} assigned students`);
@@ -422,7 +425,7 @@ const LecturerDashboard = {
 
             const program = this.getCurrentProgram();
             const threshold = this.getPassingThreshold();
-            const profile = window.lecturerDB?.getCurrentUserProfile();   // ✅ FIX #1
+            const profile = window.lecturerDB?.getCurrentUserProfile();
 
             this.metrics.totalStudents = this.assignedStudents.length || 0;
             this.metrics.totalCourses = this.assignedUnits.length || 0;
@@ -432,7 +435,6 @@ const LecturerDashboard = {
             });
             this.metrics.atRiskStudents = atRisk.length || 0;
 
-            // ✅ FIX #2: table is 'exams', not 'cats_exams'
             const { data: exams, error: examError } = await supabase
                 .from('exams')
                 .select('*')
@@ -455,21 +457,21 @@ const LecturerDashboard = {
             const pending = this.assignedStudents.filter(s => !checkedIn.has(s.user_id));
             this.metrics.pendingAttendance = pending.length || 0;
 
-            // ✅ FIX #1 applied: profile is now defined
-           // Messages for this lecturer (unread tracking not available in schema)
-const lecturerId = this.lecturerUuid || profile?.user_id;
-if (lecturerId) {
-    const { data: messages, error: msgErr } = await supabase
-        .from('messages')
-        .select('*')                 // ✅
-        .eq('receiver_id', lecturerId);
+            // Messages for this lecturer (unread tracking not available in schema)
+            const lecturerId = this.lecturerUuid || profile?.user_id;
+            if (lecturerId) {
+                const { data: messages, error: msgErr } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .eq('receiver_id', lecturerId);
 
-    if (msgErr) {
-        console.warn('messages query error:', msgErr.message);
-        this.metrics.unreadMessages = 0;
-    } else {
-        this.metrics.unreadMessages = messages?.length || 0;
-    }
+                if (msgErr) {
+                    console.warn('messages query error:', msgErr.message);
+                    this.metrics.unreadMessages = 0;
+                } else {
+                    this.metrics.unreadMessages = messages?.length || 0;
+                }
+            }
 
             const studentIds = this.assignedStudents.map(s => s.user_id);
             if (studentIds.length > 0) {
@@ -1250,7 +1252,6 @@ if (lecturerId) {
                 });
             }
 
-            // ✅ FIX: table renamed to 'exams', column changed to 'target_program'
             const { data: recentExams } = await supabase
                 .from('exams')
                 .select('*')
@@ -1361,9 +1362,14 @@ if (lecturerId) {
 
     // ─── CHARTS ───
     async loadCharts() {
+        if (this._chartsLoading) {
+            console.log('⏭️ loadCharts already running, skipping');
+            return;
+        }
+        this._chartsLoading = true;
+
         console.log('📊 Loading lecturer charts...');
 
-        // ✅ Ensure program + isTVET are fresh (safe for standalone calls)
         this.getCurrentProgram();
 
         try {
@@ -1387,8 +1393,11 @@ if (lecturerId) {
 
             const ctx2 = document.getElementById('studentDistributionChart');
             if (ctx2) {
+                const existing = Chart.getChart(ctx2);
+                if (existing) existing.destroy();
                 if (this.chartInstances.distribution) {
                     this.chartInstances.distribution.destroy();
+                    this.chartInstances.distribution = null;
                 }
                 this.chartInstances.distribution = new Chart(ctx2, {
                     type: 'doughnut',
@@ -1452,8 +1461,11 @@ if (lecturerId) {
 
             const ctx1 = document.getElementById('performanceChart');
             if (ctx1) {
+                const existing = Chart.getChart(ctx1);
+                if (existing) existing.destroy();
                 if (this.chartInstances.performance) {
                     this.chartInstances.performance.destroy();
+                    this.chartInstances.performance = null;
                 }
 
                 const colors = this.isTVET ?
@@ -1503,8 +1515,11 @@ if (lecturerId) {
             // ─── 3. ATTENDANCE TREND CHART ───
             const ctx3 = document.getElementById('attendanceTrendChart');
             if (ctx3) {
+                const existing = Chart.getChart(ctx3);
+                if (existing) existing.destroy();
                 if (this.chartInstances.trend) {
                     this.chartInstances.trend.destroy();
+                    this.chartInstances.trend = null;
                 }
 
                 const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -1573,6 +1588,8 @@ if (lecturerId) {
 
         } catch (error) {
             console.error('❌ Error loading charts:', error);
+        } finally {
+            this._chartsLoading = false;
         }
     },
 
@@ -1591,6 +1608,10 @@ if (lecturerId) {
     // ─── REFRESH ───
     async refresh() {
         if (this.isRefreshing) return;
+        if (!this._initialized) {
+            console.log('⏭️ Dashboard still initializing, skipping refresh');
+            return;
+        }
         this.isRefreshing = true;
 
         console.log('🔄 Refreshing dashboard...');
@@ -1659,3 +1680,17 @@ window.LecturerDashboard = LecturerDashboard;
 window.refreshDashboard = () => LecturerDashboard.refresh();
 
 console.log('✅ LecturerDashboard module loaded - Complete upgraded version');
+console.log('📊 Features:');
+console.log('   • Metrics & Stats Cards');
+console.log('   • Clinical Hours Tracker');
+console.log('   • Attendance Deep Dive (Present/Absent/Pending/Location)');
+console.log('   • Early Warning System (Risk Monitoring)');
+console.log('   • Course Progress with Visual Bars');
+console.log('   • Top Students Ranking');
+console.log('   • Intelligent Alerts');
+console.log('   • Attendance Alerts');
+console.log('   • Recent Activity Feed');
+console.log('   • Charts (Performance, Distribution, Trend)');
+console.log('   • Auto-refresh every 30 seconds');
+console.log('   • Keyboard shortcut: Ctrl+R to refresh');
+console.log('   • TVET/Nursing Support: ✅ Enabled');
