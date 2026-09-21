@@ -697,6 +697,18 @@ window.LecturerOnlineLearning = (() => {
       const key=resolveLocalMarkingKey(assignment||{});
       return {mode:key?'marking_key':'topic_keywords',markingKey:key,keywords:key?.keywords||[],expectedTopics:key?.expected_topics||[],guidance:key?.grading_guidance||''};
     }
+    async function fetchSubmissionMarkingKey(id){
+      const s=state.submissions.find(x=>x.id===id);if(!s)throw new Error('Submission could not be found.');
+      const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+      const key=resolveLocalMarkingKey(assignment);
+      const box=$('olSubmissionMarkingKey');
+      if(!key)throw new Error('No institutional marking key matches this assignment title/type.');
+      if(box){
+        box.innerHTML=`<div style="font-weight:800;color:#18304d;font-size:14px"><i class="fas fa-clipboard-check"></i> ${esc(key.title)}</div><div style="font-size:12px;color:#64748b;margin-top:3px">Version ${esc(key.version)} · Maximum ${esc(key.max_marks)} marks · Source: ${esc(key.source_document)}</div><div style="margin-top:8px">${esc(key.description||'')}</div><details open style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Marking Criteria (${esc(key.criteria.length)})</summary><div style="margin-top:7px">${key.criteria.map((c,i)=>`<div style="padding:7px 0;border-bottom:1px solid #e5e7eb"><b>${esc(i+1)}. ${esc(c.criterion)}</b> <span style="color:#64748b">(${esc(c.max_marks)} marks)</span></div>`).join('')}</div></details><div style="margin-top:9px"><b>Grading guidance:</b><div style="white-space:pre-wrap;margin-top:3px">${esc(key.grading_guidance||'')}</div></div>`;
+      }
+      window._activeSubmissionMarkingKey=key;window._activeSubmissionMarkingKeyId=key.id;return key;
+    }
+
     function localObjectiveGrade(items){
         let earned=0,max=0; const grades=[];
         for(const q of items){
@@ -710,7 +722,7 @@ window.LecturerOnlineLearning = (() => {
         return {earned,max,grades};
     }
     // ============================================================
-    // DETERMINISTIC LOCAL INSTITUTIONAL MARKING-KEY ENGINE
+    // DETERMINISTIC INSTITUTIONAL MARKING-KEY ENGINE
     // ============================================================
     // This is the primary "Automatically Grade" engine. It does NOT
     // call Gemini/OpenAI. The authoritative rubric comes from the institutional marking key
@@ -718,7 +730,7 @@ window.LecturerOnlineLearning = (() => {
     // It behaves like Online Exams: configured answers/rubric -> score.
     // ============================================================
     // ============================================================
-    // DETERMINISTIC LOCAL INSTITUTIONAL MARKING-KEY ENGINE V2
+    // DETERMINISTIC INSTITUTIONAL MARKING-KEY ENGINE V2
     // ============================================================
     // The embedded institutional rubric is authoritative. Each criterion contains
     // criterion-specific requirements. The engine NEVER awards marks from
@@ -983,10 +995,10 @@ window.LecturerOnlineLearning = (() => {
             if($('olReviewFeedback')) $('olReviewFeedback').value=report.feedback||'';
             renderDeterministicGradeReport(report);
             window._activeDeterministicGrade=report;
-            notify(`Automatic marking completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,'success');
+            notify(`Automatic institutional marking completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,'success');
             return report;
         }catch(e){
-            console.error('Deterministic institutional marking:',e);
+            console.error('Deterministic Supabase marking:',e);
             notify(e.message||'Automatic marking failed.','error');
             return null;
         }finally{
@@ -995,57 +1007,8 @@ window.LecturerOnlineLearning = (() => {
     }
 
     async function aiGradeSubmission(id){
+        notify('AI Grade Work is disabled in this configuration. Use Automatically Grade Using Marking Key.','warning');
         return autoGradeUsingMarkingKey(id);
-    }
-
-    async function reviewSubmission(id){
-        const s=state.submissions.find(x=>x.id===id);
-        if(!s){ notify('Submission could not be found.','error'); return; }
-        await resolveUser();
-        const assignment=state.assignments.find(x=>x.id===s.assignment_id)||{};
-        const maxMarks=Number(s.max_marks||assignment.max_marks||100);
-        const pct=s.marks_obtained==null?'—':formatPercentage(s.marks_obtained,maxMarks);
-        const body=$('olSubmissionBody');
-        if(!body)return;
-        body.innerHTML=`
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:18px;align-items:start">
-            <div>
-              <div style="padding:14px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc;margin-bottom:14px">
-                <div style="font-size:18px;font-weight:800;color:#0f172a">${esc(assignment.title||s.online_assignments?.title||'Assignment Submission')}</div>
-                <div style="font-size:12px;color:#64748b;margin-top:5px">Student: ${esc(s.student_id||'Student')} · Attempt ${esc(s.attempt_number||1)} · Submitted ${esc(fmtDate(s.submitted_at))}</div>
-              </div>
-              ${s.file_name||s.file_path||s.file_url?`<div style="padding:14px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;margin-bottom:14px">
-                <div style="font-weight:700;margin-bottom:8px"><i class="fas fa-file-alt"></i> Submitted Work</div>
-                <div style="font-size:12px;color:#64748b;margin-bottom:10px">${esc(s.file_name||'Uploaded document')}</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${esc(s.id)}')"><i class="fas fa-eye"></i> View Entire Work</button>
-                  <button class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${esc(s.id)}')"><i class="fas fa-shield-alt"></i> Integrity Scan</button>
-                </div><div id="olIntegrityReport"></div>
-              </div>`:''}
-              <div id="olAIGradeReport"></div>
-            </div>
-            <div style="position:sticky;top:10px;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#fff">
-              <h4 style="margin:0 0 14px">Marking & Feedback</h4>
-              <button id="olAutoGradeBtn" type="button" class="ol-btn ol-primary" style="width:100%;margin-bottom:12px" onclick="LecturerOnlineLearning.aiGradeSubmission('${esc(s.id)}')"><i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Institutional Marking Key</button>
-              <label style="display:block;font-weight:700;font-size:13px;margin-bottom:5px">Marks Awarded</label>
-              <input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks)}" step="0.5" value="${s.marks_obtained==null?'':esc(s.marks_obtained)}" style="width:100%;box-sizing:border-box;margin-bottom:8px">
-              <div style="font-size:13px;color:#475569;margin-bottom:12px">Percentage: <b id="olReviewPercentage">${pct}</b> · Maximum: ${esc(maxMarks)}</div>
-              <label style="display:block;font-weight:700;font-size:13px;margin-bottom:5px">Feedback</label>
-              <textarea id="olReviewFeedback" rows="8" style="width:100%;box-sizing:border-box;resize:vertical">${esc(s.feedback||'')}</textarea>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-                <button type="button" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.closeModal('olSubmissionModal')">Cancel</button>
-                <button type="button" class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${esc(s.id)}',false)">Save Grade</button>
-                <button type="button" class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${esc(s.id)}',true)">Grade & Release</button>
-              </div>
-            </div>
-          </div>`;
-        const marksInput=$('olReviewMarks');
-        const pctEl=$('olReviewPercentage');
-        if(marksInput&&pctEl){
-            marksInput.addEventListener('input',()=>{pctEl.textContent=formatPercentage(marksInput.value,maxMarks);});
-        }
-        $('olSubmissionModal').style.display='flex';
-        $('olSubmissionModal').setAttribute('aria-hidden','false');
     }
 
     async function gradeSubmission(id,release){
@@ -2494,64 +2457,13 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         });
     }
 
-    // ============================================================
-    // LIVE GRADE PERCENTAGE UPDATE
-    // ============================================================
-    function updateGradePercentage() {
-        const marksEl = $('olReviewMarks');
-        const pctEl = $('olReviewPercentage');
-        if (!marksEl || !pctEl) return;
-
-        const marks = Number(marksEl.value);
-        const idEl = $('olSubmissionId');
-        const activeId = idEl?.value || window.__nchsmActiveSubmissionId || null;
-        const submission = activeId
-            ? state.submissions.find(s => String(s.id) === String(activeId))
-            : null;
-        const assignment = submission
-            ? (state.assignments.find(a => String(a.id) === String(submission.assignment_id)) || {})
-            : {};
-        const maxMarks = Number(submission?.max_marks || assignment.max_marks || 0);
-
-        pctEl.textContent = Number.isFinite(marks) && maxMarks > 0
-            ? formatPercentage(marks, maxMarks)
-            : '—';
-    }
-
     async function initResearch() {
-        if (researchState.initialized) {
-            researchEnsureUI();
-            return;
-        }
+        if (researchState.initialized) return;
         researchState.initialized = true;
         researchEnsureUI();
         await loadResearch();
     }
 
-    // Robust bootstrap: the Lecturer HTML keeps the Online Learning shell,
-    // while this external JS owns all Research Papers functionality.
-    // This retry also protects against other dashboard modules changing the
-    // tab DOM after the external script loads.
-    function bootstrapResearchPapers() {
-        let attempts = 0;
-        const tryInit = () => {
-            attempts++;
-            const section = $('online-learning-content');
-            if (section) {
-                researchEnsureUI();
-                return;
-            }
-            if (attempts < 20) setTimeout(tryInit, 150);
-        };
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', tryInit, { once:true });
-        } else {
-            tryInit();
-        }
-    }
-
-    bootstrapResearchPapers();
-
-    return {getAssignmentGradingConfig,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
+    return {loadMarkingKeys,getAssignmentGradingConfig,fetchSubmissionMarkingKey,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
 ;
