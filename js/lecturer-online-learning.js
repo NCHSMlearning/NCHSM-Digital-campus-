@@ -998,6 +998,71 @@ window.LecturerOnlineLearning = (() => {
         return autoGradeUsingMarkingKey(id);
     }
 
+    async function reviewSubmission(id){
+        const s=state.submissions.find(x=>x.id===id);
+        if(!s){ notify('Submission could not be found.','error'); return; }
+        await resolveUser();
+        const assignment=state.assignments.find(x=>x.id===s.assignment_id)||{};
+        const maxMarks=Number(s.max_marks||assignment.max_marks||100);
+        const pct=s.marks_obtained==null?'—':formatPercentage(s.marks_obtained,maxMarks);
+        const body=$('olSubmissionBody');
+        if(!body)return;
+        body.innerHTML=`
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:18px;align-items:start">
+            <div>
+              <div style="padding:14px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc;margin-bottom:14px">
+                <div style="font-size:18px;font-weight:800;color:#0f172a">${esc(assignment.title||s.online_assignments?.title||'Assignment Submission')}</div>
+                <div style="font-size:12px;color:#64748b;margin-top:5px">Student: ${esc(s.student_id||'Student')} · Attempt ${esc(s.attempt_number||1)} · Submitted ${esc(fmtDate(s.submitted_at))}</div>
+              </div>
+              ${s.file_name||s.file_path||s.file_url?`<div style="padding:14px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;margin-bottom:14px">
+                <div style="font-weight:700;margin-bottom:8px"><i class="fas fa-file-alt"></i> Submitted Work</div>
+                <div style="font-size:12px;color:#64748b;margin-bottom:10px">${esc(s.file_name||'Uploaded document')}</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${esc(s.id)}')"><i class="fas fa-eye"></i> View Entire Work</button>
+                  <button class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${esc(s.id)}')"><i class="fas fa-shield-alt"></i> Integrity Scan</button>
+                </div><div id="olIntegrityReport"></div>
+              </div>`:''}
+              <div id="olAIGradeReport"></div>
+            </div>
+            <div style="position:sticky;top:10px;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#fff">
+              <h4 style="margin:0 0 14px">Marking & Feedback</h4>
+              <button id="olAutoGradeBtn" type="button" class="ol-btn ol-primary" style="width:100%;margin-bottom:12px" onclick="LecturerOnlineLearning.aiGradeSubmission('${esc(s.id)}')"><i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Institutional Marking Key</button>
+              <label style="display:block;font-weight:700;font-size:13px;margin-bottom:5px">Marks Awarded</label>
+              <input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks)}" step="0.5" value="${s.marks_obtained==null?'':esc(s.marks_obtained)}" data-submission-id="${esc(s.id)}" style="width:100%;box-sizing:border-box;margin-bottom:8px">
+              <div style="font-size:13px;color:#475569;margin-bottom:12px">Percentage: <b id="olReviewPercentage">${pct}</b> · Maximum: ${esc(maxMarks)}</div>
+              <label style="display:block;font-weight:700;font-size:13px;margin-bottom:5px">Feedback</label>
+              <textarea id="olReviewFeedback" rows="8" style="width:100%;box-sizing:border-box;resize:vertical">${esc(s.feedback||'')}</textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                <button type="button" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.closeModal('olSubmissionModal')">Cancel</button>
+                <button type="button" class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${esc(s.id)}',false)">Save Grade</button>
+                <button type="button" class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${esc(s.id)}',true)">Grade & Release</button>
+              </div>
+            </div>
+          </div>`;
+        const marksInput=$('olReviewMarks');
+        const pctEl=$('olReviewPercentage');
+        if(marksInput&&pctEl){
+            marksInput.addEventListener('input',updateGradePercentage);
+        }
+        $('olSubmissionModal').style.display='flex';
+        $('olSubmissionModal').setAttribute('aria-hidden','false');
+    }
+
+    // ============================================================
+    // LIVE PERCENTAGE UPDATE — used by the submission review modal
+    // ============================================================
+    function updateGradePercentage(){
+        const marksEl=$('olReviewMarks');
+        const pctEl=$('olReviewPercentage');
+        if(!marksEl||!pctEl)return;
+        const marks=Number(marksEl.value||0);
+        const activeId=marksEl.dataset.submissionId;
+        const s=activeId?state.submissions.find(x=>String(x.id)===String(activeId)):null;
+        const assignment=s?state.assignments.find(a=>String(a.id)===String(s.assignment_id)):null;
+        const max=Number(s?.max_marks||assignment?.max_marks||marksEl.max||0);
+        pctEl.textContent=max>0?formatPercentage(clampMarks(marks,max),max):'—';
+    }
+
     async function gradeSubmission(id,release){
         const db=client();
         const s=state.submissions.find(x=>x.id===id);
