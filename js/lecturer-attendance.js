@@ -1152,23 +1152,43 @@ const LecturerAttendance = {
             ws.getRow(r).height = 22;
             r++;
 
-            const sigRow = (label) => {
-                ws.mergeCells(r, 1, r, 2);
-                ws.getCell(r, 1).value = label;
-                ws.getCell(r, 1).font = { bold: true, size: 11, color: { argb: DARK } };
-                ws.mergeCells(r, 3, r, 3);
-                ws.getCell(r, 3).value = '_______________________';
-                ws.getCell(r, 3).alignment = { horizontal: 'center' };
-                ws.mergeCells(r, 4, r, 5);
-                ws.getCell(r, 4).value = 'Signature: ______________';
-                ws.getCell(r, 4).font = { size: 11 };
-                ws.mergeCells(r, 6, r, totalCols);
-                ws.getCell(r, 6).value = 'Date: ______________';
-                ws.getCell(r, 6).font = { size: 11 };
+                      const sigRow = (label) => {
+                // Column A (merged A:B) → the label
+                if (totalCols >= 2) {
+                    ws.mergeCells(r, 1, r, 2);
+                }
+                const labelCell = ws.getCell(r, 1);
+                labelCell.value = label;
+                labelCell.font = { bold: true, size: 11, color: { argb: DARK } };
+                labelCell.alignment = { horizontal: 'left', vertical: 'middle' };
+
+                // Column C → underscore line
+                const lineCell = ws.getCell(r, 3);
+                lineCell.value = '_______________________';
+                lineCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                lineCell.font = { size: 11 };
+
+                // Columns D:E (merged) → Signature line
+                if (totalCols >= 5) {
+                    ws.mergeCells(r, 4, r, 5);
+                }
+                const sigCell = ws.getCell(r, 4);
+                sigCell.value = 'Signature: ______________';
+                sigCell.font = { size: 11 };
+                sigCell.alignment = { horizontal: 'left', vertical: 'middle' };
+
+                // Columns F:end (merged, only if it spans MORE than one col) → Date line
+                if (totalCols > 6) {
+                    ws.mergeCells(r, 6, r, totalCols);
+                }
+                const dateCell = ws.getCell(r, 6);
+                dateCell.value = 'Date: ______________';
+                dateCell.font = { size: 11 };
+                dateCell.alignment = { horizontal: 'left', vertical: 'middle' };
+
                 ws.getRow(r).height = 26;
                 r++;
             };
-
             r++;
             sigRow('Class Representative:');
             r++;
