@@ -15536,6 +15536,78 @@ async function notifyStudentsAboutNewResource(resourceData) {
 // =====================================================
 // UNIFIED RESOURCE UPLOAD HANDLER
 // =====================================================
+
+// =====================================================
+// PRE-RECORDED PODCAST / AUDIO SUPPORT
+// =====================================================
+const RESOURCE_AUDIO_BUCKET = 'resources';
+
+function sanitizeResourceAudioName(name) {
+    return String(name || 'podcast')
+        .toLowerCase()
+        .replace(/\.[^/.]+$/, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .substring(0, 80) || 'podcast';
+}
+
+async function uploadResourcePodcastAudio(podcastFile, meta) {
+    if (!podcastFile) return null;
+
+    const allowedExt = ['mp3', 'm4a', 'wav', 'ogg', 'webm'];
+    const ext = (podcastFile.name.split('.').pop() || '').toLowerCase();
+
+    if (!allowedExt.includes(ext)) {
+        throw new Error('Podcast audio must be MP3, M4A, WAV, OGG, or WEBM.');
+    }
+
+    if (podcastFile.size > 100 * 1024 * 1024) {
+        throw new Error('Podcast audio must be 100 MB or smaller.');
+    }
+
+    const program = sanitizeResourceAudioName(meta.program_type || 'program');
+    const intake = sanitizeResourceAudioName(meta.intake || 'intake');
+    const block = sanitizeResourceAudioName(meta.block || 'block');
+    const title = sanitizeResourceAudioName(meta.title || 'podcast');
+
+    const path =
+        `podcasts/${program}/${intake}/${block}/${Date.now()}-${title}.${ext}`;
+
+    const { error } = await sb.storage
+        .from(RESOURCE_AUDIO_BUCKET)
+        .upload(path, podcastFile, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: podcastFile.type || undefined
+        });
+
+    if (error) throw error;
+
+    const { data } = sb.storage
+        .from(RESOURCE_AUDIO_BUCKET)
+        .getPublicUrl(path);
+
+    return {
+        path,
+        url: data?.publicUrl || null
+    };
+}
+
+function setPodcastEditPreview(resource) {
+    const info = document.getElementById('podcast-edit-info');
+    const link = document.getElementById('podcast-preview-link');
+
+    if (!info || !link) return;
+
+    if (resource?.podcast_url) {
+        link.href = resource.podcast_url;
+        info.style.display = 'block';
+    } else {
+        link.removeAttribute('href');
+        info.style.display = 'none';
+    }
+}
+
 async function handleResourceUpload(e) {
     e.preventDefault();
     const submitButton = e.submitter || document.querySelector('#upload-resource-form button[type="submit"]');
@@ -15628,6 +15700,8 @@ async function handleResourceUpload(e) {
         const dbRecord = {
             title: title,
             description: description,
+            podcast_url: uploadedPodcast?.url || null,
+            podcast_path: uploadedPodcast?.path || null,
             program_type: program,
             intake: intake,
             block: block,
@@ -15756,6 +15830,7 @@ async function editResource(resourceId) {
         
         document.getElementById('resource-title').value = resource.title || '';
         document.getElementById('resource-description').value = resource.description || '';
+        setPodcastEditPreview(resource);
         
         const isPastPaper = resource.resource_type === 'pastpaper';
         document.getElementById('resource_is_pastpaper').checked = isPastPaper;
@@ -15800,6 +15875,7 @@ function cancelEditResource() {
     document.getElementById('file-edit-info').style.display = 'none';
     document.getElementById('resource-file').required = true;
     document.getElementById('upload-resource-form').reset();
+    setPodcastEditPreview(null);
     selectedResourceStudents = [];
     allResourceStudents = [];
     togglePastPaperFields();
@@ -16062,6 +16138,9 @@ window.sendResourceNotificationEmail = sendResourceNotificationEmail;
 window.notifyStudentsAboutNewResource = notifyStudentsAboutNewResource;
 
 console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support, Edit functionality and email notifications!');
+
+// 🎙️ Prerecorded podcast upload integration loaded.
+
 /*******************************************************
  * 13. SECURITY & SYSTEM STATUS - COMPLETE FIXED VERSION
  * With proper password reset flow & session management
