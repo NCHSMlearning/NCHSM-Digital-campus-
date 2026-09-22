@@ -37,15 +37,15 @@
     const ACCURACY_CONFIG = {
         STRICT_MODE: true,
         MAX_ACCEPTABLE_ACCURACY: 50,
-        CLINICAL_MAX_ACCURACY: 100,
+        CLINICAL_MAX_ACCURACY: 200,
         MIN_READINGS: 5,
         STABILIZATION_TIME: 3000,
         MAX_DRIFT: 20,
         MAX_MOVEMENT_SPEED: 2,
         CLINICAL_RADIUS: 300,
-        CLASSROOM_RADIUS: 50,
-        LAB_RADIUS: 50,
-        TUTORIAL_RADIUS: 50
+        CLASSROOM_RADIUS: 150,
+        LAB_RADIUS: 150,
+        TUTORIAL_RADIUS: 150
     };
     
     let approvedUnits = [];
