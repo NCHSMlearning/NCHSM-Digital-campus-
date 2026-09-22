@@ -3320,76 +3320,113 @@ function resetInactivityTimer() {
 // ============================================================
 async function captureSnapshot() {
     const video = document.getElementById('face-video');
-    if (!video || !video.srcObject || video.paused || video.ended) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 320;
-    canvas.height = 240;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, 320, 240);
-
-    const base64Image = canvas.toDataURL('image/jpeg', 0.7);
-
-    const currentQ = AppState.questions[AppState.currentIndex] || {};
-    const currentQuestionNum = AppState.currentIndex + 1;
-    const totalQuestions = AppState.questions.length;
-
-    const faceStatusText = DOM.examStatusText ? DOM.examStatusText.textContent : '';
-    let eventType = 'face_detected';
-    let details = `Question ${currentQuestionNum}/${totalQuestions}`;
-
-    if (faceStatusText.indexOf('Multiple') !== -1) {
-        eventType = 'multiple_faces_detected';
-        details = `Multiple faces detected on question ${currentQuestionNum}`;
-    } else if (faceStatusText.indexOf('lost') !== -1 || faceStatusText.indexOf('No face') !== -1) {
-        eventType = 'face_missing';
-        details = `No face detected on question ${currentQuestionNum}`;
+    if (!video || !video.srcObject || video.paused || video.ended || video.readyState < 2) {
+        console.warn('📸 Snapshot skipped: camera video is not ready.');
+        return;
     }
 
-    const studentName = AppState.studentProfile ? AppState.studentProfile.full_name || 'Unknown' : 'Unknown';
-    const studentReg = AppState.studentProfile ? AppState.studentProfile.student_id || 'N/A' : 'N/A';
-    const examName = AppState.examData ? AppState.examData.exam_name || AppState.examData.title || 'Exam' : 'Exam';
-
-    let snapshotUrl = null;
     try {
-        const response = await fetch(base64Image);
-        const blob = await response.blob();
+        const canvas = document.createElement('canvas');
+        canvas.width = 320;
+        canvas.height = 240;
+        const ctx = canvas.getContext('2d', { alpha: false });
+        if (!ctx) throw new Error('Unable to create snapshot canvas.');
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const base64Image = canvas.toDataURL('image/jpeg', 0.7);
+
+        const currentQuestionNum = AppState.currentIndex + 1;
+        const totalQuestions = AppState.questions.length;
+        const faceStatusText = DOM.examStatusText ? DOM.examStatusText.textContent || '' : '';
+
+        let eventType = 'face_detected';
+        let details = `Question ${currentQuestionNum}/${totalQuestions}`;
+        if (faceStatusText.indexOf('Multiple') !== -1) {
+            eventType = 'multiple_faces_detected';
+            details = `Multiple faces detected on question ${currentQuestionNum}`;
+        } else if (faceStatusText.indexOf('lost') !== -1 || faceStatusText.indexOf('No face') !== -1) {
+            eventType = 'face_missing';
+            details = `No face detected on question ${currentQuestionNum}`;
+        }
+
+        const studentName = AppState.studentProfile?.full_name || 'Unknown';
+        const studentReg = AppState.studentProfile?.student_id || 'N/A';
+        const examName = AppState.examData?.exam_name || AppState.examData?.title || 'Exam';
+        const timestamp = new Date().toISOString();
         const fileName = `snapshots/${AppState.studentId}/${AppState.examId}/${Date.now()}.jpg`;
 
-        const { error } = await sb.storage
-            .from('proctoring')
-            .upload(fileName, blob, {
-                contentType: 'image/jpeg',
-                cacheControl: '3600',
-                upsert: false
-            });
+        console.log(`📸 Capturing proctoring snapshot (${eventType})...`);
 
-        if (!error) {
-            const urlData = sb.storage
+        let snapshotUrl = null;
+        let uploadErrorMessage = null;
+
+        // Upload the camera frame to Supabase Storage.
+        try {
+            const response = await fetch(base64Image);
+            if (!response.ok) throw new Error(`Image conversion failed (${response.status})`);
+            const blob = await response.blob();
+            if (!blob || blob.size === 0) throw new Error('Snapshot blob is empty.');
+
+            const { error: storageError } = await sb.storage
+                .from('proctoring')
+                .upload(fileName, blob, {
+                    contentType: 'image/jpeg',
+                    cacheControl: '60',
+                    upsert: false
+                });
+
+            if (storageError) throw storageError;
+
+            const { data: publicUrlData } = sb.storage
                 .from('proctoring')
                 .getPublicUrl(fileName);
-            snapshotUrl = urlData.publicUrl;
-        }
-    } catch (uploadError) {}
 
-    try {
-        await sb.from('exam_proctoring_logs').insert({
-            student_id: AppState.studentId,
-            exam_id: parseInt(AppState.examId),
-            student_name: studentName,
-            student_reg_number: studentReg,
-            exam_name: examName,
-            event_type: eventType,
-            details: details,
-            severity: eventType === 'multiple_faces_detected' ? 'critical' :
-                eventType === 'face_missing' ? 'warning' : 'info',
-            snapshot_url: snapshotUrl,
-            timestamp: new Date().toISOString(),
-            is_read: false,
-            device_info: navigator.userAgent,
-            ip_address: await getIPAddress()
-        });
-    } catch (e) {}
+            snapshotUrl = publicUrlData?.publicUrl || null;
+            if (!snapshotUrl) throw new Error('Supabase did not return a public snapshot URL.');
+
+            console.log('☁️ Snapshot uploaded successfully:', snapshotUrl);
+        } catch (uploadError) {
+            uploadErrorMessage = uploadError?.message || String(uploadError);
+            console.error('❌ Snapshot upload failed:', uploadError);
+        }
+
+        // Always create a proctoring log so we can diagnose failed uploads.
+        const logDetails = uploadErrorMessage
+            ? `${details} | Snapshot upload failed: ${uploadErrorMessage}`
+            : details;
+
+        try {
+            const { error: logError } = await sb.from('exam_proctoring_logs').insert({
+                student_id: AppState.studentId,
+                exam_id: parseInt(AppState.examId, 10),
+                student_name: studentName,
+                student_reg_number: studentReg,
+                exam_name: examName,
+                event_type: eventType,
+                details: logDetails,
+                severity: eventType === 'multiple_faces_detected' ? 'critical' :
+                    eventType === 'face_missing' ? 'warning' :
+                    uploadErrorMessage ? 'warning' : 'info',
+                snapshot_url: snapshotUrl,
+                timestamp: timestamp,
+                is_read: false,
+                device_info: navigator.userAgent,
+                ip_address: await getIPAddress()
+            });
+
+            if (logError) throw logError;
+
+            if (snapshotUrl) {
+                console.log('📝 Proctoring log saved with snapshot_url.');
+            } else {
+                console.warn('⚠️ Proctoring log saved, but no snapshot_url was available.');
+            }
+        } catch (logError) {
+            console.error('❌ Failed to save proctoring snapshot log:', logError);
+        }
+    } catch (error) {
+        console.error('❌ Snapshot capture failed:', error);
+    }
 }
 
 function startSnapshotCapture() {
