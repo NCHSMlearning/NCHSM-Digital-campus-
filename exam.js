@@ -2343,6 +2343,7 @@ async function executeSubmissionWithLoading() {
     
     AppState.isSubmitting = true;
 
+
     if (DOM.submitBtn) {
         DOM.submitBtn.disabled = true;
         DOM.submitBtn.classList.add('submitting');
@@ -2443,34 +2444,126 @@ async function executeSubmissionWithLoading() {
 }
 
 function showSubmissionProgress(title, message) {
-    const overlay = DOM.submissionProgress;
+    let overlay = DOM.submissionProgress;
+
+    // If the HTML does not contain the submission overlay, create it dynamically.
     if (!overlay) {
-        console.warn('⚠️ Submission progress overlay not found in HTML.');
-        return;
+        overlay = document.getElementById('nchsm-submission-progress-fallback');
+
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'nchsm-submission-progress-fallback';
+            overlay.innerHTML = `
+                <div id="nchsm-submit-card" style="
+                    width:min(92vw,460px);
+                    background:#fff;
+                    border-radius:22px;
+                    padding:30px 24px;
+                    text-align:center;
+                    box-shadow:0 25px 80px rgba(0,0,0,.35);
+                    font-family:Inter,Arial,sans-serif;
+                ">
+                    <div style="font-size:3rem;margin-bottom:8px">📤</div>
+                    <h2 class="nchsm-submit-title" style="margin:0 0 8px;color:#0A3D62">
+                        Submitting Your Exam
+                    </h2>
+                    <p id="nchsm-submit-message" style="margin:0 0 22px;color:#64748b">
+                        Please wait...
+                    </p>
+
+                    <div style="
+                        width:100%;
+                        height:14px;
+                        background:#E2E8F0;
+                        border-radius:999px;
+                        overflow:hidden;
+                        margin-bottom:12px;
+                    ">
+                        <div id="nchsm-submit-fill" style="
+                            width:0%;
+                            height:100%;
+                            background:linear-gradient(90deg,#0A3D62,#10B981);
+                            border-radius:999px;
+                            transition:width .25s ease;
+                        "></div>
+                    </div>
+
+                    <div id="nchsm-submit-percentage" style="
+                        font-size:2rem;
+                        font-weight:800;
+                        color:#0A3D62;
+                    ">0%</div>
+
+                    <div style="
+                        margin-top:6px;
+                        font-size:.75rem;
+                        color:#94A3B8;
+                    ">Do not close or refresh this page.</div>
+                </div>
+            `;
+
+            Object.assign(overlay.style, {
+                position:'fixed',
+                inset:'0',
+                zIndex:'2147483647',
+                display:'flex',
+                alignItems:'center',
+                justifyContent:'center',
+                background:'rgba(15,23,42,.82)',
+                width:'100vw',
+                height:'100dvh',
+                minHeight:'100vh',
+                padding:'20px',
+                boxSizing:'border-box',
+                pointerEvents:'auto'
+            });
+
+            document.body.appendChild(overlay);
+
+            DOM.submissionProgress = overlay;
+            DOM.submissionMessage = overlay.querySelector('#nchsm-submit-message');
+            DOM.submissionProgressFill = overlay.querySelector('#nchsm-submit-fill');
+            DOM.submissionPercentage = overlay.querySelector('#nchsm-submit-percentage');
+        }
+    } else {
+        // Existing HTML overlay: make sure the percentage element is visible.
+        let percentageEl = overlay.querySelector('#submission-percentage');
+        if (!percentageEl) {
+            percentageEl = document.createElement('div');
+            percentageEl.id = 'submission-percentage';
+            percentageEl.style.cssText = `
+                margin-top:14px;
+                font-size:2rem;
+                font-weight:800;
+                color:#0A3D62;
+                text-align:center;
+            `;
+            overlay.appendChild(percentageEl);
+        }
+        DOM.submissionPercentage = percentageEl;
     }
 
-    const titleEl = overlay.querySelector('.progress-title');
-    const msgEl = DOM.submissionMessage;
+    const titleEl = overlay.querySelector('.progress-title, .nchsm-submit-title');
 
-    // Force the overlay above every exam/proctoring layer on both mobile and desktop.
     overlay.classList.add('active');
     Object.assign(overlay.style, {
-        display: 'flex',
-        position: 'fixed',
-        inset: '0',
-        zIndex: '2147483647',
-        opacity: '1',
-        visibility: 'visible',
-        pointerEvents: 'auto',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100vw',
-        height: '100dvh',
-        minHeight: '100vh'
+        display:'flex',
+        position:'fixed',
+        inset:'0',
+        zIndex:'2147483647',
+        opacity:'1',
+        visibility:'visible',
+        pointerEvents:'auto',
+        alignItems:'center',
+        justifyContent:'center',
+        width:'100vw',
+        height:'100dvh',
+        minHeight:'100vh'
     });
 
     if (titleEl) titleEl.textContent = title;
-    if (msgEl) msgEl.textContent = message;
+    if (DOM.submissionMessage) DOM.submissionMessage.textContent = message;
+
     setSubmissionProgressValue(0);
 }
 
@@ -2552,11 +2645,18 @@ async function bulkUpsertAttemptGrades(rows, progressStart = 0, progressEnd = 10
 
 function setSubmissionProgressValue(percent) {
     const value = Math.max(0, Math.min(100, Math.round(percent)));
+
     if (DOM.submissionProgressFill) {
         DOM.submissionProgressFill.style.width = value + '%';
         DOM.submissionProgressFill.setAttribute('aria-valuenow', String(value));
     }
-    if (DOM.submissionPercentage) DOM.submissionPercentage.textContent = value + '%';
+
+    if (DOM.submissionPercentage) {
+        DOM.submissionPercentage.textContent = value + '%';
+        DOM.submissionPercentage.style.display = 'block';
+        DOM.submissionPercentage.style.visibility = 'visible';
+        DOM.submissionPercentage.style.opacity = '1';
+    }
 }
 
 function yieldToBrowser() {
