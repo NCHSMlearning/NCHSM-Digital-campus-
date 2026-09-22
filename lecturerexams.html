@@ -993,135 +993,242 @@
     // ============================================================
     // RESET STUDENT EXAM
     // ============================================================
+    // ============================================================
+    // RESET STUDENT EXAM — ATTEMPT-AWARE CONTINUATION
+    // Uses the same secure RPC as the Admin Dashboard.
+    // The RPC is authoritative: it reopens the existing attempt
+    // and does not require the browser to insert into exam_attempts.
+    // ============================================================
+
+    const lecturerRetakeInFlight = new Set();
+
     function openResetModal(studentId, examId, studentName, examName) {
-        document.getElementById('resetStudentName').textContent = studentName || 'Unknown';
-        document.getElementById('resetStudentId').textContent = studentId || 'N/A';
-        document.getElementById('resetExamName').textContent = examName || 'Exam';
-        document.getElementById('resetStudentUserId').value = studentId;
-        document.getElementById('resetExamId').value = examId;
-        document.getElementById('resetModal').style.display = 'flex';
+        const nameEl = document.getElementById('resetStudentName');
+        const idEl = document.getElementById('resetStudentId');
+        const examEl = document.getElementById('resetExamName');
+        const userIdEl = document.getElementById('resetStudentUserId');
+        const examIdEl = document.getElementById('resetExamId');
+        const modal = document.getElementById('resetModal');
+
+        if (!nameEl || !idEl || !examEl || !userIdEl || !examIdEl || !modal) {
+            showToast('❌ Reset window is not available. Please refresh the page.', 'error');
+            console.error('Reset modal elements are missing.');
+            return;
+        }
+
+        nameEl.textContent = studentName || 'Unknown';
+        idEl.textContent = studentId || 'N/A';
+        examEl.textContent = examName || 'Exam';
+        userIdEl.value = studentId;
+        examIdEl.value = examId;
+        modal.style.display = 'flex';
     }
 
-    function closeResetModal() { document.getElementById('resetModal').style.display = 'none'; }
+    function closeResetModal() {
+        const modal = document.getElementById('resetModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function authorizeLecturerRetake(studentId, examId, studentName = 'Student') {
+        const parsedExamId = parseInt(examId, 10);
+        const key = `${String(studentId)}__${parsedExamId}`;
+
+        if (!studentId || !parsedExamId) {
+            throw new Error('Student and exam are required.');
+        }
+
+        if (lecturerRetakeInFlight.has(key)) {
+            throw new Error('A reset is already being processed for this student.');
+        }
+
+        lecturerRetakeInFlight.add(key);
+
+        try {
+            console.log('🔐 Lecturer authorizing continuation through secure server RPC...', {
+                studentId,
+                examId: parsedExamId,
+                studentName
+            });
+
+            // IMPORTANT:
+            // Do NOT query/update/insert exam_attempts directly here.
+            // The SECURITY DEFINER RPC is the authoritative operation and
+            // handles the existing attempt atomically.
+            const { data, error } = await sb.rpc('admin_authorize_exam_retake', {
+                p_student_id: studentId,
+                p_exam_id: parsedExamId
+            });
+
+            if (error) {
+                console.error('❌ Lecturer retake authorization RPC failed:', error);
+                throw new Error(error.message || 'Unable to authorize exam continuation.');
+            }
+
+            if (!data) {
+                throw new Error('Retake authorization completed but the server returned no attempt information.');
+            }
+
+            const attempt = data.attempt || data;
+
+            if (!attempt.id ||
+                attempt.attempt_number === undefined ||
+                attempt.attempt_number === null) {
+                console.error('❌ Unexpected RPC response:', data);
+                throw new Error('The server returned an invalid attempt record.');
+            }
+
+            console.log(
+                `✅ Lecturer reset authorized for ${studentName}. Same attempt #${attempt.attempt_number} will resume.`,
+                attempt
+            );
+
+            return attempt;
+        } finally {
+            lecturerRetakeInFlight.delete(key);
+        }
+    }
 
     async function confirmResetStudent() {
-        const studentId = document.getElementById('resetStudentUserId').value;
-        const examId = document.getElementById('resetExamId').value;
-        const studentName = document.getElementById('resetStudentName').textContent;
-        const examName = document.getElementById('resetExamName').textContent;
+        const studentId = document.getElementById('resetStudentUserId')?.value;
+        const examId = document.getElementById('resetExamId')?.value;
+        const studentName = document.getElementById('resetStudentName')?.textContent || 'Student';
+        const examName = document.getElementById('resetExamName')?.textContent || 'Exam';
 
-        if (!studentId || !examId) { showToast('❌ Missing student or exam information', 'error'); return; }
+        const parsedExamId = parseInt(examId, 10);
+        const key = `${String(studentId)}__${parsedExamId}`;
+
+        if (!studentId || !parsedExamId) {
+            showToast('❌ Missing student or exam information.', 'error');
+            return;
+        }
+
+        if (lecturerRetakeInFlight.has(key)) {
+            showToast('⏳ This student reset is already being processed.', 'info');
+            return;
+        }
 
         if (!confirm(
-            `🔄 RESET STUDENT FOR CONTINUATION\n\n` +
+            `🔄 RESET / CONTINUE EXAM\n\n` +
             `Student: ${studentName}\n` +
             `Exam: ${examName}\n\n` +
-            `This will:\n` +
-            `✅ PRESERVE all answered questions\n` +
-            `✅ KEEP the SAME attempt ID\n` +
-            `✅ ALLOW the student to continue from saved progress\n` +
-            `✅ RECALCULATE the FULL final score after submission\n` +
-            `✅ REMOVE the old released-result state\n\n` +
+            `The SAME current attempt will be reopened.\n` +
+            `✅ Saved answers are preserved\n` +
+            `✅ Attempt ID is retained\n` +
+            `✅ Student continues from saved progress\n` +
+            `✅ Final score is recalculated after submission\n` +
+            `✅ Previous released-result state is removed\n\n` +
             `⚠️ No new Attempt #2 will be created.\n\n` +
-            `Are you sure?`
+            `Allow the student to continue?`
         )) return;
 
         const btn = document.getElementById('confirmResetBtn');
-        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...'; }
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authorizing...';
+        }
 
         try {
-            const { data: attempts, error: attemptError } = await sb
-                .from('exam_attempts')
-                .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
-                .eq('student_id', studentId)
-                .eq('exam_id', parseInt(examId, 10))
-                .order('attempt_number', { ascending: false })
-                .order('updated_at', { ascending: false })
-                .limit(1);
+            // The secure RPC is now the single source of truth.
+            // This fixes the previous failure where the browser required
+            // a directly readable exam_attempts row before resetting.
+            const attempt = await authorizeLecturerRetake(
+                studentId,
+                parsedExamId,
+                studentName
+            );
 
-            if (attemptError) throw attemptError;
-            const currentAttempt = attempts?.[0] || null;
-            if (!currentAttempt) throw new Error('No exam attempt exists for this student. The student must start the exam before it can be reset.');
-
-            const { data: sentinelRows, error: sentinelFetchError } = await sb
-                .from('exam_grades')
-                .select('id, attempt_id, marks, total_score, total_marks, result_status, completed, released, released_at, allow_retake, retake_unlocked')
-                .eq('student_id', studentId)
-                .eq('exam_id', parseInt(examId, 10))
-                .eq('question_id', ZERO_QUESTION_ID)
-                .order('updated_at', { ascending: false })
-                .limit(20);
-
-            if (sentinelFetchError) throw sentinelFetchError;
-
-            let sentinel = (sentinelRows || []).find(g => g.attempt_id && String(g.attempt_id) === String(currentAttempt.id));
-            if (!sentinel && sentinelRows?.length) sentinel = sentinelRows[0];
-            if (!sentinel) throw new Error('No current result record was found for this student and exam.');
-
-            const resetNow = new Date().toISOString();
-
-            const { error: gradeResetError } = await sb
-                .from('exam_grades')
-                .update({
-                    result_status: 'RESET_FOR_RETAKE',
-                    completed: false,
-                    graded_at: null,
-                    released: false,
-                    released_at: null,
-                    reset_at: resetNow,
-                    allow_retake: true,
-                    retake_unlocked: true,
-                    updated_at: resetNow
-                })
-                .eq('id', sentinel.id);
-
-            if (gradeResetError) throw gradeResetError;
-
+            // Clean up the old released-result record if one exists.
+            // Failure here must not undo the secure authorization.
             try {
-                const { data: rpcAttempt, error: rpcError } = await sb.rpc('admin_authorize_exam_retake', {
-                    p_student_id: studentId,
-                    p_exam_id: parseInt(examId, 10)
-                });
-                if (rpcError) throw new Error(rpcError.message || 'Could not authorize continuation.');
-                else if (rpcAttempt?.id && String(rpcAttempt.id) !== String(currentAttempt.id)) {
-                    throw new Error('Continuation authorization returned a different attempt. No reset was applied.');
+                const { data: gradeRows, error: gradeLookupError } = await sb
+                    .from('exam_grades')
+                    .select('id, attempt_id')
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parsedExamId)
+                    .eq('question_id', ZERO_QUESTION_ID)
+                    .order('updated_at', { ascending: false })
+                    .limit(20);
+
+                if (gradeLookupError) {
+                    console.warn('⚠️ Result cleanup lookup warning:', gradeLookupError.message);
+                } else {
+                    const matchingGrade = (gradeRows || []).find(
+                        g => g.attempt_id && String(g.attempt_id) === String(attempt.id)
+                    ) || gradeRows?.[0];
+
+                    if (matchingGrade?.id) {
+                        const { error: releaseDeleteError } = await sb
+                            .from('released_exam_results')
+                            .delete()
+                            .eq('student_id', studentId)
+                            .eq('exam_id', parsedExamId)
+                            .eq('result_id', matchingGrade.id);
+
+                        if (releaseDeleteError) {
+                            console.warn('⚠️ Release cleanup warning:', releaseDeleteError.message);
+                        }
+                    }
                 }
-            } catch (rpcErr) {
-                console.warn('Continuation RPC unavailable; sentinel reset remains authorized:', rpcErr);
+            } catch (cleanupError) {
+                console.warn('⚠️ Release cleanup skipped:', cleanupError);
             }
 
-            const { error: releaseDeleteError } = await sb
-                .from('released_exam_results')
-                .delete()
-                .eq('student_id', studentId)
-                .eq('exam_id', parseInt(examId, 10))
-                .eq('result_id', sentinel.id);
-            if (releaseDeleteError) console.warn('Release cleanup warning:', releaseDeleteError.message);
-
+            // Clear any stale heartbeat so the student's exam page can
+            // establish a fresh active session/timer when it resumes.
             try {
-                await sb.from('exam_heartbeats').delete().eq('student_id', studentId).eq('exam_id', parseInt(examId, 10));
-            } catch (e) { console.warn('Heartbeat cleanup skipped:', e); }
+                const { error: heartbeatError } = await sb
+                    .from('exam_heartbeats')
+                    .delete()
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parsedExamId);
 
+                if (heartbeatError) {
+                    console.warn('⚠️ Heartbeat cleanup warning:', heartbeatError.message);
+                }
+            } catch (heartbeatError) {
+                console.warn('⚠️ Heartbeat cleanup skipped:', heartbeatError);
+            }
+
+            // Audit log is best-effort and must never make a successful
+            // continuation look like a failed reset.
             try {
-                await sb.from('exam_proctoring_logs').insert({
-                    student_id: studentId,
-                    exam_id: parseInt(examId, 10),
-                    event_type: 'exam_retake_unlocked',
-                    details: `Lecturer unlocked ${studentName} for continuation using the same attempt; answers preserved and final result will be recalculated on submission.`,
-                    severity: 'info',
-                    timestamp: resetNow
-                });
-            } catch (logErr) { console.warn('Reset log warning:', logErr); }
+                const { error: logError } = await sb
+                    .from('exam_proctoring_logs')
+                    .insert({
+                        student_id: studentId,
+                        exam_id: parsedExamId,
+                        event_type: 'exam_retake_unlocked',
+                        details: `Lecturer unlocked ${studentName} for continuation using the same attempt #${attempt.attempt_number}; saved answers preserved.`,
+                        severity: 'info',
+                        timestamp: new Date().toISOString()
+                    });
 
-            showToast(`✅ ${studentName}'s exam "${examName}" is unlocked for continuation.`, 'success');
+                if (logError) {
+                    console.warn('⚠️ Reset audit-log warning:', logError.message);
+                }
+            } catch (logError) {
+                console.warn('⚠️ Reset audit-log skipped:', logError);
+            }
+
+            showToast(
+                `✅ ${studentName}'s exam is unlocked. Same attempt #${attempt.attempt_number} will continue from saved progress.`,
+                'success'
+            );
+
             closeResetModal();
-            await loadResults();
-            await loadDashboard();
+
+            // Refresh the lecturer result/dashboard views.
+            try { await loadResults(); } catch (e) { console.warn('Results refresh warning:', e); }
+            try { await loadDashboard(); } catch (e) { console.warn('Dashboard refresh warning:', e); }
+
         } catch (err) {
-            showToast('❌ Error: ' + (err?.message || err), 'error');
-            console.error('reset error:', err);
+            console.error('❌ Lecturer reset error:', err);
+            showToast('❌ Reset failed: ' + (err?.message || err), 'error');
         } finally {
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-undo"></i> Reset Student'; }
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-undo"></i> Reset Student';
+            }
         }
     }
 
@@ -1187,25 +1294,52 @@
     async function loadNotifications() {
         const container = document.getElementById('notificationList');
         try {
-            const { data: logs } = await sb
+            const { data: logs, error: logsError } = await sb
                 .from('exam_proctoring_logs')
-                .select('*, consolidated_user_profiles_table(full_name, student_id)')
+                .select('*')
                 .eq('is_read', false)
                 .order('timestamp', { ascending: false })
                 .limit(10);
+
+            if (logsError) throw logsError;
 
             if (!logs || logs.length === 0) {
                 container.innerHTML = '<div style="padding:20px;text-align:center;color:#94A3B8;"><i class="fas fa-check-circle" style="display:block;font-size:2rem;margin-bottom:8px;"></i>All clear!</div>';
                 return;
             }
 
-            container.innerHTML = logs.map(log => `
-                <div class="notification-item" style="padding:12px 16px;border-bottom:1px solid #E2E8F0;cursor:pointer;" onclick="markNotificationRead('${log.id}')">
-                    <div class="notification-title">${log.event_type?.replace(/_/g, ' ') || 'Alert'}</div>
-                    <div class="notification-detail">Student: ${log.consolidated_user_profiles_table?.full_name || log.student_id}</div>
-                    <div class="notification-time">${new Date(log.timestamp).toLocaleString()}</div>
-                </div>
-            `).join('');
+            // Fetch student names separately because the profile table may not
+            // have a PostgREST foreign-key relationship with proctoring logs.
+            const studentIds = [...new Set((logs || []).map(log => log.student_id).filter(Boolean))];
+            let profileMap = {};
+
+            if (studentIds.length) {
+                const { data: profiles, error: profileError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, full_name, student_id')
+                    .in('user_id', studentIds);
+
+                if (profileError) {
+                    console.warn('⚠️ Notification profile lookup warning:', profileError.message);
+                } else {
+                    profileMap = Object.fromEntries(
+                        (profiles || []).map(p => [String(p.user_id), p])
+                    );
+                }
+            }
+
+            container.innerHTML = logs.map(log => {
+                const profile = profileMap[String(log.student_id)] || {};
+                const displayName = profile.full_name || profile.student_id || log.student_id || 'Student';
+
+                return `
+                    <div class="notification-item" style="padding:12px 16px;border-bottom:1px solid #E2E8F0;cursor:pointer;" onclick="markNotificationRead('${log.id}')">
+                        <div class="notification-title">${log.event_type?.replace(/_/g, ' ') || 'Alert'}</div>
+                        <div class="notification-detail">Student: ${displayName}</div>
+                        <div class="notification-time">${new Date(log.timestamp).toLocaleString()}</div>
+                    </div>
+                `;
+            }).join('');
         } catch (e) { console.error('Error loading notifications:', e); }
     }
 
