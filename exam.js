@@ -4512,241 +4512,174 @@ console.log('   closeAttendanceModal, retryCameraDuringExam, goToStep');
 console.log('   toggleTermsAgreed, testCamera, startExam, showToast');
 
 // ============================================================
-// 🎥 WEBRTC LIVE PROCTORING — STUDENT SIDE
+// 🎥 NCHSM WEBRTC LIVE PROCTORING - STUDENT SIGNALING
+// Supabase Realtime is used ONLY for signaling. Video travels via WebRTC.
 // ============================================================
-// Uses Supabase Realtime only for signaling. The actual camera
-// media travels over WebRTC directly to the authorized viewer.
-// Periodic snapshots remain enabled as the audit/fallback feed.
-const LIVE_WEBRTC_CONFIG = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' }
-        // Production deployments should add a TURN server here.
-    ]
+const NCHSM_WEBRTC_CONFIG = {
+    stunServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    channelPrefix: 'nchsm-proctor-live'
 };
 
-let studentLiveSignalChannel = null;
-const studentLivePeers = new Map();
-const studentPendingIce = new Map();
+let nchsmWebRTCChannel = null;
+let nchsmWebRTCPeers = new Map();
 
-function liveChannelName(studentId, examId) {
-    return `nchsm-proctor-live:${String(examId)}:${String(studentId)}`;
+function getNchsmWebRTCChannelName() {
+    if (!AppState.studentId || !AppState.examId) return null;
+    return `${NCHSM_WEBRTC_CONFIG.channelPrefix}:${AppState.examId}:${AppState.studentId}`;
 }
 
-async function sendStudentLiveSignal(payload) {
-    if (!studentLiveSignalChannel) return;
+function closeNchsmWebRTCSignaling() {
     try {
-        await studentLiveSignalChannel.send({
-            type: 'broadcast',
-            event: 'webrtc-signal',
-            payload
+        nchsmWebRTCPeers.forEach((pc) => {
+            try { pc.close(); } catch (e) {}
         });
-    } catch (error) {
-        console.warn('⚠️ WebRTC signaling send failed:', error);
-    }
-}
-
-async function addPendingStudentIce(viewerId, candidate) {
-    const peer = studentLivePeers.get(viewerId);
-    if (!peer || !candidate) return;
+        nchsmWebRTCPeers.clear();
+    } catch (e) {}
     try {
-        if (peer.remoteDescription && peer.remoteDescription.type) {
-            await peer.addIceCandidate(candidate);
-            return;
+        if (nchsmWebRTCChannel) {
+            sb.removeChannel(nchsmWebRTCChannel);
         }
-    } catch (error) {
-        console.warn('⚠️ Student ICE candidate failed:', error);
-    }
-
-    if (!studentPendingIce.has(viewerId)) studentPendingIce.set(viewerId, []);
-    studentPendingIce.get(viewerId).push(candidate);
+    } catch (e) {}
+    nchsmWebRTCChannel = null;
 }
 
-async function flushStudentPendingIce(viewerId) {
-    const peer = studentLivePeers.get(viewerId);
-    const pending = studentPendingIce.get(viewerId) || [];
-    if (!peer || !peer.remoteDescription || !pending.length) return;
-
-    for (const candidate of pending) {
-        try {
-            await peer.addIceCandidate(candidate);
-        } catch (error) {
-            console.warn('⚠️ Pending student ICE failed:', error);
-        }
-    }
-    studentPendingIce.delete(viewerId);
-}
-
-async function createStudentLivePeer(viewerId) {
-    if (!AppState.cameraStream) {
-        console.warn('⚠️ Cannot start live feed: student camera stream is unavailable.');
-        return null;
-    }
-
-    const existing = studentLivePeers.get(viewerId);
-    if (existing) {
-        try { existing.close(); } catch (_) {}
-        studentLivePeers.delete(viewerId);
-    }
-
-    const peer = new RTCPeerConnection(LIVE_WEBRTC_CONFIG);
-    studentLivePeers.set(viewerId, peer);
-
-    AppState.cameraStream.getTracks().forEach(track => {
-        try {
-            peer.addTrack(track, AppState.cameraStream);
-        } catch (error) {
-            console.warn('⚠️ Could not add camera track:', error);
-        }
-    });
-
-    peer.onicecandidate = event => {
-        if (event.candidate) {
-            sendStudentLiveSignal({
-                type: 'ice-candidate',
-                role: 'student',
-                viewerId,
-                candidate: event.candidate
-            });
-        }
-    };
-
-    peer.onconnectionstatechange = () => {
-        console.log(`🎥 Live viewer ${viewerId}: ${peer.connectionState}`);
-
-        if (['failed', 'closed', 'disconnected'].includes(peer.connectionState)) {
-            if (peer.connectionState === 'failed') {
-                try { peer.restartIce(); } catch (_) {}
-            }
-        }
-    };
-
-    peer.oniceconnectionstatechange = () => {
-        console.log(`🎥 Live ICE ${viewerId}: ${peer.iceConnectionState}`);
-    };
-
-    return peer;
-}
-
-async function handleStudentLiveSignal(payload) {
-    if (!payload || !AppState.isExamActive) return;
-
-    const viewerId = payload.viewerId;
-    if (!viewerId) return;
-
-    try {
-        if (payload.type === 'viewer-request') {
-            const peer = await createStudentLivePeer(viewerId);
-            if (!peer) return;
-
-            const offer = await peer.createOffer({
-                offerToReceiveAudio: false,
-                offerToReceiveVideo: false
-            });
-            await peer.setLocalDescription(offer);
-
-            await sendStudentLiveSignal({
-                type: 'offer',
-                role: 'student',
-                viewerId,
-                sdp: peer.localDescription
-            });
-            return;
-        }
-
-        if (payload.type === 'answer') {
-            const peer = studentLivePeers.get(viewerId);
-            if (!peer || !payload.sdp) return;
-
-            await peer.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-            await flushStudentPendingIce(viewerId);
-            return;
-        }
-
-        if (payload.type === 'ice-candidate') {
-            await addPendingStudentIce(viewerId, payload.candidate);
-            return;
-        }
-
-        if (payload.type === 'viewer-stop') {
-            const peer = studentLivePeers.get(viewerId);
-            if (peer) {
-                try { peer.close(); } catch (_) {}
-            }
-            studentLivePeers.delete(viewerId);
-            studentPendingIce.delete(viewerId);
-        }
-    } catch (error) {
-        console.error('❌ Student WebRTC signaling error:', error);
-    }
-}
-
-async function initStudentLiveWebRTC() {
-    if (!window.RTCPeerConnection || !window.supabase || !AppState.studentId || !AppState.examId) {
-        console.warn('⚠️ WebRTC unavailable or exam identity not ready.');
+async function startNchsmWebRTCSignaling() {
+    if (!AppState.studentId || !AppState.examId || !AppState.cameraStream) {
+        console.warn('🎥 WebRTC not started: missing student, exam or camera stream');
         return false;
     }
 
-    if (studentLiveSignalChannel) return true;
+    closeNchsmWebRTCSignaling();
+    const channelName = getNchsmWebRTCChannelName();
+    if (!channelName) return false;
 
-    const channelName = liveChannelName(AppState.studentId, AppState.examId);
-
-    studentLiveSignalChannel = sb.channel(channelName, {
-        config: {
-            broadcast: { self: false }
-        }
+    nchsmWebRTCChannel = sb.channel(channelName, {
+        config: { private: true }
     });
 
-    studentLiveSignalChannel.on(
-        'broadcast',
-        { event: 'webrtc-signal' },
-        ({ payload }) => handleStudentLiveSignal(payload)
-    );
-
-    return new Promise(resolve => {
-        studentLiveSignalChannel.subscribe(status => {
-            if (status === 'SUBSCRIBED') {
-                console.log('🟢 Student WebRTC signaling connected:', channelName);
-                resolve(true);
-            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                console.error('❌ Student WebRTC signaling status:', status);
-                resolve(false);
+    nchsmWebRTCChannel
+        .on('broadcast', { event: 'viewer-request' }, async ({ payload }) => {
+            if (!payload || payload.studentId !== String(AppState.studentId)) return;
+            if (!AppState.isExamActive && !AppState.examStarted) return;
+            await createNchsmWebRTCOffer(payload.viewerId || 'admin');
+        })
+        .on('broadcast', { event: 'answer' }, async ({ payload }) => {
+            const viewerId = payload?.viewerId || 'admin';
+            const pc = nchsmWebRTCPeers.get(viewerId);
+            if (!pc || !payload?.answer) return;
+            try {
+                if (pc.signalingState !== 'stable') {
+                    await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+                }
+            } catch (e) {
+                console.warn('🎥 WebRTC answer error:', e);
             }
+        })
+        .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+            const viewerId = payload?.viewerId || 'admin';
+            const pc = nchsmWebRTCPeers.get(viewerId);
+            if (!pc || !payload?.candidate) return;
+            try {
+                await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            } catch (e) {
+                console.warn('🎥 WebRTC ICE error:', e);
+            }
+        })
+        .on('broadcast', { event: 'viewer-stop' }, ({ payload }) => {
+            const viewerId = payload?.viewerId || 'admin';
+            const pc = nchsmWebRTCPeers.get(viewerId);
+            if (pc) {
+                try { pc.close(); } catch (e) {}
+                nchsmWebRTCPeers.delete(viewerId);
+            }
+        })
+        .subscribe((status) => {
+            console.log('🎥 Student WebRTC signaling:', status, channelName);
         });
+
+    console.log('🎥 Student WebRTC signaling ready:', channelName);
+    return true;
+}
+
+async function createNchsmWebRTCOffer(viewerId) {
+    if (!nchsmWebRTCChannel || !AppState.cameraStream) return;
+
+    const oldPc = nchsmWebRTCPeers.get(viewerId);
+    if (oldPc) {
+        try { oldPc.close(); } catch (e) {}
+    }
+
+    const pc = new RTCPeerConnection({ iceServers: NCHSM_WEBRTC_CONFIG.stunServers });
+    nchsmWebRTCPeers.set(viewerId, pc);
+
+    AppState.cameraStream.getTracks().forEach(track => {
+        try { pc.addTrack(track, AppState.cameraStream); } catch (e) {}
     });
-}
 
-function stopStudentLiveWebRTC() {
-    for (const peer of studentLivePeers.values()) {
-        try { peer.close(); } catch (_) {}
-    }
-    studentLivePeers.clear();
-    studentPendingIce.clear();
-
-    if (studentLiveSignalChannel) {
-        try { sb.removeChannel(studentLiveSignalChannel); } catch (_) {}
-        studentLiveSignalChannel = null;
-    }
-}
-
-// Start live signaling as soon as the exam has entered its active state.
-const __nchsmOriginalStartExamForLive = window.startExam;
-if (typeof __nchsmOriginalStartExamForLive === 'function') {
-    window.startExam = async function(...args) {
-        let result;
+    pc.onicecandidate = async (event) => {
+        if (!event.candidate || !nchsmWebRTCChannel) return;
         try {
-            result = await __nchsmOriginalStartExamForLive.apply(this, args);
-            return result;
-        } finally {
-            if (AppState.isExamActive && AppState.cameraStream) {
-                await initStudentLiveWebRTC();
+            await nchsmWebRTCChannel.send({
+                type: 'broadcast',
+                event: 'ice-candidate',
+                payload: {
+                    studentId: String(AppState.studentId),
+                    examId: String(AppState.examId),
+                    viewerId,
+                    candidate: event.candidate.toJSON()
+                }
+            });
+        } catch (e) {
+            console.warn('🎥 Could not send student ICE candidate:', e);
+        }
+    };
+
+    pc.onconnectionstatechange = () => {
+        console.log(`🎥 WebRTC viewer ${viewerId}:`, pc.connectionState);
+        if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
+            if (pc.connectionState === 'failed') {
+                try { pc.restartIce(); } catch (e) {}
             }
         }
     };
+
+    try {
+        const offer = await pc.createOffer({
+            offerToReceiveAudio: false,
+            offerToReceiveVideo: false
+        });
+        await pc.setLocalDescription(offer);
+
+        await nchsmWebRTCChannel.send({
+            type: 'broadcast',
+            event: 'offer',
+            payload: {
+                studentId: String(AppState.studentId),
+                examId: String(AppState.examId),
+                viewerId,
+                offer: pc.localDescription
+            }
+        });
+        console.log('🎥 WebRTC offer sent to admin:', viewerId);
+    } catch (e) {
+        console.error('🎥 WebRTC offer creation failed:', e);
+        try { pc.close(); } catch (err) {}
+        nchsmWebRTCPeers.delete(viewerId);
+    }
 }
 
-// Also expose cleanup for exam submission/page exit.
-window.stopStudentLiveWebRTC = stopStudentLiveWebRTC;
-window.addEventListener('pagehide', stopStudentLiveWebRTC);
-window.addEventListener('beforeunload', stopStudentLiveWebRTC);
+// Start signaling as soon as the exam becomes active.
+const nchsmOriginalInitExam = initExam;
+initExam = async function(...args) {
+    const result = await nchsmOriginalInitExam.apply(this, args);
+    try {
+        await startNchsmWebRTCSignaling();
+    } catch (e) {
+        console.error('🎥 Could not start WebRTC signaling:', e);
+    }
+    return result;
+};
 
-console.log('✅ WebRTC student live-feed module loaded');
+window.addEventListener('beforeunload', () => {
+    closeNchsmWebRTCSignaling();
+});
