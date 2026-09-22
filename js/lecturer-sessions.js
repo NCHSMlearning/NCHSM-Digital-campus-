@@ -340,10 +340,10 @@ const LecturerSessions = {
         }
     },
 
-    // ============================================
+        // ============================================
     // RENDER SESSIONS
     // ============================================
-    renderSessions() {
+    async renderSessions() {
         const tbody = document.getElementById('sessionsTable');
         if (!tbody) return;
 
@@ -361,6 +361,24 @@ const LecturerSessions = {
                 </tr>
             `;
             return;
+        }
+
+        // ✅ Fetch attendee counts for all sessions in 1 query
+        let attendeeCounts = {};
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (supabase) {
+                const ids = sessions.map(s => s.id);
+                const { data } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('session_id')
+                    .in('session_id', ids);
+                (data || []).forEach(r => {
+                    if (r.session_id) attendeeCounts[r.session_id] = (attendeeCounts[r.session_id] || 0) + 1;
+                });
+            }
+        } catch (e) {
+            console.warn('⚠️ Could not fetch attendee counts:', e);
         }
 
         const today = new Date();
@@ -406,6 +424,12 @@ const LecturerSessions = {
             const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
             const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
 
+            // ✅ Attendee count for this session
+            const attendeeCount = attendeeCounts[session.id] || 0;
+            const attendeeBadge = attendeeCount === 0
+                ? `<span style="background:#f1f5f9;color:#64748b;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:500;">0 checked in</span>`
+                : `<span style="background:#d1fae5;color:#065f46;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;"><i class="fas fa-users"></i> ${attendeeCount} checked in</span>`;
+
             let sessionControls = '';
             if (sessionDate && sessionDate >= today) {
                 if (!isActive && status !== 'closed') {
@@ -440,6 +464,7 @@ const LecturerSessions = {
                         ${isActive ? '<span style="font-size: 10px; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">🟢 OPEN</span>' : ''}
                         ${isToday && !isActive ? '<span style="font-size: 10px; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">TODAY</span>' : ''}
                         ${isPast && !isActive ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 8px;">(Past)</span>' : ''}
+                        <div style="margin-top: 4px;">${statusBadge}</div>
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
                         ${dateTime}
@@ -456,7 +481,7 @@ const LecturerSessions = {
                         <div style="font-size: 10px; color: #94a3b8;">${blockDisplay} • Intake ${session.intake_year || 'N/A'}</div>
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
-                        ${statusBadge}
+                        ${attendeeBadge}
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
                         <button onclick="LecturerSessions.viewAttendees('${session.id}')" 
@@ -495,7 +520,6 @@ const LecturerSessions = {
         const countDisplay = document.getElementById('sessionCountDisplay');
         if (countDisplay) countDisplay.textContent = sessions.length;
     },
-
     // ============================================
     // GENERATE ATTENDANCE LINK
     // ============================================
