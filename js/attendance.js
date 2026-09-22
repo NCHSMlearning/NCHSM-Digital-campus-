@@ -422,7 +422,7 @@
                 const collectReadings = async () => {
                     while (readings.length < minReadings && !isResolved) {
                         const reading = await getReading();
-                        if (reading && reading.accuracy < 200) {
+                        if (reading && reading.accuracy <= maxAccuracy) {
                             if (readings.length > 0) {
                                 const avg = calculateWeightedAverage(readings);
                                 if (avg) {
@@ -482,11 +482,28 @@
                         isResolved = true;
                         if (readings.length >= 2) {
                             const finalLocation = calculateWeightedAverage(readings);
+
                             if (finalLocation) {
-                                resolve(finalLocation);
+                                const verification = this.verifyLocation(finalLocation);
+
+                                if (verification.passed) {
+                                    finalLocation.rawReadings = readings;
+                                    finalLocation.verification = verification;
+                                    this.stableLocation = finalLocation;
+                                    resolve(finalLocation);
+                                    return;
+                                }
+
+                                showToast(
+                                    `❌ GPS verification failed: ${verification.reason}`,
+                                    'error',
+                                    5000
+                                );
+                                resolve(null);
                                 return;
                             }
                         }
+
                         showToast('⏰ GPS timeout - please try again', 'error');
                         resolve(null);
                     }
@@ -1920,18 +1937,22 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
             return;
         }
         
-        btn.disabled = true;
-        btn.innerHTML = '📡 Acquiring GPS...';
-        btn.style.opacity = '0.6';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '📡 Acquiring GPS...';
+            btn.style.opacity = '0.6';
+        }
         
         try {
             const studentInfo = await getCurrentStudentInfo();
             
             if (!studentInfo || !studentInfo.user_id) {
                 showToast('Please log in first', 'error');
-                btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
-                btn.style.opacity = '1';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '📍 Check In Now';
+                    btn.style.opacity = '1';
+                }
                 return;
             }
             
@@ -1956,9 +1977,11 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
             const supabase = getSupabase();
             if (!supabase) {
                 showToast('Database not available', 'error');
-                btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
-                btn.style.opacity = '1';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '📍 Check In Now';
+                    btn.style.opacity = '1';
+                }
                 return;
             }
             
@@ -2046,14 +2069,16 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
             });
             
             if (!confirmed) {
-                btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
-                btn.style.opacity = '1';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '📍 Check In Now';
+                    btn.style.opacity = '1';
+                }
                 showToast('Check-in cancelled', 'warning');
                 return;
             }
             
-            btn.innerHTML = '💾 Saving...';
+            if (btn) btn.innerHTML = '💾 Saving...';
             
             const sessionType = sessionTypeSelect?.value || 'class';
             
@@ -2136,9 +2161,11 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
             console.error('❌ Check-in error:', error);
             showToast('Check-in failed: ' + error.message, 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = '📍 Check In Now';
-            btn.style.opacity = '1';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                btn.style.opacity = '1';
+            }
         }
     }
 
