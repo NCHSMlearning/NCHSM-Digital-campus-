@@ -1999,14 +1999,7 @@ async function getLatestAttempt(studentId, examId) {
     }
 }
 
-const authorizeRetakeInFlight = new Set();
-
 async function authorizeRetakeForStudent(studentId, examId, studentName = 'Student', source = 'admin') {
-    const retakeKey = `${studentId}__${parseInt(examId)}`;
-    if (authorizeRetakeInFlight.has(retakeKey)) {
-        throw new Error('A retake authorization is already in progress for this student.');
-    }
-    authorizeRetakeInFlight.add(retakeKey);
     const parsedExamId = parseInt(examId);
     if (!studentId || !parsedExamId) {
         throw new Error('Student and exam are required.');
@@ -2049,17 +2042,9 @@ async function authorizeRetakeForStudent(studentId, examId, studentName = 'Stude
     );
 
     return attempt;
-    authorizeRetakeInFlight.delete(retakeKey);
 }
 
-const retakeInFlight = new Set();
-
 window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
-    const retakeKey = `${studentId}__${examId}`;
-    if (retakeInFlight.has(retakeKey)) {
-        showToast('⏳ Retake already in progress for this student.', 'info');
-        return;
-    }
     const confirmMsg =
         `RESET / CONTINUE EXAM\n\n` +
         `Student: ${studentName}\n` +
@@ -2069,8 +2054,6 @@ window.resetSingleStudent = async function(studentId, examId, studentName, examN
         `Allow the student to continue from where they stopped?`;
 
     if (!confirm(confirmMsg)) return;
-
-    retakeInFlight.add(retakeKey);
 
     const buttons = document.querySelectorAll(`button[onclick*="resetSingleStudent('${studentId}'"]`);
     let targetBtn = null;
@@ -2094,7 +2077,6 @@ window.resetSingleStudent = async function(studentId, examId, studentName, examN
         console.error(err);
         showToast('❌ ' + err.message, 'error');
     } finally {
-            retakeInFlight.delete(retakeKey);
         if (targetBtn) {
             targetBtn.innerHTML = '<i class="fas fa-rotate-right"></i> Continue Reset';
             targetBtn.disabled = false;
@@ -3558,50 +3540,33 @@ window.viewStudentProfile = async function(pid) {
     window.openCameraView = async function(studentId, examId, studentName, examName) {
         currentCameraStudent = studentId;
         currentCameraExam = examId;
-        currentCameraStudentName = studentName || 'Student';
-        currentCameraExamName = examName || 'Exam';
-        snapshotCache = [];
-
-        const $ = (id) => document.getElementById(id);
-        const modal = $('cameraModal');
-
-        if (!modal) {
-            console.error('❌ #cameraModal not found in DOM. Camera view cannot open on this page.');
-            if (typeof showToast === 'function') showToast('Camera view is not available on this page.', 'error');
-            return;
-        }
-
-        const setText = (id, value) => { const el = $(id); if (el) el.textContent = value; };
-        const setHtml = (id, value) => { const el = $(id); if (el) el.innerHTML = value; };
-        const setDisplay = (id, value) => { const el = $(id); if (el) el.style.display = value; };
-
-        setHtml('cameraModalTitle', `<i class="fas fa-video"></i> Live Camera - ${currentCameraStudentName}`);
-        setText('cameraStudentName', currentCameraStudentName);
-        setText('cameraExamName', currentCameraExamName);
-        setText('cameraStatus', '🟢 Connecting...');
-
-        const status = $('cameraStatus');
-        if (status) status.className = 'status-active';
-
-        setDisplay('cameraFeed', 'none');
-        setDisplay('cameraLoading', 'flex');
-        setHtml('cameraLoading', `<i class="fas fa-spinner fa-spin fa-3x"></i><p>Loading camera feed...</p>`);
-        setDisplay('cameraOverlay', 'none');
-        setDisplay('snapshotGallery', 'none');
-        setHtml('cameraAlertsList', '<p style="color:#94A3B8;">Loading alerts...</p>');
-
-        modal.style.display = 'flex';
-
+        currentCameraStudentName = studentName;
+        currentCameraExamName = examName;
+        
+        document.getElementById('cameraModalTitle').innerHTML = `<i class="fas fa-video"></i> Live Camera - ${studentName}`;
+        document.getElementById('cameraStudentName').textContent = studentName;
+        document.getElementById('cameraExamName').textContent = examName;
+        document.getElementById('cameraStatus').textContent = '🟢 Connecting...';
+        document.getElementById('cameraStatus').className = 'status-active';
+        document.getElementById('cameraFeed').style.display = 'none';
+        document.getElementById('cameraLoading').style.display = 'flex';
+        document.getElementById('cameraLoading').innerHTML = `<i class="fas fa-spinner fa-spin fa-3x"></i><p>Loading camera feed...</p>`;
+        document.getElementById('cameraOverlay').style.display = 'none';
+        document.getElementById('snapshotGallery').style.display = 'none';
+        document.getElementById('cameraAlertsList').innerHTML = '<p style="color:#94A3B8;">Loading alerts...</p>';
+        
+        document.getElementById('cameraModal').style.display = 'flex';
+        
         try {
             await Promise.all([
-                window.refreshCameraFeed(studentId, examId),
-                window.loadCameraAlerts(studentId, examId),
-                window.loadSnapshots(studentId, examId)
+                refreshCameraFeed(studentId, examId),
+                loadCameraAlerts(studentId, examId),
+                loadSnapshots(studentId, examId)
             ]);
-            if (typeof startCameraAutoRefresh === 'function') startCameraAutoRefresh(studentId, examId);
+            startCameraAutoRefresh(studentId, examId);
         } catch (error) {
             console.error('Error opening camera:', error);
-            if (typeof showToast === 'function') showToast('Error loading camera: ' + error.message, 'error');
+            showToast('Error loading camera: ' + error.message, 'error');
         }
     };
 
@@ -3609,9 +3574,7 @@ window.viewStudentProfile = async function(pid) {
         const sid = studentId || currentCameraStudent;
         const eid = examId || currentCameraExam;
         if (!sid || !eid) return;
-
-        const $ = (id) => document.getElementById(id);
-
+        
         try {
             const { data: logs, error } = await sb
                 .from('exam_proctoring_logs')
@@ -3621,33 +3584,23 @@ window.viewStudentProfile = async function(pid) {
                 .not('snapshot_url', 'is', null)
                 .order('timestamp', { ascending: false })
                 .limit(1);
-
+            
             if (error) throw error;
-
-            const feed = $('cameraFeed');
-            const loading = $('cameraLoading');
-            const overlay = $('cameraOverlay');
-            const timestamp = $('cameraTimestamp');
-            const signal = $('cameraSignal');
-            const status = $('cameraStatus');
-
-            if (!feed || !loading) {
-                console.warn('⚠️ Camera feed elements are not present on this page.');
-                return;
-            }
-
+            
+            const feed = document.getElementById('cameraFeed');
+            const loading = document.getElementById('cameraLoading');
+            const overlay = document.getElementById('cameraOverlay');
+            
             if (logs && logs.length > 0 && logs[0].snapshot_url) {
                 feed.src = logs[0].snapshot_url + '?t=' + Date.now();
                 feed.style.display = 'block';
                 loading.style.display = 'none';
-                if (overlay) overlay.style.display = 'block';
-                if (timestamp) timestamp.textContent = formatKenyaTime(logs[0].timestamp);
-                if (signal) signal.textContent = '🟢 Live';
-                if (status) {
-                    status.textContent = '🟢 Active';
-                    status.className = 'status-active';
-                }
-
+                overlay.style.display = 'block';
+                document.getElementById('cameraTimestamp').textContent = formatKenyaTime(logs[0].timestamp);
+                document.getElementById('cameraSignal').textContent = '🟢 Live';
+                document.getElementById('cameraStatus').textContent = '🟢 Active';
+                document.getElementById('cameraStatus').className = 'status-active';
+                
                 const { data: violations } = await sb
                     .from('exam_proctoring_logs')
                     .select('event_type')
@@ -3655,13 +3608,11 @@ window.viewStudentProfile = async function(pid) {
                     .eq('exam_id', parseInt(eid))
                     .in('event_type', ['multiple_faces_detected', 'face_missing'])
                     .gte('timestamp', new Date(Date.now() - 120000).toISOString());
-
+                
                 if (violations && violations.length > 0) {
-                    if (status) {
-                        status.textContent = '🔴 Violation!';
-                        status.className = 'status-critical';
-                    }
-                    if (signal) signal.textContent = '🚨 Alert';
+                    document.getElementById('cameraStatus').textContent = '🔴 Violation!';
+                    document.getElementById('cameraStatus').className = 'status-critical';
+                    document.getElementById('cameraSignal').textContent = '🚨 Alert';
                 }
             } else {
                 feed.style.display = 'none';
@@ -3675,26 +3626,21 @@ window.viewStudentProfile = async function(pid) {
                     </div>
                 `;
                 loading.style.display = 'flex';
-                if (overlay) overlay.style.display = 'none';
-                if (status) {
-                    status.textContent = '📷 No Feed';
-                    status.className = 'status-pending';
-                }
+                overlay.style.display = 'none';
+                document.getElementById('cameraStatus').textContent = '📷 No Feed';
+                document.getElementById('cameraStatus').className = 'status-pending';
             }
         } catch (error) {
             console.error('Error refreshing camera:', error);
-            const loading = $('cameraLoading');
-            if (loading) {
-                loading.innerHTML = `
-                    <div style="text-align:center; color:#DC2626;">
-                        <i class="fas fa-exclamation-triangle fa-3x"></i>
-                        <p style="margin-top:16px;">Error: ${error.message}</p>
-                        <button class="btn btn-primary" onclick="refreshCameraFeed()" style="margin-top:12px;">
-                            <i class="fas fa-sync"></i> Retry
-                        </button>
-                    </div>
-                `;
-            }
+            document.getElementById('cameraLoading').innerHTML = `
+                <div style="text-align:center; color:#DC2626;">
+                    <i class="fas fa-exclamation-triangle fa-3x"></i>
+                    <p style="margin-top:16px;">Error: ${error.message}</p>
+                    <button class="btn btn-primary" onclick="refreshCameraFeed()" style="margin-top:12px;">
+                        <i class="fas fa-sync"></i> Retry
+                    </button>
+                </div>
+            `;
         }
     };
 
@@ -3749,9 +3695,9 @@ window.viewStudentProfile = async function(pid) {
         const sid = studentId || currentCameraStudent;
         const eid = examId || currentCameraExam;
         if (!sid || !eid) return;
-
+        
         try {
-            const { data: alerts, error } = await sb
+            const { data: alerts } = await sb
                 .from('exam_proctoring_logs')
                 .select('*')
                 .eq('student_id', sid)
@@ -3759,20 +3705,12 @@ window.viewStudentProfile = async function(pid) {
                 .in('event_type', ['multiple_faces_detected', 'face_missing', 'tab_switched'])
                 .order('timestamp', { ascending: false })
                 .limit(10);
-
-            if (error) throw error;
-
+            
             const list = document.getElementById('cameraAlertsList');
-            if (!list) {
-                console.warn('⚠️ #cameraAlertsList not found on this page.');
-                return;
-            }
-
             if (!alerts || alerts.length === 0) {
                 list.innerHTML = '<p style="color:#94A3B8;">✅ No recent alerts</p>';
                 return;
             }
-
             list.innerHTML = alerts.map(a => `
                 <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #E2E8F0;">
                     <span>${a.event_type === 'multiple_faces_detected' ? '🚨' : '⚠️'} ${a.event_type}</span>
@@ -4191,8 +4129,43 @@ window.captureSnapshot = async function() {
 };
 
 /**
- * Close camera modal
+ * Open camera modal - UPDATED
  */
+window.openCameraView = async function(studentId, examId, studentName, examName) {
+    currentCameraStudent = studentId;
+    currentCameraExam = examId;
+    currentCameraStudentName = studentName;
+    currentCameraExamName = examName;
+    
+    // Reset snapshot cache
+    snapshotCache = [];
+    
+    // Set modal title
+    document.getElementById('cameraModalTitle').innerHTML = `<i class="fas fa-video"></i> Live Camera - ${studentName}`;
+    document.getElementById('cameraStudentName').textContent = studentName;
+    document.getElementById('cameraExamName').textContent = examName;
+    document.getElementById('cameraStatus').textContent = '🟢 Connecting...';
+    document.getElementById('cameraStatus').className = 'status-active';
+    
+    // Show modal
+    document.getElementById('cameraModal').style.display = 'flex';
+    
+    // Load data
+    try {
+        await Promise.all([
+            refreshCameraFeed(studentId, examId),
+            loadCameraAlerts(studentId, examId),
+            loadSnapshots(studentId, examId)
+        ]);
+        startCameraAutoRefresh(studentId, examId);
+    } catch (error) {
+        console.error('Error opening camera:', error);
+        showToast('Error loading camera: ' + error.message, 'error');
+    }
+};
+
+/**
+ * Close camera modal - UPDATED
  */
 window.closeCameraModal = function() {
     document.getElementById('cameraModal').style.display = 'none';
@@ -7579,8 +7552,7 @@ window.batchResendReleaseEmails = async function(examId) {
     document.getElementById('examModal').style.display = 'flex';
 };
 
-   const examForm = document.getElementById('examForm');
-   if (examForm) examForm.addEventListener('submit', async (e) => {
+   document.getElementById('examForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const examId = document.getElementById('editingExamId').value;
     const examType = document.getElementById('examType').value;
@@ -7866,9 +7838,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1500);
 
     // ✅ Start timer updates
-    if (!window.__nchsmAdminTimerInterval) {
-        window.__nchsmAdminTimerInterval = setInterval(updateAdminTimers, 1000);
-    }
+    setInterval(updateAdminTimers, 1000);
 
     // ✅ Handle visibility change
     document.addEventListener('visibilitychange', function() {
@@ -7922,54 +7892,6 @@ document.addEventListener('DOMContentLoaded', function() {
             updateStats();
         }
     }, 30000);
-
-    // ============================================
-    // 🔄 BFCACHE / REALTIME RECONNECT HANDLER
-    // ============================================
-    if (!window.__nchsmBfcacheHandlers) {
-        window.__nchsmBfcacheHandlers = true;
-
-        window.addEventListener('pageshow', (event) => {
-            if (event.persisted) {
-                console.log('🔄 Page restored from bfcache — reconnecting realtime...');
-                try {
-                    if (notificationSubscription) {
-                        sb.removeChannel(notificationSubscription);
-                        notificationSubscription = null;
-                    }
-                    if (typeof setupRealtimeNotifications === 'function') {
-                        setupRealtimeNotifications();
-                    }
-                    updateAdminTimers();
-                } catch (e) {
-                    console.warn('Realtime reconnect failed:', e);
-                }
-            }
-        });
-
-        window.addEventListener('pagehide', () => {
-            if (notificationSubscription) {
-                try { sb.removeChannel(notificationSubscription); } catch (_) {}
-                notificationSubscription = null;
-            }
-            if (cameraInterval) {
-                clearInterval(cameraInterval);
-                cameraInterval = null;
-            }
-            if (liveFeedInterval) {
-                clearInterval(liveFeedInterval);
-                liveFeedInterval = null;
-            }
-            if (attendanceRefreshInterval) {
-                clearInterval(attendanceRefreshInterval);
-                attendanceRefreshInterval = null;
-            }
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-                autoRefreshInterval = null;
-            }
-        });
-    }
 
     // ✅ Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
