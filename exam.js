@@ -87,10 +87,18 @@ const AppState = {
     attemptId: null,
     attemptNumber: 0,
     examAutoSubmitted: false,
+
+    // Navigation / initialization guards
     listenersAttached: false,
     examInitialized: false,
     isStarting: false,
     isNavigating: false,
+
+    // Fullscreen protection
+    fullscreenMonitoringAttached: false,
+    fullscreenLockActive: false,
+    fullscreenOverlay: null,
+    fullscreenReturnButton: null,
 
     // ✅ NEW: built once after questions load, used by saveAnswerToDatabase()
     // to score each answer as soon as the student picks it.
@@ -245,7 +253,7 @@ function showToast(message, type = 'info', duration = 3000) {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
 
-    const icons = { success: '', error: '', warning: '', info: '’¡' };
+    const icons = { success: 'âœ…', error: 'âŒ', warning: 'âš ï¸', info: 'ðŸ’¡' };
     const colors = {
         success: '#10b981',
         error: '#ef4444',
@@ -274,7 +282,7 @@ function showToast(message, type = 'info', duration = 3000) {
         align-items: center;
         gap: 10px;
     `;
-    toast.innerHTML = `${icons[type] || '„¹ï¸'} ${message}`;
+    toast.innerHTML = `${icons[type] || 'â„¹ï¸'} ${message}`;
     document.body.appendChild(toast);
 
     setTimeout(() => {
@@ -313,7 +321,7 @@ async function loadFaceDetectionModels() {
     try {
         await faceapi.nets.tinyFaceDetector.loadFromUri(CONFIG.FACE_MODEL_URL);
         faceModelsLoaded = true;
-        console.log(' Face detection models loaded');
+        console.log('âœ… Face detection models loaded');
         return true;
     } catch (error) {
         console.warn('Face detection not available:', error);
@@ -459,11 +467,11 @@ async function getOrCreateCurrentAttempt() {
 
     if (retakeRequestedByUrl) {
         console.log(
-            `”„ Admin reset continuation: Attempt #${AppState.attemptNumber}. ` +
+            `ðŸ”„ Admin reset continuation: Attempt #${AppState.attemptNumber}. ` +
             `Existing answers/progress will be restored.`
         );
     } else {
-        console.log(` Exam attempt ready: #${AppState.attemptNumber}`);
+        console.log(`âœ… Exam attempt ready: #${AppState.attemptNumber}`);
     }
 
     return true;
@@ -488,7 +496,7 @@ async function checkActiveSession() {
             const diff = (now - lastHeartbeat) / 1000 / 60;
             
             if (diff < 2) {
-                showToast(' Exam already active on another device', 'warning', 5000);
+                showToast('âš ï¸ Exam already active on another device', 'warning', 5000);
                 return false;
             }
         }
@@ -519,11 +527,11 @@ async function checkRetakeStatus() {
             DOM.continuationBadge.style.display = 'block';
         }
         if (DOM.startExamText) {
-            DOM.startExamText.textContent = '”„ Continue My Exam';
+            DOM.startExamText.textContent = 'ðŸ”„ Continue My Exam';
         }
 
-        console.log('”„ Retake URL detected. Authorization will be verified by prepare_exam_attempt RPC when the student starts.');
-        showToast('”„ Retake selected. Complete the checks and continue your saved exam. Your full timer starts when you enter.', 'info', 5000);
+        console.log('ðŸ”„ Retake URL detected. Authorization will be verified by prepare_exam_attempt RPC when the student starts.');
+        showToast('ðŸ”„ Retake selected. Complete the checks and continue your saved exam. Your full timer starts when you enter.', 'info', 5000);
         return true;
     }
 
@@ -544,11 +552,11 @@ async function checkRetakeStatus() {
             }
 
             if (DOM.startExamText) {
-                DOM.startExamText.textContent = '”„ Continue My Exam';
+                DOM.startExamText.textContent = 'ðŸ”„ Continue My Exam';
             }
 
-            console.log('”„ Admin reset continuation detected. Retake count:', AppState.retakeCount);
-            showToast('”„ Exam reset authorized. Continue from your saved progress with a full fresh timer.', 'info', 5000);
+            console.log('ðŸ”„ Admin reset continuation detected. Retake count:', AppState.retakeCount);
+            showToast('ðŸ”„ Exam reset authorized. Continue from your saved progress with a full fresh timer.', 'info', 5000);
         }
     } catch (e) {
         // Do not turn a lobby-load RLS/read issue into a fake "no reset" state.
@@ -567,10 +575,10 @@ function checkNetworkQuality() {
         if (conn) {
             AppState.networkQuality = conn.effectiveType || 'unknown';
             if (conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g') {
-                showToast('“¶ Slow network detected. Answers saved locally.', 'warning', 4000);
+                showToast('ðŸ“¶ Slow network detected. Answers saved locally.', 'warning', 4000);
                 return 'slow';
             } else if (conn.effectiveType === '3g') {
-                showToast('“¶ Medium network speed. Auto-save may be delayed.', 'info', 3000);
+                showToast('ðŸ“¶ Medium network speed. Auto-save may be delayed.', 'info', 3000);
                 return 'medium';
             }
             return 'fast';
@@ -594,14 +602,14 @@ function setupNetworkQualityMonitoring() {
 // KEYBOARD SHORTCUT HELP
 // ============================================================
 function showKeyboardShortcuts() {
-    showToast('Œ¨ï¸ † †’ Navigate | F Flag | Ctrl+S Save | Enter Submit', 'info', 5000);
+    showToast('âŒ¨ï¸ â† â†’ Navigate | F Flag | Ctrl+S Save | Enter Submit', 'info', 5000);
 }
 
 // ============================================================
 // LOBBY DATA LOADING
 // ============================================================
 async function loadLobbyData() {
-    console.log('“ Loading lobby data...');
+    console.log('ðŸ“ Loading lobby data...');
     
     try {
         const { data: profile } = await sb
@@ -612,7 +620,7 @@ async function loadLobbyData() {
 
         if (profile) {
             AppState.studentProfile = profile;
-            console.log(' Profile loaded:', profile.full_name);
+            console.log('âœ… Profile loaded:', profile.full_name);
             
             if (DOM.studentName) DOM.studentName.textContent = profile.full_name || 'Unknown';
             if (DOM.studentReg) DOM.studentReg.textContent = profile.student_id || 'N/A';
@@ -623,11 +631,11 @@ async function loadLobbyData() {
             
             if (DOM.funFact && profile.full_name) {
                 const facts = [
-                    `’¡ ${profile.full_name}, a positive mindset can improve performance by up to 15%!`,
-                    `ŒŸ ${profile.full_name}, you've got this! Preparation is the key to success.`,
-                    `“š ${profile.full_name}, every great journey begins with a single step.`,
-                    `’ª ${profile.full_name}, believe in yourself! You are capable of amazing things.`,
-                    `Ž¯ ${profile.full_name}, focus on the goal, the path will become clear.`
+                    `ðŸ’¡ ${profile.full_name}, a positive mindset can improve performance by up to 15%!`,
+                    `ðŸŒŸ ${profile.full_name}, you've got this! Preparation is the key to success.`,
+                    `ðŸ“š ${profile.full_name}, every great journey begins with a single step.`,
+                    `ðŸ’ª ${profile.full_name}, believe in yourself! You are capable of amazing things.`,
+                    `ðŸŽ¯ ${profile.full_name}, focus on the goal, the path will become clear.`
                 ];
                 DOM.funFact.textContent = facts[Math.floor(Math.random() * facts.length)];
             }
@@ -641,7 +649,7 @@ async function loadLobbyData() {
 
         if (exam) {
             AppState.examData = exam;
-            console.log(' Exam loaded:', exam.title);
+            console.log('âœ… Exam loaded:', exam.title);
             
             if (DOM.examTitleLobby) DOM.examTitleLobby.textContent = exam.title || exam.exam_name || 'Exam';
             if (DOM.examDuration) DOM.examDuration.textContent = exam.duration_minutes || 30;
@@ -658,7 +666,7 @@ async function loadLobbyData() {
         }
 
         await checkRetakeStatus();
-        console.log(' Lobby data loaded successfully!');
+        console.log('âœ… Lobby data loaded successfully!');
 
     } catch (error) {
         console.error('Error loading data:', error);
@@ -670,14 +678,14 @@ async function loadLobbyData() {
 // toggleTermsAgreed
 // ============================================================
 window.toggleTermsAgreed = function() {
-    console.log('“‹ toggleTermsAgreed called');
+    console.log('ðŸ“‹ toggleTermsAgreed called');
     
     const checkbox = document.getElementById('termsCheckbox');
     const nextBtn = document.getElementById('termsNextBtn');
     
     if (checkbox) {
         const isChecked = checkbox.checked;
-        console.log('“‹ Checkbox state:', isChecked);
+        console.log('ðŸ“‹ Checkbox state:', isChecked);
         
         AppState.termsAgreed = isChecked;
         
@@ -690,7 +698,7 @@ window.toggleTermsAgreed = function() {
         updateStartButton();
         
         if (isChecked && AppState.currentStep === 1) {
-            console.log('“‹ Terms agreed, advancing to step 2');
+            console.log('ðŸ“‹ Terms agreed, advancing to step 2');
             goToStep(2);
         }
         
@@ -703,7 +711,7 @@ window.toggleTermsAgreed = function() {
 // goToStep
 // ============================================================
 function goToStep(step) {
-    console.log('“‹ goToStep called with step:', step);
+    console.log('ðŸ“‹ goToStep called with step:', step);
     
     AppState.currentStep = step;
     
@@ -756,7 +764,7 @@ function updateStartButton() {
     
     if (DOM.startExamText) {
         if (AppState.isRetake) {
-            DOM.startExamText.textContent = ready ? 'Continue My Exam' : ' Waiting for verification...';
+            DOM.startExamText.textContent = ready ? 'Continue My Exam' : 'â³ Waiting for verification...';
         } else {
             DOM.startExamText.textContent = ready ? 'I\'m Ready! Start My Exam' : 'Waiting for verification...';
         }
@@ -767,7 +775,7 @@ function updateStartButton() {
 // testCamera - NO RECURSION
 // ============================================================
 window.testCamera = async function() {
-    console.log('“· testCamera called');
+    console.log('ðŸ“· testCamera called');
     
     if (AppState.isCameraTesting) return;
     AppState.isCameraTesting = true;
@@ -791,9 +799,9 @@ window.testCamera = async function() {
             audio: false
         };
 
-        console.log('“· Requesting camera...');
+        console.log('ðŸ“· Requesting camera...');
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log('“· Camera stream obtained');
+        console.log('ðŸ“· Camera stream obtained');
         
         AppState.cameraStream = stream;
 
@@ -807,7 +815,7 @@ window.testCamera = async function() {
         if (cameraVideo) {
             cameraVideo.srcObject = stream;
             await cameraVideo.play();
-            console.log('“· Camera video playing');
+            console.log('ðŸ“· Camera video playing');
         }
         
         if (cameraPreview) cameraPreview.className = 'camera-preview';
@@ -823,7 +831,7 @@ window.testCamera = async function() {
         AppState.cameraWorking = true;
 
         await loadFaceDetectionModels();
-        console.log('“· Face detection models loaded');
+        console.log('ðŸ“· Face detection models loaded');
 
         let faceDetected = false;
         let attempts = 0;
@@ -840,14 +848,14 @@ window.testCamera = async function() {
                     console.log('“· Face detected!');
                     break;
                 } else if (detections && detections.length > 1) {
-                    if (faceCountDisplay) faceCountDisplay.textContent = `‘¤ ${detections.length} faces `;
+                    if (faceCountDisplay) faceCountDisplay.textContent = `ðŸ‘¤ ${detections.length} faces âš ï¸`;
                     if (cameraStatusMessage) {
                         cameraStatusMessage.className = 'camera-status-text warning';
                         cameraStatusMessage.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${detections.length} faces detected - only 1 allowed`;
                     }
                     await new Promise(r => setTimeout(r, 500));
                 } else {
-                    if (faceCountDisplay) faceCountDisplay.textContent = '‘¤ 0 faces';
+                    if (faceCountDisplay) faceCountDisplay.textContent = 'ðŸ‘¤ 0 faces';
                 }
             } catch (e) {
                 console.warn('Face detection attempt', attempts, 'failed:', e);
@@ -857,13 +865,13 @@ window.testCamera = async function() {
         if (faceDetected) {
             AppState.faceVerified = true;
             
-            if (faceCountDisplay) faceCountDisplay.textContent = '‘¤ 1 face ';
+            if (faceCountDisplay) faceCountDisplay.textContent = 'ðŸ‘¤ 1 face âœ…';
             if (cameraPreview) cameraPreview.className = 'camera-preview camera-status-good';
             if (cameraStatusDot) cameraStatusDot.className = 'status-dot good';
-            if (cameraStatusText) cameraStatusText.textContent = ' Face verified!';
+            if (cameraStatusText) cameraStatusText.textContent = 'âœ… Face verified!';
             if (cameraStatusMessage) {
                 cameraStatusMessage.className = 'camera-status-text success';
-                cameraStatusMessage.innerHTML = '<i class="fas fa-check-circle"></i>  Camera ready!';
+                cameraStatusMessage.innerHTML = '<i class="fas fa-check-circle"></i> âœ… Camera ready!';
             }
             
             const cameraNextBtn = document.getElementById('cameraNextBtn');
@@ -877,19 +885,19 @@ window.testCamera = async function() {
             if (faceVerifiedCheck) {
                 faceVerifiedCheck.innerHTML = `
                     <span style="color:#10b981;font-size:1.1rem;"><i class="fas fa-check-circle"></i></span>
-                    <span> Face verified! You're all set ˜Š</span>
+                    <span>âœ… Face verified! You're all set ðŸ˜Š</span>
                 `;
             }
             
             updateStartButton();
-            showToast(' Camera ready!', 'success');
+            showToast('âœ… Camera ready!', 'success');
             
         } else {
             AppState.faceVerified = false;
             
             if (cameraPreview) cameraPreview.className = 'camera-preview camera-status-warning';
             if (cameraStatusDot) cameraStatusDot.className = 'status-dot warning';
-            if (cameraStatusText) cameraStatusText.textContent = ' No face detected';
+            if (cameraStatusText) cameraStatusText.textContent = 'âš ï¸ No face detected';
             if (cameraStatusMessage) {
                 cameraStatusMessage.className = 'camera-status-text warning';
                 cameraStatusMessage.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Please look at the camera';
@@ -906,11 +914,11 @@ window.testCamera = async function() {
             if (faceVerifiedCheck) {
                 faceVerifiedCheck.innerHTML = `
                     <span style="color:#f59e0b;font-size:1.1rem;"><i class="fas fa-circle"></i></span>
-                    <span>” Please look at the camera...</span>
+                    <span>ðŸ” Please look at the camera...</span>
                 `;
             }
             
-            showToast(' No face detected. Please look at the camera and try again.', 'warning');
+            showToast('âŒ No face detected. Please look at the camera and try again.', 'warning');
             if (retryBtn) retryBtn.style.display = 'flex';
         }
 
@@ -945,7 +953,7 @@ window.testCamera = async function() {
         }
         
         updateStartButton();
-        showToast(' Camera access denied', 'error');
+        showToast('âŒ Camera access denied', 'error');
     }
 
     AppState.isCameraTesting = false;
@@ -957,80 +965,141 @@ window.testCamera = async function() {
 // START EXAM
 // ============================================================
 window.startExam = async function() {
+    if (AppState.isStarting) return;
+
     if (!AppState.cameraWorking || !AppState.termsAgreed || !AppState.faceVerified) {
         showToast('Please complete all steps first', 'warning');
         return;
     }
 
-    if (!AppState.isRetake) {
-        const sessionOk = await checkActiveSession();
-        if (!sessionOk) {
-            showToast(' You already have an active exam session on another device', 'error', 5000);
+    AppState.isStarting = true;
+
+    const startButtons = [
+        document.getElementById('startExamBtn'),
+        document.getElementById('start-exam-btn'),
+        document.querySelector('[onclick*="startExam"]')
+    ].filter(Boolean);
+
+    startButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.55';
+        btn.style.cursor = 'not-allowed';
+    });
+
+    try {
+        if (!AppState.isRetake) {
+            const sessionOk = await checkActiveSession();
+            if (!sessionOk) {
+                showToast('You already have an active exam session on another device', 'error', 5000);
+                return;
+            }
+        }
+
+        const cameraVideo = document.getElementById('cameraVideo');
+        const detections = await fastDetectFace(cameraVideo);
+        if (!detections || detections.length !== 1) {
+            showToast('Face verification failed. Please try again.', 'error');
             return;
         }
-    }
 
-    const cameraVideo = document.getElementById('cameraVideo');
-    const detections = await fastDetectFace(cameraVideo);
-    if (!detections || detections.length !== 1) {
-        showToast(' Face verification failed. Please try again.', 'error');
+        try {
+            await markExamAttendance('in_progress');
+            AppState.attendanceRecorded = true;
+        } catch (e) {
+            console.warn('Could not mark attendance:', e);
+        }
+
+        try {
+            await getOrCreateCurrentAttempt();
+        } catch (attemptError) {
+            console.error('Could not prepare exam attempt:', attemptError);
+            const msg = attemptError.message || 'Could not start this exam attempt.';
+            if (AppState.isRetake && /No active Admin reset authorization/i.test(msg)) {
+                showToast(
+                    'This retake is not currently authorized on the server. Please return to the portal and have Admin/Lecturer reset the exam again.',
+                    'error',
+                    9000
+                );
+            } else {
+                showToast(msg, 'error', 6000);
+            }
+            return;
+        }
+
+        if (AppState.isRetake) {
+            console.log('STARTING ADMIN-AUTHORIZED CONTINUATION OF ATTEMPT #' + AppState.attemptNumber);
+            showToast(
+                'Exam reset authorized. Same attempt resumed with a full ' +
+                (AppState.duration || 30) + '-minute timer.',
+                'info',
+                5000
+            );
+            await logProctoringEvent(
+                'exam_continuation_started',
+                'Admin-authorized continuation of existing attempt #' +
+                AppState.attemptNumber +
+                ' started with a fresh timer',
+                'info'
+            );
+        }
+
+        if (DOM.lobbyContainer) {
+            DOM.lobbyContainer.style.display = 'none';
+            DOM.lobbyContainer.classList.add('hidden');
+        }
+
+        if (DOM.examInterface) {
+            DOM.examInterface.style.display = 'block';
+            DOM.examInterface.classList.add('active');
+        }
+
+        if (AppState.cameraStream) {
+            const faceVideo = document.getElementById('face-video');
+            if (faceVideo) {
+                faceVideo.srcObject = AppState.cameraStream;
+                await faceVideo.play();
+                console.log('Face video connected for exam proctoring');
+            }
+        }
+
+        // Request fullscreen from the user's Start Exam click.
+        const fullscreenEntered = await enterSecureFullscreen();
+        if (!fullscreenEntered) {
+            // Keep the exam locked until fullscreen is restored.
+            lockExamForFullscreenExit();
+        }
+
+        checkNetworkQuality();
+        setupNetworkQualityMonitoring();
+        await initExam();
+
+    } catch (error) {
+        console.error('Error starting exam:', error);
+        showToast('Unable to start the exam. Please try again.', 'error', 6000);
+        AppState.isStarting = false;
+
+        startButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        });
         return;
     }
 
-    try {
-        await markExamAttendance('in_progress');
-        AppState.attendanceRecorded = true;
-    } catch (e) {
-        console.warn('Could not mark attendance:', e);
+    // If initialization succeeded, the exam remains active and the button
+    // stays disabled. If it did not, allow another start attempt.
+    if (!AppState.isExamActive) {
+        AppState.isStarting = false;
+        startButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        });
     }
-
-    try {
-        await getOrCreateCurrentAttempt();
-    } catch (attemptError) {
-        console.error(' Could not prepare exam attempt:', attemptError);
-        const msg = attemptError.message || 'Could not start this exam attempt.';
-        if (AppState.isRetake && /No active Admin reset authorization/i.test(msg)) {
-            showToast(' This retake is not currently authorized on the server. Please return to the portal and have Admin/Lecturer reset the exam again, then open the Retake Exam link.', 'error', 9000);
-        } else {
-            showToast(msg, 'error', 6000);
-        }
-        return;
-    }
-
-    if (AppState.isRetake) {
-        console.log(`”„ STARTING ADMIN-AUTHORIZED CONTINUATION OF ATTEMPT #${AppState.attemptNumber}`);
-        showToast(`”„ Exam reset authorized. Same Attempt #${AppState.attemptNumber} resumed with a full ${AppState.duration || 30}-minute timer.`, 'info', 5000);
-        await logProctoringEvent('exam_continuation_started', `Admin-authorized continuation of existing attempt #${AppState.attemptNumber} started with a fresh timer`, 'info');
-    }
-
-    // Show exam interface
-    if (DOM.lobbyContainer) {
-        DOM.lobbyContainer.style.display = 'none';
-        DOM.lobbyContainer.classList.add('hidden');
-    }
-    if (DOM.examInterface) {
-        DOM.examInterface.style.display = 'block';
-        DOM.examInterface.classList.add('active');
-    }
-    
-    // Connect camera to face video
-    if (AppState.cameraStream) {
-        const faceVideo = document.getElementById('face-video');
-        if (faceVideo) {
-            faceVideo.srcObject = AppState.cameraStream;
-            await faceVideo.play();
-            console.log('“· Face video connected for exam proctoring');
-        }
-    }
-    
-    await enterSecureFullscreen();
-    checkNetworkQuality();
-    setupNetworkQualityMonitoring();
-    await initExam();
 };
 
 // ============================================================
-// ”„ RESUME POSITION FROM SERVER HEARTBEAT
+// ðŸ”„ RESUME POSITION FROM SERVER HEARTBEAT
 // ============================================================
 async function loadResumePositionFromHeartbeat() {
     try {
@@ -1054,7 +1123,7 @@ async function loadResumePositionFromHeartbeat() {
             Math.max(AppState.questions.length - 1, 0)
         );
 
-        console.log(`”„ Server resume position: question ${AppState.currentIndex + 1}`);
+        console.log(`ðŸ”„ Server resume position: question ${AppState.currentIndex + 1}`);
         return true;
     } catch (e) {
         return false;
@@ -1062,7 +1131,7 @@ async function loadResumePositionFromHeartbeat() {
 }
 
 // ============================================================
-//  RESUME-AWARE EXAM TIMER
+// â±ï¸ RESUME-AWARE EXAM TIMER
 // ============================================================
 function getRemainingExamSeconds() {
     const totalSeconds = Math.max(1, Number(AppState.duration || 0) * 60);
@@ -1092,9 +1161,9 @@ function startResumeAwareTimer() {
     AppState.remainingSeconds = remaining;
 
     console.log(
-        ` Resume-aware timer: ${formatTime(remaining)} remaining ` +
+        `â±ï¸ Resume-aware timer: ${formatTime(remaining)} remaining ` +
         `(Attempt #${AppState.attemptNumber || 1})` +
-        (AppState.isContinuation ? ' €” FULL TIMER RESTARTED BY ADMIN RESET' : '')
+        (AppState.isContinuation ? ' â€” FULL TIMER RESTARTED BY ADMIN RESET' : '')
     );
 
     startTimer(remaining);
@@ -1105,12 +1174,12 @@ function startResumeAwareTimer() {
 // ============================================================
 async function initExam() {
     if (AppState.examInitialized) {
-        console.warn('initExam already executed. Skipping duplicate initialization.');
+        console.warn('Exam initialization already completed or in progress.');
         return;
     }
 
     AppState.examInitialized = true;
-    console.log('📝 Initializing exam...');
+    console.log('Initializing exam...');
 
     try {
         const recovered = recoverExamSession();
@@ -1235,41 +1304,28 @@ async function initExam() {
 
     } catch (error) {
         console.error('Error initializing exam:', error);
+        AppState.examInitialized = false;
+        AppState.isExamActive = false;
+        AppState.examStarted = false;
         if (DOM.examContainer) {
-            DOM.examContainer.innerHTML = '<div class="error-message">❌ Error loading exam: ' + error.message + '</div>';
+            DOM.examContainer.innerHTML = '<div class="error-message">Error loading exam: ' + error.message + '</div>';
         }
     }
 }
 
 function renderQuestion(index) {
     if (AppState.questions.length === 0) return;
+    if (AppState.fullscreenLockActive) return;
+    if (!Number.isInteger(index) || index < 0 || index >= AppState.questions.length) return;
 
-    if (index < 0 || index >= AppState.questions.length) {
-        console.warn('Invalid question index:', index);
-        return;
-    }
-
-    if (AppState.questionTimerInterval) {
-        clearInterval(AppState.questionTimerInterval);
-        AppState.questionTimerInterval = null;
-    }
-
-    if (
-        AppState.questions[AppState.currentIndex] &&
-        AppState.currentIndex !== index
-    ) {
+    if (AppState.currentIndex !== index && AppState.questions[AppState.currentIndex]) {
         updateQuestionTimer();
     }
 
     AppState.currentIndex = index;
-
     const q = AppState.questions[AppState.currentIndex];
 
-    if (!q) {
-        console.error('Question not found at index:', index);
-        return;
-    }
-
+    if (AppState.questionTimerInterval) clearInterval(AppState.questionTimerInterval);
     AppState.questionTimeElapsed = 0;
 
     const isFlagged = AppState.flaggedQuestions[q.id] || false;
@@ -1313,10 +1369,10 @@ function renderQuestion(index) {
                 <span style="font-size:0.7rem; color:#94a3b8; font-weight:400; margin-left:8px;">(Multiple Choice)</span>
             </div>
             <div style="font-size:0.8rem; color:#94a3b8; margin:10px 0 14px; display:flex; align-items:center; gap:6px;">
-                 Time on this question: <span id="q-timer" style="font-weight:600; color:#64748b;">0:00</span>
+                â±ï¸ Time on this question: <span id="q-timer" style="font-weight:600; color:#64748b;">0:00</span>
             </div>
             <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:8px;">${optionsHtml}</ul>
-            ${isFlagged ? '<div style="color:#f59e0b; font-size:0.85rem; margin-top:10px;">š© Flagged for review</div>' : ''}
+            ${isFlagged ? '<div style="color:#f59e0b; font-size:0.85rem; margin-top:10px;">ðŸš© Flagged for review</div>' : ''}
         `;
     }
 
@@ -1334,7 +1390,7 @@ function renderQuestion(index) {
                 <span style="font-size:0.7rem; color:#94a3b8; font-weight:400; margin-left:8px;">(Written Answer)</span>
             </div>
             <div style="font-size:0.8rem; color:#94a3b8; margin:10px 0 14px; display:flex; align-items:center; gap:6px;">
-                 Time on this question: <span id="q-timer" style="font-weight:600; color:#64748b;">0:00</span>
+                â±ï¸ Time on this question: <span id="q-timer" style="font-weight:600; color:#64748b;">0:00</span>
             </div>
             
             <!-- Text Area -->
@@ -1361,12 +1417,12 @@ function renderQuestion(index) {
                 </div>
             </div>
             
-            ${isFlagged ? '<div style="color:#f59e0b; font-size:0.85rem; margin-top:10px;">š© Flagged for review</div>' : ''}
+            ${isFlagged ? '<div style="color:#f59e0b; font-size:0.85rem; margin-top:10px;">ðŸš© Flagged for review</div>' : ''}
         `;
     }
 
     // ============================================================
-    //  RENDER THE QUESTION WITH SCROLLABLE CONTAINER
+    // âœ… RENDER THE QUESTION WITH SCROLLABLE CONTAINER
     // ============================================================
     if (DOM.examContainer) {
         DOM.examContainer.innerHTML = `
@@ -1451,7 +1507,7 @@ function renderQuestion(index) {
                     // Show saved indicator
                     if (DOM.answerSaved) {
                         DOM.answerSaved.style.display = 'block';
-                        DOM.answerSaved.textContent = ' Answer saved!';
+                        DOM.answerSaved.textContent = 'âœ… Answer saved!';
                         setTimeout(() => { if (DOM.answerSaved) DOM.answerSaved.style.display = 'none'; }, 800);
                     }
                 }, 500);
@@ -1499,7 +1555,7 @@ function renderQuestion(index) {
 
         if (AppState.questionTimeElapsed >= CONFIG.MAX_TIME_PER_QUESTION) {
             clearInterval(AppState.questionTimerInterval);
-            showToast(' Time for this question has expired. Moving to next question.', 'warning');
+            showToast('â° Time for this question has expired. Moving to next question.', 'warning');
             if (AppState.currentIndex < AppState.questions.length - 1 && !AppState.isExamPaused) {
                 nextQuestion();
             }
@@ -1510,51 +1566,46 @@ function renderQuestion(index) {
 // QUESTION NAVIGATION
 // ============================================================
 function prevQuestion() {
+    if (AppState.fullscreenLockActive || AppState.isExamPaused || AppState.isSubmitting) {
+        if (AppState.isExamPaused) {
+            showToast('Exam is paused. Face not detected.', 'warning');
+        }
+        return;
+    }
+
     saveCurrentAnswer();
     if (AppState.currentIndex > 0 && !AppState.isExamPaused) {
         renderQuestion(AppState.currentIndex - 1);
     } else if (AppState.isExamPaused) {
-        showToast('›” Exam is paused. Face not detected.', 'warning');
+        showToast('â›” Exam is paused. Face not detected.', 'warning');
     }
 }
 
 function nextQuestion() {
-    if (AppState.isNavigating) {
-        console.warn('Navigation already in progress.');
+    if (AppState.isNavigating) return;
+    if (AppState.isExamPaused || AppState.isSubmitting || AppState.fullscreenLockActive) {
+        if (AppState.isExamPaused) {
+            showToast('Exam is paused. Face not detected.', 'warning');
+        }
         return;
     }
 
-    if (AppState.isExamPaused) {
-        showToast('Exam is paused. Face not detected.', 'warning');
-        return;
-    }
+    const nextIndex = AppState.currentIndex + 1;
 
-    if (AppState.isSubmitting) {
-        return;
-    }
-
-    const currentIndex = AppState.currentIndex;
-    const nextIndex = currentIndex + 1;
-
-    if (nextIndex >= AppState.questions.length) {
-        return;
-    }
+    if (nextIndex >= AppState.questions.length) return;
 
     AppState.isNavigating = true;
 
     try {
-        console.log(`Navigation: Q${currentIndex + 1} -> Q${nextIndex + 1}`);
-
         saveCurrentAnswer();
         renderQuestion(nextIndex);
-    } catch (error) {
-        console.error('Error moving to next question:', error);
     } finally {
         setTimeout(() => {
             AppState.isNavigating = false;
         }, 150);
     }
 }
+
 
 // ============================================================
 // ANSWER SAVING
@@ -1572,7 +1623,7 @@ function saveAnswer(answer) {
 
     if (DOM.answerSaved) {
         DOM.answerSaved.style.display = 'block';
-        DOM.answerSaved.textContent = ' Saved!';
+        DOM.answerSaved.textContent = 'âœ… Saved!';
         setTimeout(() => { if (DOM.answerSaved) DOM.answerSaved.style.display = 'none'; }, 800);
     }
 
@@ -1629,7 +1680,7 @@ async function upsertAttemptGrade(payload) {
     // so the submission can still complete after the schema transition.
     if (result.error.code !== '42P10') throw result.error;
 
-    console.warn(' exam_grades unique constraint for (attempt_id, question_id) is missing; using safe update/insert fallback.');
+    console.warn('âš ï¸ exam_grades unique constraint for (attempt_id, question_id) is missing; using safe update/insert fallback.');
 
     const { data: existingRows, error: lookupError } = await sb
         .from('exam_grades')
@@ -1725,7 +1776,7 @@ async function loadSavedAnswers() {
                     DOM.submitBtn.style.cursor = 'pointer';
                 }
             }
-            console.log(` Loaded ${loaded} saved answers for Attempt ${AppState.attemptNumber}`);
+            console.log(`âœ… Loaded ${loaded} saved answers for Attempt ${AppState.attemptNumber}`);
         }
     } catch (e) {
         console.warn('Could not load saved answers:', e);
@@ -1764,7 +1815,7 @@ function checkSavedProgress() {
                 renderQuestion(AppState.currentIndex);
                 updateStatusTable();
                 updateExamStats();
-                showToast(' Previous progress restored', 'success');
+                showToast('âœ… Previous progress restored', 'success');
                 return true;
             }
         }
@@ -1847,7 +1898,7 @@ function renderQuestionStatusTable() {
         
         item.onclick = function() {
             if (!AppState.isExamPaused) renderQuestion(index);
-            else showToast('›” Exam is paused. Face not detected.', 'warning');
+            else showToast('â›” Exam is paused. Face not detected.', 'warning');
         };
         DOM.questionStatusTable.appendChild(item);
     });
@@ -1900,7 +1951,7 @@ function updateExamStats() {
         DOM.statsFlagged.style.color = flagged > 0 ? '#d97706' : '#94a3b8';
     }
     if (DOM.statsFace) {
-        DOM.statsFace.textContent = AppState.isExamPaused ? '›” Paused' : ' OK';
+        DOM.statsFace.textContent = AppState.isExamPaused ? 'â›” Paused' : 'âœ… OK';
         DOM.statsFace.style.color = AppState.isExamPaused ? '#DC2626' : '#38A169';
     }
     if (DOM.statsProgress) {
@@ -1991,7 +2042,7 @@ function startTimer(seconds) {
 
         if (remaining <= 60 && seconds > 0 && !AppState.timerWarningShown) {
             AppState.timerWarningShown = true;
-            showToast(' 1 minute remaining! Your exam will auto-submit.', 'warning');
+            showToast('âš ï¸ 1 minute remaining! Your exam will auto-submit.', 'warning');
         }
 
         if (remaining <= 0) {
@@ -2005,10 +2056,10 @@ function startTimer(seconds) {
             if (DOM.examContainer) {
                 DOM.examContainer.innerHTML = `
                     <div style="text-align:center; padding:40px;">
-                        <div style="font-size:4rem;">
+                        <div style="font-size:4rem;">â°</div>
                         <h2 style="color:#0A3D62;">Time's Up!</h2>
                         <p style="color:#64748b;">Your exam time has ended. Your answers are being submitted automatically.</p>
-                        <div style="margin-top:12px; color:#0A3D62;"> Submitting...</div>
+                        <div style="margin-top:12px; color:#0A3D62;">â³ Submitting...</div>
                     </div>
                 `;
             }
@@ -2038,8 +2089,8 @@ window.toggleReviewMode = function() {
             const isAnswered = !!AppState.answers[q.id];
             const isFlagged = AppState.flaggedQuestions[q.id] || false;
             const answeredColor = isAnswered ? '#10b981' : '#dc2626';
-            const answeredText = isAnswered ? ` ${answer}` : ' Not answered';
-            const flaggedText = isFlagged ? ' š©' : '';
+            const answeredText = isAnswered ? `âœ… ${answer}` : 'âš ï¸ Not answered';
+            const flaggedText = isFlagged ? ' ðŸš©' : '';
             html += `
                 <div style="padding:8px 12px; border-radius:8px; margin-bottom:4px; background:${isAnswered ? '#f0fdf4' : '#fef2f2'}; border-left:3px solid ${isAnswered ? '#10b981' : '#dc2626'}; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem;" 
                      onclick="window.renderQuestion(${index})">
@@ -2055,11 +2106,11 @@ window.toggleReviewMode = function() {
 };
 
 // ============================================================
-//  FIXED: submitExam - with confirmation and no auto-submit on minimize
+// âœ… FIXED: submitExam - with confirmation and no auto-submit on minimize
 // ============================================================
 function submitExam() {
     if (AppState.isSubmitting) {
-        showToast(' Submission already in progress...', 'warning');
+        showToast('â³ Submission already in progress...', 'warning');
         return;
     }
 
@@ -2071,21 +2122,21 @@ function submitExam() {
 
     // Build confirmation message
     let message = '';
-    let title = '“ Confirm Submission';
+    let title = 'ðŸ“ Confirm Submission';
     let isWarning = false;
 
     if (skipped === 0 && flagged === 0) {
-        message = ' All questions answered. Submit your exam?';
+        message = 'âœ… All questions answered. Submit your exam?';
     } else if (skipped === 0 && flagged > 0) {
-        message = ` All questions answered. You have ${flagged} flagged question(s). Submit anyway?`;
+        message = `âœ… All questions answered. You have ${flagged} flagged question(s). Submit anyway?`;
     } else if (skipped > 0 && flagged === 0) {
-        message = ` You have ${skipped} unanswered question(s). Submit anyway?`;
+        message = `âš ï¸ You have ${skipped} unanswered question(s). Submit anyway?`;
         isWarning = true;
-        title = ' Confirm Submission';
+        title = 'âš ï¸ Confirm Submission';
     } else {
-        message = ` You have ${skipped} unanswered and ${flagged} flagged question(s). Submit anyway?`;
+        message = `âš ï¸ You have ${skipped} unanswered and ${flagged} flagged question(s). Submit anyway?`;
         isWarning = true;
-        title = ' Confirm Submission';
+        title = 'âš ï¸ Confirm Submission';
     }
 
     // Show custom confirmation modal
@@ -2094,18 +2145,18 @@ function submitExam() {
         title,
         isWarning,
         function() {
-            console.log(' User confirmed submission');
+            console.log('âœ… User confirmed submission');
             proceedWithSubmission();
         },
         function() {
-            console.log(' User cancelled submission');
-            showToast('“ Submission cancelled', 'info');
+            console.log('âŒ User cancelled submission');
+            showToast('ðŸ“ Submission cancelled', 'info');
         }
     );
 }
 
 function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
-    console.log('Ÿ£ [CONFIRM] Opening submission confirmation modal');
+    console.log('ðŸŸ£ [CONFIRM] Opening submission confirmation modal');
 
     const existingModal = document.getElementById('custom-confirm-modal');
     if (existingModal) existingModal.remove();
@@ -2150,7 +2201,7 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
             pointer-events:auto !important;
         ">
             <div style="font-size:2.5rem; text-align:center; margin-bottom:12px;">
-                ${isWarning ? '' : '“‹'}
+                ${isWarning ? 'âš ï¸' : 'ðŸ“‹'}
             </div>
             <h3 style="text-align:center; color:${isWarning ? '#dc2626' : '#0A3D62'}; font-weight:700; font-size:1.2rem; margin-bottom:12px;">
                 ${title}
@@ -2173,7 +2224,7 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
                     aria-label="Confirm submission"
                     style="flex:1; padding:12px; border:none; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); color:white; font-weight:700; font-size:0.9rem; cursor:pointer; pointer-events:auto !important; position:relative; z-index:2147483647; box-shadow:0 4px 16px rgba(5,150,105,0.3);"
                 >
-                     Submit
+                    âœ… Submit
                 </button>
             </div>
         </div>
@@ -2184,7 +2235,7 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
     const confirmBtn = modal.querySelector('#confirm-submit-btn');
     const cancelBtn = modal.querySelector('#confirm-cancel-btn');
 
-    console.log('Ÿ£ [CONFIRM] Buttons created:', {
+    console.log('ðŸŸ£ [CONFIRM] Buttons created:', {
         confirm: !!confirmBtn,
         cancel: !!cancelBtn,
         confirmDisabled: confirmBtn ? confirmBtn.disabled : 'missing',
@@ -2192,7 +2243,7 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
     });
 
     const finish = (confirmed) => {
-        console.log(`Ÿ£ [CONFIRM] ${confirmed ? 'SUBMIT' : 'CANCEL'} BUTTON ACTIVATED`);
+        console.log(`ðŸŸ£ [CONFIRM] ${confirmed ? 'SUBMIT' : 'CANCEL'} BUTTON ACTIVATED`);
         const callbacks = window.__nchsmSubmitConfirm || {};
         modal.remove();
         window.__nchsmSubmitConfirm = null;
@@ -2220,7 +2271,7 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
             if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
         }
         actionHandled = true;
-        console.log('Ÿ¢ [CONFIRM] SUBMIT BUTTON ACTIVATED');
+        console.log('ðŸŸ¢ [CONFIRM] SUBMIT BUTTON ACTIVATED');
         finish(true);
     };
 
@@ -2232,7 +2283,7 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
             if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
         }
         actionHandled = true;
-        console.log('Ÿ  [CONFIRM] CANCEL BUTTON ACTIVATED');
+        console.log('ðŸŸ  [CONFIRM] CANCEL BUTTON ACTIVATED');
         finish(false);
     };
 
@@ -2266,7 +2317,7 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
         if (actionHandled) return;
         const target = e.target && e.target.closest ? e.target.closest('#confirm-submit-btn, #confirm-cancel-btn') : null;
         if (!target || !document.getElementById('custom-confirm-modal')) return;
-        console.log('Ÿ¡ [CONFIRM] Delegated capture handler:', target.id, e.type);
+        console.log('ðŸŸ¡ [CONFIRM] Delegated capture handler:', target.id, e.type);
         if (e.type === 'touchend' || e.type === 'pointerup' || e.type === 'click') {
             if (e.type !== 'click' || !('PointerEvent' in window)) {
                 if (target.id === 'confirm-submit-btn') activateConfirm(e);
@@ -2341,7 +2392,7 @@ function syncPendingAnswers() {
     // Do NOT fire one network request per draft here. Submission performs
     // one bulk database write below, which is much faster and safer on mobile.
     AppState.pendingSubmissionDraftKeys = pendingKeys;
-    if (synced > 0) console.log(' Restored ' + synced + ' pending answers for bulk submission');
+    if (synced > 0) console.log('âœ… Restored ' + synced + ' pending answers for bulk submission');
     return synced;
 }
 
@@ -2351,12 +2402,12 @@ function syncPendingAnswers() {
 // ============================================================
 async function executeSubmissionWithLoading() {
     if (AppState.isSubmitting) {
-        console.log(' Submission already in progress, skipping...');
+        console.log('âš ï¸ Submission already in progress, skipping...');
         return;
     }
     
     if (!AppState.isExamActive) {
-        console.log(' Exam not active, skipping submission...');
+        console.log('âš ï¸ Exam not active, skipping submission...');
         return;
     }
     
@@ -2376,7 +2427,7 @@ async function executeSubmissionWithLoading() {
         DOM.faceBlockOverlay.style.display = 'none';
     }
 
-    showSubmissionProgress(' Submitting your exam...', 'Please wait while we save your answers.');
+    showSubmissionProgress('â³ Submitting your exam...', 'Please wait while we save your answers.');
 
     try {
         if (AppState.stealthProctor && AppState.stealthProctor.isRecordingActive()) {
@@ -2387,7 +2438,7 @@ async function executeSubmissionWithLoading() {
             AppState.secureProctor.stopDetection();
         }
 
-        updateSubmissionProgress('“¸ Capturing final snapshot...');
+        updateSubmissionProgress('ðŸ“¸ Capturing final snapshot...');
         await yieldToBrowser();
         if (AppState.timerInterval) clearInterval(AppState.timerInterval);
         if (AppState.countdownInterval) clearInterval(AppState.countdownInterval);
@@ -2401,6 +2452,25 @@ async function executeSubmissionWithLoading() {
         }
 
         unblockApplications();
+
+        if (AppState.countdownInterval) {
+            clearInterval(AppState.countdownInterval);
+            AppState.countdownInterval = null;
+        }
+
+        AppState.fullscreenLockActive = false;
+
+        if (AppState.fullscreenOverlay) {
+            AppState.fullscreenOverlay.style.display = 'none';
+            AppState.fullscreenOverlay.setAttribute('aria-hidden', 'true');
+        }
+
+        if (DOM.examInterface) {
+            DOM.examInterface.style.filter = '';
+            DOM.examInterface.style.pointerEvents = '';
+            delete DOM.examInterface.dataset.fullscreenLocked;
+        }
+
         AppState.isExamActive = false;
         window.removeEventListener('blur', handleWindowBlur);
         window.removeEventListener('focus', handleWindowFocus);
@@ -2409,21 +2479,21 @@ async function executeSubmissionWithLoading() {
 
         await captureSnapshot();
 
-        updateSubmissionProgress('’¾ Saving your answers...');
+        updateSubmissionProgress('ðŸ’¾ Saving your answers...');
         await yieldToBrowser();
         await saveAllAnswersToDatabase();
 
-        updateSubmissionProgress('“Š Calculating your results...');
+        updateSubmissionProgress('ðŸ“Š Calculating your results...');
         await yieldToBrowser();
         await calculateAndSaveGrade();
 
-        updateSubmissionProgress(' Cleaning up...');
+        updateSubmissionProgress('ðŸ§¹ Cleaning up...');
         await yieldToBrowser();
         if (CONFIG.CLEANUP_ON_COMPLETE) {
             cleanupExamData();
         }
 
-        updateSubmissionProgress(' Exam submitted successfully!');
+        updateSubmissionProgress('âœ… Exam submitted successfully!');
         setSubmissionProgressValue(100);
         await yieldToBrowser();
         await new Promise(r => setTimeout(r, 1000));
@@ -2436,9 +2506,9 @@ async function executeSubmissionWithLoading() {
         }, 5000);
 
     } catch (error) {
-        console.error(' Submission error:', error);
+        console.error('âŒ Submission error:', error);
         if (DOM.submissionProgress) DOM.submissionProgress.classList.remove('active');
-        showToast(' Error submitting exam. Please try again or contact support.', 'error');
+        showToast('âŒ Error submitting exam. Please try again or contact support.', 'error');
 
         if (DOM.submitBtn) {
             DOM.submitBtn.disabled = false;
@@ -2464,7 +2534,7 @@ async function executeSubmissionWithLoading() {
 function showSubmissionProgress(title, message) {
     const overlay = DOM.submissionProgress;
     if (!overlay) {
-        console.warn(' Submission progress overlay not found in HTML.');
+        console.warn('âš ï¸ Submission progress overlay not found in HTML.');
         return;
     }
 
@@ -2552,7 +2622,7 @@ async function bulkUpsertAttemptGrades(rows, progressStart = 0, progressEnd = 10
 
         if (error) {
             if (error.code === '42P10') {
-                console.warn(' Bulk upsert unavailable; using safe per-row fallback.');
+                console.warn('âš ï¸ Bulk upsert unavailable; using safe per-row fallback.');
                 for (const row of chunk) results.push(await upsertAttemptGrade(row));
             } else {
                 throw error;
@@ -2674,7 +2744,7 @@ async function calculateAndSaveGrade() {
             });
         }
 
-        // Question rows occupy 45€“75% of the visible submission progress.
+        // Question rows occupy 45â€“75% of the visible submission progress.
         await bulkUpsertAttemptGrades(gradeRows, 45, 75);
 
         const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
@@ -2714,11 +2784,11 @@ async function calculateAndSaveGrade() {
 
         setSubmissionProgressValue(90);
         await yieldToBrowser();
-        console.log(` Attempt ${AppState.attemptNumber} graded: ${totalEarned}/${totalPossible} (${percentage.toFixed(2)}%)`);
+        console.log(`âœ… Attempt ${AppState.attemptNumber} graded: ${totalEarned}/${totalPossible} (${percentage.toFixed(2)}%)`);
         return { totalEarned, totalPossible, percentage, correctCount, wrongCount, resultStatus };
 
     } catch (error) {
-        console.error(' Error calculating grade:', error);
+        console.error('âŒ Error calculating grade:', error);
         throw error;
     }
 }
@@ -2735,11 +2805,11 @@ function showCompletionCertificate() {
     if (DOM.examContainer) {
         DOM.examContainer.innerHTML = `
             <div style="text-align:center; padding:30px 20px;">
-                <div style="font-size:4rem; margin-bottom:12px;">†</div>
+                <div style="font-size:4rem; margin-bottom:12px;">ðŸ†</div>
                 <h2 style="color:#0A3D62; margin-bottom:8px;">Exam Complete!</h2>
                 <div style="background:linear-gradient(135deg, #f0fdf4, #ecfdf5); border-radius:14px; padding:20px; max-width:500px; margin:12px auto; border:1px solid #86efac;">
-                    <div style="display:inline-block; background:#10b981; color:white; padding:4px 16px; border-radius:20px; font-size:0.8rem; font-weight:600; margin-bottom:12px;"> COMPLETED</div>
-                    <h3 style="color:#065f46; margin-bottom:10px;">“Š Exam Summary</h3>
+                    <div style="display:inline-block; background:#10b981; color:white; padding:4px 16px; border-radius:20px; font-size:0.8rem; font-weight:600; margin-bottom:12px;">âœ… COMPLETED</div>
+                    <h3 style="color:#065f46; margin-bottom:10px;">ðŸ“Š Exam Summary</h3>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                         <div style="background:white; padding:10px; border-radius:8px;">
                             <div style="font-size:0.7rem; color:#94a3b8;">Questions Answered</div>
@@ -2755,13 +2825,13 @@ function showCompletionCertificate() {
                         </div>
                         <div style="background:white; padding:10px; border-radius:8px;">
                             <div style="font-size:0.7rem; color:#94a3b8;">Status</div>
-                            <div style="font-size:1.2rem; font-weight:700; color:#f59e0b;"> Pending Review</div>
+                            <div style="font-size:1.2rem; font-weight:700; color:#f59e0b;">â³ Pending Review</div>
                         </div>
                     </div>
                     <p style="color:#64748b; font-size:0.85rem; margin-top:12px;">Your results will be available after the exam is reviewed by the admin.</p>
                 </div>
                 <div style="margin:12px 0; font-size:0.9rem; color:#94a3b8;">Redirecting in <span id="countdown-number" style="font-weight:700; color:#0A3D62;">5</span> seconds...</div>
-                <a href="https://nakurucollegeofhealthelearning.site/student/cats" style="display:inline-block; background:#0A3D62; color:white; padding:12px 28px; border-radius:30px; text-decoration:none; font-weight:600;">“Š Go to Dashboard Now</a>
+                <a href="https://nakurucollegeofhealthelearning.site/student/cats" style="display:inline-block; background:#0A3D62; color:white; padding:12px 28px; border-radius:30px; text-decoration:none; font-weight:600;">ðŸ“Š Go to Dashboard Now</a>
             </div>
         `;
     }
@@ -2785,102 +2855,365 @@ function showCompletionCertificate() {
 }
 
 // ============================================================
-//  FULLSCREEN EXIT PROTECTION
+// âœ… FULLSCREEN EXIT PROTECTION
 // Do not auto-submit immediately. Give the student the configured
 // grace period to return to fullscreen, then submit if they do not.
 // ============================================================
-function startFullscreenExitWarning() {
-    if (AppState.fullscreenWarningActive || AppState.isSubmitting || !AppState.isExamActive) return;
-
-    AppState.fullscreenWarningActive = true;
-    let remaining = Number(CONFIG.FULLSCREEN_EXIT_TIMEOUT || 10);
-
-    if (DOM.fullscreenExitWarning) {
-        DOM.fullscreenExitWarning.style.display = 'flex';
-        DOM.fullscreenExitWarning.classList.add('active');
+function createFullscreenLockOverlay() {
+    if (AppState.fullscreenOverlay && document.body.contains(AppState.fullscreenOverlay)) {
+        return AppState.fullscreenOverlay;
     }
-    if (DOM.exitCountdown) DOM.exitCountdown.textContent = String(remaining);
 
-    if (AppState.countdownInterval) clearInterval(AppState.countdownInterval);
+    const overlay = document.createElement('div');
+    overlay.id = 'fullscreen-lock-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML = `
+        <div id="fullscreen-lock-card">
+            <div id="fullscreen-lock-icon">FULLSCREEN</div>
+            <div id="fullscreen-lock-title">Exam Locked</div>
+            <div id="fullscreen-lock-message">
+                Fullscreen mode was exited. The exam is temporarily locked.
+            </div>
+            <div id="fullscreen-lock-countdown-wrap">
+                <span id="fullscreen-lock-countdown">10</span>
+                <span>seconds remaining</span>
+            </div>
+            <button id="fullscreen-return-button" type="button">
+                Return to Fullscreen
+            </button>
+            <div id="fullscreen-lock-note">
+                You cannot answer, navigate, or submit while the exam is locked.
+            </div>
+        </div>
+    `;
+
+    const style = document.createElement('style');
+    style.id = 'fullscreen-lock-overlay-style';
+    style.textContent = `
+        #fullscreen-lock-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483647;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            pointer-events: auto;
+            user-select: none;
+            box-sizing: border-box;
+        }
+
+        #fullscreen-lock-card {
+            width: min(460px, 92vw);
+            padding: 30px 26px;
+            border-radius: 20px;
+            background: #ffffff;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+            text-align: center;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+        }
+
+        #fullscreen-lock-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 110px;
+            padding: 7px 12px;
+            margin-bottom: 14px;
+            border-radius: 999px;
+            background: #fee2e2;
+            color: #b91c1c;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+        }
+
+        #fullscreen-lock-title {
+            margin: 0 0 10px;
+            color: #0f172a;
+            font-size: 26px;
+            font-weight: 800;
+        }
+
+        #fullscreen-lock-message {
+            color: #475569;
+            font-size: 15px;
+            line-height: 1.55;
+        }
+
+        #fullscreen-lock-countdown-wrap {
+            margin: 20px 0;
+            color: #334155;
+            font-size: 14px;
+        }
+
+        #fullscreen-lock-countdown {
+            display: block;
+            margin-bottom: 2px;
+            color: #dc2626;
+            font-size: 42px;
+            line-height: 1;
+            font-weight: 900;
+        }
+
+        #fullscreen-return-button {
+            width: 100%;
+            border: 0;
+            border-radius: 12px;
+            padding: 14px 18px;
+            background: #0f766e;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        #fullscreen-return-button:hover {
+            filter: brightness(0.95);
+        }
+
+        #fullscreen-return-button:disabled {
+            opacity: 0.65;
+            cursor: wait;
+        }
+
+        #fullscreen-lock-note {
+            margin-top: 14px;
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+    `;
+
+    if (!document.getElementById('fullscreen-lock-overlay-style')) {
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(overlay);
+
+    const returnButton = overlay.querySelector('#fullscreen-return-button');
+
+    returnButton.addEventListener('click', async function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (AppState.isSubmitting) return;
+
+        returnButton.disabled = true;
+        returnButton.textContent = 'Opening Fullscreen...';
+
+        try {
+            const entered = await enterSecureFullscreen();
+
+            if (!entered) {
+                returnButton.disabled = false;
+                returnButton.textContent = 'Return to Fullscreen';
+                showToast('Fullscreen could not be restored. Please click the button again.', 'warning', 5000);
+            }
+        } catch (error) {
+            console.warn('Could not restore fullscreen:', error);
+            returnButton.disabled = false;
+            returnButton.textContent = 'Return to Fullscreen';
+            showToast('Please click Return to Fullscreen again.', 'warning', 5000);
+        }
+    });
+
+    // Prevent clicks on the locked exam from reaching anything underneath.
+    overlay.addEventListener('click', function(event) {
+        event.stopPropagation();
+    });
+
+    AppState.fullscreenOverlay = overlay;
+    AppState.fullscreenReturnButton = returnButton;
+
+    return overlay;
+}
+
+function lockExamForFullscreenExit() {
+    if (!AppState.isExamActive || AppState.isSubmitting) return;
+
+    AppState.fullscreenLockActive = true;
+
+    const overlay = createFullscreenLockOverlay();
+    const countdownEl = overlay.querySelector('#fullscreen-lock-countdown');
+    const returnButton = overlay.querySelector('#fullscreen-return-button');
+
+    if (DOM.examInterface) {
+        DOM.examInterface.dataset.fullscreenLocked = 'true';
+        DOM.examInterface.style.filter = 'blur(8px)';
+        DOM.examInterface.style.pointerEvents = 'none';
+    }
+
+    // Disable navigation controls as a second protection layer.
+    if (DOM.prevBtn) DOM.prevBtn.disabled = true;
+    if (DOM.nextBtn) DOM.nextBtn.disabled = true;
+    if (DOM.submitBtn) DOM.submitBtn.disabled = true;
+
+    overlay.style.display = 'flex';
+    overlay.setAttribute('aria-hidden', 'false');
+
+    let remaining = Number(CONFIG.FULLSCREEN_EXIT_TIMEOUT || 10);
+    if (countdownEl) countdownEl.textContent = String(remaining);
+    if (returnButton) {
+        returnButton.disabled = false;
+        returnButton.textContent = 'Return to Fullscreen';
+    }
+
+    if (AppState.countdownInterval) {
+        clearInterval(AppState.countdownInterval);
+    }
 
     AppState.countdownInterval = setInterval(() => {
         if (document.fullscreenElement) {
-            clearInterval(AppState.countdownInterval);
-            AppState.countdownInterval = null;
-            AppState.fullscreenWarningActive = false;
-            if (DOM.fullscreenExitWarning) {
-                DOM.fullscreenExitWarning.classList.remove('active');
-                DOM.fullscreenExitWarning.style.display = 'none';
-            }
+            unlockExamAfterFullscreen();
             return;
         }
 
         remaining -= 1;
-        if (DOM.exitCountdown) DOM.exitCountdown.textContent = String(Math.max(remaining, 0));
+
+        if (countdownEl) {
+            countdownEl.textContent = String(Math.max(remaining, 0));
+        }
 
         if (remaining <= 0) {
             clearInterval(AppState.countdownInterval);
             AppState.countdownInterval = null;
-            AppState.fullscreenWarningActive = false;
 
-            if (DOM.fullscreenExitWarning) {
-                DOM.fullscreenExitWarning.classList.remove('active');
-                DOM.fullscreenExitWarning.style.display = 'none';
+            AppState.fullscreenLockActive = false;
+
+            if (overlay) {
+                overlay.style.display = 'none';
+                overlay.setAttribute('aria-hidden', 'true');
             }
 
-            console.log('š¨ Fullscreen grace period expired. Auto-submitting...');
+            console.log('Fullscreen grace period expired. Auto-submitting...');
             showToast('Fullscreen was not restored. Your exam is being submitted.', 'error');
-            logProctoringEvent('fullscreen_exit_timeout', 'Student did not restore fullscreen within the grace period', 'critical');
+            logProctoringEvent(
+                'fullscreen_exit_timeout',
+                'Student did not restore fullscreen within the grace period',
+                'critical'
+            );
+
             executeSubmissionWithLoading();
         }
     }, 1000);
 }
 
+function unlockExamAfterFullscreen() {
+    if (AppState.countdownInterval) {
+        clearInterval(AppState.countdownInterval);
+        AppState.countdownInterval = null;
+    }
+
+    AppState.fullscreenLockActive = false;
+
+    if (DOM.examInterface) {
+        DOM.examInterface.style.filter = '';
+        DOM.examInterface.style.pointerEvents = '';
+        delete DOM.examInterface.dataset.fullscreenLocked;
+    }
+
+    if (AppState.fullscreenOverlay) {
+        AppState.fullscreenOverlay.style.display = 'none';
+        AppState.fullscreenOverlay.setAttribute('aria-hidden', 'true');
+    }
+
+    if (AppState.isExamActive && !AppState.isSubmitting) {
+        updateProgress();
+    }
+
+    showToast('Fullscreen restored. Exam unlocked.', 'success');
+}
+
+function startFullscreenExitWarning() {
+    lockExamForFullscreenExit();
+}
+
 function setupFullscreenMonitoring() {
+    if (AppState.fullscreenMonitoringAttached) return;
+    AppState.fullscreenMonitoringAttached = true;
+
     document.addEventListener('fullscreenchange', () => {
         const isFullscreen = !!document.fullscreenElement;
 
         if (!isFullscreen && AppState.examStarted && AppState.isExamActive && !AppState.isSubmitting) {
-            console.log(' Fullscreen exited €” starting grace period.');
-            showToast(` Please return to fullscreen within ${CONFIG.FULLSCREEN_EXIT_TIMEOUT || 10} seconds.`, 'warning');
-            logProctoringEvent('fullscreen_exit', 'Student exited fullscreen during exam', 'warning');
-            startFullscreenExitWarning();
-        } else if (isFullscreen && AppState.fullscreenWarningActive) {
-            if (AppState.countdownInterval) clearInterval(AppState.countdownInterval);
-            AppState.countdownInterval = null;
-            AppState.fullscreenWarningActive = false;
-            if (DOM.fullscreenExitWarning) {
-                DOM.fullscreenExitWarning.classList.remove('active');
-                DOM.fullscreenExitWarning.style.display = 'none';
-            }
-            showToast(' Fullscreen restored.', 'success');
+            console.log('Fullscreen exited - locking exam interface.');
+
+            showToast(
+                'Please return to fullscreen. The exam is locked until fullscreen is restored.',
+                'warning',
+                5000
+            );
+
+            logProctoringEvent(
+                'fullscreen_exit',
+                'Student exited fullscreen during exam',
+                'warning'
+            );
+
+            lockExamForFullscreenExit();
+
+        } else if (isFullscreen && AppState.fullscreenLockActive) {
+            unlockExamAfterFullscreen();
         }
     });
 }
 
 async function enterSecureFullscreen() {
     try {
+        if (document.fullscreenElement) {
+            if (AppState.fullscreenLockActive) {
+                unlockExamAfterFullscreen();
+            }
+            blockApplications();
+            return true;
+        }
+
         await document.documentElement.requestFullscreen();
-        console.log(' Fullscreen mode activated');
+
+        console.log('Fullscreen mode activated');
+        blockApplications();
+
+        if (AppState.fullscreenLockActive) {
+            unlockExamAfterFullscreen();
+        }
+
+        return true;
+    } catch (err) {
+        console.warn('Fullscreen request failed:', err);
+        showToast('Please enable fullscreen for exam security', 'warning');
+        return false;
+    }
+}
+
+async function enterSecureFullscreen() {
+    try {
+        await document.documentElement.requestFullscreen();
+        console.log('âœ… Fullscreen mode activated');
         blockApplications();
         return true;
     } catch (err) {
         console.warn('Fullscreen request failed:', err);
-        showToast(' Please enable fullscreen for exam security', 'warning');
+        showToast('âš ï¸ Please enable fullscreen for exam security', 'warning');
         return false;
     }
 }
 
 // ============================================================
-//  RULE 2: AUTO-SUBMIT ON TAB SWITCH / WINDOW BLUR
+// âœ… RULE 2: AUTO-SUBMIT ON TAB SWITCH / WINDOW BLUR
 // ============================================================
 function handleWindowBlur() {
     if (!AppState.isExamActive || AppState.isExamPaused) return;
     
     AppState.blurCount++;
-    console.log('š¨ Window blurred (minimized) - count:', AppState.blurCount);
+    console.log('ðŸš¨ Window blurred (minimized) - count:', AppState.blurCount);
     
-    showToast('š¨ Window minimized! Auto-submitting...', 'error');
+    showToast('ðŸš¨ Window minimized! Auto-submitting...', 'error');
     logProctoringEvent('window_blur', 'Window minimized during exam - count: ' + AppState.blurCount, 'critical');
     
     // Auto-submit immediately
@@ -2903,9 +3236,9 @@ function handleWindowFocus() {
 function handleVisibilityChange() {
     if (document.hidden && AppState.isExamActive && !AppState.isExamPaused) {
         AppState.tabSwitchCount++;
-        console.log('š¨ Tab switched - count:', AppState.tabSwitchCount);
+        console.log('ðŸš¨ Tab switched - count:', AppState.tabSwitchCount);
         
-        showToast('š¨ Tab switch detected! Auto-submitting...', 'error');
+        showToast('ðŸš¨ Tab switch detected! Auto-submitting...', 'error');
         logProctoringEvent('tab_switch', 'Tab switched during exam - count: ' + AppState.tabSwitchCount, 'critical');
         
         // Auto-submit immediately
@@ -2950,7 +3283,7 @@ function blockApplications() {
     document.addEventListener('keyup', function(e) {
         if (e.key === 'PrintScreen') {
             preventDefault(e);
-            showToast(' Screenshot attempt detected!', 'warning');
+            showToast('âš ï¸ Screenshot attempt detected!', 'warning');
             logProctoringEvent('screenshot_attempt', 'Student attempted to take screenshot', 'critical');
         }
     });
@@ -2965,7 +3298,7 @@ function preventDefault(e) {
 function blockKeyboardShortcuts(e) {
     if (e.key === 'F12') {
         e.preventDefault();
-        showToast(' Developer Tools are blocked!', 'warning');
+        showToast('âš ï¸ Developer Tools are blocked!', 'warning');
         return false;
     }
     if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
@@ -2978,7 +3311,7 @@ function blockKeyboardShortcuts(e) {
     }
     if (e.altKey && e.key === 'Tab') {
         e.preventDefault();
-        showToast(' Alt+Tab is blocked!', 'warning');
+        showToast('âš ï¸ Alt+Tab is blocked!', 'warning');
         return false;
     }
     if (e.key === 'Meta' || e.key === 'Windows') {
@@ -2999,7 +3332,7 @@ function blockKeyboardShortcuts(e) {
     }
     if (e.ctrlKey && e.shiftKey && e.key === 'Escape') {
         e.preventDefault();
-        showToast(' Task Manager is blocked!', 'warning');
+        showToast('âš ï¸ Task Manager is blocked!', 'warning');
         return false;
     }
     if (e.ctrlKey && (e.key === 'c' || e.key === 'C' || e.key === 'v' || e.key === 'V' || e.key === 'x' || e.key === 'X')) {
@@ -3040,7 +3373,7 @@ function unblockApplications() {
 // ============================================================
 function setupNetworkMonitoring() {
     window.addEventListener('online', async () => {
-        showToast(' Network restored! Syncing answers...', 'success');
+        showToast('âœ… Network restored! Syncing answers...', 'success');
 
         const draftKeys = Object.keys(localStorage).filter(key => 
             key.startsWith(`${CONFIG.STORAGE_PREFIX}${AppState.examId}_draft_${AppState.studentId}`)
@@ -3059,14 +3392,14 @@ function setupNetworkMonitoring() {
                 } catch (e) {}
             }
             if (synced > 0) {
-                showToast(' Synced ' + synced + ' answers to server', 'success');
+                showToast('âœ… Synced ' + synced + ' answers to server', 'success');
                 draftKeys.forEach(key => localStorage.removeItem(key));
             }
         }
     });
 
     window.addEventListener('offline', () => {
-        showToast(' Network lost! Answers saved locally.', 'warning');
+        showToast('âš ï¸ Network lost! Answers saved locally.', 'warning');
         for (const questionId in AppState.answers) {
             if (AppState.answers.hasOwnProperty(questionId)) {
                 saveToLocalStorage(`draft_${questionId}`, { 
@@ -3095,7 +3428,7 @@ function setupNetworkMonitoring() {
 // ============================================================
 function handleBeforeUnload(e) {
     if (AppState.isExamActive && !AppState.isSubmitting) {
-        const message = ' EXAM IN PROGRESS! Your answers are being saved.';
+        const message = 'âš ï¸ EXAM IN PROGRESS! Your answers are being saved.';
         e.preventDefault();
         e.returnValue = message;
         return message;
@@ -3124,7 +3457,7 @@ function resetInactivityTimer() {
     }
     AppState.inactivityTimer = setTimeout(() => {
         if (AppState.isExamActive && !AppState.isSubmitting && !AppState.isExamPaused) {
-            showToast(' Still there? Your exam is waiting for you!', 'warning');
+            showToast('â° Still there? Your exam is waiting for you!', 'warning');
             logProctoringEvent('inactivity_warning', 'Student inactive for 30 minutes', 'warning');
         }
     }, CONFIG.INACTIVITY_TIMEOUT);
@@ -3346,7 +3679,7 @@ async function startExamFaceDetection() {
                 onViolation: (count, message) => {
                     showToast(message, 'warning');
                     if (DOM.examStatusText) DOM.examStatusText.textContent = message;
-                    console.log(` Face violation ${count}/3`);
+                    console.log(`âš ï¸ Face violation ${count}/3`);
                     logProctoringEvent('face_violation', `Violation ${count}/3: ${message}`, 'warning');
                 },
                 onPause: (reason, timer) => {
@@ -3358,14 +3691,14 @@ async function startExamFaceDetection() {
                         if (DOM.faceRecoveryCountdown) DOM.faceRecoveryCountdown.textContent = timer;
                     }
                     if (DOM.proctoringStatusText) {
-                        DOM.proctoringStatusText.textContent = '›” Paused!';
+                        DOM.proctoringStatusText.textContent = 'â›” Paused!';
                         DOM.proctoringStatusText.className = 'status-value danger';
                     }
                     if (DOM.statsFace) {
-                        DOM.statsFace.textContent = '›” Paused';
+                        DOM.statsFace.textContent = 'â›” Paused';
                         DOM.statsFace.style.color = '#DC2626';
                     }
-                    updateCameraStatus('danger', '›” Exam Paused - Face Lost', '0 faces');
+                    updateCameraStatus('danger', 'â›” Exam Paused - Face Lost', '0 faces');
                     if (DOM.cameraContainer) DOM.cameraContainer.className = 'camera-container face-lost';
                     AppState.isExamPaused = true;
                     logProctoringEvent('exam_paused', `Exam paused: ${reason}`, 'warning');
@@ -3381,20 +3714,20 @@ async function startExamFaceDetection() {
                         DOM.proctoringStatusText.className = 'status-value active';
                     }
                     if (DOM.statsFace) {
-                        DOM.statsFace.textContent = ' OK';
+                        DOM.statsFace.textContent = 'âœ… OK';
                         DOM.statsFace.style.color = '#38A169';
                     }
-                    updateCameraStatus('good', ' Face detected', '1 face');
+                    updateCameraStatus('good', 'âœ… Face detected', '1 face');
                     if (DOM.cameraContainer) DOM.cameraContainer.className = 'camera-container face-verified';
                     AppState.isExamPaused = false;
-                    showToast(' Face detected! Exam resumed.', 'success');
+                    showToast('âœ… Face detected! Exam resumed.', 'success');
                     logProctoringEvent('exam_resumed', 'Exam resumed after face detection', 'info');
                 },
                 onAutoSubmit: () => {
-                    showToast(' Auto-submitting due to violations', 'error');
+                    showToast('âŒ Auto-submitting due to violations', 'error');
                     const overlay = DOM.faceBlockOverlay;
                     if (overlay) {
-                        if (DOM.faceBlockReason) DOM.faceBlockReason.textContent = ' Too many violations! Auto-submitting...';
+                        if (DOM.faceBlockReason) DOM.faceBlockReason.textContent = 'âŒ Too many violations! Auto-submitting...';
                         if (DOM.faceRecoveryCountdown) DOM.faceRecoveryCountdown.textContent = '0';
                     }
                     logProctoringEvent('auto_submit', 'Auto-submitted due to face violations', 'critical');
@@ -3409,21 +3742,21 @@ async function startExamFaceDetection() {
             AppState.secureProctor.startDetection(video, canvas);
         }
         
-        updateCameraStatus('good', ' Face detection active', 'Detecting...');
+        updateCameraStatus('good', 'âœ… Face detection active', 'Detecting...');
         if (DOM.proctoringStatusText) {
             DOM.proctoringStatusText.textContent = 'Active';
             DOM.proctoringStatusText.className = 'status-value active';
         }
         if (DOM.statsFace) {
-            DOM.statsFace.textContent = ' OK';
+            DOM.statsFace.textContent = 'âœ… OK';
             DOM.statsFace.style.color = '#38A169';
         }
         
-        console.log(' Face detection started');
+        console.log('âœ… Face detection started');
         
     } catch (error) {
         console.error('Face detection error:', error);
-        updateCameraStatus('danger', ' Face detection unavailable', '0 faces');
+        updateCameraStatus('danger', 'âŒ Face detection unavailable', '0 faces');
         logProctoringEvent('face_detection_error', 'Face detection failed to start', 'critical');
     }
 }
@@ -3434,7 +3767,7 @@ function updateCameraStatus(status, text, faceCount) {
         DOM.examStatusDot.style.background = status === 'good' ? '#10b981' : status === 'warning' ? '#f59e0b' : '#ef4444';
     }
     if (DOM.examStatusText) DOM.examStatusText.textContent = text;
-    if (DOM.examFaceCount) DOM.examFaceCount.textContent = '‘¤ ' + faceCount;
+    if (DOM.examFaceCount) DOM.examFaceCount.textContent = 'ðŸ‘¤ ' + faceCount;
 }
 
 // ============================================================
@@ -3527,7 +3860,7 @@ class SecureFaceProctor {
             if (this.state.isPaused) {
                 this.resumeExam();
             }
-            updateCameraStatus('good', ' Face detected', '1 face');
+            updateCameraStatus('good', 'âœ… Face detected', '1 face');
             
             const warning = DOM.multipleFacesWarning;
             if (warning) warning.style.display = 'none';
@@ -3535,7 +3868,7 @@ class SecureFaceProctor {
         }
         
         if (this.state.isPaused) {
-            updateCameraStatus('warning', ` Face still lost (${this.state.remainingTime || 0}s remaining)`, '0 faces');
+            updateCameraStatus('warning', `â³ Face still lost (${this.state.remainingTime || 0}s remaining)`, '0 faces');
             return;
         }
         
@@ -3543,7 +3876,7 @@ class SecureFaceProctor {
         this.state.faceStable = false;
         
         if (faceCount > 1) {
-            updateCameraStatus('warning', ` Multiple faces (${faceCount})`, `${faceCount} faces`);
+            updateCameraStatus('warning', `âš ï¸ Multiple faces (${faceCount})`, `${faceCount} faces`);
             this.showMultipleFacesWarning(faceCount);
             
             if (this.state.multipleFacesStartTime === 0) {
@@ -3558,7 +3891,7 @@ class SecureFaceProctor {
             const warning = DOM.multipleFacesWarning;
             if (warning) warning.style.display = 'none';
             
-            updateCameraStatus('warning', ` Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
+            updateCameraStatus('warning', `âš ï¸ Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
         }
         
         if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) {
@@ -3590,7 +3923,7 @@ class SecureFaceProctor {
     handleViolation() {
         const now = Date.now();
         if (now - this.state.lastViolationTime < this.config.VIOLATION_COOLDOWN) {
-            console.log(' Violation cooldown active, skipping...');
+            console.log('â³ Violation cooldown active, skipping...');
             return;
         }
         
@@ -3605,22 +3938,22 @@ class SecureFaceProctor {
         this.state.consecutiveLost = 0;
         this.state.lastViolationTime = now;
         
-        console.log(` Face violation ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`);
+        console.log(`âš ï¸ Face violation ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`);
         
         let timerSeconds = this.config.RECOVERY_TIMER_SECONDS - (this.state.totalViolations - 1) * 5;
         timerSeconds = Math.max(5, timerSeconds);
         
         switch(this.state.totalViolations) {
             case 1:
-                this.callbacks.onViolation?.(1, ' Face Lost! Please look at the camera.');
+                this.callbacks.onViolation?.(1, 'âš ï¸ Face Lost! Please look at the camera.');
                 this.pauseExam(timerSeconds);
                 break;
             case 2:
-                this.callbacks.onViolation?.(2, 'š¨ FINAL WARNING! Face lost again.');
+                this.callbacks.onViolation?.(2, 'ðŸš¨ FINAL WARNING! Face lost again.');
                 this.pauseExam(timerSeconds);
                 break;
             case 3:
-                this.callbacks.onViolation?.(3, ' Too many violations! Exam submitted.');
+                this.callbacks.onViolation?.(3, 'âŒ Too many violations! Exam submitted.');
                 this.autoSubmitExam();
                 break;
         }
@@ -3662,7 +3995,7 @@ class SecureFaceProctor {
             }
             
             if (DOM.examStatusText) {
-                DOM.examStatusText.textContent = ` Face lost - ${remaining}s to recover`;
+                DOM.examStatusText.textContent = `â³ Face lost - ${remaining}s to recover`;
             }
             
             if (remaining <= 0) {
@@ -3690,7 +4023,7 @@ class SecureFaceProctor {
 resumeExam() {
     if (!this.state.isPaused) return;
     
-    console.log(' Resuming exam...');
+    console.log('âœ… Resuming exam...');
     
     // Clear timers
     if (this.state.recoveryTimerId) {
@@ -3711,7 +4044,7 @@ resumeExam() {
     
     // Update face recovery countdown
     if (DOM.faceRecoveryCountdown) {
-        DOM.faceRecoveryCountdown.textContent = '';
+        DOM.faceRecoveryCountdown.textContent = 'âœ…';
         DOM.faceRecoveryCountdown.className = 'block-timer recovered';
     }
     
@@ -3734,7 +4067,7 @@ resumeExam() {
     }
     
     // Update status indicators
-    updateCameraStatus('good', ' Face detected', '1 face');
+    updateCameraStatus('good', 'âœ… Face detected', '1 face');
     if (DOM.cameraContainer) {
         DOM.cameraContainer.className = 'camera-container face-verified';
     }
@@ -3744,17 +4077,17 @@ resumeExam() {
         DOM.proctoringStatusText.className = 'status-value active';
     }
     if (DOM.statsFace) {
-        DOM.statsFace.textContent = ' OK';
+        DOM.statsFace.textContent = 'âœ… OK';
         DOM.statsFace.style.color = '#38A169';
     }
     
-    showToast(' Face detected! Exam resumed.', 'success');
+    showToast('âœ… Face detected! Exam resumed.', 'success');
 }
     // ============================================================
 // RETRY CAMERA - FULLY FIXED WITH PROMISE
 // ============================================================
 retryCamera() {
-    console.log('“· SecureProctor.retryCamera called');
+    console.log('ðŸ“· SecureProctor.retryCamera called');
     
     return new Promise((resolve) => {
         // Check if already at violation limit
@@ -3768,13 +4101,13 @@ retryCamera() {
         const now = Date.now();
         if (now - this.state.lastRetryTime < this.config.RETRY_COOLDOWN_SECONDS * 1000) {
             const remaining = Math.ceil((this.config.RETRY_COOLDOWN_SECONDS * 1000 - (now - this.state.lastRetryTime)) / 1000);
-            showToast(` Wait ${remaining}s before retrying`, 'warning');
+            showToast(`â³ Wait ${remaining}s before retrying`, 'warning');
             resolve(false);
             return;
         }
         
         this.state.lastRetryTime = now;
-        showToast('”„ Restarting camera...', 'info');
+        showToast('ðŸ”„ Restarting camera...', 'info');
         
         // Stop old tracks - CRITICAL FIX
         if (this.video && this.video.srcObject) {
@@ -3782,7 +4115,7 @@ retryCamera() {
                 const oldTracks = this.video.srcObject.getTracks();
                 oldTracks.forEach(t => {
                     t.stop();
-                    console.log('“· Stopped track:', t.kind);
+                    console.log('ðŸ“· Stopped track:', t.kind);
                 });
                 this.video.srcObject = null;
             } catch (e) {
@@ -3808,7 +4141,7 @@ retryCamera() {
             audio: false
         })
         .then(async (stream) => {
-            console.log('“· New camera stream obtained');
+            console.log('ðŸ“· New camera stream obtained');
             
             // Update AppState stream
             AppState.cameraStream = stream;
@@ -3817,7 +4150,7 @@ retryCamera() {
             if (this.video) {
                 this.video.srcObject = stream;
                 await this.video.play();
-                console.log('“· Camera video playing');
+                console.log('ðŸ“· Camera video playing');
             }
             
             // Also update lobby camera preview if visible
@@ -3834,17 +4167,17 @@ retryCamera() {
             // Give camera time to warm up and check for face
             setTimeout(async () => {
                 try {
-                    console.log('“· Checking for face after retry...');
+                    console.log('ðŸ“· Checking for face after retry...');
                     const detections = await fastDetectFace(this.video);
                     
                     if (detections && detections.length === 1) {
-                        console.log(' Face detected after retry');
+                        console.log('âœ… Face detected after retry');
                         // Force resume if paused
                         if (this.state.isPaused) {
                             this.resumeExam();
                         } else {
                             // Update UI
-                            updateCameraStatus('good', ' Face detected', '1 face');
+                            updateCameraStatus('good', 'âœ… Face detected', '1 face');
                             if (DOM.cameraContainer) {
                                 DOM.cameraContainer.className = 'camera-container face-verified';
                             }
@@ -3853,7 +4186,7 @@ retryCamera() {
                                 DOM.proctoringStatusText.className = 'status-value active';
                             }
                             if (DOM.statsFace) {
-                                DOM.statsFace.textContent = ' OK';
+                                DOM.statsFace.textContent = 'âœ… OK';
                                 DOM.statsFace.style.color = '#38A169';
                             }
                             // Hide overlays
@@ -3864,38 +4197,38 @@ retryCamera() {
                             }
                             const warning = DOM.multipleFacesWarning;
                             if (warning) warning.style.display = 'none';
-                            showToast(' Face detected!', 'success');
+                            showToast('âœ… Face detected!', 'success');
                         }
                         resolve(true);
                     } else if (detections && detections.length > 1) {
-                        console.warn(' Multiple faces detected after retry');
-                        showToast(' Multiple faces detected. Only one person allowed.', 'warning');
+                        console.warn('âš ï¸ Multiple faces detected after retry');
+                        showToast('âš ï¸ Multiple faces detected. Only one person allowed.', 'warning');
                         this.handleDetectionResult(detections.length);
                         resolve(false);
                     } else {
-                        console.warn(' No face detected after retry');
-                        showToast(' No face detected. Please look at the camera.', 'warning');
+                        console.warn('âš ï¸ No face detected after retry');
+                        showToast('âš ï¸ No face detected. Please look at the camera.', 'warning');
                         // Start face detection monitoring again
                         this.handleDetectionResult(0);
                         resolve(false);
                     }
                 } catch (e) {
-                    console.error(' Face detection after retry failed:', e);
+                    console.error('âŒ Face detection after retry failed:', e);
                     resolve(false);
                 }
             }, 1500);
         })
         .catch((error) => {
-            console.error(' Camera restart failed:', error);
-            let errorMsg = ' Camera access denied. Please allow camera access.';
+            console.error('âŒ Camera restart failed:', error);
+            let errorMsg = 'âŒ Camera access denied. Please allow camera access.';
             if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                errorMsg = ' Camera permission denied. Please allow camera access in your browser settings.';
+                errorMsg = 'âŒ Camera permission denied. Please allow camera access in your browser settings.';
             } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                errorMsg = ' No camera found. Please connect a camera.';
+                errorMsg = 'âŒ No camera found. Please connect a camera.';
             } else if (error.name === 'NotReadableError') {
-                errorMsg = ' Camera is in use by another application. Please close other apps using the camera.';
+                errorMsg = 'âŒ Camera is in use by another application. Please close other apps using the camera.';
             } else if (error.name === 'OverconstrainedError') {
-                errorMsg = ' Camera constraints failed. Please check your camera.';
+                errorMsg = 'âŒ Camera constraints failed. Please check your camera.';
             }
             showToast(errorMsg, 'error');
             resolve(false);
@@ -3961,7 +4294,7 @@ class StealthProctor {
 
     async startStealthRecording(studentId, examId) {
         try {
-            console.log('Ž¥ Starting stealth proctoring...');
+            console.log('ðŸŽ¥ Starting stealth proctoring...');
 
             if (AppState.cameraStream && AppState.cameraStream.active) {
                 this.stream = AppState.cameraStream;
@@ -3974,7 +4307,7 @@ class StealthProctor {
             }
 
             if (!this.stream || !this.stream.active) {
-                console.warn(' No active camera stream');
+                console.warn('âš ï¸ No active camera stream');
                 return false;
             }
 
@@ -4013,7 +4346,7 @@ class StealthProctor {
             this.mediaRecorder.start(10000);
             this.isRecording = true;
             this.recordingStartTime = Date.now();
-            console.log('“¹ Stealth recording started');
+            console.log('ðŸ“¹ Stealth recording started');
 
             this.heartbeatInterval = setInterval(() => {
                 this.sendHeartbeat(studentId, examId);
@@ -4022,7 +4355,7 @@ class StealthProctor {
             return true;
 
         } catch (error) {
-            console.error(' Stealth recording error:', error);
+            console.error('âŒ Stealth recording error:', error);
             return false;
         }
     }
@@ -4053,11 +4386,11 @@ class StealthProctor {
 
             this.videoUploaded = true;
             this.uploadRetryCount = 0;
-            console.log(' Video saved');
+            console.log('âœ… Video saved');
             this.recordedChunks = [];
 
         } catch (error) {
-            console.error(' Error saving video:', error);
+            console.error('âŒ Error saving video:', error);
             this.uploadRetryCount++;
             if (this.uploadRetryCount < 3) {
                 setTimeout(() => this.saveRecording(studentId, examId), 5000);
@@ -4086,7 +4419,7 @@ class StealthProctor {
         }
         if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
         if (this.hiddenVideo) { this.hiddenVideo.remove(); this.hiddenVideo = null; }
-        console.log('“¹ Stealth recording stopped');
+        console.log('ðŸ“¹ Stealth recording stopped');
     }
 
     isRecordingActive() { return this.isRecording; }
@@ -4116,11 +4449,7 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
 // EXAM EVENT LISTENERS
 // ============================================================
 function setupExamEventListeners() {
-    if (AppState.listenersAttached) {
-        console.warn('Exam event listeners already attached.');
-        return;
-    }
-
+    if (AppState.listenersAttached) return;
     AppState.listenersAttached = true;
 
     if (DOM.prevBtn) {
@@ -4136,16 +4465,24 @@ function setupExamEventListeners() {
     }
 
     document.addEventListener('keydown', function(e) {
+        // While outside fullscreen, the exam is locked. Do not allow
+        // keyboard navigation or submission until fullscreen is restored.
+        if (AppState.fullscreenLockActive) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+
         if (e.target.matches('input, textarea, select')) return;
 
         if (e.key === 'ArrowLeft' && DOM.prevBtn && !DOM.prevBtn.disabled) {
-            e.preventDefault();
             prevQuestion();
+            e.preventDefault();
         }
 
         if (e.key === 'ArrowRight' && DOM.nextBtn && !DOM.nextBtn.disabled) {
-            e.preventDefault();
             nextQuestion();
+            e.preventDefault();
         }
 
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -4160,24 +4497,23 @@ function setupExamEventListeners() {
         }
 
         if (e.key === 'Enter' && DOM.submitBtn && !DOM.submitBtn.disabled) {
-            e.preventDefault();
             submitExam();
+            e.preventDefault();
         }
     });
-
-    console.log('Exam event listeners attached once.');
 }
+
 
 // ============================================================
 // INITIALIZATION
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log(' exam.js loaded with Retake/Continuation support');
+    console.log('âœ… exam.js loaded with Retake/Continuation support');
     
     const params = new URLSearchParams(window.location.search);
     let studentId = params.get('user_id') || localStorage.getItem('currentUserId');
     
-    //  FIX: Try to get student ID from userProfile if missing
+    // âœ… FIX: Try to get student ID from userProfile if missing
     if (!studentId) {
         const userProfile = localStorage.getItem('userProfile');
         if (userProfile) {
@@ -4186,7 +4522,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (profile.user_id) {
                     studentId = profile.user_id;
                     localStorage.setItem('currentUserId', studentId);
-                    console.log(' Found student ID from userProfile:', studentId);
+                    console.log('âœ… Found student ID from userProfile:', studentId);
                 }
             } catch (e) {
                 console.warn('Could not parse userProfile:', e);
@@ -4201,9 +4537,9 @@ document.addEventListener('DOMContentLoaded', function() {
     AppState.isContinuation = retakeRequestedByUrl;
     window.retakeRequestedByUrl = retakeRequestedByUrl;
 
-    //  FIX: Redirect to student dashboard instead of exam_login
+    // âœ… FIX: Redirect to student dashboard instead of exam_login
     if (!AppState.studentId) {
-        console.warn(' No student ID found, redirecting to dashboard');
+        console.warn('âš ï¸ No student ID found, redirecting to dashboard');
         window.location.href = 'student.html';
         return;
     }
@@ -4212,7 +4548,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (!AppState.examId) {
         const titleEl = document.getElementById('examTitle');
-        if (titleEl) titleEl.textContent = ' No Exam Selected';
+        if (titleEl) titleEl.textContent = 'âŒ No Exam Selected';
         showToast('No exam selected. Please go back and try again.', 'error');
         return;
     }
@@ -4227,21 +4563,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (retakeRequestedByUrl) {
-        console.log('”„ RETAKE REQUEST DETECTED - authorization will be checked server-side');
+        console.log('ðŸ”„ RETAKE REQUEST DETECTED - authorization will be checked server-side');
     }
 
     initDomRefs();
     loadLobbyData();
-    console.log('“ Exam Lobby loaded. Exam ID:', AppState.examId, 'Student ID:', AppState.studentId);
+    console.log('ðŸ“ Exam Lobby loaded. Exam ID:', AppState.examId, 'Student ID:', AppState.studentId);
     if (retakeRequestedByUrl) {
-        console.log('”„ RETAKE REQUEST ACTIVE - only DB authorization can create a new attempt');
+        console.log('ðŸ”„ RETAKE REQUEST ACTIVE - only DB authorization can create a new attempt');
     }
 });
 
 // ============================================================
-//  EXPOSE FUNCTIONS TO WINDOW - NO RECURSION!
+// âœ… EXPOSE FUNCTIONS TO WINDOW - NO RECURSION!
 // ============================================================
-console.log('”§ Exposing functions to window...');
+console.log('ðŸ”§ Exposing functions to window...');
 
 // Navigation
 window.renderQuestion = renderQuestion;
@@ -4267,21 +4603,21 @@ window.goToStep = goToStep;
 // RETRY CAMERA DURING EXAM - FIXED
 // ============================================================
 window.retryCameraDuringExam = async function() {
-    console.log('“· Retry camera called from window');
+    console.log('ðŸ“· Retry camera called from window');
     
     if (!AppState.secureProctor) {
-        showToast(' Face detection not initialized', 'error');
+        showToast('âŒ Face detection not initialized', 'error');
         return false;
     }
     
     if (AppState.isSubmitting) {
-        showToast(' Exam is submitting, please wait...', 'warning');
+        showToast('â³ Exam is submitting, please wait...', 'warning');
         return false;
     }
     
     // If not paused and face is detected, no need to retry
     if (!AppState.isExamPaused && AppState.faceVerified) {
-        showToast(' Face is already detected!', 'success');
+        showToast('âœ… Face is already detected!', 'success');
         return true;
     }
     
@@ -4289,23 +4625,23 @@ window.retryCameraDuringExam = async function() {
     try {
         const result = await AppState.secureProctor.retryCamera();
         if (result) {
-            showToast(' Camera restarted successfully', 'success');
+            showToast('âœ… Camera restarted successfully', 'success');
         } else {
-            showToast(' Camera restart failed. Please check your camera.', 'error');
+            showToast('âŒ Camera restart failed. Please check your camera.', 'error');
         }
         return result;
     } catch (error) {
-        console.error(' Retry error:', error);
-        showToast(' Camera restart failed', 'error');
+        console.error('âŒ Retry error:', error);
+        showToast('âŒ Camera restart failed', 'error');
         return false;
     }
 };
 window.showKeyboardShortcuts = showKeyboardShortcuts;
 window.showToast = showToast;
 
-//  REMOVED ALL SELF-ASSIGNMENTS
-console.log(' All functions exposed to window!');
-console.log('“‹ Available functions:');
+// âœ… REMOVED ALL SELF-ASSIGNMENTS
+console.log('âœ… All functions exposed to window!');
+console.log('ðŸ“‹ Available functions:');
 console.log('   renderQuestion, prevQuestion, nextQuestion, submitExam');
 console.log('   toggleReviewMode, toggleFlagQuestion, returnToExam');
 console.log('   closeAttendanceModal, retryCameraDuringExam, goToStep');
