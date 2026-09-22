@@ -8647,13 +8647,10 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
                 <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
                     <i class="fas fa-graduation-cap"></i> Session Type
                 </label>
-                <select id="session-type" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s ease; appearance: none;">
-                    <option value="">-- Select session type --</option>
-                    <option value="clinical">🏥 Clinical Session</option>
-                    <option value="class">📚 Classroom Session</option>
-                    <option value="lab">🧪 Laboratory Session</option>
-                    <option value="tutorial">📖 Tutorial Session</option>
-                </select>
+               <select id="session-type" onchange="handleSessionTypeChange && handleSessionTypeChange()" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s ease; appearance: none;">
+    <option value="">-- Select session type --</option>
+    <option value="clinical">🏥 Clinical Session</option>
+</select>
             </div>
             <div id="target-control-group" style="display:none;">
                 <label id="target-label" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
