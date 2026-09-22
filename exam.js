@@ -2917,6 +2917,35 @@ function startFullscreenExitWarning() {
     }, 1000);
 }
 
+async function enterSecureFullscreen() {
+    try {
+        const root = document.documentElement;
+
+        if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+            blockApplications();
+            return true;
+        }
+
+        if (root.requestFullscreen) {
+            await root.requestFullscreen();
+        } else if (root.webkitRequestFullscreen) {
+            root.webkitRequestFullscreen();
+        } else if (root.msRequestFullscreen) {
+            root.msRequestFullscreen();
+        } else {
+            throw new Error('Fullscreen API is not supported by this browser.');
+        }
+
+        blockApplications();
+        console.log('✅ Secure fullscreen activated');
+        return true;
+    } catch (error) {
+        console.warn('Fullscreen request failed:', error);
+        showToast('⚠️ Please enable fullscreen to continue the exam.', 'warning', 5000);
+        return false;
+    }
+}
+
 function setupFullscreenMonitoring() {
     if (AppState.fullscreenMonitoringAttached) return;
     AppState.fullscreenMonitoringAttached = true;
