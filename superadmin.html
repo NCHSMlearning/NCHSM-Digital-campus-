@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html> 
 <html lang="en"> 
 <head>  
@@ -10985,6 +10986,37 @@ textarea:focus-visible{
             <input type="file" id="resource-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4">
             <small id="file-edit-info" style="color: #6b7280; font-size: 11px; display: none;">Leave empty to keep existing file</small>
             
+            <!-- Pre-recorded Podcast / Audio -->
+            <div style="margin-top:12px;padding:14px;border:1px solid #ddd6fe;border-radius:12px;background:linear-gradient(135deg,#faf5ff,#f5f3ff);">
+                <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;">
+                    <div style="width:34px;height:34px;border-radius:9px;background:#ede9fe;color:#6d28d9;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-podcast"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:800;color:#4c1d95;font-size:13px;">Podcast / Audio Lesson</div>
+                        <div style="font-size:11px;color:#64748b;">Optional prerecorded audio for students to listen to.</div>
+                    </div>
+                </div>
+
+                <input type="file"
+                    id="resource-podcast-file"
+                    accept=".mp3,.m4a,.wav,.ogg,.webm,audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm"
+                    style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #c4b5fd;border-radius:9px;background:white;font-size:13px;">
+
+                <div id="podcast-edit-info" style="display:none;margin-top:9px;padding:9px 11px;border-radius:9px;background:#ecfdf5;border:1px solid #a7f3d0;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                        <span style="font-size:11px;color:#047857;font-weight:700;">
+                            <i class="fas fa-check-circle"></i> Podcast audio is attached to this resource.
+                        </span>
+                        <a id="podcast-preview-link" href="#" target="_blank" rel="noopener"
+                           style="display:inline-flex;align-items:center;gap:5px;background:#059669;color:white;text-decoration:none;padding:6px 10px;border-radius:7px;font-size:11px;font-weight:700;">
+                            <i class="fas fa-play"></i> Preview
+                        </a>
+                    </div>
+                    <div style="font-size:10px;color:#64748b;margin-top:5px;">Choose a new audio file above to replace the existing podcast.</div>
+                </div>
+            </div>
+
             <!-- Title -->
             <input type="text" id="resource-title" placeholder="Resource Title" required>
             
@@ -11162,6 +11194,7 @@ textarea:focus-visible{
                     <th>Block/Term</th>
                     <th>Title/Course</th>
                     <th>Description</th>
+                    <th>Audio</th>
                     <th>Uploaded By</th>
                     <th>Date</th>
                     <th>Actions</th>
