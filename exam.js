@@ -3320,113 +3320,76 @@ function resetInactivityTimer() {
 // ============================================================
 async function captureSnapshot() {
     const video = document.getElementById('face-video');
-    if (!video || !video.srcObject || video.paused || video.ended || video.readyState < 2) {
-        console.warn('📸 Snapshot skipped: camera video is not ready.');
-        return;
+    if (!video || !video.srcObject || video.paused || video.ended) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 320;
+    canvas.height = 240;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, 320, 240);
+
+    const base64Image = canvas.toDataURL('image/jpeg', 0.7);
+
+    const currentQ = AppState.questions[AppState.currentIndex] || {};
+    const currentQuestionNum = AppState.currentIndex + 1;
+    const totalQuestions = AppState.questions.length;
+
+    const faceStatusText = DOM.examStatusText ? DOM.examStatusText.textContent : '';
+    let eventType = 'face_detected';
+    let details = `Question ${currentQuestionNum}/${totalQuestions}`;
+
+    if (faceStatusText.indexOf('Multiple') !== -1) {
+        eventType = 'multiple_faces_detected';
+        details = `Multiple faces detected on question ${currentQuestionNum}`;
+    } else if (faceStatusText.indexOf('lost') !== -1 || faceStatusText.indexOf('No face') !== -1) {
+        eventType = 'face_missing';
+        details = `No face detected on question ${currentQuestionNum}`;
     }
 
+    const studentName = AppState.studentProfile ? AppState.studentProfile.full_name || 'Unknown' : 'Unknown';
+    const studentReg = AppState.studentProfile ? AppState.studentProfile.student_id || 'N/A' : 'N/A';
+    const examName = AppState.examData ? AppState.examData.exam_name || AppState.examData.title || 'Exam' : 'Exam';
+
+    let snapshotUrl = null;
     try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 320;
-        canvas.height = 240;
-        const ctx = canvas.getContext('2d', { alpha: false });
-        if (!ctx) throw new Error('Unable to create snapshot canvas.');
-
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const base64Image = canvas.toDataURL('image/jpeg', 0.7);
-
-        const currentQuestionNum = AppState.currentIndex + 1;
-        const totalQuestions = AppState.questions.length;
-        const faceStatusText = DOM.examStatusText ? DOM.examStatusText.textContent || '' : '';
-
-        let eventType = 'face_detected';
-        let details = `Question ${currentQuestionNum}/${totalQuestions}`;
-        if (faceStatusText.indexOf('Multiple') !== -1) {
-            eventType = 'multiple_faces_detected';
-            details = `Multiple faces detected on question ${currentQuestionNum}`;
-        } else if (faceStatusText.indexOf('lost') !== -1 || faceStatusText.indexOf('No face') !== -1) {
-            eventType = 'face_missing';
-            details = `No face detected on question ${currentQuestionNum}`;
-        }
-
-        const studentName = AppState.studentProfile?.full_name || 'Unknown';
-        const studentReg = AppState.studentProfile?.student_id || 'N/A';
-        const examName = AppState.examData?.exam_name || AppState.examData?.title || 'Exam';
-        const timestamp = new Date().toISOString();
+        const response = await fetch(base64Image);
+        const blob = await response.blob();
         const fileName = `snapshots/${AppState.studentId}/${AppState.examId}/${Date.now()}.jpg`;
 
-        console.log(`📸 Capturing proctoring snapshot (${eventType})...`);
-
-        let snapshotUrl = null;
-        let uploadErrorMessage = null;
-
-        // Upload the camera frame to Supabase Storage.
-        try {
-            const response = await fetch(base64Image);
-            if (!response.ok) throw new Error(`Image conversion failed (${response.status})`);
-            const blob = await response.blob();
-            if (!blob || blob.size === 0) throw new Error('Snapshot blob is empty.');
-
-            const { error: storageError } = await sb.storage
-                .from('proctoring')
-                .upload(fileName, blob, {
-                    contentType: 'image/jpeg',
-                    cacheControl: '60',
-                    upsert: false
-                });
-
-            if (storageError) throw storageError;
-
-            const { data: publicUrlData } = sb.storage
-                .from('proctoring')
-                .getPublicUrl(fileName);
-
-            snapshotUrl = publicUrlData?.publicUrl || null;
-            if (!snapshotUrl) throw new Error('Supabase did not return a public snapshot URL.');
-
-            console.log('☁️ Snapshot uploaded successfully:', snapshotUrl);
-        } catch (uploadError) {
-            uploadErrorMessage = uploadError?.message || String(uploadError);
-            console.error('❌ Snapshot upload failed:', uploadError);
-        }
-
-        // Always create a proctoring log so we can diagnose failed uploads.
-        const logDetails = uploadErrorMessage
-            ? `${details} | Snapshot upload failed: ${uploadErrorMessage}`
-            : details;
-
-        try {
-            const { error: logError } = await sb.from('exam_proctoring_logs').insert({
-                student_id: AppState.studentId,
-                exam_id: parseInt(AppState.examId, 10),
-                student_name: studentName,
-                student_reg_number: studentReg,
-                exam_name: examName,
-                event_type: eventType,
-                details: logDetails,
-                severity: eventType === 'multiple_faces_detected' ? 'critical' :
-                    eventType === 'face_missing' ? 'warning' :
-                    uploadErrorMessage ? 'warning' : 'info',
-                snapshot_url: snapshotUrl,
-                timestamp: timestamp,
-                is_read: false,
-                device_info: navigator.userAgent,
-                ip_address: await getIPAddress()
+        const { error } = await sb.storage
+            .from('proctoring')
+            .upload(fileName, blob, {
+                contentType: 'image/jpeg',
+                cacheControl: '3600',
+                upsert: false
             });
 
-            if (logError) throw logError;
-
-            if (snapshotUrl) {
-                console.log('📝 Proctoring log saved with snapshot_url.');
-            } else {
-                console.warn('⚠️ Proctoring log saved, but no snapshot_url was available.');
-            }
-        } catch (logError) {
-            console.error('❌ Failed to save proctoring snapshot log:', logError);
+        if (!error) {
+            const urlData = sb.storage
+                .from('proctoring')
+                .getPublicUrl(fileName);
+            snapshotUrl = urlData.publicUrl;
         }
-    } catch (error) {
-        console.error('❌ Snapshot capture failed:', error);
-    }
+    } catch (uploadError) {}
+
+    try {
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: AppState.studentId,
+            exam_id: parseInt(AppState.examId),
+            student_name: studentName,
+            student_reg_number: studentReg,
+            exam_name: examName,
+            event_type: eventType,
+            details: details,
+            severity: eventType === 'multiple_faces_detected' ? 'critical' :
+                eventType === 'face_missing' ? 'warning' : 'info',
+            snapshot_url: snapshotUrl,
+            timestamp: new Date().toISOString(),
+            is_read: false,
+            device_info: navigator.userAgent,
+            ip_address: await getIPAddress()
+        });
+    } catch (e) {}
 }
 
 function startSnapshotCapture() {
@@ -4547,3 +4510,243 @@ console.log('   renderQuestion, prevQuestion, nextQuestion, submitExam');
 console.log('   toggleReviewMode, toggleFlagQuestion, returnToExam');
 console.log('   closeAttendanceModal, retryCameraDuringExam, goToStep');
 console.log('   toggleTermsAgreed, testCamera, startExam, showToast');
+
+// ============================================================
+// 🎥 WEBRTC LIVE PROCTORING — STUDENT SIDE
+// ============================================================
+// Uses Supabase Realtime only for signaling. The actual camera
+// media travels over WebRTC directly to the authorized viewer.
+// Periodic snapshots remain enabled as the audit/fallback feed.
+const LIVE_WEBRTC_CONFIG = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' }
+        // Production deployments should add a TURN server here.
+    ]
+};
+
+let studentLiveSignalChannel = null;
+const studentLivePeers = new Map();
+const studentPendingIce = new Map();
+
+function liveChannelName(studentId, examId) {
+    return `nchsm-proctor-live:${String(examId)}:${String(studentId)}`;
+}
+
+async function sendStudentLiveSignal(payload) {
+    if (!studentLiveSignalChannel) return;
+    try {
+        await studentLiveSignalChannel.send({
+            type: 'broadcast',
+            event: 'webrtc-signal',
+            payload
+        });
+    } catch (error) {
+        console.warn('⚠️ WebRTC signaling send failed:', error);
+    }
+}
+
+async function addPendingStudentIce(viewerId, candidate) {
+    const peer = studentLivePeers.get(viewerId);
+    if (!peer || !candidate) return;
+    try {
+        if (peer.remoteDescription && peer.remoteDescription.type) {
+            await peer.addIceCandidate(candidate);
+            return;
+        }
+    } catch (error) {
+        console.warn('⚠️ Student ICE candidate failed:', error);
+    }
+
+    if (!studentPendingIce.has(viewerId)) studentPendingIce.set(viewerId, []);
+    studentPendingIce.get(viewerId).push(candidate);
+}
+
+async function flushStudentPendingIce(viewerId) {
+    const peer = studentLivePeers.get(viewerId);
+    const pending = studentPendingIce.get(viewerId) || [];
+    if (!peer || !peer.remoteDescription || !pending.length) return;
+
+    for (const candidate of pending) {
+        try {
+            await peer.addIceCandidate(candidate);
+        } catch (error) {
+            console.warn('⚠️ Pending student ICE failed:', error);
+        }
+    }
+    studentPendingIce.delete(viewerId);
+}
+
+async function createStudentLivePeer(viewerId) {
+    if (!AppState.cameraStream) {
+        console.warn('⚠️ Cannot start live feed: student camera stream is unavailable.');
+        return null;
+    }
+
+    const existing = studentLivePeers.get(viewerId);
+    if (existing) {
+        try { existing.close(); } catch (_) {}
+        studentLivePeers.delete(viewerId);
+    }
+
+    const peer = new RTCPeerConnection(LIVE_WEBRTC_CONFIG);
+    studentLivePeers.set(viewerId, peer);
+
+    AppState.cameraStream.getTracks().forEach(track => {
+        try {
+            peer.addTrack(track, AppState.cameraStream);
+        } catch (error) {
+            console.warn('⚠️ Could not add camera track:', error);
+        }
+    });
+
+    peer.onicecandidate = event => {
+        if (event.candidate) {
+            sendStudentLiveSignal({
+                type: 'ice-candidate',
+                role: 'student',
+                viewerId,
+                candidate: event.candidate
+            });
+        }
+    };
+
+    peer.onconnectionstatechange = () => {
+        console.log(`🎥 Live viewer ${viewerId}: ${peer.connectionState}`);
+
+        if (['failed', 'closed', 'disconnected'].includes(peer.connectionState)) {
+            if (peer.connectionState === 'failed') {
+                try { peer.restartIce(); } catch (_) {}
+            }
+        }
+    };
+
+    peer.oniceconnectionstatechange = () => {
+        console.log(`🎥 Live ICE ${viewerId}: ${peer.iceConnectionState}`);
+    };
+
+    return peer;
+}
+
+async function handleStudentLiveSignal(payload) {
+    if (!payload || !AppState.isExamActive) return;
+
+    const viewerId = payload.viewerId;
+    if (!viewerId) return;
+
+    try {
+        if (payload.type === 'viewer-request') {
+            const peer = await createStudentLivePeer(viewerId);
+            if (!peer) return;
+
+            const offer = await peer.createOffer({
+                offerToReceiveAudio: false,
+                offerToReceiveVideo: false
+            });
+            await peer.setLocalDescription(offer);
+
+            await sendStudentLiveSignal({
+                type: 'offer',
+                role: 'student',
+                viewerId,
+                sdp: peer.localDescription
+            });
+            return;
+        }
+
+        if (payload.type === 'answer') {
+            const peer = studentLivePeers.get(viewerId);
+            if (!peer || !payload.sdp) return;
+
+            await peer.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            await flushStudentPendingIce(viewerId);
+            return;
+        }
+
+        if (payload.type === 'ice-candidate') {
+            await addPendingStudentIce(viewerId, payload.candidate);
+            return;
+        }
+
+        if (payload.type === 'viewer-stop') {
+            const peer = studentLivePeers.get(viewerId);
+            if (peer) {
+                try { peer.close(); } catch (_) {}
+            }
+            studentLivePeers.delete(viewerId);
+            studentPendingIce.delete(viewerId);
+        }
+    } catch (error) {
+        console.error('❌ Student WebRTC signaling error:', error);
+    }
+}
+
+async function initStudentLiveWebRTC() {
+    if (!window.RTCPeerConnection || !window.supabase || !AppState.studentId || !AppState.examId) {
+        console.warn('⚠️ WebRTC unavailable or exam identity not ready.');
+        return false;
+    }
+
+    if (studentLiveSignalChannel) return true;
+
+    const channelName = liveChannelName(AppState.studentId, AppState.examId);
+
+    studentLiveSignalChannel = sb.channel(channelName, {
+        config: {
+            broadcast: { self: false }
+        }
+    });
+
+    studentLiveSignalChannel.on(
+        'broadcast',
+        { event: 'webrtc-signal' },
+        ({ payload }) => handleStudentLiveSignal(payload)
+    );
+
+    return new Promise(resolve => {
+        studentLiveSignalChannel.subscribe(status => {
+            if (status === 'SUBSCRIBED') {
+                console.log('🟢 Student WebRTC signaling connected:', channelName);
+                resolve(true);
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.error('❌ Student WebRTC signaling status:', status);
+                resolve(false);
+            }
+        });
+    });
+}
+
+function stopStudentLiveWebRTC() {
+    for (const peer of studentLivePeers.values()) {
+        try { peer.close(); } catch (_) {}
+    }
+    studentLivePeers.clear();
+    studentPendingIce.clear();
+
+    if (studentLiveSignalChannel) {
+        try { sb.removeChannel(studentLiveSignalChannel); } catch (_) {}
+        studentLiveSignalChannel = null;
+    }
+}
+
+// Start live signaling as soon as the exam has entered its active state.
+const __nchsmOriginalStartExamForLive = window.startExam;
+if (typeof __nchsmOriginalStartExamForLive === 'function') {
+    window.startExam = async function(...args) {
+        let result;
+        try {
+            result = await __nchsmOriginalStartExamForLive.apply(this, args);
+            return result;
+        } finally {
+            if (AppState.isExamActive && AppState.cameraStream) {
+                await initStudentLiveWebRTC();
+            }
+        }
+    };
+}
+
+// Also expose cleanup for exam submission/page exit.
+window.stopStudentLiveWebRTC = stopStudentLiveWebRTC;
+window.addEventListener('pagehide', stopStudentLiveWebRTC);
+window.addEventListener('beforeunload', stopStudentLiveWebRTC);
+
+console.log('✅ WebRTC student live-feed module loaded');
