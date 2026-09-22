@@ -296,7 +296,7 @@ const LecturerSessions = {
         }
     },
 
-    // ============================================
+       // ============================================
     // LOAD SESSIONS - ONLY THIS LECTURER'S SESSIONS
     // ============================================
     async loadSessions() {
@@ -327,7 +327,7 @@ const LecturerSessions = {
             }
 
             this.sessions = sessions || [];
-            this.renderSessions();
+            await this.renderSessions();     // ✅ await added
             this.updateStats();
 
             console.log(`✅ Loaded ${this.sessions.length} sessions (only your sessions) - ${this.getProgramTypeLabel()}`);
