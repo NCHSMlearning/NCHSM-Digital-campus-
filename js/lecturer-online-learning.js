@@ -596,22 +596,83 @@ window.LecturerOnlineLearning = (() => {
 
     function uniqueWords(text){ return [...new Set(phraseTokens(text))]; }
 
+    /*
+     * Normalize any institutional marking-key schema into one common internal
+     * representation. Nothing here is discipline-specific: Community Health,
+     * General Nursing, Mental Health, Midwifery, or future keys can all use the
+     * same engine.
+     */
     function criterionNodes(criteria,parent=''){
         const out=[];
+
+        const numericMark=value=>{
+            const n=Number(value);
+            return Number.isFinite(n)&&n>0?n:null;
+        };
+
+        const normalizeRequirements=requirements=>{
+            if(!Array.isArray(requirements)||!requirements.length) return [];
+
+            return requirements.map((r,index)=>{
+                const req=(r&&typeof r==='object')?r:{};
+                const explicitMarks=
+                    numericMark(req.max_marks) ??
+                    numericMark(req.marks) ??
+                    numericMark(req.allocated_marks);
+
+                const explicitWeight=
+                    Number.isFinite(Number(req.weight)) && Number(req.weight)>=0
+                        ? Number(req.weight)
+                        : null;
+
+                const evidenceTerms=Array.isArray(req.evidence_terms)
+                    ? req.evidence_terms.filter(Boolean).map(String)
+                    : Array.isArray(req.keywords)
+                        ? req.keywords.filter(Boolean).map(String)
+                        : [];
+
+                return {
+                    ...req,
+                    id:String(req.id||`requirement_${index+1}`),
+                    description:String(req.description||req.title||req.name||req.id||`Requirement ${index+1}`),
+                    evidence_terms:evidenceTerms,
+                    weight:explicitWeight,
+                    allocated_marks:explicitMarks
+                };
+            });
+        };
+
         for(const c of (Array.isArray(criteria)?criteria:[])){
             if(!c || typeof c!=='object') continue;
+
             const name=String(c.criterion||c.title||c.name||'').trim();
             const description=String(c.description||'').trim();
-            const ownMarks=Number(c.max_marks ?? c.marks ?? c.score);
+            const ownMarks=
+                numericMark(c.max_marks) ??
+                numericMark(c.marks) ??
+                numericMark(c.allocated_marks) ??
+                numericMark(c.score);
+
             const path=parent ? `${parent} > ${name}` : name;
             const subs=Array.isArray(c.subcriteria)?c.subcriteria:[];
-            const requirements=Array.isArray(c.requirements)?c.requirements:[];
-            if(Number.isFinite(ownMarks) && ownMarks>0){
-                out.push({criterion:name||path,description,max_marks:ownMarks,path,source:c,requirements});
+            const requirements=normalizeRequirements(c.requirements);
+
+            if(ownMarks!==null){
+                out.push({
+                    criterion:name||path,
+                    description,
+                    max_marks:ownMarks,
+                    path,
+                    source:c,
+                    requirements,
+                    scoring_rule:String(c.scoring_rule||c.scoringRule||''),
+                    criterion_keywords:Array.isArray(c.keywords)?c.keywords.filter(Boolean).map(String):[]
+                });
             }else if(subs.length){
                 out.push(...criterionNodes(subs,path));
             }
         }
+
         return out;
     }
 
@@ -637,16 +698,80 @@ window.LecturerOnlineLearning = (() => {
     // evidence from shared individual words (for example "health", "class",
     // "conclusion", "investigations"). That can create false positives.
     // Institutional grading now requires an actual configured phrase.
+    /*
+     * Institutional evidence matcher.
+     *
+     * The Supabase marking key is authoritative, but students are not
+     * required to reproduce its wording verbatim. We therefore score:
+     *   - exact configured phrases strongly;
+     *   - close multi-word token matches partially/strongly;
+     *   - generic single words only as supporting evidence, never as sole proof.
+     *
+     * The function deliberately keeps the original {score, matched} contract.
+     */
     function termCoverage(text,terms){
         const hay=normalizedPhrase(text);
         const alternatives=(Array.isArray(terms)?terms:[String(terms||'')])
             .map(x=>normalizedPhrase(x))
             .filter(Boolean);
+
         if(!alternatives.length) return {score:0,matched:[]};
-        const matched=alternatives.filter(phrase=>hay.includes(phrase));
+
+        const generic=new Set([
+            'case','study','student','name','class','date','family','health',
+            'care','assessment','introduction','information','history','status',
+            'problem','problems','intervention','evaluation','summary',
+            'conclusion','recommendation','recommendations','visit','first',
+            'second','third','fourth','section','home','client','patient',
+            'content','present','available','general','description'
+        ]);
+
+        const meaningfulTokens=value => normalizedPhrase(value)
+            .split(/\s+/)
+            .filter(token=>token.length>=4 && !generic.has(token));
+
+        const matched=[];
+        let strong=0;
+        let partial=0;
+
+        alternatives.forEach(phrase=>{
+            // Exact configured evidence phrase.
+            if(hay.includes(phrase)){
+                matched.push(phrase);
+                strong++;
+                return;
+            }
+
+            // Allow normal wording variation for multi-word evidence terms.
+            const tokens=meaningfulTokens(phrase);
+            if(tokens.length<2) return;
+
+            const hits=tokens.filter(token=>hay.includes(token));
+            const ratio=hits.length/tokens.length;
+
+            if(ratio>=0.75){
+                matched.push(phrase);
+                strong++;
+            }else if(ratio>=0.5){
+                matched.push(phrase);
+                partial++;
+            }
+        });
+
+        /*
+         * A single exact phrase is meaningful evidence, but the percentage
+         * must not become 100% simply because one phrase was found in a long
+         * list of alternatives. Multiple independent matches increase
+         * confidence without rewarding generic words.
+         */
+        const denominator=Math.max(1,Math.min(alternatives.length,3));
+        const score=Math.min(1,(strong+(partial*0.5))/denominator);
+
         return {
-            score:matched.length ? Math.min(1,matched.length/Math.max(1,alternatives.length)) : 0,
-            matched
+            score:Math.round(score*100)/100,
+            matched:matched.slice(0,20),
+            strong,
+            partial
         };
     }
 
@@ -718,120 +843,295 @@ window.LecturerOnlineLearning = (() => {
         const coverage=termCoverage(context,evidenceTerms);
         const headingFound=!!criterionWindow?.headingFound;
         const contentWords=cleanWords(context).length;
-        const matchedText=coverage.matched.join(' | ');
 
-        // A criterion heading by itself is not substantive evidence. There
-        // must be meaningful content in the section as well.
+        /*
+         * A heading alone is never enough. Require substantive content in the
+         * criterion window before awarding a requirement score.
+         */
         if(!coverage.matched.length || contentWords<15){
             return {
-                id:String(req.id||''), description:String(req.description||''), score:0,
-                matched:[], content_words:contentWords, heading_found:headingFound,
+                id:String(req.id||''),
+                description:String(req.description||''),
+                score:0,
+                matched:[],
+                matched_text:'',
+                content_words:contentWords,
+                heading_found:headingFound,
                 evidence_excerpt:''
             };
         }
 
-        // If a requirement has several alternatives, each distinct matched
-        // phrase represents only part of the requirement unless the rubric
-        // explicitly gives it one requirement/weight. Never manufacture a
-        // full mark from a single weak word.
         let score=coverage.score;
-        const genericSingles=new Set(['class','conclusion','summary','introduction','references','bibliography','investigations','evaluation','recommendations','assessment','speech','memory','orientation','insight']);
-        const strongMatches=coverage.matched.filter(x=>x.split(/\s+/).length>=2 || x.length>=12);
-        const onlyGeneric=coverage.matched.every(x=>genericSingles.has(x));
-        if(onlyGeneric && !headingFound) score=0;
-        if(!strongMatches.length && !headingFound) score=Math.min(score,0.35);
-        if(headingFound && score>0 && contentWords>=30) score=Math.min(1,score+0.05);
 
-        // Cap evidence from a single short occurrence. A rubric requirement
-        // must have surrounding substantive text, not just a heading/label.
+        /*
+         * Generic terms are useful only when supported by substantive evidence.
+         * Never let one generic word produce a full requirement.
+         */
+        const genericSingles=new Set([
+            'class','conclusion','summary','introduction','references',
+            'bibliography','investigations','evaluation','recommendations',
+            'assessment','speech','memory','orientation','insight','family',
+            'health','care','intervention','patient','client','home','visit'
+        ]);
+
+        const strongMatches=coverage.matched.filter(x=>{
+            const words=normalizedPhrase(x).split(/\s+/).filter(Boolean);
+            return words.length>=2 || x.length>=12;
+        });
+
+        const onlyGeneric=coverage.matched.length>0 &&
+            coverage.matched.every(x=>genericSingles.has(normalizedPhrase(x)));
+
+        if(onlyGeneric) score=Math.min(score,0.35);
+        if(!strongMatches.length && !headingFound) score=Math.min(score,0.5);
+
+        /*
+         * Short sections can establish presence but should not receive full
+         * marks from a heading plus one phrase.
+         */
         if(contentWords<30) score=Math.min(score,0.6);
+
+        /*
+         * Substantive sections with several independent configured terms can
+         * receive the full requirement allocation. This is still bounded by
+         * the requirement's evidence terms and never invents content.
+         */
+        if(contentWords>=30 && coverage.strong>=2) {
+            score=Math.max(score,Math.min(1,coverage.score));
+        }
+
+        let evidenceExcerpt='';
+        const first=coverage.matched[0];
+        if(first){
+            const lower=context.toLowerCase();
+            const needle=normalizedPhrase(first);
+            let pos=lower.indexOf(needle);
+
+            if(pos<0){
+                const token=needle.split(/\s+/).find(t=>t.length>=4);
+                pos=token?lower.indexOf(token):-1;
+            }
+
+            if(pos>=0){
+                evidenceExcerpt=context.slice(
+                    Math.max(0,pos-180),
+                    Math.min(context.length,pos+500)
+                );
+            }
+        }
 
         return {
             id:String(req.id||''),
             description:String(req.description||''),
             score:Math.round(Math.max(0,Math.min(1,score))*100)/100,
             matched:coverage.matched.slice(0,12),
-            matched_text:matchedText,
+            matched_text:coverage.matched.slice(0,12).join(' | '),
+            strong_matches:Number(coverage.strong||0),
+            partial_matches:Number(coverage.partial||0),
             content_words:contentWords,
             heading_found:headingFound,
-            evidence_excerpt:context.slice(0,800)
+            evidence_excerpt:evidenceExcerpt
         };
     }
 
     function deterministicGradeMarkingKey(text,key,maxMarks){
         const criteria=criterionNodes(markKeyArray(key?.criteria));
-        if(!criteria.length) throw new Error('The institutional marking key has no numeric criteria to grade against.');
+        if(!criteria.length){
+            throw new Error('The institutional marking key has no numeric criteria to grade against.');
+        }
 
+        const assignmentMax=Number(maxMarks||key?.max_marks||0);
         const totalRubricMarks=criteria.reduce((sum,c)=>sum+Number(c.max_marks||0),0);
         const declaredAllocated=Number(key?.allocated_marks);
-        const rubricAllocationMismatch=Number.isFinite(declaredAllocated) && Math.abs(declaredAllocated-totalRubricMarks)>0.001;
-        if(totalRubricMarks<=0) throw new Error('The institutional marking key has no usable mark allocation.');
-        if(totalRubricMarks>maxMarks+0.001) throw new Error(`Marking key allocation (${totalRubricMarks}) exceeds maximum (${maxMarks}).`);
+
+        if(!Number.isFinite(assignmentMax)||assignmentMax<=0){
+            throw new Error('The institutional marking key has no valid maximum mark.');
+        }
+
+        if(totalRubricMarks<=0){
+            throw new Error('The institutional marking key has no usable criterion allocations.');
+        }
+
+        if(totalRubricMarks>assignmentMax+0.001){
+            throw new Error(
+                `Marking key allocation (${totalRubricMarks}) exceeds assignment maximum (${assignmentMax}).`
+            );
+        }
+
+        const rubricAllocationMismatch=
+            Number.isFinite(declaredAllocated) &&
+            Math.abs(declaredAllocated-totalRubricMarks)>0.001;
+
+        /*
+         * Requirement allocation is derived from the schema:
+         *
+         * 1. If requirements explicitly declare marks, use those marks.
+         * 2. Otherwise, if requirements declare weights, normalize the weights
+         *    to the parent criterion's marks.
+         * 3. Otherwise distribute the parent criterion marks equally.
+         *
+         * This means the engine adapts to each marking key rather than knowing
+         * anything about nursing specialty or assignment title.
+         */
+        const requirementAllocation=(requirements,criterionMarks)=>{
+            const reqs=Array.isArray(requirements)?requirements:[];
+
+            if(!reqs.length){
+                return [{
+                    id:'criterion',
+                    description:'Criterion-level evidence',
+                    evidence_terms:[],
+                    weight:1,
+                    allocated_marks:Number(criterionMarks)
+                }];
+            }
+
+            const explicit=reqs.map(r=>Number(r.allocated_marks));
+            const allExplicit=explicit.every(n=>Number.isFinite(n)&&n>=0);
+            const explicitTotal=explicit.reduce((a,b)=>a+(Number.isFinite(b)?b:0),0);
+
+            if(allExplicit && explicitTotal>0 && explicitTotal<=Number(criterionMarks)+0.001){
+                return reqs.map((r,i)=>({
+                    ...r,
+                    allocated_marks:explicit[i]
+                }));
+            }
+
+            const rawWeights=reqs.map(r=>{
+                const w=Number(r.weight);
+                return Number.isFinite(w)&&w>0?w:null;
+            });
+
+            const hasPositiveWeights=rawWeights.some(w=>w!==null);
+            const weights=hasPositiveWeights
+                ? rawWeights.map(w=>w===null?1:w)
+                : reqs.map(()=>1);
+
+            const totalWeight=weights.reduce((a,b)=>a+b,0)||reqs.length;
+
+            return reqs.map((r,i)=>({
+                ...r,
+                allocated_marks:
+                    Number(criterionMarks)*Number(weights[i])/Number(totalWeight)
+            }));
+        };
 
         const rubricGrades=criteria.map(node=>{
             const window=findCriterionWindow(text,node);
-            const requirements=Array.isArray(node.requirements)&&node.requirements.length
-                ? node.requirements
-                : [{id:'criterion',description:node.description||node.criterion,evidence_terms:[node.criterion],weight:1}];
+            const allocatedRequirements=requirementAllocation(
+                node.requirements,
+                Number(node.max_marks)
+            );
 
-            const weights=requirements.map(r=>Number(r.weight));
-            const validWeights=weights.every(w=>Number.isFinite(w)&&w>=0) && weights.some(w=>w>0);
-            const totalWeight=validWeights ? weights.reduce((a,b)=>a+b,0) : requirements.length;
-            const reqGrades=requirements.map((req,i)=>({
-                ...scoreRequirement(req,window),
-                weight:(validWeights?Math.max(0,Number(req.weight)):1)/totalWeight
-            }));
+            const reqGrades=allocatedRequirements.map(req=>{
+                const scored=scoreRequirement(req,window);
 
-            const weightedCoverage=reqGrades.reduce((sum,r)=>sum+(r.score*r.weight),0);
-            let earned=Math.round((Number(node.max_marks)*weightedCoverage)*2)/2;
+                return {
+                    ...scored,
+                    weight:Number(req.allocated_marks||0),
+                    allocated_marks:Number(req.allocated_marks||0)
+                };
+            });
+
+            const earnedRaw=reqGrades.reduce(
+                (sum,r)=>sum+(Number(r.score||0)*Number(r.allocated_marks||0)),
+                0
+            );
+
+            let earned=Math.round(earnedRaw*2)/2;
             earned=Math.max(0,Math.min(Number(node.max_marks),earned));
 
-            const supported=reqGrades.filter(r=>r.score>=0.6);
-            const partial=reqGrades.filter(r=>r.score>0 && r.score<0.6);
-            const evidence=supported.length
-                ? supported.slice(0,8).map(r=>r.description||r.id).join(' | ')
+            const fullyEvidence=reqGrades.filter(r=>r.score>=0.85);
+            const strong=reqGrades.filter(r=>r.score>=0.60 && r.score<0.85);
+            const partial=reqGrades.filter(r=>r.score>0 && r.score<0.60);
+            const noEvidence=reqGrades.filter(r=>r.score<=0);
+
+            const evidence=fullyEvidence.length||strong.length
+                ? [...fullyEvidence,...strong]
+                    .slice(0,8)
+                    .map(r=>r.description||r.id)
+                    .join(' | ')
                 : partial.length
                     ? `Partial evidence: ${partial.slice(0,6).map(r=>r.description||r.id).join(' | ')}`
                     : 'No sufficient criterion-specific evidence found.';
 
-            const excerpts=reqGrades.filter(r=>r.score>=0.5).slice(0,3).map(r=>r.evidence_excerpt).filter(Boolean);
+            const excerpts=reqGrades
+                .filter(r=>r.score>=0.50)
+                .slice(0,4)
+                .map(r=>r.evidence_excerpt)
+                .filter(Boolean);
+
+            const allocatedRequirementMarks=reqGrades.reduce(
+                (sum,r)=>sum+Number(r.allocated_marks||0),0
+            );
+
+            const coverage=allocatedRequirementMarks>0
+                ? earned/allocatedRequirementMarks
+                : 0;
+
             return {
                 criterion:node.path||node.criterion,
                 max_marks:Number(node.max_marks),
                 marks_awarded:earned,
+                allocated_requirement_marks:Math.round(allocatedRequirementMarks*100)/100,
                 evidence,
-                rationale:`${Math.round(weightedCoverage*100)}% weighted requirement coverage. ${supported.length}/${reqGrades.length} requirement(s) strongly evidenced and ${partial.length} partially evidenced.`,
-                matched_signals:reqGrades.flatMap(r=>r.matched).slice(0,30),
+                rationale:
+                    `${Math.round(coverage*100)}% of allocated criterion marks supported by evidence. ` +
+                    `${fullyEvidence.length} fully supported, ${strong.length} strongly supported, ` +
+                    `${partial.length} partially supported, ${noEvidence.length} unsupported requirement(s).`,
+                matched_signals:reqGrades.flatMap(r=>r.matched||[]).slice(0,40),
                 requirements:reqGrades,
                 evidence_excerpts:excerpts,
-                scoring_rule:String(node.source?.scoring_rule||'')
+                scoring_rule:String(node.scoring_rule||'')
             };
         });
 
-        let earned=rubricGrades.reduce((sum,g)=>sum+g.marks_awarded,0);
-        earned=Math.round(Math.min(earned,totalRubricMarks,maxMarks)*2)/2;
-        const percentage=maxMarks>0 ? Math.round((earned/maxMarks)*10000)/100 : 0;
+        let earned=rubricGrades.reduce((sum,g)=>sum+Number(g.marks_awarded||0),0);
+        earned=Math.round(Math.min(earned,totalRubricMarks,assignmentMax)*2)/2;
+
+        const percentage=assignmentMax>0
+            ? Math.round((earned/assignmentMax)*10000)/100
+            : 0;
+
         const criteriaWithEvidence=rubricGrades.filter(g=>g.marks_awarded>0).length;
-        const confidence=criteria.length
-            ? Math.round((criteriaWithEvidence/criteria.length)*100)
+        const criteriaCount=rubricGrades.length;
+
+        /*
+         * Confidence is evidence coverage, not a claim about correctness.
+         * It tells the lecturer how much of the rubric produced qualifying
+         * evidence and must not be interpreted as an exam-grade confidence.
+         */
+        const confidence=criteriaCount
+            ? Math.round(
+                rubricGrades.reduce((sum,g)=>{
+                    const max=Number(g.max_marks)||0;
+                    return sum+(max?Number(g.marks_awarded||0)/max:0);
+                },0)/criteriaCount*100
+              )
             : 0;
 
         return {
             marks_awarded:earned,
-            max_marks:maxMarks,
+            max_marks:assignmentMax,
             percentage,
-            rubric_allocated_marks:totalRubricMarks,
-            rubric_allocated_percentage:maxMarks>0?Math.round((totalRubricMarks/maxMarks)*10000)/100:0,
+            rubric_allocated_marks:Math.round(totalRubricMarks*100)/100,
+            rubric_allocated_percentage:
+                assignmentMax>0
+                    ? Math.round((totalRubricMarks/assignmentMax)*10000)/100
+                    : 0,
             confidence,
             rubric_grades:rubricGrades,
-            feedback:`Automatic evidence-based grading against the Supabase institutional marking key. ${criteriaWithEvidence} of ${criteria.length} criteria contain qualifying evidence. Review each criterion before saving or releasing.`,
+            feedback:
+                `Automatic evidence-based grading against the Supabase institutional marking key. ` +
+                `${criteriaWithEvidence} of ${criteriaCount} criteria contain qualifying evidence. ` +
+                `Review each criterion and adjust marks where necessary before saving or releasing.`,
             note:rubricAllocationMismatch
                 ? `Supabase marking key declares ${declaredAllocated} allocated marks, but its structured criteria sum to ${totalRubricMarks}. Verify the rubric before release.`
-                : totalRubricMarks===maxMarks
-                ? 'All declared marking-key marks are allocated.'
-                : `The supplied marking key allocates ${totalRubricMarks} of ${maxMarks} marks. No unallocated marks were invented.`,
-            grading_mode:'SUPABASE_INSTITUTIONAL_MARKING_KEY_DETERMINISTIC_V4',
-            provider:'supabase-institutional-marking-key-engine-v4',
+                : totalRubricMarks===assignmentMax
+                    ? 'All declared criterion marks are allocated.'
+                    : `The supplied marking key allocates ${totalRubricMarks} of ${assignmentMax} marks. No unallocated marks were invented.`,
+            grading_mode:'SUPABASE_INSTITUTIONAL_MARKING_KEY_SCHEMA_DRIVEN_V5',
+            provider:'supabase-institutional-marking-key-schema-driven-engine-v5',
             source:'public.online_marking_keys',
             marking_key_id:key?.id||null,
             marking_key_title:key?.title||null,
@@ -849,10 +1149,10 @@ window.LecturerOnlineLearning = (() => {
         if($('olReviewFeedback') && report.feedback) $('olReviewFeedback').value=report.feedback;
         const box=$('olAIGradeReport'); if(!box)return;
         const rows=(report.rubric_grades||[]).map(g=>{
-            const reqRows=(g.requirements||[]).map(r=>`<div style="margin:4px 0;padding:5px 7px;border-left:3px solid #ddd"><b>${esc(r.description||r.id)}</b> — ${esc(Math.round(r.score*100))}%<br><span style="color:#64748b">${r.matched?.length?esc(r.matched.join(', ')):'No direct configured phrase match'}</span></div>`).join('');
+            const reqRows=(g.requirements||[]).map(r=>`<div style="margin:5px 0;padding:7px 9px;border-left:3px solid #ddd"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(r.description||r.id)}</b><b>${esc(Number(r.score||0)*Number(r.allocated_marks||0))}/${esc(Number(r.allocated_marks||0))}</b></div><div style="font-size:11px;color:#475569;margin-top:2px">Evidence support: ${esc(Math.round(Number(r.score||0)*100))}%</div><div style="font-size:10px;color:#64748b;margin-top:2px">${r.matched?.length?esc(r.matched.join(', ')):'No configured evidence match'}</div>${r.evidence_excerpt?`<div style="margin-top:5px;padding:5px;background:#f8fafc;border-radius:6px;font-size:10px;color:#475569">${esc(r.evidence_excerpt)}</div>`:''}</div>`).join('');
             return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(g.criterion)}</b><b>${esc(g.marks_awarded)}/${esc(g.max_marks)}</b></div><div style="font-size:11px;color:#475569;margin-top:4px">${esc(g.evidence)}</div><div style="font-size:10px;color:#64748b;margin-top:3px">${esc(g.rationale)}</div><details style="margin-top:5px"><summary style="cursor:pointer;font-size:11px">Requirement evidence</summary><div style="margin-top:4px">${reqRows||'No requirements configured.'}</div></details></div>`;
         }).join('');
-        box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(marks)}/${esc(max)} (${esc(pct)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Criterion evidence (${esc((report.rubric_grades||[]).length)})</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
+        box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Institutional Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(marks)}/${esc(max)} (${esc(pct)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Criterion evidence (${esc((report.rubric_grades||[]).length)})</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
     }
 
     async function autoGradeUsingMarkingKey(id){
@@ -888,7 +1188,7 @@ window.LecturerOnlineLearning = (() => {
     }
 
     async function aiGradeSubmission(id){
-        notify('AI Grade Work is disabled in this configuration. Use Automatically Grade Using Marking Key.','warning');
+        notify('Automatically Grade Using Marking Key is disabled in this configuration. Use Automatically Grade Using Marking Key.','warning');
         return autoGradeUsingMarkingKey(id);
     }
 
@@ -2338,7 +2638,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         });
     }
 
-    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> AI Grade Work</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
+    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> Automatically Grade Using Marking Key</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
     function updateGradePercentage(){const s=state.submissions.find(x=>x.id===$('olSubmissionModal')?.dataset?.submissionId);const max=Number(s?.max_marks||state.assignments.find(a=>a.id===s?.assignment_id)?.max_marks||0);const pct=formatPercentage($('olReviewMarks')?.value,max);if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;}
     // ============================================================
     // 📧 ASSIGNMENT RESULT EMAIL NOTIFICATION
