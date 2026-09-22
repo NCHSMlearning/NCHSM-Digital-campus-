@@ -1211,7 +1211,7 @@ window.LecturerOnlineLearning = (() => {
             );
 
             const reqGrades=allocatedRequirements.map(req=>{
-                const scored=scoreRequirement(req,window,criterion);
+                const scored=scoreRequirement(req,window,node);
 
                 return {
                     ...scored,
