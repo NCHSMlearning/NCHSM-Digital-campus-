@@ -9457,371 +9457,282 @@ window.downloadAllVideos = downloadAllVideos;
 
 
 // ============================================================
-// 🎥 WEBRTC LIVE CAMERA — ADMIN SIDE
+// 🎥 NCHSM WEBRTC LIVE FEED - ADMIN
+// Replaces the old 30-second snapshot-only camera view with a
+// true browser-to-browser WebRTC live video feed. Snapshots remain
+// available as the audit/fallback record.
 // ============================================================
-// The existing snapshot feed remains available as an audit/fallback.
-// This module creates a real <video> element dynamically, so the
-// existing camera modal HTML does not need to be rewritten.
-const ADMIN_LIVE_WEBRTC_CONFIG = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' }
-        // Production deployments should add a TURN server here.
-    ]
+const NCHSM_ADMIN_WEBRTC_CONFIG = {
+    stunServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    channelPrefix: 'nchsm-proctor-live'
 };
 
-let adminLiveSignalChannel = null;
-let adminLivePeer = null;
-let adminLiveViewerId = null;
-let adminLivePendingIce = [];
+let nchsmAdminWebRTCChannel = null;
+let nchsmAdminWebRTCPeer = null;
+let nchsmAdminWebRTCStudent = null;
+let nchsmAdminWebRTCExam = null;
+let nchsmAdminViewerId = `admin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-function adminLiveChannelName(studentId, examId) {
-    return `nchsm-proctor-live:${String(examId)}:${String(studentId)}`;
+function nchsmAdminChannelName(studentId, examId) {
+    return `${NCHSM_ADMIN_WEBRTC_CONFIG.channelPrefix}:${examId}:${studentId}`;
 }
 
-async function sendAdminLiveSignal(payload) {
-    if (!adminLiveSignalChannel) return;
-    try {
-        await adminLiveSignalChannel.send({
-            type: 'broadcast',
-            event: 'webrtc-signal',
-            payload
-        });
-    } catch (error) {
-        console.warn('⚠️ Admin WebRTC signaling send failed:', error);
-    }
-}
-
-function ensureAdminLiveVideo() {
-    const feed = document.getElementById('cameraFeed');
-    if (!feed) return null;
-
+function nchsmEnsureLiveVideoElement() {
     let video = document.getElementById('cameraLiveVideo');
-    if (video) return video;
-
-    video = document.createElement('video');
-    video.id = 'cameraLiveVideo';
-    video.autoplay = true;
-    video.playsInline = true;
-    video.muted = true;
-    video.setAttribute('aria-label', 'Student live camera feed');
-
-    video.style.cssText = `
-        width: 100%;
-        height: 100%;
-        min-height: 320px;
-        object-fit: cover;
-        display: none;
-        background: #050505;
-        border-radius: 14px;
-    `;
-
-    const parent = feed.parentElement;
-    if (parent) {
-        parent.style.position = parent.style.position || 'relative';
-        parent.insertBefore(video, feed);
-    } else {
-        feed.insertAdjacentElement('beforebegin', video);
+    const oldImage = document.getElementById('cameraFeed');
+    if (!video) {
+        video = document.createElement('video');
+        video.id = 'cameraLiveVideo';
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        video.setAttribute('playsinline', '');
+        video.style.cssText = 'display:none;width:100%;height:100%;object-fit:cover;border-radius:12px;background:#050505;';
+        const parent = oldImage?.parentElement || document.getElementById('cameraContainer') || document.getElementById('cameraModal');
+        if (parent) parent.appendChild(video);
     }
-
     return video;
 }
 
-function setAdminLiveStatus(isLive, message) {
+function nchsmSetLiveStatus(text, cls) {
     const status = document.getElementById('cameraStatus');
     const signal = document.getElementById('cameraSignal');
-    const loading = document.getElementById('cameraLoading');
-    const overlay = document.getElementById('cameraOverlay');
-    const video = document.getElementById('cameraLiveVideo');
-
     if (status) {
-        status.textContent = message || (isLive ? '🟢 Live' : '⚪ Waiting');
-        status.className = isLive ? 'status-active' : 'status-inactive';
+        status.textContent = text;
+        status.className = cls || 'status-active';
     }
-
-    if (signal) signal.textContent = isLive ? '🟢 LIVE' : '⚪ Offline';
-
-    if (isLive) {
-        if (video) video.style.display = 'block';
-        const feed = document.getElementById('cameraFeed');
-        if (feed) feed.style.display = 'none';
-        if (loading) loading.style.display = 'none';
-        if (overlay) overlay.style.display = 'block';
-    }
+    if (signal) signal.textContent = text.includes('LIVE') ? '🟢 LIVE' : text.includes('Connecting') ? '🟡 Connecting' : '📷 Snapshot';
 }
 
-async function handleAdminLiveSignal(payload) {
-    if (!payload || payload.viewerId !== adminLiveViewerId) return;
-
-    try {
-        if (payload.type === 'offer') {
-            if (!payload.sdp) return;
-
-            if (adminLivePeer) {
-                try { adminLivePeer.close(); } catch (_) {}
-            }
-
-            adminLivePeer = new RTCPeerConnection(ADMIN_LIVE_WEBRTC_CONFIG);
-
-            adminLivePeer.onicecandidate = event => {
-                if (event.candidate) {
-                    sendAdminLiveSignal({
-                        type: 'ice-candidate',
-                        role: 'admin',
-                        viewerId: adminLiveViewerId,
-                        candidate: event.candidate
-                    });
+function nchsmCloseAdminWebRTC(notifyStudent = true) {
+    if (notifyStudent && nchsmAdminWebRTCChannel) {
+        try {
+            nchsmAdminWebRTCChannel.send({
+                type: 'broadcast',
+                event: 'viewer-stop',
+                payload: {
+                    studentId: String(nchsmAdminWebRTCStudent || ''),
+                    examId: String(nchsmAdminWebRTCExam || ''),
+                    viewerId: nchsmAdminViewerId
                 }
-            };
-
-            adminLivePeer.ontrack = async event => {
-                const video = ensureAdminLiveVideo();
-                if (!video) return;
-
-                const stream = event.streams && event.streams[0]
-                    ? event.streams[0]
-                    : new MediaStream([event.track]);
-
-                video.srcObject = stream;
-                try { await video.play(); } catch (_) {}
-
-                liveVideoStreams[`${currentCameraStudent}_${currentCameraExam}`] = stream;
-                setAdminLiveStatus(true, '🟢 LIVE');
-                const timestamp = document.getElementById('cameraTimestamp');
-                if (timestamp) timestamp.textContent = 'Live — ' + new Date().toLocaleTimeString();
-            };
-
-            adminLivePeer.onconnectionstatechange = () => {
-                const state = adminLivePeer?.connectionState;
-                console.log('🎥 Admin live connection:', state);
-
-                if (state === 'connected') {
-                    setAdminLiveStatus(true, '🟢 LIVE');
-                } else if (['failed', 'disconnected', 'closed'].includes(state)) {
-                    setAdminLiveStatus(false, '🟠 Reconnecting...');
-                }
-            };
-
-            adminLivePeer.oniceconnectionstatechange = () => {
-                console.log('🎥 Admin ICE:', adminLivePeer?.iceConnectionState);
-            };
-
-            await adminLivePeer.setRemoteDescription(
-                new RTCSessionDescription(payload.sdp)
-            );
-
-            for (const candidate of adminLivePendingIce) {
-                try { await adminLivePeer.addIceCandidate(candidate); } catch (_) {}
-            }
-            adminLivePendingIce = [];
-
-            const answer = await adminLivePeer.createAnswer();
-            await adminLivePeer.setLocalDescription(answer);
-
-            await sendAdminLiveSignal({
-                type: 'answer',
-                role: 'admin',
-                viewerId: adminLiveViewerId,
-                sdp: adminLivePeer.localDescription
             });
-            return;
-        }
-
-        if (payload.type === 'ice-candidate') {
-            if (!payload.candidate) return;
-
-            if (adminLivePeer?.remoteDescription?.type) {
-                try {
-                    await adminLivePeer.addIceCandidate(payload.candidate);
-                } catch (error) {
-                    console.warn('⚠️ Admin ICE candidate failed:', error);
-                }
-            } else {
-                adminLivePendingIce.push(payload.candidate);
-            }
-        }
-    } catch (error) {
-        console.error('❌ Admin WebRTC signaling error:', error);
-        setAdminLiveStatus(false, '🔴 Live connection failed');
+        } catch (e) {}
     }
+    try { if (nchsmAdminWebRTCPeer) nchsmAdminWebRTCPeer.close(); } catch (e) {}
+    nchsmAdminWebRTCPeer = null;
+    try { if (nchsmAdminWebRTCChannel) sb.removeChannel(nchsmAdminWebRTCChannel); } catch (e) {}
+    nchsmAdminWebRTCChannel = null;
 }
 
-async function startAdminLiveWebRTC(studentId, examId) {
-    stopAdminLiveWebRTC(false);
+async function startNchsmAdminWebRTC(studentId, examId) {
+    nchsmCloseAdminWebRTC(false);
+    nchsmAdminWebRTCStudent = studentId;
+    nchsmAdminWebRTCExam = examId;
 
-    if (!window.RTCPeerConnection || !window.supabase) {
-        console.warn('⚠️ WebRTC is not supported in this browser.');
-        return false;
+    const channelName = nchsmAdminChannelName(studentId, examId);
+    const video = nchsmEnsureLiveVideoElement();
+    const snapshot = document.getElementById('cameraFeed');
+    if (video) video.style.display = 'none';
+    if (snapshot) snapshot.style.display = 'none';
+
+    nchsmSetLiveStatus('🟡 Connecting...', 'status-active');
+    const loading = document.getElementById('cameraLoading');
+    if (loading) {
+        loading.style.display = 'flex';
+        loading.innerHTML = '<div style="text-align:center;"><i class="fas fa-spinner fa-spin fa-3x"></i><p style="margin-top:12px;">Connecting to student camera...</p></div>';
     }
 
-    adminLiveViewerId =
-        'viewer_' +
-        (window.crypto?.randomUUID
-            ? crypto.randomUUID()
-            : `${Date.now()}_${Math.random().toString(36).slice(2)}`);
-
-    adminLivePendingIce = [];
-
-    const channelName = adminLiveChannelName(studentId, examId);
-    adminLiveSignalChannel = sb.channel(channelName, {
-        config: {
-            broadcast: { self: false }
-        }
+    nchsmAdminWebRTCChannel = sb.channel(channelName, {
+        config: { private: true }
     });
 
-    adminLiveSignalChannel.on(
-        'broadcast',
-        { event: 'webrtc-signal' },
-        ({ payload }) => handleAdminLiveSignal(payload)
-    );
-
-    return new Promise(resolve => {
-        adminLiveSignalChannel.subscribe(async status => {
+    nchsmAdminWebRTCChannel
+        .on('broadcast', { event: 'offer' }, async ({ payload }) => {
+            if (!payload || String(payload.studentId) !== String(studentId) || String(payload.examId) !== String(examId)) return;
+            if (payload.viewerId !== nchsmAdminViewerId || !payload.offer) return;
+            await nchsmHandleStudentOffer(payload);
+        })
+        .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+            if (!payload || payload.viewerId !== nchsmAdminViewerId || !payload.candidate) return;
+            if (!nchsmAdminWebRTCPeer) return;
+            try { await nchsmAdminWebRTCPeer.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (e) { console.warn('🎥 Admin ICE error:', e); }
+        })
+        .subscribe(async (status) => {
+            console.log('🎥 Admin WebRTC signaling:', status, channelName);
             if (status === 'SUBSCRIBED') {
-                console.log('🟢 Admin WebRTC signaling connected:', channelName);
-
-                await sendAdminLiveSignal({
-                    type: 'viewer-request',
-                    role: 'admin',
-                    viewerId: adminLiveViewerId
-                });
-
-                resolve(true);
-            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                console.error('❌ Admin WebRTC signaling:', status);
-                resolve(false);
+                try {
+                    const sendViewerRequest = async () => {
+                        if (!nchsmAdminWebRTCChannel) return;
+                        try {
+                            await nchsmAdminWebRTCChannel.send({
+                                type: 'broadcast',
+                                event: 'viewer-request',
+                                payload: {
+                                    studentId: String(studentId),
+                                    examId: String(examId),
+                                    viewerId: nchsmAdminViewerId,
+                                    requestedAt: new Date().toISOString()
+                                }
+                            });
+                        } catch (e) {
+                            console.warn('🎥 Live-feed request retry failed:', e);
+                        }
+                    };
+                    await sendViewerRequest();
+                    // Retry briefly in case the student finishes subscribing just after us.
+                    for (let attempt = 1; attempt <= 4; attempt++) {
+                        setTimeout(() => {
+                            if (!nchsmAdminWebRTCPeer || !['connected', 'completed'].includes(nchsmAdminWebRTCPeer.connectionState)) {
+                                sendViewerRequest();
+                            }
+                        }, attempt * 2000);
+                    }
+                    console.log('🎥 Live-feed request sent to student');
+                } catch (e) {
+                    console.error('🎥 Could not request live feed:', e);
+                    nchsmSetLiveStatus('📷 Snapshot', 'status-pending');
+                }
             }
         });
-    });
 }
 
-function stopAdminLiveWebRTC(sendStop = true) {
-    if (sendStop && adminLiveSignalChannel && adminLiveViewerId) {
-        sendAdminLiveSignal({
-            type: 'viewer-stop',
-            role: 'admin',
-            viewerId: adminLiveViewerId
-        }).catch(() => {});
-    }
+async function nchsmHandleStudentOffer(payload) {
+    if (!nchsmAdminWebRTCChannel) return;
+    try {
+        if (nchsmAdminWebRTCPeer) {
+            try { nchsmAdminWebRTCPeer.close(); } catch (e) {}
+        }
+        const pc = new RTCPeerConnection({ iceServers: NCHSM_ADMIN_WEBRTC_CONFIG.stunServers });
+        nchsmAdminWebRTCPeer = pc;
 
-    if (adminLivePeer) {
-        try { adminLivePeer.close(); } catch (_) {}
-        adminLivePeer = null;
-    }
+        pc.ontrack = async (event) => {
+            const stream = event.streams?.[0];
+            if (!stream) return;
+            const video = nchsmEnsureLiveVideoElement();
+            if (!video) return;
+            video.srcObject = stream;
+            video.style.display = 'block';
+            video.muted = true;
+            try { await video.play(); } catch (e) { console.warn('🎥 Live video play blocked:', e); }
+            const loading = document.getElementById('cameraLoading');
+            if (loading) loading.style.display = 'none';
+            const snapshot = document.getElementById('cameraFeed');
+            if (snapshot) snapshot.style.display = 'none';
+            const overlay = document.getElementById('cameraOverlay');
+            if (overlay) overlay.style.display = 'block';
+            nchsmSetLiveStatus('🟢 LIVE', 'status-active');
+            const ts = document.getElementById('cameraTimestamp');
+            if (ts) ts.textContent = formatKenyaTime(new Date().toISOString());
+        };
 
-    adminLivePendingIce = [];
-
-    const key = `${currentCameraStudent}_${currentCameraExam}`;
-    delete liveVideoStreams[key];
-
-    const video = document.getElementById('cameraLiveVideo');
-    if (video) {
-        try {
-            if (video.srcObject) {
-                video.srcObject.getTracks().forEach(track => {
-                    // Do not stop the remote student's camera track on the student.
-                    try { track.stop(); } catch (_) {}
+        pc.onicecandidate = async (event) => {
+            if (!event.candidate || !nchsmAdminWebRTCChannel) return;
+            try {
+                await nchsmAdminWebRTCChannel.send({
+                    type: 'broadcast',
+                    event: 'ice-candidate',
+                    payload: {
+                        studentId: String(nchsmAdminWebRTCStudent),
+                        examId: String(nchsmAdminWebRTCExam),
+                        viewerId: nchsmAdminViewerId,
+                        candidate: event.candidate.toJSON()
+                    }
                 });
+            } catch (e) {}
+        };
+
+        pc.onconnectionstatechange = () => {
+            console.log('🎥 Admin WebRTC connection:', pc.connectionState);
+            if (pc.connectionState === 'connected') {
+                nchsmSetLiveStatus('🟢 LIVE', 'status-active');
+            } else if (['failed', 'disconnected'].includes(pc.connectionState)) {
+                nchsmSetLiveStatus('🟠 Reconnecting...', 'status-pending');
             }
-        } catch (_) {}
-        video.srcObject = null;
-        video.style.display = 'none';
-    }
+        };
 
-    if (adminLiveSignalChannel) {
-        try { sb.removeChannel(adminLiveSignalChannel); } catch (_) {}
-        adminLiveSignalChannel = null;
-    }
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
 
-    adminLiveViewerId = null;
+        await nchsmAdminWebRTCChannel.send({
+            type: 'broadcast',
+            event: 'answer',
+            payload: {
+                studentId: String(nchsmAdminWebRTCStudent),
+                examId: String(nchsmAdminWebRTCExam),
+                viewerId: nchsmAdminViewerId,
+                answer: pc.localDescription
+            }
+        });
+        console.log('🎥 WebRTC answer sent to student');
+    } catch (e) {
+        console.error('🎥 Could not handle student offer:', e);
+        nchsmSetLiveStatus('📷 Snapshot', 'status-pending');
+    }
 }
 
-// Override camera opener so Live Feed requests the actual WebRTC stream.
+// Override the existing camera opener so Live Feed uses WebRTC first.
 window.openCameraView = async function(studentId, examId, studentName, examName) {
     currentCameraStudent = studentId;
     currentCameraExam = examId;
-    currentCameraStudentName = studentName || 'Student';
-    currentCameraExamName = examName || 'Exam';
+    currentCameraStudentName = studentName;
+    currentCameraExamName = examName;
 
-    stopAdminLiveWebRTC(false);
-    snapshotCache = [];
-
-    const modal = document.getElementById('cameraModal');
     const title = document.getElementById('cameraModalTitle');
-    const name = document.getElementById('cameraStudentName');
-    const exam = document.getElementById('cameraExamName');
-    const status = document.getElementById('cameraStatus');
-    const feed = document.getElementById('cameraFeed');
-    const loading = document.getElementById('cameraLoading');
-    const overlay = document.getElementById('cameraOverlay');
-    const gallery = document.getElementById('snapshotGallery');
-    const alerts = document.getElementById('cameraAlertsList');
-
-    if (title) title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${currentCameraStudentName}`;
-    if (name) name.textContent = currentCameraStudentName;
-    if (exam) exam.textContent = currentCameraExamName;
-    if (status) {
-        status.textContent = '🟢 Connecting live camera...';
-        status.className = 'status-active';
-    }
-
-    const video = ensureAdminLiveVideo();
-    if (video) video.style.display = 'none';
-    if (feed) feed.style.display = 'none';
-    if (loading) {
-        loading.style.display = 'flex';
-        loading.innerHTML = `
-            <i class="fas fa-video fa-3x" style="margin-bottom:12px;"></i>
-            <p>Connecting to student's live camera...</p>
-        `;
-    }
-    if (overlay) overlay.style.display = 'none';
-    if (gallery) gallery.style.display = 'none';
-    if (alerts) alerts.innerHTML = '<p style="color:#94A3B8;">Loading alerts...</p>';
+    if (title) title.innerHTML = `<i class=\"fas fa-video\"></i> Live Camera - ${studentName}`;
+    const studentEl = document.getElementById('cameraStudentName');
+    if (studentEl) studentEl.textContent = studentName || 'Student';
+    const examEl = document.getElementById('cameraExamName');
+    if (examEl) examEl.textContent = examName || 'Exam';
+    const modal = document.getElementById('cameraModal');
     if (modal) modal.style.display = 'flex';
 
+    const loading = document.getElementById('cameraLoading');
+    if (loading) {
+        loading.style.display = 'flex';
+        loading.innerHTML = '<div style=\"text-align:center;\"><i class=\"fas fa-spinner fa-spin fa-3x\"></i><p style=\"margin-top:12px;\">Connecting to student camera...</p></div>';
+    }
+    const overlay = document.getElementById('cameraOverlay');
+    if (overlay) overlay.style.display = 'none';
+    const gallery = document.getElementById('snapshotGallery');
+    if (gallery) gallery.style.display = 'none';
+    const alerts = document.getElementById('cameraAlertsList');
+    if (alerts) alerts.innerHTML = '<p style=\"color:#94A3B8;\">Loading alerts...</p>';
+    nchsmSetLiveStatus('🟡 Connecting...', 'status-active');
+
     try {
-        // Snapshot/alerts/history still load in parallel with live video.
+        // Keep the audit panels working while the Live Feed connects.
         await Promise.all([
-            refreshCameraFeed(studentId, examId),
-            loadCameraAlerts(studentId, examId),
-            loadSnapshots(studentId, examId)
+            (typeof loadCameraAlerts === 'function' ? loadCameraAlerts(studentId, examId) : Promise.resolve()),
+            (typeof loadSnapshots === 'function' ? loadSnapshots(studentId, examId) : Promise.resolve())
         ]);
+    } catch (e) {
+        console.warn('🎥 Could not load camera audit panels:', e);
+    }
 
-        const connected = await startAdminLiveWebRTC(studentId, examId);
-
-        if (!connected) {
-            if (status) status.textContent = '🟠 Snapshot mode';
-            if (loading) loading.innerHTML = `
-                <i class="fas fa-image fa-3x" style="margin-bottom:12px;"></i>
-                <p>Live connection unavailable. Showing latest snapshot.</p>
-            `;
+    try {
+        await startNchsmAdminWebRTC(studentId, examId);
+    } catch (e) {
+        console.error('🎥 Live WebRTC startup failed:', e);
+        nchsmSetLiveStatus('📷 Snapshot', 'status-pending');
+        if (typeof refreshCameraFeed === 'function') {
+            try { await refreshCameraFeed(studentId, examId); } catch (err) {}
         }
-
-        startCameraAutoRefresh(studentId, examId);
-    } catch (error) {
-        console.error('❌ Error opening live camera:', error);
-        setAdminLiveStatus(false, '🔴 Camera unavailable');
-        showToast('Error loading camera: ' + error.message, 'error');
     }
 };
 
-// Override close so the WebRTC peer is properly released.
-window.closeCameraModal = function() {
-    stopAdminLiveWebRTC(true);
-
-    if (cameraInterval) {
-        clearInterval(cameraInterval);
-        cameraInterval = null;
+const nchsmOriginalCloseCameraModal = window.closeCameraModal;
+window.closeCameraModal = function(...args) {
+    nchsmCloseAdminWebRTC(true);
+    const video = document.getElementById('cameraLiveVideo');
+    if (video) {
+        try { video.pause(); } catch (e) {}
+        video.srcObject = null;
+        video.style.display = 'none';
     }
-
-    cameraAutoRefresh = true;
-    snapshotCache = [];
-
-    const modal = document.getElementById('cameraModal');
-    if (modal) modal.style.display = 'none';
+    if (typeof nchsmOriginalCloseCameraModal === 'function') {
+        return nchsmOriginalCloseCameraModal.apply(this, args);
+    }
 };
 
-// Also clean up if the admin page is closed.
-window.addEventListener('pagehide', () => stopAdminLiveWebRTC(true));
-
-console.log('✅ WebRTC admin live-camera module loaded');
+window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
