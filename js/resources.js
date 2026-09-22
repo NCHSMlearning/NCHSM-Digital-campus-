@@ -105,6 +105,10 @@ class ResourcesModule {
         this.currentDialogueIndex = 0;
         this.dialogueLines = [];
         this.audioDialogueSpeed = 0.95;
+        // ===== Pre-recorded Podcast State =====
+        this.storedPodcastAudio = null;
+        this.currentPodcastResource = null;
+        this.currentPodcastUrl = null;
         this.waveAnimationId = null;
         this.audioWaveCanvas = null;
         this.audioWaveCtx = null;
@@ -363,12 +367,25 @@ class ResourcesModule {
                 if (this.audioSynth) {
                     this.audioSynth.rate = this.audioDialogueSpeed;
                 }
+                if (this.storedPodcastAudio) {
+                    this.storedPodcastAudio.playbackRate = this.audioDialogueSpeed;
+                }
             });
             this.audioSpeed.value = '0.95';
         }
         if (this.audioProgressBar) {
             this.audioProgressBar.addEventListener('click', (e) => {
-                this.showToast('Seeking is not supported in podcast mode', 'info');
+                if (this.storedPodcastAudio && Number.isFinite(this.storedPodcastAudio.duration)) {
+                    const rect = this.audioProgressBar.getBoundingClientRect();
+                    const ratio = Math.min(
+                        1,
+                        Math.max(0, (e.clientX - rect.left) / rect.width)
+                    );
+                    this.storedPodcastAudio.currentTime =
+                        ratio * this.storedPodcastAudio.duration;
+                } else {
+                    this.showToast('Seeking is not supported in generated podcast mode', 'info');
+                }
             });
         }
     }
@@ -1042,24 +1059,49 @@ class ResourcesModule {
     }
     
     stopAudio() {
+        if (this.storedPodcastAudio) {
+            try {
+                this.storedPodcastAudio.pause();
+                this.storedPodcastAudio.currentTime = 0;
+            } catch (_) {}
+
+            this.isPlaying = false;
+            this.isAudioPaused = false;
+            this.updateAudioUI('stopped');
+            this.stopWaveformAnimation();
+
+            if (this.audioProgressFill) {
+                this.audioProgressFill.style.width = '0%';
+            }
+            if (this.audioCurrentTime) {
+                this.audioCurrentTime.textContent = '0:00';
+            }
+            if (this.audioStatus) {
+                this.audioStatus.textContent = 'Podcast stopped';
+            }
+            return;
+        }
+
         window.speechSynthesis.cancel();
+
+        if (this.audioSynth) {
+            this.audioSynth = null;
+        }
+
         this.isPlaying = false;
         this.isAudioPaused = false;
-        this.audioSynth = null;
         this.currentDialogueIndex = 0;
-        this.dialogueLines = [];
+
+        if (this.audioProgressInterval) {
+            clearInterval(this.audioProgressInterval);
+            this.audioProgressInterval = null;
+        }
+
         this.updateAudioUI('stopped');
         this.stopWaveformAnimation();
         this.resetAudioProgress();
-        if (this.audioSpeakerIndicator) {
-            this.audioSpeakerIndicator.textContent = '🎧 Ready';
-            this.audioSpeakerIndicator.style.color = '#94a3b8';
-        }
-        if (this.audioContainer) {
-            this.audioContainer.classList.remove('audio-playing', 'audio-paused');
-        }
     }
-    
+
     resetAudioProgress() {
         if (this.audioProgressInterval) {
             clearInterval(this.audioProgressInterval);
@@ -1218,32 +1260,49 @@ class ResourcesModule {
     
     async readAloud(resourceId) {
         const resource = this.allResources.find(r => r.id == resourceId);
+
         if (!resource) {
             this.showToast('Resource not found', 'error');
             return;
         }
-        
-        this.showToast('🎙️ Generating NotebookLM-style podcast...', 'info');
-        
+
+        // ========================================================
+        // PRE-RECORDED PODCAST FIRST
+        // If the administrator uploaded podcast_url, play it
+        // directly instead of generating an AI podcast.
+        // ========================================================
+        const storedPodcastUrl = String(
+            resource.podcast_url ||
+            resource.podcastUrl ||
+            ''
+        ).trim();
+
+        if (storedPodcastUrl) {
+            await this.playStoredPodcast(resource, storedPodcastUrl);
+            return;
+        }
+
+        // No prerecorded audio: retain the existing AI/local
+        // podcast generation as a fallback.
+        this.showToast('🎙️ No prerecorded audio found. Preparing podcast...', 'info');
+
         try {
             let fullText = '';
             const fileType = this.getFileType(resource.file_path);
-            
-            // Build content with proper context
+
             fullText = `${resource.title}. `;
-            
+
             if (resource.resource_type === 'pastpaper') {
                 fullText += `This is a past paper for ${resource.course_name || 'nursing'}. `;
                 if (resource.exam_type) {
                     fullText += `It covers ${this.getExamTypeLabel(resource.exam_type)} type questions. `;
                 }
             }
-            
+
             if (resource.description && resource.description.length > 10) {
                 fullText += resource.description + ' ';
             }
-            
-            // Extract from PDF if available
+
             if (resource.file_url && fileType === 'pdf') {
                 try {
                     const extractedText = await this.extractFullPDFText(resource.file_url);
@@ -1255,16 +1314,15 @@ class ResourcesModule {
                     console.warn('Could not extract PDF text:', e);
                 }
             }
-            
+
             if (!fullText || fullText.length < 50) {
                 fullText = this.generateResourceDescription(resource);
             }
-            
+
             fullText = fullText.replace(/\s+/g, ' ').trim();
-            
-            // Generate the podcast with the secure Supabase AI Edge Function.
-            // Only use the local script generator if the AI service fails.
+
             let podcastScript;
+
             try {
                 podcastScript = await this.createAIPodcastScript(fullText, resource);
                 this.showToast('🤖 AI podcast generated from the resource', 'success');
@@ -1273,27 +1331,174 @@ class ResourcesModule {
                 this.showToast('⚠️ AI podcast unavailable. Using local podcast fallback.', 'warning');
                 podcastScript = this.generatePodcastScript(fullText, resource.title);
             }
-            
-            // Show audio player
+
             this.showAudioPlayer(fullText, `📚 ${resource.title}`);
-            
-            // Play the podcast
             await this.playPodcastDialogue(podcastScript);
-            
+
         } catch (error) {
             console.error('Podcast error:', error);
             this.showToast('Failed to generate podcast: ' + error.message, 'error');
-            
-            // Fallback
-            let fallbackText = `Document: ${resource.title}. `;
-            if (resource.description) {
-                fallbackText += resource.description;
-            }
-            this.showAudioPlayer(fallbackText, resource.title);
-            this.playFallbackAudio();
         }
     }
-    
+
+    // ============================================================
+    // 🎧 PLAY ADMIN-UPLOADED PRE-RECORDED PODCAST
+    // ============================================================
+    async playStoredPodcast(resource, podcastUrl) {
+        try {
+            this.stopAudio();
+
+            if (this.storedPodcastAudio) {
+                try {
+                    this.storedPodcastAudio.pause();
+                    this.storedPodcastAudio.removeAttribute('src');
+                    this.storedPodcastAudio.load();
+                } catch (_) {}
+            }
+
+            const audio = new Audio();
+            audio.preload = 'metadata';
+            audio.src = podcastUrl;
+            audio.playbackRate = parseFloat(this.audioSpeed?.value || '1') || 1;
+
+            this.storedPodcastAudio = audio;
+            this.currentPodcastResource = resource;
+            this.currentPodcastUrl = podcastUrl;
+            this.isPlaying = false;
+            this.isAudioPaused = false;
+
+            this.showAudioPlayer(
+                '',
+                `🎙️ ${resource.title || 'Podcast'}`
+            );
+
+            if (this.audioWordCount) {
+                this.audioWordCount.textContent = 'Pre-recorded audio';
+            }
+
+            if (this.audioStatus) {
+                this.audioStatus.textContent = 'Loading podcast…';
+            }
+
+            if (this.audioSpeakerIndicator) {
+                this.audioSpeakerIndicator.textContent = '🎧 Pre-recorded lesson';
+                this.audioSpeakerIndicator.style.color = '#7c3aed';
+            }
+
+            const formatTime = (seconds) => {
+                if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+                return `${mins}:${secs}`;
+            };
+
+            const updateProgress = () => {
+                if (!audio || !audio.duration || !Number.isFinite(audio.duration)) return;
+
+                const pct = Math.min(
+                    100,
+                    Math.max(0, (audio.currentTime / audio.duration) * 100)
+                );
+
+                if (this.audioProgressFill) {
+                    this.audioProgressFill.style.width = `${pct}%`;
+                }
+
+                if (this.audioCurrentTime) {
+                    this.audioCurrentTime.textContent = formatTime(audio.currentTime);
+                }
+
+                if (this.audioDuration) {
+                    this.audioDuration.textContent = formatTime(audio.duration);
+                }
+            };
+
+            audio.addEventListener('loadedmetadata', () => {
+                updateProgress();
+                if (this.audioStatus) {
+                    this.audioStatus.textContent = 'Ready to play';
+                }
+            });
+
+            audio.addEventListener('timeupdate', updateProgress);
+
+            audio.addEventListener('play', () => {
+                this.isPlaying = true;
+                this.isAudioPaused = false;
+                this.updateAudioUI('playing');
+                this.startWaveformAnimation();
+
+                if (this.audioStatus) {
+                    this.audioStatus.textContent = '▶️ Playing pre-recorded podcast';
+                }
+            });
+
+            audio.addEventListener('pause', () => {
+                if (!audio.ended) {
+                    this.isPlaying = false;
+                    this.isAudioPaused = true;
+                    this.updateAudioUI('paused');
+                    this.stopWaveformAnimation();
+
+                    if (this.audioStatus) {
+                        this.audioStatus.textContent = '⏸️ Podcast paused';
+                    }
+                }
+            });
+
+            audio.addEventListener('ended', () => {
+                this.isPlaying = false;
+                this.isAudioPaused = false;
+                this.updateAudioUI('stopped');
+                this.stopWaveformAnimation();
+
+                if (this.audioProgressFill) {
+                    this.audioProgressFill.style.width = '100%';
+                }
+
+                if (this.audioCurrentTime && audio.duration) {
+                    this.audioCurrentTime.textContent = formatTime(audio.duration);
+                }
+
+                if (this.audioStatus) {
+                    this.audioStatus.textContent = '✅ Podcast complete';
+                }
+            });
+
+            audio.addEventListener('error', (event) => {
+                console.error('❌ Pre-recorded podcast audio error:', event, audio.error);
+                this.isPlaying = false;
+                this.isAudioPaused = false;
+                this.stopWaveformAnimation();
+                this.updateAudioUI('stopped');
+
+                if (this.audioStatus) {
+                    this.audioStatus.textContent = '❌ Audio could not be loaded';
+                }
+
+                this.showToast(
+                    'Unable to play the uploaded podcast. Check the Supabase Storage URL/bucket permissions.',
+                    'error'
+                );
+            });
+
+            // Try to play immediately after loading.
+            await audio.play();
+
+        } catch (error) {
+            console.error('❌ Could not play prerecorded podcast:', error);
+
+            if (this.audioStatus) {
+                this.audioStatus.textContent = '❌ Playback failed';
+            }
+
+            this.showToast(
+                'Could not start the prerecorded podcast: ' + (error?.message || error),
+                'error'
+            );
+        }
+    }
+
     playFallbackAudio() {
         if (!this.currentAudioText) {
             this.showToast('No text to read', 'warning');
