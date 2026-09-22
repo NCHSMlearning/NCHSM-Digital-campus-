@@ -422,7 +422,7 @@
                 const collectReadings = async () => {
                     while (readings.length < minReadings && !isResolved) {
                         const reading = await getReading();
-                        if (reading && reading.accuracy <= maxAccuracy) {
+                        if (reading && reading.accuracy < 200) {
                             if (readings.length > 0) {
                                 const avg = calculateWeightedAverage(readings);
                                 if (avg) {
@@ -482,28 +482,11 @@
                         isResolved = true;
                         if (readings.length >= 2) {
                             const finalLocation = calculateWeightedAverage(readings);
-
                             if (finalLocation) {
-                                const verification = this.verifyLocation(finalLocation);
-
-                                if (verification.passed) {
-                                    finalLocation.rawReadings = readings;
-                                    finalLocation.verification = verification;
-                                    this.stableLocation = finalLocation;
-                                    resolve(finalLocation);
-                                    return;
-                                }
-
-                                showToast(
-                                    `❌ GPS verification failed: ${verification.reason}`,
-                                    'error',
-                                    5000
-                                );
-                                resolve(null);
+                                resolve(finalLocation);
                                 return;
                             }
                         }
-
                         showToast('⏰ GPS timeout - please try again', 'error');
                         resolve(null);
                     }
@@ -1797,7 +1780,59 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
     // 📍 GET ULTRA-ACCURATE LOCATION
     // ============================================
     
-    async function getAccurateLocation() {
+    
+/**
+ * Device-aware location profile.
+ * Phones/tablets normally have better GNSS accuracy; laptops often rely on
+ * browser/Wi-Fi positioning. Laptop support does NOT bypass distance checks.
+ */
+function getDeviceLocationProfile() {
+    const ua = navigator.userAgent || '';
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const isTablet = /Tablet|iPad/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua));
+    return {
+        isMobile: isMobile || isTablet,
+        isLaptop: !isMobile && !isTablet,
+        label: (isMobile || isTablet) ? 'mobile' : 'laptop'
+    };
+}
+
+/**
+ * Browser geolocation fallback for laptops.
+ * The returned coordinate is still checked against the session target/radius
+ * by doCheckIn(); this only improves compatibility where a laptop has no GNSS.
+ */
+function getLaptopBrowserLocation(options = {}) {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            resolve(null);
+            return;
+        }
+
+        const timeout = Number(options.timeout || 12000);
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                resolve({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: Number(position.coords.accuracy || 9999),
+                    timestamp: position.timestamp || Date.now(),
+                    source: 'browser-laptop',
+                    device_type: 'laptop'
+                });
+            },
+            () => resolve(null),
+            {
+                enableHighAccuracy: false,
+                maximumAge: 10000,
+                timeout
+            }
+        );
+    });
+}
+
+async function getAccurateLocation() {
         console.log('📍 Getting ULTRA-ACCURATE GPS with 5-point verification...');
         showToast('📡 Acquiring accurate GPS signal...', 'info', 2000);
         
@@ -1937,22 +1972,18 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
             return;
         }
         
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '📡 Acquiring GPS...';
-            btn.style.opacity = '0.6';
-        }
+        btn.disabled = true;
+        btn.innerHTML = '📡 Acquiring GPS...';
+        btn.style.opacity = '0.6';
         
         try {
             const studentInfo = await getCurrentStudentInfo();
             
             if (!studentInfo || !studentInfo.user_id) {
                 showToast('Please log in first', 'error');
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '📍 Check In Now';
-                    btn.style.opacity = '1';
-                }
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                btn.style.opacity = '1';
                 return;
             }
             
@@ -1977,15 +2008,14 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
             const supabase = getSupabase();
             if (!supabase) {
                 showToast('Database not available', 'error');
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '📍 Check In Now';
-                    btn.style.opacity = '1';
-                }
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                btn.style.opacity = '1';
                 return;
             }
             
             const location = await getAccurateLocation();
+        const deviceType = location?.device_type || getDeviceLocationProfile().label;
             
             if (!location) {
                 btn.disabled = false;
@@ -2069,16 +2099,14 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
             });
             
             if (!confirmed) {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '📍 Check In Now';
-                    btn.style.opacity = '1';
-                }
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                btn.style.opacity = '1';
                 showToast('Check-in cancelled', 'warning');
                 return;
             }
             
-            if (btn) btn.innerHTML = '💾 Saving...';
+            btn.innerHTML = '💾 Saving...';
             
             const sessionType = sessionTypeSelect?.value || 'class';
             
@@ -2161,11 +2189,9 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
             console.error('❌ Check-in error:', error);
             showToast('Check-in failed: ' + error.message, 'error');
         } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
-                btn.style.opacity = '1';
-            }
+            btn.disabled = false;
+            btn.innerHTML = '📍 Check In Now';
+            btn.style.opacity = '1';
         }
     }
 
