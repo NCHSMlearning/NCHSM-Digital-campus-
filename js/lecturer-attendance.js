@@ -49,6 +49,198 @@ const LecturerAttendance = {
     },
 
     // ============================================================
+    // SESSION-SAFE ATTENDANCE HELPERS
+    // ============================================================
+    getLocalDateString(date = new Date()) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    },
+
+    isValidAttendanceStatus(log) {
+        const status = String(log?.attendance_status || '').toLowerCase();
+        return status === 'present' || status === 'verified' || log?.is_verified === true;
+    },
+
+    attendanceIdentity(log) {
+        return String(log?.user_id || log?.student_id || log?.registration_number || '').trim();
+    },
+
+    chooseEffectiveAttendanceRows(logs = []) {
+        const byKey = new Map();
+        const rank = (log) => {
+            const status = String(log?.attendance_status || '').toLowerCase();
+            if (status === 'verified' || log?.is_verified === true) return 4;
+            if (status === 'present') return 3;
+            if (status === 'pending') return 2;
+            if (status === 'absent') return 1;
+            return 0;
+        };
+
+        for (const log of logs) {
+            const key = `${this.attendanceIdentity(log)}|${String(log?.session_id || 'NO_SESSION')}`;
+            if (!key || key.startsWith('|')) continue;
+            const previous = byKey.get(key);
+            if (!previous ||
+                rank(log) > rank(previous) ||
+                (rank(log) === rank(previous) &&
+                 new Date(log?.check_in_time || log?.created_at || 0) >
+                 new Date(previous?.check_in_time || previous?.created_at || 0))) {
+                byKey.set(key, log);
+            }
+        }
+        return [...byKey.values()];
+    },
+
+    async getScheduledSessionsByIds(sessionIds = []) {
+        const supabase = window.lecturerDB?.supabase;
+        const ids = [...new Set(sessionIds.filter(Boolean).map(String))];
+        if (!supabase || !ids.length) return new Map();
+
+        const { data, error } = await supabase
+            .from('scheduled_sessions')
+            .select('id, session_date, session_time, session_type, unit_name, course_name, title, session_title, block, block_term, intake_year, target_program, program, location_name, target_radius')
+            .in('id', ids);
+
+        if (error) {
+            console.warn('⚠️ Could not load session metadata:', error.message);
+            return new Map();
+        }
+
+        return new Map((data || []).map(session => [String(session.id), session]));
+    },
+
+    async attachSessionMetadata(logs = []) {
+        const sessionIds = logs.map(l => l.session_id).filter(Boolean);
+        const sessionMap = await this.getScheduledSessionsByIds(sessionIds);
+        return logs.map(log => {
+            const session = sessionMap.get(String(log.session_id));
+            return session ? { ...log, _session: session } : log;
+        });
+    },
+
+    async getSessionForManualAttendance({ date, unit, sessionType }) {
+        const supabase = window.lecturerDB?.supabase;
+        const profile = window.lecturerDB?.getCurrentUserProfile?.();
+        const lecturerId = this.lecturerUuid || profile?.user_id;
+        if (!supabase || !date) return null;
+
+        let query = supabase
+            .from('scheduled_sessions')
+            .select('*')
+            .eq('session_date', date)
+            .in('status', ['scheduled', 'active', 'closed'])
+            .order('session_time', { ascending: true });
+
+        if (lecturerId) query = query.eq('created_by', lecturerId);
+        if (unit) query = query.eq('unit_name', unit);
+        if (sessionType) query = query.eq('session_type', sessionType);
+
+        const { data, error } = await query.limit(10);
+        if (error) {
+            console.warn('⚠️ Manual attendance session lookup failed:', error.message);
+            return null;
+        }
+        return (data || [])[0] || null;
+    },
+
+    async findExistingAttendance(userId, sessionId) {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase || !userId || !sessionId) return null;
+
+        const { data, error } = await supabase
+            .from('geo_attendance_logs')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('session_id', sessionId)
+            .neq('role', 'lecturer')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+            throw new Error(error.message);
+        }
+        return data || null;
+    },
+
+    async saveAttendanceForSession({ userId, student, session, attendance = {} }) {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase || !userId || !session?.id) throw new Error('Student and session are required');
+
+        const now = new Date().toISOString();
+        const existing = await this.findExistingAttendance(userId, session.id);
+
+        const base = {
+            user_id: userId,
+            student_id: student?.student_id || student?.admission_number || student?.registration_number || userId,
+            registration_number: student?.registration_number || student?.admission_number || student?.student_id || userId,
+            student_name: student?.full_name || student?.name || 'Student',
+            session_id: session.id,
+            target_id: session.id,
+            session_type: session.session_type || 'Class',
+            target_name: session.location_name || session.session_title || session.title || 'Class',
+            unit_name: session.unit_name || session.course_name || attendance.unit_name || 'General',
+            program: student?.program || session.target_program || session.program || this.currentProgram || 'KRCHN',
+            block: student?.block || session.block_term || session.block || null,
+            intake_year: student?.intake_year || session.intake_year || null,
+            role: 'student'
+        };
+
+        const updatePayload = {
+            ...attendance,
+            ...base,
+            attendance_status: 'Present',
+            is_verified: attendance.is_verified ?? false,
+            finalized_at: null,
+            finalized_by: null,
+            verification_source: attendance.verification_source || 'Student Check-in',
+            finalization_reason: null,
+            check_in_time: attendance.check_in_time || now
+        };
+
+        if (existing?.id) {
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .update(updatePayload)
+                .eq('id', existing.id)
+                .select('*')
+                .maybeSingle();
+
+            if (error) throw new Error(error.message);
+            return { data, reused: true };
+        }
+
+        const { data, error } = await supabase
+            .from('geo_attendance_logs')
+            .insert({ ...updatePayload, created_at: now })
+            .select('*')
+            .maybeSingle();
+
+        if (error) {
+            // If a DB uniqueness constraint has already been installed, handle
+            // a concurrent insert by re-reading the existing row.
+            if (String(error.code || '').startsWith('23')) {
+                const concurrent = await this.findExistingAttendance(userId, session.id);
+                if (concurrent?.id) {
+                    const { data: updated, error: updateError } = await supabase
+                        .from('geo_attendance_logs')
+                        .update(updatePayload)
+                        .eq('id', concurrent.id)
+                        .select('*')
+                        .maybeSingle();
+                    if (updateError) throw new Error(updateError.message);
+                    return { data: updated, reused: true };
+                }
+            }
+            throw new Error(error.message);
+        }
+
+        return { data, reused: false };
+    },
+
+    // ============================================================
     // INIT
     // ============================================================
     async init() {
@@ -225,11 +417,12 @@ const LecturerAttendance = {
                 tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Database not available</td></tr>';
                 return;
             }
-            const todayStr = new Date().toISOString().split('T')[0];
 
+            const todayStr = this.getLocalDateString();
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
+                .neq('role', 'lecturer')
                 .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .lte('check_in_time', `${todayStr}T23:59:59.999Z`)
                 .order('check_in_time', { ascending: false });
@@ -238,7 +431,9 @@ const LecturerAttendance = {
                 tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Error: ${error.message}</td></tr>`;
                 return;
             }
-            this.todayLogs = logs || [];
+
+            const enriched = await this.attachSessionMetadata(logs || []);
+            this.todayLogs = this.chooseEffectiveAttendanceRows(enriched);
             this.filteredTodayLogs = [...this.todayLogs];
             this.renderTodayAttendance();
             this.updateStats(this.todayLogs);
@@ -374,17 +569,20 @@ const LecturerAttendance = {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
-            const todayStr = new Date().toISOString().split('T')[0];
 
+            const todayStr = this.getLocalDateString();
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
+                .neq('role', 'lecturer')
                 .lt('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .order('check_in_time', { ascending: false })
-                .limit(100);
+                .limit(1000);
 
             if (error) { console.error(error); return; }
-            this.pastLogs = logs || [];
+
+            const enriched = await this.attachSessionMetadata(logs || []);
+            this.pastLogs = this.chooseEffectiveAttendanceRows(enriched);
             this.filteredPastLogs = [...this.pastLogs];
             this.renderPastAttendance();
         } catch (error) {
@@ -465,24 +663,33 @@ const LecturerAttendance = {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
-            const todayStr = new Date().toISOString().split('T')[0];
 
-            const { data: logs } = await supabase
+            const todayStr = this.getLocalDateString();
+            const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
-                .select('attendance_status, is_verified')
+                .select('*')
+                .neq('role', 'lecturer')
                 .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .lte('check_in_time', `${todayStr}T23:59:59.999Z`);
 
-            const total = logs?.length || 0;
-            const present = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'present' || l.is_verified === true).length || 0;
-            const absent = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'absent').length || 0;
-            const pending = total - present - absent;
+            if (error) throw error;
+
+            const effective = this.chooseEffectiveAttendanceRows(logs || []);
+            const total = effective.length;
+            const present = effective.filter(l => this.isValidAttendanceStatus(l)).length;
+            const absent = effective.filter(l => String(l.attendance_status || '').toLowerCase() === 'absent').length;
+            const pending = effective.filter(l => {
+                const status = String(l.attendance_status || '').toLowerCase();
+                return status === 'pending' || status === '';
+            }).length;
             const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
             const cardMap = {
-                'totalStudentsCount': total, 'presentTodayCount': present,
-                'absentTodayCount': absent, 'pendingCount': pending,
-                'attendanceRate': rate + '%'
+                totalStudentsCount: total,
+                presentTodayCount: present,
+                absentTodayCount: absent,
+                pendingCount: pending,
+                attendanceRate: rate + '%'
             };
 
             for (const [id, value] of Object.entries(cardMap)) {
@@ -603,7 +810,7 @@ const LecturerAttendance = {
                 const userId = profile?.user_id || this.lecturerUuid;
                 if (!supabase || !userId) throw new Error('Database or user not available');
 
-                const today = new Date().toISOString().split('T')[0];
+                const today = this.getLocalDateString();
                 const { data: existing } = await supabase
                     .from('geo_attendance_logs')
                     .select('id')
@@ -688,39 +895,60 @@ const LecturerAttendance = {
 
             const { data: student } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select('full_name, program, block, intake_year, student_id')
+                .select('user_id, full_name, program, block, intake_year, student_id, admission_number, registration_number')
                 .eq('user_id', studentId)
                 .maybeSingle();
 
             if (!student) throw new Error('Student not found');
 
-            const checkInTime = time ? `${date}T${time}:00.000Z` : `${date}T12:00:00.000Z`;
-
-            const { error: insertError } = await supabase.from('geo_attendance_logs').insert({
-                student_id: studentId,
-                student_name: student.full_name || 'Student',
-                check_in_time: checkInTime,
-                session_type: sessionType,
-                target_name: unit || 'General', unit_name: unit || 'General',
-                attendance_status: 'Present', is_verified: true, is_manual_entry: true,
-                location_friendly_name: location || 'Manual Entry',
-                location_address: `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
-                program: student.program || profile.program || 'KRCHN',
-                block: student.block || profile.block,
-                block_display: student.block ? this.getBlockDisplay(student.block) : 'N/A',
-                intake_year: student.intake_year || profile.intake_year,
-                role: 'student', recorded_by_id: profile.user_id,
-                recorded_by_name: profile.full_name || 'Lecturer',
-                program_type: this.getProgramTypeLabel(),
-                is_tvet: this.isTVET,
-                created_at: new Date().toISOString()
+            // Manual attendance must belong to a real scheduled session.
+            // This preserves the same one-student/one-session architecture
+            // used by GPS check-in and session reconciliation.
+            const session = await this.getSessionForManualAttendance({
+                date,
+                unit,
+                sessionType
             });
 
-            if (insertError) throw new Error(insertError.message);
+            if (!session) {
+                throw new Error(`No scheduled session found for ${date}${unit ? ` and unit "${unit}"` : ''}. Create/open the session first.`);
+            }
 
-            this.showNotification(`✅ ${student.full_name} marked present!`, 'success');
+            const checkInTime = time
+                ? `${date}T${time}:00.000Z`
+                : new Date().toISOString();
+
+            const result = await this.saveAttendanceForSession({
+                userId: studentId,
+                student,
+                session,
+                attendance: {
+                    check_in_time: checkInTime,
+                    latitude: null,
+                    longitude: null,
+                    accuracy_m: null,
+                    distance_meters: null,
+                    is_manual_entry: true,
+                    is_verified: true,
+                    location_friendly_name: location || 'Manual Entry',
+                    location_address: `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
+                    recorded_by_id: profile.user_id,
+                    recorded_by_name: profile.full_name || 'Lecturer',
+                    program_type: this.getProgramTypeLabel(),
+                    is_tvet: this.isTVET,
+                    verification_source: 'Manual Lecturer Entry'
+                }
+            });
+
+            this.showNotification(
+                result.reused
+                    ? `✅ Existing attendance for ${student.full_name} updated — no duplicate created.`
+                    : `✅ ${student.full_name} marked present!`,
+                'success'
+            );
+
             form.reset();
-            document.getElementById('attDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('attDate').value = this.getLocalDateString();
 
             await this.loadTodayAttendance();
             await this.loadAttendanceStats();
@@ -728,7 +956,8 @@ const LecturerAttendance = {
             console.error('❌ markStudentAttendance:', error);
             this.showNotification('Failed: ' + error.message, 'error');
         } finally {
-            btn.disabled = false; btn.innerHTML = originalText;
+            btn.disabled = false;
+            btn.innerHTML = originalText;
             this.isProcessing = false;
         }
     },
@@ -971,6 +1200,220 @@ const LecturerAttendance = {
         wb.creator = 'NCHSM';
         wb.created = new Date();
 
+        // ============================================================
+        // WORKBOOK SUMMARY SHEET
+        // ============================================================
+        const summaryWs = wb.addWorksheet('SUMMARY', {
+            pageSetup: {
+                paperSize: 9,
+                orientation: 'landscape',
+                fitToPage: true,
+                fitToWidth: 1,
+                fitToHeight: 0,
+                margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
+            }
+        });
+
+        const SUMMARY_PURPLE = 'FF4F46E5';
+        const SUMMARY_PURPLE_LIGHT = 'FFEEF2FF';
+        const SUMMARY_GREEN_LIGHT = 'FFD1FAE5';
+        const SUMMARY_RED_LIGHT = 'FFFEE2E2';
+        const SUMMARY_AMBER_LIGHT = 'FFFEF3C7';
+        const SUMMARY_DARK = 'FF0F172A';
+        const SUMMARY_GREY = 'FF64748B';
+        const SUMMARY_BORDER = 'FFE2E8F0';
+        const summaryCols = 12;
+
+        const summaryMerge = (row, value, opts = {}) => {
+            summaryWs.mergeCells(row, 1, row, summaryCols);
+            const cell = summaryWs.getCell(row, 1);
+            cell.value = value;
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            if (opts.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: opts.fill } };
+            if (opts.font) cell.font = opts.font;
+            if (opts.height) summaryWs.getRow(row).height = opts.height;
+        };
+
+        let sr = 1;
+        summaryMerge(sr++, 'NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT', {
+            fill: SUMMARY_PURPLE,
+            font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 16 },
+            height: 34
+        });
+        summaryMerge(sr++, 'DEPARTMENT OF NURSING — ATTENDANCE SUMMARY', {
+            fill: SUMMARY_PURPLE_LIGHT,
+            font: { bold: true, color: { argb: SUMMARY_PURPLE }, size: 13 },
+            height: 24
+        });
+        summaryMerge(sr++, `${this.currentProgram || 'Nursing'} | Generated: ${new Date().toLocaleString('en-GB')}`, {
+            font: { color: { argb: SUMMARY_DARK }, size: 11 },
+            height: 22
+        });
+
+        sr++;
+        const summaryHeaders = [
+            'S/NO', 'CLASS / BLOCK', 'INTAKE', 'PROGRAM', 'UNIT', 'SESSION TYPE',
+            'STUDENTS', 'PRESENT', 'ABSENT', 'PENDING', 'ATTENDANCE %', 'ABSENCE %'
+        ];
+        summaryHeaders.forEach((value, i) => {
+            const cell = summaryWs.getCell(sr, i + 1);
+            cell.value = value;
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_PURPLE } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            cell.border = {
+                top: { style: 'thin', color: { argb: SUMMARY_BORDER } },
+                bottom: { style: 'thin', color: { argb: SUMMARY_BORDER } },
+                left: { style: 'thin', color: { argb: SUMMARY_BORDER } },
+                right: { style: 'thin', color: { argb: SUMMARY_BORDER } }
+            };
+        });
+        summaryWs.getRow(sr).height = 30;
+        const summaryHeaderRow = sr;
+        sr++;
+
+        const summaryRows = [];
+
+        // Summary is based on the same class/unit groups that are exported.
+        classList.forEach((cls, index) => {
+            const studentMap = {};
+            cls.logs.forEach(log => {
+                const reg = String(log.registration_number || log.student_id || log.student_name || 'N/A').trim();
+                if (!studentMap[reg]) studentMap[reg] = {};
+                const iso = log.check_in_time
+                    ? new Date(log.check_in_time).toISOString().split('T')[0]
+                    : null;
+                if (!iso) return;
+
+                const status = String(log.attendance_status || '').toLowerCase();
+                const verified = log.is_verified === true || status === 'present' || status === 'verified';
+                let mark = '-';
+                if (verified) mark = '✓';
+                else if (status === 'absent') mark = 'A';
+                else if (status === 'pending' || status === '') mark = 'P';
+
+                const rank = { '✓': 4, 'P': 3, 'A': 2, '-': 0 };
+                if (!studentMap[reg][iso] || rank[mark] > rank[studentMap[reg][iso]]) {
+                    studentMap[reg][iso] = mark;
+                }
+            });
+
+            const students = Object.values(studentMap);
+            const dates = [...new Set(cls.logs.map(l =>
+                l.check_in_time ? new Date(l.check_in_time).toISOString().split('T')[0] : null
+            ).filter(Boolean))];
+
+            const totalStudents = students.length;
+            const totalSessions = dates.length || 1;
+            const possible = totalStudents * totalSessions;
+
+            let present = 0, absent = 0, pending = 0;
+            students.forEach(student => dates.forEach(date => {
+                const mark = student[date] || '-';
+                if (mark === '✓') present++;
+                else if (mark === 'A') absent++;
+                else pending++;
+            }));
+
+            const attendanceRate = possible ? Math.round((present / possible) * 100) : 0;
+            const absenceRate = possible ? Math.round((absent / possible) * 100) : 0;
+
+            summaryRows.push([
+                index + 1, cls.blockDisplay, cls.intake, cls.program, cls.unit,
+                cls.sessionType, totalStudents, present, absent, pending,
+                `${attendanceRate}%`, `${absenceRate}%`
+            ]);
+        });
+
+        summaryRows.forEach(values => {
+            values.forEach((value, i) => {
+                const cell = summaryWs.getCell(sr, i + 1);
+                cell.value = value;
+                cell.alignment = { horizontal: i >= 6 ? 'center' : 'left', vertical: 'middle', wrapText: true };
+                cell.font = { size: 10, color: { argb: SUMMARY_DARK } };
+                cell.border = {
+                    top: { style: 'thin', color: { argb: SUMMARY_BORDER } },
+                    bottom: { style: 'thin', color: { argb: SUMMARY_BORDER } },
+                    left: { style: 'thin', color: { argb: SUMMARY_BORDER } },
+                    right: { style: 'thin', color: { argb: SUMMARY_BORDER } }
+                };
+                if (i === 7) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_GREEN_LIGHT } };
+                if (i === 8) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_RED_LIGHT } };
+                if (i === 9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_AMBER_LIGHT } };
+            });
+            sr++;
+        });
+
+        const overall = summaryRows.reduce((a, row) => {
+            a.students += Number(row[6]) || 0;
+            a.present += Number(row[7]) || 0;
+            a.absent += Number(row[8]) || 0;
+            a.pending += Number(row[9]) || 0;
+            return a;
+        }, { students: 0, present: 0, absent: 0, pending: 0 });
+
+        const overallPossible = overall.present + overall.absent + overall.pending;
+        const overallAttendance = overallPossible ? Math.round((overall.present / overallPossible) * 100) : 0;
+        const overallAbsence = overallPossible ? Math.round((overall.absent / overallPossible) * 100) : 0;
+
+        summaryWs.mergeCells(sr, 1, sr, 6);
+        summaryWs.getCell(sr, 1).value = 'OVERALL SUMMARY';
+        summaryWs.getCell(sr, 1).font = { bold: true, color: { argb: SUMMARY_DARK }, size: 11 };
+        summaryWs.getCell(sr, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+        [
+            overall.students, overall.present, overall.absent, overall.pending,
+            `${overallAttendance}%`, `${overallAbsence}%`
+        ].forEach((value, i) => {
+            const cell = summaryWs.getCell(sr, i + 7);
+            cell.value = value;
+            cell.font = { bold: true, color: { argb: SUMMARY_DARK }, size: 11 };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+        for (let c = 1; c <= summaryCols; c++) {
+            summaryWs.getCell(sr, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_GREEN_LIGHT } };
+            summaryWs.getCell(sr, c).border = {
+                top: { style: 'thin', color: { argb: SUMMARY_BORDER } },
+                bottom: { style: 'thin', color: { argb: SUMMARY_BORDER } },
+                left: { style: 'thin', color: { argb: SUMMARY_BORDER } },
+                right: { style: 'thin', color: { argb: SUMMARY_BORDER } }
+            };
+        }
+        summaryWs.getRow(sr).height = 26;
+        sr += 2;
+
+        summaryMerge(sr++, 'ATTENDANCE KEY', {
+            fill: SUMMARY_PURPLE_LIGHT,
+            font: { bold: true, color: { argb: SUMMARY_PURPLE }, size: 11 },
+            height: 22
+        });
+        [
+            ['✓', 'Present — valid attendance'],
+            ['A', 'Absent — attendance record not valid for the session'],
+            ['P', 'Pending / unresolved attendance'],
+            ['-', 'No attendance mark available']
+        ].forEach(([code, description]) => {
+            summaryWs.getCell(sr, 1).value = code;
+            summaryWs.getCell(sr, 1).font = { bold: true, size: 11 };
+            summaryWs.getCell(sr, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+            summaryWs.mergeCells(sr, 2, sr, summaryCols);
+            summaryWs.getCell(sr, 2).value = description;
+            summaryWs.getCell(sr, 2).font = { size: 10, color: { argb: SUMMARY_GREY } };
+            summaryWs.getCell(sr, 2).alignment = { vertical: 'middle', wrapText: true };
+            sr++;
+        });
+
+        summaryWs.columns = [
+            { width: 7 }, { width: 22 }, { width: 12 }, { width: 12 },
+            { width: 30 }, { width: 18 }, { width: 11 }, { width: 11 },
+            { width: 11 }, { width: 11 }, { width: 15 }, { width: 13 }
+        ];
+        summaryWs.views = [{ state: 'frozen', ySplit: summaryHeaderRow }];
+        summaryWs.autoFilter = {
+            from: { row: summaryHeaderRow, column: 1 },
+            to: { row: summaryHeaderRow + summaryRows.length, column: summaryCols }
+        };
+
         const usedNames = new Set();
 
         // ---- 5. BUILD EACH SHEET ----
@@ -1001,10 +1444,10 @@ const LecturerAttendance = {
                 const verified = log.is_verified === true;
                 let mark = '-';
                 if (verified || status === 'present' || status === 'verified') mark = '✓';
-                else if (status === 'absent') mark = 'A';
+                else if (status === 'absent') mark = log.verification_source === 'Automatic Session Finalization' ? 'A*' : 'A';
                 else if (status === 'pending' || status === '') mark = 'P';
 
-                const rank = { '✓': 3, 'P': 2, 'A': 1, '-': 0 };
+                const rank = { '✓': 3, 'P': 2, 'A*': 1, 'A': 1, '-': 0 };
                 const prev = studentMap[reg].byDate[iso];
                 if (!prev || rank[mark] > rank[prev]) studentMap[reg].byDate[iso] = mark;
             });
@@ -1101,7 +1544,7 @@ const LecturerAttendance = {
 
                     let fill = GREY_LIGHT, fontColor = GREY;
                     if (mark === '✓') { fill = GREEN_LIGHT; fontColor = GREEN; }
-                    else if (mark === 'A') { fill = RED_LIGHT; fontColor = RED; }
+                    else if (mark === 'A' || mark === 'A*') { fill = RED_LIGHT; fontColor = RED; }
                     else if (mark === 'P') { fill = AMBER_LIGHT; fontColor = AMBER; }
 
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
@@ -1135,7 +1578,8 @@ const LecturerAttendance = {
             const totalStudents = students.length;
             const totalSessions = sortedDates.length;
             const totalPossible = totalStudents * totalSessions;
-            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
+            const totalPresent = students.reduce((sum, x) =>
+                sum + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const rate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
 
             ws.mergeCells(r, 1, r, totalCols);
@@ -1144,6 +1588,49 @@ const LecturerAttendance = {
             sumCell.alignment = { horizontal: 'center', vertical: 'middle' };
             sumCell.font = { bold: true, color: { argb: 'FF065F46' }, size: 11 };
             sumCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN_LIGHT } };
+            ws.getRow(r).height = 24;
+            r += 2;
+
+            // ---- Detailed attendance summary ----
+            const totalAbsent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === 'A' || v === 'A*').length, 0);
+            const totalAutoAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source === 'Automatic Session Finalization').length;
+            const totalAttemptedAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source !== 'Automatic Session Finalization').length;
+            const totalPending = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === 'P').length, 0);
+            const totalPossibleDetailed = totalStudents * totalSessions;
+            const attendanceRate = totalPossibleDetailed ? Math.round((totalPresent / totalPossibleDetailed) * 100) : 0;
+            const absenceRate = totalPossibleDetailed ? Math.round((totalAbsent / totalPossibleDetailed) * 100) : 0;
+
+            const summaryRows = [
+                ['ATTENDANCE SUMMARY', ''],
+                ['Total Students', totalStudents],
+                ['Sessions / Dates', totalSessions],
+                ['Total Possible Attendance', totalPossibleDetailed],
+                ['Present', totalPresent],
+                ['Absent — No Check-in / Automatic', totalAutoAbsent],
+                ['Absent — Check-in Attempt Not Valid', totalAttemptedAbsent],
+                ['Pending', totalPending],
+                ['Attendance Rate', `${attendanceRate}%`],
+                ['Absence Rate', `${absenceRate}%`]
+            ];
+            summaryRows.forEach((item, idx) => {
+                const rr = r + idx;
+                ws.mergeCells(rr, 1, rr, Math.max(2, Math.floor(totalCols / 2)));
+                ws.mergeCells(rr, Math.max(3, Math.floor(totalCols / 2) + 1), rr, totalCols);
+                ws.getCell(rr, 1).value = item[0];
+                ws.getCell(rr, 2 + Math.floor(totalCols / 2)).value = item[1];
+                ws.getCell(rr, 1).font = { bold: idx === 0, color: { argb: idx === 0 ? PURPLE : DARK }, size: idx === 0 ? 12 : 10 };
+                ws.getCell(rr, 2 + Math.floor(totalCols / 2)).font = { bold: true, color: { argb: DARK }, size: 10 };
+                ws.getCell(rr, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx === 0 ? PURPLE_LIGHT : GREY_LIGHT } };
+                ws.getCell(rr, 2 + Math.floor(totalCols / 2)).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx === 0 ? PURPLE_LIGHT : 'FFFFFFFF' } };
+                ws.getRow(rr).height = idx === 0 ? 22 : 19;
+            });
+            r += summaryRows.length + 1;
+
+            // ---- Legend / audit notes ----
+            ws.mergeCells(r, 1, r, totalCols);
+            ws.getCell(r, 1).value = 'LEGEND: ✓ Present   |   A Absent after an invalid/unsuccessful check-in   |   A* Absent — no check-in recorded   |   P Pending';
+            ws.getCell(r, 1).font = { italic: true, color: { argb: 'FF475569' }, size: 9 };
+            ws.getCell(r, 1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             ws.getRow(r).height = 24;
             r += 2;
 
@@ -1213,6 +1700,9 @@ const LecturerAttendance = {
             // ---- Freeze header + first 3 cols ----
             ws.views = [{ state: 'frozen', xSplit: 3, ySplit: headerRowIdx }];
         }
+
+        // Open the workbook on the administrative summary sheet.
+        wb.views = [{ activeTab: 0, firstSheet: 0 }];
 
         // ---- 6. WRITE ----
         const suffixBits = [];
@@ -1381,11 +1871,16 @@ const LecturerAttendance = {
 
     async getSessionAttendanceRegister(session, finalize = false) {
         const supabase = window.lecturerDB?.supabase;
-        if (!supabase || !session?.id) return { roster: [], logs: [], rows: [], summary: { total: 0, present: 0, absent: 0, pending: 0, notCheckedIn: 0, rate: 0 } };
+        if (!supabase || !session?.id) {
+            return {
+                roster: [], logs: [], rows: [],
+                summary: { total: 0, present: 0, absent: 0, pending: 0, notCheckedIn: 0, rate: 0 }
+            };
+        }
 
         const roster = await this.getSessionRoster(session);
 
-        const { data: logs, error } = await supabase
+        const { data: rawLogs, error } = await supabase
             .from('geo_attendance_logs')
             .select('*')
             .eq('session_id', session.id)
@@ -1394,27 +1889,19 @@ const LecturerAttendance = {
 
         if (error) throw error;
 
-        // One effective log per student: prefer Present/Verified, otherwise latest.
+        // The database may currently contain historical duplicates.
+        // For the session register, always reduce them to one effective
+        // record per student + session.
+        const logs = this.chooseEffectiveAttendanceRows(rawLogs || []);
         const byStudent = new Map();
-        (logs || []).forEach(log => {
-            const key = String(log.user_id || log.student_id || log.registration_number || '').trim();
-            if (!key) return;
-            const previous = byStudent.get(key);
-            const status = String(log.attendance_status || '').toLowerCase();
-            const prevStatus = String(previous?.attendance_status || '').toLowerCase();
-            const currentIsPresent = status === 'present' || status === 'verified' || log.is_verified === true;
-            const previousIsPresent = prevStatus === 'present' || prevStatus === 'verified' || previous?.is_verified === true;
 
-            if (!previous || (currentIsPresent && !previousIsPresent) ||
-                (!currentIsPresent && !previousIsPresent &&
-                 new Date(log.check_in_time || 0) > new Date(previous.check_in_time || 0))) {
-                byStudent.set(key, log);
-            }
+        logs.forEach(log => {
+            const key = this.attendanceIdentity(log);
+            if (key) byStudent.set(key, log);
         });
 
         const rows = [];
         const missing = [];
-        const rosterKeys = new Set();
 
         for (const student of roster) {
             const keys = [
@@ -1422,8 +1909,6 @@ const LecturerAttendance = {
                 student.student_id,
                 student.registration_number
             ].filter(Boolean).map(String);
-
-            keys.forEach(k => rosterKeys.add(k));
 
             let log = null;
             for (const key of keys) {
@@ -1434,16 +1919,18 @@ const LecturerAttendance = {
             }
 
             const status = String(log?.attendance_status || '').toLowerCase();
+            const hasDistance = log?.distance_meters !== null &&
+                                log?.distance_meters !== undefined &&
+                                log?.distance_meters !== '';
+            const withinRadius = !hasDistance ||
+                Number(log.distance_meters) <= Number(log.target_radius || session.target_radius || 150);
+
             const validPresent =
                 !!log &&
                 (status === 'present' || status === 'verified' || log.is_verified === true) &&
-                Number(log.distance_meters ?? Infinity) <= Number(log.target_radius ?? Infinity);
+                withinRadius;
 
             let finalStatus = validPresent ? 'Present' : (log ? 'Absent' : 'Not Checked In');
-
-            // A student who checked in but was outside the configured target radius
-            // is treated as absent for the finalized class register.
-            if (log && !validPresent) finalStatus = 'Absent';
 
             if (finalize && finalStatus !== 'Present') {
                 missing.push({ student, existingLog: log });
@@ -1465,11 +1952,10 @@ const LecturerAttendance = {
             const inserts = [];
             const updates = [];
 
-            for (const item of missing) {
-                const { student, existingLog } = item;
-
+            for (const { student, existingLog } of missing) {
                 if (existingLog?.id) {
-                    // Convert weak/out-of-radius/pending records to final Absent.
+                    // Keep the SAME row. Never create another row for the
+                    // same student + session.
                     updates.push(
                         supabase
                             .from('geo_attendance_logs')
@@ -1484,7 +1970,6 @@ const LecturerAttendance = {
                             .eq('id', existingLog.id)
                     );
                 } else {
-                    // No check-in at all: create a single Absent record.
                     inserts.push({
                         user_id: student.user_id,
                         student_id: student.student_id || student.registration_number,
@@ -1516,7 +2001,6 @@ const LecturerAttendance = {
                 }
             }
 
-            // Run updates in parallel. Insert absent rows in one batch.
             if (updates.length) {
                 const results = await Promise.all(updates);
                 const failed = results.find(r => r.error);
@@ -1524,31 +2008,33 @@ const LecturerAttendance = {
             }
 
             if (inserts.length) {
-                // Re-check immediately before inserting automatic Absence.
-                // A student may have checked in while reconciliation was running.
-                const safeInserts = [];
-                for (const candidate of inserts) {
-                    const { data: alreadyThere, error: checkError } = await supabase
-                        .from('geo_attendance_logs')
-                        .select('id')
-                        .eq('session_id', session.id)
-                        .eq('user_id', candidate.user_id)
-                        .limit(1);
-                    if (checkError) throw checkError;
-                    if (!alreadyThere?.length) safeInserts.push(candidate);
-                }
+                // Re-check immediately before insertion to reduce duplicate
+                // creation when two close/reconcile calls happen together.
+                const studentIds = inserts.map(x => x.user_id).filter(Boolean);
+                const { data: existingNow, error: existingError } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('id,user_id,session_id')
+                    .eq('session_id', session.id)
+                    .in('user_id', studentIds);
+
+                if (existingError) throw existingError;
+
+                const existingKeys = new Set(
+                    (existingNow || []).map(x => `${x.user_id}|${x.session_id}`)
+                );
+
+                const safeInserts = inserts.filter(
+                    x => !existingKeys.has(`${x.user_id}|${x.session_id}`)
+                );
 
                 if (safeInserts.length) {
                     const { error: insertError } = await supabase
                         .from('geo_attendance_logs')
                         .insert(safeInserts);
-                    // If the DB UNIQUE(user_id, session_id) constraint is installed
-                    // and a concurrent check-in wins the race, re-read instead of failing.
-                    if (insertError && insertError.code !== '23505') throw insertError;
+                    if (insertError) throw insertError;
                 }
             }
 
-            // Re-read the finalized register so the caller gets final truth.
             return await this.getSessionAttendanceRegister(session, false);
         }
 
@@ -1645,17 +2131,6 @@ const LecturerAttendance = {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerName = profile?.full_name || 'Lecturer';
             const lecturerId = profile?.user_id || this.lecturerUuid || 'unknown';
-
-            const { data: record, error: recordError } = await supabase
-                .from('geo_attendance_logs')
-                .select('id, attendance_status, verification_source')
-                .eq('id', recordId)
-                .maybeSingle();
-            if (recordError) throw recordError;
-            if (!record) throw new Error('Attendance record not found');
-            if (String(record.verification_source || '').toLowerCase().includes('automatic session finalization')) {
-                throw new Error('Automatic Absent must be replaced by a valid student check-in before verification.');
-            }
 
             const { error: updateError } = await supabase
                 .from('geo_attendance_logs')
