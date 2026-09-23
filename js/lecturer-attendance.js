@@ -424,45 +424,79 @@ const LecturerAttendance = {
             this.viewAttendanceMap(parseFloat(lat), parseFloat(lng), 'Student');
         }
     },
+updateStats(logs) {
+    // ✅ Always compute from the passed-in list, or fall back to the FILTERED set
+    const source = Array.isArray(logs)
+        ? logs
+        : (this.filteredTodayLogs && this.filteredTodayLogs.length
+            ? this.filteredTodayLogs
+            : (this.todayLogs || []));
 
-    updateStats(logs) {
-        if (!logs) logs = this.todayLogs || [];
-        const total = logs.length;
-        const present = logs.filter(l => (l.attendance_status || '').toLowerCase() === 'present' || l.is_verified === true).length;
-        const absent = logs.filter(l => (l.attendance_status || '').toLowerCase() === 'absent').length;
-        const pending = logs.filter(l => { const s = (l.attendance_status || '').toLowerCase(); return s === 'pending' || s === '' || l.attendance_status === null; }).length;
-        const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+    const total   = source.length;
+    const present = source.filter(l =>
+        (l.attendance_status || '').toLowerCase() === 'present' ||
+        l.is_verified === true
+    ).length;
+    const absent  = source.filter(l =>
+        (l.attendance_status || '').toLowerCase() === 'absent'
+    ).length;
+    const pending = source.filter(l => {
+        const s = (l.attendance_status || '').toLowerCase();
+        return s === 'pending' || s === '' || l.attendance_status === null;
+    }).length;
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
-        this.stats = { total, present, absent, pending, rate };
-        const threshold = this.getPassingThreshold();
+    this.stats = { total, present, absent, pending, rate };
 
-        const elementMap = {
-            'todayTotal': total, 'todayPresent': present, 'todayAbsent': absent, 'todayPending': pending,
-            'todayRate': rate + '%', 'attendanceRate': rate + '%', 'filteredCount': total,
-            'totalStudentsCount': total, 'presentTodayCount': present, 'absentTodayCount': absent,
-            'pendingCount': pending, 'todayTotalDisplay': total, 'todayPresentDisplay': present,
-            'todayAbsentDisplay': absent, 'todayPendingDisplay': pending, 'attendanceRateDisplay': rate + '%'
-        };
+    const threshold = this.getPassingThreshold();
 
-        for (const [id, value] of Object.entries(elementMap)) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        }
+    const elementMap = {
+        // Top stat cards
+        'todayPresent': present,
+        'todayAbsent':  absent,
+        'todayPending': pending,
+        'attendanceRate': rate + '%',
+        'filteredCount': total,
 
-        const progressBar = document.getElementById('attendanceProgressBar');
-        if (progressBar) {
-            progressBar.style.width = rate + '%';
-            progressBar.style.background = rate >= threshold ? '#10b981' : (rate >= threshold * 0.7 ? '#f59e0b' : '#ef4444');
-        }
+        // Aliases used elsewhere in the UI
+        'todayTotal': total,
+        'todayRate':  rate + '%',
+        'totalStudentsCount': total,
+        'presentTodayCount':  present,
+        'absentTodayCount':   absent,
+        'pendingCount':       pending,
+        'todayTotalDisplay':   total,
+        'todayPresentDisplay': present,
+        'todayAbsentDisplay':  absent,
+        'todayPendingDisplay': pending,
+        'attendanceRateDisplay': rate + '%'
+    };
 
-        const rateBadge = document.getElementById('attendanceRateBadge');
-        if (rateBadge) {
-            rateBadge.textContent = `${rate}% (Pass: ≥${threshold}%)`;
-            rateBadge.style.background = rate >= threshold ? '#d1fae5' : (rate >= threshold * 0.7 ? '#fef3c7' : '#fee2e2');
-            rateBadge.style.color = rate >= threshold ? '#065f46' : (rate >= threshold * 0.7 ? '#92400e' : '#991b1b');
-        }
-        return this.stats;
-    },
+    for (const [id, value] of Object.entries(elementMap)) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    }
+
+    // Progress bar
+    const progressBar = document.getElementById('attendanceProgressBar');
+    if (progressBar) {
+        progressBar.style.width = rate + '%';
+        progressBar.style.background = rate >= threshold ? '#10b981'
+            : (rate >= threshold * 0.7 ? '#f59e0b' : '#ef4444');
+    }
+
+    // Rate badge
+    const rateBadge = document.getElementById('attendanceRateBadge');
+    if (rateBadge) {
+        rateBadge.textContent = `${rate}% (Pass: ≥${threshold}%)`;
+        rateBadge.style.background = rate >= threshold ? '#d1fae5'
+            : (rate >= threshold * 0.7 ? '#fef3c7' : '#fee2e2');
+        rateBadge.style.color = rate >= threshold ? '#065f46'
+            : (rate >= threshold * 0.7 ? '#92400e' : '#991b1b');
+    }
+
+    return this.stats;
+},
 
     async loadAttendanceStats() {
         try {
