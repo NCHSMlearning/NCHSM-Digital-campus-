@@ -13513,6 +13513,7 @@ function closeEditModal() {
         const form = document.getElementById('editExamForm');
         if (form) form.reset();
     }
+
 }
 
 // ============================================
@@ -15975,14 +15976,18 @@ function openEditResourceModal() {
     return true;
 }
 
-function closeEditModal(silent = false) {
-    const modal = document.getElementById('edit-resource-modal');
-    if (modal) modal.style.display = 'none';
-    document.body.style.overflow = '';
-    editingResourceId = null;
-    const form = document.getElementById('edit-resource-form');
-    if (form) form.reset();
-    if (!silent) showFeedback('Edit cancelled', 'info');
+if (!window.__closeEditModalDefined) {
+    window.__closeEditModalDefined = true;
+    
+    window.closeEditModal = function(silent = false) {
+        const modal = document.getElementById('edit-resource-modal');
+        if (modal) modal.style.display = 'none';
+        document.body.style.overflow = '';
+        editingResourceId = null;
+        const form = document.getElementById('edit-resource-form');
+        if (form) form.reset();
+        if (!silent) showFeedback('Edit cancelled', 'info');
+    };
 }
 
 async function editResource(resourceId) {
