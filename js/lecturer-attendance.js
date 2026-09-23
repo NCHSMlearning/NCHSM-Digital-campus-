@@ -1357,6 +1357,7 @@ updateStats(logs) {
         this.filteredPastLogs = [];
 
         this.renderFilteredToday(filteredToday);
+        this.updateStats(filteredToday);   // ✅ ADD THIS
 
         const filterCount = document.getElementById('attendanceFilterCount');
         if (filterCount) {
