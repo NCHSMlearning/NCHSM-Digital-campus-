@@ -1330,6 +1330,243 @@ const LecturerAttendance = {
         if (loc) window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lng}`, '_blank');
     },
 
+
+    // ============================================================
+    // FULL CLASS SESSION RECONCILIATION
+    // Builds the expected class from student profiles, compares it
+    // against geo check-ins for THIS session, and can finalize
+    // missing/invalid students as Absent when the session closes.
+    // ============================================================
+    async getSessionRoster(session) {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase || !session?.id) return [];
+
+        const program = session.target_program || session.program || this.currentProgram || 'KRCHN';
+        const block = session.block_term || session.block;
+        const intake = session.intake_year;
+
+        let query = supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, admission_number, registration_number, program, block, intake_year, role')
+            .eq('role', 'student')
+            .eq('program', program);
+
+        if (block) query = query.eq('block', block);
+        if (intake !== null && intake !== undefined && String(intake) !== '') {
+            query = query.eq('intake_year', String(intake));
+        }
+
+        const { data, error } = await query.order('full_name', { ascending: true });
+        if (error) throw error;
+
+        return (data || []).map(student => ({
+            user_id: student.user_id,
+            name: student.full_name || 'Unknown Student',
+            registration_number:
+                student.registration_number ||
+                student.admission_number ||
+                student.student_id ||
+                student.user_id,
+            student_id: student.student_id || student.admission_number || student.registration_number || null,
+            program: student.program || program,
+            block: student.block || block || null,
+            intake_year: student.intake_year || intake || null
+        }));
+    },
+
+    async getSessionAttendanceRegister(session, finalize = false) {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase || !session?.id) return { roster: [], logs: [], rows: [], summary: { total: 0, present: 0, absent: 0, pending: 0, notCheckedIn: 0, rate: 0 } };
+
+        const roster = await this.getSessionRoster(session);
+
+        const { data: logs, error } = await supabase
+            .from('geo_attendance_logs')
+            .select('*')
+            .eq('session_id', session.id)
+            .neq('role', 'lecturer')
+            .order('check_in_time', { ascending: true });
+
+        if (error) throw error;
+
+        // One effective log per student: prefer Present/Verified, otherwise latest.
+        const byStudent = new Map();
+        (logs || []).forEach(log => {
+            const key = String(log.user_id || log.student_id || log.registration_number || '').trim();
+            if (!key) return;
+            const previous = byStudent.get(key);
+            const status = String(log.attendance_status || '').toLowerCase();
+            const prevStatus = String(previous?.attendance_status || '').toLowerCase();
+            const currentIsPresent = status === 'present' || status === 'verified' || log.is_verified === true;
+            const previousIsPresent = prevStatus === 'present' || prevStatus === 'verified' || previous?.is_verified === true;
+
+            if (!previous || (currentIsPresent && !previousIsPresent) ||
+                (!currentIsPresent && !previousIsPresent &&
+                 new Date(log.check_in_time || 0) > new Date(previous.check_in_time || 0))) {
+                byStudent.set(key, log);
+            }
+        });
+
+        const rows = [];
+        const missing = [];
+        const rosterKeys = new Set();
+
+        for (const student of roster) {
+            const keys = [
+                student.user_id,
+                student.student_id,
+                student.registration_number
+            ].filter(Boolean).map(String);
+
+            keys.forEach(k => rosterKeys.add(k));
+
+            let log = null;
+            for (const key of keys) {
+                if (byStudent.has(key)) {
+                    log = byStudent.get(key);
+                    break;
+                }
+            }
+
+            const status = String(log?.attendance_status || '').toLowerCase();
+            const validPresent =
+                !!log &&
+                (status === 'present' || status === 'verified' || log.is_verified === true) &&
+                Number(log.distance_meters ?? Infinity) <= Number(log.target_radius ?? Infinity);
+
+            let finalStatus = validPresent ? 'Present' : (log ? 'Absent' : 'Not Checked In');
+
+            // A student who checked in but was outside the configured target radius
+            // is treated as absent for the finalized class register.
+            if (log && !validPresent) finalStatus = 'Absent';
+
+            if (finalize && finalStatus !== 'Present') {
+                missing.push({ student, existingLog: log });
+                finalStatus = 'Absent';
+            }
+
+            rows.push({
+                student,
+                log,
+                status: finalStatus,
+                checkInTime: log?.check_in_time || null,
+                distance: log?.distance_meters ?? null,
+                accuracy: log?.accuracy_m ?? null
+            });
+        }
+
+        if (finalize && missing.length > 0) {
+            const now = new Date().toISOString();
+            const inserts = [];
+            const updates = [];
+
+            for (const item of missing) {
+                const { student, existingLog } = item;
+
+                if (existingLog?.id) {
+                    // Convert weak/out-of-radius/pending records to final Absent.
+                    updates.push(
+                        supabase
+                            .from('geo_attendance_logs')
+                            .update({
+                                attendance_status: 'Absent',
+                                is_verified: false,
+                                finalized_at: now,
+                                finalized_by: this.lecturerUuid || null,
+                                verification_source: 'Automatic Session Finalization',
+                                finalization_reason: 'No valid in-radius check-in for this session'
+                            })
+                            .eq('id', existingLog.id)
+                    );
+                } else {
+                    // No check-in at all: create a single Absent record.
+                    inserts.push({
+                        user_id: student.user_id,
+                        student_id: student.student_id || student.registration_number,
+                        registration_number: student.registration_number,
+                        student_name: student.name,
+                        block: student.block,
+                        intake_year: student.intake_year,
+                        program: student.program,
+                        check_in_time: now,
+                        session_type: session.session_type || 'Class',
+                        target_id: session.id,
+                        session_id: session.id,
+                        target_name: session.location_name || session.session_title || session.title || 'Class',
+                        unit_name: session.unit_name || session.course_name || 'General',
+                        attendance_status: 'Absent',
+                        is_verified: false,
+                        location_type: 'class',
+                        target_radius: session.target_radius || 150,
+                        target_latitude: session.target_latitude || null,
+                        target_longitude: session.target_longitude || null,
+                        role: 'student',
+                        is_manual_entry: false,
+                        verification_source: 'Automatic Session Finalization',
+                        finalization_reason: 'No check-in recorded before session close',
+                        finalized_at: now,
+                        finalized_by: this.lecturerUuid || null,
+                        created_at: now
+                    });
+                }
+            }
+
+            // Run updates in parallel. Insert absent rows in one batch.
+            if (updates.length) {
+                const results = await Promise.all(updates);
+                const failed = results.find(r => r.error);
+                if (failed?.error) throw failed.error;
+            }
+
+            if (inserts.length) {
+                const { error: insertError } = await supabase
+                    .from('geo_attendance_logs')
+                    .insert(inserts);
+                if (insertError) throw insertError;
+            }
+
+            // Re-read the finalized register so the caller gets final truth.
+            return await this.getSessionAttendanceRegister(session, false);
+        }
+
+        const summary = {
+            total: rows.length,
+            present: rows.filter(r => r.status === 'Present').length,
+            absent: rows.filter(r => r.status === 'Absent').length,
+            pending: rows.filter(r => r.status === 'Not Checked In').length,
+            notCheckedIn: rows.filter(r => r.status === 'Not Checked In').length
+        };
+        summary.rate = summary.total ? Math.round((summary.present / summary.total) * 100) : 0;
+
+        return { roster, logs: logs || [], rows, summary };
+    },
+
+    async reconcileSessionAttendance(sessionId, finalize = true) {
+        const session = this.sessions?.find(s => s.id === sessionId);
+        if (!session) throw new Error('Session not found');
+
+        const sessionType = String(session.session_type || 'Class').toLowerCase();
+        if (sessionType === 'clinical' || sessionType === 'exam') {
+            return await this.getSessionAttendanceRegister(session, false);
+        }
+
+        const register = await this.getSessionAttendanceRegister(session, finalize);
+
+        console.log('📋 Session attendance reconciled:', {
+            session_id: sessionId,
+            total: register.summary.total,
+            present: register.summary.present,
+            absent: register.summary.absent,
+            pending: register.summary.pending
+        });
+
+        return register;
+    },
+
+    async previewSessionAttendance(sessionId) {
+        return this.reconcileSessionAttendance(sessionId, false);
+    },
+
     // ============================================================
     // VERIFY / BULK VERIFY
     // ============================================================
@@ -1448,6 +1685,11 @@ window.lecturerCheckin = () => LecturerAttendance.lecturerCheckIn();
 window.markAttendance = (e) => LecturerAttendance.markStudentAttendance(e);
 window.verifyAttendance = (id) => LecturerAttendance.verifyAttendance(id);
 window.bulkVerifyAttendance = (date) => LecturerAttendance.bulkVerifyAttendance(date);
+
+window.reconcileSessionAttendance = (sessionId, finalize = true) =>
+    LecturerAttendance.reconcileSessionAttendance(sessionId, finalize);
+window.previewSessionAttendance = (sessionId) =>
+    LecturerAttendance.previewSessionAttendance(sessionId);
 window.canVerifyRecord = (record) => LecturerAttendance.canVerifyRecord(record);
 
 window.closeAttendanceMap = () => {
