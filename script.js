@@ -14946,1647 +14946,1658 @@ window.saveOfficialAnnouncement = saveOfficialAnnouncement;
 window.loadAnnouncementsList = loadAnnouncementsList;
 window.toggleAnnouncementStatus = toggleAnnouncementStatus;
 window.deleteAnnouncement = deleteAnnouncement;
-/*******************************************************
- * 15. RESOURCES MANAGEMENT - SUPER ADMIN VERSION
- * Handles BOTH Learning Materials AND Past Papers
- * WITH EDIT, DELETE, TVET/KRCHN SUPPORT
- * ✅ NO DUPLICATE DECLARATIONS
- * ✅ Uses existing globals: allResourcesData, currentResourceType, TVET_PROGRAMS, RESOURCES_BUCKET, sb, escapeHtml, showFeedback, logAudit, debounce
- *******************************************************/
+/* ============================================================
+   SUPER ADMIN RESOURCES MODULE - COLLISION SAFE
+   This guard prevents a second copy of this module from declaring
+   the same identifiers again.
+   ============================================================ */
+if (!window.__NCHSM_RESOURCES_MODULE_V5_LOADED__) {
+    window.__NCHSM_RESOURCES_MODULE_V5_LOADED__ = true;
 
-// =====================================================
-// GLOBALS - ONLY DECLARE NEW ONES
-// =====================================================
-let editingResourceId = null;
-let currentAdminProgram = 'krchn'; // 'krchn' or 'tvet'
+    /*******************************************************
+     * 15. RESOURCES MANAGEMENT - SUPER ADMIN VERSION
+     * Handles BOTH Learning Materials AND Past Papers
+     * WITH EDIT, DELETE, TVET/KRCHN SUPPORT
+     * ✅ NO DUPLICATE DECLARATIONS
+     * ✅ Uses existing globals: allResourcesData, currentResourceType, TVET_PROGRAMS, RESOURCES_BUCKET, sb, escapeHtml, showFeedback, logAudit, debounce
+     *******************************************************/
 
-
-function isTVETResourceProgram(program) {
-    const code = String(program || '').trim().toUpperCase();
-    if (!code) return false;
-    try {
-        if (Array.isArray(TVET_PROGRAMS)) {
-            return TVET_PROGRAMS.some(item => String(item || '').trim().toUpperCase() === code);
-        }
-    } catch (e) {}
-    return code !== 'KRCHN';
-}
-
-function normalizeResourceBlock(value) {
-    return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-// =====================================================
-// DETECT ADMIN PROGRAM
-// =====================================================
-function detectAdminProgram() {
-    const profile = window.currentUserProfile || window.db?.currentUserProfile;
-    if (!profile) return;
-    
-    const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
-    
-    if (isTVETResourceProgram(programCode)) {
-        currentAdminProgram = 'tvet';
-        updateAdminProgramUI('tvet', profile);
-    } else {
-        currentAdminProgram = 'krchn';
-        updateAdminProgramUI('krchn', profile);
-    }
-}
-
-// =====================================================
-// UPDATE ADMIN PROGRAM UI
-// =====================================================
-function updateAdminProgramUI(programType, profile) {
-    const isTVET = programType === 'tvet';
-    const badge = document.getElementById('admin-program-badge');
-    const blockBadge = document.getElementById('admin-block-term-badge');
-    
-    if (badge) {
-        if (isTVET) {
-            badge.style.background = '#1a7a5a';
-            badge.innerHTML = `<i class="fas fa-tools"></i> TVET Mode`;
-        } else {
-            badge.style.background = '#4C1D95';
-            badge.innerHTML = `<i class="fas fa-graduation-cap"></i> KRCHN Nursing`;
-        }
-    }
-    
-    if (blockBadge) {
-        if (isTVET) {
-            const term = profile?.block || 'Term1';
-            blockBadge.innerHTML = `<i class="fas fa-calendar-alt"></i> Term: ${term}`;
-        } else {
-            const block = profile?.block || 'Introductory';
-            blockBadge.innerHTML = `<i class="fas fa-layer-group"></i> Block: ${block}`;
-        }
-    }
-    
-    updateFilterDropdown(isTVET);
-}
-
-// =====================================================
-// SWITCH ADMIN PROGRAM
-// =====================================================
-function switchAdminProgram() {
-    currentAdminProgram = currentAdminProgram === 'krchn' ? 'tvet' : 'krchn';
-    const profile = window.currentUserProfile || window.db?.currentUserProfile;
-    updateAdminProgramUI(currentAdminProgram, profile);
-    showFeedback(`Switched to ${currentAdminProgram.toUpperCase()} mode`, 'info');
-    loadAllResources();
-}
-
-// =====================================================
-// UPDATE BLOCK/TERM OPTIONS FOR RESOURCES
-// =====================================================
-function updateBlockOptions(selectedValue = '') {
-    const programSelect = document.getElementById('resource_program');
-    const blockSelect = document.getElementById('resource_block');
-    if (!blockSelect) return;
-
-    const program = programSelect?.value || currentAdminProgram;
-    const isTVET = isTVETResourceProgram(program);
-    const previous = selectedValue || blockSelect.value || '';
-
-    blockSelect.innerHTML = '';
-
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.textContent = '-- Select Block/Term --';
-    blockSelect.appendChild(placeholder);
-
-    const options = isTVET
-        ? [
-            ['Term1', '📘 Term 1'], ['Term2', '📗 Term 2'], ['Term3', '📕 Term 3'],
-            ['Term4', '📙 Term 4'], ['Term5', '📒 Term 5'], ['Term6', '📓 Term 6'],
-            ['Final Term', '🏆 Final Term']
-        ]
-        : [
-            ['Introductory', '🚀 Introductory'], ['Block 1', '📖 Block 1'], ['Block 2', '📗 Block 2'],
-            ['Block 3', '📘 Block 3'], ['Block 4', '📙 Block 4'], ['Block 5', '📕 Block 5'],
-            ['Final', '🏆 Final Block']
-        ];
-
-    options.forEach(([value, label]) => {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = label;
-        blockSelect.appendChild(option);
-    });
-
-    if (previous) {
-        const match = Array.from(blockSelect.options).find(o => normalizeResourceBlock(o.value) === normalizeResourceBlock(previous));
-        if (match) {
-            blockSelect.value = match.value;
-        } else {
-            const custom = document.createElement('option');
-            custom.value = previous;
-            custom.textContent = previous;
-            blockSelect.appendChild(custom);
-            blockSelect.value = previous;
-        }
-    }
-
-    blockSelect.dispatchEvent(new Event('resource-block-options-updated', { bubbles: false }));
-}
+    // =====================================================
+    // GLOBALS - ONLY DECLARE NEW ONES
+    // =====================================================
+    let editingResourceId = null;
+    let currentAdminProgram = 'krchn'; // 'krchn' or 'tvet'
 
 
-// =====================================================
-// UPDATE FILTER DROPDOWN
-// =====================================================
-function updateFilterDropdown(isTVET) {
-    const filterSelect = document.getElementById('resource-block-filter');
-    if (!filterSelect) return;
-
-    const tvet = !!isTVET;
-    const current = filterSelect.value || 'all';
-    filterSelect.innerHTML = '';
-
-    const allOption = document.createElement('option');
-    allOption.value = 'all';
-    allOption.textContent = tvet ? 'All Terms' : 'All Blocks';
-    filterSelect.appendChild(allOption);
-
-    const values = tvet
-        ? ['Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final Term']
-        : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-
-    values.forEach(value => {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = value;
-        filterSelect.appendChild(option);
-    });
-
-    const match = Array.from(filterSelect.options).find(o => normalizeResourceBlock(o.value) === normalizeResourceBlock(current));
-    filterSelect.value = match ? match.value : 'all';
-}
-
-
-// =====================================================
-// TOGGLE PAST PAPER FIELDS
-// =====================================================
-function togglePastPaperFields() {
-    const isPastPaper = document.getElementById('resource_is_pastpaper')?.checked || false;
-    const pastpaperFields = document.getElementById('pastpaper-fields');
-    const notificationPanel = document.getElementById('resource-email-notification-settings');
-    const notificationCheckbox = document.getElementById('resource_notify_students');
-
-    if (pastpaperFields) {
-        pastpaperFields.style.display = isPastPaper ? 'block' : 'none';
-    }
-
-    // Email notifications apply to NEW learning materials only.
-    if (notificationPanel) {
-        notificationPanel.style.display = isPastPaper ? 'none' : 'block';
-    }
-    if (isPastPaper && notificationCheckbox) {
-        notificationCheckbox.checked = false;
-    }
-    if (!isPastPaper && notificationCheckbox && !document.getElementById('resource_edit_id')?.value) {
-        notificationCheckbox.checked = true;
-    }
-    updateResourceNotificationToggleVisual();
-    updateResourceNotificationCount();
-
-    const yearInput = document.getElementById('resource_pastpaper_year');
-    const examTypeSelect = document.getElementById('resource_exam_type');
-    const courseInput = document.getElementById('resource_course_name');
-
-    if (yearInput) yearInput.required = isPastPaper;
-    if (examTypeSelect) examTypeSelect.required = isPastPaper;
-    if (courseInput) courseInput.required = isPastPaper;
-}
-
-// =====================================================
-// INITIALIZE RESOURCES SECTION
-// =====================================================
-function initResourcesSection() {
-    if (window.__nchsmResourcesInitialized) {
-        // Still refresh dynamic controls if the tab was rebuilt.
-        const program = document.getElementById('resource_program');
-        if (program) updateBlockOptions();
-        loadAllResources();
-        return;
-    }
-    window.__nchsmResourcesInitialized = true;
-
-    console.log('📁 Initializing Super Admin Resources Section...');
-
-    const resourceProgram = document.getElementById('resource_program');
-    const resourceBlock = document.getElementById('resource_block');
-
-    if (resourceProgram) {
-        resourceProgram.addEventListener('change', async function() {
-            updateBlockOptions();
-            updateFilterDropdown(isTVETResourceProgram(this.value));
-            selectedResourceStudents = [];
-            updateResourceSelectedStudentsDisplay();
-            await loadStudentsForResourceNotification();
-        });
-    }
-
-    // Populate immediately and again after the browser has painted the form.
-    updateBlockOptions();
-    updateFilterDropdown(isTVETResourceProgram(resourceProgram?.value || currentAdminProgram));
-    setTimeout(() => {
-        updateBlockOptions(resourceBlock?.value || '');
-        updateFilterDropdown(isTVETResourceProgram(resourceProgram?.value || currentAdminProgram));
-    }, 100);
-
-    if (resourceBlock) {
-        resourceBlock.addEventListener('change', async () => {
-            await loadStudentsForResourceNotification();
-            renderSelectedResourceBlockStudents();
-        });
-    }
-
-    const pastpaperCheckbox = document.getElementById('resource_is_pastpaper');
-    if (pastpaperCheckbox && !pastpaperCheckbox.dataset.resourceBound) {
-        pastpaperCheckbox.dataset.resourceBound = '1';
-        pastpaperCheckbox.addEventListener('change', togglePastPaperFields);
-    }
-
-    const uploadForm = document.getElementById('upload-resource-form');
-    if (uploadForm && !uploadForm.dataset.resourceSubmitBound) {
-        uploadForm.dataset.resourceSubmitBound = '1';
-        uploadForm.addEventListener('submit', handleResourceUpload);
-    }
-
-    initializeResourceNotificationUI();
-    bindEditResourceModalControls();
-    ensureEditPodcastControls();
-
-    const searchInput = document.getElementById('resource-search');
-    if (searchInput && !searchInput.dataset.resourceSearchBound) {
-        searchInput.dataset.resourceSearchBound = '1';
-        searchInput.addEventListener('keyup', debounce(filterResourcesTable, 300));
-    }
-
-    ['resource-block-filter', 'resource-year-filter', 'resource-program-filter'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && !el.dataset.resourceFilterBound) {
-            el.dataset.resourceFilterBound = '1';
-            el.addEventListener('change', filterResourcesTable);
-        }
-    });
-
-    detectAdminProgram();
-    loadAllResources();
-    setTimeout(loadStudentsForResourceNotification, 350);
-
-    console.log('✅ Super Admin Resources Section initialized');
-}
-
-function bindEditResourceModalControls() {
-    const modal = document.getElementById('edit-resource-modal');
-    if (!modal || modal.dataset.resourceModalBound === '1') return;
-
-    modal.dataset.resourceModalBound = '1';
-
-    const closeButton = modal.querySelector('button[aria-label="Close edit resource"]');
-    if (closeButton) {
-        closeButton.addEventListener('click', function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            closeEditModal();
-        });
-    }
-
-    const cancelButton = modal.querySelector('#edit-resource-form button[type="button"]');
-    if (cancelButton) {
-        cancelButton.addEventListener('click', function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            closeEditModal();
-        });
-    }
-
-    modal.addEventListener('click', function (event) {
-        if (event.target === modal) closeEditModal();
-    });
-
-    if (!document.body.dataset.resourceEscapeBound) {
-        document.body.dataset.resourceEscapeBound = '1';
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                const currentModal = document.getElementById('edit-resource-modal');
-                if (currentModal && currentModal.style.display === 'flex') {
-                    closeEditModal();
-                }
+    function isTVETResourceProgram(program) {
+        const code = String(program || '').trim().toUpperCase();
+        if (!code) return false;
+        try {
+            if (Array.isArray(TVET_PROGRAMS)) {
+                return TVET_PROGRAMS.some(item => String(item || '').trim().toUpperCase() === code);
             }
+        } catch (e) {}
+        return code !== 'KRCHN';
+    }
+
+    function normalizeResourceBlock(value) {
+        return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    // =====================================================
+    // DETECT ADMIN PROGRAM
+    // =====================================================
+    function detectAdminProgram() {
+        const profile = window.currentUserProfile || window.db?.currentUserProfile;
+        if (!profile) return;
+        
+        const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
+        
+        if (isTVETResourceProgram(programCode)) {
+            currentAdminProgram = 'tvet';
+            updateAdminProgramUI('tvet', profile);
+        } else {
+            currentAdminProgram = 'krchn';
+            updateAdminProgramUI('krchn', profile);
+        }
+    }
+
+    // =====================================================
+    // UPDATE ADMIN PROGRAM UI
+    // =====================================================
+    function updateAdminProgramUI(programType, profile) {
+        const isTVET = programType === 'tvet';
+        const badge = document.getElementById('admin-program-badge');
+        const blockBadge = document.getElementById('admin-block-term-badge');
+        
+        if (badge) {
+            if (isTVET) {
+                badge.style.background = '#1a7a5a';
+                badge.innerHTML = `<i class="fas fa-tools"></i> TVET Mode`;
+            } else {
+                badge.style.background = '#4C1D95';
+                badge.innerHTML = `<i class="fas fa-graduation-cap"></i> KRCHN Nursing`;
+            }
+        }
+        
+        if (blockBadge) {
+            if (isTVET) {
+                const term = profile?.block || 'Term1';
+                blockBadge.innerHTML = `<i class="fas fa-calendar-alt"></i> Term: ${term}`;
+            } else {
+                const block = profile?.block || 'Introductory';
+                blockBadge.innerHTML = `<i class="fas fa-layer-group"></i> Block: ${block}`;
+            }
+        }
+        
+        updateFilterDropdown(isTVET);
+    }
+
+    // =====================================================
+    // SWITCH ADMIN PROGRAM
+    // =====================================================
+    function switchAdminProgram() {
+        currentAdminProgram = currentAdminProgram === 'krchn' ? 'tvet' : 'krchn';
+        const profile = window.currentUserProfile || window.db?.currentUserProfile;
+        updateAdminProgramUI(currentAdminProgram, profile);
+        showFeedback(`Switched to ${currentAdminProgram.toUpperCase()} mode`, 'info');
+        loadAllResources();
+    }
+
+    // =====================================================
+    // UPDATE BLOCK/TERM OPTIONS FOR RESOURCES
+    // =====================================================
+    function updateBlockOptions(selectedValue = '') {
+        const programSelect = document.getElementById('resource_program');
+        const blockSelect = document.getElementById('resource_block');
+        if (!blockSelect) return;
+
+        const program = programSelect?.value || currentAdminProgram;
+        const isTVET = isTVETResourceProgram(program);
+        const previous = selectedValue || blockSelect.value || '';
+
+        blockSelect.innerHTML = '';
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '-- Select Block/Term --';
+        blockSelect.appendChild(placeholder);
+
+        const options = isTVET
+            ? [
+                ['Term1', '📘 Term 1'], ['Term2', '📗 Term 2'], ['Term3', '📕 Term 3'],
+                ['Term4', '📙 Term 4'], ['Term5', '📒 Term 5'], ['Term6', '📓 Term 6'],
+                ['Final Term', '🏆 Final Term']
+            ]
+            : [
+                ['Introductory', '🚀 Introductory'], ['Block 1', '📖 Block 1'], ['Block 2', '📗 Block 2'],
+                ['Block 3', '📘 Block 3'], ['Block 4', '📙 Block 4'], ['Block 5', '📕 Block 5'],
+                ['Final', '🏆 Final Block']
+            ];
+
+        options.forEach(([value, label]) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            blockSelect.appendChild(option);
         });
+
+        if (previous) {
+            const match = Array.from(blockSelect.options).find(o => normalizeResourceBlock(o.value) === normalizeResourceBlock(previous));
+            if (match) {
+                blockSelect.value = match.value;
+            } else {
+                const custom = document.createElement('option');
+                custom.value = previous;
+                custom.textContent = previous;
+                blockSelect.appendChild(custom);
+                blockSelect.value = previous;
+            }
+        }
+
+        blockSelect.dispatchEvent(new Event('resource-block-options-updated', { bubbles: false }));
     }
-}
-
-function autoInitResourcesSection() {
-    const run = () => {
-        if (document.getElementById('resources')) initResourcesSection();
-    };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
-    else setTimeout(run, 0);
-    // Also bind modal controls when the Resources section is injected later.
-    setTimeout(bindEditResourceModalControls, 150);
-}
 
 
+    // =====================================================
+    // UPDATE FILTER DROPDOWN
+    // =====================================================
+    function updateFilterDropdown(isTVET) {
+        const filterSelect = document.getElementById('resource-block-filter');
+        if (!filterSelect) return;
 
-// =====================================================
-// EMAIL NOTIFICATIONS FOR NEW LEARNING MATERIALS
-// Reuses the same Supabase Edge Function used by Exams.
-// Notifications are sent ONLY for new learning materials,
-// never when an existing resource is edited.
-// =====================================================
+        const tvet = !!isTVET;
+        const current = filterSelect.value || 'all';
+        filterSelect.innerHTML = '';
 
-let selectedResourceStudents = [];
-let allResourceStudents = [];
+        const allOption = document.createElement('option');
+        allOption.value = 'all';
+        allOption.textContent = tvet ? 'All Terms' : 'All Blocks';
+        filterSelect.appendChild(allOption);
 
-function getResourceNotificationTarget() {
-    return document.getElementById('resource_notify_target')?.value || 'all';
-}
+        const values = tvet
+            ? ['Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final Term']
+            : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
 
-function getResourceNotifyEnabled() {
-    return document.getElementById('resource_notify_students')?.checked !== false;
-}
-
-function updateResourceNotificationToggleVisual() {
-    const checkbox = document.getElementById('resource_notify_students');
-    const toggle = document.getElementById('resource-notification-toggle');
-    const label = document.getElementById('resource-notification-toggle-label');
-    const status = document.getElementById('resource-notification-status');
-    if (!checkbox) return;
-
-    const enabled = checkbox.checked;
-    if (toggle) {
-        toggle.style.background = enabled ? '#10b981' : '#94a3b8';
-        toggle.style.justifyContent = enabled ? 'flex-end' : 'flex-start';
-    }
-    if (label) {
-        label.textContent = enabled ? 'ON' : 'OFF';
-        label.style.color = enabled ? '#047857' : '#64748b';
-    }
-    if (status) {
-        status.innerHTML = enabled
-            ? '<i class="fas fa-check-circle"></i> Notifications Enabled'
-            : '<i class="fas fa-bell-slash"></i> Notifications Disabled';
-        status.style.color = enabled ? '#047857' : '#64748b';
-        status.style.background = enabled ? '#dcfce7' : '#f1f5f9';
-        status.style.borderColor = enabled ? '#86efac' : '#cbd5e1';
-    }
-}
-
-function syncResourceNotificationTargetUI() {
-    const target = getResourceNotificationTarget();
-    document.querySelectorAll('input[name="resource_notify_target"]').forEach(radio => {
-        radio.checked = radio.value === target;
-    });
-
-    const specific = document.getElementById('resource-specific-students');
-    if (specific) specific.style.display = target === 'specific' ? 'block' : 'none';
-
-    updateResourceSelectedStudentsDisplay();
-    updateResourceNotificationCount();
-}
-
-function initializeResourceNotificationUI() {
-    const form = document.getElementById('upload-resource-form');
-    const panel = document.getElementById('resource-email-notification-settings');
-    if (!form || !panel) return;
-
-    // The HTML already contains the styled notification panel.
-    // This function only wires the controls; it does NOT create duplicate markup.
-    const notifyCheckbox = document.getElementById('resource_notify_students');
-    const targetSelect = document.getElementById('resource_notify_target');
-    const programSelect = document.getElementById('resource_program');
-    const blockSelect = document.getElementById('resource_block');
-    const studentSearch = document.getElementById('resource_student_search');
-
-    if (notifyCheckbox && !notifyCheckbox.dataset.resourceBound) {
-        notifyCheckbox.dataset.resourceBound = '1';
-        notifyCheckbox.addEventListener('change', () => {
-            updateResourceNotificationToggleVisual();
-            updateResourceNotificationCount();
+        values.forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            filterSelect.appendChild(option);
         });
+
+        const match = Array.from(filterSelect.options).find(o => normalizeResourceBlock(o.value) === normalizeResourceBlock(current));
+        filterSelect.value = match ? match.value : 'all';
     }
 
-    if (targetSelect && !targetSelect.dataset.resourceBound) {
-        targetSelect.dataset.resourceBound = '1';
-        targetSelect.addEventListener('change', syncResourceNotificationTargetUI);
+
+    // =====================================================
+    // TOGGLE PAST PAPER FIELDS
+    // =====================================================
+    function togglePastPaperFields() {
+        const isPastPaper = document.getElementById('resource_is_pastpaper')?.checked || false;
+        const pastpaperFields = document.getElementById('pastpaper-fields');
+        const notificationPanel = document.getElementById('resource-email-notification-settings');
+        const notificationCheckbox = document.getElementById('resource_notify_students');
+
+        if (pastpaperFields) {
+            pastpaperFields.style.display = isPastPaper ? 'block' : 'none';
+        }
+
+        // Email notifications apply to NEW learning materials only.
+        if (notificationPanel) {
+            notificationPanel.style.display = isPastPaper ? 'none' : 'block';
+        }
+        if (isPastPaper && notificationCheckbox) {
+            notificationCheckbox.checked = false;
+        }
+        if (!isPastPaper && notificationCheckbox && !document.getElementById('resource_edit_id')?.value) {
+            notificationCheckbox.checked = true;
+        }
+        updateResourceNotificationToggleVisual();
+        updateResourceNotificationCount();
+
+        const yearInput = document.getElementById('resource_pastpaper_year');
+        const examTypeSelect = document.getElementById('resource_exam_type');
+        const courseInput = document.getElementById('resource_course_name');
+
+        if (yearInput) yearInput.required = isPastPaper;
+        if (examTypeSelect) examTypeSelect.required = isPastPaper;
+        if (courseInput) courseInput.required = isPastPaper;
     }
 
-    // The visible radio buttons are already wired inline in the HTML.
-    // We also keep their state synchronized with the hidden select.
-    document.querySelectorAll('input[name="resource_notify_target"]').forEach(radio => {
-        if (!radio.dataset.resourceBound) {
-            radio.dataset.resourceBound = '1';
-            radio.addEventListener('change', () => {
-                if (targetSelect) targetSelect.value = radio.value;
-                syncResourceNotificationTargetUI();
+    // =====================================================
+    // INITIALIZE RESOURCES SECTION
+    // =====================================================
+    function initResourcesSection() {
+        if (window.__nchsmResourcesInitialized) {
+            // Still refresh dynamic controls if the tab was rebuilt.
+            const program = document.getElementById('resource_program');
+            if (program) updateBlockOptions();
+            loadAllResources();
+            return;
+        }
+        window.__nchsmResourcesInitialized = true;
+
+        console.log('📁 Initializing Super Admin Resources Section...');
+
+        const resourceProgram = document.getElementById('resource_program');
+        const resourceBlock = document.getElementById('resource_block');
+
+        if (resourceProgram) {
+            resourceProgram.addEventListener('change', async function() {
+                updateBlockOptions();
+                updateFilterDropdown(isTVETResourceProgram(this.value));
+                selectedResourceStudents = [];
+                updateResourceSelectedStudentsDisplay();
+                await loadStudentsForResourceNotification();
             });
         }
-    });
 
-    if (studentSearch && !studentSearch.dataset.resourceBound) {
-        studentSearch.dataset.resourceBound = '1';
-        studentSearch.addEventListener('input', searchStudentsForResourceNotification);
+        // Populate immediately and again after the browser has painted the form.
+        updateBlockOptions();
+        updateFilterDropdown(isTVETResourceProgram(resourceProgram?.value || currentAdminProgram));
+        setTimeout(() => {
+            updateBlockOptions(resourceBlock?.value || '');
+            updateFilterDropdown(isTVETResourceProgram(resourceProgram?.value || currentAdminProgram));
+        }, 100);
+
+        if (resourceBlock) {
+            resourceBlock.addEventListener('change', async () => {
+                await loadStudentsForResourceNotification();
+                renderSelectedResourceBlockStudents();
+            });
+        }
+
+        const pastpaperCheckbox = document.getElementById('resource_is_pastpaper');
+        if (pastpaperCheckbox && !pastpaperCheckbox.dataset.resourceBound) {
+            pastpaperCheckbox.dataset.resourceBound = '1';
+            pastpaperCheckbox.addEventListener('change', togglePastPaperFields);
+        }
+
+        const uploadForm = document.getElementById('upload-resource-form');
+        if (uploadForm && !uploadForm.dataset.resourceSubmitBound) {
+            uploadForm.dataset.resourceSubmitBound = '1';
+            uploadForm.addEventListener('submit', handleResourceUpload);
+        }
+
+        initializeResourceNotificationUI();
+        bindEditResourceModalControls();
+        ensureEditPodcastControls();
+
+        const searchInput = document.getElementById('resource-search');
+        if (searchInput && !searchInput.dataset.resourceSearchBound) {
+            searchInput.dataset.resourceSearchBound = '1';
+            searchInput.addEventListener('keyup', debounce(filterResourcesTable, 300));
+        }
+
+        ['resource-block-filter', 'resource-year-filter', 'resource-program-filter'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el.dataset.resourceFilterBound) {
+                el.dataset.resourceFilterBound = '1';
+                el.addEventListener('change', filterResourcesTable);
+            }
+        });
+
+        detectAdminProgram();
+        loadAllResources();
+        setTimeout(loadStudentsForResourceNotification, 350);
+
+        console.log('✅ Super Admin Resources Section initialized');
     }
 
-    if (programSelect && !programSelect.dataset.resourceNotifyBound) {
-        programSelect.dataset.resourceNotifyBound = '1';
-        programSelect.addEventListener('change', async () => {
-            selectedResourceStudents = [];
+    function bindEditResourceModalControls() {
+        const modal = document.getElementById('edit-resource-modal');
+        if (!modal || modal.dataset.resourceModalBound === '1') return;
+
+        modal.dataset.resourceModalBound = '1';
+
+        const closeButton = modal.querySelector('button[aria-label="Close edit resource"]');
+        if (closeButton) {
+            closeButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                closeEditModal();
+            });
+        }
+
+        const cancelButton = modal.querySelector('#edit-resource-form button[type="button"]');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                closeEditModal();
+            });
+        }
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) closeEditModal();
+        });
+
+        if (!document.body.dataset.resourceEscapeBound) {
+            document.body.dataset.resourceEscapeBound = '1';
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    const currentModal = document.getElementById('edit-resource-modal');
+                    if (currentModal && currentModal.style.display === 'flex') {
+                        closeEditModal();
+                    }
+                }
+            });
+        }
+    }
+
+    function autoInitResourcesSection() {
+        const run = () => {
+            if (document.getElementById('resources')) initResourcesSection();
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
+        else setTimeout(run, 0);
+        // Also bind modal controls when the Resources section is injected later.
+        setTimeout(bindEditResourceModalControls, 150);
+    }
+
+
+
+    // =====================================================
+    // EMAIL NOTIFICATIONS FOR NEW LEARNING MATERIALS
+    // Reuses the same Supabase Edge Function used by Exams.
+    // Notifications are sent ONLY for new learning materials,
+    // never when an existing resource is edited.
+    // =====================================================
+
+    let selectedResourceStudents = [];
+    let allResourceStudents = [];
+
+    function getResourceNotificationTarget() {
+        return document.getElementById('resource_notify_target')?.value || 'all';
+    }
+
+    function getResourceNotifyEnabled() {
+        return document.getElementById('resource_notify_students')?.checked !== false;
+    }
+
+    function updateResourceNotificationToggleVisual() {
+        const checkbox = document.getElementById('resource_notify_students');
+        const toggle = document.getElementById('resource-notification-toggle');
+        const label = document.getElementById('resource-notification-toggle-label');
+        const status = document.getElementById('resource-notification-status');
+        if (!checkbox) return;
+
+        const enabled = checkbox.checked;
+        if (toggle) {
+            toggle.style.background = enabled ? '#10b981' : '#94a3b8';
+            toggle.style.justifyContent = enabled ? 'flex-end' : 'flex-start';
+        }
+        if (label) {
+            label.textContent = enabled ? 'ON' : 'OFF';
+            label.style.color = enabled ? '#047857' : '#64748b';
+        }
+        if (status) {
+            status.innerHTML = enabled
+                ? '<i class="fas fa-check-circle"></i> Notifications Enabled'
+                : '<i class="fas fa-bell-slash"></i> Notifications Disabled';
+            status.style.color = enabled ? '#047857' : '#64748b';
+            status.style.background = enabled ? '#dcfce7' : '#f1f5f9';
+            status.style.borderColor = enabled ? '#86efac' : '#cbd5e1';
+        }
+    }
+
+    function syncResourceNotificationTargetUI() {
+        const target = getResourceNotificationTarget();
+        document.querySelectorAll('input[name="resource_notify_target"]').forEach(radio => {
+            radio.checked = radio.value === target;
+        });
+
+        const specific = document.getElementById('resource-specific-students');
+        if (specific) specific.style.display = target === 'specific' ? 'block' : 'none';
+
+        updateResourceSelectedStudentsDisplay();
+        updateResourceNotificationCount();
+    }
+
+    function initializeResourceNotificationUI() {
+        const form = document.getElementById('upload-resource-form');
+        const panel = document.getElementById('resource-email-notification-settings');
+        if (!form || !panel) return;
+
+        // The HTML already contains the styled notification panel.
+        // This function only wires the controls; it does NOT create duplicate markup.
+        const notifyCheckbox = document.getElementById('resource_notify_students');
+        const targetSelect = document.getElementById('resource_notify_target');
+        const programSelect = document.getElementById('resource_program');
+        const blockSelect = document.getElementById('resource_block');
+        const studentSearch = document.getElementById('resource_student_search');
+
+        if (notifyCheckbox && !notifyCheckbox.dataset.resourceBound) {
+            notifyCheckbox.dataset.resourceBound = '1';
+            notifyCheckbox.addEventListener('change', () => {
+                updateResourceNotificationToggleVisual();
+                updateResourceNotificationCount();
+            });
+        }
+
+        if (targetSelect && !targetSelect.dataset.resourceBound) {
+            targetSelect.dataset.resourceBound = '1';
+            targetSelect.addEventListener('change', syncResourceNotificationTargetUI);
+        }
+
+        // The visible radio buttons are already wired inline in the HTML.
+        // We also keep their state synchronized with the hidden select.
+        document.querySelectorAll('input[name="resource_notify_target"]').forEach(radio => {
+            if (!radio.dataset.resourceBound) {
+                radio.dataset.resourceBound = '1';
+                radio.addEventListener('change', () => {
+                    if (targetSelect) targetSelect.value = radio.value;
+                    syncResourceNotificationTargetUI();
+                });
+            }
+        });
+
+        if (studentSearch && !studentSearch.dataset.resourceBound) {
+            studentSearch.dataset.resourceBound = '1';
+            studentSearch.addEventListener('input', searchStudentsForResourceNotification);
+        }
+
+        if (programSelect && !programSelect.dataset.resourceNotifyBound) {
+            programSelect.dataset.resourceNotifyBound = '1';
+            programSelect.addEventListener('change', async () => {
+                selectedResourceStudents = [];
+                updateResourceSelectedStudentsDisplay();
+                await loadStudentsForResourceNotification();
+            });
+        }
+
+        if (blockSelect && !blockSelect.dataset.resourceNotifyBound) {
+            blockSelect.dataset.resourceNotifyBound = '1';
+            blockSelect.addEventListener('change', async () => {
+                await loadStudentsForResourceNotification();
+            });
+        }
+
+        updateResourceNotificationToggleVisual();
+        syncResourceNotificationTargetUI();
+
+        // Load the initial program's students once the section is ready.
+        setTimeout(loadStudentsForResourceNotification, 250);
+    }
+
+    async function loadStudentsForResourceNotification() {
+        const program = document.getElementById('resource_program')?.value;
+        const block = document.getElementById('resource_block')?.value;
+        const intake = document.getElementById('resource_intake')?.value;
+        const count = document.getElementById('resource_notify_count');
+        if (!program || !count) return;
+
+        try {
+            let query = sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, full_name, email, program, block, current_block, intake_year, admission_year')
+                .eq('role', 'student')
+                .eq('status', 'approved')
+                .limit(1000);
+
+            // Prefer an exact program match, then fall back to client-side matching
+            // if the database stores a longer display name (e.g. "KRCHN Nursing").
+            const { data, error } = await query;
+            if (error) throw error;
+
+            const wantedProgram = normalizeResourceBlock(program);
+            const wantedBlock = normalizeResourceBlock(block);
+            const wantedIntake = String(intake || '').trim();
+
+            allResourceStudents = (data || []).filter(student => {
+                const studentProgram = normalizeResourceBlock(student.program);
+                const programMatch = studentProgram === wantedProgram ||
+                    studentProgram.includes(wantedProgram) || wantedProgram.includes(studentProgram);
+                if (!programMatch) return false;
+
+                // Keep the full program pool for the Program recipient option.
+                // Block/intake filtering is applied to block recipients below.
+                return true;
+            });
+
+            // Make current_block the effective block where block is empty.
+            allResourceStudents = allResourceStudents.map(student => ({
+                ...student,
+                effective_block: student.block || student.current_block || '',
+                effective_intake: student.intake_year || student.admission_year || ''
+            }));
+
+            updateResourceNotificationCount();
             updateResourceSelectedStudentsDisplay();
-            await loadStudentsForResourceNotification();
-        });
+            searchStudentsForResourceNotification();
+            renderSelectedResourceBlockStudents();
+
+            const matchingBlockCount = wantedBlock
+                ? allResourceStudents.filter(s => normalizeResourceBlock(s.effective_block) === wantedBlock && (!wantedIntake || String(s.effective_intake) === wantedIntake)).length
+                : allResourceStudents.length;
+
+            console.log(`📧 Resource notification pool: ${allResourceStudents.length}; selected block/term: ${matchingBlockCount}`);
+        } catch (error) {
+            console.error('❌ Could not load resource notification students:', error);
+            allResourceStudents = [];
+            count.innerHTML = '<i class="fas fa-users"></i> 0';
+            renderSelectedResourceBlockStudents();
+        }
     }
 
-    if (blockSelect && !blockSelect.dataset.resourceNotifyBound) {
-        blockSelect.dataset.resourceNotifyBound = '1';
-        blockSelect.addEventListener('change', async () => {
-            await loadStudentsForResourceNotification();
-        });
-    }
-
-    updateResourceNotificationToggleVisual();
-    syncResourceNotificationTargetUI();
-
-    // Load the initial program's students once the section is ready.
-    setTimeout(loadStudentsForResourceNotification, 250);
-}
-
-async function loadStudentsForResourceNotification() {
-    const program = document.getElementById('resource_program')?.value;
-    const block = document.getElementById('resource_block')?.value;
-    const intake = document.getElementById('resource_intake')?.value;
-    const count = document.getElementById('resource_notify_count');
-    if (!program || !count) return;
-
-    try {
-        let query = sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, student_id, full_name, email, program, block, current_block, intake_year, admission_year')
-            .eq('role', 'student')
-            .eq('status', 'approved')
-            .limit(1000);
-
-        // Prefer an exact program match, then fall back to client-side matching
-        // if the database stores a longer display name (e.g. "KRCHN Nursing").
-        const { data, error } = await query;
-        if (error) throw error;
-
-        const wantedProgram = normalizeResourceBlock(program);
+    function getStudentsInSelectedResourceBlock() {
+        const block = document.getElementById('resource_block')?.value;
+        const intake = document.getElementById('resource_intake')?.value;
         const wantedBlock = normalizeResourceBlock(block);
         const wantedIntake = String(intake || '').trim();
 
-        allResourceStudents = (data || []).filter(student => {
-            const studentProgram = normalizeResourceBlock(student.program);
-            const programMatch = studentProgram === wantedProgram ||
-                studentProgram.includes(wantedProgram) || wantedProgram.includes(studentProgram);
-            if (!programMatch) return false;
+        if (!wantedBlock) return [];
 
-            // Keep the full program pool for the Program recipient option.
-            // Block/intake filtering is applied to block recipients below.
-            return true;
+        return allResourceStudents.filter(student => {
+            const studentBlock = normalizeResourceBlock(student.effective_block || student.block || student.current_block);
+            const blockMatch = studentBlock === wantedBlock;
+            const intakeMatch = !wantedIntake || !student.effective_intake || String(student.effective_intake) === wantedIntake;
+            return blockMatch && intakeMatch && !!student.email;
         });
-
-        // Make current_block the effective block where block is empty.
-        allResourceStudents = allResourceStudents.map(student => ({
-            ...student,
-            effective_block: student.block || student.current_block || '',
-            effective_intake: student.intake_year || student.admission_year || ''
-        }));
-
-        updateResourceNotificationCount();
-        updateResourceSelectedStudentsDisplay();
-        searchStudentsForResourceNotification();
-        renderSelectedResourceBlockStudents();
-
-        const matchingBlockCount = wantedBlock
-            ? allResourceStudents.filter(s => normalizeResourceBlock(s.effective_block) === wantedBlock && (!wantedIntake || String(s.effective_intake) === wantedIntake)).length
-            : allResourceStudents.length;
-
-        console.log(`📧 Resource notification pool: ${allResourceStudents.length}; selected block/term: ${matchingBlockCount}`);
-    } catch (error) {
-        console.error('❌ Could not load resource notification students:', error);
-        allResourceStudents = [];
-        count.innerHTML = '<i class="fas fa-users"></i> 0';
-        renderSelectedResourceBlockStudents();
-    }
-}
-
-function getStudentsInSelectedResourceBlock() {
-    const block = document.getElementById('resource_block')?.value;
-    const intake = document.getElementById('resource_intake')?.value;
-    const wantedBlock = normalizeResourceBlock(block);
-    const wantedIntake = String(intake || '').trim();
-
-    if (!wantedBlock) return [];
-
-    return allResourceStudents.filter(student => {
-        const studentBlock = normalizeResourceBlock(student.effective_block || student.block || student.current_block);
-        const blockMatch = studentBlock === wantedBlock;
-        const intakeMatch = !wantedIntake || !student.effective_intake || String(student.effective_intake) === wantedIntake;
-        return blockMatch && intakeMatch && !!student.email;
-    });
-}
-
-function renderSelectedResourceBlockStudents() {
-    const notificationPanel = document.getElementById('resource-email-notification-settings');
-    if (!notificationPanel) return;
-
-    let box = document.getElementById('resource-block-student-preview');
-    if (!box) {
-        box = document.createElement('div');
-        box.id = 'resource-block-student-preview';
-        box.style.cssText = 'margin:12px 16px 16px;padding:12px;border:1px solid #d1fae5;border-radius:12px;background:#ffffff;';
-        notificationPanel.appendChild(box);
     }
 
-    const block = document.getElementById('resource_block')?.value || '';
-    if (!block) {
-        box.innerHTML = '<div style="font-size:11px;color:#64748b;"><i class="fas fa-users"></i> Select a Block/Term to view students in that class.</div>';
-        return;
+    function renderSelectedResourceBlockStudents() {
+        const notificationPanel = document.getElementById('resource-email-notification-settings');
+        if (!notificationPanel) return;
+
+        let box = document.getElementById('resource-block-student-preview');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'resource-block-student-preview';
+            box.style.cssText = 'margin:12px 16px 16px;padding:12px;border:1px solid #d1fae5;border-radius:12px;background:#ffffff;';
+            notificationPanel.appendChild(box);
+        }
+
+        const block = document.getElementById('resource_block')?.value || '';
+        if (!block) {
+            box.innerHTML = '<div style="font-size:11px;color:#64748b;"><i class="fas fa-users"></i> Select a Block/Term to view students in that class.</div>';
+            return;
+        }
+
+        const students = getStudentsInSelectedResourceBlock();
+        const title = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;"><strong style="font-size:11px;color:#065f46;">Students in ${escapeHtml(block)}</strong><span style="font-size:10px;color:#047857;background:#ecfdf5;padding:4px 8px;border-radius:999px;font-weight:800;">${students.length} students</span></div>`;
+
+        if (!students.length) {
+            box.innerHTML = title + '<div style="font-size:11px;color:#94a3b8;padding:7px 0;">No approved students were found for this program, block/term and intake.</div>';
+            return;
+        }
+
+        const visible = students.slice(0, 12).map((student, index) => `
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #f1f5f9;">
+                <span style="width:24px;height:24px;border-radius:50%;background:#d1fae5;color:#047857;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;">${index + 1}</span>
+                <div style="min-width:0;flex:1;"><strong style="display:block;font-size:10px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(student.full_name || 'Unknown Student')}</strong><span style="font-size:9px;color:#94a3b8;">${escapeHtml(student.student_id || student.email || '')}</span></div>
+            </div>`).join('');
+
+        const more = students.length > 12 ? `<div style="font-size:10px;color:#64748b;text-align:center;padding-top:8px;">+ ${students.length - 12} more students</div>` : '';
+        box.innerHTML = title + visible + more;
     }
 
-    const students = getStudentsInSelectedResourceBlock();
-    const title = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;"><strong style="font-size:11px;color:#065f46;">Students in ${escapeHtml(block)}</strong><span style="font-size:10px;color:#047857;background:#ecfdf5;padding:4px 8px;border-radius:999px;font-weight:800;">${students.length} students</span></div>`;
+    function getResourceNotificationRecipients() {
+        const target = getResourceNotificationTarget();
 
-    if (!students.length) {
-        box.innerHTML = title + '<div style="font-size:11px;color:#94a3b8;padding:7px 0;">No approved students were found for this program, block/term and intake.</div>';
-        return;
+        if (target === 'specific') {
+            return selectedResourceStudents.filter(student => student?.email);
+        }
+
+        if (target === 'program') {
+            return allResourceStudents.filter(student => student?.email);
+        }
+
+        return getStudentsInSelectedResourceBlock();
     }
 
-    const visible = students.slice(0, 12).map((student, index) => `
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #f1f5f9;">
-            <span style="width:24px;height:24px;border-radius:50%;background:#d1fae5;color:#047857;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;">${index + 1}</span>
-            <div style="min-width:0;flex:1;"><strong style="display:block;font-size:10px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(student.full_name || 'Unknown Student')}</strong><span style="font-size:9px;color:#94a3b8;">${escapeHtml(student.student_id || student.email || '')}</span></div>
-        </div>`).join('');
+    function updateResourceNotificationCount() {
+        const count = document.getElementById('resource_notify_count');
+        if (!count) return;
 
-    const more = students.length > 12 ? `<div style="font-size:10px;color:#64748b;text-align:center;padding-top:8px;">+ ${students.length - 12} more students</div>` : '';
-    box.innerHTML = title + visible + more;
-}
+        if (!getResourceNotifyEnabled()) {
+            count.innerHTML = '<i class="fas fa-bell-slash"></i> 0';
+            return;
+        }
 
-function getResourceNotificationRecipients() {
-    const target = getResourceNotificationTarget();
-
-    if (target === 'specific') {
-        return selectedResourceStudents.filter(student => student?.email);
+        const recipients = getResourceNotificationRecipients();
+        count.textContent = String(recipients.length);
     }
 
-    if (target === 'program') {
-        return allResourceStudents.filter(student => student?.email);
-    }
+    function searchStudentsForResourceNotification() {
+        const term = document.getElementById('resource_student_search')?.value?.toLowerCase().trim() || '';
+        const box = document.getElementById('resource_student_results');
+        if (!box) return;
 
-    return getStudentsInSelectedResourceBlock();
-}
+        if (getResourceNotificationTarget() !== 'specific') {
+            box.style.display = 'none';
+            return;
+        }
 
-function updateResourceNotificationCount() {
-    const count = document.getElementById('resource_notify_count');
-    if (!count) return;
+        const results = term
+            ? allResourceStudents.filter(s =>
+                (s.full_name || '').toLowerCase().includes(term) ||
+                (s.email || '').toLowerCase().includes(term) ||
+                (s.student_id || '').toLowerCase().includes(term))
+            : [];
 
-    if (!getResourceNotifyEnabled()) {
-        count.innerHTML = '<i class="fas fa-bell-slash"></i> 0';
-        return;
-    }
+        if (!results.length) {
+            box.innerHTML = term
+                ? '<div style="padding:12px;color:#94a3b8;text-align:center;font-size:12px;"><i class="fas fa-search"></i> No students found</div>'
+                : '<div style="padding:12px;color:#94a3b8;text-align:center;font-size:12px;">Type a name, admission number or email to search.</div>';
+            box.style.display = 'block';
+            return;
+        }
 
-    const recipients = getResourceNotificationRecipients();
-    count.textContent = String(recipients.length);
-}
-
-function searchStudentsForResourceNotification() {
-    const term = document.getElementById('resource_student_search')?.value?.toLowerCase().trim() || '';
-    const box = document.getElementById('resource_student_results');
-    if (!box) return;
-
-    if (getResourceNotificationTarget() !== 'specific') {
-        box.style.display = 'none';
-        return;
-    }
-
-    const results = term
-        ? allResourceStudents.filter(s =>
-            (s.full_name || '').toLowerCase().includes(term) ||
-            (s.email || '').toLowerCase().includes(term) ||
-            (s.student_id || '').toLowerCase().includes(term))
-        : [];
-
-    if (!results.length) {
-        box.innerHTML = term
-            ? '<div style="padding:12px;color:#94a3b8;text-align:center;font-size:12px;"><i class="fas fa-search"></i> No students found</div>'
-            : '<div style="padding:12px;color:#94a3b8;text-align:center;font-size:12px;">Type a name, admission number or email to search.</div>';
+        box.innerHTML = results.slice(0, 30).map(student => {
+            const selected = selectedResourceStudents.some(s => s.user_id === student.user_id);
+            return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 11px;border-bottom:1px solid #f1f5f9;${selected ? 'background:#ecfdf5;' : 'background:white;'}">
+                <div style="min-width:0;">
+                    <strong style="font-size:12px;color:#334155;">${escapeHtml(student.full_name || 'Unknown')}</strong>
+                    <br><small style="color:#64748b;">${escapeHtml(student.student_id || 'No admission no.')} · ${escapeHtml(student.email || '')}</small>
+                </div>
+                <button type="button" onclick="toggleResourceStudentNotification('${student.user_id}')" style="flex:0 0 auto;border:0;border-radius:7px;padding:5px 10px;cursor:pointer;background:${selected ? '#dc2626' : '#059669'};color:white;font-size:11px;font-weight:700;">
+                    ${selected ? 'Remove' : 'Add'}
+                </button>
+            </div>`;
+        }).join('');
         box.style.display = 'block';
-        return;
     }
 
-    box.innerHTML = results.slice(0, 30).map(student => {
-        const selected = selectedResourceStudents.some(s => s.user_id === student.user_id);
-        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 11px;border-bottom:1px solid #f1f5f9;${selected ? 'background:#ecfdf5;' : 'background:white;'}">
-            <div style="min-width:0;">
-                <strong style="font-size:12px;color:#334155;">${escapeHtml(student.full_name || 'Unknown')}</strong>
-                <br><small style="color:#64748b;">${escapeHtml(student.student_id || 'No admission no.')} · ${escapeHtml(student.email || '')}</small>
-            </div>
-            <button type="button" onclick="toggleResourceStudentNotification('${student.user_id}')" style="flex:0 0 auto;border:0;border-radius:7px;padding:5px 10px;cursor:pointer;background:${selected ? '#dc2626' : '#059669'};color:white;font-size:11px;font-weight:700;">
-                ${selected ? 'Remove' : 'Add'}
-            </button>
-        </div>`;
-    }).join('');
-    box.style.display = 'block';
-}
+    function toggleResourceStudentNotification(studentId) {
+        const student = allResourceStudents.find(s => s.user_id === studentId);
+        if (!student) return;
 
-function toggleResourceStudentNotification(studentId) {
-    const student = allResourceStudents.find(s => s.user_id === studentId);
-    if (!student) return;
+        const index = selectedResourceStudents.findIndex(s => s.user_id === studentId);
+        if (index >= 0) selectedResourceStudents.splice(index, 1);
+        else selectedResourceStudents.push(student);
 
-    const index = selectedResourceStudents.findIndex(s => s.user_id === studentId);
-    if (index >= 0) selectedResourceStudents.splice(index, 1);
-    else selectedResourceStudents.push(student);
-
-    updateResourceSelectedStudentsDisplay();
-    updateResourceNotificationCount();
-    searchStudentsForResourceNotification();
-}
-
-function updateResourceSelectedStudentsDisplay() {
-    const box = document.getElementById('resource_selected_students');
-    if (!box) return;
-
-    if (!selectedResourceStudents.length) {
-        box.innerHTML = '<span style="font-size:11px;color:#94a3b8;">No students selected yet.</span>';
-        return;
+        updateResourceSelectedStudentsDisplay();
+        updateResourceNotificationCount();
+        searchStudentsForResourceNotification();
     }
 
-    box.innerHTML = selectedResourceStudents.map(student => `
-        <span style="background:#ede9fe;color:#4c1d95;padding:5px 9px;border-radius:16px;font-size:11px;display:inline-flex;align-items:center;gap:5px;border:1px solid #ddd6fe;">
-            <i class="fas fa-user"></i> ${escapeHtml(student.full_name || 'Student')}
-            <button type="button" onclick="toggleResourceStudentNotification('${student.user_id}')" style="border:0;background:none;color:#dc2626;cursor:pointer;font-weight:800;padding:0 2px;">×</button>
-        </span>`).join('');
-}
+    function updateResourceSelectedStudentsDisplay() {
+        const box = document.getElementById('resource_selected_students');
+        if (!box) return;
 
-async function sendResourceNotificationEmail(resourceData, recipients) {
-    if (!recipients?.length) return { sent: 0, failed: 0, total: 0 };
-
-    const sender = window.sendEmailWithBrevo;
-    if (typeof sender !== 'function') {
-        console.error('❌ Exam email sender is not available. Load the Exams module before Resources.');
-        return { sent: 0, failed: recipients.length, total: recipients.length };
-    }
-
-    const isTVET = isTVETResourceProgram(resourceData.program_type);
-    const blockLabel = isTVET ? 'Term' : 'Block';
-    const portalUrl = resourceData.file_url || 'https://nchsm.co.ke';
-    const materialTitle = escapeHtml(resourceData.title || 'New Learning Material');
-    const program = escapeHtml(resourceData.program_type || 'N/A');
-    const block = escapeHtml(resourceData.block || 'N/A');
-    const description = escapeHtml(resourceData.description || 'A new learning material has been posted for your class.');
-
-    const emailHtml = `
-<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>New Learning Material Posted</title>
-<style>
-body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8}.container{max-width:580px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.1)}.header{background:linear-gradient(135deg,#4C1D95,#6d28d9);padding:30px 35px;text-align:center;color:#fff}.header h1{margin:0;font-size:24px}.header p{margin:5px 0 0;opacity:.85}.body{padding:30px 35px}.greeting{background:#f3e8ff;border-radius:12px;padding:16px;margin-bottom:20px;border-left:4px solid #7c3aed}.details{background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px}.details table{width:100%;border-collapse:collapse;font-size:14px}.details td{padding:8px 0;border-bottom:1px solid #e2e8f0}.details tr:last-child td{border-bottom:none}.label{color:#64748b;font-weight:500}.value{color:#4C1D95;font-weight:600;text-align:right}.btn{display:inline-block;background:#4C1D95;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:600}.footer{background:#F8FAFC;padding:20px;text-align:center;border-top:1px solid #E2E8F0;font-size:.85rem;color:#64748B}
-</style></head><body><div class="container"><div class="card">
-<div class="header"><h1>📚 New Learning Material</h1><p>Nakuru College of Health Sciences and Management</p></div>
-<div class="body"><div class="greeting"><p style="margin:0;font-size:16px;color:#4C1D95;"><strong>👋 Dear Student,</strong></p><p style="margin:8px 0 0;color:#334155;">A new learning material has been posted for your class. Please log in or use the button below to access it.</p></div>
-<div class="details"><table>
-<tr><td class="label">📚 Title</td><td class="value">${materialTitle}</td></tr>
-<tr><td class="label">🎓 Program</td><td class="value">${program}</td></tr>
-<tr><td class="label">📖 ${blockLabel}</td><td class="value">${block}</td></tr>
-<tr><td class="label">📝 Description</td><td class="value">${description}</td></tr>
-</table></div>
-<div style="text-align:center;margin:22px 0;"><a href="${escapeHtml(portalUrl)}" target="_blank" class="btn">📖 View Learning Material</a></div>
-<div style="background:#fef3c7;border-radius:12px;padding:12px 16px;border-left:4px solid #f59e0b;"><p style="margin:0;font-size:13px;color:#78350F;"><strong>Important:</strong> Please check the student portal regularly for new notes, announcements and academic resources.</p></div>
-</div><div class="footer"><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p style="font-size:.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p></div>
-</div></div></body></html>`;
-
-    let sent = 0, failed = 0;
-    for (const student of recipients) {
-        if (!student?.email) { failed++; continue; }
-        try {
-            const result = await sender(student.email, `📚 New Learning Material: ${resourceData.title || 'New Note'}`, emailHtml);
-            if (result?.success) sent++; else failed++;
-        } catch (error) {
-            failed++;
-            console.error(`❌ Resource email failed for ${student.email}:`, error);
-        }
-        await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    return { sent, failed, total: recipients.length };
-}
-
-async function notifyStudentsAboutNewResource(resourceData) {
-    if (!resourceData || resourceData.resource_type !== 'material' || !getResourceNotifyEnabled()) return;
-
-    const recipients = getResourceNotificationRecipients();
-    if (!recipients.length) {
-        console.log('📧 No students matched the resource notification target.');
-        return;
-    }
-
-    showFeedback(`📧 Sending learning material notification to ${recipients.length} students...`, 'info');
-    const result = await sendResourceNotificationEmail(resourceData, recipients);
-    console.log(`📚 Resource notifications: ${result.sent} sent, ${result.failed} failed, ${result.total} total`);
-
-    if (result.sent > 0 && result.failed === 0) {
-        showFeedback(`✅ "${resourceData.title}" posted. ${result.sent} student email notification(s) sent.`, 'success');
-    } else if (result.sent > 0) {
-        showFeedback(`✅ "${resourceData.title}" posted. 📧 ${result.sent} emails sent, ${result.failed} failed.`, 'warning');
-    } else {
-        showFeedback(`⚠️ "${resourceData.title}" posted, but email notifications failed.`, 'warning');
-    }
-}
-
-// =====================================================
-// UNIFIED RESOURCE UPLOAD HANDLER
-// =====================================================
-
-// =====================================================
-// PRE-RECORDED PODCAST / AUDIO SUPPORT
-// =====================================================
-const RESOURCE_AUDIO_BUCKET = 'resources';
-
-function sanitizeResourceAudioName(name) {
-    return String(name || 'podcast')
-        .toLowerCase()
-        .replace(/\.[^/.]+$/, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .substring(0, 80) || 'podcast';
-}
-
-async function uploadResourcePodcastAudio(podcastFile, meta) {
-    if (!podcastFile) return null;
-
-    const allowedExt = ['mp3', 'm4a', 'wav', 'ogg', 'webm'];
-    const ext = (podcastFile.name.split('.').pop() || '').toLowerCase();
-
-    if (!allowedExt.includes(ext)) {
-        throw new Error('Podcast audio must be MP3, M4A, WAV, OGG, or WEBM.');
-    }
-
-    if (podcastFile.size > 100 * 1024 * 1024) {
-        throw new Error('Podcast audio must be 100 MB or smaller.');
-    }
-
-    const program = sanitizeResourceAudioName(meta.program_type || 'program');
-    const intake = sanitizeResourceAudioName(meta.intake || 'intake');
-    const block = sanitizeResourceAudioName(meta.block || 'block');
-    const title = sanitizeResourceAudioName(meta.title || 'podcast');
-
-    const path =
-        `podcasts/${program}/${intake}/${block}/${Date.now()}-${title}.${ext}`;
-
-    const { error } = await sb.storage
-        .from(RESOURCE_AUDIO_BUCKET)
-        .upload(path, podcastFile, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: podcastFile.type || undefined
-        });
-
-    if (error) throw error;
-
-    const { data } = sb.storage
-        .from(RESOURCE_AUDIO_BUCKET)
-        .getPublicUrl(path);
-
-    return {
-        path,
-        url: data?.publicUrl || null
-    };
-}
-
-function setPodcastEditPreview(resource) {
-    const info = document.getElementById('podcast-edit-info');
-    const link = document.getElementById('podcast-preview-link');
-
-    if (!info || !link) return;
-
-    if (resource?.podcast_url) {
-        link.href = resource.podcast_url;
-        info.style.display = 'block';
-    } else {
-        link.removeAttribute('href');
-        info.style.display = 'none';
-    }
-}
-
-async function handleResourceUpload(e) {
-    e.preventDefault();
-    const submitButton = e.submitter || document.querySelector('#upload-resource-form button[type="submit"]');
-    const originalText = submitButton?.innerHTML || 'Upload';
-    
-    if (submitButton) {
-        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-        submitButton.disabled = true;
-    }
-
-    const editId = document.getElementById('resource_edit_id')?.value;
-    const isEdit = editId && editId !== '';
-
-    const program = document.getElementById('resource_program')?.value;
-    const intake = document.getElementById('resource_intake')?.value;
-    const block = document.getElementById('resource_block')?.value;
-    const fileInput = document.getElementById('resource-file');
-    const title = document.getElementById('resource-title')?.value.trim();
-    const description = document.getElementById('resource-description')?.value.trim() || '';
-    
-    const isPastPaper = document.getElementById('resource_is_pastpaper')?.checked || false;
-    const pastpaperYear = document.getElementById('resource_pastpaper_year')?.value || null;
-    const examType = document.getElementById('resource_exam_type')?.value || null;
-    const courseName = document.getElementById('resource_course_name')?.value.trim() || null;
-
-    if (!program || !intake || !block || !title) {
-        showFeedback('Please fill all required fields.', 'error');
-        if (submitButton) {
-            submitButton.innerHTML = originalText;
-            submitButton.disabled = false;
-        }
-        return;
-    }
-
-    if (!isEdit && (!fileInput || !fileInput.files.length)) {
-        showFeedback('Please select a file to upload.', 'error');
-        if (submitButton) {
-            submitButton.innerHTML = originalText;
-            submitButton.disabled = false;
-        }
-        return;
-    }
-
-    try {
-        let filePath = null;
-        let publicUrl = null;
-        let file = null;
-        let contentType = 'application/octet-stream';
-        let uploadedPodcast = null;
-
-        // Upload optional prerecorded audio before saving the resource row.
-        const podcastInput = document.getElementById('resource-podcast-file');
-        const podcastFile = podcastInput?.files?.[0] || null;
-        if (podcastFile) {
-            uploadedPodcast = await uploadResourcePodcastAudio(podcastFile, { program_type: program, intake, block, title });
+        if (!selectedResourceStudents.length) {
+            box.innerHTML = '<span style="font-size:11px;color:#94a3b8;">No students selected yet.</span>';
+            return;
         }
 
-        // On edit, preserve the existing podcast unless a replacement was uploaded.
-        if (isEdit && !uploadedPodcast) {
-            const { data: existingResource } = await sb
-                .from('resources')
-                .select('podcast_url, podcast_path, file_path, file_url, file_name')
-                .eq('id', editId)
-                .single();
-            if (existingResource) {
-                uploadedPodcast = {
-                    url: existingResource.podcast_url || null,
-                    path: existingResource.podcast_path || null
-                };
+        box.innerHTML = selectedResourceStudents.map(student => `
+            <span style="background:#ede9fe;color:#4c1d95;padding:5px 9px;border-radius:16px;font-size:11px;display:inline-flex;align-items:center;gap:5px;border:1px solid #ddd6fe;">
+                <i class="fas fa-user"></i> ${escapeHtml(student.full_name || 'Student')}
+                <button type="button" onclick="toggleResourceStudentNotification('${student.user_id}')" style="border:0;background:none;color:#dc2626;cursor:pointer;font-weight:800;padding:0 2px;">×</button>
+            </span>`).join('');
+    }
+
+    async function sendResourceNotificationEmail(resourceData, recipients) {
+        if (!recipients?.length) return { sent: 0, failed: 0, total: 0 };
+
+        const sender = window.sendEmailWithBrevo;
+        if (typeof sender !== 'function') {
+            console.error('❌ Exam email sender is not available. Load the Exams module before Resources.');
+            return { sent: 0, failed: recipients.length, total: recipients.length };
+        }
+
+        const isTVET = isTVETResourceProgram(resourceData.program_type);
+        const blockLabel = isTVET ? 'Term' : 'Block';
+        const portalUrl = resourceData.file_url || 'https://nchsm.co.ke';
+        const materialTitle = escapeHtml(resourceData.title || 'New Learning Material');
+        const program = escapeHtml(resourceData.program_type || 'N/A');
+        const block = escapeHtml(resourceData.block || 'N/A');
+        const description = escapeHtml(resourceData.description || 'A new learning material has been posted for your class.');
+
+        const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>New Learning Material Posted</title>
+    <style>
+    body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8}.container{max-width:580px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.1)}.header{background:linear-gradient(135deg,#4C1D95,#6d28d9);padding:30px 35px;text-align:center;color:#fff}.header h1{margin:0;font-size:24px}.header p{margin:5px 0 0;opacity:.85}.body{padding:30px 35px}.greeting{background:#f3e8ff;border-radius:12px;padding:16px;margin-bottom:20px;border-left:4px solid #7c3aed}.details{background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px}.details table{width:100%;border-collapse:collapse;font-size:14px}.details td{padding:8px 0;border-bottom:1px solid #e2e8f0}.details tr:last-child td{border-bottom:none}.label{color:#64748b;font-weight:500}.value{color:#4C1D95;font-weight:600;text-align:right}.btn{display:inline-block;background:#4C1D95;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:600}.footer{background:#F8FAFC;padding:20px;text-align:center;border-top:1px solid #E2E8F0;font-size:.85rem;color:#64748B}
+    </style></head><body><div class="container"><div class="card">
+    <div class="header"><h1>📚 New Learning Material</h1><p>Nakuru College of Health Sciences and Management</p></div>
+    <div class="body"><div class="greeting"><p style="margin:0;font-size:16px;color:#4C1D95;"><strong>👋 Dear Student,</strong></p><p style="margin:8px 0 0;color:#334155;">A new learning material has been posted for your class. Please log in or use the button below to access it.</p></div>
+    <div class="details"><table>
+    <tr><td class="label">📚 Title</td><td class="value">${materialTitle}</td></tr>
+    <tr><td class="label">🎓 Program</td><td class="value">${program}</td></tr>
+    <tr><td class="label">📖 ${blockLabel}</td><td class="value">${block}</td></tr>
+    <tr><td class="label">📝 Description</td><td class="value">${description}</td></tr>
+    </table></div>
+    <div style="text-align:center;margin:22px 0;"><a href="${escapeHtml(portalUrl)}" target="_blank" class="btn">📖 View Learning Material</a></div>
+    <div style="background:#fef3c7;border-radius:12px;padding:12px 16px;border-left:4px solid #f59e0b;"><p style="margin:0;font-size:13px;color:#78350F;"><strong>Important:</strong> Please check the student portal regularly for new notes, announcements and academic resources.</p></div>
+    </div><div class="footer"><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p style="font-size:.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p></div>
+    </div></div></body></html>`;
+
+        let sent = 0, failed = 0;
+        for (const student of recipients) {
+            if (!student?.email) { failed++; continue; }
+            try {
+                const result = await sender(student.email, `📚 New Learning Material: ${resourceData.title || 'New Note'}`, emailHtml);
+                if (result?.success) sent++; else failed++;
+            } catch (error) {
+                failed++;
+                console.error(`❌ Resource email failed for ${student.email}:`, error);
             }
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        return { sent, failed, total: recipients.length };
+    }
+
+    async function notifyStudentsAboutNewResource(resourceData) {
+        if (!resourceData || resourceData.resource_type !== 'material' || !getResourceNotifyEnabled()) return;
+
+        const recipients = getResourceNotificationRecipients();
+        if (!recipients.length) {
+            console.log('📧 No students matched the resource notification target.');
+            return;
         }
 
-        if (fileInput && fileInput.files.length > 0) {
-            file = fileInput.files[0];
-            
-            const isPDF = file.name.toLowerCase().endsWith('.pdf');
-            if (isPDF) {
-                contentType = 'application/pdf';
-            } else {
-                contentType = file.type || 'application/octet-stream';
-            }
+        showFeedback(`📧 Sending learning material notification to ${recipients.length} students...`, 'info');
+        const result = await sendResourceNotificationEmail(resourceData, recipients);
+        console.log(`📚 Resource notifications: ${result.sent} sent, ${result.failed} failed, ${result.total} total`);
 
-            const timestamp = Date.now();
-            const safeTitle = title.replace(/[^\w\-]+/g, '_');
-            const originalExt = file.name.split('.').pop();
-            const finalName = `${safeTitle}_${timestamp}.${originalExt}`;
-            
-            if (isPastPaper && pastpaperYear && examType) {
-                filePath = `past_papers/${program}/${pastpaperYear}/${block}/${finalName}`;
-            } else {
-                filePath = `learning_materials/${program}/${intake}/${block}/${finalName}`;
-            }
-
-            const { error: uploadError } = await sb
-                .storage
-                .from(RESOURCES_BUCKET)
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: true,
-                    contentType: contentType
-                });
-            
-            if (uploadError) throw uploadError;
-
-            const { data: urlData } = sb
-                .storage
-                .from(RESOURCES_BUCKET)
-                .getPublicUrl(filePath);
-            
-            publicUrl = urlData?.publicUrl;
-        }
-
-        const dbRecord = {
-            title: title,
-            description: description,
-            podcast_url: uploadedPodcast?.url || null,
-            podcast_path: uploadedPodcast?.path || null,
-            program_type: program,
-            intake: intake,
-            block: block,
-            resource_type: isPastPaper ? 'pastpaper' : 'material',
-            updated_at: new Date().toISOString()
-        };
-
-        if (filePath && publicUrl) {
-            dbRecord.file_path = filePath;
-            dbRecord.file_url = publicUrl;
-            dbRecord.file_name = file?.name || null;
-        }
-
-        if (isPastPaper) {
-            dbRecord.pastpaper_year = pastpaperYear ? parseInt(pastpaperYear) : null;
-            dbRecord.exam_type = examType || null;
-            dbRecord.course_name = courseName || null;
+        if (result.sent > 0 && result.failed === 0) {
+            showFeedback(`✅ "${resourceData.title}" posted. ${result.sent} student email notification(s) sent.`, 'success');
+        } else if (result.sent > 0) {
+            showFeedback(`✅ "${resourceData.title}" posted. 📧 ${result.sent} emails sent, ${result.failed} failed.`, 'warning');
         } else {
-            dbRecord.pastpaper_year = null;
-            dbRecord.exam_type = null;
-            dbRecord.course_name = null;
-        }
-
-        let result;
-
-        if (isEdit) {
-            result = await sb
-                .from('resources')
-                .update(dbRecord)
-                .eq('id', editId)
-                .select();
-            
-            if (result.error) throw result.error;
-            
-            await logAudit('RESOURCE_UPDATE', `Updated ${isPastPaper ? 'past paper' : 'material'}: ${title}`, editId, 'SUCCESS');
-            showFeedback(`✅ "${title}" updated successfully!`, 'success');
-            
-            document.getElementById('resource_edit_id').value = '';
-            document.getElementById('form-title').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-            document.getElementById('form-subtitle').textContent = 'Upload new learning materials or past examination papers';
-            document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-            document.getElementById('form-cancel-btn').style.display = 'none';
-            document.getElementById('file-edit-info').style.display = 'none';
-            document.getElementById('resource-file').required = false;
-            editingResourceId = null;
-            
-        } else {
-            dbRecord.uploaded_by = window.currentUserProfile?.id || null;
-            dbRecord.uploaded_by_name = window.currentUserProfile?.full_name || 'Unknown';
-            dbRecord.created_at = new Date().toISOString();
-            
-            result = await sb
-                .from('resources')
-                .insert(dbRecord)
-                .select();
-            
-            if (result.error) throw result.error;
-            
-            await logAudit('RESOURCE_UPLOAD', `Uploaded ${isPastPaper ? 'past paper' : 'material'}: ${title}`, result.data?.[0]?.id, 'SUCCESS');
-
-            // 📧 Notify students only for NEW learning materials.
-            // Past papers and edits do not trigger this notification.
-            if (!isPastPaper && result.data?.[0]) {
-                await notifyStudentsAboutNewResource(result.data[0]);
-            } else {
-                showFeedback(`✅ "${title}" uploaded successfully!`, 'success');
-            }
-            
-            document.getElementById('upload-resource-form').reset();
-            selectedResourceStudents = [];
-            allResourceStudents = [];
-            if (document.getElementById('resource_is_pastpaper')) {
-                document.getElementById('resource_is_pastpaper').checked = false;
-            }
-            togglePastPaperFields();
-            initializeResourceNotificationUI();
-        }
-
-        loadAllResources();
-        
-    } catch (err) {
-        console.error('Operation failed:', err);
-        await logAudit('RESOURCE_ERROR', `Failed: ${title}. ${err.message}`, null, 'FAILURE');
-        showFeedback(`❌ ${isEdit ? 'Update' : 'Upload'} failed: ${err.message}`, 'error');
-    } finally {
-        if (submitButton) {
-            submitButton.innerHTML = originalText;
-            submitButton.disabled = false;
+            showFeedback(`⚠️ "${resourceData.title}" posted, but email notifications failed.`, 'warning');
         }
     }
-}
 
-// =====================================================
-// EDIT RESOURCE
-// =====================================================
-function populateEditBlockOptions(program, selectedBlock = '') {
-    const blockSelect = document.getElementById('edit_resource_block');
-    if (!blockSelect) return;
+    // =====================================================
+    // UNIFIED RESOURCE UPLOAD HANDLER
+    // =====================================================
 
-    const tvet = isTVETResourceProgram(program);
-    const options = tvet
-        ? [['Term1','📘 Term 1'],['Term2','📗 Term 2'],['Term3','📕 Term 3'],['Term4','📙 Term 4'],['Term5','📒 Term 5'],['Term6','📓 Term 6'],['Final Term','🏆 Final Term']]
-        : [['Introductory','🚀 Introductory'],['Block 1','📖 Block 1'],['Block 2','📗 Block 2'],['Block 3','📘 Block 3'],['Block 4','📙 Block 4'],['Block 5','📕 Block 5'],['Final','🏆 Final Block']];
+    // =====================================================
+    // PRE-RECORDED PODCAST / AUDIO SUPPORT
+    // =====================================================
+    const RESOURCE_AUDIO_BUCKET = 'resources';
 
-    blockSelect.innerHTML = '';
-    options.forEach(([value, label]) => {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = label;
-        blockSelect.appendChild(option);
-    });
+    function sanitizeResourceAudioName(name) {
+        return String(name || 'podcast')
+            .toLowerCase()
+            .replace(/\.[^/.]+$/, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .substring(0, 80) || 'podcast';
+    }
 
-    if (selectedBlock) {
-        const match = Array.from(blockSelect.options).find(o => normalizeResourceBlock(o.value) === normalizeResourceBlock(selectedBlock));
-        if (match) blockSelect.value = match.value;
-        else {
-            const custom = document.createElement('option');
-            custom.value = selectedBlock;
-            custom.textContent = selectedBlock;
-            blockSelect.appendChild(custom);
-            blockSelect.value = selectedBlock;
+    async function uploadResourcePodcastAudio(podcastFile, meta) {
+        if (!podcastFile) return null;
+
+        const allowedExt = ['mp3', 'm4a', 'wav', 'ogg', 'webm'];
+        const ext = (podcastFile.name.split('.').pop() || '').toLowerCase();
+
+        if (!allowedExt.includes(ext)) {
+            throw new Error('Podcast audio must be MP3, M4A, WAV, OGG, or WEBM.');
         }
-    }
-}
 
-function ensureEditPodcastControls() {
-    const form = document.getElementById('edit-resource-form');
-    if (!form || document.getElementById('edit-resource-podcast-panel')) return;
+        if (podcastFile.size > 100 * 1024 * 1024) {
+            throw new Error('Podcast audio must be 100 MB or smaller.');
+        }
 
-    const panel = document.createElement('div');
-    panel.id = 'edit-resource-podcast-panel';
-    panel.style.cssText = 'margin-top:15px;padding:14px;border:1px solid #ddd6fe;border-radius:13px;background:linear-gradient(135deg,#faf5ff,#f5f3ff);';
+        const program = sanitizeResourceAudioName(meta.program_type || 'program');
+        const intake = sanitizeResourceAudioName(meta.intake || 'intake');
+        const block = sanitizeResourceAudioName(meta.block || 'block');
+        const title = sanitizeResourceAudioName(meta.title || 'podcast');
 
-    panel.innerHTML = `
-        <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;">
-            <span style="width:32px;height:32px;border-radius:9px;background:#ede9fe;color:#6d28d9;display:flex;align-items:center;justify-content:center;">
-                <i class="fas fa-podcast"></i>
-            </span>
-            <div>
-                <strong style="font-size:12px;color:#4c1d95;">Podcast / Audio Lesson</strong>
-                <div style="font-size:9px;color:#64748b;margin-top:2px;">Replace the existing prerecorded audio or remove it.</div>
-            </div>
-        </div>
+        const path =
+            `podcasts/${program}/${intake}/${block}/${Date.now()}-${title}.${ext}`;
 
-        <div id="edit-resource-current-audio"
-             style="display:none;margin-bottom:10px;padding:9px 10px;border:1px solid #a7f3d0;border-radius:9px;background:#ecfdf5;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                <span style="font-size:10px;font-weight:800;color:#047857;">
-                    <i class="fas fa-circle-check"></i> Current audio attached
-                </span>
-                <a id="edit-resource-audio-preview" href="#" target="_blank" rel="noopener"
-                   style="display:inline-flex;align-items:center;gap:4px;background:#059669;color:#fff;text-decoration:none;padding:5px 8px;border-radius:6px;font-size:10px;font-weight:800;">
-                    <i class="fas fa-play"></i> Preview
-                </a>
-            </div>
-        </div>
-
-        <input type="file" id="edit_resource_podcast_file"
-               accept=".mp3,.m4a,.wav,.ogg,.webm,audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm"
-               style="width:100%;box-sizing:border-box;padding:9px;background:#fff;border:1px dashed #c4b5fd;border-radius:9px;font-size:11px;">
-
-        <label style="display:flex;align-items:center;gap:7px;margin-top:9px;cursor:pointer;font-size:10px;color:#b91c1c;font-weight:750;">
-            <input type="checkbox" id="edit_resource_remove_podcast" style="width:15px;height:15px;accent-color:#dc2626;">
-            Remove current podcast/audio
-        </label>
-
-        <div id="edit-resource-podcast-status" style="margin-top:7px;font-size:9px;color:#64748b;"></div>
-    `;
-
-    // Insert immediately before the action buttons.
-    const actionRow = form.querySelector('button[type="submit"]')?.parentElement;
-    if (actionRow) form.insertBefore(panel, actionRow);
-    else form.appendChild(panel);
-
-    const removeBox = document.getElementById('edit_resource_remove_podcast');
-    const podcastInput = document.getElementById('edit_resource_podcast_file');
-
-    if (removeBox && podcastInput) {
-        removeBox.addEventListener('change', () => {
-            if (removeBox.checked) podcastInput.value = '';
-        });
-        podcastInput.addEventListener('change', () => {
-            if (podcastInput.files?.length) removeBox.checked = false;
-            const status = document.getElementById('edit-resource-podcast-status');
-            if (status && podcastInput.files?.[0]) {
-                status.textContent = `Selected: ${podcastInput.files[0].name}`;
-                status.style.color = '#6d28d9';
-            }
-        });
-    }
-}
-
-function setEditPodcastState(resource) {
-    ensureEditPodcastControls();
-
-    const current = document.getElementById('edit-resource-current-audio');
-    const preview = document.getElementById('edit-resource-audio-preview');
-    const input = document.getElementById('edit_resource_podcast_file');
-    const remove = document.getElementById('edit_resource_remove_podcast');
-    const status = document.getElementById('edit-resource-podcast-status');
-
-    if (input) input.value = '';
-    if (remove) remove.checked = false;
-    if (status) status.textContent = '';
-
-    const url = resource?.podcast_url || '';
-    if (current && preview && url) {
-        preview.href = url;
-        current.style.display = 'block';
-    } else if (current) {
-        current.style.display = 'none';
-        if (preview) preview.removeAttribute('href');
-    }
-}
-
-function openEditResourceModal() {
-    const modal = document.getElementById('edit-resource-modal');
-    if (!modal) return false;
-
-    ensureEditPodcastControls();
-
-    modal.style.display = 'flex';
-    modal.style.visibility = 'visible';
-    modal.style.opacity = '1';
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-
-    setTimeout(() => document.getElementById('edit_resource_title')?.focus(), 80);
-    return true;
-}
-
-function closeEditModal() {
-    const modal = document.getElementById('edit-resource-modal');
-    if (modal) {
-        modal.style.display = 'none';
-        modal.style.visibility = 'hidden';
-        modal.style.opacity = '0';
-        modal.setAttribute('aria-hidden', 'true');
-    }
-
-    document.body.style.overflow = '';
-    editingResourceId = null;
-
-    const form = document.getElementById('edit-resource-form');
-    if (form) form.reset();
-
-    const current = document.getElementById('edit-resource-current-audio');
-    if (current) current.style.display = 'none';
-
-    const status = document.getElementById('edit-resource-podcast-status');
-    if (status) status.textContent = '';
-
-    // Do not call showFeedback here. Closing/cancelling must always work even
-    // if the global notification helper is unavailable.
-}
-
-async function editResource(resourceId) {
-    try {
-        const { data: resource, error } = await sb
-            .from('resources')
-            .select('*')
-            .eq('id', resourceId)
-            .single();
+        const { error } = await sb.storage
+            .from(RESOURCE_AUDIO_BUCKET)
+            .upload(path, podcastFile, {
+                cacheControl: '3600',
+                upsert: false,
+                contentType: podcastFile.type || undefined
+            });
 
         if (error) throw error;
-        if (!resource) throw new Error('Resource not found.');
 
-        const setValue = (id, value) => {
-            const el = document.getElementById(id);
-            if (el) el.value = value ?? '';
+        const { data } = sb.storage
+            .from(RESOURCE_AUDIO_BUCKET)
+            .getPublicUrl(path);
+
+        return {
+            path,
+            url: data?.publicUrl || null
         };
-
-        setValue('edit_resource_id', resource.id);
-        setValue('edit_resource_program', resource.program_type || 'KRCHN');
-        setValue('edit_resource_intake', resource.intake || '2026');
-        populateEditBlockOptions(resource.program_type || 'KRCHN', resource.block || resource.term || '');
-        setValue('edit_resource_title', resource.title || '');
-        setValue('edit_resource_description', resource.description || '');
-        setValue('edit_resource_pastpaper_year', resource.pastpaper_year || '');
-        setValue('edit_resource_exam_type', resource.exam_type || '');
-        setValue('edit_resource_course_name', resource.course_name || '');
-
-        ensureEditPodcastControls();
-        setEditPodcastState(resource);
-
-        editingResourceId = resourceId;
-        if (!openEditResourceModal()) throw new Error('Edit modal is not available on this page.');
-    } catch (error) {
-        console.error('Error opening resource edit modal:', error);
-        showFeedback(`❌ ${error.message || 'Failed to load resource.'}`, 'error');
-    }
-}
-
-async function saveEditResource() {
-    const id = document.getElementById('edit_resource_id')?.value || editingResourceId;
-    if (!id) {
-        if (typeof showFeedback === 'function') showFeedback('No resource selected for editing.', 'error');
-        return;
     }
 
-    const program = document.getElementById('edit_resource_program')?.value;
-    const intake = document.getElementById('edit_resource_intake')?.value;
-    const block = document.getElementById('edit_resource_block')?.value;
-    const title = document.getElementById('edit_resource_title')?.value?.trim();
-    const description = document.getElementById('edit_resource_description')?.value?.trim() || '';
+    function setPodcastEditPreview(resource) {
+        const info = document.getElementById('podcast-edit-info');
+        const link = document.getElementById('podcast-preview-link');
 
-    if (!program || !intake || !block || !title) {
-        if (typeof showFeedback === 'function') showFeedback('Please complete Program, Intake, Block/Term and Title.', 'error');
-        return;
-    }
+        if (!info || !link) return;
 
-    ensureEditPodcastControls();
-
-    const podcastInput = document.getElementById('edit_resource_podcast_file');
-    const removePodcast = document.getElementById('edit_resource_remove_podcast')?.checked || false;
-    const newPodcastFile = podcastInput?.files?.[0] || null;
-
-    const saveButton = document.querySelector('#edit-resource-form button[type="submit"]');
-    const originalText = saveButton?.innerHTML || 'Save Changes';
-
-    if (saveButton) {
-        saveButton.disabled = true;
-        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-    }
-
-    let uploadedReplacement = null;
-    let oldPodcastPath = null;
-    let oldPodcastUrl = null;
-
-    try {
-        const { data: existing, error: existingError } = await sb
-            .from('resources')
-            .select('resource_type, file_path, file_url, file_name, podcast_url, podcast_path')
-            .eq('id', id)
-            .single();
-
-        if (existingError) throw existingError;
-
-        oldPodcastPath = existing?.podcast_path || null;
-        oldPodcastUrl = existing?.podcast_url || null;
-
-        // Upload replacement audio first. The database is updated only after
-        // the new file is safely in Storage.
-        if (newPodcastFile) {
-            uploadedReplacement = await uploadResourcePodcastAudio(
-                newPodcastFile,
-                { program_type: program, intake, block, title }
-            );
-        }
-
-        const isPastPaper = existing.resource_type === 'pastpaper';
-
-        const update = {
-            program_type: program,
-            intake,
-            block,
-            title,
-            description,
-            updated_at: new Date().toISOString()
-        };
-
-        if (isPastPaper) {
-            const year = document.getElementById('edit_resource_pastpaper_year')?.value || null;
-            const examType = document.getElementById('edit_resource_exam_type')?.value || null;
-            const courseName = document.getElementById('edit_resource_course_name')?.value?.trim() || null;
-
-            update.pastpaper_year = year ? parseInt(year, 10) : null;
-            update.exam_type = examType;
-            update.course_name = courseName;
-        }
-
-        // Podcast state:
-        // - New file selected => replace current audio.
-        // - Remove checked => clear current audio.
-        // - Neither => preserve current audio exactly.
-        if (uploadedReplacement) {
-            update.podcast_url = uploadedReplacement.url;
-            update.podcast_path = uploadedReplacement.path;
-        } else if (removePodcast) {
-            update.podcast_url = null;
-            update.podcast_path = null;
+        if (resource?.podcast_url) {
+            link.href = resource.podcast_url;
+            info.style.display = 'block';
         } else {
-            update.podcast_url = oldPodcastUrl;
-            update.podcast_path = oldPodcastPath;
+            link.removeAttribute('href');
+            info.style.display = 'none';
+        }
+    }
+
+    async function handleResourceUpload(e) {
+        e.preventDefault();
+        const submitButton = e.submitter || document.querySelector('#upload-resource-form button[type="submit"]');
+        const originalText = submitButton?.innerHTML || 'Upload';
+        
+        if (submitButton) {
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            submitButton.disabled = true;
         }
 
-        const { error } = await sb.from('resources').update(update).eq('id', id);
-        if (error) {
-            // Avoid leaving a newly uploaded replacement behind if DB update fails.
-            if (uploadedReplacement?.path) {
-                try {
-                    await sb.storage.from(RESOURCE_AUDIO_BUCKET).remove([uploadedReplacement.path]);
-                } catch (cleanupError) {
-                    console.warn('Could not clean up replacement podcast:', cleanupError);
+        const editId = document.getElementById('resource_edit_id')?.value;
+        const isEdit = editId && editId !== '';
+
+        const program = document.getElementById('resource_program')?.value;
+        const intake = document.getElementById('resource_intake')?.value;
+        const block = document.getElementById('resource_block')?.value;
+        const fileInput = document.getElementById('resource-file');
+        const title = document.getElementById('resource-title')?.value.trim();
+        const description = document.getElementById('resource-description')?.value.trim() || '';
+        
+        const isPastPaper = document.getElementById('resource_is_pastpaper')?.checked || false;
+        const pastpaperYear = document.getElementById('resource_pastpaper_year')?.value || null;
+        const examType = document.getElementById('resource_exam_type')?.value || null;
+        const courseName = document.getElementById('resource_course_name')?.value.trim() || null;
+
+        if (!program || !intake || !block || !title) {
+            showFeedback('Please fill all required fields.', 'error');
+            if (submitButton) {
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            }
+            return;
+        }
+
+        if (!isEdit && (!fileInput || !fileInput.files.length)) {
+            showFeedback('Please select a file to upload.', 'error');
+            if (submitButton) {
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            }
+            return;
+        }
+
+        try {
+            let filePath = null;
+            let publicUrl = null;
+            let file = null;
+            let contentType = 'application/octet-stream';
+            let uploadedPodcast = null;
+
+            // Upload optional prerecorded audio before saving the resource row.
+            const podcastInput = document.getElementById('resource-podcast-file');
+            const podcastFile = podcastInput?.files?.[0] || null;
+            if (podcastFile) {
+                uploadedPodcast = await uploadResourcePodcastAudio(podcastFile, { program_type: program, intake, block, title });
+            }
+
+            // On edit, preserve the existing podcast unless a replacement was uploaded.
+            if (isEdit && !uploadedPodcast) {
+                const { data: existingResource } = await sb
+                    .from('resources')
+                    .select('podcast_url, podcast_path, file_path, file_url, file_name')
+                    .eq('id', editId)
+                    .single();
+                if (existingResource) {
+                    uploadedPodcast = {
+                        url: existingResource.podcast_url || null,
+                        path: existingResource.podcast_path || null
+                    };
                 }
             }
-            throw error;
-        }
 
-        // Remove the old podcast only after the DB now points to the new state.
-        if ((uploadedReplacement || removePodcast) && oldPodcastPath) {
-            try {
-                await sb.storage.from(RESOURCE_AUDIO_BUCKET).remove([oldPodcastPath]);
-            } catch (storageError) {
-                console.warn('Old podcast could not be removed from Storage:', storageError);
+            if (fileInput && fileInput.files.length > 0) {
+                file = fileInput.files[0];
+                
+                const isPDF = file.name.toLowerCase().endsWith('.pdf');
+                if (isPDF) {
+                    contentType = 'application/pdf';
+                } else {
+                    contentType = file.type || 'application/octet-stream';
+                }
+
+                const timestamp = Date.now();
+                const safeTitle = title.replace(/[^\w\-]+/g, '_');
+                const originalExt = file.name.split('.').pop();
+                const finalName = `${safeTitle}_${timestamp}.${originalExt}`;
+                
+                if (isPastPaper && pastpaperYear && examType) {
+                    filePath = `past_papers/${program}/${pastpaperYear}/${block}/${finalName}`;
+                } else {
+                    filePath = `learning_materials/${program}/${intake}/${block}/${finalName}`;
+                }
+
+                const { error: uploadError } = await sb
+                    .storage
+                    .from(RESOURCES_BUCKET)
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: true,
+                        contentType: contentType
+                    });
+                
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = sb
+                    .storage
+                    .from(RESOURCES_BUCKET)
+                    .getPublicUrl(filePath);
+                
+                publicUrl = urlData?.publicUrl;
             }
-        }
 
-        await logAudit('RESOURCE_UPDATE', `Updated resource: ${title}`, id, 'SUCCESS');
+            const dbRecord = {
+                title: title,
+                description: description,
+                podcast_url: uploadedPodcast?.url || null,
+                podcast_path: uploadedPodcast?.path || null,
+                program_type: program,
+                intake: intake,
+                block: block,
+                resource_type: isPastPaper ? 'pastpaper' : 'material',
+                updated_at: new Date().toISOString()
+            };
 
-        closeEditModal();
+            if (filePath && publicUrl) {
+                dbRecord.file_path = filePath;
+                dbRecord.file_url = publicUrl;
+                dbRecord.file_name = file?.name || null;
+            }
 
-        if (typeof showFeedback === 'function') {
-            showFeedback(`✅ "${title}" updated successfully.`, 'success');
-        }
-
-        await loadAllResources();
-    } catch (error) {
-        console.error('Save edit failed:', error);
-        if (typeof showFeedback === 'function') {
-            showFeedback(`❌ Update failed: ${error.message}`, 'error');
-        }
-    } finally {
-        if (saveButton) {
-            saveButton.disabled = false;
-            saveButton.innerHTML = originalText;
-        }
-    }
-}
-
-// =====================================================
-// CANCEL EDIT
-// =====================================================
-function cancelEditResource() {
-    // Legacy inline upload-form edit mode, retained for compatibility.
-    const editId = document.getElementById('resource_edit_id');
-    if (editId) editId.value = '';
-
-    const formTitle = document.getElementById('form-title');
-    const formSubtitle = document.getElementById('form-subtitle');
-    const submitBtn = document.getElementById('form-submit-btn');
-    const cancelBtn = document.getElementById('form-cancel-btn');
-    const fileInfo = document.getElementById('file-edit-info');
-    const fileInput = document.getElementById('resource-file');
-    const uploadForm = document.getElementById('upload-resource-form');
-
-    if (formTitle) formTitle.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-    if (formSubtitle) formSubtitle.textContent = 'Publish a learning material or past paper to the student resource center.';
-    if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-    if (cancelBtn) cancelBtn.style.display = 'none';
-    if (fileInfo) fileInfo.style.display = 'none';
-    if (fileInput) fileInput.required = true;
-
-    if (uploadForm) uploadForm.reset();
-
-    if (typeof setPodcastEditPreview === 'function') {
-        setPodcastEditPreview(null);
-    }
-
-    selectedResourceStudents = [];
-    allResourceStudents = [];
-    editingResourceId = null;
-
-    if (typeof togglePastPaperFields === 'function') togglePastPaperFields();
-    if (typeof initializeResourceNotificationUI === 'function') initializeResourceNotificationUI();
-}
-
-
-// =====================================================
-// LOAD ALL RESOURCES
-// =====================================================
-async function loadAllResources() {
-    const tableBody = document.getElementById('resources-list');
-    if (!tableBody) return;
-
-    tableBody.innerHTML = '<tr><td colspan="10" style="padding:28px;text-align:center;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Loading resources...</td></tr>';
-
-    try {
-        if (!sb) throw new Error('Supabase client is not available.');
-
-        let query = sb.from('resources').select('*').order('created_at', { ascending: false });
-        if (currentResourceType === 'material') query = query.eq('resource_type', 'material');
-        else if (currentResourceType === 'pastpaper') query = query.eq('resource_type', 'pastpaper');
-
-        const { data: resources, error } = await query;
-        if (error) throw error;
-
-        allResourcesData = resources || [];
-
-        const pastpaperBadge = document.getElementById('pastpaper-count-badge');
-        const materialBadge = document.getElementById('material-count-badge');
-        if (pastpaperBadge) pastpaperBadge.textContent = allResourcesData.filter(r => r.resource_type === 'pastpaper').length;
-        if (materialBadge) materialBadge.textContent = allResourcesData.filter(r => r.resource_type === 'material').length;
-
-        let filtered = [...allResourcesData];
-        const searchTerm = document.getElementById('resource-search')?.value?.toLowerCase().trim() || '';
-        const blockFilter = document.getElementById('resource-block-filter')?.value || 'all';
-        const yearFilter = document.getElementById('resource-year-filter')?.value || 'all';
-        const programFilter = document.getElementById('resource-program-filter')?.value || 'all';
-
-        if (searchTerm) {
-            filtered = filtered.filter(r => [r.title, r.course_name, r.description, r.program_type, r.block, r.term]
-                .some(v => String(v || '').toLowerCase().includes(searchTerm)));
-        }
-        if (blockFilter !== 'all') {
-            filtered = filtered.filter(r => normalizeResourceBlock(r.block || r.term) === normalizeResourceBlock(blockFilter));
-        }
-        if (yearFilter !== 'all') {
-            filtered = filtered.filter(r => String(currentResourceType === 'pastpaper' ? r.pastpaper_year : r.intake) === String(yearFilter));
-        }
-        if (programFilter !== 'all') {
-            filtered = filtered.filter(r => normalizeResourceBlock(r.program_type) === normalizeResourceBlock(programFilter));
-        }
-
-        renderResourcesTable(filtered);
-    } catch (error) {
-        console.error('Error loading resources:', error);
-        tableBody.innerHTML = `<tr><td colspan="10" style="padding:28px;text-align:center;color:#b91c1c;"><i class="fas fa-triangle-exclamation"></i><div style="margin-top:7px;font-size:11px;">Unable to load resources: ${escapeHtml(error.message || 'Unknown error')}</div><button type="button" onclick="loadAllResources()" style="margin-top:10px;padding:7px 11px;border:0;border-radius:7px;background:#4c1d95;color:#fff;cursor:pointer;font-size:10px;">Retry</button></td></tr>`;
-        try { await logAudit('RESOURCE_LOAD', `Failed: ${error.message}`, null, 'FAILURE'); } catch (e) {}
-    }
-}
-
-function renderResourcesTable(resources) {
-    const tableBody = document.getElementById('resources-list');
-    if (!tableBody) return;
-
-    if (!resources || resources.length === 0) {
-        const emptyMessage = currentResourceType === 'pastpaper' ? 'No past papers found.' : currentResourceType === 'material' ? 'No learning materials found.' : 'No resources found.';
-        tableBody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-folder-open" style="font-size:22px;"></i><div style="margin-top:8px;">${emptyMessage}</div></td></tr>`;
-        return;
-    }
-
-    tableBody.innerHTML = '';
-    resources.forEach(resource => {
-        const isPastPaper = resource.resource_type === 'pastpaper';
-        const isTVET = isTVETResourceProgram(resource.program_type);
-        const typeLabel = isPastPaper ? 'Past Paper' : 'Material';
-        const yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
-        const blockValue = resource.block || resource.term || 'N/A';
-        const blockLabel = isTVET ? 'Term' : 'Block';
-        const titleDisplay = isPastPaper && resource.course_name && resource.exam_type
-            ? `${resource.course_name} - ${typeof getExamTypeLabel === 'function' ? getExamTypeLabel(resource.exam_type) : resource.exam_type} (${resource.pastpaper_year || ''})`
-            : (resource.title || 'Untitled Resource');
-        const uploadDate = resource.created_at ? new Date(resource.created_at).toLocaleDateString() : 'N/A';
-        const fileUrl = resource.file_url || '#';
-        const audioUrl = resource.podcast_url || '';
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><span class="badge ${isPastPaper ? 'badge-warning' : 'badge-info'}">${typeLabel}</span></td>
-            <td><strong>${escapeHtml(yearDisplay || 'N/A')}</strong></td>
-            <td>${escapeHtml(resource.program_type || 'N/A')}</td>
-            <td><span class="badge ${isTVET ? 'badge-tvet' : 'badge-krchn'}">${blockLabel}: ${escapeHtml(blockValue)}</span></td>
-            <td><strong>${escapeHtml(titleDisplay)}</strong>${resource.course_name && !isPastPaper ? `<br><small>${escapeHtml(resource.course_name)}</small>` : ''}</td>
-            <td><small>${escapeHtml((resource.description || '-').substring(0, 80))}</small></td>
-            <td>${audioUrl ? `<a href="${escapeHtml(audioUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:7px;background:#ede9fe;color:#6d28d9;text-decoration:none;font-size:10px;font-weight:800;"><i class="fas fa-headphones"></i> Play</a>` : '<span style="color:#94a3b8;font-size:10px;">No audio</span>'}</td>
-            <td>${escapeHtml(resource.uploaded_by_name || 'Unknown')}</td>
-            <td>${uploadDate}</td>
-            <td style="white-space:nowrap;">
-                <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                    ${fileUrl !== '#' ? `<a href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" style="background:#4C1D95;color:white;padding:5px 9px;border-radius:6px;text-decoration:none;font-size:10px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-eye"></i> View</a>` : '<span style="font-size:10px;color:#94a3b8;padding:5px;">No file</span>'}
-                    <button type="button" onclick="editResource('${resource.id}')" style="background:#f59e0b;color:white;border:none;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:10px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-edit"></i> Edit</button>
-                    <button type="button" onclick="deleteResourceItem('${resource.id}', '${escapeHtml(String(resource.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'))}')" style="background:#dc2626;color:white;border:none;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:10px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-trash"></i> Delete</button>
-                </div>
-            </td>`;
-        tableBody.appendChild(row);
-    });
-}
-
-// =====================================================
-// DELETE RESOURCE
-// =====================================================
-async function deleteResourceItem(resourceId, title) {
-    if (!confirm(`⚠️ Permanently delete "${title}"?`)) return;
-    
-    try {
-        const { data: resource } = await sb
-            .from('resources')
-            .select('file_path, podcast_path')
-            .eq('id', resourceId)
-            .single();
-        
-        if (resource?.file_path) {
-            await sb.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
-        }
-        if (resource?.podcast_path) {
-            await sb.storage.from(RESOURCE_AUDIO_BUCKET).remove([resource.podcast_path]);
-        }
-        
-        await sb.from('resources').delete().eq('id', resourceId);
-        
-        await logAudit('RESOURCE_DELETE', `Deleted: ${title}`, resourceId, 'SUCCESS');
-        showFeedback(`✅ "${title}" deleted.`, 'success');
-        loadAllResources();
-        
-    } catch (error) {
-        showFeedback(`❌ Delete failed: ${error.message}`, 'error');
-    }
-}
-
-// =====================================================
-// FILTER FUNCTIONS
-// =====================================================
-function filterResourceType(type) {
-    currentResourceType = type;
-    
-    ['all', 'material', 'pastpaper'].forEach(btnType => {
-        const btn = document.getElementById(`resource-type-${btnType}`);
-        if (btn) {
-            if (btnType === type) {
-                btn.style.background = '#4C1D95';
-                btn.style.color = 'white';
+            if (isPastPaper) {
+                dbRecord.pastpaper_year = pastpaperYear ? parseInt(pastpaperYear) : null;
+                dbRecord.exam_type = examType || null;
+                dbRecord.course_name = courseName || null;
             } else {
-                btn.style.background = '#e5e7eb';
-                btn.style.color = '#374151';
+                dbRecord.pastpaper_year = null;
+                dbRecord.exam_type = null;
+                dbRecord.course_name = null;
+            }
+
+            let result;
+
+            if (isEdit) {
+                result = await sb
+                    .from('resources')
+                    .update(dbRecord)
+                    .eq('id', editId)
+                    .select();
+                
+                if (result.error) throw result.error;
+                
+                await logAudit('RESOURCE_UPDATE', `Updated ${isPastPaper ? 'past paper' : 'material'}: ${title}`, editId, 'SUCCESS');
+                showFeedback(`✅ "${title}" updated successfully!`, 'success');
+                
+                document.getElementById('resource_edit_id').value = '';
+                document.getElementById('form-title').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+                document.getElementById('form-subtitle').textContent = 'Upload new learning materials or past examination papers';
+                document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+                document.getElementById('form-cancel-btn').style.display = 'none';
+                document.getElementById('file-edit-info').style.display = 'none';
+                document.getElementById('resource-file').required = false;
+                editingResourceId = null;
+                
+            } else {
+                dbRecord.uploaded_by = window.currentUserProfile?.id || null;
+                dbRecord.uploaded_by_name = window.currentUserProfile?.full_name || 'Unknown';
+                dbRecord.created_at = new Date().toISOString();
+                
+                result = await sb
+                    .from('resources')
+                    .insert(dbRecord)
+                    .select();
+                
+                if (result.error) throw result.error;
+                
+                await logAudit('RESOURCE_UPLOAD', `Uploaded ${isPastPaper ? 'past paper' : 'material'}: ${title}`, result.data?.[0]?.id, 'SUCCESS');
+
+                // 📧 Notify students only for NEW learning materials.
+                // Past papers and edits do not trigger this notification.
+                if (!isPastPaper && result.data?.[0]) {
+                    await notifyStudentsAboutNewResource(result.data[0]);
+                } else {
+                    showFeedback(`✅ "${title}" uploaded successfully!`, 'success');
+                }
+                
+                document.getElementById('upload-resource-form').reset();
+                selectedResourceStudents = [];
+                allResourceStudents = [];
+                if (document.getElementById('resource_is_pastpaper')) {
+                    document.getElementById('resource_is_pastpaper').checked = false;
+                }
+                togglePastPaperFields();
+                initializeResourceNotificationUI();
+            }
+
+            loadAllResources();
+            
+        } catch (err) {
+            console.error('Operation failed:', err);
+            await logAudit('RESOURCE_ERROR', `Failed: ${title}. ${err.message}`, null, 'FAILURE');
+            showFeedback(`❌ ${isEdit ? 'Update' : 'Upload'} failed: ${err.message}`, 'error');
+        } finally {
+            if (submitButton) {
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
             }
         }
-    });
-    
-    const searchInput = document.getElementById('resource-search');
-    const blockFilter = document.getElementById('resource-block-filter');
-    const yearFilter = document.getElementById('resource-year-filter');
-    
-    if (searchInput) searchInput.value = '';
-    if (blockFilter) blockFilter.value = 'all';
-    if (yearFilter) yearFilter.value = 'all';
-    
-    loadAllResources();
-}
-
-function filterResourcesTable() {
-    loadAllResources();
-}
-
-// =====================================================
-// EXPORT RESOURCES TO CSV
-// =====================================================
-function exportResourcesToCSV() {
-    if (!allResourcesData || allResourcesData.length === 0) {
-        showFeedback('No data to export', 'warning');
-        return;
     }
-    
-    let csv = 'Type,Year,Program,Block/Term,Title,Course,Description,Uploaded By,Date\n';
-    
-    allResourcesData.forEach(r => {
-        const isPastPaper = r.resource_type === 'pastpaper';
-        const yearDisplay = isPastPaper ? r.pastpaper_year : r.intake;
-        const date = new Date(r.created_at).toLocaleDateString();
-        const blockLabel = isTVETResourceProgram(r.program_type) ? 'Term' : 'Block';
+
+    // =====================================================
+    // EDIT RESOURCE
+    // =====================================================
+    function populateEditBlockOptions(program, selectedBlock = '') {
+        const blockSelect = document.getElementById('edit_resource_block');
+        if (!blockSelect) return;
+
+        const tvet = isTVETResourceProgram(program);
+        const options = tvet
+            ? [['Term1','📘 Term 1'],['Term2','📗 Term 2'],['Term3','📕 Term 3'],['Term4','📙 Term 4'],['Term5','📒 Term 5'],['Term6','📓 Term 6'],['Final Term','🏆 Final Term']]
+            : [['Introductory','🚀 Introductory'],['Block 1','📖 Block 1'],['Block 2','📗 Block 2'],['Block 3','📘 Block 3'],['Block 4','📙 Block 4'],['Block 5','📕 Block 5'],['Final','🏆 Final Block']];
+
+        blockSelect.innerHTML = '';
+        options.forEach(([value, label]) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            blockSelect.appendChild(option);
+        });
+
+        if (selectedBlock) {
+            const match = Array.from(blockSelect.options).find(o => normalizeResourceBlock(o.value) === normalizeResourceBlock(selectedBlock));
+            if (match) blockSelect.value = match.value;
+            else {
+                const custom = document.createElement('option');
+                custom.value = selectedBlock;
+                custom.textContent = selectedBlock;
+                blockSelect.appendChild(custom);
+                blockSelect.value = selectedBlock;
+            }
+        }
+    }
+
+    function ensureEditPodcastControls() {
+        const form = document.getElementById('edit-resource-form');
+        if (!form || document.getElementById('edit-resource-podcast-panel')) return;
+
+        const panel = document.createElement('div');
+        panel.id = 'edit-resource-podcast-panel';
+        panel.style.cssText = 'margin-top:15px;padding:14px;border:1px solid #ddd6fe;border-radius:13px;background:linear-gradient(135deg,#faf5ff,#f5f3ff);';
+
+        panel.innerHTML = `
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;">
+                <span style="width:32px;height:32px;border-radius:9px;background:#ede9fe;color:#6d28d9;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-podcast"></i>
+                </span>
+                <div>
+                    <strong style="font-size:12px;color:#4c1d95;">Podcast / Audio Lesson</strong>
+                    <div style="font-size:9px;color:#64748b;margin-top:2px;">Replace the existing prerecorded audio or remove it.</div>
+                </div>
+            </div>
+
+            <div id="edit-resource-current-audio"
+                 style="display:none;margin-bottom:10px;padding:9px 10px;border:1px solid #a7f3d0;border-radius:9px;background:#ecfdf5;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                    <span style="font-size:10px;font-weight:800;color:#047857;">
+                        <i class="fas fa-circle-check"></i> Current audio attached
+                    </span>
+                    <a id="edit-resource-audio-preview" href="#" target="_blank" rel="noopener"
+                       style="display:inline-flex;align-items:center;gap:4px;background:#059669;color:#fff;text-decoration:none;padding:5px 8px;border-radius:6px;font-size:10px;font-weight:800;">
+                        <i class="fas fa-play"></i> Preview
+                    </a>
+                </div>
+            </div>
+
+            <input type="file" id="edit_resource_podcast_file"
+                   accept=".mp3,.m4a,.wav,.ogg,.webm,audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm"
+                   style="width:100%;box-sizing:border-box;padding:9px;background:#fff;border:1px dashed #c4b5fd;border-radius:9px;font-size:11px;">
+
+            <label style="display:flex;align-items:center;gap:7px;margin-top:9px;cursor:pointer;font-size:10px;color:#b91c1c;font-weight:750;">
+                <input type="checkbox" id="edit_resource_remove_podcast" style="width:15px;height:15px;accent-color:#dc2626;">
+                Remove current podcast/audio
+            </label>
+
+            <div id="edit-resource-podcast-status" style="margin-top:7px;font-size:9px;color:#64748b;"></div>
+        `;
+
+        // Insert immediately before the action buttons.
+        const actionRow = form.querySelector('button[type="submit"]')?.parentElement;
+        if (actionRow) form.insertBefore(panel, actionRow);
+        else form.appendChild(panel);
+
+        const removeBox = document.getElementById('edit_resource_remove_podcast');
+        const podcastInput = document.getElementById('edit_resource_podcast_file');
+
+        if (removeBox && podcastInput) {
+            removeBox.addEventListener('change', () => {
+                if (removeBox.checked) podcastInput.value = '';
+            });
+            podcastInput.addEventListener('change', () => {
+                if (podcastInput.files?.length) removeBox.checked = false;
+                const status = document.getElementById('edit-resource-podcast-status');
+                if (status && podcastInput.files?.[0]) {
+                    status.textContent = `Selected: ${podcastInput.files[0].name}`;
+                    status.style.color = '#6d28d9';
+                }
+            });
+        }
+    }
+
+    function setEditPodcastState(resource) {
+        ensureEditPodcastControls();
+
+        const current = document.getElementById('edit-resource-current-audio');
+        const preview = document.getElementById('edit-resource-audio-preview');
+        const input = document.getElementById('edit_resource_podcast_file');
+        const remove = document.getElementById('edit_resource_remove_podcast');
+        const status = document.getElementById('edit-resource-podcast-status');
+
+        if (input) input.value = '';
+        if (remove) remove.checked = false;
+        if (status) status.textContent = '';
+
+        const url = resource?.podcast_url || '';
+        if (current && preview && url) {
+            preview.href = url;
+            current.style.display = 'block';
+        } else if (current) {
+            current.style.display = 'none';
+            if (preview) preview.removeAttribute('href');
+        }
+    }
+
+    function openEditResourceModal() {
+        const modal = document.getElementById('edit-resource-modal');
+        if (!modal) return false;
+
+        ensureEditPodcastControls();
+
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+
+        setTimeout(() => document.getElementById('edit_resource_title')?.focus(), 80);
+        return true;
+    }
+
+    function closeEditModal() {
+        const modal = document.getElementById('edit-resource-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.style.visibility = 'hidden';
+            modal.style.opacity = '0';
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        document.body.style.overflow = '';
+        editingResourceId = null;
+
+        const form = document.getElementById('edit-resource-form');
+        if (form) form.reset();
+
+        const current = document.getElementById('edit-resource-current-audio');
+        if (current) current.style.display = 'none';
+
+        const status = document.getElementById('edit-resource-podcast-status');
+        if (status) status.textContent = '';
+
+        // Do not call showFeedback here. Closing/cancelling must always work even
+        // if the global notification helper is unavailable.
+    }
+
+    async function editResource(resourceId) {
+        try {
+            const { data: resource, error } = await sb
+                .from('resources')
+                .select('*')
+                .eq('id', resourceId)
+                .single();
+
+            if (error) throw error;
+            if (!resource) throw new Error('Resource not found.');
+
+            const setValue = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.value = value ?? '';
+            };
+
+            setValue('edit_resource_id', resource.id);
+            setValue('edit_resource_program', resource.program_type || 'KRCHN');
+            setValue('edit_resource_intake', resource.intake || '2026');
+            populateEditBlockOptions(resource.program_type || 'KRCHN', resource.block || resource.term || '');
+            setValue('edit_resource_title', resource.title || '');
+            setValue('edit_resource_description', resource.description || '');
+            setValue('edit_resource_pastpaper_year', resource.pastpaper_year || '');
+            setValue('edit_resource_exam_type', resource.exam_type || '');
+            setValue('edit_resource_course_name', resource.course_name || '');
+
+            ensureEditPodcastControls();
+            setEditPodcastState(resource);
+
+            editingResourceId = resourceId;
+            if (!openEditResourceModal()) throw new Error('Edit modal is not available on this page.');
+        } catch (error) {
+            console.error('Error opening resource edit modal:', error);
+            showFeedback(`❌ ${error.message || 'Failed to load resource.'}`, 'error');
+        }
+    }
+
+    async function saveEditResource() {
+        const id = document.getElementById('edit_resource_id')?.value || editingResourceId;
+        if (!id) {
+            if (typeof showFeedback === 'function') showFeedback('No resource selected for editing.', 'error');
+            return;
+        }
+
+        const program = document.getElementById('edit_resource_program')?.value;
+        const intake = document.getElementById('edit_resource_intake')?.value;
+        const block = document.getElementById('edit_resource_block')?.value;
+        const title = document.getElementById('edit_resource_title')?.value?.trim();
+        const description = document.getElementById('edit_resource_description')?.value?.trim() || '';
+
+        if (!program || !intake || !block || !title) {
+            if (typeof showFeedback === 'function') showFeedback('Please complete Program, Intake, Block/Term and Title.', 'error');
+            return;
+        }
+
+        ensureEditPodcastControls();
+
+        const podcastInput = document.getElementById('edit_resource_podcast_file');
+        const removePodcast = document.getElementById('edit_resource_remove_podcast')?.checked || false;
+        const newPodcastFile = podcastInput?.files?.[0] || null;
+
+        const saveButton = document.querySelector('#edit-resource-form button[type="submit"]');
+        const originalText = saveButton?.innerHTML || 'Save Changes';
+
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        }
+
+        let uploadedReplacement = null;
+        let oldPodcastPath = null;
+        let oldPodcastUrl = null;
+
+        try {
+            const { data: existing, error: existingError } = await sb
+                .from('resources')
+                .select('resource_type, file_path, file_url, file_name, podcast_url, podcast_path')
+                .eq('id', id)
+                .single();
+
+            if (existingError) throw existingError;
+
+            oldPodcastPath = existing?.podcast_path || null;
+            oldPodcastUrl = existing?.podcast_url || null;
+
+            // Upload replacement audio first. The database is updated only after
+            // the new file is safely in Storage.
+            if (newPodcastFile) {
+                uploadedReplacement = await uploadResourcePodcastAudio(
+                    newPodcastFile,
+                    { program_type: program, intake, block, title }
+                );
+            }
+
+            const isPastPaper = existing.resource_type === 'pastpaper';
+
+            const update = {
+                program_type: program,
+                intake,
+                block,
+                title,
+                description,
+                updated_at: new Date().toISOString()
+            };
+
+            if (isPastPaper) {
+                const year = document.getElementById('edit_resource_pastpaper_year')?.value || null;
+                const examType = document.getElementById('edit_resource_exam_type')?.value || null;
+                const courseName = document.getElementById('edit_resource_course_name')?.value?.trim() || null;
+
+                update.pastpaper_year = year ? parseInt(year, 10) : null;
+                update.exam_type = examType;
+                update.course_name = courseName;
+            }
+
+            // Podcast state:
+            // - New file selected => replace current audio.
+            // - Remove checked => clear current audio.
+            // - Neither => preserve current audio exactly.
+            if (uploadedReplacement) {
+                update.podcast_url = uploadedReplacement.url;
+                update.podcast_path = uploadedReplacement.path;
+            } else if (removePodcast) {
+                update.podcast_url = null;
+                update.podcast_path = null;
+            } else {
+                update.podcast_url = oldPodcastUrl;
+                update.podcast_path = oldPodcastPath;
+            }
+
+            const { error } = await sb.from('resources').update(update).eq('id', id);
+            if (error) {
+                // Avoid leaving a newly uploaded replacement behind if DB update fails.
+                if (uploadedReplacement?.path) {
+                    try {
+                        await sb.storage.from(RESOURCE_AUDIO_BUCKET).remove([uploadedReplacement.path]);
+                    } catch (cleanupError) {
+                        console.warn('Could not clean up replacement podcast:', cleanupError);
+                    }
+                }
+                throw error;
+            }
+
+            // Remove the old podcast only after the DB now points to the new state.
+            if ((uploadedReplacement || removePodcast) && oldPodcastPath) {
+                try {
+                    await sb.storage.from(RESOURCE_AUDIO_BUCKET).remove([oldPodcastPath]);
+                } catch (storageError) {
+                    console.warn('Old podcast could not be removed from Storage:', storageError);
+                }
+            }
+
+            await logAudit('RESOURCE_UPDATE', `Updated resource: ${title}`, id, 'SUCCESS');
+
+            closeEditModal();
+
+            if (typeof showFeedback === 'function') {
+                showFeedback(`✅ "${title}" updated successfully.`, 'success');
+            }
+
+            await loadAllResources();
+        } catch (error) {
+            console.error('Save edit failed:', error);
+            if (typeof showFeedback === 'function') {
+                showFeedback(`❌ Update failed: ${error.message}`, 'error');
+            }
+        } finally {
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.innerHTML = originalText;
+            }
+        }
+    }
+
+    // =====================================================
+    // CANCEL EDIT
+    // =====================================================
+    function cancelEditResource() {
+        // Legacy inline upload-form edit mode, retained for compatibility.
+        const editId = document.getElementById('resource_edit_id');
+        if (editId) editId.value = '';
+
+        const formTitle = document.getElementById('form-title');
+        const formSubtitle = document.getElementById('form-subtitle');
+        const submitBtn = document.getElementById('form-submit-btn');
+        const cancelBtn = document.getElementById('form-cancel-btn');
+        const fileInfo = document.getElementById('file-edit-info');
+        const fileInput = document.getElementById('resource-file');
+        const uploadForm = document.getElementById('upload-resource-form');
+
+        if (formTitle) formTitle.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+        if (formSubtitle) formSubtitle.textContent = 'Publish a learning material or past paper to the student resource center.';
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (fileInfo) fileInfo.style.display = 'none';
+        if (fileInput) fileInput.required = true;
+
+        if (uploadForm) uploadForm.reset();
+
+        if (typeof setPodcastEditPreview === 'function') {
+            setPodcastEditPreview(null);
+        }
+
+        selectedResourceStudents = [];
+        allResourceStudents = [];
+        editingResourceId = null;
+
+        if (typeof togglePastPaperFields === 'function') togglePastPaperFields();
+        if (typeof initializeResourceNotificationUI === 'function') initializeResourceNotificationUI();
+    }
+
+
+    // =====================================================
+    // LOAD ALL RESOURCES
+    // =====================================================
+    async function loadAllResources() {
+        const tableBody = document.getElementById('resources-list');
+        if (!tableBody) return;
+
+        tableBody.innerHTML = '<tr><td colspan="10" style="padding:28px;text-align:center;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Loading resources...</td></tr>';
+
+        try {
+            if (!sb) throw new Error('Supabase client is not available.');
+
+            let query = sb.from('resources').select('*').order('created_at', { ascending: false });
+            if (currentResourceType === 'material') query = query.eq('resource_type', 'material');
+            else if (currentResourceType === 'pastpaper') query = query.eq('resource_type', 'pastpaper');
+
+            const { data: resources, error } = await query;
+            if (error) throw error;
+
+            allResourcesData = resources || [];
+
+            const pastpaperBadge = document.getElementById('pastpaper-count-badge');
+            const materialBadge = document.getElementById('material-count-badge');
+            if (pastpaperBadge) pastpaperBadge.textContent = allResourcesData.filter(r => r.resource_type === 'pastpaper').length;
+            if (materialBadge) materialBadge.textContent = allResourcesData.filter(r => r.resource_type === 'material').length;
+
+            let filtered = [...allResourcesData];
+            const searchTerm = document.getElementById('resource-search')?.value?.toLowerCase().trim() || '';
+            const blockFilter = document.getElementById('resource-block-filter')?.value || 'all';
+            const yearFilter = document.getElementById('resource-year-filter')?.value || 'all';
+            const programFilter = document.getElementById('resource-program-filter')?.value || 'all';
+
+            if (searchTerm) {
+                filtered = filtered.filter(r => [r.title, r.course_name, r.description, r.program_type, r.block, r.term]
+                    .some(v => String(v || '').toLowerCase().includes(searchTerm)));
+            }
+            if (blockFilter !== 'all') {
+                filtered = filtered.filter(r => normalizeResourceBlock(r.block || r.term) === normalizeResourceBlock(blockFilter));
+            }
+            if (yearFilter !== 'all') {
+                filtered = filtered.filter(r => String(currentResourceType === 'pastpaper' ? r.pastpaper_year : r.intake) === String(yearFilter));
+            }
+            if (programFilter !== 'all') {
+                filtered = filtered.filter(r => normalizeResourceBlock(r.program_type) === normalizeResourceBlock(programFilter));
+            }
+
+            renderResourcesTable(filtered);
+        } catch (error) {
+            console.error('Error loading resources:', error);
+            tableBody.innerHTML = `<tr><td colspan="10" style="padding:28px;text-align:center;color:#b91c1c;"><i class="fas fa-triangle-exclamation"></i><div style="margin-top:7px;font-size:11px;">Unable to load resources: ${escapeHtml(error.message || 'Unknown error')}</div><button type="button" onclick="loadAllResources()" style="margin-top:10px;padding:7px 11px;border:0;border-radius:7px;background:#4c1d95;color:#fff;cursor:pointer;font-size:10px;">Retry</button></td></tr>`;
+            try { await logAudit('RESOURCE_LOAD', `Failed: ${error.message}`, null, 'FAILURE'); } catch (e) {}
+        }
+    }
+
+    function renderResourcesTable(resources) {
+        const tableBody = document.getElementById('resources-list');
+        if (!tableBody) return;
+
+        if (!resources || resources.length === 0) {
+            const emptyMessage = currentResourceType === 'pastpaper' ? 'No past papers found.' : currentResourceType === 'material' ? 'No learning materials found.' : 'No resources found.';
+            tableBody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-folder-open" style="font-size:22px;"></i><div style="margin-top:8px;">${emptyMessage}</div></td></tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = '';
+        resources.forEach(resource => {
+            const isPastPaper = resource.resource_type === 'pastpaper';
+            const isTVET = isTVETResourceProgram(resource.program_type);
+            const typeLabel = isPastPaper ? 'Past Paper' : 'Material';
+            const yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
+            const blockValue = resource.block || resource.term || 'N/A';
+            const blockLabel = isTVET ? 'Term' : 'Block';
+            const titleDisplay = isPastPaper && resource.course_name && resource.exam_type
+                ? `${resource.course_name} - ${typeof getExamTypeLabel === 'function' ? getExamTypeLabel(resource.exam_type) : resource.exam_type} (${resource.pastpaper_year || ''})`
+                : (resource.title || 'Untitled Resource');
+            const uploadDate = resource.created_at ? new Date(resource.created_at).toLocaleDateString() : 'N/A';
+            const fileUrl = resource.file_url || '#';
+            const audioUrl = resource.podcast_url || '';
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><span class="badge ${isPastPaper ? 'badge-warning' : 'badge-info'}">${typeLabel}</span></td>
+                <td><strong>${escapeHtml(yearDisplay || 'N/A')}</strong></td>
+                <td>${escapeHtml(resource.program_type || 'N/A')}</td>
+                <td><span class="badge ${isTVET ? 'badge-tvet' : 'badge-krchn'}">${blockLabel}: ${escapeHtml(blockValue)}</span></td>
+                <td><strong>${escapeHtml(titleDisplay)}</strong>${resource.course_name && !isPastPaper ? `<br><small>${escapeHtml(resource.course_name)}</small>` : ''}</td>
+                <td><small>${escapeHtml((resource.description || '-').substring(0, 80))}</small></td>
+                <td>${audioUrl ? `<a href="${escapeHtml(audioUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:7px;background:#ede9fe;color:#6d28d9;text-decoration:none;font-size:10px;font-weight:800;"><i class="fas fa-headphones"></i> Play</a>` : '<span style="color:#94a3b8;font-size:10px;">No audio</span>'}</td>
+                <td>${escapeHtml(resource.uploaded_by_name || 'Unknown')}</td>
+                <td>${uploadDate}</td>
+                <td style="white-space:nowrap;">
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                        ${fileUrl !== '#' ? `<a href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" style="background:#4C1D95;color:white;padding:5px 9px;border-radius:6px;text-decoration:none;font-size:10px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-eye"></i> View</a>` : '<span style="font-size:10px;color:#94a3b8;padding:5px;">No file</span>'}
+                        <button type="button" onclick="editResource('${resource.id}')" style="background:#f59e0b;color:white;border:none;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:10px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-edit"></i> Edit</button>
+                        <button type="button" onclick="deleteResourceItem('${resource.id}', '${escapeHtml(String(resource.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'))}')" style="background:#dc2626;color:white;border:none;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:10px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-trash"></i> Delete</button>
+                    </div>
+                </td>`;
+            tableBody.appendChild(row);
+        });
+    }
+
+    // =====================================================
+    // DELETE RESOURCE
+    // =====================================================
+    async function deleteResourceItem(resourceId, title) {
+        if (!confirm(`⚠️ Permanently delete "${title}"?`)) return;
         
-        csv += `${r.resource_type},${yearDisplay},${r.program_type},${blockLabel}: ${r.block || r.term || 'N/A'},"${r.title}","${r.course_name || ''}","${r.description || ''}",${r.uploaded_by_name || 'Unknown'},${date}\n`;
-    });
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `resources_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    showFeedback('✅ Resources exported to CSV', 'success');
+        try {
+            const { data: resource } = await sb
+                .from('resources')
+                .select('file_path, podcast_path')
+                .eq('id', resourceId)
+                .single();
+            
+            if (resource?.file_path) {
+                await sb.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
+            }
+            if (resource?.podcast_path) {
+                await sb.storage.from(RESOURCE_AUDIO_BUCKET).remove([resource.podcast_path]);
+            }
+            
+            await sb.from('resources').delete().eq('id', resourceId);
+            
+            await logAudit('RESOURCE_DELETE', `Deleted: ${title}`, resourceId, 'SUCCESS');
+            showFeedback(`✅ "${title}" deleted.`, 'success');
+            loadAllResources();
+            
+        } catch (error) {
+            showFeedback(`❌ Delete failed: ${error.message}`, 'error');
+        }
+    }
+
+    // =====================================================
+    // FILTER FUNCTIONS
+    // =====================================================
+    function filterResourceType(type) {
+        currentResourceType = type;
+        
+        ['all', 'material', 'pastpaper'].forEach(btnType => {
+            const btn = document.getElementById(`resource-type-${btnType}`);
+            if (btn) {
+                if (btnType === type) {
+                    btn.style.background = '#4C1D95';
+                    btn.style.color = 'white';
+                } else {
+                    btn.style.background = '#e5e7eb';
+                    btn.style.color = '#374151';
+                }
+            }
+        });
+        
+        const searchInput = document.getElementById('resource-search');
+        const blockFilter = document.getElementById('resource-block-filter');
+        const yearFilter = document.getElementById('resource-year-filter');
+        
+        if (searchInput) searchInput.value = '';
+        if (blockFilter) blockFilter.value = 'all';
+        if (yearFilter) yearFilter.value = 'all';
+        
+        loadAllResources();
+    }
+
+    function filterResourcesTable() {
+        loadAllResources();
+    }
+
+    // =====================================================
+    // EXPORT RESOURCES TO CSV
+    // =====================================================
+    function exportResourcesToCSV() {
+        if (!allResourcesData || allResourcesData.length === 0) {
+            showFeedback('No data to export', 'warning');
+            return;
+        }
+        
+        let csv = 'Type,Year,Program,Block/Term,Title,Course,Description,Uploaded By,Date\n';
+        
+        allResourcesData.forEach(r => {
+            const isPastPaper = r.resource_type === 'pastpaper';
+            const yearDisplay = isPastPaper ? r.pastpaper_year : r.intake;
+            const date = new Date(r.created_at).toLocaleDateString();
+            const blockLabel = isTVETResourceProgram(r.program_type) ? 'Term' : 'Block';
+            
+            csv += `${r.resource_type},${yearDisplay},${r.program_type},${blockLabel}: ${r.block || r.term || 'N/A'},"${r.title}","${r.course_name || ''}","${r.description || ''}",${r.uploaded_by_name || 'Unknown'},${date}\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `resources_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showFeedback('✅ Resources exported to CSV', 'success');
+    }
+
+    // =====================================================
+    // MAKE FUNCTIONS GLOBAL
+    // =====================================================
+    window.bindEditResourceModalControls = bindEditResourceModalControls;
+    window.ensureEditPodcastControls = ensureEditPodcastControls;
+    window.openEditResourceModal = openEditResourceModal;
+    window.closeEditModal = closeEditModal;
+    window.saveEditResource = saveEditResource;
+    window.populateEditBlockOptions = populateEditBlockOptions;
+    window.renderSelectedResourceBlockStudents = renderSelectedResourceBlockStudents;
+    window.loadAllResources = loadAllResources;
+    window.filterResourceType = filterResourceType;
+    window.filterResourcesTable = filterResourcesTable;
+    window.deleteResourceItem = deleteResourceItem;
+    window.editResource = editResource;
+    window.cancelEditResource = cancelEditResource;
+    window.togglePastPaperFields = togglePastPaperFields;
+    window.initResourcesSection = initResourcesSection;
+    window.handleResourceUpload = handleResourceUpload;
+    window.switchAdminProgram = switchAdminProgram;
+    window.exportResourcesToCSV = exportResourcesToCSV;
+    window.updateBlockOptions = updateBlockOptions;
+    window.updateFilterDropdown = updateFilterDropdown;
+    window.loadStudentsForResourceNotification = loadStudentsForResourceNotification;
+    window.searchStudentsForResourceNotification = searchStudentsForResourceNotification;
+    window.toggleResourceStudentNotification = toggleResourceStudentNotification;
+    window.updateResourceSelectedStudentsDisplay = updateResourceSelectedStudentsDisplay;
+    window.getResourceNotificationRecipients = getResourceNotificationRecipients;
+    window.sendResourceNotificationEmail = sendResourceNotificationEmail;
+    window.notifyStudentsAboutNewResource = notifyStudentsAboutNewResource;
+
+    autoInitResourcesSection();
+
+    console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support, Edit functionality and email notifications!');
+
 }
 
-// =====================================================
-// MAKE FUNCTIONS GLOBAL
-// =====================================================
-window.bindEditResourceModalControls = bindEditResourceModalControls;
-window.ensureEditPodcastControls = ensureEditPodcastControls;
-window.openEditResourceModal = openEditResourceModal;
-window.closeEditModal = closeEditModal;
-window.saveEditResource = saveEditResource;
-window.populateEditBlockOptions = populateEditBlockOptions;
-window.renderSelectedResourceBlockStudents = renderSelectedResourceBlockStudents;
-window.loadAllResources = loadAllResources;
-window.filterResourceType = filterResourceType;
-window.filterResourcesTable = filterResourcesTable;
-window.deleteResourceItem = deleteResourceItem;
-window.editResource = editResource;
-window.cancelEditResource = cancelEditResource;
-window.togglePastPaperFields = togglePastPaperFields;
-window.initResourcesSection = initResourcesSection;
-window.handleResourceUpload = handleResourceUpload;
-window.switchAdminProgram = switchAdminProgram;
-window.exportResourcesToCSV = exportResourcesToCSV;
-window.updateBlockOptions = updateBlockOptions;
-window.updateFilterDropdown = updateFilterDropdown;
-window.loadStudentsForResourceNotification = loadStudentsForResourceNotification;
-window.searchStudentsForResourceNotification = searchStudentsForResourceNotification;
-window.toggleResourceStudentNotification = toggleResourceStudentNotification;
-window.updateResourceSelectedStudentsDisplay = updateResourceSelectedStudentsDisplay;
-window.getResourceNotificationRecipients = getResourceNotificationRecipients;
-window.sendResourceNotificationEmail = sendResourceNotificationEmail;
-window.notifyStudentsAboutNewResource = notifyStudentsAboutNewResource;
-
-autoInitResourcesSection();
-
-console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support, Edit functionality and email notifications!');
 
 // 🎙️ Prerecorded podcast upload integration loaded.
 
