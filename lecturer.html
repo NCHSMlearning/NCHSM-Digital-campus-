@@ -2852,7 +2852,7 @@
         </div>
     </div>
 </section>
-<!-- ===== ATTENDANCE SECTION - ENHANCED WITH MAP + UNIT FILTER + DELETE ===== -->
+<!-- ===== ATTENDANCE SECTION - ENHANCED WITH MAP + UNIT FILTER + RANGE EXPORT + DELETE/ABSENT/REJECT ===== -->
 <section id="attendance-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
         <div>
@@ -2917,18 +2917,25 @@
             <span style="margin-left: auto; font-size: 12px; color: #94a3b8;" id="attendanceFilterCount">Showing all records</span>
         </div>
 
-        <div class="filter-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px;">
+        <!-- Row 1: Date range, Block, Unit, Year, Session Type -->
+        <div class="filter-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 15px;">
             <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-calendar-day" style="color: #4C1D95; width: 18px;"></i> Date
+                    <i class="fas fa-calendar-day" style="color: #4C1D95; width: 18px;"></i> From
                 </label>
-                <input type="date" id="filterDate" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <input type="date" id="filterDateFrom" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+            </div>
+            <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-calendar-day" style="color: #4C1D95; width: 18px;"></i> To
+                </label>
+                <input type="date" id="filterDateTo" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
             <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label id="blockFilterLabel" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> Block/Term
                 </label>
-                <select id="filterBlock" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <select id="filterBlock" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
                     <option value="All">All Blocks/Terms</option>
                 </select>
             </div>
@@ -2936,7 +2943,7 @@
                 <label style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-book" style="color: #4C1D95; width: 18px;"></i> Unit
                 </label>
-                <select id="filterUnit" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <select id="filterUnit" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
                     <option value="All">All Units</option>
                 </select>
             </div>
@@ -2944,7 +2951,7 @@
                 <label style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-calendar-alt" style="color: #4C1D95; width: 18px;"></i> Year
                 </label>
-                <select id="filterYear" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <select id="filterYear" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
                     <option value="All">All Years</option>
                 </select>
             </div>
@@ -2952,7 +2959,7 @@
                 <label style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-tag" style="color: #4C1D95; width: 18px;"></i> Session Type
                 </label>
-                <select id="filterSessionType" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <select id="filterSessionType" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
                     <option value="All">All Types</option>
                     <option value="Class">Class</option>
                     <option value="Clinical">Clinical</option>
@@ -2963,30 +2970,48 @@
             </div>
         </div>
 
-        <div class="filter-row" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+        <!-- Row 2: Search + range quick-picks -->
+        <div class="filter-row" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 15px;">
             <div class="filter-group search-group" style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 5px;">
                 <label style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-search" style="color: #4C1D95; width: 18px;"></i> Search
                 </label>
-                <input type="text" id="filterSearch" placeholder="Search by name, reg no, or unit..." oninput="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <input type="text" id="filterSearch" placeholder="Search by name, reg no, or unit..." oninput="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
+            <div class="filter-group" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <label style="font-weight: 600; font-size: 13px; color: #475569; width: 100%;">
+                    <i class="fas fa-bolt" style="color: #4C1D95;"></i> Quick range
+                </label>
+                <button type="button" onclick="LecturerAttendance.setRangePreset('today')" style="background: #eef2ff; color: #4f46e5; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Today</button>
+                <button type="button" onclick="LecturerAttendance.setRangePreset('7d')" style="background: #eef2ff; color: #4f46e5; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Last 7 days</button>
+                <button type="button" onclick="LecturerAttendance.setRangePreset('30d')" style="background: #eef2ff; color: #4f46e5; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Last 30 days</button>
+                <button type="button" onclick="LecturerAttendance.setRangePreset('month')" style="background: #eef2ff; color: #4f46e5; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">This month</button>
+                <button type="button" onclick="LecturerAttendance.setRangePreset('all')" style="background: #f1f5f9; color: #475569; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">All time</button>
+            </div>
+        </div>
+
+        <!-- Row 3: Action buttons -->
+        <div class="filter-row" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
             <div class="filter-group action-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="applyAttendanceFilters()" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <button class="btn btn-primary" onclick="applyAttendanceFilters()" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
                     <i class="fas fa-filter"></i> Apply Filters
                 </button>
-                <button class="btn btn-success" onclick="exportAttendanceCSV()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                    <i class="fas fa-file-excel"></i> Export Excel
+                <button class="btn btn-success" onclick="exportAttendanceCSV()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                    <i class="fas fa-file-excel"></i> Export Range
                 </button>
-                <button class="btn btn-secondary" onclick="printAttendanceReport()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(107,114,128,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <button class="btn btn-secondary" onclick="printAttendanceReport()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
                     <i class="fas fa-print"></i> Print
                 </button>
-                <button class="btn btn-outline" onclick="resetAttendanceFilters()" style="background: transparent; color: #475569; border: 2px solid #e2e8f0; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <button class="btn btn-outline" onclick="resetAttendanceFilters()" style="background: transparent; color: #475569; border: 2px solid #e2e8f0; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
                     <i class="fas fa-undo"></i> Reset
                 </button>
-                <button class="btn btn-approve" onclick="bulkApproveAttendance()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(139,92,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                    <i class="fas fa-check-double"></i> Bulk Approve
+                <button class="btn btn-approve" onclick="bulkVerifyAttendance()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                    <i class="fas fa-check-double"></i> Bulk Verify
                 </button>
-                <button class="btn btn-danger" onclick="bulkDeleteAttendance()" style="background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(220,38,38,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <button class="btn" onclick="bulkMarkAbsent()" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                    <i class="fas fa-user-slash"></i> Bulk Absent
+                </button>
+                <button class="btn btn-danger" onclick="bulkDeleteAttendance()" style="background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
                     <i class="fas fa-trash-alt"></i> Bulk Delete
                 </button>
             </div>
@@ -3000,7 +3025,7 @@
             <h4 style="margin: 0; color: #0A3D62;">👨‍🏫 Lecturer Geo-Check-in</h4>
         </div>
         <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">Mark your own attendance for record-keeping.</p>
-        <button id="lecturerCheckinBtn" class="btn btn-action" onclick="lecturerCheckin()" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+        <button id="lecturerCheckinBtn" class="btn btn-action" onclick="lecturerCheckin()" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
             <i class="fas fa-map-marker-alt"></i> Mark My Attendance
         </button>
         <span id="lecturerCheckinStatus" style="margin-left: 15px; font-size: 13px; color: #64748b;"></span>
@@ -3021,7 +3046,7 @@
                 <label for="attStudentId" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-user" style="color: #4C1D95; width: 18px;"></i> Student
                 </label>
-                <select id="attStudentId" required style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <select id="attStudentId" required style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
                     <option value="">-- Select Student --</option>
                 </select>
             </div>
@@ -3029,7 +3054,7 @@
                 <label for="attSessionType" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-tag" style="color: #4C1D95; width: 18px;"></i> Session Type
                 </label>
-                <select id="attSessionType" required style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <select id="attSessionType" required style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
                     <option value="">-- Session Type --</option>
                     <option value="Class">Class</option>
                     <option value="Clinical">Clinical/Practicum</option>
@@ -3042,7 +3067,7 @@
                 <label for="attUnit" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-book" style="color: #4C1D95; width: 18px;"></i> Unit
                 </label>
-                <select id="attUnit" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <select id="attUnit" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
                     <option value="">-- Select Unit --</option>
                 </select>
             </div>
@@ -3053,23 +3078,23 @@
                 <label for="attLocation" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-map-pin" style="color: #4C1D95; width: 18px;"></i> Location
                 </label>
-                <input type="text" id="attLocation" placeholder="e.g., Lecture Hall 3" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <input type="text" id="attLocation" placeholder="e.g., Lecture Hall 3" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
             </div>
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="attDate" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-calendar-day" style="color: #4C1D95; width: 18px;"></i> Date
                 </label>
-                <input type="date" id="attDate" required style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <input type="date" id="attDate" required style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
             </div>
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="attTime" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-clock" style="color: #4C1D95; width: 18px;"></i> Time
                 </label>
-                <input type="time" id="attTime" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <input type="time" id="attTime" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
             </div>
         </div>
 
-        <button type="submit" class="btn btn-action" style="background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+        <button type="submit" class="btn btn-action" style="background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
             <i class="fas fa-user-check"></i> Mark Student Present
         </button>
     </form>
@@ -3077,7 +3102,7 @@
     <!-- Today's Attendance Logs -->
     <div class="todays-attendance-section" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-            <h3 style="color: #0A3D62; margin: 0;"><i class="fas fa-calendar-day"></i> Today's Attendance Logs</h3>
+            <h3 style="color: #0A3D62; margin: 0;"><i class="fas fa-calendar-day"></i> Attendance Records (Filtered Range)</h3>
             <span style="font-size: 12px; color: #94a3b8;" id="todayLogCount">0 records</span>
         </div>
 
@@ -3085,12 +3110,13 @@
             <table class="todays-attendance-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Date</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Student Name</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Reg No</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Program</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Block</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Unit</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Session Type</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Type</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Time</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Location</th>
                         <th style="padding: 12px 16px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Status</th>
@@ -3099,44 +3125,9 @@
                 </thead>
                 <tbody id="attendanceTable">
                     <tr>
-                        <td colspan="10" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                        <td colspan="11" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                             <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                             <p style="margin: 15px 0 0 0; font-weight: 500;">Loading attendance...</p>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Past Attendance Records -->
-    <div class="past-attendance-section" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-            <h3 style="color: #0A3D62; margin: 0;"><i class="fas fa-history"></i> Past Attendance Records</h3>
-            <span style="font-size: 12px; color: #94a3b8;" id="pastLogCount">0 records</span>
-        </div>
-
-        <div class="table-responsive" style="overflow-x: auto;">
-            <table class="past-attendance-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                <thead>
-                    <tr style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Date</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Student Name</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Reg No</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Block</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Unit</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Session Type</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Time</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Location</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Status</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="pastAttendanceTable">
-                    <tr>
-                        <td colspan="10" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
-                            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                            <p style="margin: 15px 0 0 0; font-weight: 500;">Loading past attendance records...</p>
                         </td>
                     </tr>
                 </tbody>
@@ -3155,10 +3146,6 @@
                 <button onclick="closeAttendanceMap()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
             </div>
             <div id="attendanceMapContainer" style="width: 100%; height: 500px; border-radius: 8px; overflow: hidden; background: #f3f4f6; position: relative;">
-                <div id="mapLoading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #94a3b8;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                    <p>Loading map...</p>
-                </div>
                 <div id="mapContainer" style="width: 100%; height: 100%;"></div>
             </div>
             <div id="mapLocationInfo" style="margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 14px; color: #475569; display: none;">
