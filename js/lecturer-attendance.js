@@ -1,5 +1,10 @@
 // ============================================================
 // NCHSM LECTURER ATTENDANCE MODULE — WITH TVET + STYLED XLSX
+// ✅ FIXED: removed non-existent registration_number column
+// ✅ FIXED: filters out placeholder "Student" accounts
+// ✅ FIXED: safe radius comparison for out-of-radius check-ins
+// ✅ FIXED: display-safe registration number (never shows UUID)
+// ✅ NEW:   Unit filter in the attendance filter bar
 // ============================================================
 
 const LecturerAttendance = {
@@ -46,6 +51,32 @@ const LecturerAttendance = {
             if (blockValue === 'Final') return '🏆 Final Block';
             return `Block ${blockValue}`;
         }
+    },
+
+    // ============================================================
+    // ✅ Display-safe registration number (never shows UUID)
+    // ============================================================
+    getDisplayRegNumber(log) {
+        if (!log) return 'N/A';
+        const isUUID = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
+        const candidates = [log.registration_number, log.admission_number, log.student_id];
+        for (const c of candidates) {
+            const v = (c || '').toString().trim();
+            if (v && !isUUID(v)) return v;
+        }
+        return 'N/A';
+    },
+
+    // ============================================================
+    // ✅ Placeholder detector
+    // ============================================================
+    isPlaceholderLog(log) {
+        if (!log) return false;
+        if (log.session_type === 'Lecturer Check-in') return false;
+        const name = String(log.student_name || '').trim().toLowerCase();
+        const reg = String(log.registration_number || log.student_id || '').trim();
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reg);
+        return name === 'student' || isUUID;
     },
 
     // ============================================================
@@ -173,7 +204,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // POPULATE UNIT SELECTORS
+    // POPULATE UNIT SELECTORS (manual-entry dropdown)
     // ============================================================
     populateUnitSelectors() {
         const unitSelect = document.getElementById('attUnit');
@@ -198,6 +229,29 @@ const LecturerAttendance = {
     },
 
     // ============================================================
+    // ✅ NEW: populate the FILTER unit dropdown from loaded logs
+    // ============================================================
+    populateUnitFilter() {
+        const unitSelect = document.getElementById('filterUnit');
+        if (!unitSelect) return;
+
+        const allLogs = [...(this.todayLogs || []), ...(this.pastLogs || [])];
+        const units = [...new Set(
+            allLogs
+                .map(l => (l.unit_name || l.target_name || '').trim())
+                .filter(u => u && u.toLowerCase() !== 'general')
+        )].sort((a, b) => a.localeCompare(b));
+
+        const previous = unitSelect.value;
+        unitSelect.innerHTML = '<option value="All">All Units</option>' +
+            units.map(u => `<option value="${this.escapeHtml(u)}">${this.escapeHtml(u)}</option>`).join('');
+
+        if (previous && [...unitSelect.options].some(o => o.value === previous)) {
+            unitSelect.value = previous;
+        }
+    },
+
+    // ============================================================
     // LOAD ALL
     // ============================================================
     async loadAllAttendance() {
@@ -208,6 +262,8 @@ const LecturerAttendance = {
                 this.loadAttendanceStats(),
                 this.loadProgramInfo()
             ]);
+            // ✅ refresh unit filter after data loads
+            this.populateUnitFilter();
         } catch (error) {
             console.error('❌ loadAllAttendance:', error);
         }
@@ -278,7 +334,7 @@ const LecturerAttendance = {
             const statusColor = statusColors[displayStatus] || '#6b7280';
 
             const studentName = log.student_name || 'Unknown Student';
-            const regNumber = log.registration_number || log.student_id || 'N/A';
+            const regNumber = this.getDisplayRegNumber(log);
             const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
             const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
             const programDisplay = log.program || 'N/A';
@@ -417,7 +473,7 @@ const LecturerAttendance = {
             const statusColor = statusColors[displayStatus] || '#6b7280';
             const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
             const studentName = log.student_name || 'Unknown Student';
-            const regNumber = log.registration_number || log.student_id || 'N/A';
+            const regNumber = this.getDisplayRegNumber(log);
             const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
             const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
             const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
@@ -504,7 +560,10 @@ const LecturerAttendance = {
                 .from('consolidated_user_profiles_table')
                 .select('*', { count: 'exact', head: true })
                 .eq('program', program)
-                .eq('role', 'student');
+                .eq('role', 'student')
+                .eq('status', 'approved')
+                .not('student_id', 'is', null)
+                .not('student_id', 'like', '%-%-%-%-%');
 
             const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
             const currentBlock = blocks.length > 0 ? this.getBlockDisplay(blocks[0]) : 'N/A';
@@ -694,6 +753,7 @@ const LecturerAttendance = {
             const { error: insertError } = await supabase.from('geo_attendance_logs').insert({
                 student_id: studentId,
                 student_name: student.full_name || 'Student',
+                registration_number: student.student_id || null,
                 check_in_time: checkInTime,
                 session_type: sessionType,
                 target_name: unit || 'General', unit_name: unit || 'General',
@@ -740,6 +800,7 @@ const LecturerAttendance = {
 
         this.populateStudentSelect();
         this.populateBlockFilter();
+        this.populateUnitFilter();   // ✅ NEW
         this.updateFilterLabels();
     },
 
@@ -782,6 +843,9 @@ const LecturerAttendance = {
                 .select('user_id, full_name, student_id, block')
                 .eq('program', program)
                 .eq('role', 'student')
+                .eq('status', 'approved')
+                .not('student_id', 'is', null)
+                .not('student_id', 'like', '%-%-%-%-%')
                 .order('full_name');
 
             const select = document.getElementById('attStudentId');
@@ -805,13 +869,20 @@ const LecturerAttendance = {
     applyFilters() {
         const filterDate = (document.getElementById('filterDate')?.value || '').trim();
         const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
+        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();  // ✅ NEW
         const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
         const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
         const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
+        const unitFilterActive = filterUnit !== 'All';
+
         let filteredToday = [...(this.todayLogs || [])];
         if (filterDate) filteredToday = filteredToday.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
         if (filterBlock !== 'All') filteredToday = filteredToday.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
+        if (filterUnit !== 'All') filteredToday = filteredToday.filter(l => {
+            const u = String(l.unit_name || l.target_name || '').trim().toLowerCase();
+            return u === filterUnit.toLowerCase();
+        });
         if (filterYear !== 'All') filteredToday = filteredToday.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
         if (filterSessionType !== 'All') filteredToday = filteredToday.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
         if (searchText) filteredToday = filteredToday.filter(l => {
@@ -821,12 +892,20 @@ const LecturerAttendance = {
 
         let filteredPast = [...(this.pastLogs || [])];
         if (filterBlock !== 'All') filteredPast = filteredPast.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
+        if (filterUnit !== 'All') filteredPast = filteredPast.filter(l => {
+            const u = String(l.unit_name || l.target_name || '').trim().toLowerCase();
+            return u === filterUnit.toLowerCase();
+        });
         if (filterYear !== 'All') filteredPast = filteredPast.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
         if (filterSessionType !== 'All') filteredPast = filteredPast.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
         if (searchText) filteredPast = filteredPast.filter(l => {
             const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
             return h.includes(searchText);
         });
+
+        // ✅ hide placeholder "Student" accounts
+        filteredToday = filteredToday.filter(l => !this.isPlaceholderLog(l));
+        filteredPast = filteredPast.filter(l => !this.isPlaceholderLog(l));
 
         this.filteredTodayLogs = filteredToday;
         this.filteredPastLogs = filteredPast;
@@ -835,7 +914,10 @@ const LecturerAttendance = {
         this.renderFilteredPast(filteredPast);
 
         const filterCount = document.getElementById('attendanceFilterCount');
-        if (filterCount) filterCount.textContent = `Showing ${filteredToday.length} of ${this.todayLogs.length} today · ${filteredPast.length} past`;
+        if (filterCount) {
+            const unitBit = unitFilterActive ? ` · Unit: ${filterUnit}` : '';
+            filterCount.textContent = `Showing ${filteredToday.length} of ${this.todayLogs.length} today · ${filteredPast.length} past${unitBit}`;
+        }
     },
 
     renderFilteredToday(logs) {
@@ -876,6 +958,7 @@ const LecturerAttendance = {
         const today = new Date().toISOString().split('T')[0];
         const fDate = document.getElementById('filterDate'); if (fDate) fDate.value = today;
         const fBlock = document.getElementById('filterBlock'); if (fBlock) fBlock.value = 'All';
+        const fUnit = document.getElementById('filterUnit'); if (fUnit) fUnit.value = 'All';
         const fYear = document.getElementById('filterYear'); if (fYear) fYear.value = 'All';
         const fType = document.getElementById('filterSessionType'); if (fType) fType.value = 'All';
         const fSearch = document.getElementById('filterSearch'); if (fSearch) fSearch.value = '';
@@ -898,25 +981,31 @@ const LecturerAttendance = {
             return;
         }
 
-        // ---- 1. READ FILTERS ----
         const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
         const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
         const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
+        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();   // ✅ NEW
         const filterDate = (document.getElementById('filterDate')?.value || '').trim();
         const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
-        const hasFilters = (filterBlock !== 'All') || (filterYear !== 'All') || (filterSessionType !== 'All') || !!searchText;
+        const hasFilters = (filterBlock !== 'All') || (filterYear !== 'All') || (filterSessionType !== 'All') || (filterUnit !== 'All') || !!searchText;
 
-        // ---- 2. SOURCE ----
         let source = [...(this.todayLogs || [])].filter(l => l.session_type !== 'Lecturer Check-in');
         if (filterDate) source = source.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
         if (filterBlock !== 'All') source = source.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
+        if (filterUnit !== 'All') source = source.filter(l => {
+            const u = String(l.unit_name || l.target_name || '').trim().toLowerCase();
+            return u === filterUnit.toLowerCase();
+        });
         if (filterYear !== 'All') source = source.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
         if (filterSessionType !== 'All') source = source.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
         if (searchText) source = source.filter(l => {
             const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
             return h.includes(searchText);
         });
+
+        // ✅ hide placeholders from export
+        source = source.filter(l => !this.isPlaceholderLog(l));
 
         if (!source.length) {
             this.showNotification(hasFilters ? 'No records match the current filters.' : 'No attendance data to export.', 'warning');
@@ -925,7 +1014,6 @@ const LecturerAttendance = {
 
         const typeLabel = this.getProgramTypeLabel();
 
-        // ---- 3. GROUP ----
         const groups = {};
         source.forEach(log => {
             const block = (log.block || 'N/A').trim();
@@ -948,7 +1036,6 @@ const LecturerAttendance = {
             return a.unit.localeCompare(b.unit);
         });
 
-        // ---- 4. COLORS ----
         const PURPLE = 'FF4F46E5';
         const PURPLE_LIGHT = 'FFEEF2FF';
         const GREEN = 'FF10B981';
@@ -968,9 +1055,7 @@ const LecturerAttendance = {
 
         const usedNames = new Set();
 
-        // ---- 5. BUILD EACH SHEET ----
         for (const cls of classList) {
-            // Unique dates
             const dateSet = new Set();
             cls.logs.forEach(log => {
                 if (!log.check_in_time) return;
@@ -983,10 +1068,9 @@ const LecturerAttendance = {
                 dateDisplayMap[iso] = `${d}/${m}`;
             });
 
-            // Student map
             const studentMap = {};
             cls.logs.forEach(log => {
-                const reg = (log.registration_number || log.student_id || 'N/A').trim();
+                const reg = this.getDisplayRegNumber(log);
                 const name = (log.student_name || 'Unknown').trim();
                 const iso = log.check_in_time ? new Date(log.check_in_time).toISOString().split('T')[0] : null;
                 if (!studentMap[reg]) studentMap[reg] = { reg, name, byDate: {} };
@@ -1008,7 +1092,6 @@ const LecturerAttendance = {
                 a.reg.localeCompare(b.reg, undefined, { numeric: true })
             );
 
-            // Unique sheet name
             let sheetName = `${cls.blockDisplay} ${cls.unit}`.slice(0, 28).replace(/[\\\/\?\*\[\]:]/g, '-');
             if (usedNames.has(sheetName)) {
                 let n = 2;
@@ -1021,9 +1104,8 @@ const LecturerAttendance = {
                 pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 } }
             });
 
-            const totalCols = 3 + sortedDates.length + 1; // S/NO + REG + NAME + dates + TOTAL
+            const totalCols = 3 + sortedDates.length + 1;
 
-            // ---- Header rows ----
             const mergeRow = (rowNumber, text, opts = {}) => {
                 ws.mergeCells(rowNumber, 1, rowNumber, totalCols);
                 const cell = ws.getCell(rowNumber, 1);
@@ -1051,6 +1133,7 @@ const LecturerAttendance = {
             if (hasFilters) {
                 const bits = [];
                 if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
+                if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);   // ✅ NEW
                 if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
                 if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
                 if (filterDate) bits.push(`Date ${filterDate}`);
@@ -1064,9 +1147,8 @@ const LecturerAttendance = {
                 fill: PURPLE_LIGHT, font: { bold: true, color: { argb: PURPLE }, size: 13 }, height: 26
             });
 
-            r++; // spacer
+            r++;
 
-            // ---- Column header row ----
             const headerRowIdx = r;
             const header = ['S/NO', 'REG NO', 'FULL NAME', ...sortedDates.map(d => dateDisplayMap[d]), 'TOTAL'];
             header.forEach((v, i) => {
@@ -1080,7 +1162,6 @@ const LecturerAttendance = {
             ws.getRow(r).height = 24;
             r++;
 
-            // ---- Student rows ----
             students.forEach((student, idx) => {
                 const row = ws.getRow(r);
                 row.getCell(1).value = idx + 1;
@@ -1110,7 +1191,6 @@ const LecturerAttendance = {
                 totalCell.font = { bold: true, color: { argb: DARK }, size: 11 };
                 totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE_LIGHT } };
 
-                // borders across the row
                 for (let c = 1; c <= totalCols; c++) {
                     row.getCell(c).border = {
                         top: { style: 'thin', color: { argb: BORDER } },
@@ -1125,7 +1205,6 @@ const LecturerAttendance = {
                 r++;
             });
 
-            // ---- Summary row ----
             r++;
             const totalStudents = students.length;
             const totalSessions = sortedDates.length;
@@ -1142,7 +1221,6 @@ const LecturerAttendance = {
             ws.getRow(r).height = 24;
             r += 2;
 
-            // ---- Signature footer ----
             ws.mergeCells(r, 1, r, totalCols);
             const sigHeader = ws.getCell(r, 1);
             sigHeader.value = 'AUTHORIZATION & VERIFICATION';
@@ -1152,35 +1230,25 @@ const LecturerAttendance = {
             ws.getRow(r).height = 22;
             r++;
 
-                      const sigRow = (label) => {
-                // Column A (merged A:B) → the label
-                if (totalCols >= 2) {
-                    ws.mergeCells(r, 1, r, 2);
-                }
+            const sigRow = (label) => {
+                if (totalCols >= 2) ws.mergeCells(r, 1, r, 2);
                 const labelCell = ws.getCell(r, 1);
                 labelCell.value = label;
                 labelCell.font = { bold: true, size: 11, color: { argb: DARK } };
                 labelCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
-                // Column C → underscore line
                 const lineCell = ws.getCell(r, 3);
                 lineCell.value = '_______________________';
                 lineCell.alignment = { horizontal: 'center', vertical: 'middle' };
                 lineCell.font = { size: 11 };
 
-                // Columns D:E (merged) → Signature line
-                if (totalCols >= 5) {
-                    ws.mergeCells(r, 4, r, 5);
-                }
+                if (totalCols >= 5) ws.mergeCells(r, 4, r, 5);
                 const sigCell = ws.getCell(r, 4);
                 sigCell.value = 'Signature: ______________';
                 sigCell.font = { size: 11 };
                 sigCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
-                // Columns F:end (merged, only if it spans MORE than one col) → Date line
-                if (totalCols > 6) {
-                    ws.mergeCells(r, 6, r, totalCols);
-                }
+                if (totalCols > 6) ws.mergeCells(r, 6, r, totalCols);
                 const dateCell = ws.getCell(r, 6);
                 dateCell.value = 'Date: ______________';
                 dateCell.font = { size: 11 };
@@ -1196,22 +1264,20 @@ const LecturerAttendance = {
             r++;
             sigRow('Checked By:');
 
-            // ---- Column widths ----
             const widths = [];
-            widths.push({ width: 7 });  // S/NO
-            widths.push({ width: 22 }); // REG NO
-            widths.push({ width: 30 }); // NAME
+            widths.push({ width: 7 });
+            widths.push({ width: 22 });
+            widths.push({ width: 30 });
             sortedDates.forEach(() => widths.push({ width: 8 }));
-            widths.push({ width: 10 }); // TOTAL
+            widths.push({ width: 10 });
             ws.columns = widths;
 
-            // ---- Freeze header + first 3 cols ----
             ws.views = [{ state: 'frozen', xSplit: 3, ySplit: headerRowIdx }];
         }
 
-        // ---- 6. WRITE ----
         const suffixBits = [];
         if (filterBlock !== 'All') suffixBits.push(filterBlock.replace(/\s+/g, ''));
+        if (filterUnit !== 'All') suffixBits.push(filterUnit.replace(/\s+/g, ''));   // ✅ NEW
         if (filterYear !== 'All') suffixBits.push(`Intake${filterYear}`);
         if (filterSessionType !== 'All') suffixBits.push(filterSessionType);
         const suffix = suffixBits.length ? '_' + suffixBits.join('_') : '';
@@ -1290,7 +1356,8 @@ const LecturerAttendance = {
             form.addEventListener('submit', (e) => this.markStudentAttendance(e));
         }
 
-        ['filterDate', 'filterBlock', 'filterYear', 'filterSessionType'].forEach(id => {
+        // ✅ include filterUnit now
+        ['filterDate', 'filterBlock', 'filterUnit', 'filterYear', 'filterSessionType'].forEach(id => {
             const el = document.getElementById(id);
             if (el && !el.dataset.filterBound) {
                 el.dataset.filterBound = '1';
@@ -1330,12 +1397,8 @@ const LecturerAttendance = {
         if (loc) window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lng}`, '_blank');
     },
 
-
     // ============================================================
     // FULL CLASS SESSION RECONCILIATION
-    // Builds the expected class from student profiles, compares it
-    // against geo check-ins for THIS session, and can finalize
-    // missing/invalid students as Absent when the session closes.
     // ============================================================
     async getSessionRoster(session) {
         const supabase = window.lecturerDB?.supabase;
@@ -1347,9 +1410,12 @@ const LecturerAttendance = {
 
         let query = supabase
             .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id, admission_number, registration_number, program, block, intake_year, role')
+            .select('user_id, full_name, student_id, admission_number, program, block, intake_year, role')
             .eq('role', 'student')
-            .eq('program', program);
+            .eq('program', program)
+            .eq('status', 'approved')
+            .not('student_id', 'is', null)
+            .not('student_id', 'like', '%-%-%-%-%');
 
         if (block) query = query.eq('block', block);
         if (intake !== null && intake !== undefined && String(intake) !== '') {
@@ -1359,19 +1425,22 @@ const LecturerAttendance = {
         const { data, error } = await query.order('full_name', { ascending: true });
         if (error) throw error;
 
-        return (data || []).map(student => ({
-            user_id: student.user_id,
-            name: student.full_name || 'Unknown Student',
-            registration_number:
-                student.registration_number ||
-                student.admission_number ||
-                student.student_id ||
-                student.user_id,
-            student_id: student.student_id || student.admission_number || student.registration_number || null,
-            program: student.program || program,
-            block: student.block || block || null,
-            intake_year: student.intake_year || intake || null
-        }));
+        return (data || []).map(student => {
+            const regNumber =
+                (student.admission_number && String(student.admission_number).trim()) ||
+                (student.student_id && String(student.student_id).trim()) ||
+                student.user_id;
+
+            return {
+                user_id: student.user_id,
+                name: student.full_name || 'Unknown Student',
+                registration_number: regNumber,
+                student_id: student.student_id || student.admission_number || null,
+                program: student.program || program,
+                block: student.block || block || null,
+                intake_year: student.intake_year || intake || null
+            };
+        });
     },
 
     async getSessionAttendanceRegister(session, finalize = false) {
@@ -1389,7 +1458,6 @@ const LecturerAttendance = {
 
         if (error) throw error;
 
-        // One effective log per student: prefer Present/Verified, otherwise latest.
         const byStudent = new Map();
         (logs || []).forEach(log => {
             const key = String(log.user_id || log.student_id || log.registration_number || '').trim();
@@ -1429,15 +1497,18 @@ const LecturerAttendance = {
             }
 
             const status = String(log?.attendance_status || '').toLowerCase();
-            const validPresent =
-                !!log &&
-                (status === 'present' || status === 'verified' || log.is_verified === true) &&
-                Number(log.distance_meters ?? Infinity) <= Number(log.target_radius ?? Infinity);
+
+            // ✅ safe radius comparison
+            const DEFAULT_RADIUS_M = 150;
+            const radius = Number(log?.target_radius ?? session?.target_radius ?? DEFAULT_RADIUS_M);
+            const distance = Number(log?.distance_meters ?? Infinity);
+
+            const hasValidStatus =
+                status === 'present' || status === 'verified' || log?.is_verified === true;
+            const inRadius = distance <= radius;
+            const validPresent = !!log && hasValidStatus && inRadius;
 
             let finalStatus = validPresent ? 'Present' : (log ? 'Absent' : 'Not Checked In');
-
-            // A student who checked in but was outside the configured target radius
-            // is treated as absent for the finalized class register.
             if (log && !validPresent) finalStatus = 'Absent';
 
             if (finalize && finalStatus !== 'Present') {
@@ -1464,7 +1535,6 @@ const LecturerAttendance = {
                 const { student, existingLog } = item;
 
                 if (existingLog?.id) {
-                    // Convert weak/out-of-radius/pending records to final Absent.
                     updates.push(
                         supabase
                             .from('geo_attendance_logs')
@@ -1479,7 +1549,6 @@ const LecturerAttendance = {
                             .eq('id', existingLog.id)
                     );
                 } else {
-                    // No check-in at all: create a single Absent record.
                     inserts.push({
                         user_id: student.user_id,
                         student_id: student.student_id || student.registration_number,
@@ -1511,7 +1580,6 @@ const LecturerAttendance = {
                 }
             }
 
-            // Run updates in parallel. Insert absent rows in one batch.
             if (updates.length) {
                 const results = await Promise.all(updates);
                 const failed = results.find(r => r.error);
@@ -1525,7 +1593,6 @@ const LecturerAttendance = {
                 if (insertError) throw insertError;
             }
 
-            // Re-read the finalized register so the caller gets final truth.
             return await this.getSessionAttendanceRegister(session, false);
         }
 
@@ -1546,11 +1613,6 @@ const LecturerAttendance = {
         if (!supabase) throw new Error('Database connection not available');
         if (!sessionId) throw new Error('Session ID is required');
 
-        // IMPORTANT:
-        // LecturerSessions and LecturerAttendance are separate modules.
-        // LecturerAttendance does not necessarily have the session in
-        // this.sessions, so closing a session must load it directly from
-        // scheduled_sessions instead of relying on a local array.
         let session = this.sessions?.find(s => String(s.id) === String(sessionId));
 
         if (!session) {
@@ -1566,7 +1628,6 @@ const LecturerAttendance = {
 
         if (!session) throw new Error('Session not found in scheduled_sessions');
 
-        // Confirm the current lecturer owns the session when an identity is available.
         const profile = window.lecturerDB?.getCurrentUserProfile?.();
         const lecturerId = this.lecturerUuid || profile?.user_id;
 
@@ -1580,9 +1641,6 @@ const LecturerAttendance = {
 
         const sessionType = String(session.session_type || 'Class').toLowerCase();
 
-        // The automatic full-class finalization requested applies to classroom/
-        // lab/tutorial sessions. Clinical and exam attendance retain their
-        // existing workflow.
         if (sessionType === 'clinical' || sessionType === 'exam') {
             return await this.getSessionAttendanceRegister(session, false);
         }
@@ -1717,7 +1775,7 @@ window.LecturerAttendance = LecturerAttendance;
 window.viewAttendanceMap = (lat, lng, name) => LecturerAttendance.viewAttendanceMap(lat, lng, name);
 window.applyAttendanceFilters = () => LecturerAttendance.applyFilters();
 window.resetAttendanceFilters = () => LecturerAttendance.resetFilters();
-window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();  // still named CSV for HTML compatibility
+window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();
 window.printAttendanceReport = () => LecturerAttendance.printReport();
 window.lecturerCheckin = () => LecturerAttendance.lecturerCheckIn();
 window.markAttendance = (e) => LecturerAttendance.markStudentAttendance(e);
@@ -1747,6 +1805,7 @@ window.openInGoogleMaps = () => {
 };
 
 console.log('✅ LecturerAttendance module loaded');
-console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify');
+console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify, Unit filter');
 console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
 console.log('🎨 Export: Modern styled .xlsx with colored cells, merged headers, frozen panes');
+console.log('✅ Fix: registration_number column removed; placeholders excluded; radius safe; display-safe reg number');
