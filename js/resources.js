@@ -1153,9 +1153,9 @@ class ResourcesModule {
     }
     
     showAudioPlayer(text, title) {
-        if (!text || !this.audioContainer) return;
+        if (!this.audioContainer) return;
         
-        this.currentAudioText = text;
+        this.currentAudioText = text || '';
         if (this.audioTitle) {
             this.audioTitle.textContent = `🎙️ ${title || 'Podcast'}`;
         }
@@ -1258,43 +1258,6 @@ class ResourcesModule {
     // 📄 READ ALOUD - NOTEBOOKLM STYLE PODCAST
     // ============================================================
     
-    async resolvePodcastUrl(resource) {
-        if (!resource) return '';
-
-        // 1. Prefer the public URL saved by the Super Admin.
-        const savedUrl = String(
-            resource.podcast_url ||
-            resource.podcastUrl ||
-            ''
-        ).trim();
-
-        if (savedUrl) return savedUrl;
-
-        // 2. If only the Storage path was saved, build the public URL
-        //    directly from the same 'resources' bucket.
-        const podcastPath = String(
-            resource.podcast_path ||
-            resource.podcastPath ||
-            ''
-        ).trim();
-
-        if (!podcastPath) return '';
-
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return '';
-
-            const { data } = supabase.storage
-                .from('resources')
-                .getPublicUrl(podcastPath);
-
-            return String(data?.publicUrl || '').trim();
-        } catch (error) {
-            console.warn('⚠️ Could not resolve prerecorded podcast path:', error);
-            return '';
-        }
-    }
-
     async readAloud(resourceId) {
         const resource = this.allResources.find(r => r.id == resourceId);
 
@@ -1308,7 +1271,11 @@ class ResourcesModule {
         // If the administrator uploaded podcast_url, play it
         // directly instead of generating an AI podcast.
         // ========================================================
-        const storedPodcastUrl = await this.resolvePodcastUrl(resource);
+        const storedPodcastUrl = String(
+            resource.podcast_url ||
+            resource.podcastUrl ||
+            ''
+        ).trim();
 
         if (storedPodcastUrl) {
             await this.playStoredPodcast(resource, storedPodcastUrl);
@@ -1685,8 +1652,10 @@ class ResourcesModule {
             this.openImageInModal(resource);
         } else if (fileType === 'video') {
             this.openVideoInModal(resource);
+        } else if (['ppt','pptx','doc','docx'].includes(fileType)) {
+            this.openOfficeDocumentInModal(resource);
         } else {
-            window.open(resource.file_url, '_blank');
+            this.openUnsupportedResourceInModal(resource);
         }
     }
     
@@ -2157,20 +2126,8 @@ class ResourcesModule {
             const { data: resources, error } = await query;
             if (error) throw error;
             
-            // Preserve the podcast fields explicitly so the uploaded
-            // prerecorded audio always travels with each resource record.
-            // The query uses select('*'), but normalizing here also protects
-            // against older/cached records that may use camelCase fields.
-            this.allResources = (resources || []).map(resource => ({
-                ...resource,
-                podcast_url: resource.podcast_url || resource.podcastUrl || null,
-                podcast_path: resource.podcast_path || resource.podcastPath || null
-            }));
-
+            this.allResources = resources || [];
             console.log(`✅ Loaded ${this.allResources.length} resources`);
-            console.log('🎧 Prerecorded podcasts loaded:',
-                this.allResources.filter(r => r.podcast_url || r.podcast_path).length
-            );
             
             this.updatePastPaperCount();
             this.populateFilters();
@@ -2364,6 +2321,7 @@ class ResourcesModule {
                 <div class="pdf-modal-header">
                     <div class="pdf-modal-title"><i class="fas fa-file-pdf" style="color:#ef4444;"></i><span>${this.escapeHtml(resource.title)}</span></div>
                     <div class="pdf-modal-actions">
+                        <button class="pdf-modal-btn pdf-podcast-btn" id="pdf-podcast-btn" title="Play Podcast"><i class="fas fa-podcast"></i><span style="margin-left:6px;font-size:12px;">Podcast</span></button>
                         <button class="pdf-modal-btn" id="pdf-fullscreen-btn"><i class="fas fa-expand"></i></button>
                         <button class="pdf-modal-btn" id="pdf-zoom-in-btn"><i class="fas fa-search-plus"></i></button>
                         <button class="pdf-modal-btn" id="pdf-zoom-out-btn"><i class="fas fa-search-minus"></i></button>
@@ -2408,6 +2366,8 @@ class ResourcesModule {
             .pdf-modal-actions{display:flex;gap:6px;flex-shrink:0}
             .pdf-modal-btn{background:rgba(255,255,255,0.08);border:none;color:#94a3b8;width:38px;height:38px;border-radius:8px;cursor:pointer;font-size:16px;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
             .pdf-modal-btn:hover{background:#4C1D95;color:white;transform:scale(1.05)}
+            .pdf-podcast-btn{background:linear-gradient(135deg,#7c3aed,#db2777);color:white;width:auto;padding:0 12px}
+            .pdf-podcast-btn:hover{background:linear-gradient(135deg,#6d28d9,#be185d);color:white}
             .pdf-modal-body{flex:1;overflow:auto;background:#1a1a2e;position:relative}
             .pdf-viewer-modal-area{display:flex;justify-content:center;padding:20px;min-height:100%;align-items:flex-start;background:#2d2d3a}
             .pdf-canvas-modal{box-shadow:0 4px 30px rgba(0,0,0,0.5);background:white;border-radius:4px;max-width:100%;height:auto}
@@ -2434,6 +2394,10 @@ class ResourcesModule {
         const modal = document.getElementById('pdf-viewer-modal');
         document.querySelector('.close-pdf-modal')?.addEventListener('click', () => this.closePDFModal());
         modal?.addEventListener('click', (e) => { if (e.target === modal) this.closePDFModal(); });
+        document.getElementById('pdf-podcast-btn')?.addEventListener('click', () => {
+            if (this.currentResource?.id) this.readAloud(this.currentResource.id);
+            else this.showToast('Resource not found', 'error');
+        });
         document.getElementById('pdf-fullscreen-btn')?.addEventListener('click', () => this.togglePDFFullscreen());
         document.getElementById('pdf-zoom-in-btn')?.addEventListener('click', () => this.zoomPDF(1.2));
         document.getElementById('pdf-zoom-out-btn')?.addEventListener('click', () => this.zoomPDF(0.8));
@@ -2604,6 +2568,63 @@ class ResourcesModule {
     }
     
     // ============================================================
+    // OFFICE DOCUMENT VIEWER - KEEP NOTES INSIDE PORTAL
+    // ============================================================
+    openOfficeDocumentInModal(resource) {
+        const existing = document.getElementById('office-document-viewer-modal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'office-document-viewer-modal';
+        modal.innerHTML = `
+            <div style="position:fixed;inset:0;background:rgba(7,12,24,.96);z-index:100001;display:flex;flex-direction:column;">
+                <div style="height:60px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px;background:linear-gradient(135deg,#16213e,#1a1a2e);color:white;border-bottom:1px solid rgba(255,255,255,.1);">
+                    <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                        <i class="fas fa-file-powerpoint" style="color:#f97316;font-size:20px;"></i>
+                        <span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this.escapeHtml(resource.title || 'Learning Material')}</span>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-shrink:0;">
+                        <button id="office-podcast-btn" title="Play podcast" style="border:0;border-radius:8px;padding:9px 14px;background:linear-gradient(135deg,#4a90d9,#e84393);color:white;font-weight:700;cursor:pointer;"><i class="fas fa-podcast"></i> Podcast</button>
+                        <button id="office-close-btn" title="Close" style="border:0;border-radius:8px;width:40px;height:40px;background:rgba(255,255,255,.1);color:white;font-size:18px;cursor:pointer;"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div style="flex:1;position:relative;background:#e5e7eb;">
+                    <div id="office-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#334155;background:#f8fafc;z-index:2;"><i class="fas fa-spinner fa-spin" style="font-size:30px;color:#4C1D95;"></i><span>Opening document inside the portal…</span></div>
+                    <iframe src="https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(resource.file_url)}" title="${this.escapeHtml(resource.title || 'Document')}" style="width:100%;height:100%;border:0;display:block;background:white;" allowfullscreen></iframe>
+                </div>
+                <div style="height:38px;display:flex;align-items:center;justify-content:center;background:#111827;color:#94a3b8;font-size:11px;"><i class="fas fa-lock" style="margin-right:6px;"></i> Read Only · Document displayed inside portal</div>
+            </div>`;
+        document.body.appendChild(modal);
+        const iframe = modal.querySelector('iframe');
+        iframe.addEventListener('load', () => { const l=modal.querySelector('#office-loading'); if(l) l.style.display='none'; });
+        modal.querySelector('#office-close-btn')?.addEventListener('click', () => modal.remove());
+        modal.querySelector('#office-podcast-btn')?.addEventListener('click', async () => {
+            modal.remove();
+            await this.readAloud(resource.id);
+        });
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    }
+
+    openUnsupportedResourceInModal(resource) {
+        const existing = document.getElementById('unsupported-resource-modal');
+        if (existing) existing.remove();
+        const modal = document.createElement('div');
+        modal.id = 'unsupported-resource-modal';
+        modal.innerHTML = `
+            <div style="position:fixed;inset:0;background:rgba(7,12,24,.96);z-index:100001;display:flex;align-items:center;justify-content:center;padding:20px;">
+                <div style="max-width:520px;width:100%;background:white;border-radius:18px;padding:32px;text-align:center;box-shadow:0 25px 70px rgba(0,0,0,.35);">
+                    <i class="fas fa-file-alt" style="font-size:54px;color:#4C1D95;margin-bottom:16px;"></i>
+                    <h3 style="margin:0 0 8px;color:#0f172a;">${this.escapeHtml(resource.title || 'Learning Material')}</h3>
+                    <p style="color:#64748b;margin:0 0 22px;">This file format cannot be rendered safely inside the portal yet.</p>
+                    <button id="unsupported-podcast-btn" style="border:0;border-radius:10px;padding:11px 16px;background:#4C1D95;color:white;font-weight:700;cursor:pointer;margin-right:8px;"><i class="fas fa-podcast"></i> Podcast</button>
+                    <button id="unsupported-close-btn" style="border:1px solid #cbd5e1;border-radius:10px;padding:11px 16px;background:white;color:#334155;font-weight:700;cursor:pointer;">Close</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+        modal.querySelector('#unsupported-close-btn')?.addEventListener('click',()=>modal.remove());
+        modal.querySelector('#unsupported-podcast-btn')?.addEventListener('click',async()=>{modal.remove();await this.readAloud(resource.id);});
+    }
+
+    // ============================================================
     // UTILITY FUNCTIONS
     // ============================================================
     getFileType(filePath) {
@@ -2612,6 +2633,9 @@ class ResourcesModule {
         if (ext === 'pdf') return 'pdf';
         if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'image';
         if (['mp4', 'avi', 'mov', 'wmv', 'webm'].includes(ext)) return 'video';
+        if (['ppt', 'pptx'].includes(ext)) return ext;
+        if (['doc', 'docx'].includes(ext)) return ext;
+        if (['txt', 'rtf'].includes(ext)) return ext;
         return 'file';
     }
     
