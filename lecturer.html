@@ -2576,7 +2576,7 @@
         </div>
     </div>
 </section>
-          <!-- ===== SESSIONS SECTION - ENHANCED ===== -->
+<!-- ===== SESSIONS SECTION - ENHANCED WITH GEO TARGETS ===== -->
 <section id="sessions-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
         <div>
@@ -2709,7 +2709,6 @@
                     <option value="">-- Select Block --</option>
                 </select>
             </div>
-            <!-- 🆕 NEW: Intake Year / Cohort -->
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionIntakeYear" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-users" style="color: #4C1D95; width: 18px;"></i> Intake Year (Cohort) *
@@ -2749,11 +2748,35 @@
                     <option value="Exam">📝 Exam</option>
                 </select>
             </div>
+            
+            <!-- ✅ LOCATION FIELD WITH GEO TARGET -->
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionLocation" style="font-weight: 600; font-size: 13px; color: #475569;">
                     <i class="fas fa-map-pin" style="color: #4C1D95; width: 18px;"></i> Location
+                    <span style="font-size: 11px; color: #94a3b8; font-weight: 400;">(auto-detects geo-target)</span>
                 </label>
-                <input type="text" id="sessionLocation" placeholder="e.g., Lecture Hall 3" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <input 
+                    type="text" 
+                    id="sessionLocation" 
+                    list="campusLocationsList" 
+                    placeholder="e.g., Lecture Hall 6" 
+                    autocomplete="off" 
+                    style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; width: 100%; box-sizing: border-box;" 
+                    onfocus="this.style.borderColor='#4C1D95'" 
+                    onblur="this.style.borderColor='#e2e8f0'">
+                <datalist id="campusLocationsList">
+                    <option value="Lecture Hall 6">
+                    <!-- Add more as you collect their coordinates:
+                    <option value="Lecture Hall 1">
+                    <option value="Lecture Hall 2">
+                    <option value="Lecture Hall 3">
+                    <option value="Lecture Hall 4">
+                    <option value="Lecture Hall 5">
+                    <option value="Skills Lab">
+                    <option value="Clinical Room 1">
+                    -->
+                </datalist>
+                <div id="locationGeoHint" style="font-size: 11px; color: #64748b; margin-top: 4px; min-height: 14px; transition: color 0.2s;"></div>
             </div>
         </div>
         
