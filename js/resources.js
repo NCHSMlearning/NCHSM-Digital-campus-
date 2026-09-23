@@ -1258,6 +1258,43 @@ class ResourcesModule {
     // 📄 READ ALOUD - NOTEBOOKLM STYLE PODCAST
     // ============================================================
     
+    async resolvePodcastUrl(resource) {
+        if (!resource) return '';
+
+        // 1. Prefer the public URL saved by the Super Admin.
+        const savedUrl = String(
+            resource.podcast_url ||
+            resource.podcastUrl ||
+            ''
+        ).trim();
+
+        if (savedUrl) return savedUrl;
+
+        // 2. If only the Storage path was saved, build the public URL
+        //    directly from the same 'resources' bucket.
+        const podcastPath = String(
+            resource.podcast_path ||
+            resource.podcastPath ||
+            ''
+        ).trim();
+
+        if (!podcastPath) return '';
+
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return '';
+
+            const { data } = supabase.storage
+                .from('resources')
+                .getPublicUrl(podcastPath);
+
+            return String(data?.publicUrl || '').trim();
+        } catch (error) {
+            console.warn('⚠️ Could not resolve prerecorded podcast path:', error);
+            return '';
+        }
+    }
+
     async readAloud(resourceId) {
         const resource = this.allResources.find(r => r.id == resourceId);
 
@@ -1271,11 +1308,7 @@ class ResourcesModule {
         // If the administrator uploaded podcast_url, play it
         // directly instead of generating an AI podcast.
         // ========================================================
-        const storedPodcastUrl = String(
-            resource.podcast_url ||
-            resource.podcastUrl ||
-            ''
-        ).trim();
+        const storedPodcastUrl = await this.resolvePodcastUrl(resource);
 
         if (storedPodcastUrl) {
             await this.playStoredPodcast(resource, storedPodcastUrl);
@@ -2124,8 +2157,20 @@ class ResourcesModule {
             const { data: resources, error } = await query;
             if (error) throw error;
             
-            this.allResources = resources || [];
+            // Preserve the podcast fields explicitly so the uploaded
+            // prerecorded audio always travels with each resource record.
+            // The query uses select('*'), but normalizing here also protects
+            // against older/cached records that may use camelCase fields.
+            this.allResources = (resources || []).map(resource => ({
+                ...resource,
+                podcast_url: resource.podcast_url || resource.podcastUrl || null,
+                podcast_path: resource.podcast_path || resource.podcastPath || null
+            }));
+
             console.log(`✅ Loaded ${this.allResources.length} resources`);
+            console.log('🎧 Prerecorded podcasts loaded:',
+                this.allResources.filter(r => r.podcast_url || r.podcast_path).length
+            );
             
             this.updatePastPaperCount();
             this.populateFilters();
