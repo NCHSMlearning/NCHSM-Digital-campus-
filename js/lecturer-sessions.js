@@ -1,13 +1,15 @@
-// js/lecturer-sessions.js - COMPLETE WITH TVET SUPPORT + INTAKE YEAR SELECTION + EDIT SESSION
+// js/lecturer-sessions.js - COMPLETE WITH TVET + INTAKE YEAR + EDIT SESSION + GEO COORDINATES
 /**
  * NCHSM Lecturer Sessions Module
  * Uses scheduled_sessions table with correct column names
- * Includes session open/close for student attendance sign-in
- * STRICT UNIT ASSIGNMENT FILTERING - Same as Resources and Marks
- * Supports both Nursing (KRCHN) and TVET programs
- * ✅ intake_year now taken from lecturer's dropdown selection
+ * ✅ Includes session open/close for student attendance sign-in
+ * ✅ STRICT UNIT ASSIGNMENT FILTERING - Same as Resources and Marks
+ * ✅ Supports both Nursing (KRCHN) and TVET programs
+ * ✅ intake_year taken from lecturer's dropdown selection
  * ✅ lecturer_id populated for proper joins
- * ✅ NEW: editSession() — lecturer can edit date/time/location for continuous attendance
+ * ✅ editSession() — lecturer can edit date/time/location
+ * ✅ NEW: CAMPUS_LOCATIONS map — auto-populates target lat/lng/radius
+ * ✅ NEW: Location-aware target coordinates on create AND edit
  */
 
 const LecturerSessions = {
@@ -18,6 +20,44 @@ const LecturerSessions = {
     isProcessing: false,
     isTVET: false,
     currentProgram: 'KRCHN',
+
+    // ============================================
+    // CAMPUS LOCATIONS — target coordinates for geofencing
+    // Add more halls here as you collect their coordinates.
+    // Lookup is case-insensitive + substring + "LH6" alias.
+    // ============================================
+    CAMPUS_LOCATIONS: {
+        'lecture hall 6':   { lat: -0.261366, lng: 36.011125, radius: 50 },
+        // 'lecture hall 1': { lat: 0, lng: 0, radius: 50 },
+        // 'lecture hall 2': { lat: 0, lng: 0, radius: 50 },
+        // 'lecture hall 3': { lat: 0, lng: 0, radius: 50 },
+        // 'lecture hall 4': { lat: 0, lng: 0, radius: 50 },
+        // 'lecture hall 5': { lat: 0, lng: 0, radius: 50 },
+        // 'skills lab':     { lat: 0, lng: 0, radius: 60 },
+        // 'clinical room 1':{ lat: 0, lng: 0, radius: 75 },
+    },
+
+    // Resolve a free-text location name to coordinates.
+    // Returns { lat, lng, radius } or null.
+    resolveLocationCoordinates(locationName) {
+        if (!locationName) return null;
+        const key = String(locationName).trim().toLowerCase();
+        if (!key) return null;
+
+        if (this.CAMPUS_LOCATIONS[key]) return this.CAMPUS_LOCATIONS[key];
+
+        for (const [name, coords] of Object.entries(this.CAMPUS_LOCATIONS)) {
+            if (key.includes(name) || name.includes(key)) return coords;
+        }
+
+        const lhMatch = key.match(/\blh[\s\-]?(\d+)\b/);
+        if (lhMatch) {
+            const alias = `lecture hall ${lhMatch[1]}`;
+            if (this.CAMPUS_LOCATIONS[alias]) return this.CAMPUS_LOCATIONS[alias];
+        }
+
+        return null;
+    },
 
     // ============================================
     // PROGRAM TYPE DETECTION
@@ -82,6 +122,7 @@ const LecturerSessions = {
         this.currentProgram = this.getProgramType();
         this.isTVET = this.isTVETProgram();
         console.log(`📚 Program Type: ${this.getProgramTypeLabel()}`);
+        console.log(`📍 Known campus locations: ${Object.keys(this.CAMPUS_LOCATIONS).length}`);
 
         await this.resolveLecturerId();
         await this.loadAssignedUnits();
@@ -170,21 +211,15 @@ const LecturerSessions = {
     },
 
     // ============================================
-    // LOAD ASSIGNED UNITS - WITH TVET SUPPORT
+    // LOAD ASSIGNED UNITS
     // ============================================
     async loadAssignedUnits() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('⚠️ Supabase not available');
-                return;
-            }
+            if (!supabase) return;
 
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('⚠️ No lecturer profile found');
-                return;
-            }
+            if (!profile) return;
 
             const fullName = profile.full_name;
             const program = this.currentProgram || profile.program || 'KRCHN';
@@ -209,13 +244,8 @@ const LecturerSessions = {
             this.assignedUnits = programUnits.length > 0 ? programUnits : allUnits;
 
             console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for ${program}`);
-            console.log('📚 Units:', this.assignedUnits.map(u =>
-                `${u.subject_name} (${u.block}) - ${this.getBlockDisplay(u.block)} [${u.academic_year}]`
-            ));
 
             const lecturerIds = [...new Set(this.assignedUnits.map(u => u.lecturer_id))];
-            console.log('📚 Lecturer IDs found:', lecturerIds);
-
             if (lecturerIds.length > 0) {
                 const counts = {};
                 this.assignedUnits.forEach(u => {
@@ -284,7 +314,7 @@ const LecturerSessions = {
                     const displayName = this.getBlockDisplay(b);
                     return `<option value="${b}">${displayName}</option>`;
                 }).join('');
-            console.log(`📚 Populated ${blocks.length} blocks:`, blocks.map(b => this.getBlockDisplay(b)));
+            console.log(`📚 Populated ${blocks.length} blocks`);
         } else {
             blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
         }
@@ -296,8 +326,8 @@ const LecturerSessions = {
         }
     },
 
-       // ============================================
-    // LOAD SESSIONS - ONLY THIS LECTURER'S SESSIONS
+    // ============================================
+    // LOAD SESSIONS
     // ============================================
     async loadSessions() {
         try {
@@ -310,10 +340,7 @@ const LecturerSessions = {
             }
 
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                return;
-            }
+            if (!supabase) return;
 
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
@@ -327,10 +354,10 @@ const LecturerSessions = {
             }
 
             this.sessions = sessions || [];
-            await this.renderSessions();     // ✅ await added
+            await this.renderSessions();
             this.updateStats();
 
-            console.log(`✅ Loaded ${this.sessions.length} sessions (only your sessions) - ${this.getProgramTypeLabel()}`);
+            console.log(`✅ Loaded ${this.sessions.length} sessions - ${this.getProgramTypeLabel()}`);
 
         } catch (error) {
             console.error('Failed to load sessions:', error);
@@ -340,7 +367,7 @@ const LecturerSessions = {
         }
     },
 
-        // ============================================
+    // ============================================
     // RENDER SESSIONS
     // ============================================
     async renderSessions() {
@@ -363,7 +390,7 @@ const LecturerSessions = {
             return;
         }
 
-        // ✅ Fetch attendee counts for all sessions in 1 query
+        // Fetch attendee counts
         let attendeeCounts = {};
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -424,15 +451,17 @@ const LecturerSessions = {
             const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
             const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
 
-            // ✅ Attendee count for this session
+            // ✅ NEW: geo badge — shows whether session has target coordinates
+            const hasGeo = session.target_latitude && session.target_longitude && session.target_radius;
+            const geoBadge = hasGeo
+                ? `<span title="Geo-target: ${Number(session.target_latitude).toFixed(5)}, ${Number(session.target_longitude).toFixed(5)} (±${session.target_radius}m)" style="font-size:9px;background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:8px;margin-left:6px;">📍 geo</span>`
+                : `<span title="No target coordinates — will fall back to campus center" style="font-size:9px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;margin-left:6px;">⚠ no geo</span>`;
+
             const attendeeCount = attendeeCounts[session.id] || 0;
             const attendeeBadge = attendeeCount === 0
                 ? `<span style="background:#f1f5f9;color:#64748b;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:500;">0 checked in</span>`
                 : `<span style="background:#d1fae5;color:#065f46;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;"><i class="fas fa-users"></i> ${attendeeCount} checked in</span>`;
 
-            // Attendance controls:
-            // - An ACTIVE session always shows CLOSE, even after its scheduled date passes.
-            // - An inactive session shows OPEN only when it is today or a future session.
             let sessionControls = '';
             if (isActive) {
                 sessionControls += `
@@ -465,6 +494,7 @@ const LecturerSessions = {
                         ${isActive ? '<span style="font-size: 10px; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">🟢 OPEN</span>' : ''}
                         ${isToday && !isActive ? '<span style="font-size: 10px; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">TODAY</span>' : ''}
                         ${isPast && !isActive ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 8px;">(Past)</span>' : ''}
+                        ${geoBadge}
                         <div style="margin-top: 4px;">${statusBadge}</div>
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
@@ -521,6 +551,7 @@ const LecturerSessions = {
         const countDisplay = document.getElementById('sessionCountDisplay');
         if (countDisplay) countDisplay.textContent = sessions.length;
     },
+
     // ============================================
     // GENERATE ATTENDANCE LINK
     // ============================================
@@ -541,10 +572,7 @@ const LecturerSessions = {
     },
 
     // ============================================
-    // EDIT SESSION — update date / time / location
-    // ============================================
-    // ============================================
-    // EDIT SESSION — PROPER MODAL (no browser prompts)
+    // EDIT SESSION — update date / time / location + coords
     // ============================================
     async editSession(sessionId) {
         const session = this.sessions.find(s => s.id === sessionId);
@@ -559,7 +587,6 @@ const LecturerSessions = {
             return;
         }
 
-        // ---- defaults ----
         const currentDate = session.session_date ? session.session_date.split('T')[0] : '';
         const currentTime = (session.session_time || '09:00').substring(0, 5);
         const currentLocation = session.location_name || '';
@@ -568,18 +595,15 @@ const LecturerSessions = {
         const blockDisplay = session.block_display || session.block_term || '';
         const sessionType = session.session_type || 'Class';
 
-        // ---- prevent double-modal ----
         const existing = document.getElementById('editSessionModal');
         if (existing) existing.remove();
 
-        // ---- build modal ----
         const modal = document.createElement('div');
         modal.id = 'editSessionModal';
         modal.innerHTML = `
             <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px);z-index:999998;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeInBackdrop 0.25s ease;">
                 <div style="background:#fff;border-radius:20px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.35);animation:slideUpModal 0.35s cubic-bezier(0.34,1.56,0.64,1);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;">
 
-                    <!-- HEADER -->
                     <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:20px 24px;color:#fff;">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
                             <div style="flex:1;min-width:0;">
@@ -596,17 +620,14 @@ const LecturerSessions = {
                         </div>
                     </div>
 
-                    <!-- BODY -->
                     <div style="padding:22px 24px;overflow-y:auto;flex:1;">
 
-                        <!-- Session type pill -->
                         <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
                             <span style="background:#eef2ff;color:#4f46e5;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;">${this.escapeHtml(sessionType)}</span>
                             ${blockDisplay ? `<span style="background:#f3e8ff;color:#7c3aed;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;">${this.escapeHtml(blockDisplay)}</span>` : ''}
                             ${session.intake_year ? `<span style="background:#ecfdf5;color:#059669;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;">Intake ${this.escapeHtml(String(session.intake_year))}</span>` : ''}
                         </div>
 
-                        <!-- DATE FIELD -->
                         <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
                             <i class="fas fa-calendar-day" style="color:#4f46e5;margin-right:6px;"></i>Session Date <span style="color:#ef4444;">*</span>
                         </label>
@@ -614,7 +635,6 @@ const LecturerSessions = {
                                style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;transition:border 0.2s;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"
                                onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#e2e8f0'" />
 
-                        <!-- TIME FIELD -->
                         <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
                             <i class="fas fa-clock" style="color:#4f46e5;margin-right:6px;"></i>Session Time <span style="color:#ef4444;">*</span>
                         </label>
@@ -622,29 +642,24 @@ const LecturerSessions = {
                                style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;transition:border 0.2s;margin-bottom:16px;box-sizing:border-box;font-family:inherit;"
                                onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#e2e8f0'" />
 
-                        <!-- LOCATION FIELD -->
                         <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;">
                             <i class="fas fa-map-marker-alt" style="color:#4f46e5;margin-right:6px;"></i>Location <span style="color:#94a3b8;font-weight:400;">(optional)</span>
                         </label>
-                        <input id="editSessionLocation" type="text" value="${this.escapeHtml(currentLocation)}" placeholder="e.g. Lecture Hall A, Clinical Room 3"
+                        <input id="editSessionLocation" type="text" value="${this.escapeHtml(currentLocation)}" placeholder="e.g. Lecture Hall 6, Skills Lab"
                                style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;transition:border 0.2s;box-sizing:border-box;font-family:inherit;"
                                onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='#e2e8f0'" />
 
-                        <!-- HELPER TEXT -->
                         <div style="display:flex;gap:8px;align-items:flex-start;background:#eff6ff;border-radius:10px;padding:10px 12px;margin-top:16px;">
                             <i class="fas fa-info-circle" style="color:#3b82f6;font-size:13px;margin-top:2px;"></i>
                             <div style="font-size:12px;color:#1e40af;line-height:1.5;">
-                                Changing the date or time lets you reuse this same class next week.
-                                <strong>All attendance history stays linked to this session.</strong>
+                                Changing the date, time, or location updates this session. If you change the location, the geo-target coordinates will update automatically. <strong>All attendance history stays linked to this session.</strong>
                             </div>
                         </div>
 
-                        <!-- INLINE ERROR -->
                         <div id="editSessionError" style="display:none;background:#fee2e2;color:#991b1b;padding:10px 12px;border-radius:10px;font-size:12px;margin-top:12px;"></div>
 
                     </div>
 
-                    <!-- FOOTER -->
                     <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;gap:10px;background:#fafafa;">
                         <button type="button" onclick="window._closeEditSessionModal()"
                                 style="flex:1;padding:12px 18px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:inherit;"
@@ -665,13 +680,11 @@ const LecturerSessions = {
 
         document.body.appendChild(modal);
 
-        // ---- focus first field ----
         setTimeout(() => {
             const dateInput = document.getElementById('editSessionDate');
             if (dateInput) dateInput.focus();
         }, 100);
 
-        // ---- close handler (global so onclick works) ----
         window._closeEditSessionModal = () => {
             const el = document.getElementById('editSessionModal');
             if (el) {
@@ -682,7 +695,6 @@ const LecturerSessions = {
             delete window._saveEditSession;
         };
 
-        // ---- save handler (global so onclick works) ----
         window._saveEditSession = async () => {
             const dateEl = document.getElementById('editSessionDate');
             const timeEl = document.getElementById('editSessionTime');
@@ -694,7 +706,6 @@ const LecturerSessions = {
             const newTime = (timeEl?.value || '').trim();
             const newLocation = (locEl?.value || '').trim();
 
-            // ---- validate ----
             const showError = (msg) => {
                 if (errorEl) {
                     errorEl.textContent = msg;
@@ -712,7 +723,6 @@ const LecturerSessions = {
                 return;
             }
 
-            // ---- loading state ----
             if (saveBtn) {
                 saveBtn.disabled = true;
                 saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
@@ -729,8 +739,23 @@ const LecturerSessions = {
                     updated_at: new Date().toISOString()
                 };
 
+                // ✅ Location change → also refresh target coordinates
                 if (newLocation && newLocation !== currentLocation) {
                     updateData.location_name = newLocation;
+
+                    const locationCoords = this.resolveLocationCoordinates(newLocation);
+                    console.log('📍 Location changed →', newLocation, '→', locationCoords);
+
+                    if (locationCoords) {
+                        updateData.target_latitude  = locationCoords.lat;
+                        updateData.target_longitude = locationCoords.lng;
+                        updateData.target_radius    = locationCoords.radius;
+                    } else {
+                        // No coords known — clear targets so we don't silently fall back
+                        updateData.target_latitude  = null;
+                        updateData.target_longitude = null;
+                        updateData.target_radius    = 150;
+                    }
                 }
 
                 const { error } = await supabase
@@ -755,13 +780,11 @@ const LecturerSessions = {
             }
         };
 
-        // ---- wire up buttons ----
         const saveBtn = document.getElementById('editSessionSaveBtn');
         if (saveBtn) {
             saveBtn.addEventListener('click', () => window._saveEditSession());
         }
 
-        // ---- keyboard shortcuts ----
         const keyHandler = (e) => {
             if (e.key === 'Escape') {
                 window._closeEditSessionModal();
@@ -776,7 +799,6 @@ const LecturerSessions = {
         };
         document.addEventListener('keydown', keyHandler);
 
-        // ---- cleanup listener when modal closes ----
         const observer = new MutationObserver(() => {
             if (!document.getElementById('editSessionModal')) {
                 document.removeEventListener('keydown', keyHandler);
@@ -785,15 +807,15 @@ const LecturerSessions = {
         });
         observer.observe(document.body, { childList: true });
 
-        // ---- click backdrop to close ----
         modal.addEventListener('click', (e) => {
             if (e.target === modal.firstElementChild) {
                 window._closeEditSessionModal();
             }
         });
     },
+
     // ============================================
-    // OPEN SESSION - OWNER ONLY
+    // OPEN SESSION
     // ============================================
     async openSession(sessionId) {
         if (this.isProcessing) return;
@@ -820,9 +842,7 @@ const LecturerSessions = {
 
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
+            if (!supabase) throw new Error('Database connection not available');
 
             const { error } = await supabase
                 .from('scheduled_sessions')
@@ -849,7 +869,7 @@ const LecturerSessions = {
     },
 
     // ============================================
-    // CLOSE SESSION - OWNER ONLY
+    // CLOSE SESSION
     // ============================================
     async closeSession(sessionId) {
         if (this.isProcessing) return;
@@ -876,13 +896,8 @@ const LecturerSessions = {
 
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
+            if (!supabase) throw new Error('Database connection not available');
 
-            // Finalize the complete class register BEFORE disabling the session.
-            // Valid in-radius check-ins remain Present; missing/out-of-radius/invalid
-            // check-ins are finalized as Absent.
             if (window.LecturerAttendance?.reconcileSessionAttendance) {
                 try {
                     const register = await window.LecturerAttendance.reconcileSessionAttendance(sessionId, true);
@@ -922,7 +937,7 @@ const LecturerSessions = {
     },
 
     // ============================================
-    // VIEW ATTENDEES - OWNER ONLY
+    // VIEW ATTENDEES
     // ============================================
     async viewAttendees(sessionId) {
         const session = this.sessions.find(s => s.id === sessionId);
@@ -939,9 +954,7 @@ const LecturerSessions = {
 
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
+            if (!supabase) throw new Error('Database connection not available');
 
             const { data: attendees, error } = await supabase
                 .from('geo_attendance_logs')
@@ -960,7 +973,8 @@ const LecturerSessions = {
                 const name = a.student_name || 'Unknown';
                 const time = a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
                 const status = a.attendance_status || 'Pending';
-                return `${i + 1}. ${name} - ${status} - ${time}`;
+                const distance = a.distance_meters ? `${Math.round(a.distance_meters)}m` : '';
+                return `${i + 1}. ${name} - ${status}${distance ? ' (' + distance + ')' : ''} - ${time}`;
             }).join('\n');
 
             alert(`📋 Attendance for: ${session.session_title || session.title}\n\n${attendeeList}\n\nTotal: ${attendees.length} students`);
@@ -972,7 +986,7 @@ const LecturerSessions = {
     },
 
     // ============================================
-    // OPEN TODAY'S SESSION - OWNER ONLY
+    // OPEN TODAY'S SESSION
     // ============================================
     async openTodaySession() {
         if (this.isProcessing) return;
@@ -980,9 +994,7 @@ const LecturerSessions = {
 
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
+            if (!supabase) throw new Error('Database connection not available');
 
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = this.currentProgram || profile?.program || profile?.department || 'KRCHN';
@@ -1023,7 +1035,7 @@ const LecturerSessions = {
 
             if (updateError) throw updateError;
 
-            window.showNotification(`✅ Session "${session.session_title}" opened! Students can now sign in.`, 'success');
+            window.showNotification(`✅ Session "${session.session_title}" opened!`, 'success');
             await this.loadSessions();
 
         } catch (error) {
@@ -1035,7 +1047,7 @@ const LecturerSessions = {
     },
 
     // ============================================
-    // CLOSE ALL SESSIONS - OWNER ONLY
+    // CLOSE ALL SESSIONS
     // ============================================
     async closeAllSessions() {
         if (this.isProcessing) return;
@@ -1043,9 +1055,7 @@ const LecturerSessions = {
 
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
+            if (!supabase) throw new Error('Database connection not available');
 
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerId = this.lecturerUuid || profile?.user_id;
@@ -1079,7 +1089,7 @@ const LecturerSessions = {
     },
 
     // ============================================
-    // CANCEL SESSION - OWNER ONLY
+    // CANCEL SESSION
     // ============================================
     async cancelSession(sessionId) {
         if (this.isProcessing) return;
@@ -1112,9 +1122,7 @@ const LecturerSessions = {
 
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
+            if (!supabase) throw new Error('Database connection not available');
 
             const { error } = await supabase
                 .from('scheduled_sessions')
@@ -1233,10 +1241,33 @@ const LecturerSessions = {
                 }
             });
         }
+
+        // ✅ Live feedback when location changes
+        const locationInput = document.getElementById('sessionLocation');
+        if (locationInput && !locationInput.dataset.geoBound) {
+            locationInput.dataset.geoBound = '1';
+            const updateGeoHint = () => {
+                const coords = this.resolveLocationCoordinates(locationInput.value);
+                const hintEl = document.getElementById('locationGeoHint');
+                if (hintEl) {
+                    if (coords) {
+                        hintEl.textContent = `📍 Geo-target: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)} (±${coords.radius}m)`;
+                        hintEl.style.color = '#065f46';
+                    } else if (locationInput.value.trim()) {
+                        hintEl.textContent = `⚠ No known coordinates for this location — will fall back to campus center`;
+                        hintEl.style.color = '#92400e';
+                    } else {
+                        hintEl.textContent = '';
+                    }
+                }
+            };
+            locationInput.addEventListener('input', updateGeoHint);
+            locationInput.addEventListener('blur', updateGeoHint);
+        }
     },
 
     // ============================================
-    // HANDLE ADD SESSION - WITH INTAKE YEAR FROM FORM
+    // HANDLE ADD SESSION — WITH COORDINATE POPULATION
     // ============================================
     async handleAddSession(e) {
         if (this.isProcessing) return;
@@ -1297,6 +1328,14 @@ const LecturerSessions = {
 
             const blockDisplay = this.getBlockDisplay(formData.block);
 
+            // ✅ Resolve target coordinates from location name
+            const locationCoords = this.resolveLocationCoordinates(formData.location);
+            console.log('📍 Location resolved:', formData.location, '→', locationCoords);
+
+            if (!locationCoords) {
+                console.warn('⚠️ No known coordinates for location:', formData.location);
+            }
+
             const sessionData = {
                 session_title: formData.title,
                 title: formData.title,
@@ -1308,6 +1347,12 @@ const LecturerSessions = {
                 block_display: blockDisplay,
                 session_type: formData.type,
                 location_name: formData.location || 'Lecture Hall',
+
+                // ✅ NEW: geo target
+                target_latitude:  locationCoords ? locationCoords.lat    : null,
+                target_longitude: locationCoords ? locationCoords.lng    : null,
+                target_radius:    locationCoords ? locationCoords.radius : 150,
+
                 created_by: lecturerUuid,
                 lecturer_id: this.lecturerUuid || lecturerUuid,
                 approval_status: 'pending',
@@ -1333,7 +1378,11 @@ const LecturerSessions = {
                 throw new Error('Failed to schedule session: ' + error.message);
             }
 
-            window.showNotification(`✅ ${typeLabel} session scheduled successfully!`, 'success');
+            if (locationCoords) {
+                window.showNotification(`✅ ${typeLabel} session scheduled with geo-target 📍`, 'success');
+            } else {
+                window.showNotification(`⚠️ ${typeLabel} session scheduled (no geo-target for "${formData.location}")`, 'warning', 5000);
+            }
 
             const form = document.getElementById('addSessionForm');
             if (form) form.reset();
@@ -1418,9 +1467,12 @@ const LecturerSessions = {
 
         const typeLabel = this.getProgramTypeLabel();
 
-        const headers = ['Topic', 'Date', 'Time', 'Type', 'Program', 'Block', 'Intake Year', 'Unit', 'Block Display', 'Status', 'Approval', 'Program Type'];
+        const headers = ['Topic', 'Date', 'Time', 'Type', 'Program', 'Block', 'Intake Year', 'Unit', 'Block Display', 'Location', 'Geo Target', 'Status', 'Approval', 'Program Type'];
         const rows = sessions.map(s => {
             const blockDisplay = s.block_display || (s.block_term ? this.getBlockDisplay(s.block_term) : 'N/A');
+            const geo = s.target_latitude && s.target_longitude
+                ? `${Number(s.target_latitude).toFixed(5)},${Number(s.target_longitude).toFixed(5)} (±${s.target_radius}m)`
+                : 'none';
             return [
                 s.session_title || s.title || 'N/A',
                 s.session_date || 'N/A',
@@ -1431,13 +1483,15 @@ const LecturerSessions = {
                 s.intake_year || 'N/A',
                 s.unit_name || 'N/A',
                 blockDisplay,
+                s.location_name || 'N/A',
+                geo,
                 s.status || 'scheduled',
                 s.approval_status || 'pending',
                 typeLabel
             ];
         });
 
-        const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1547,10 +1601,11 @@ window.openTodaySession = openTodaySession;
 window.closeAllSessions = closeAllSessions;
 window.exportSessions = exportSessions;
 
-console.log('✅ LecturerSessions module loaded - Complete with TVET support');
+console.log('✅ LecturerSessions module loaded - Complete with TVET + GEO support');
 console.log('🔒 Lecturers can only see and manage their own sessions');
 console.log('📚 Unit filtering matches Resources and Marks modules');
 console.log('📊 TVET Support: Enabled (Year X Term Y format)');
-console.log('🎓 Intake Year: Now selected by lecturer from dropdown');
+console.log('🎓 Intake Year: Selected by lecturer from dropdown');
 console.log('🔗 lecturer_id: Populated for proper joins');
-console.log('✏️ Edit Session: Enabled (date / time / location)');
+console.log('✏️ Edit Session: Enabled (date / time / location / coords)');
+console.log('📍 Geo-Targets: Auto-populated from CAMPUS_LOCATIONS map');
