@@ -5,6 +5,9 @@
 // ✅ FIXED: safe radius comparison for out-of-radius check-ins
 // ✅ FIXED: display-safe registration number (never shows UUID)
 // ✅ NEW:   Unit filter in the attendance filter bar
+// ✅ NEW:   Export treats P (Pending) as Present (renders as ✓)
+// ✅ NEW:   Export includes ALL students in the block, not just those with logs
+// ✅ NEW:   Single + Bulk delete with RLS-friendly permission checks
 // ============================================================
 
 const LecturerAttendance = {
@@ -77,6 +80,22 @@ const LecturerAttendance = {
         const reg = String(log.registration_number || log.student_id || '').trim();
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reg);
         return name === 'student' || isUUID;
+    },
+
+    // ============================================================
+    // ✅ Can current user delete this record?
+    // ============================================================
+    canDeleteRecord(record) {
+        if (!record) return false;
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const userId = profile?.user_id || this.lecturerUuid;
+        if (!userId) return false;
+        if (record.session_type === 'Lecturer Check-in') return false;
+        return (
+            record.finalized_by === userId ||
+            record.verified_by === userId ||
+            record.recorded_by_id === userId
+        );
     },
 
     // ============================================================
@@ -229,7 +248,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ NEW: populate the FILTER unit dropdown from loaded logs
+    // ✅ Populate the FILTER unit dropdown from loaded logs
     // ============================================================
     populateUnitFilter() {
         const unitSelect = document.getElementById('filterUnit');
@@ -262,7 +281,6 @@ const LecturerAttendance = {
                 this.loadAttendanceStats(),
                 this.loadProgramInfo()
             ]);
-            // ✅ refresh unit filter after data loads
             this.populateUnitFilter();
         } catch (error) {
             console.error('❌ loadAllAttendance:', error);
@@ -368,6 +386,7 @@ const LecturerAttendance = {
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
                             ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
                             ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
+                            ${this.canDeleteRecord(log) ? `<button onclick="LecturerAttendance.deleteAttendance('${log.id}')" title="Delete this record" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-trash-alt" style="font-size:10px;"></i></button>` : ''}
                         </div>
                     </td>
                 </tr>`;
@@ -503,6 +522,7 @@ const LecturerAttendance = {
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
                             ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
                             ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
+                            ${this.canDeleteRecord(log) ? `<button onclick="LecturerAttendance.deleteAttendance('${log.id}')" title="Delete this record" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-trash-alt" style="font-size:10px;"></i></button>` : ''}
                         </div>
                     </td>
                 </tr>`;
@@ -637,7 +657,6 @@ const LecturerAttendance = {
     async lecturerCheckIn() {
         if (this.isProcessing) { this.showNotification('Please wait...', 'warning'); return; }
         const btn = document.getElementById('lecturerCheckinBtn');
-        const statusEl = document.getElementById('lecturerCheckinStatus');
         if (!btn) return;
 
         this.isProcessing = true;
@@ -789,6 +808,123 @@ const LecturerAttendance = {
     },
 
     // ============================================================
+    // ✅ NEW: Single-record delete
+    // ============================================================
+    async deleteAttendance(recordId) {
+        if (!recordId) { this.showNotification('Record ID is required', 'error'); return; }
+        if (this.isProcessing) return;
+
+        if (!confirm('Delete this attendance record? This cannot be undone.')) return;
+
+        this.isProcessing = true;
+
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database not available');
+
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const userId = profile?.user_id || this.lecturerUuid;
+
+            const { error: delError } = await supabase
+                .from('geo_attendance_logs')
+                .delete()
+                .eq('id', recordId)
+                .or(`finalized_by.eq.${userId},verified_by.eq.${userId},recorded_by_id.eq.${userId}`);
+
+            if (delError) throw new Error(delError.message);
+
+            this.showNotification('🗑️ Attendance record deleted', 'success');
+
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+            this.applyFilters();
+        } catch (error) {
+            console.error('❌ deleteAttendance:', error);
+            this.showNotification('Failed to delete: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
+        }
+    },
+
+    // ============================================================
+    // ✅ NEW: Bulk delete (uses current filters)
+    // ============================================================
+    async bulkDeleteAttendance() {
+        if (this.isProcessing) return;
+
+        const targets = [
+            ...(this.filteredTodayLogs || []),
+            ...(this.filteredPastLogs || [])
+        ].filter(l => l.session_type !== 'Lecturer Check-in');
+
+        if (!targets.length) {
+            this.showNotification('No records to delete with current filters.', 'info');
+            return;
+        }
+
+        const filterDate = document.getElementById('filterDate')?.value || '';
+        const filterBlock = document.getElementById('filterBlock')?.value || 'All';
+        const filterUnit = document.getElementById('filterUnit')?.value || 'All';
+        const filterType = document.getElementById('filterSessionType')?.value || 'All';
+        const searchText = document.getElementById('filterSearch')?.value || '';
+
+        const bits = [];
+        if (filterDate) bits.push(`Date ${filterDate}`);
+        if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
+        if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
+        if (filterType !== 'All') bits.push(`Type ${filterType}`);
+        if (searchText) bits.push(`Search "${searchText}"`);
+        const context = bits.length ? `matching: ${bits.join(' · ')}` : 'ALL attendance records';
+
+        if (!confirm(
+            `⚠️ DELETE ${targets.length} attendance record${targets.length === 1 ? '' : 's'}?\n\n` +
+            `Filters: ${context}\n\n` +
+            `This cannot be undone.`
+        )) return;
+
+        this.isProcessing = true;
+        this.showNotification(`Deleting ${targets.length} records...`, 'info');
+
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database not available');
+
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const userId = profile?.user_id || this.lecturerUuid;
+
+            const ids = targets.map(t => t.id).filter(Boolean);
+            if (!ids.length) throw new Error('No valid record IDs');
+
+            const CHUNK = 500;
+            let deleted = 0;
+            for (let i = 0; i < ids.length; i += CHUNK) {
+                const slice = ids.slice(i, i + CHUNK);
+                const { error: delError, count } = await supabase
+                    .from('geo_attendance_logs')
+                    .delete({ count: 'exact' })
+                    .in('id', slice)
+                    .or(`finalized_by.eq.${userId},verified_by.eq.${userId},recorded_by_id.eq.${userId}`);
+
+                if (delError) throw new Error(delError.message);
+                deleted += (count || slice.length);
+            }
+
+            this.showNotification(`🗑️ Deleted ${deleted} record${deleted === 1 ? '' : 's'}`, 'success');
+
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+            this.applyFilters();
+        } catch (error) {
+            console.error('❌ bulkDeleteAttendance:', error);
+            this.showNotification('Failed to delete: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
+        }
+    },
+
+    // ============================================================
     // POPULATE FILTERS
     // ============================================================
     populateFilters() {
@@ -800,7 +936,7 @@ const LecturerAttendance = {
 
         this.populateStudentSelect();
         this.populateBlockFilter();
-        this.populateUnitFilter();   // ✅ NEW
+        this.populateUnitFilter();
         this.updateFilterLabels();
     },
 
@@ -869,7 +1005,7 @@ const LecturerAttendance = {
     applyFilters() {
         const filterDate = (document.getElementById('filterDate')?.value || '').trim();
         const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
-        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();  // ✅ NEW
+        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
         const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
         const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
         const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
@@ -903,7 +1039,6 @@ const LecturerAttendance = {
             return h.includes(searchText);
         });
 
-        // ✅ hide placeholder "Student" accounts
         filteredToday = filteredToday.filter(l => !this.isPlaceholderLog(l));
         filteredPast = filteredPast.filter(l => !this.isPlaceholderLog(l));
 
@@ -974,6 +1109,8 @@ const LecturerAttendance = {
 
     // ============================================================
     // ✅ MODERN STYLED XLSX EXPORT (ExcelJS)
+    //   - P (Pending) counts as Present → renders as ✓
+    //   - Includes ALL students in the block, not just those with logs
     // ============================================================
     async exportCSV() {
         if (typeof ExcelJS === 'undefined') {
@@ -984,13 +1121,15 @@ const LecturerAttendance = {
         const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
         const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
         const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();   // ✅ NEW
+        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
         const filterDate = (document.getElementById('filterDate')?.value || '').trim();
         const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
         const hasFilters = (filterBlock !== 'All') || (filterYear !== 'All') || (filterSessionType !== 'All') || (filterUnit !== 'All') || !!searchText;
 
-        let source = [...(this.todayLogs || [])].filter(l => l.session_type !== 'Lecturer Check-in');
+        let source = [...(this.todayLogs || []), ...(this.pastLogs || [])]
+            .filter(l => l.session_type !== 'Lecturer Check-in');
+
         if (filterDate) source = source.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
         if (filterBlock !== 'All') source = source.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
         if (filterUnit !== 'All') source = source.filter(l => {
@@ -1004,7 +1143,6 @@ const LecturerAttendance = {
             return h.includes(searchText);
         });
 
-        // ✅ hide placeholders from export
         source = source.filter(l => !this.isPlaceholderLog(l));
 
         if (!source.length) {
@@ -1035,6 +1173,22 @@ const LecturerAttendance = {
             if (c1) return c1;
             return a.unit.localeCompare(b.unit);
         });
+
+        // Load full roster for each class
+        for (const cls of classList) {
+            try {
+                const roster = await this.getRosterForClass(cls);
+                cls.roster = roster;
+            } catch (err) {
+                console.warn('⚠️ Could not load roster for', cls.unit, err);
+                const seen = new Map();
+                cls.logs.forEach(l => {
+                    const reg = this.getDisplayRegNumber(l);
+                    if (!seen.has(reg)) seen.set(reg, (l.student_name || 'Unknown').trim());
+                });
+                cls.roster = [...seen.entries()].map(([reg, name]) => ({ reg, name }));
+            }
+        }
 
         const PURPLE = 'FF4F46E5';
         const PURPLE_LIGHT = 'FFEEF2FF';
@@ -1069,21 +1223,33 @@ const LecturerAttendance = {
             });
 
             const studentMap = {};
+            cls.roster.forEach(s => {
+                studentMap[s.reg] = { reg: s.reg, name: s.name, byDate: {} };
+            });
+
             cls.logs.forEach(log => {
                 const reg = this.getDisplayRegNumber(log);
-                const name = (log.student_name || 'Unknown').trim();
+                if (!studentMap[reg]) {
+                    studentMap[reg] = { reg, name: (log.student_name || 'Unknown').trim(), byDate: {} };
+                }
+
                 const iso = log.check_in_time ? new Date(log.check_in_time).toISOString().split('T')[0] : null;
-                if (!studentMap[reg]) studentMap[reg] = { reg, name, byDate: {} };
                 if (!iso) return;
 
-                const status = (log.attendance_status || '').toLowerCase();
+                const status = String(log.attendance_status || '').toLowerCase();
                 const verified = log.is_verified === true;
-                let mark = '-';
-                if (verified || status === 'present' || status === 'verified') mark = '✓';
-                else if (status === 'absent') mark = 'A';
-                else if (status === 'pending' || status === '') mark = 'P';
 
-                const rank = { '✓': 3, 'P': 2, 'A': 1, '-': 0 };
+                // ✅ P (Pending) counts as PRESENT → renders as ✓
+                let mark = '-';
+                if (verified || status === 'present' || status === 'verified' || status === 'pending' || status === '' || status === 'late') {
+                    mark = '✓';
+                } else if (status === 'absent') {
+                    mark = 'A';
+                } else if (status === 'excused') {
+                    mark = 'E';
+                }
+
+                const rank = { '✓': 4, 'E': 3, 'A': 2, '-': 1 };
                 const prev = studentMap[reg].byDate[iso];
                 if (!prev || rank[mark] > rank[prev]) studentMap[reg].byDate[iso] = mark;
             });
@@ -1133,7 +1299,7 @@ const LecturerAttendance = {
             if (hasFilters) {
                 const bits = [];
                 if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
-                if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);   // ✅ NEW
+                if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
                 if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
                 if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
                 if (filterDate) bits.push(`Date ${filterDate}`);
@@ -1145,6 +1311,10 @@ const LecturerAttendance = {
 
             mergeRow(r++, 'ATTENDANCE SHEET', {
                 fill: PURPLE_LIGHT, font: { bold: true, color: { argb: PURPLE }, size: 13 }, height: 26
+            });
+
+            mergeRow(r++, '✓ = Present (includes P/Pending & Late)   ·   A = Absent   ·   E = Excused   ·   - = Not Recorded', {
+                font: { italic: true, color: { argb: 'FF475569' }, size: 10 }, height: 18
             });
 
             r++;
@@ -1178,7 +1348,7 @@ const LecturerAttendance = {
                     let fill = GREY_LIGHT, fontColor = GREY;
                     if (mark === '✓') { fill = GREEN_LIGHT; fontColor = GREEN; }
                     else if (mark === 'A') { fill = RED_LIGHT; fontColor = RED; }
-                    else if (mark === 'P') { fill = AMBER_LIGHT; fontColor = AMBER; }
+                    else if (mark === 'E') { fill = AMBER_LIGHT; fontColor = AMBER; }
 
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
                     cell.font = { bold: mark !== '-', color: { argb: fontColor }, size: 12 };
@@ -1277,7 +1447,7 @@ const LecturerAttendance = {
 
         const suffixBits = [];
         if (filterBlock !== 'All') suffixBits.push(filterBlock.replace(/\s+/g, ''));
-        if (filterUnit !== 'All') suffixBits.push(filterUnit.replace(/\s+/g, ''));   // ✅ NEW
+        if (filterUnit !== 'All') suffixBits.push(filterUnit.replace(/\s+/g, ''));
         if (filterYear !== 'All') suffixBits.push(`Intake${filterYear}`);
         if (filterSessionType !== 'All') suffixBits.push(filterSessionType);
         const suffix = suffixBits.length ? '_' + suffixBits.join('_') : '';
@@ -1298,14 +1468,50 @@ const LecturerAttendance = {
                 URL.revokeObjectURL(url);
             }
 
+            const totalStudentsExported = classList.reduce((s, c) => s + c.roster.length, 0);
             this.showNotification(
-                `✅ Exported ${classList.length} sheet${classList.length === 1 ? '' : 's'} (${source.length} records)${hasFilters ? ' — filtered view' : ''}`,
+                `✅ Exported ${classList.length} sheet${classList.length === 1 ? '' : 's'} — ${totalStudentsExported} students${hasFilters ? ' (filtered)' : ''}`,
                 'success'
             );
         } catch (err) {
             console.error('❌ Export error:', err);
             this.showNotification('Export failed: ' + err.message, 'error');
         }
+    },
+
+    // ============================================================
+    // ✅ NEW: Full roster for one (block × program × intake) class
+    // ============================================================
+    async getRosterForClass(cls) {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) return [];
+
+        const program = cls.program || this.currentProgram || 'KRCHN';
+        const block = cls.block;
+        const intake = cls.intake;
+
+        let query = supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, admission_number, program, block, intake_year, role')
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .eq('program', program)
+            .not('student_id', 'is', null)
+            .not('student_id', 'like', '%-%-%-%-%');
+
+        if (block && block !== 'N/A') query = query.eq('block', block);
+        if (intake && intake !== 'N/A') query = query.eq('intake_year', String(intake));
+
+        const { data, error } = await query.order('full_name');
+        if (error) throw error;
+
+        return (data || []).map(s => ({
+            reg:
+                (s.admission_number && String(s.admission_number).trim()) ||
+                (s.student_id && String(s.student_id).trim()) ||
+                s.user_id,
+            name: s.full_name || 'Unknown Student'
+        }));
     },
 
     // ============================================================
@@ -1356,7 +1562,6 @@ const LecturerAttendance = {
             form.addEventListener('submit', (e) => this.markStudentAttendance(e));
         }
 
-        // ✅ include filterUnit now
         ['filterDate', 'filterBlock', 'filterUnit', 'filterYear', 'filterSessionType'].forEach(id => {
             const el = document.getElementById(id);
             if (el && !el.dataset.filterBound) {
@@ -1498,7 +1703,6 @@ const LecturerAttendance = {
 
             const status = String(log?.attendance_status || '').toLowerCase();
 
-            // ✅ safe radius comparison
             const DEFAULT_RADIUS_M = 150;
             const radius = Number(log?.target_radius ?? session?.target_radius ?? DEFAULT_RADIUS_M);
             const distance = Number(log?.distance_meters ?? Infinity);
@@ -1782,6 +1986,10 @@ window.markAttendance = (e) => LecturerAttendance.markStudentAttendance(e);
 window.verifyAttendance = (id) => LecturerAttendance.verifyAttendance(id);
 window.bulkVerifyAttendance = (date) => LecturerAttendance.bulkVerifyAttendance(date);
 
+window.deleteAttendance = (id) => LecturerAttendance.deleteAttendance(id);
+window.bulkDeleteAttendance = () => LecturerAttendance.bulkDeleteAttendance();
+window.canDeleteRecord = (record) => LecturerAttendance.canDeleteRecord(record);
+
 window.reconcileSessionAttendance = (sessionId, finalize = true) =>
     LecturerAttendance.reconcileSessionAttendance(sessionId, finalize);
 window.previewSessionAttendance = (sessionId) =>
@@ -1805,7 +2013,8 @@ window.openInGoogleMaps = () => {
 };
 
 console.log('✅ LecturerAttendance module loaded');
-console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify, Unit filter');
+console.log('📋 Features: Today/Past, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify, Unit filter, Delete (single + bulk)');
 console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
-console.log('🎨 Export: Modern styled .xlsx with colored cells, merged headers, frozen panes');
-console.log('✅ Fix: registration_number column removed; placeholders excluded; radius safe; display-safe reg number');
+console.log('🎨 Export: Modern styled .xlsx — P (Pending) counted as Present');
+console.log('👥 Export: Includes ALL students in each block, even those with no check-ins');
+console.log('🗑️ Delete: Single + bulk, owner-only via RLS');
