@@ -1,10 +1,11 @@
 // ============================================================
-// NCHSM LECTURER ATTENDANCE MODULE — COMPLETE
-// ✅ TVET support · Unit filter · Range filter · Quick presets
-// ✅ Styled XLSX export (P=✓, full block roster)
+// NCHSM LECTURER ATTENDANCE MODULE — WITH TVET + STYLED XLSX
+// ✅ Unit filter · Range filter · Quick presets
+// ✅ Styled XLSX export (P=✓, full block roster, date range)
 // ✅ Verify · Mark Absent (single + bulk) · Reject · Delete (single + bulk)
 // ✅ Map with student coordinates + check-in details
 // ✅ Session reconciliation (closeSession works)
+// ✅ FIXED: top stat cards now reflect the FILTERED set
 // ============================================================
 
 const LecturerAttendance = {
@@ -21,6 +22,11 @@ const LecturerAttendance = {
     isTVET: false,
     currentProgram: 'KRCHN',
     stats: { total: 0, present: 0, absent: 0, pending: 0, rate: 0 },
+
+    // ============================================================
+    // CAMPUS LOCATIONS (used only for display; sessions carry coords)
+    // ============================================================
+    CAMPUS_COORDINATES: { lat: -0.2607276, lng: 36.0112599 },
 
     // ============================================================
     // PROGRAM TYPE DETECTION
@@ -281,7 +287,6 @@ const LecturerAttendance = {
         try {
             await Promise.all([
                 this.loadTodayAttendance(),
-                this.loadAttendanceStats(),
                 this.loadProgramInfo()
             ]);
             this.populateUnitFilter();
@@ -326,210 +331,84 @@ const LecturerAttendance = {
         }
     },
 
-    // Kept for compatibility
     async loadPastAttendance() {
         // No-op — all records are fetched by loadTodayAttendance
     },
 
     // ============================================================
-    // RENDER
+    // UPDATE STATS — now respects the FILTERED set
     // ============================================================
-    renderTodayAttendance() {
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody) return;
-        const logs = this.todayLogs;
-        const typeLabel = this.getProgramTypeLabel();
+    updateStats(logs) {
+        const source = Array.isArray(logs)
+            ? logs
+            : (this.filteredTodayLogs && this.filteredTodayLogs.length
+                ? this.filteredTodayLogs
+                : (this.todayLogs || []));
 
-        const countEl = document.getElementById('todayLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
+        const total   = source.length;
+        const present = source.filter(l =>
+            (l.attendance_status || '').toLowerCase() === 'present' ||
+            l.is_verified === true
+        ).length;
+        const absent  = source.filter(l =>
+            (l.attendance_status || '').toLowerCase() === 'absent'
+        ).length;
+        const pending = source.filter(l => {
+            const s = (l.attendance_status || '').toLowerCase();
+            return s === 'pending' || s === '' || l.attendance_status === null;
+        }).length;
+        const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
-        if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="11" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No attendance records match your filters. (${typeLabel})</p></td></tr>`;
-            return;
+        this.stats = { total, present, absent, pending, rate };
+        const threshold = this.getPassingThreshold();
+
+        const elementMap = {
+            // Top stat cards
+            'todayPresent': present,
+            'todayAbsent':  absent,
+            'todayPending': pending,
+            'attendanceRate': rate + '%',
+            'filteredCount': total,
+
+            // Aliases used elsewhere
+            'todayTotal': total,
+            'todayRate':  rate + '%',
+            'totalStudentsCount': total,
+            'presentTodayCount':  present,
+            'absentTodayCount':   absent,
+            'pendingCount':       pending,
+            'todayTotalDisplay':   total,
+            'todayPresentDisplay': present,
+            'todayAbsentDisplay':  absent,
+            'todayPendingDisplay': pending,
+            'attendanceRateDisplay': rate + '%'
+        };
+
+        for (const [id, value] of Object.entries(elementMap)) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
         }
 
-        const statusColors = { Present: '#10b981', Absent: '#ef4444', Pending: '#f59e0b', Late: '#f59e0b', Excused: '#3b82f6', Verified: '#10b981' };
-        const isTVET = this.isTVET;
-
-        tbody.innerHTML = logs.map(log => {
-            const hasLocation = log.latitude && log.longitude;
-            const isVerified = log.is_verified === true || log.is_verified === 'true' || log.is_verified === 1 || log.attendance_status === 'Verified' || (log.attendance_status === 'Present' && log.verified_at !== null);
-            let displayStatus = log.attendance_status || 'Pending';
-            if (isVerified && displayStatus !== 'Absent') displayStatus = 'Verified ✓';
-            const statusColor = statusColors[displayStatus] || '#6b7280';
-
-            const studentName = log.student_name || 'Unknown Student';
-            const regNumber = this.getDisplayRegNumber(log);
-            const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
-            const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
-            const programDisplay = log.program || 'N/A';
-            const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
-            const dateStr = checkInDate ? checkInDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
-            const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
-            const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
-            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified && String(log.attendance_status || '').toLowerCase() !== 'absent';
-            const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
-
-            // Pass row data via data-* attributes for map (avoids JSON quoting bugs)
-            const mapAttrs = hasLocation && !isLecturerCheckin
-                ? `data-lat="${log.latitude}" data-lng="${log.longitude}" data-log-id="${log.id}"`
-                : '';
-
-            return `
-                <tr style="border-bottom: 1px solid #f1f5f9; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}">
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; white-space: nowrap;">${dateStr}</td>
-                    <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
-                        ${this.escapeHtml(studentName)}
-                        ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
-                        ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
-                        ${isTVET && !isLecturerCheckin ? ' <span style="font-size:9px;color:#8b5cf6;padding:1px 6px;border-radius:8px;">TVET</span>' : ''}
-                    </td>
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;">${this.escapeHtml(displayReg)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;"><span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(programDisplay)}</span></td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(blockDisplay)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(log.unit_name || log.target_name || 'General')}</td>
-                    <td style="padding: 10px 14px;"><span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(log.session_type || 'Class')}</span></td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${timeStr}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(locationDisplay)}</td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; color: ${isVerified ? '#10b981' : statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">${isVerified ? '✅ Verified' : displayStatus}</span>
-                        ${isVerified && verifiedByDisplay ? `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ? `<button ${mapAttrs} onclick="LecturerAttendance._openMapFromRow(this)" title="View location & coordinates" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
-                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" title="Verify check-in" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
-                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.markAbsent('${log.id}')" title="Mark absent" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-user-slash" style="font-size:10px;"></i> Absent</button>` : ''}
-                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.rejectAttendance('${log.id}')" title="Reject check-in" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-ban" style="font-size:10px;"></i> Reject</button>` : ''}
-                            ${this.canDeleteRecord(log) ? `<button onclick="LecturerAttendance.deleteAttendance('${log.id}')" title="Delete this record" style="background: #6b7280; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-trash-alt" style="font-size:10px;"></i></button>` : ''}
-                        </div>
-                    </td>
-                </tr>`;
-        }).join('');
-    },
-
-    // Helper: pull the log from todayLogs by id when map button clicked
-    _openMapFromRow(btn) {
-        const id = btn.getAttribute('data-log-id');
-        const log = (this.todayLogs || []).find(l => String(l.id) === String(id));
-        if (log) {
-            this.viewAttendanceMap(log);
-        } else {
-            // Fallback: use the lat/lng directly
-            const lat = btn.getAttribute('data-lat');
-            const lng = btn.getAttribute('data-lng');
-            this.viewAttendanceMap(parseFloat(lat), parseFloat(lng), 'Student');
+        const progressBar = document.getElementById('attendanceProgressBar');
+        if (progressBar) {
+            progressBar.style.width = rate + '%';
+            progressBar.style.background = rate >= threshold ? '#10b981'
+                : (rate >= threshold * 0.7 ? '#f59e0b' : '#ef4444');
         }
-    },
-updateStats(logs) {
-    // ✅ Always compute from the passed-in list, or fall back to the FILTERED set
-    const source = Array.isArray(logs)
-        ? logs
-        : (this.filteredTodayLogs && this.filteredTodayLogs.length
-            ? this.filteredTodayLogs
-            : (this.todayLogs || []));
 
-    const total   = source.length;
-    const present = source.filter(l =>
-        (l.attendance_status || '').toLowerCase() === 'present' ||
-        l.is_verified === true
-    ).length;
-    const absent  = source.filter(l =>
-        (l.attendance_status || '').toLowerCase() === 'absent'
-    ).length;
-    const pending = source.filter(l => {
-        const s = (l.attendance_status || '').toLowerCase();
-        return s === 'pending' || s === '' || l.attendance_status === null;
-    }).length;
-    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-
-    this.stats = { total, present, absent, pending, rate };
-
-    const threshold = this.getPassingThreshold();
-
-    const elementMap = {
-        // Top stat cards
-        'todayPresent': present,
-        'todayAbsent':  absent,
-        'todayPending': pending,
-        'attendanceRate': rate + '%',
-        'filteredCount': total,
-
-        // Aliases used elsewhere in the UI
-        'todayTotal': total,
-        'todayRate':  rate + '%',
-        'totalStudentsCount': total,
-        'presentTodayCount':  present,
-        'absentTodayCount':   absent,
-        'pendingCount':       pending,
-        'todayTotalDisplay':   total,
-        'todayPresentDisplay': present,
-        'todayAbsentDisplay':  absent,
-        'todayPendingDisplay': pending,
-        'attendanceRateDisplay': rate + '%'
-    };
-
-    for (const [id, value] of Object.entries(elementMap)) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = value;
-    }
-
-    // Progress bar
-    const progressBar = document.getElementById('attendanceProgressBar');
-    if (progressBar) {
-        progressBar.style.width = rate + '%';
-        progressBar.style.background = rate >= threshold ? '#10b981'
-            : (rate >= threshold * 0.7 ? '#f59e0b' : '#ef4444');
-    }
-
-    // Rate badge
-    const rateBadge = document.getElementById('attendanceRateBadge');
-    if (rateBadge) {
-        rateBadge.textContent = `${rate}% (Pass: ≥${threshold}%)`;
-        rateBadge.style.background = rate >= threshold ? '#d1fae5'
-            : (rate >= threshold * 0.7 ? '#fef3c7' : '#fee2e2');
-        rateBadge.style.color = rate >= threshold ? '#065f46'
-            : (rate >= threshold * 0.7 ? '#92400e' : '#991b1b');
-    }
-
-    return this.stats;
-},
-
-    async loadAttendanceStats() {
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            const todayStr = new Date().toISOString().split('T')[0];
-
-            const { data: logs } = await supabase
-                .from('geo_attendance_logs')
-                .select('attendance_status, is_verified')
-                .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
-                .lte('check_in_time', `${todayStr}T23:59:59.999Z`);
-
-            const total = logs?.length || 0;
-            const present = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'present' || l.is_verified === true).length || 0;
-            const absent = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'absent').length || 0;
-            const pending = total - present - absent;
-            const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-
-            const cardMap = {
-                'totalStudentsCount': total, 'presentTodayCount': present,
-                'absentTodayCount': absent, 'pendingCount': pending,
-                'attendanceRate': rate + '%'
-            };
-
-            for (const [id, value] of Object.entries(cardMap)) {
-                const el = document.getElementById(id);
-                if (el) el.textContent = value;
-            }
-        } catch (error) {
-            console.error('❌ loadAttendanceStats:', error);
+        const rateBadge = document.getElementById('attendanceRateBadge');
+        if (rateBadge) {
+            rateBadge.textContent = `${rate}% (Pass: ≥${threshold}%)`;
+            rateBadge.style.background = rate >= threshold ? '#d1fae5'
+                : (rate >= threshold * 0.7 ? '#fef3c7' : '#fee2e2');
+            rateBadge.style.color = rate >= threshold ? '#065f46'
+                : (rate >= threshold * 0.7 ? '#92400e' : '#991b1b');
         }
+        return this.stats;
     },
+
+    // No-op — stats come from updateStats() now
+    async loadAttendanceStats() { return; },
 
     async loadProgramInfo() {
         try {
@@ -571,7 +450,98 @@ updateStats(logs) {
     },
 
     // ============================================================
-    // MAP (with student coordinates)
+    // RENDER TABLE
+    // ============================================================
+    renderTodayAttendance() {
+        const tbody = document.getElementById('attendanceTable');
+        if (!tbody) return;
+        const logs = this.todayLogs;
+        const typeLabel = this.getProgramTypeLabel();
+
+        const countEl = document.getElementById('todayLogCount');
+        if (countEl) countEl.textContent = `${logs.length} records`;
+
+        if (!logs?.length) {
+            tbody.innerHTML = `<tr><td colspan="11" style="padding:40px;text-align:center;color:#94a3b8;">
+                <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                <p style="margin:0;">No attendance records match your filters. (${typeLabel})</p></td></tr>`;
+            return;
+        }
+
+        const statusColors = { Present: '#10b981', Absent: '#ef4444', Pending: '#f59e0b', Late: '#f59e0b', Excused: '#3b82f6', Verified: '#10b981' };
+        const isTVET = this.isTVET;
+
+        tbody.innerHTML = logs.map(log => {
+            const hasLocation = log.latitude && log.longitude;
+            const isVerified = log.is_verified === true || log.is_verified === 'true' || log.is_verified === 1 || log.attendance_status === 'Verified' || (log.attendance_status === 'Present' && log.verified_at !== null);
+            let displayStatus = log.attendance_status || 'Pending';
+            if (isVerified && displayStatus !== 'Absent') displayStatus = 'Verified ✓';
+            const statusColor = statusColors[displayStatus] || '#6b7280';
+
+            const studentName = log.student_name || 'Unknown Student';
+            const regNumber = this.getDisplayRegNumber(log);
+            const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
+            const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
+            const programDisplay = log.program || 'N/A';
+            const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
+            const dateStr = checkInDate ? checkInDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+            const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+            const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
+            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
+            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified && String(log.attendance_status || '').toLowerCase() !== 'absent';
+            const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
+
+            const mapAttrs = hasLocation && !isLecturerCheckin
+                ? `data-lat="${log.latitude}" data-lng="${log.longitude}" data-log-id="${log.id}"`
+                : '';
+
+            return `
+                <tr style="border-bottom: 1px solid #f1f5f9; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}">
+                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; white-space: nowrap;">${dateStr}</td>
+                    <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
+                        ${this.escapeHtml(studentName)}
+                        ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
+                        ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
+                        ${isTVET && !isLecturerCheckin ? ' <span style="font-size:9px;color:#8b5cf6;padding:1px 6px;border-radius:8px;">TVET</span>' : ''}
+                    </td>
+                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;">${this.escapeHtml(displayReg)}</td>
+                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;"><span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(programDisplay)}</span></td>
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(blockDisplay)}</td>
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(log.unit_name || log.target_name || 'General')}</td>
+                    <td style="padding: 10px 14px;"><span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(log.session_type || 'Class')}</span></td>
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${timeStr}</td>
+                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(locationDisplay)}</td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; color: ${isVerified ? '#10b981' : statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">${isVerified ? '✅ Verified' : displayStatus}</span>
+                        ${isVerified && verifiedByDisplay ? `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            ${hasLocation && !isLecturerCheckin ? `<button ${mapAttrs} onclick="LecturerAttendance._openMapFromRow(this)" title="View location & coordinates" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
+                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" title="Verify check-in" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
+                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.markAbsent('${log.id}')" title="Mark absent" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-user-slash" style="font-size:10px;"></i> Absent</button>` : ''}
+                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.rejectAttendance('${log.id}')" title="Reject check-in" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-ban" style="font-size:10px;"></i> Reject</button>` : ''}
+                            ${this.canDeleteRecord(log) ? `<button onclick="LecturerAttendance.deleteAttendance('${log.id}')" title="Delete this record" style="background: #6b7280; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-trash-alt" style="font-size:10px;"></i></button>` : ''}
+                        </div>
+                    </td>
+                </tr>`;
+        }).join('');
+    },
+
+    _openMapFromRow(btn) {
+        const id = btn.getAttribute('data-log-id');
+        const log = (this.todayLogs || []).find(l => String(l.id) === String(id));
+        if (log) {
+            this.viewAttendanceMap(log);
+        } else {
+            const lat = btn.getAttribute('data-lat');
+            const lng = btn.getAttribute('data-lng');
+            this.viewAttendanceMap(parseFloat(lat), parseFloat(lng), 'Student');
+        }
+    },
+
+    // ============================================================
+    // MAP
     // ============================================================
     viewAttendanceMap(logOrLat, lng, name) {
         let log = null;
@@ -683,48 +653,39 @@ updateStats(logs) {
         const container = document.getElementById('mapContainer');
         if (!container) return;
         if (this.mapInstance) { this.mapInstance.remove(); this.mapInstance = null; }
-
         if (typeof L === 'undefined') {
             container.innerHTML = `<div style="padding:20px;text-align:center;color:#94a3b8;">Map library not loaded.</div>`;
             return;
         }
 
-        try {
-            const accentColor = this.isTVET ? '#8b5cf6' : '#4C1D95';
-            this.mapInstance = L.map(container).setView([lat, lng], 17);
+        const accentColor = this.isTVET ? '#8b5cf6' : '#4C1D95';
+        this.mapInstance = L.map(container).setView([lat, lng], 17);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap'
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, attribution: '© OpenStreetMap'
+        }).addTo(this.mapInstance);
+
+        L.marker([lat, lng]).addTo(this.mapInstance)
+            .bindPopup(`<b>${this.escapeHtml(name)}</b><br><span style="font-family:monospace;font-size:11px;">${lat.toFixed(6)}, ${lng.toFixed(6)}</span>`)
+            .openPopup();
+
+        if (log?.accuracy_m && Number(log.accuracy_m) > 0) {
+            L.circle([lat, lng], {
+                radius: Number(log.accuracy_m),
+                color: '#3b82f6', fillColor: '#3b82f6',
+                fillOpacity: 0.08, weight: 1, dashArray: '4 4'
             }).addTo(this.mapInstance);
-
-            const popupHtml = `
-                <b>${this.escapeHtml(name)}</b><br>
-                <span style="font-family:monospace;font-size:11px;">${lat.toFixed(6)}, ${lng.toFixed(6)}</span>
-                ${log?.check_in_time ? `<br><small>${new Date(log.check_in_time).toLocaleString('en-GB')}</small>` : ''}
-            `;
-            L.marker([lat, lng]).addTo(this.mapInstance).bindPopup(popupHtml).openPopup();
-
-            if (log?.accuracy_m && Number(log.accuracy_m) > 0) {
-                L.circle([lat, lng], {
-                    radius: Number(log.accuracy_m),
-                    color: '#3b82f6', fillColor: '#3b82f6',
-                    fillOpacity: 0.08, weight: 1, dashArray: '4 4'
-                }).addTo(this.mapInstance);
-            }
-
-            if (log?.target_radius) {
-                L.circle([lat, lng], {
-                    radius: Number(log.target_radius),
-                    color: accentColor, fillColor: accentColor,
-                    fillOpacity: 0.06, weight: 2
-                }).addTo(this.mapInstance);
-            }
-
-            setTimeout(() => { if (this.mapInstance) this.mapInstance.invalidateSize(); }, 400);
-        } catch (error) {
-            console.error('❌ initMap:', error);
         }
+
+        if (log?.target_radius) {
+            L.circle([lat, lng], {
+                radius: Number(log.target_radius),
+                color: accentColor, fillColor: accentColor,
+                fillOpacity: 0.06, weight: 2
+            }).addTo(this.mapInstance);
+        }
+
+        setTimeout(() => { if (this.mapInstance) this.mapInstance.invalidateSize(); }, 400);
     },
 
     // ============================================================
@@ -790,7 +751,6 @@ updateStats(logs) {
 
                 this.showNotification(`✅ Lecturer check-in logged!`, 'success');
                 await this.loadTodayAttendance();
-                await this.loadAttendanceStats();
             } catch (error) {
                 console.error('❌ lecturerCheckIn:', error);
                 this.showNotification('Check-in failed: ' + error.message, 'error');
@@ -873,7 +833,7 @@ updateStats(logs) {
             document.getElementById('attDate').value = new Date().toISOString().split('T')[0];
 
             await this.loadTodayAttendance();
-            await this.loadAttendanceStats();
+            this.applyFilters();
         } catch (error) {
             console.error('❌ markStudentAttendance:', error);
             this.showNotification('Failed: ' + error.message, 'error');
@@ -884,7 +844,7 @@ updateStats(logs) {
     },
 
     // ============================================================
-    // DELETE
+    // DELETE — SINGLE / BULK
     // ============================================================
     async deleteAttendance(recordId) {
         if (!recordId) { this.showNotification('Record ID is required', 'error'); return; }
@@ -905,7 +865,6 @@ updateStats(logs) {
 
             this.showNotification('🗑️ Attendance record deleted', 'success');
             await this.loadTodayAttendance();
-            await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
             console.error('❌ deleteAttendance:', error);
@@ -951,7 +910,6 @@ updateStats(logs) {
 
             this.showNotification(`🗑️ Deleted ${deleted} record${deleted === 1 ? '' : 's'}`, 'success');
             await this.loadTodayAttendance();
-            await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
             console.error('❌ bulkDeleteAttendance:', error);
@@ -993,7 +951,6 @@ updateStats(logs) {
 
             this.showNotification('❌ Marked as Absent', 'success');
             await this.loadTodayAttendance();
-            await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
             console.error('❌ markAbsent:', error);
@@ -1038,7 +995,6 @@ updateStats(logs) {
 
             this.showNotification('🚫 Check-in rejected', 'success');
             await this.loadTodayAttendance();
-            await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
             console.error('❌ rejectAttendance:', error);
@@ -1100,7 +1056,6 @@ updateStats(logs) {
 
             this.showNotification(`❌ ${updated} record${updated === 1 ? '' : 's'} marked absent`, 'success');
             await this.loadTodayAttendance();
-            await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
             console.error('❌ bulkMarkAbsent:', error);
@@ -1144,7 +1099,6 @@ updateStats(logs) {
 
             this.showNotification('✅ Verified!', 'success');
             await this.loadTodayAttendance();
-            await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
             console.error('❌ verifyAttendance:', error);
@@ -1196,7 +1150,6 @@ updateStats(logs) {
 
             this.showNotification(`✅ ${records.length} records verified!`, 'success');
             await this.loadTodayAttendance();
-            await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
             console.error('❌ bulkVerifyAttendance:', error);
@@ -1357,7 +1310,7 @@ updateStats(logs) {
         this.filteredPastLogs = [];
 
         this.renderFilteredToday(filteredToday);
-        this.updateStats(filteredToday);   // ✅ ADD THIS
+        this.updateStats(filteredToday);   // ✅ CRITICAL — keeps top cards in sync
 
         const filterCount = document.getElementById('attendanceFilterCount');
         if (filterCount) {
@@ -1394,11 +1347,7 @@ updateStats(logs) {
         const fType = document.getElementById('filterSessionType'); if (fType) fType.value = 'All';
         const fSearch = document.getElementById('filterSearch'); if (fSearch) fSearch.value = '';
 
-        this.renderTodayAttendance();
-        this.updateStats(this.todayLogs);
-
-        const filterCount = document.getElementById('attendanceFilterCount');
-        if (filterCount) filterCount.textContent = `Showing all ${this.getProgramTypeLabel()} records`;
+        this.applyFilters();
         this.showNotification('Filters reset!', 'info');
     },
 
@@ -1807,7 +1756,7 @@ updateStats(logs) {
     printReport() { window.print(); },
 
     // ============================================================
-    // SESSION RECONCILIATION (used by lecturer-sessions.js closeSession)
+    // SESSION RECONCILIATION
     // ============================================================
     async getSessionRoster(session) {
         const supabase = window.lecturerDB?.supabase;
@@ -2190,3 +2139,4 @@ console.log('✅ LecturerAttendance module loaded');
 console.log('📋 Features: Range filter · Export (P=✓, full block roster) · Verify · Absent · Reject · Delete · Map · Session reconciliation');
 console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
 console.log('🗺️ Map: Shows student coordinates + check-in details');
+console.log('📊 Stats: Top cards now reflect the FILTERED set');
