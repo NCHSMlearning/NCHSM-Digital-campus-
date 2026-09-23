@@ -14959,6 +14959,22 @@ window.deleteAnnouncement = deleteAnnouncement;
 let editingResourceId = null;
 let currentAdminProgram = 'krchn'; // 'krchn' or 'tvet'
 
+
+function isTVETResourceProgram(program) {
+    const code = String(program || '').trim().toUpperCase();
+    if (!code) return false;
+    try {
+        if (Array.isArray(TVET_PROGRAMS)) {
+            return TVET_PROGRAMS.some(item => String(item || '').trim().toUpperCase() === code);
+        }
+    } catch (e) {}
+    return code !== 'KRCHN';
+}
+
+function normalizeResourceBlock(value) {
+    return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 // =====================================================
 // DETECT ADMIN PROGRAM
 // =====================================================
@@ -14968,7 +14984,7 @@ function detectAdminProgram() {
     
     const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
     
-    if (TVET_PROGRAMS.includes(programCode)) {
+    if (isTVETResourceProgram(programCode)) {
         currentAdminProgram = 'tvet';
         updateAdminProgramUI('tvet', profile);
     } else {
@@ -15022,55 +15038,57 @@ function switchAdminProgram() {
 // =====================================================
 // UPDATE BLOCK/TERM OPTIONS FOR RESOURCES
 // =====================================================
-function updateBlockOptions() {
+function updateBlockOptions(selectedValue = '') {
     const programSelect = document.getElementById('resource_program');
     const blockSelect = document.getElementById('resource_block');
-    
-    if (!programSelect || !blockSelect) return;
-    
-    const program = programSelect.value;
-    const isTVET = TVET_PROGRAMS.includes(program);
-    
+    if (!blockSelect) return;
+
+    const program = programSelect?.value || currentAdminProgram;
+    const isTVET = isTVETResourceProgram(program);
+    const previous = selectedValue || blockSelect.value || '';
+
     blockSelect.innerHTML = '';
-    
-    if (isTVET) {
-        // TVET Terms - stored in block column as "Term1", "Term2", etc.
-        const terms = [
-            { value: 'Term1', label: '📘 Term 1' },
-            { value: 'Term2', label: '📗 Term 2' },
-            { value: 'Term3', label: '📕 Term 3' },
-            { value: 'Term4', label: '📙 Term 4' },
-            { value: 'Term5', label: '📒 Term 5' },
-            { value: 'Term6', label: '📓 Term 6' },
-            { value: 'Final Term', label: '🏆 Final Term' }
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '-- Select Block/Term --';
+    blockSelect.appendChild(placeholder);
+
+    const options = isTVET
+        ? [
+            ['Term1', '📘 Term 1'], ['Term2', '📗 Term 2'], ['Term3', '📕 Term 3'],
+            ['Term4', '📙 Term 4'], ['Term5', '📒 Term 5'], ['Term6', '📓 Term 6'],
+            ['Final Term', '🏆 Final Term']
+        ]
+        : [
+            ['Introductory', '🚀 Introductory'], ['Block 1', '📖 Block 1'], ['Block 2', '📗 Block 2'],
+            ['Block 3', '📘 Block 3'], ['Block 4', '📙 Block 4'], ['Block 5', '📕 Block 5'],
+            ['Final', '🏆 Final Block']
         ];
-        
-        terms.forEach(term => {
-            const option = document.createElement('option');
-            option.value = term.value;
-            option.textContent = term.label;
-            blockSelect.appendChild(option);
-        });
-    } else {
-        // KRCHN Blocks
-        const blocks = [
-            { value: 'Introductory', label: '🚀 Introductory' },
-            { value: 'Block 1', label: '📖 Block 1' },
-            { value: 'Block 2', label: '📗 Block 2' },
-            { value: 'Block 3', label: '📘 Block 3' },
-            { value: 'Block 4', label: '📙 Block 4' },
-            { value: 'Block 5', label: '📕 Block 5' },
-            { value: 'Final', label: '🏆 Final Block' }
-        ];
-        
-        blocks.forEach(block => {
-            const option = document.createElement('option');
-            option.value = block.value;
-            option.textContent = block.label;
-            blockSelect.appendChild(option);
-        });
+
+    options.forEach(([value, label]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        blockSelect.appendChild(option);
+    });
+
+    if (previous) {
+        const match = Array.from(blockSelect.options).find(o => normalizeResourceBlock(o.value) === normalizeResourceBlock(previous));
+        if (match) {
+            blockSelect.value = match.value;
+        } else {
+            const custom = document.createElement('option');
+            custom.value = previous;
+            custom.textContent = previous;
+            blockSelect.appendChild(custom);
+            blockSelect.value = previous;
+        }
     }
+
+    blockSelect.dispatchEvent(new Event('resource-block-options-updated', { bubbles: false }));
 }
+
 
 // =====================================================
 // UPDATE FILTER DROPDOWN
@@ -15078,32 +15096,31 @@ function updateBlockOptions() {
 function updateFilterDropdown(isTVET) {
     const filterSelect = document.getElementById('resource-block-filter');
     if (!filterSelect) return;
-    
+
+    const tvet = !!isTVET;
+    const current = filterSelect.value || 'all';
     filterSelect.innerHTML = '';
-    
+
     const allOption = document.createElement('option');
     allOption.value = 'all';
-    allOption.textContent = isTVET ? 'All Terms' : 'All Blocks';
+    allOption.textContent = tvet ? 'All Terms' : 'All Blocks';
     filterSelect.appendChild(allOption);
-    
-    if (isTVET) {
-        const terms = ['Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final Term'];
-        terms.forEach(term => {
-            const option = document.createElement('option');
-            option.value = term;
-            option.textContent = term;
-            filterSelect.appendChild(option);
-        });
-    } else {
-        const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-        blocks.forEach(block => {
-            const option = document.createElement('option');
-            option.value = block;
-            option.textContent = block;
-            filterSelect.appendChild(option);
-        });
-    }
+
+    const values = tvet
+        ? ['Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final Term']
+        : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+
+    values.forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        filterSelect.appendChild(option);
+    });
+
+    const match = Array.from(filterSelect.options).find(o => normalizeResourceBlock(o.value) === normalizeResourceBlock(current));
+    filterSelect.value = match ? match.value : 'all';
 }
+
 
 // =====================================================
 // TOGGLE PAST PAPER FIELDS
@@ -15144,63 +15161,88 @@ function togglePastPaperFields() {
 // INITIALIZE RESOURCES SECTION
 // =====================================================
 function initResourcesSection() {
+    if (window.__nchsmResourcesInitialized) {
+        // Still refresh dynamic controls if the tab was rebuilt.
+        const program = document.getElementById('resource_program');
+        if (program) updateBlockOptions();
+        loadAllResources();
+        return;
+    }
+    window.__nchsmResourcesInitialized = true;
+
     console.log('📁 Initializing Super Admin Resources Section...');
-    
+
     const resourceProgram = document.getElementById('resource_program');
     const resourceBlock = document.getElementById('resource_block');
-    
-    if (resourceProgram && resourceBlock) {
-        resourceProgram.addEventListener('change', function() {
+
+    if (resourceProgram) {
+        resourceProgram.addEventListener('change', async function() {
             updateBlockOptions();
-            const isTVET = TVET_PROGRAMS.includes(this.value);
-            updateFilterDropdown(isTVET);
+            updateFilterDropdown(isTVETResourceProgram(this.value));
+            selectedResourceStudents = [];
+            updateResourceSelectedStudentsDisplay();
+            await loadStudentsForResourceNotification();
         });
-        
-        setTimeout(() => {
-            updateBlockOptions();
-            const program = resourceProgram.value;
-            const isTVET = TVET_PROGRAMS.includes(program);
-            updateFilterDropdown(isTVET);
-        }, 100);
     }
-    
+
+    // Populate immediately and again after the browser has painted the form.
+    updateBlockOptions();
+    updateFilterDropdown(isTVETResourceProgram(resourceProgram?.value || currentAdminProgram));
+    setTimeout(() => {
+        updateBlockOptions(resourceBlock?.value || '');
+        updateFilterDropdown(isTVETResourceProgram(resourceProgram?.value || currentAdminProgram));
+    }, 100);
+
+    if (resourceBlock) {
+        resourceBlock.addEventListener('change', async () => {
+            await loadStudentsForResourceNotification();
+            renderSelectedResourceBlockStudents();
+        });
+    }
+
     const pastpaperCheckbox = document.getElementById('resource_is_pastpaper');
-    if (pastpaperCheckbox) {
+    if (pastpaperCheckbox && !pastpaperCheckbox.dataset.resourceBound) {
+        pastpaperCheckbox.dataset.resourceBound = '1';
         pastpaperCheckbox.addEventListener('change', togglePastPaperFields);
     }
-    
+
     const uploadForm = document.getElementById('upload-resource-form');
-    if (uploadForm) {
-        uploadForm.removeEventListener('submit', handleResourceUpload);
+    if (uploadForm && !uploadForm.dataset.resourceSubmitBound) {
+        uploadForm.dataset.resourceSubmitBound = '1';
         uploadForm.addEventListener('submit', handleResourceUpload);
     }
+
     initializeResourceNotificationUI();
-    
+
     const searchInput = document.getElementById('resource-search');
-    if (searchInput) {
+    if (searchInput && !searchInput.dataset.resourceSearchBound) {
+        searchInput.dataset.resourceSearchBound = '1';
         searchInput.addEventListener('keyup', debounce(filterResourcesTable, 300));
     }
-    
-    const blockFilter = document.getElementById('resource-block-filter');
-    if (blockFilter) {
-        blockFilter.addEventListener('change', filterResourcesTable);
-    }
-    
-    const yearFilter = document.getElementById('resource-year-filter');
-    if (yearFilter) {
-        yearFilter.addEventListener('change', filterResourcesTable);
-    }
-    
-    const programFilter = document.getElementById('resource-program-filter');
-    if (programFilter) {
-        programFilter.addEventListener('change', filterResourcesTable);
-    }
-    
+
+    ['resource-block-filter', 'resource-year-filter', 'resource-program-filter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.resourceFilterBound) {
+            el.dataset.resourceFilterBound = '1';
+            el.addEventListener('change', filterResourcesTable);
+        }
+    });
+
     detectAdminProgram();
     loadAllResources();
-    
+    setTimeout(loadStudentsForResourceNotification, 350);
+
     console.log('✅ Super Admin Resources Section initialized');
 }
+
+function autoInitResourcesSection() {
+    const run = () => {
+        if (document.getElementById('resources')) initResourcesSection();
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
+    else setTimeout(run, 0);
+}
+
 
 // =====================================================
 // EMAIL NOTIFICATIONS FOR NEW LEARNING MATERIALS
@@ -15327,39 +15369,118 @@ function initializeResourceNotificationUI() {
 
 async function loadStudentsForResourceNotification() {
     const program = document.getElementById('resource_program')?.value;
+    const block = document.getElementById('resource_block')?.value;
+    const intake = document.getElementById('resource_intake')?.value;
     const count = document.getElementById('resource_notify_count');
     if (!program || !count) return;
 
     try {
-        // IMPORTANT: load the complete approved student list for the selected
-        // program. Block filtering is applied later according to the recipient
-        // target, so the "Program" option can include every block/term.
-        const { data, error } = await sb
+        let query = sb
             .from('consolidated_user_profiles_table')
-            .select('user_id, student_id, full_name, email, program, block')
+            .select('user_id, student_id, full_name, email, program, block, current_block, intake_year, admission_year')
             .eq('role', 'student')
             .eq('status', 'approved')
-            .eq('program', program)
-            .limit(500);
+            .limit(1000);
 
+        // Prefer an exact program match, then fall back to client-side matching
+        // if the database stores a longer display name (e.g. "KRCHN Nursing").
+        const { data, error } = await query;
         if (error) throw error;
 
-        allResourceStudents = data || [];
+        const wantedProgram = normalizeResourceBlock(program);
+        const wantedBlock = normalizeResourceBlock(block);
+        const wantedIntake = String(intake || '').trim();
+
+        allResourceStudents = (data || []).filter(student => {
+            const studentProgram = normalizeResourceBlock(student.program);
+            const programMatch = studentProgram === wantedProgram ||
+                studentProgram.includes(wantedProgram) || wantedProgram.includes(studentProgram);
+            if (!programMatch) return false;
+
+            // Keep the full program pool for the Program recipient option.
+            // Block/intake filtering is applied to block recipients below.
+            return true;
+        });
+
+        // Make current_block the effective block where block is empty.
+        allResourceStudents = allResourceStudents.map(student => ({
+            ...student,
+            effective_block: student.block || student.current_block || '',
+            effective_intake: student.intake_year || student.admission_year || ''
+        }));
+
         updateResourceNotificationCount();
         updateResourceSelectedStudentsDisplay();
         searchStudentsForResourceNotification();
+        renderSelectedResourceBlockStudents();
 
-        console.log(`📧 Resource notification pool: ${allResourceStudents.length} approved ${program} students`);
+        const matchingBlockCount = wantedBlock
+            ? allResourceStudents.filter(s => normalizeResourceBlock(s.effective_block) === wantedBlock && (!wantedIntake || String(s.effective_intake) === wantedIntake)).length
+            : allResourceStudents.length;
+
+        console.log(`📧 Resource notification pool: ${allResourceStudents.length}; selected block/term: ${matchingBlockCount}`);
     } catch (error) {
         console.error('❌ Could not load resource notification students:', error);
         allResourceStudents = [];
         count.innerHTML = '<i class="fas fa-users"></i> 0';
+        renderSelectedResourceBlockStudents();
     }
+}
+
+function getStudentsInSelectedResourceBlock() {
+    const block = document.getElementById('resource_block')?.value;
+    const intake = document.getElementById('resource_intake')?.value;
+    const wantedBlock = normalizeResourceBlock(block);
+    const wantedIntake = String(intake || '').trim();
+
+    if (!wantedBlock) return [];
+
+    return allResourceStudents.filter(student => {
+        const studentBlock = normalizeResourceBlock(student.effective_block || student.block || student.current_block);
+        const blockMatch = studentBlock === wantedBlock;
+        const intakeMatch = !wantedIntake || !student.effective_intake || String(student.effective_intake) === wantedIntake;
+        return blockMatch && intakeMatch && !!student.email;
+    });
+}
+
+function renderSelectedResourceBlockStudents() {
+    const notificationPanel = document.getElementById('resource-email-notification-settings');
+    if (!notificationPanel) return;
+
+    let box = document.getElementById('resource-block-student-preview');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'resource-block-student-preview';
+        box.style.cssText = 'margin:12px 16px 16px;padding:12px;border:1px solid #d1fae5;border-radius:12px;background:#ffffff;';
+        notificationPanel.appendChild(box);
+    }
+
+    const block = document.getElementById('resource_block')?.value || '';
+    if (!block) {
+        box.innerHTML = '<div style="font-size:11px;color:#64748b;"><i class="fas fa-users"></i> Select a Block/Term to view students in that class.</div>';
+        return;
+    }
+
+    const students = getStudentsInSelectedResourceBlock();
+    const title = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;"><strong style="font-size:11px;color:#065f46;">Students in ${escapeHtml(block)}</strong><span style="font-size:10px;color:#047857;background:#ecfdf5;padding:4px 8px;border-radius:999px;font-weight:800;">${students.length} students</span></div>`;
+
+    if (!students.length) {
+        box.innerHTML = title + '<div style="font-size:11px;color:#94a3b8;padding:7px 0;">No approved students were found for this program, block/term and intake.</div>';
+        return;
+    }
+
+    const visible = students.slice(0, 12).map((student, index) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #f1f5f9;">
+            <span style="width:24px;height:24px;border-radius:50%;background:#d1fae5;color:#047857;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;">${index + 1}</span>
+            <div style="min-width:0;flex:1;"><strong style="display:block;font-size:10px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(student.full_name || 'Unknown Student')}</strong><span style="font-size:9px;color:#94a3b8;">${escapeHtml(student.student_id || student.email || '')}</span></div>
+        </div>`).join('');
+
+    const more = students.length > 12 ? `<div style="font-size:10px;color:#64748b;text-align:center;padding-top:8px;">+ ${students.length - 12} more students</div>` : '';
+    box.innerHTML = title + visible + more;
 }
 
 function getResourceNotificationRecipients() {
     const target = getResourceNotificationTarget();
-    const block = document.getElementById('resource_block')?.value;
 
     if (target === 'specific') {
         return selectedResourceStudents.filter(student => student?.email);
@@ -15369,12 +15490,7 @@ function getResourceNotificationRecipients() {
         return allResourceStudents.filter(student => student?.email);
     }
 
-    // "all" means Program + currently selected Block/Term.
-    // "block" also means currently selected Block/Term.
-    return allResourceStudents.filter(student => {
-        if (!block || block === '-- Select --' || block === '-- Select Block/Term --') return false;
-        return String(student.block || '').trim().toLowerCase() === String(block).trim().toLowerCase() && !!student.email;
-    });
+    return getStudentsInSelectedResourceBlock();
 }
 
 function updateResourceNotificationCount() {
@@ -15468,7 +15584,7 @@ async function sendResourceNotificationEmail(resourceData, recipients) {
         return { sent: 0, failed: recipients.length, total: recipients.length };
     }
 
-    const isTVET = TVET_PROGRAMS.includes(resourceData.program_type || '');
+    const isTVET = isTVETResourceProgram(resourceData.program_type);
     const blockLabel = isTVET ? 'Term' : 'Block';
     const portalUrl = resourceData.file_url || 'https://nchsm.co.ke';
     const materialTitle = escapeHtml(resourceData.title || 'New Learning Material');
@@ -15658,6 +15774,28 @@ async function handleResourceUpload(e) {
         let contentType = 'application/octet-stream';
         let uploadedPodcast = null;
 
+        // Upload optional prerecorded audio before saving the resource row.
+        const podcastInput = document.getElementById('resource-podcast-file');
+        const podcastFile = podcastInput?.files?.[0] || null;
+        if (podcastFile) {
+            uploadedPodcast = await uploadResourcePodcastAudio(podcastFile, { program_type: program, intake, block, title });
+        }
+
+        // On edit, preserve the existing podcast unless a replacement was uploaded.
+        if (isEdit && !uploadedPodcast) {
+            const { data: existingResource } = await sb
+                .from('resources')
+                .select('podcast_url, podcast_path, file_path, file_url, file_name')
+                .eq('id', editId)
+                .single();
+            if (existingResource) {
+                uploadedPodcast = {
+                    url: existingResource.podcast_url || null,
+                    path: existingResource.podcast_path || null
+                };
+            }
+        }
+
         if (fileInput && fileInput.files.length > 0) {
             file = fileInput.files[0];
             
@@ -15698,37 +15836,11 @@ async function handleResourceUpload(e) {
             publicUrl = urlData?.publicUrl;
         }
 
-        // Upload optional prerecorded podcast/audio before saving the resource record.
-        const podcastInput = document.getElementById('resource-podcast-file');
-        const podcastFile = podcastInput?.files?.[0] || null;
-
-        if (podcastFile) {
-            uploadedPodcast = await uploadResourcePodcastAudio(podcastFile, {
-                program_type: program,
-                intake: intake,
-                block: block,
-                title: title
-            });
-        }
-
-        // Preserve an existing podcast during edit unless a new audio file was selected.
-        let existingResource = null;
-        if (isEdit) {
-            const { data: existingData, error: existingError } = await sb
-                .from('resources')
-                .select('podcast_url, podcast_path')
-                .eq('id', editId)
-                .single();
-
-            if (existingError) throw existingError;
-            existingResource = existingData;
-        }
-
         const dbRecord = {
             title: title,
             description: description,
-            podcast_url: uploadedPodcast?.url || existingResource?.podcast_url || null,
-            podcast_path: uploadedPodcast?.path || existingResource?.podcast_path || null,
+            podcast_url: uploadedPodcast?.url || null,
+            podcast_path: uploadedPodcast?.path || null,
             program_type: program,
             intake: intake,
             block: block,
@@ -15772,7 +15884,7 @@ async function handleResourceUpload(e) {
             document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
             document.getElementById('form-cancel-btn').style.display = 'none';
             document.getElementById('file-edit-info').style.display = 'none';
-            document.getElementById('resource-file').required = true;
+            document.getElementById('resource-file').required = false;
             editingResourceId = null;
             
         } else {
@@ -15822,24 +15934,16 @@ async function handleResourceUpload(e) {
 }
 
 // =====================================================
-// EDIT RESOURCE - MODERN CENTERED MODAL
+// EDIT RESOURCE
 // =====================================================
 function populateEditBlockOptions(program, selectedBlock = '') {
     const blockSelect = document.getElementById('edit_resource_block');
     if (!blockSelect) return;
 
-    const isTVET = TVET_PROGRAMS.includes(String(program || '').toUpperCase());
-    const options = isTVET
-        ? [
-            ['Term1', '📘 Term 1'], ['Term2', '📗 Term 2'], ['Term3', '📕 Term 3'],
-            ['Term4', '📙 Term 4'], ['Term5', '📒 Term 5'], ['Term6', '📓 Term 6'],
-            ['Final Term', '🏆 Final Term']
-        ]
-        : [
-            ['Introductory', '🚀 Introductory'], ['Block 1', '📖 Block 1'], ['Block 2', '📗 Block 2'],
-            ['Block 3', '📘 Block 3'], ['Block 4', '📙 Block 4'], ['Block 5', '📕 Block 5'],
-            ['Final', '🏆 Final Block']
-        ];
+    const tvet = isTVETResourceProgram(program);
+    const options = tvet
+        ? [['Term1','📘 Term 1'],['Term2','📗 Term 2'],['Term3','📕 Term 3'],['Term4','📙 Term 4'],['Term5','📒 Term 5'],['Term6','📓 Term 6'],['Final Term','🏆 Final Term']]
+        : [['Introductory','🚀 Introductory'],['Block 1','📖 Block 1'],['Block 2','📗 Block 2'],['Block 3','📘 Block 3'],['Block 4','📙 Block 4'],['Block 5','📕 Block 5'],['Final','🏆 Final Block']];
 
     blockSelect.innerHTML = '';
     options.forEach(([value, label]) => {
@@ -15850,25 +15954,23 @@ function populateEditBlockOptions(program, selectedBlock = '') {
     });
 
     if (selectedBlock) {
-        const exists = Array.from(blockSelect.options).some(o => o.value === String(selectedBlock));
-        if (!exists) {
+        const match = Array.from(blockSelect.options).find(o => normalizeResourceBlock(o.value) === normalizeResourceBlock(selectedBlock));
+        if (match) blockSelect.value = match.value;
+        else {
             const custom = document.createElement('option');
             custom.value = selectedBlock;
             custom.textContent = selectedBlock;
             blockSelect.appendChild(custom);
+            blockSelect.value = selectedBlock;
         }
-        blockSelect.value = selectedBlock;
     }
 }
 
 function openEditResourceModal() {
     const modal = document.getElementById('edit-resource-modal');
     if (!modal) return false;
-
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
-
-    // Focus the title field for quick editing.
     setTimeout(() => document.getElementById('edit_resource_title')?.focus(), 80);
     return true;
 }
@@ -15878,10 +15980,8 @@ function closeEditModal(silent = false) {
     if (modal) modal.style.display = 'none';
     document.body.style.overflow = '';
     editingResourceId = null;
-
     const form = document.getElementById('edit-resource-form');
     if (form) form.reset();
-
     if (!silent) showFeedback('Edit cancelled', 'info');
 }
 
@@ -15894,12 +15994,8 @@ async function editResource(resourceId) {
             .single();
 
         if (error) throw error;
-        if (!resource) {
-            showFeedback('Resource not found', 'error');
-            return;
-        }
+        if (!resource) throw new Error('Resource not found.');
 
-        // Populate the dedicated modal instead of moving the user to the upload form.
         const setValue = (id, value) => {
             const el = document.getElementById(id);
             if (el) el.value = value ?? '';
@@ -15916,149 +16012,103 @@ async function editResource(resourceId) {
         setValue('edit_resource_course_name', resource.course_name || '');
 
         editingResourceId = resourceId;
-
-        if (!openEditResourceModal()) {
-            showFeedback('Edit modal is not available on this page.', 'error');
-            return;
-        }
-
-        showFeedback(`📝 Editing: ${resource.title}`, 'info');
+        if (!openEditResourceModal()) throw new Error('Edit modal is not available on this page.');
     } catch (error) {
-        console.error('Error loading resource for edit:', error);
-        showFeedback(`Failed to load resource data: ${error.message}`, 'error');
+        console.error('Error opening resource edit modal:', error);
+        showFeedback(`❌ ${error.message || 'Failed to load resource.'}`, 'error');
     }
 }
 
-// =====================================================
-// SAVE CHANGES FROM MODERN EDIT MODAL
-// =====================================================
 async function saveEditResource() {
-    const resourceId = document.getElementById('edit_resource_id')?.value || editingResourceId;
-    if (!resourceId) {
+    const id = document.getElementById('edit_resource_id')?.value || editingResourceId;
+    if (!id) {
         showFeedback('No resource selected for editing.', 'error');
         return;
     }
 
-    const saveButton = document.querySelector('#edit-resource-form button[type="submit"]');
-    const originalButtonText = saveButton?.innerHTML || '<i class="fas fa-save"></i> Save Changes';
-
-    const program = document.getElementById('edit_resource_program')?.value || '';
-    const intake = document.getElementById('edit_resource_intake')?.value || '';
-    const block = document.getElementById('edit_resource_block')?.value || '';
-    const title = document.getElementById('edit_resource_title')?.value.trim() || '';
-    const description = document.getElementById('edit_resource_description')?.value.trim() || '';
-    const pastpaperYear = document.getElementById('edit_resource_pastpaper_year')?.value || null;
-    const examType = document.getElementById('edit_resource_exam_type')?.value || null;
-    const courseName = document.getElementById('edit_resource_course_name')?.value.trim() || null;
+    const program = document.getElementById('edit_resource_program')?.value;
+    const intake = document.getElementById('edit_resource_intake')?.value;
+    const block = document.getElementById('edit_resource_block')?.value;
+    const title = document.getElementById('edit_resource_title')?.value?.trim();
+    const description = document.getElementById('edit_resource_description')?.value?.trim() || '';
 
     if (!program || !intake || !block || !title) {
         showFeedback('Please complete Program, Intake, Block/Term and Title.', 'error');
         return;
     }
 
+    const saveButton = document.querySelector('#edit-resource-form button[type="submit"]');
+    const originalText = saveButton?.innerHTML || 'Save Changes';
     if (saveButton) {
         saveButton.disabled = true;
         saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     }
 
     try {
-        // Read the existing resource so the modal edits metadata only and never
-        // accidentally removes the existing document or prerecorded podcast.
-        const { data: existing, error: fetchError } = await sb
+        const { data: existing, error: existingError } = await sb
             .from('resources')
             .select('resource_type, file_path, file_url, file_name, podcast_url, podcast_path')
-            .eq('id', resourceId)
+            .eq('id', id)
             .single();
-
-        if (fetchError) throw fetchError;
-        if (!existing) throw new Error('Resource could not be found.');
+        if (existingError) throw existingError;
 
         const isPastPaper = existing.resource_type === 'pastpaper';
-
-        const updatePayload = {
+        const update = {
             program_type: program,
             intake: intake,
             block: block,
-            title: title,
-            description: description,
-            updated_at: new Date().toISOString(),
-            pastpaper_year: isPastPaper && pastpaperYear ? parseInt(pastpaperYear, 10) : null,
-            exam_type: isPastPaper ? (examType || null) : null,
-            course_name: isPastPaper ? (courseName || null) : null
+            title,
+            description,
+            updated_at: new Date().toISOString()
         };
 
-        const { error: updateError } = await sb
-            .from('resources')
-            .update(updatePayload)
-            .eq('id', resourceId);
+        if (isPastPaper) {
+            const year = document.getElementById('edit_resource_pastpaper_year')?.value || null;
+            const examType = document.getElementById('edit_resource_exam_type')?.value || null;
+            const courseName = document.getElementById('edit_resource_course_name')?.value?.trim() || null;
+            update.pastpaper_year = year ? parseInt(year, 10) : null;
+            update.exam_type = examType;
+            update.course_name = courseName;
+        }
 
-        if (updateError) throw updateError;
+        const { error } = await sb.from('resources').update(update).eq('id', id);
+        if (error) throw error;
 
-        await logAudit(
-            'RESOURCE_UPDATE',
-            `Updated ${isPastPaper ? 'past paper' : 'material'}: ${title}`,
-            resourceId,
-            'SUCCESS'
-        );
-
+        await logAudit('RESOURCE_UPDATE', `Updated resource: ${title}`, id, 'SUCCESS');
         closeEditModal(true);
-        showFeedback(`✅ "${title}" updated successfully!`, 'success');
+        showFeedback(`✅ "${title}" updated successfully.`, 'success');
         await loadAllResources();
     } catch (error) {
-        console.error('Error saving resource edit:', error);
-        await logAudit('RESOURCE_ERROR', `Edit failed: ${title}. ${error.message}`, resourceId, 'FAILURE');
+        console.error('Save edit failed:', error);
         showFeedback(`❌ Update failed: ${error.message}`, 'error');
     } finally {
         if (saveButton) {
             saveButton.disabled = false;
-            saveButton.innerHTML = originalButtonText;
+            saveButton.innerHTML = originalText;
         }
     }
 }
 
 // =====================================================
-// CANCEL LEGACY UPLOAD-FORM EDIT MODE
+// CANCEL EDIT
 // =====================================================
 function cancelEditResource() {
-    document.getElementById('resource_edit_id')?.setAttribute('value', '');
-    const form = document.getElementById('upload-resource-form');
-    if (form) form.reset();
-
-    const title = document.getElementById('form-title');
-    const subtitle = document.getElementById('form-subtitle');
-    const submit = document.getElementById('form-submit-btn');
-    const cancel = document.getElementById('form-cancel-btn');
-    const info = document.getElementById('file-edit-info');
-    const file = document.getElementById('resource-file');
-
-    if (title) title.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-    if (subtitle) subtitle.textContent = 'Publish a learning material or past paper to the student resource center.';
-    if (submit) submit.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-    if (cancel) cancel.style.display = 'none';
-    if (info) info.style.display = 'none';
-    if (file) file.required = true;
-
+    document.getElementById('resource_edit_id').value = '';
+    document.getElementById('form-title').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+    document.getElementById('form-subtitle').textContent = 'Upload new learning materials or past examination papers';
+    document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+    document.getElementById('form-cancel-btn').style.display = 'none';
+    document.getElementById('file-edit-info').style.display = 'none';
+    document.getElementById('resource-file').required = true;
+    document.getElementById('upload-resource-form').reset();
     setPodcastEditPreview(null);
     selectedResourceStudents = [];
     allResourceStudents = [];
     togglePastPaperFields();
     initializeResourceNotificationUI();
     editingResourceId = null;
-    closeEditModal(true);
+    showFeedback('Edit cancelled', 'info');
 }
-
-// Close when clicking the dimmed backdrop, but not when clicking inside the modal card.
-document.addEventListener('click', (event) => {
-    const modal = document.getElementById('edit-resource-modal');
-    if (modal && event.target === modal) closeEditModal();
-});
-
-document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-        const modal = document.getElementById('edit-resource-modal');
-        if (modal && modal.style.display !== 'none') closeEditModal();
-    }
-});
 
 // =====================================================
 // LOAD ALL RESOURCES
@@ -16067,143 +16117,96 @@ async function loadAllResources() {
     const tableBody = document.getElementById('resources-list');
     if (!tableBody) return;
 
-    tableBody.innerHTML = '<tr><td colspan="10"><div class="loading-spinner"></div> Loading resources...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="10" style="padding:28px;text-align:center;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Loading resources...</td></tr>';
 
     try {
+        if (!sb) throw new Error('Supabase client is not available.');
+
         let query = sb.from('resources').select('*').order('created_at', { ascending: false });
-        
-        if (currentResourceType === 'material') {
-            query = query.eq('resource_type', 'material');
-        } else if (currentResourceType === 'pastpaper') {
-            query = query.eq('resource_type', 'pastpaper');
-        }
-        
+        if (currentResourceType === 'material') query = query.eq('resource_type', 'material');
+        else if (currentResourceType === 'pastpaper') query = query.eq('resource_type', 'pastpaper');
+
         const { data: resources, error } = await query;
-        
         if (error) throw error;
-        
+
         allResourcesData = resources || [];
-        
-        const pastpaperCount = allResourcesData.filter(r => r.resource_type === 'pastpaper').length;
-        const materialCount = allResourcesData.filter(r => r.resource_type === 'material').length;
-        
+
         const pastpaperBadge = document.getElementById('pastpaper-count-badge');
         const materialBadge = document.getElementById('material-count-badge');
-        
-        if (pastpaperBadge) pastpaperBadge.textContent = pastpaperCount;
-        if (materialBadge) materialBadge.textContent = materialCount;
-        
+        if (pastpaperBadge) pastpaperBadge.textContent = allResourcesData.filter(r => r.resource_type === 'pastpaper').length;
+        if (materialBadge) materialBadge.textContent = allResourcesData.filter(r => r.resource_type === 'material').length;
+
         let filtered = [...allResourcesData];
-        
-        const searchTerm = document.getElementById('resource-search')?.value.toLowerCase() || '';
+        const searchTerm = document.getElementById('resource-search')?.value?.toLowerCase().trim() || '';
         const blockFilter = document.getElementById('resource-block-filter')?.value || 'all';
         const yearFilter = document.getElementById('resource-year-filter')?.value || 'all';
         const programFilter = document.getElementById('resource-program-filter')?.value || 'all';
-        
+
         if (searchTerm) {
-            filtered = filtered.filter(r => 
-                (r.title || '').toLowerCase().includes(searchTerm) ||
-                (r.course_name || '').toLowerCase().includes(searchTerm) ||
-                (r.description || '').toLowerCase().includes(searchTerm)
-            );
+            filtered = filtered.filter(r => [r.title, r.course_name, r.description, r.program_type, r.block, r.term]
+                .some(v => String(v || '').toLowerCase().includes(searchTerm)));
         }
-        
         if (blockFilter !== 'all') {
-            filtered = filtered.filter(r => (r.block || '').toLowerCase() === blockFilter.toLowerCase());
+            filtered = filtered.filter(r => normalizeResourceBlock(r.block || r.term) === normalizeResourceBlock(blockFilter));
         }
-        
         if (yearFilter !== 'all') {
-            if (currentResourceType === 'pastpaper') {
-                filtered = filtered.filter(r => r.pastpaper_year == yearFilter);
-            } else {
-                filtered = filtered.filter(r => r.intake == yearFilter);
-            }
+            filtered = filtered.filter(r => String(currentResourceType === 'pastpaper' ? r.pastpaper_year : r.intake) === String(yearFilter));
         }
-        
         if (programFilter !== 'all') {
-            filtered = filtered.filter(r => r.program_type === programFilter);
+            filtered = filtered.filter(r => normalizeResourceBlock(r.program_type) === normalizeResourceBlock(programFilter));
         }
-        
+
         renderResourcesTable(filtered);
-        
     } catch (error) {
         console.error('Error loading resources:', error);
-        tableBody.innerHTML = `<tr><td colspan="10" style="color: red;">Error: ${error.message}</td></tr>`;
-        await logAudit('RESOURCE_LOAD', `Failed: ${error.message}`, null, 'FAILURE');
+        tableBody.innerHTML = `<tr><td colspan="10" style="padding:28px;text-align:center;color:#b91c1c;"><i class="fas fa-triangle-exclamation"></i><div style="margin-top:7px;font-size:11px;">Unable to load resources: ${escapeHtml(error.message || 'Unknown error')}</div><button type="button" onclick="loadAllResources()" style="margin-top:10px;padding:7px 11px;border:0;border-radius:7px;background:#4c1d95;color:#fff;cursor:pointer;font-size:10px;">Retry</button></td></tr>`;
+        try { await logAudit('RESOURCE_LOAD', `Failed: ${error.message}`, null, 'FAILURE'); } catch (e) {}
     }
 }
 
-// =====================================================
-// RENDER RESOURCES TABLE
-// =====================================================
 function renderResourcesTable(resources) {
     const tableBody = document.getElementById('resources-list');
     if (!tableBody) return;
-    
+
     if (!resources || resources.length === 0) {
-        const emptyMessage = currentResourceType === 'pastpaper' 
-            ? 'No past papers found.'
-            : currentResourceType === 'material'
-            ? 'No learning materials found.'
-            : 'No resources found.';
-        tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 40px;">📁 ${emptyMessage}</td></tr>`;
+        const emptyMessage = currentResourceType === 'pastpaper' ? 'No past papers found.' : currentResourceType === 'material' ? 'No learning materials found.' : 'No resources found.';
+        tableBody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-folder-open" style="font-size:22px;"></i><div style="margin-top:8px;">${emptyMessage}</div></td></tr>`;
         return;
     }
-    
+
     tableBody.innerHTML = '';
-    
     resources.forEach(resource => {
         const isPastPaper = resource.resource_type === 'pastpaper';
-        const typeClass = isPastPaper ? 'badge-warning' : 'badge-info';
-        const typeIcon = isPastPaper ? 'fas fa-history' : 'fas fa-book';
+        const isTVET = isTVETResourceProgram(resource.program_type);
         const typeLabel = isPastPaper ? 'Past Paper' : 'Material';
         const yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
-        
-        let titleDisplay = resource.title;
-        if (isPastPaper && resource.course_name && resource.exam_type) {
-            const examLabel = getExamTypeLabel(resource.exam_type);
-            titleDisplay = `${resource.course_name} - ${examLabel} (${resource.pastpaper_year})`;
-        }
-        
-        const uploadDate = new Date(resource.created_at).toLocaleDateString();
-        const isTVET = TVET_PROGRAMS.includes(resource.program_type || '');
-        const blockLabel = isTVET ? 'Term' : 'Block';
         const blockValue = resource.block || resource.term || 'N/A';
-        
+        const blockLabel = isTVET ? 'Term' : 'Block';
+        const titleDisplay = isPastPaper && resource.course_name && resource.exam_type
+            ? `${resource.course_name} - ${typeof getExamTypeLabel === 'function' ? getExamTypeLabel(resource.exam_type) : resource.exam_type} (${resource.pastpaper_year || ''})`
+            : (resource.title || 'Untitled Resource');
+        const uploadDate = resource.created_at ? new Date(resource.created_at).toLocaleDateString() : 'N/A';
+        const fileUrl = resource.file_url || '#';
+        const audioUrl = resource.podcast_url || '';
+
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><span class="badge ${typeClass}"><i class="${typeIcon}"></i> ${typeLabel}</span></td>
+            <td><span class="badge ${isPastPaper ? 'badge-warning' : 'badge-info'}">${typeLabel}</span></td>
             <td><strong>${escapeHtml(yearDisplay || 'N/A')}</strong></td>
             <td>${escapeHtml(resource.program_type || 'N/A')}</td>
             <td><span class="badge ${isTVET ? 'badge-tvet' : 'badge-krchn'}">${blockLabel}: ${escapeHtml(blockValue)}</span></td>
-            <td><strong>${escapeHtml(titleDisplay)}</strong><br><small>${escapeHtml(resource.course_name || '')}</small></td>
-            <td><small>${escapeHtml((resource.description || '-').substring(0, 50))}</small></td>
-            <td>
-                ${resource.podcast_url
-                    ? `<a href="${escapeHtml(resource.podcast_url)}" target="_blank" rel="noopener"
-                         class="btn-action btn-small"
-                         style="background:#059669;color:white;padding:4px 9px;border-radius:4px;text-decoration:none;font-size:11px;display:inline-flex;align-items:center;gap:4px;">
-                         <i class="fas fa-play"></i> Play
-                       </a>`
-                    : `<span style="font-size:11px;color:#94a3b8;display:inline-flex;align-items:center;gap:4px;">
-                         <i class="fas fa-minus-circle"></i> None
-                       </span>`
-                }
-            </td>
+            <td><strong>${escapeHtml(titleDisplay)}</strong>${resource.course_name && !isPastPaper ? `<br><small>${escapeHtml(resource.course_name)}</small>` : ''}</td>
+            <td><small>${escapeHtml((resource.description || '-').substring(0, 80))}</small></td>
+            <td>${audioUrl ? `<a href="${escapeHtml(audioUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:7px;background:#ede9fe;color:#6d28d9;text-decoration:none;font-size:10px;font-weight:800;"><i class="fas fa-headphones"></i> Play</a>` : '<span style="color:#94a3b8;font-size:10px;">No audio</span>'}</td>
             <td>${escapeHtml(resource.uploaded_by_name || 'Unknown')}</td>
             <td>${uploadDate}</td>
-            <td style="display: flex; gap: 4px; flex-wrap: wrap;">
-                <a href="${resource.file_url}" target="_blank" class="btn-action btn-small" style="background: #4C1D95; color: white; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
-                    <i class="fas fa-eye"></i> View
-                </a>
-                <button onclick="editResource('${resource.id}')" class="btn-action btn-small" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button onclick="deleteResourceItem('${resource.id}', '${escapeHtml(resource.title)}')" class="btn-delete btn-small" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </td>
-        `;
+            <td style="white-space:nowrap;">
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    ${fileUrl !== '#' ? `<a href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener" style="background:#4C1D95;color:white;padding:5px 9px;border-radius:6px;text-decoration:none;font-size:10px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-eye"></i> View</a>` : '<span style="font-size:10px;color:#94a3b8;padding:5px;">No file</span>'}
+                    <button type="button" onclick="editResource('${resource.id}')" style="background:#f59e0b;color:white;border:none;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:10px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-edit"></i> Edit</button>
+                    <button type="button" onclick="deleteResourceItem('${resource.id}', '${escapeHtml(String(resource.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'))}')" style="background:#dc2626;color:white;border:none;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:10px;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-trash"></i> Delete</button>
+                </div>
+            </td>`;
         tableBody.appendChild(row);
     });
 }
@@ -16224,15 +16227,8 @@ async function deleteResourceItem(resourceId, title) {
         if (resource?.file_path) {
             await sb.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
         }
-
         if (resource?.podcast_path) {
-            const { error: podcastDeleteError } = await sb.storage
-                .from(RESOURCE_AUDIO_BUCKET)
-                .remove([resource.podcast_path]);
-
-            if (podcastDeleteError) {
-                console.warn('Podcast Storage cleanup failed:', podcastDeleteError);
-            }
+            await sb.storage.from(RESOURCE_AUDIO_BUCKET).remove([resource.podcast_path]);
         }
         
         await sb.from('resources').delete().eq('id', resourceId);
@@ -16289,13 +16285,13 @@ function exportResourcesToCSV() {
         return;
     }
     
-    let csv = 'Type,Year,Program,Block/Term,Title,Course,Description,Audio,Uploaded By,Date\n';
+    let csv = 'Type,Year,Program,Block/Term,Title,Course,Description,Uploaded By,Date\n';
     
     allResourcesData.forEach(r => {
         const isPastPaper = r.resource_type === 'pastpaper';
         const yearDisplay = isPastPaper ? r.pastpaper_year : r.intake;
         const date = new Date(r.created_at).toLocaleDateString();
-        const blockLabel = TVET_PROGRAMS.includes(r.program_type || '') ? 'Term' : 'Block';
+        const blockLabel = isTVETResourceProgram(r.program_type) ? 'Term' : 'Block';
         
         csv += `${r.resource_type},${yearDisplay},${r.program_type},${blockLabel}: ${r.block || r.term || 'N/A'},"${r.title}","${r.course_name || ''}","${r.description || ''}",${r.uploaded_by_name || 'Unknown'},${date}\n`;
     });
@@ -16314,14 +16310,16 @@ function exportResourcesToCSV() {
 // =====================================================
 // MAKE FUNCTIONS GLOBAL
 // =====================================================
+window.openEditResourceModal = openEditResourceModal;
+window.closeEditModal = closeEditModal;
+window.saveEditResource = saveEditResource;
+window.populateEditBlockOptions = populateEditBlockOptions;
+window.renderSelectedResourceBlockStudents = renderSelectedResourceBlockStudents;
 window.loadAllResources = loadAllResources;
 window.filterResourceType = filterResourceType;
 window.filterResourcesTable = filterResourcesTable;
 window.deleteResourceItem = deleteResourceItem;
 window.editResource = editResource;
-window.saveEditResource = saveEditResource;
-window.closeEditModal = closeEditModal;
-window.openEditResourceModal = openEditResourceModal;
 window.cancelEditResource = cancelEditResource;
 window.togglePastPaperFields = togglePastPaperFields;
 window.initResourcesSection = initResourcesSection;
@@ -16337,6 +16335,8 @@ window.updateResourceSelectedStudentsDisplay = updateResourceSelectedStudentsDis
 window.getResourceNotificationRecipients = getResourceNotificationRecipients;
 window.sendResourceNotificationEmail = sendResourceNotificationEmail;
 window.notifyStudentsAboutNewResource = notifyStudentsAboutNewResource;
+
+autoInitResourcesSection();
 
 console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support, Edit functionality and email notifications!');
 
