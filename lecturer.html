@@ -2852,7 +2852,7 @@
         </div>
     </div>
 </section>
-<!-- ===== ATTENDANCE SECTION - ENHANCED WITH MAP VIEW ===== -->
+<!-- ===== ATTENDANCE SECTION - ENHANCED WITH MAP VIEW + UNIT FILTER ===== -->
 <section id="attendance-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
         <div>
@@ -2917,6 +2917,7 @@
             <span style="margin-left: auto; font-size: 12px; color: #94a3b8;" id="attendanceFilterCount">Showing all records</span>
         </div>
 
+        <!-- ROW 1: Date · Block · Unit · Year · Session Type -->
         <div class="filter-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px;">
             <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label style="font-weight: 600; font-size: 13px; color: #475569;">
@@ -2930,6 +2931,14 @@
                 </label>
                 <select id="filterBlock" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
                     <option value="All">All Blocks/Terms</option>
+                </select>
+            </div>
+            <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-book" style="color: #4C1D95; width: 18px;"></i> Unit
+                </label>
+                <select id="filterUnit" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="All">All Units</option>
                 </select>
             </div>
             <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
@@ -2975,7 +2984,6 @@
                 <button class="btn btn-outline" onclick="resetAttendanceFilters()" style="background: transparent; color: #475569; border: 2px solid #e2e8f0; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
                     <i class="fas fa-undo"></i> Reset
                 </button>
-                <!-- Bulk Approve Button -->
                 <button class="btn btn-approve" onclick="bulkApproveAttendance()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(139,92,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                     <i class="fas fa-check-double"></i> Bulk Approve
                 </button>
