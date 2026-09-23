@@ -8,6 +8,7 @@
 // ✅ NEW:   Export treats P (Pending) as Present (renders as ✓)
 // ✅ NEW:   Export includes ALL students in the block, not just those with logs
 // ✅ NEW:   Single + Bulk delete with RLS-friendly permission checks
+// ✅ NEW:   Mark Absent (single + bulk) and Reject buttons per row
 // ============================================================
 
 const LecturerAttendance = {
@@ -83,7 +84,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ Can current user delete this record?
+    // ✅ Permissions
     // ============================================================
     canDeleteRecord(record) {
         if (!record) return false;
@@ -96,6 +97,15 @@ const LecturerAttendance = {
             record.verified_by === userId ||
             record.recorded_by_id === userId
         );
+    },
+
+    canMarkAbsent(record) {
+        if (!record) return false;
+        if (record.session_type === 'Lecturer Check-in') return false;
+        if (record.role === 'lecturer') return false;
+        const status = String(record.attendance_status || '').toLowerCase();
+        if (status === 'absent') return false;
+        return true;
     },
 
     // ============================================================
@@ -248,7 +258,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ Populate the FILTER unit dropdown from loaded logs
+    // ✅ Populate the FILTER unit dropdown
     // ============================================================
     populateUnitFilter() {
         const unitSelect = document.getElementById('filterUnit');
@@ -360,7 +370,7 @@ const LecturerAttendance = {
             const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
             const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
             const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
-            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified;
+            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified && String(log.attendance_status || '').toLowerCase() !== 'absent';
             const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
 
             return `
@@ -384,9 +394,11 @@ const LecturerAttendance = {
                     </td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
-                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
-                            ${this.canDeleteRecord(log) ? `<button onclick="LecturerAttendance.deleteAttendance('${log.id}')" title="Delete this record" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-trash-alt" style="font-size:10px;"></i></button>` : ''}
+                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" title="View location" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
+                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" title="Verify check-in" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
+                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.markAbsent('${log.id}')" title="Mark absent" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-user-slash" style="font-size:10px;"></i> Absent</button>` : ''}
+                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.rejectAttendance('${log.id}')" title="Reject check-in" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-ban" style="font-size:10px;"></i> Reject</button>` : ''}
+                            ${this.canDeleteRecord(log) ? `<button onclick="LecturerAttendance.deleteAttendance('${log.id}')" title="Delete this record" style="background: #6b7280; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-trash-alt" style="font-size:10px;"></i></button>` : ''}
                         </div>
                     </td>
                 </tr>`;
@@ -497,7 +509,7 @@ const LecturerAttendance = {
             const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
             const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
             const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
-            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified;
+            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified && String(log.attendance_status || '').toLowerCase() !== 'absent';
             const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
 
             return `
@@ -520,9 +532,11 @@ const LecturerAttendance = {
                     </td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
-                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
-                            ${this.canDeleteRecord(log) ? `<button onclick="LecturerAttendance.deleteAttendance('${log.id}')" title="Delete this record" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-trash-alt" style="font-size:10px;"></i></button>` : ''}
+                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" title="View location" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
+                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" title="Verify check-in" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
+                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.markAbsent('${log.id}')" title="Mark absent" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-user-slash" style="font-size:10px;"></i> Absent</button>` : ''}
+                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.rejectAttendance('${log.id}')" title="Reject check-in" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-ban" style="font-size:10px;"></i> Reject</button>` : ''}
+                            ${this.canDeleteRecord(log) ? `<button onclick="LecturerAttendance.deleteAttendance('${log.id}')" title="Delete this record" style="background: #6b7280; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-trash-alt" style="font-size:10px;"></i></button>` : ''}
                         </div>
                     </td>
                 </tr>`;
@@ -808,7 +822,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ NEW: Single-record delete
+    // ✅ DELETE — SINGLE
     // ============================================================
     async deleteAttendance(recordId) {
         if (!recordId) { this.showNotification('Record ID is required', 'error'); return; }
@@ -848,7 +862,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ NEW: Bulk delete (uses current filters)
+    // ✅ DELETE — BULK
     // ============================================================
     async bulkDeleteAttendance() {
         if (this.isProcessing) return;
@@ -919,6 +933,190 @@ const LecturerAttendance = {
         } catch (error) {
             console.error('❌ bulkDeleteAttendance:', error);
             this.showNotification('Failed to delete: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
+        }
+    },
+
+    // ============================================================
+    // ✅ MARK ABSENT — SINGLE
+    // ============================================================
+    async markAbsent(recordId, reason = 'Manually marked absent by lecturer') {
+        if (!recordId) { this.showNotification('Record ID is required', 'error'); return; }
+        if (this.isProcessing) return;
+
+        if (!confirm('Mark this attendance record as ABSENT?')) return;
+
+        this.isProcessing = true;
+
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database not available');
+
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const userId = profile?.user_id || this.lecturerUuid;
+
+            const { error: updateError } = await supabase
+                .from('geo_attendance_logs')
+                .update({
+                    attendance_status: 'Absent',
+                    is_verified: false,
+                    finalized_at: new Date().toISOString(),
+                    finalized_by: userId,
+                    verification_source: 'Manual Mark Absent',
+                    finalization_reason: reason
+                })
+                .eq('id', recordId);
+
+            if (updateError) throw new Error(updateError.message);
+
+            this.showNotification('❌ Marked as Absent', 'success');
+
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+            this.applyFilters();
+        } catch (error) {
+            console.error('❌ markAbsent:', error);
+            this.showNotification('Failed: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
+        }
+    },
+
+    // ============================================================
+    // ✅ REJECT — SINGLE
+    // ============================================================
+    async rejectAttendance(recordId) {
+        if (!recordId) { this.showNotification('Record ID is required', 'error'); return; }
+        if (this.isProcessing) return;
+
+        const reason = prompt(
+            'Reason for rejecting this check-in?',
+            'Out of range / unverifiable location'
+        );
+        if (reason === null) return;
+        if (!reason.trim()) {
+            this.showNotification('Rejection reason is required.', 'warning');
+            return;
+        }
+
+        this.isProcessing = true;
+
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database not available');
+
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const userId = profile?.user_id || this.lecturerUuid;
+
+            const { error: updateError } = await supabase
+                .from('geo_attendance_logs')
+                .update({
+                    attendance_status: 'Absent',
+                    is_verified: false,
+                    finalized_at: new Date().toISOString(),
+                    finalized_by: userId,
+                    verification_source: 'Manual Rejection',
+                    finalization_reason: reason.trim()
+                })
+                .eq('id', recordId);
+
+            if (updateError) throw new Error(updateError.message);
+
+            this.showNotification('🚫 Check-in rejected', 'success');
+
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+            this.applyFilters();
+        } catch (error) {
+            console.error('❌ rejectAttendance:', error);
+            this.showNotification('Failed: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
+        }
+    },
+
+    // ============================================================
+    // ✅ MARK ABSENT — BULK
+    // ============================================================
+    async bulkMarkAbsent() {
+        if (this.isProcessing) return;
+
+        const targets = [
+            ...(this.filteredTodayLogs || []),
+            ...(this.filteredPastLogs || [])
+        ].filter(l =>
+            l.session_type !== 'Lecturer Check-in' &&
+            l.role !== 'lecturer' &&
+            String(l.attendance_status || '').toLowerCase() !== 'absent'
+        );
+
+        if (!targets.length) {
+            this.showNotification('No records to mark absent with current filters.', 'info');
+            return;
+        }
+
+        const filterUnit = document.getElementById('filterUnit')?.value || 'All';
+        const filterBlock = document.getElementById('filterBlock')?.value || 'All';
+        const filterDate = document.getElementById('filterDate')?.value || '';
+
+        const bits = [];
+        if (filterDate) bits.push(`Date ${filterDate}`);
+        if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
+        if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
+        const context = bits.length ? `matching: ${bits.join(' · ')}` : 'ALL visible records';
+
+        if (!confirm(
+            `⚠️ Mark ${targets.length} record${targets.length === 1 ? '' : 's'} as ABSENT?\n\n` +
+            `Filters: ${context}`
+        )) return;
+
+        this.isProcessing = true;
+        this.showNotification(`Marking ${targets.length} records absent...`, 'info');
+
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database not available');
+
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const userId = profile?.user_id || this.lecturerUuid;
+
+            const ids = targets.map(t => t.id).filter(Boolean);
+            if (!ids.length) throw new Error('No valid record IDs');
+
+            const now = new Date().toISOString();
+            const CHUNK = 500;
+            let updated = 0;
+
+            for (let i = 0; i < ids.length; i += CHUNK) {
+                const slice = ids.slice(i, i + CHUNK);
+                const { error: updateError, count } = await supabase
+                    .from('geo_attendance_logs')
+                    .update({
+                        attendance_status: 'Absent',
+                        is_verified: false,
+                        finalized_at: now,
+                        finalized_by: userId,
+                        verification_source: 'Bulk Mark Absent',
+                        finalization_reason: 'Marked absent by lecturer (bulk)'
+                    }, { count: 'exact' })
+                    .in('id', slice);
+
+                if (updateError) throw new Error(updateError.message);
+                updated += (count || slice.length);
+            }
+
+            this.showNotification(`❌ ${updated} record${updated === 1 ? '' : 's'} marked absent`, 'success');
+
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+            this.applyFilters();
+        } catch (error) {
+            console.error('❌ bulkMarkAbsent:', error);
+            this.showNotification('Failed: ' + error.message, 'error');
         } finally {
             this.isProcessing = false;
         }
@@ -1174,7 +1372,6 @@ const LecturerAttendance = {
             return a.unit.localeCompare(b.unit);
         });
 
-        // Load full roster for each class
         for (const cls of classList) {
             try {
                 const roster = await this.getRosterForClass(cls);
@@ -1480,7 +1677,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ NEW: Full roster for one (block × program × intake) class
+    // ✅ Full roster for one (block × program × intake) class
     // ============================================================
     async getRosterForClass(cls) {
         const supabase = window.lecturerDB?.supabase;
@@ -1682,7 +1879,6 @@ const LecturerAttendance = {
 
         const rows = [];
         const missing = [];
-        const rosterKeys = new Set();
 
         for (const student of roster) {
             const keys = [
@@ -1690,8 +1886,6 @@ const LecturerAttendance = {
                 student.student_id,
                 student.registration_number
             ].filter(Boolean).map(String);
-
-            keys.forEach(k => rosterKeys.add(k));
 
             let log = null;
             for (const key of keys) {
@@ -1990,6 +2184,11 @@ window.deleteAttendance = (id) => LecturerAttendance.deleteAttendance(id);
 window.bulkDeleteAttendance = () => LecturerAttendance.bulkDeleteAttendance();
 window.canDeleteRecord = (record) => LecturerAttendance.canDeleteRecord(record);
 
+window.markAbsent = (id, reason) => LecturerAttendance.markAbsent(id, reason);
+window.rejectAttendance = (id) => LecturerAttendance.rejectAttendance(id);
+window.bulkMarkAbsent = () => LecturerAttendance.bulkMarkAbsent();
+window.canMarkAbsent = (record) => LecturerAttendance.canMarkAbsent(record);
+
 window.reconcileSessionAttendance = (sessionId, finalize = true) =>
     LecturerAttendance.reconcileSessionAttendance(sessionId, finalize);
 window.previewSessionAttendance = (sessionId) =>
@@ -2013,8 +2212,7 @@ window.openInGoogleMaps = () => {
 };
 
 console.log('✅ LecturerAttendance module loaded');
-console.log('📋 Features: Today/Past, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify, Unit filter, Delete (single + bulk)');
+console.log('📋 Features: Today/Past, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify, Unit filter, Delete (single + bulk), Mark Absent (single + bulk), Reject');
 console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
-console.log('🎨 Export: Modern styled .xlsx — P (Pending) counted as Present');
-console.log('👥 Export: Includes ALL students in each block, even those with no check-ins');
-console.log('🗑️ Delete: Single + bulk, owner-only via RLS');
+console.log('🎨 Export: P (Pending) counted as Present; full block roster included');
+console.log('🚫 Actions: Verify / Absent / Reject / Delete per row');
