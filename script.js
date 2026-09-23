@@ -15214,6 +15214,8 @@ function initResourcesSection() {
     }
 
     initializeResourceNotificationUI();
+    bindEditResourceModalControls();
+    ensureEditPodcastControls();
 
     const searchInput = document.getElementById('resource-search');
     if (searchInput && !searchInput.dataset.resourceSearchBound) {
@@ -15236,13 +15238,57 @@ function initResourcesSection() {
     console.log('✅ Super Admin Resources Section initialized');
 }
 
+function bindEditResourceModalControls() {
+    const modal = document.getElementById('edit-resource-modal');
+    if (!modal || modal.dataset.resourceModalBound === '1') return;
+
+    modal.dataset.resourceModalBound = '1';
+
+    const closeButton = modal.querySelector('button[aria-label="Close edit resource"]');
+    if (closeButton) {
+        closeButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeEditModal();
+        });
+    }
+
+    const cancelButton = modal.querySelector('#edit-resource-form button[type="button"]');
+    if (cancelButton) {
+        cancelButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeEditModal();
+        });
+    }
+
+    modal.addEventListener('click', function (event) {
+        if (event.target === modal) closeEditModal();
+    });
+
+    if (!document.body.dataset.resourceEscapeBound) {
+        document.body.dataset.resourceEscapeBound = '1';
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                const currentModal = document.getElementById('edit-resource-modal');
+                if (currentModal && currentModal.style.display === 'flex') {
+                    closeEditModal();
+                }
+            }
+        });
+    }
+}
+
 function autoInitResourcesSection() {
     const run = () => {
         if (document.getElementById('resources')) initResourcesSection();
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
     else setTimeout(run, 0);
+    // Also bind modal controls when the Resources section is injected later.
+    setTimeout(bindEditResourceModalControls, 150);
 }
+
 
 
 // =====================================================
@@ -15967,27 +16013,135 @@ function populateEditBlockOptions(program, selectedBlock = '') {
     }
 }
 
+function ensureEditPodcastControls() {
+    const form = document.getElementById('edit-resource-form');
+    if (!form || document.getElementById('edit-resource-podcast-panel')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'edit-resource-podcast-panel';
+    panel.style.cssText = 'margin-top:15px;padding:14px;border:1px solid #ddd6fe;border-radius:13px;background:linear-gradient(135deg,#faf5ff,#f5f3ff);';
+
+    panel.innerHTML = `
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;">
+            <span style="width:32px;height:32px;border-radius:9px;background:#ede9fe;color:#6d28d9;display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-podcast"></i>
+            </span>
+            <div>
+                <strong style="font-size:12px;color:#4c1d95;">Podcast / Audio Lesson</strong>
+                <div style="font-size:9px;color:#64748b;margin-top:2px;">Replace the existing prerecorded audio or remove it.</div>
+            </div>
+        </div>
+
+        <div id="edit-resource-current-audio"
+             style="display:none;margin-bottom:10px;padding:9px 10px;border:1px solid #a7f3d0;border-radius:9px;background:#ecfdf5;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:10px;font-weight:800;color:#047857;">
+                    <i class="fas fa-circle-check"></i> Current audio attached
+                </span>
+                <a id="edit-resource-audio-preview" href="#" target="_blank" rel="noopener"
+                   style="display:inline-flex;align-items:center;gap:4px;background:#059669;color:#fff;text-decoration:none;padding:5px 8px;border-radius:6px;font-size:10px;font-weight:800;">
+                    <i class="fas fa-play"></i> Preview
+                </a>
+            </div>
+        </div>
+
+        <input type="file" id="edit_resource_podcast_file"
+               accept=".mp3,.m4a,.wav,.ogg,.webm,audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm"
+               style="width:100%;box-sizing:border-box;padding:9px;background:#fff;border:1px dashed #c4b5fd;border-radius:9px;font-size:11px;">
+
+        <label style="display:flex;align-items:center;gap:7px;margin-top:9px;cursor:pointer;font-size:10px;color:#b91c1c;font-weight:750;">
+            <input type="checkbox" id="edit_resource_remove_podcast" style="width:15px;height:15px;accent-color:#dc2626;">
+            Remove current podcast/audio
+        </label>
+
+        <div id="edit-resource-podcast-status" style="margin-top:7px;font-size:9px;color:#64748b;"></div>
+    `;
+
+    // Insert immediately before the action buttons.
+    const actionRow = form.querySelector('button[type="submit"]')?.parentElement;
+    if (actionRow) form.insertBefore(panel, actionRow);
+    else form.appendChild(panel);
+
+    const removeBox = document.getElementById('edit_resource_remove_podcast');
+    const podcastInput = document.getElementById('edit_resource_podcast_file');
+
+    if (removeBox && podcastInput) {
+        removeBox.addEventListener('change', () => {
+            if (removeBox.checked) podcastInput.value = '';
+        });
+        podcastInput.addEventListener('change', () => {
+            if (podcastInput.files?.length) removeBox.checked = false;
+            const status = document.getElementById('edit-resource-podcast-status');
+            if (status && podcastInput.files?.[0]) {
+                status.textContent = `Selected: ${podcastInput.files[0].name}`;
+                status.style.color = '#6d28d9';
+            }
+        });
+    }
+}
+
+function setEditPodcastState(resource) {
+    ensureEditPodcastControls();
+
+    const current = document.getElementById('edit-resource-current-audio');
+    const preview = document.getElementById('edit-resource-audio-preview');
+    const input = document.getElementById('edit_resource_podcast_file');
+    const remove = document.getElementById('edit_resource_remove_podcast');
+    const status = document.getElementById('edit-resource-podcast-status');
+
+    if (input) input.value = '';
+    if (remove) remove.checked = false;
+    if (status) status.textContent = '';
+
+    const url = resource?.podcast_url || '';
+    if (current && preview && url) {
+        preview.href = url;
+        current.style.display = 'block';
+    } else if (current) {
+        current.style.display = 'none';
+        if (preview) preview.removeAttribute('href');
+    }
+}
+
 function openEditResourceModal() {
     const modal = document.getElementById('edit-resource-modal');
     if (!modal) return false;
+
+    ensureEditPodcastControls();
+
     modal.style.display = 'flex';
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
+    modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
+
     setTimeout(() => document.getElementById('edit_resource_title')?.focus(), 80);
     return true;
 }
 
-if (!window.__closeEditModalDefined) {
-    window.__closeEditModalDefined = true;
-    
-    window.closeEditModal = function(silent = false) {
-        const modal = document.getElementById('edit-resource-modal');
-        if (modal) modal.style.display = 'none';
-        document.body.style.overflow = '';
-        editingResourceId = null;
-        const form = document.getElementById('edit-resource-form');
-        if (form) form.reset();
-        if (!silent) showFeedback('Edit cancelled', 'info');
-    };
+function closeEditModal() {
+    const modal = document.getElementById('edit-resource-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.body.style.overflow = '';
+    editingResourceId = null;
+
+    const form = document.getElementById('edit-resource-form');
+    if (form) form.reset();
+
+    const current = document.getElementById('edit-resource-current-audio');
+    if (current) current.style.display = 'none';
+
+    const status = document.getElementById('edit-resource-podcast-status');
+    if (status) status.textContent = '';
+
+    // Do not call showFeedback here. Closing/cancelling must always work even
+    // if the global notification helper is unavailable.
 }
 
 async function editResource(resourceId) {
@@ -16016,6 +16170,9 @@ async function editResource(resourceId) {
         setValue('edit_resource_exam_type', resource.exam_type || '');
         setValue('edit_resource_course_name', resource.course_name || '');
 
+        ensureEditPodcastControls();
+        setEditPodcastState(resource);
+
         editingResourceId = resourceId;
         if (!openEditResourceModal()) throw new Error('Edit modal is not available on this page.');
     } catch (error) {
@@ -16027,7 +16184,7 @@ async function editResource(resourceId) {
 async function saveEditResource() {
     const id = document.getElementById('edit_resource_id')?.value || editingResourceId;
     if (!id) {
-        showFeedback('No resource selected for editing.', 'error');
+        if (typeof showFeedback === 'function') showFeedback('No resource selected for editing.', 'error');
         return;
     }
 
@@ -16038,16 +16195,27 @@ async function saveEditResource() {
     const description = document.getElementById('edit_resource_description')?.value?.trim() || '';
 
     if (!program || !intake || !block || !title) {
-        showFeedback('Please complete Program, Intake, Block/Term and Title.', 'error');
+        if (typeof showFeedback === 'function') showFeedback('Please complete Program, Intake, Block/Term and Title.', 'error');
         return;
     }
 
+    ensureEditPodcastControls();
+
+    const podcastInput = document.getElementById('edit_resource_podcast_file');
+    const removePodcast = document.getElementById('edit_resource_remove_podcast')?.checked || false;
+    const newPodcastFile = podcastInput?.files?.[0] || null;
+
     const saveButton = document.querySelector('#edit-resource-form button[type="submit"]');
     const originalText = saveButton?.innerHTML || 'Save Changes';
+
     if (saveButton) {
         saveButton.disabled = true;
         saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     }
+
+    let uploadedReplacement = null;
+    let oldPodcastPath = null;
+    let oldPodcastUrl = null;
 
     try {
         const { data: existing, error: existingError } = await sb
@@ -16055,13 +16223,27 @@ async function saveEditResource() {
             .select('resource_type, file_path, file_url, file_name, podcast_url, podcast_path')
             .eq('id', id)
             .single();
+
         if (existingError) throw existingError;
 
+        oldPodcastPath = existing?.podcast_path || null;
+        oldPodcastUrl = existing?.podcast_url || null;
+
+        // Upload replacement audio first. The database is updated only after
+        // the new file is safely in Storage.
+        if (newPodcastFile) {
+            uploadedReplacement = await uploadResourcePodcastAudio(
+                newPodcastFile,
+                { program_type: program, intake, block, title }
+            );
+        }
+
         const isPastPaper = existing.resource_type === 'pastpaper';
+
         const update = {
             program_type: program,
-            intake: intake,
-            block: block,
+            intake,
+            block,
             title,
             description,
             updated_at: new Date().toISOString()
@@ -16071,21 +16253,63 @@ async function saveEditResource() {
             const year = document.getElementById('edit_resource_pastpaper_year')?.value || null;
             const examType = document.getElementById('edit_resource_exam_type')?.value || null;
             const courseName = document.getElementById('edit_resource_course_name')?.value?.trim() || null;
+
             update.pastpaper_year = year ? parseInt(year, 10) : null;
             update.exam_type = examType;
             update.course_name = courseName;
         }
 
+        // Podcast state:
+        // - New file selected => replace current audio.
+        // - Remove checked => clear current audio.
+        // - Neither => preserve current audio exactly.
+        if (uploadedReplacement) {
+            update.podcast_url = uploadedReplacement.url;
+            update.podcast_path = uploadedReplacement.path;
+        } else if (removePodcast) {
+            update.podcast_url = null;
+            update.podcast_path = null;
+        } else {
+            update.podcast_url = oldPodcastUrl;
+            update.podcast_path = oldPodcastPath;
+        }
+
         const { error } = await sb.from('resources').update(update).eq('id', id);
-        if (error) throw error;
+        if (error) {
+            // Avoid leaving a newly uploaded replacement behind if DB update fails.
+            if (uploadedReplacement?.path) {
+                try {
+                    await sb.storage.from(RESOURCE_AUDIO_BUCKET).remove([uploadedReplacement.path]);
+                } catch (cleanupError) {
+                    console.warn('Could not clean up replacement podcast:', cleanupError);
+                }
+            }
+            throw error;
+        }
+
+        // Remove the old podcast only after the DB now points to the new state.
+        if ((uploadedReplacement || removePodcast) && oldPodcastPath) {
+            try {
+                await sb.storage.from(RESOURCE_AUDIO_BUCKET).remove([oldPodcastPath]);
+            } catch (storageError) {
+                console.warn('Old podcast could not be removed from Storage:', storageError);
+            }
+        }
 
         await logAudit('RESOURCE_UPDATE', `Updated resource: ${title}`, id, 'SUCCESS');
-        closeEditModal(true);
-        showFeedback(`✅ "${title}" updated successfully.`, 'success');
+
+        closeEditModal();
+
+        if (typeof showFeedback === 'function') {
+            showFeedback(`✅ "${title}" updated successfully.`, 'success');
+        }
+
         await loadAllResources();
     } catch (error) {
         console.error('Save edit failed:', error);
-        showFeedback(`❌ Update failed: ${error.message}`, 'error');
+        if (typeof showFeedback === 'function') {
+            showFeedback(`❌ Update failed: ${error.message}`, 'error');
+        }
     } finally {
         if (saveButton) {
             saveButton.disabled = false;
@@ -16098,22 +16322,39 @@ async function saveEditResource() {
 // CANCEL EDIT
 // =====================================================
 function cancelEditResource() {
-    document.getElementById('resource_edit_id').value = '';
-    document.getElementById('form-title').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-    document.getElementById('form-subtitle').textContent = 'Upload new learning materials or past examination papers';
-    document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-    document.getElementById('form-cancel-btn').style.display = 'none';
-    document.getElementById('file-edit-info').style.display = 'none';
-    document.getElementById('resource-file').required = true;
-    document.getElementById('upload-resource-form').reset();
-    setPodcastEditPreview(null);
+    // Legacy inline upload-form edit mode, retained for compatibility.
+    const editId = document.getElementById('resource_edit_id');
+    if (editId) editId.value = '';
+
+    const formTitle = document.getElementById('form-title');
+    const formSubtitle = document.getElementById('form-subtitle');
+    const submitBtn = document.getElementById('form-submit-btn');
+    const cancelBtn = document.getElementById('form-cancel-btn');
+    const fileInfo = document.getElementById('file-edit-info');
+    const fileInput = document.getElementById('resource-file');
+    const uploadForm = document.getElementById('upload-resource-form');
+
+    if (formTitle) formTitle.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+    if (formSubtitle) formSubtitle.textContent = 'Publish a learning material or past paper to the student resource center.';
+    if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (fileInfo) fileInfo.style.display = 'none';
+    if (fileInput) fileInput.required = true;
+
+    if (uploadForm) uploadForm.reset();
+
+    if (typeof setPodcastEditPreview === 'function') {
+        setPodcastEditPreview(null);
+    }
+
     selectedResourceStudents = [];
     allResourceStudents = [];
-    togglePastPaperFields();
-    initializeResourceNotificationUI();
     editingResourceId = null;
-    showFeedback('Edit cancelled', 'info');
+
+    if (typeof togglePastPaperFields === 'function') togglePastPaperFields();
+    if (typeof initializeResourceNotificationUI === 'function') initializeResourceNotificationUI();
 }
+
 
 // =====================================================
 // LOAD ALL RESOURCES
@@ -16315,6 +16556,8 @@ function exportResourcesToCSV() {
 // =====================================================
 // MAKE FUNCTIONS GLOBAL
 // =====================================================
+window.bindEditResourceModalControls = bindEditResourceModalControls;
+window.ensureEditPodcastControls = ensureEditPodcastControls;
 window.openEditResourceModal = openEditResourceModal;
 window.closeEditModal = closeEditModal;
 window.saveEditResource = saveEditResource;
