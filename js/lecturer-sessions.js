@@ -879,6 +879,24 @@ const LecturerSessions = {
                 throw new Error('Database connection not available');
             }
 
+            // Finalize the complete class register BEFORE disabling the session.
+            // Valid in-radius check-ins remain Present; missing/out-of-radius/invalid
+            // check-ins are finalized as Absent.
+            if (window.LecturerAttendance?.reconcileSessionAttendance) {
+                try {
+                    const register = await window.LecturerAttendance.reconcileSessionAttendance(sessionId, true);
+                    console.log('📋 Final attendance register:', register.summary);
+                } catch (attendanceError) {
+                    console.error('❌ Attendance finalization failed:', attendanceError);
+                    window.showNotification(
+                        'Session was not closed because attendance could not be finalized: ' + attendanceError.message,
+                        'error'
+                    );
+                    this.isProcessing = false;
+                    return;
+                }
+            }
+
             const { error } = await supabase
                 .from('scheduled_sessions')
                 .update({
@@ -891,7 +909,7 @@ const LecturerSessions = {
 
             if (error) throw error;
 
-            window.showNotification('✅ Session closed. Attendance sign-in disabled.', 'success');
+            window.showNotification('✅ Session closed. Full class attendance finalized.', 'success');
             await this.loadSessions();
 
         } catch (error) {
