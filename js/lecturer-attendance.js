@@ -971,220 +971,6 @@ const LecturerAttendance = {
         wb.creator = 'NCHSM';
         wb.created = new Date();
 
-        // ============================================================
-        // WORKBOOK SUMMARY SHEET
-        // ============================================================
-        const summaryWs = wb.addWorksheet('SUMMARY', {
-            pageSetup: {
-                paperSize: 9,
-                orientation: 'landscape',
-                fitToPage: true,
-                fitToWidth: 1,
-                fitToHeight: 0,
-                margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
-            }
-        });
-
-        const SUMMARY_PURPLE = 'FF4F46E5';
-        const SUMMARY_PURPLE_LIGHT = 'FFEEF2FF';
-        const SUMMARY_GREEN_LIGHT = 'FFD1FAE5';
-        const SUMMARY_RED_LIGHT = 'FFFEE2E2';
-        const SUMMARY_AMBER_LIGHT = 'FFFEF3C7';
-        const SUMMARY_DARK = 'FF0F172A';
-        const SUMMARY_GREY = 'FF64748B';
-        const SUMMARY_BORDER = 'FFE2E8F0';
-        const summaryCols = 12;
-
-        const summaryMerge = (row, value, opts = {}) => {
-            summaryWs.mergeCells(row, 1, row, summaryCols);
-            const cell = summaryWs.getCell(row, 1);
-            cell.value = value;
-            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-            if (opts.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: opts.fill } };
-            if (opts.font) cell.font = opts.font;
-            if (opts.height) summaryWs.getRow(row).height = opts.height;
-        };
-
-        let sr = 1;
-        summaryMerge(sr++, 'NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT', {
-            fill: SUMMARY_PURPLE,
-            font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 16 },
-            height: 34
-        });
-        summaryMerge(sr++, 'DEPARTMENT OF NURSING — ATTENDANCE SUMMARY', {
-            fill: SUMMARY_PURPLE_LIGHT,
-            font: { bold: true, color: { argb: SUMMARY_PURPLE }, size: 13 },
-            height: 24
-        });
-        summaryMerge(sr++, `${this.currentProgram || 'Nursing'} | Generated: ${new Date().toLocaleString('en-GB')}`, {
-            font: { color: { argb: SUMMARY_DARK }, size: 11 },
-            height: 22
-        });
-
-        sr++;
-        const summaryHeaders = [
-            'S/NO', 'CLASS / BLOCK', 'INTAKE', 'PROGRAM', 'UNIT', 'SESSION TYPE',
-            'STUDENTS', 'PRESENT', 'ABSENT', 'PENDING', 'ATTENDANCE %', 'ABSENCE %'
-        ];
-        summaryHeaders.forEach((value, i) => {
-            const cell = summaryWs.getCell(sr, i + 1);
-            cell.value = value;
-            cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_PURPLE } };
-            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-            cell.border = {
-                top: { style: 'thin', color: { argb: SUMMARY_BORDER } },
-                bottom: { style: 'thin', color: { argb: SUMMARY_BORDER } },
-                left: { style: 'thin', color: { argb: SUMMARY_BORDER } },
-                right: { style: 'thin', color: { argb: SUMMARY_BORDER } }
-            };
-        });
-        summaryWs.getRow(sr).height = 30;
-        const summaryHeaderRow = sr;
-        sr++;
-
-        const summaryRows = [];
-
-        // Summary is based on the same class/unit groups that are exported.
-        classList.forEach((cls, index) => {
-            const studentMap = {};
-            cls.logs.forEach(log => {
-                const reg = String(log.registration_number || log.student_id || log.student_name || 'N/A').trim();
-                if (!studentMap[reg]) studentMap[reg] = {};
-                const iso = log.check_in_time
-                    ? new Date(log.check_in_time).toISOString().split('T')[0]
-                    : null;
-                if (!iso) return;
-
-                const status = String(log.attendance_status || '').toLowerCase();
-                const verified = log.is_verified === true || status === 'present' || status === 'verified';
-                let mark = '-';
-                if (verified) mark = '✓';
-                else if (status === 'absent') mark = 'A';
-                else if (status === 'pending' || status === '') mark = 'P';
-
-                const rank = { '✓': 4, 'P': 3, 'A': 2, '-': 0 };
-                if (!studentMap[reg][iso] || rank[mark] > rank[studentMap[reg][iso]]) {
-                    studentMap[reg][iso] = mark;
-                }
-            });
-
-            const students = Object.values(studentMap);
-            const dates = [...new Set(cls.logs.map(l =>
-                l.check_in_time ? new Date(l.check_in_time).toISOString().split('T')[0] : null
-            ).filter(Boolean))];
-
-            const totalStudents = students.length;
-            const totalSessions = dates.length || 1;
-            const possible = totalStudents * totalSessions;
-
-            let present = 0, absent = 0, pending = 0;
-            students.forEach(student => dates.forEach(date => {
-                const mark = student[date] || '-';
-                if (mark === '✓') present++;
-                else if (mark === 'A') absent++;
-                else pending++;
-            }));
-
-            const attendanceRate = possible ? Math.round((present / possible) * 100) : 0;
-            const absenceRate = possible ? Math.round((absent / possible) * 100) : 0;
-
-            summaryRows.push([
-                index + 1, cls.blockDisplay, cls.intake, cls.program, cls.unit,
-                cls.sessionType, totalStudents, present, absent, pending,
-                `${attendanceRate}%`, `${absenceRate}%`
-            ]);
-        });
-
-        summaryRows.forEach(values => {
-            values.forEach((value, i) => {
-                const cell = summaryWs.getCell(sr, i + 1);
-                cell.value = value;
-                cell.alignment = { horizontal: i >= 6 ? 'center' : 'left', vertical: 'middle', wrapText: true };
-                cell.font = { size: 10, color: { argb: SUMMARY_DARK } };
-                cell.border = {
-                    top: { style: 'thin', color: { argb: SUMMARY_BORDER } },
-                    bottom: { style: 'thin', color: { argb: SUMMARY_BORDER } },
-                    left: { style: 'thin', color: { argb: SUMMARY_BORDER } },
-                    right: { style: 'thin', color: { argb: SUMMARY_BORDER } }
-                };
-                if (i === 7) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_GREEN_LIGHT } };
-                if (i === 8) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_RED_LIGHT } };
-                if (i === 9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_AMBER_LIGHT } };
-            });
-            sr++;
-        });
-
-        const overall = summaryRows.reduce((a, row) => {
-            a.students += Number(row[6]) || 0;
-            a.present += Number(row[7]) || 0;
-            a.absent += Number(row[8]) || 0;
-            a.pending += Number(row[9]) || 0;
-            return a;
-        }, { students: 0, present: 0, absent: 0, pending: 0 });
-
-        const overallPossible = overall.present + overall.absent + overall.pending;
-        const overallAttendance = overallPossible ? Math.round((overall.present / overallPossible) * 100) : 0;
-        const overallAbsence = overallPossible ? Math.round((overall.absent / overallPossible) * 100) : 0;
-
-        summaryWs.mergeCells(sr, 1, sr, 6);
-        summaryWs.getCell(sr, 1).value = 'OVERALL SUMMARY';
-        summaryWs.getCell(sr, 1).font = { bold: true, color: { argb: SUMMARY_DARK }, size: 11 };
-        summaryWs.getCell(sr, 1).alignment = { horizontal: 'center', vertical: 'middle' };
-
-        [
-            overall.students, overall.present, overall.absent, overall.pending,
-            `${overallAttendance}%`, `${overallAbsence}%`
-        ].forEach((value, i) => {
-            const cell = summaryWs.getCell(sr, i + 7);
-            cell.value = value;
-            cell.font = { bold: true, color: { argb: SUMMARY_DARK }, size: 11 };
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        });
-        for (let c = 1; c <= summaryCols; c++) {
-            summaryWs.getCell(sr, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SUMMARY_GREEN_LIGHT } };
-            summaryWs.getCell(sr, c).border = {
-                top: { style: 'thin', color: { argb: SUMMARY_BORDER } },
-                bottom: { style: 'thin', color: { argb: SUMMARY_BORDER } },
-                left: { style: 'thin', color: { argb: SUMMARY_BORDER } },
-                right: { style: 'thin', color: { argb: SUMMARY_BORDER } }
-            };
-        }
-        summaryWs.getRow(sr).height = 26;
-        sr += 2;
-
-        summaryMerge(sr++, 'ATTENDANCE KEY', {
-            fill: SUMMARY_PURPLE_LIGHT,
-            font: { bold: true, color: { argb: SUMMARY_PURPLE }, size: 11 },
-            height: 22
-        });
-        [
-            ['✓', 'Present — valid attendance'],
-            ['A', 'Absent — attendance record not valid for the session'],
-            ['P', 'Pending / unresolved attendance'],
-            ['-', 'No attendance mark available']
-        ].forEach(([code, description]) => {
-            summaryWs.getCell(sr, 1).value = code;
-            summaryWs.getCell(sr, 1).font = { bold: true, size: 11 };
-            summaryWs.getCell(sr, 1).alignment = { horizontal: 'center', vertical: 'middle' };
-            summaryWs.mergeCells(sr, 2, sr, summaryCols);
-            summaryWs.getCell(sr, 2).value = description;
-            summaryWs.getCell(sr, 2).font = { size: 10, color: { argb: SUMMARY_GREY } };
-            summaryWs.getCell(sr, 2).alignment = { vertical: 'middle', wrapText: true };
-            sr++;
-        });
-
-        summaryWs.columns = [
-            { width: 7 }, { width: 22 }, { width: 12 }, { width: 12 },
-            { width: 30 }, { width: 18 }, { width: 11 }, { width: 11 },
-            { width: 11 }, { width: 11 }, { width: 15 }, { width: 13 }
-        ];
-        summaryWs.views = [{ state: 'frozen', ySplit: summaryHeaderRow }];
-        summaryWs.autoFilter = {
-            from: { row: summaryHeaderRow, column: 1 },
-            to: { row: summaryHeaderRow + summaryRows.length, column: summaryCols }
-        };
-
         const usedNames = new Set();
 
         // ---- 5. BUILD EACH SHEET ----
@@ -1215,10 +1001,10 @@ const LecturerAttendance = {
                 const verified = log.is_verified === true;
                 let mark = '-';
                 if (verified || status === 'present' || status === 'verified') mark = '✓';
-                else if (status === 'absent') mark = log.verification_source === 'Automatic Session Finalization' ? 'A*' : 'A';
+                else if (status === 'absent') mark = 'A';
                 else if (status === 'pending' || status === '') mark = 'P';
 
-                const rank = { '✓': 3, 'P': 2, 'A*': 1, 'A': 1, '-': 0 };
+                const rank = { '✓': 3, 'P': 2, 'A': 1, '-': 0 };
                 const prev = studentMap[reg].byDate[iso];
                 if (!prev || rank[mark] > rank[prev]) studentMap[reg].byDate[iso] = mark;
             });
@@ -1315,7 +1101,7 @@ const LecturerAttendance = {
 
                     let fill = GREY_LIGHT, fontColor = GREY;
                     if (mark === '✓') { fill = GREEN_LIGHT; fontColor = GREEN; }
-                    else if (mark === 'A' || mark === 'A*') { fill = RED_LIGHT; fontColor = RED; }
+                    else if (mark === 'A') { fill = RED_LIGHT; fontColor = RED; }
                     else if (mark === 'P') { fill = AMBER_LIGHT; fontColor = AMBER; }
 
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
@@ -1349,6 +1135,7 @@ const LecturerAttendance = {
             const totalStudents = students.length;
             const totalSessions = sortedDates.length;
             const totalPossible = totalStudents * totalSessions;
+            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const rate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
 
             ws.mergeCells(r, 1, r, totalCols);
@@ -1357,50 +1144,6 @@ const LecturerAttendance = {
             sumCell.alignment = { horizontal: 'center', vertical: 'middle' };
             sumCell.font = { bold: true, color: { argb: 'FF065F46' }, size: 11 };
             sumCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN_LIGHT } };
-            ws.getRow(r).height = 24;
-            r += 2;
-
-            // ---- Detailed attendance summary ----
-            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
-            const totalAbsent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === 'A' || v === 'A*').length, 0);
-            const totalAutoAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source === 'Automatic Session Finalization').length;
-            const totalAttemptedAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source !== 'Automatic Session Finalization').length;
-            const totalPending = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === 'P').length, 0);
-            const totalPossibleDetailed = totalStudents * totalSessions;
-            const attendanceRate = totalPossibleDetailed ? Math.round((totalPresent / totalPossibleDetailed) * 100) : 0;
-            const absenceRate = totalPossibleDetailed ? Math.round((totalAbsent / totalPossibleDetailed) * 100) : 0;
-
-            const summaryRows = [
-                ['ATTENDANCE SUMMARY', ''],
-                ['Total Students', totalStudents],
-                ['Sessions / Dates', totalSessions],
-                ['Total Possible Attendance', totalPossibleDetailed],
-                ['Present', totalPresent],
-                ['Absent — No Check-in / Automatic', totalAutoAbsent],
-                ['Absent — Check-in Attempt Not Valid', totalAttemptedAbsent],
-                ['Pending', totalPending],
-                ['Attendance Rate', `${attendanceRate}%`],
-                ['Absence Rate', `${absenceRate}%`]
-            ];
-            summaryRows.forEach((item, idx) => {
-                const rr = r + idx;
-                ws.mergeCells(rr, 1, rr, Math.max(2, Math.floor(totalCols / 2)));
-                ws.mergeCells(rr, Math.max(3, Math.floor(totalCols / 2) + 1), rr, totalCols);
-                ws.getCell(rr, 1).value = item[0];
-                ws.getCell(rr, 2 + Math.floor(totalCols / 2)).value = item[1];
-                ws.getCell(rr, 1).font = { bold: idx === 0, color: { argb: idx === 0 ? PURPLE : DARK }, size: idx === 0 ? 12 : 10 };
-                ws.getCell(rr, 2 + Math.floor(totalCols / 2)).font = { bold: true, color: { argb: DARK }, size: 10 };
-                ws.getCell(rr, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx === 0 ? PURPLE_LIGHT : GREY_LIGHT } };
-                ws.getCell(rr, 2 + Math.floor(totalCols / 2)).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx === 0 ? PURPLE_LIGHT : 'FFFFFFFF' } };
-                ws.getRow(rr).height = idx === 0 ? 22 : 19;
-            });
-            r += summaryRows.length + 1;
-
-            // ---- Legend / audit notes ----
-            ws.mergeCells(r, 1, r, totalCols);
-            ws.getCell(r, 1).value = 'LEGEND: ✓ Present   |   A Absent after an invalid/unsuccessful check-in   |   A* Absent — no check-in recorded   |   P Pending';
-            ws.getCell(r, 1).font = { italic: true, color: { argb: 'FF475569' }, size: 9 };
-            ws.getCell(r, 1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             ws.getRow(r).height = 24;
             r += 2;
 
@@ -1470,9 +1213,6 @@ const LecturerAttendance = {
             // ---- Freeze header + first 3 cols ----
             ws.views = [{ state: 'frozen', xSplit: 3, ySplit: headerRowIdx }];
         }
-
-        // Open the workbook on the administrative summary sheet.
-        wb.views = [{ activeTab: 0, firstSheet: 0 }];
 
         // ---- 6. WRITE ----
         const suffixBits = [];
@@ -1784,10 +1524,28 @@ const LecturerAttendance = {
             }
 
             if (inserts.length) {
-                const { error: insertError } = await supabase
-                    .from('geo_attendance_logs')
-                    .insert(inserts);
-                if (insertError) throw insertError;
+                // Re-check immediately before inserting automatic Absence.
+                // A student may have checked in while reconciliation was running.
+                const safeInserts = [];
+                for (const candidate of inserts) {
+                    const { data: alreadyThere, error: checkError } = await supabase
+                        .from('geo_attendance_logs')
+                        .select('id')
+                        .eq('session_id', session.id)
+                        .eq('user_id', candidate.user_id)
+                        .limit(1);
+                    if (checkError) throw checkError;
+                    if (!alreadyThere?.length) safeInserts.push(candidate);
+                }
+
+                if (safeInserts.length) {
+                    const { error: insertError } = await supabase
+                        .from('geo_attendance_logs')
+                        .insert(safeInserts);
+                    // If the DB UNIQUE(user_id, session_id) constraint is installed
+                    // and a concurrent check-in wins the race, re-read instead of failing.
+                    if (insertError && insertError.code !== '23505') throw insertError;
+                }
             }
 
             // Re-read the finalized register so the caller gets final truth.
@@ -1887,6 +1645,17 @@ const LecturerAttendance = {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerName = profile?.full_name || 'Lecturer';
             const lecturerId = profile?.user_id || this.lecturerUuid || 'unknown';
+
+            const { data: record, error: recordError } = await supabase
+                .from('geo_attendance_logs')
+                .select('id, attendance_status, verification_source')
+                .eq('id', recordId)
+                .maybeSingle();
+            if (recordError) throw recordError;
+            if (!record) throw new Error('Attendance record not found');
+            if (String(record.verification_source || '').toLowerCase().includes('automatic session finalization')) {
+                throw new Error('Automatic Absent must be replaced by a valid student check-in before verification.');
+            }
 
             const { error: updateError } = await supabase
                 .from('geo_attendance_logs')
