@@ -1542,10 +1542,47 @@ const LecturerAttendance = {
     },
 
     async reconcileSessionAttendance(sessionId, finalize = true) {
-        const session = this.sessions?.find(s => s.id === sessionId);
-        if (!session) throw new Error('Session not found');
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) throw new Error('Database connection not available');
+        if (!sessionId) throw new Error('Session ID is required');
+
+        // IMPORTANT:
+        // LecturerSessions and LecturerAttendance are separate modules.
+        // LecturerAttendance does not necessarily have the session in
+        // this.sessions, so closing a session must load it directly from
+        // scheduled_sessions instead of relying on a local array.
+        let session = this.sessions?.find(s => String(s.id) === String(sessionId));
+
+        if (!session) {
+            const { data, error } = await supabase
+                .from('scheduled_sessions')
+                .select('*')
+                .eq('id', sessionId)
+                .maybeSingle();
+
+            if (error) throw new Error('Failed to load session: ' + error.message);
+            session = data;
+        }
+
+        if (!session) throw new Error('Session not found in scheduled_sessions');
+
+        // Confirm the current lecturer owns the session when an identity is available.
+        const profile = window.lecturerDB?.getCurrentUserProfile?.();
+        const lecturerId = this.lecturerUuid || profile?.user_id;
+
+        if (
+            lecturerId &&
+            session.created_by &&
+            String(session.created_by) !== String(lecturerId)
+        ) {
+            throw new Error('You can only finalize attendance for your own session');
+        }
 
         const sessionType = String(session.session_type || 'Class').toLowerCase();
+
+        // The automatic full-class finalization requested applies to classroom/
+        // lab/tutorial sessions. Clinical and exam attendance retain their
+        // existing workflow.
         if (sessionType === 'clinical' || sessionType === 'exam') {
             return await this.getSessionAttendanceRegister(session, false);
         }
@@ -1557,7 +1594,8 @@ const LecturerAttendance = {
             total: register.summary.total,
             present: register.summary.present,
             absent: register.summary.absent,
-            pending: register.summary.pending
+            pending: register.summary.pending,
+            rate: register.summary.rate
         });
 
         return register;
