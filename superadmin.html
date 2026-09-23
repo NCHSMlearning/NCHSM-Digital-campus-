@@ -10881,540 +10881,858 @@ textarea:focus-visible{
     }
 </style>
    <!-- Resources Section with Past Papers Support - UPDATED FOR TVET/KRCHN with EDIT -->
-<section id="resources" class="tab-content">
-    <h2><i class="fas fa-book-open"></i> Resource Center</h2>
-    <p>Upload learning materials and past examination papers for students</p>
-    
-    <!-- Program Mode Indicator -->
-    <div id="admin-program-indicator" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 10px 16px; background: #f1f5f9; border-radius: 8px; flex-wrap: wrap;">
-        <span style="font-weight: 600; color: #475569;">Mode:</span>
-        <span id="admin-program-badge" style="background: #4C1D95; color: white; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
-            <i class="fas fa-graduation-cap"></i> KRCHN Nursing
-        </span>
-        <span id="admin-block-term-badge" style="background: #e2e8f0; color: #1e293b; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">
-            <i class="fas fa-layer-group"></i> Block: Introductory
-        </span>
-        <button onclick="switchAdminProgram()" style="margin-left: auto; padding: 4px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-            <i class="fas fa-sync-alt"></i> Switch Mode
-        </button>
-    </div>
-    
-    <!-- Resource Type Toggle -->
-    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
-        <button id="resource-type-all" class="resource-type-btn active" onclick="filterResourceType('all')" style="padding: 10px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer;">
-            <i class="fas fa-layer-group"></i> All Resources
-        </button>
-        <button id="resource-type-material" class="resource-type-btn" onclick="filterResourceType('material')" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer;">
-            <i class="fas fa-book"></i> Learning Materials
-            <span id="material-count-badge" style="background: #10b981; color: white; border-radius: 20px; padding: 2px 8px; margin-left: 8px; font-size: 12px;">0</span>
-        </button>
-        <button id="resource-type-pastpaper" class="resource-type-btn" onclick="filterResourceType('pastpaper')" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer;">
-            <i class="fas fa-history"></i> Past Papers
-            <span id="pastpaper-count-badge" style="background: #f59e0b; color: white; border-radius: 20px; padding: 2px 8px; margin-left: 8px; font-size: 12px;">0</span>
-        </button>
-    </div>
-    
-    <!-- UNIFIED UPLOAD/EDIT FORM -->
-    <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
-        <h3 id="form-title"><i class="fas fa-upload"></i> Upload Resource</h3>
-        <p id="form-subtitle" style="color: #6b7280; font-size: 13px; margin-top: -5px; margin-bottom: 15px;">Upload new learning materials or past examination papers</p>
-        
-        <!-- Past Paper Toggle Checkbox -->
-        <div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 8px;">
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                <input type="checkbox" id="resource_is_pastpaper" onchange="togglePastPaperFields(); var n=document.getElementById('resource-email-notification-settings'); if(n)n.style.display=this.checked?'none':'block';">
-                <i class="fas fa-history"></i>
-                <span><strong>This is a Past Paper</strong> (Check this if uploading exam papers from previous years)</span>
-            </label>
+<section id="resources" class="tab-content" style="padding:0 0 28px 0;">
+    <!-- MODERN RESOURCE CENTER HEADER -->
+    <div style="position:relative;overflow:hidden;margin-bottom:22px;padding:26px 28px;border-radius:20px;background:linear-gradient(135deg,#4c1d95 0%,#6d28d9 48%,#7c3aed 100%);color:#fff;box-shadow:0 14px 35px rgba(76,29,149,.22);">
+        <div style="position:absolute;right:-70px;top:-90px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.09);"></div>
+        <div style="position:absolute;right:90px;bottom:-110px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06);"></div>
+
+        <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <div style="width:58px;height:58px;flex:0 0 58px;border-radius:16px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.12);">
+                    <i class="fas fa-book-open" style="font-size:25px;"></i>
+                </div>
+                <div>
+                    <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.78;margin-bottom:4px;">Academic Content Management</div>
+                    <h2 style="margin:0;font-size:27px;line-height:1.15;font-weight:850;letter-spacing:-.02em;">Resource Center</h2>
+                    <p style="margin:7px 0 0;color:rgba(255,255,255,.82);font-size:13px;">Manage learning materials, past papers and prerecorded audio lessons for students.</p>
+                </div>
+            </div>
+
+            <div id="admin-program-indicator" style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:14px;flex-wrap:wrap;backdrop-filter:blur(8px);">
+                <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.72);">CURRENT MODE</span>
+                <span id="admin-program-badge" style="background:#fff;color:#4c1d95;padding:6px 11px;border-radius:999px;font-size:12px;font-weight:800;">
+                    <i class="fas fa-graduation-cap"></i> KRCHN Nursing
+                </span>
+                <span id="admin-block-term-badge" style="background:rgba(255,255,255,.13);color:#fff;border:1px solid rgba(255,255,255,.2);padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700;">
+                    <i class="fas fa-layer-group"></i> Block: Introductory
+                </span>
+                <button onclick="switchAdminProgram()" style="padding:7px 11px;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;cursor:pointer;font-size:11px;font-weight:700;">
+                    <i class="fas fa-sync-alt"></i> Switch
+                </button>
+            </div>
         </div>
-        
-        <!-- Unified Form -->
-        <form id="upload-resource-form" class="inline-form" onsubmit="event.preventDefault(); handleResourceUpload(event);">
-            <!-- Hidden ID for edit mode -->
-            <input type="hidden" id="resource_edit_id" value="">
-            
-            <!-- Program Type -->
-            <select id="resource_program" required onchange="updateBlockOptions()">
-                <option value="">-- Select Program --</option>
-                <optgroup label="KRCHN">
-                    <option value="KRCHN">KRCHN Nursing</option>
-                </optgroup>
-                <optgroup label="TVET Programs">
-                    <option value="DPOTT">DPOTT - Perioperative Theatre Technology</option>
-                    <option value="DCH">DCH - Community Health</option>
-                    <option value="DHRIT">DHRIT - Health Records and IT</option>
-                    <option value="DSL">DSL - Science Lab</option>
-                    <option value="DSW">DSW - Social Work & Community Development</option>
-                    <option value="DCJS">DCJS - Criminal Justice</option>
-                    <option value="DHSS">DHSS - Health Support Services</option>
-                    <option value="DICT">DICT - ICT</option>
-                    <option value="DME">DME - Medical Engineering</option>
-                    <option value="CPOTT">CPOTT - Certificate Perioperative Theatre Technology</option>
-                    <option value="CCH">CCH - Certificate Community Health</option>
-                    <option value="CHRIT">CHRIT - Certificate Health Records and IT</option>
-                    <option value="CPC">CPC - Certificate Patient Care</option>
-                    <option value="CSL">CSL - Certificate Science Lab</option>
-                    <option value="CSW">CSW - Certificate Social Work</option>
-                    <option value="CCJS">CCJS - Certificate Criminal Justice</option>
-                    <option value="CAG">CAG - Certificate Agriculture</option>
-                    <option value="CHSS">CHSS - Certificate Health Support Services</option>
-                    <option value="CICT">CICT - Certificate ICT</option>
-                    <option value="ACH">ACH - Artisan Community Health</option>
-                    <option value="AAG">AAG - Artisan Agriculture</option>
-                    <option value="ASW">ASW - Artisan Social Work</option>
-                    <option value="CCA">CCA - Certificate Computer Applications</option>
-                    <option value="PTE">PTE - TVET/CDACC</option>
-                </optgroup>
-            </select>
-            
-            <!-- Intake Year -->
-            <select id="resource_intake" required>
-                <option value="">-- Intake Year --</option>
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-                <option value="2027">2027</option>
-                <option value="2028">2028</option>
-            </select>
-            
-            <!-- Block/Term - DYNAMIC -->
-            <select id="resource_block" required>
-                <option value="">-- Select Block/Term --</option>
-            </select>
-            
-            <!-- File Upload -->
-            <input type="file" id="resource-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4">
-            <small id="file-edit-info" style="color: #6b7280; font-size: 11px; display: none;">Leave empty to keep existing file</small>
-            
-            <!-- Pre-recorded Podcast / Audio -->
-            <div style="margin-top:12px;padding:14px;border:1px solid #ddd6fe;border-radius:12px;background:linear-gradient(135deg,#faf5ff,#f5f3ff);">
-                <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;">
-                    <div style="width:34px;height:34px;border-radius:9px;background:#ede9fe;color:#6d28d9;display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-podcast"></i>
-                    </div>
+    </div>
+
+    <!-- RESOURCE TYPE SUMMARY -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:20px;">
+        <button id="resource-type-all" class="resource-type-btn active" onclick="filterResourceType('all')" style="text-align:left;padding:17px 18px;background:#fff;color:#4c1d95;border:1px solid #e9d5ff;border-radius:16px;cursor:pointer;box-shadow:0 5px 18px rgba(15,23,42,.06);transition:.2s;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <span style="width:40px;height:40px;border-radius:12px;background:#f3e8ff;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-layer-group" style="color:#6d28d9;"></i>
+                </span>
+                <i class="fas fa-arrow-right" style="font-size:12px;color:#a78bfa;"></i>
+            </div>
+            <div style="margin-top:11px;font-size:14px;font-weight:800;">All Resources</div>
+            <div style="margin-top:3px;font-size:11px;color:#64748b;">Learning content and examination papers</div>
+        </button>
+
+        <button id="resource-type-material" class="resource-type-btn" onclick="filterResourceType('material')" style="text-align:left;padding:17px 18px;background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:16px;cursor:pointer;box-shadow:0 5px 18px rgba(15,23,42,.06);transition:.2s;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <span style="width:40px;height:40px;border-radius:12px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-book" style="color:#059669;"></i>
+                </span>
+                <span id="material-count-badge" style="background:#d1fae5;color:#047857;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800;">0</span>
+            </div>
+            <div style="margin-top:11px;font-size:14px;font-weight:800;">Learning Materials</div>
+            <div style="margin-top:3px;font-size:11px;color:#64748b;">Notes, presentations and study resources</div>
+        </button>
+
+        <button id="resource-type-pastpaper" class="resource-type-btn" onclick="filterResourceType('pastpaper')" style="text-align:left;padding:17px 18px;background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:16px;cursor:pointer;box-shadow:0 5px 18px rgba(15,23,42,.06);transition:.2s;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <span style="width:40px;height:40px;border-radius:12px;background:#fffbeb;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-history" style="color:#d97706;"></i>
+                </span>
+                <span id="pastpaper-count-badge" style="background:#fef3c7;color:#b45309;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800;">0</span>
+            </div>
+            <div style="margin-top:11px;font-size:14px;font-weight:800;">Past Papers</div>
+            <div style="margin-top:3px;font-size:11px;color:#64748b;">Previous assessments and examination papers</div>
+        </button>
+    </div>
+
+    <!-- MODERN UPLOAD / EDIT PANEL -->
+    <div style="background:#fff;border:1px solid #e9d5ff;border-radius:20px;overflow:hidden;margin-bottom:22px;box-shadow:0 10px 30px rgba(76,29,149,.08);">
+        <div style="padding:18px 22px;background:linear-gradient(135deg,#faf5ff,#f5f3ff);border-bottom:1px solid #ede9fe;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:44px;height:44px;border-radius:12px;background:#4c1d95;color:#fff;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div>
+                    <h3 id="form-title" style="margin:0;color:#312e81;font-size:17px;font-weight:850;"><i class="fas fa-upload"></i> Upload Resource</h3>
+                    <p id="form-subtitle" style="margin:4px 0 0;color:#64748b;font-size:11px;">Publish a learning material or past paper to the student resource center.</p>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:#fff;border:1px solid #ddd6fe;border-radius:999px;color:#6d28d9;font-size:11px;font-weight:800;">
+                <i class="fas fa-shield-alt"></i> Admin Publishing
+            </div>
+        </div>
+
+        <div style="padding:20px 22px;">
+            <div style="margin-bottom:16px;padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:12px;">
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                    <input type="checkbox" id="resource_is_pastpaper" onchange="togglePastPaperFields(); var n=document.getElementById('resource-email-notification-settings'); if(n)n.style.display=this.checked?'none':'block';" style="width:17px;height:17px;accent-color:#7c3aed;">
+                    <span style="font-size:12px;color:#78350f;"><strong>This is a Past Paper</strong> — enable this for previous examination papers.</span>
+                </label>
+            </div>
+
+            <form id="upload-resource-form" class="inline-form" onsubmit="event.preventDefault(); handleResourceUpload(event);">
+                <input type="hidden" id="resource_edit_id" value="">
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">
                     <div>
-                        <div style="font-weight:800;color:#4c1d95;font-size:13px;">Podcast / Audio Lesson</div>
-                        <div style="font-size:11px;color:#64748b;">Optional prerecorded audio for students to listen to.</div>
-                    </div>
-                </div>
-
-                <input type="file"
-                    id="resource-podcast-file"
-                    accept=".mp3,.m4a,.wav,.ogg,.webm,audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm"
-                    style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #c4b5fd;border-radius:9px;background:white;font-size:13px;">
-
-                <div id="podcast-edit-info" style="display:none;margin-top:9px;padding:9px 11px;border-radius:9px;background:#ecfdf5;border:1px solid #a7f3d0;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-                        <span style="font-size:11px;color:#047857;font-weight:700;">
-                            <i class="fas fa-check-circle"></i> Podcast audio is attached to this resource.
-                        </span>
-                        <a id="podcast-preview-link" href="#" target="_blank" rel="noopener"
-                           style="display:inline-flex;align-items:center;gap:5px;background:#059669;color:white;text-decoration:none;padding:6px 10px;border-radius:7px;font-size:11px;font-weight:700;">
-                            <i class="fas fa-play"></i> Preview
-                        </a>
-                    </div>
-                    <div style="font-size:10px;color:#64748b;margin-top:5px;">Choose a new audio file above to replace the existing podcast.</div>
-                </div>
-            </div>
-
-            <!-- Title -->
-            <input type="text" id="resource-title" placeholder="Resource Title" required>
-            
-            <!-- Description -->
-            <textarea id="resource-description" placeholder="Description (optional)" rows="2" style="width: 100%;"></textarea>
-            
-            <!-- Past Paper Specific Fields (hidden by default) -->
-            <div id="pastpaper-fields" style="display: none; border-top: 2px dashed #4C1D95; padding-top: 15px; margin-top: 10px;">
-                <h4 style="margin: 0 0 10px 0; color: #4C1D95;"><i class="fas fa-history"></i> Past Paper Details</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; flex-wrap: wrap;">
-                    <select id="resource_pastpaper_year">
-                        <option value="">-- Exam Year --</option>
-                        <option value="2020">2020</option>
-                        <option value="2021">2021</option>
-                        <option value="2022">2022</option>
-                        <option value="2023">2023</option>
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026">2026</option>
-                    </select>
-                    
-                    <select id="resource_exam_type">
-                        <option value="">-- Exam Type --</option>
-                        <option value="CAT_1">CAT 1</option>
-                        <option value="CAT_2">CAT 2</option>
-                        <option value="END_TERM">End of Term</option>
-                        <option value="FINAL">Final Exam</option>
-                        <option value="SUPPLEMENTARY">Supplementary</option>
-                        <option value="SPECIAL">Special Exam</option>
-                    </select>
-                    
-                    <input type="text" id="resource_course_name" placeholder="Course Name (e.g., Anatomy, Pharmacology)">
-                </div>
-                <small style="color: #6b7280;"><i class="fas fa-info-circle"></i> These fields are only needed for past papers</small>
-            </div>
-            
-            <!-- EMAIL NOTIFICATION PANEL -->
-            <div id="resource-email-notification-settings" style="margin-top: 18px; border: 1px solid #a7f3d0; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 55%, #ffffff 100%); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.08);">
-                <div style="padding: 16px 18px; border-bottom: 1px solid #d1fae5; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 12px; min-width: 240px;">
-                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(16,185,129,.22);">
-                            <i class="fas fa-envelope" style="font-size: 18px;"></i>
-                        </div>
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                <strong style="font-size: 15px; color: #064e3b;">Email Notification to Students</strong>
-                                <span id="resource-notification-status" style="display: inline-flex; align-items: center; gap: 5px; background: #d1fae5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 700;">
-                                    <i class="fas fa-check-circle"></i> Notifications Enabled
-                                </span>
-                            </div>
-                            <div style="margin-top: 3px; color: #047857; font-size: 12px;">Notify selected students automatically when this new learning material is published.</div>
-                        </div>
-                    </div>
-
-                    <label style="display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none;">
-                        <input type="checkbox" id="resource_notify_students" checked onchange="updateResourceNotificationCount(); var t=document.getElementById('resource-notification-toggle'),l=document.getElementById('resource-notification-toggle-label'),st=document.getElementById('resource-notification-status'); if(this.checked){t.style.background='#10b981';t.style.justifyContent='flex-end';l.textContent='ON';l.style.color='#047857';st.innerHTML='<i class="fas fa-check-circle"></i> Notifications Enabled';}else{t.style.background='#94a3b8';t.style.justifyContent='flex-start';l.textContent='OFF';l.style.color='#64748b';st.innerHTML='<i class="fas fa-bell-slash"></i> Notifications Disabled';}" style="position: absolute; opacity: 0; pointer-events: none;">
-                        <span id="resource-notification-toggle" style="width: 48px; height: 26px; border-radius: 999px; background: #10b981; padding: 3px; display: inline-flex; justify-content: flex-end; align-items: center; transition: .2s; box-shadow: inset 0 1px 3px rgba(0,0,0,.12);">
-                            <span style="width: 20px; height: 20px; background: white; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,.18);"></span>
-                        </span>
-                        <span id="resource-notification-toggle-label" style="font-size: 12px; font-weight: 700; color: #047857;">ON</span>
-                    </label>
-                </div>
-
-                <div style="padding: 16px 18px; background: rgba(255,255,255,.72);">
-                    <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, .8fr); gap: 18px; align-items: stretch;">
-                        <div>
-                            <select id="resource_notify_target" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;">
-                            <option value="all" selected>All Students (Program + Block/Term)</option>
-                            <option value="program">All Students in Program</option>
-                            <option value="block">Students in Block/Term</option>
-                            <option value="specific">Specific Students</option>
+                        <label style="display:block;margin:0 0 6px;font-size:11px;font-weight:800;color:#475569;">PROGRAM</label>
+                        <select id="resource_program" required onchange="updateBlockOptions()" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;color:#1e293b;outline:none;">
+                            <option value="">-- Select Program --</option>
+                            <optgroup label="KRCHN"><option value="KRCHN">KRCHN Nursing</option></optgroup>
+                            <optgroup label="TVET Programs">
+                                <option value="DPOTT">DPOTT - Perioperative Theatre Technology</option><option value="DCH">DCH - Community Health</option><option value="DHRIT">DHRIT - Health Records and IT</option><option value="DSL">DSL - Science Lab</option><option value="DSW">DSW - Social Work & Community Development</option><option value="DCJS">DCJS - Criminal Justice</option><option value="DHSS">DHSS - Health Support Services</option><option value="DICT">DICT - ICT</option><option value="DME">DME - Medical Engineering</option><option value="CPOTT">CPOTT - Certificate Perioperative Theatre Technology</option><option value="CCH">CCH - Certificate Community Health</option><option value="CHRIT">CHRIT - Certificate Health Records and IT</option><option value="CPC">CPC - Certificate Patient Care</option><option value="CSL">CSL - Certificate Science Lab</option><option value="CSW">CSW - Certificate Social Work</option><option value="CCJS">CCJS - Criminal Justice</option><option value="CAG">CAG - Certificate Agriculture</option><option value="CHSS">CHSS - Certificate Health Support Services</option><option value="CICT">CICT - Certificate ICT</option><option value="ACH">ACH - Artisan Community Health</option><option value="AAG">AAG - Artisan Agriculture</option><option value="ASW">ASW - Artisan Social Work</option><option value="CCA">CCA - Certificate Computer Applications</option><option value="PTE">PTE - TVET/CDACC</option>
+                            </optgroup>
                         </select>
-                        <div style="font-size: 12px; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px;">Send to</div>
-                            <div style="display: grid; gap: 8px;">
-                                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #c4b5fd; border-radius: 10px; background: #faf5ff; cursor: pointer;">
-                                    <input type="radio" name="resource_notify_target" id="resource_notify_target_all" value="all" checked onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='none';" style="margin-top: 3px; accent-color: #7c3aed;">
-                                    <span style="display: block;">
-                                        <strong style="font-size: 13px; color: #312e81;">All students in Program + Block</strong>
-                                        <span style="display: block; font-size: 11px; color: #64748b; margin-top: 2px;">Students matching the selected program and block/term.</span>
-                                    </span>
-                                    <span style="margin-left: auto; white-space: nowrap; background: #7c3aed; color: white; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 800;">RECOMMENDED</span>
-                                </label>
+                    </div>
 
-                                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; cursor: pointer;">
-                                    <input type="radio" name="resource_notify_target" value="program" onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='none';" style="margin-top: 3px; accent-color: #7c3aed;">
-                                    <span><strong style="font-size: 13px; color: #334155;">All students in Program</strong><span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">Every approved student in the selected program.</span></span>
-                                </label>
+                    <div>
+                        <label style="display:block;margin:0 0 6px;font-size:11px;font-weight:800;color:#475569;">INTAKE YEAR</label>
+                        <select id="resource_intake" required style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;color:#1e293b;outline:none;">
+                            <option value="">-- Intake Year --</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+                        </select>
+                    </div>
 
-                                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; cursor: pointer;">
-                                    <input type="radio" name="resource_notify_target" value="block" onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='none';" style="margin-top: 3px; accent-color: #7c3aed;">
-                                    <span><strong style="font-size: 13px; color: #334155;">Students in this Block/Term</strong><span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">Students matching the selected block/term.</span></span>
-                                </label>
+                    <div>
+                        <label style="display:block;margin:0 0 6px;font-size:11px;font-weight:800;color:#475569;">BLOCK / TERM</label>
+                        <select id="resource_block" required style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;color:#1e293b;outline:none;">
+                            <option value="">-- Select Block/Term --</option>
+                        </select>
+                    </div>
+                </div>
 
-                                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; cursor: pointer;">
-                                    <input type="radio" name="resource_notify_target" value="specific" onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='block';" style="margin-top: 3px; accent-color: #7c3aed;">
-                                    <span><strong style="font-size: 13px; color: #334155;">Specific students only</strong><span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">Choose individual students from the list.</span></span>
-                                </label>
+                <div style="display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:12px;margin-top:14px;">
+                    <div style="padding:14px;border:1px solid #e2e8f0;border-radius:13px;background:#f8fafc;">
+                        <label style="display:block;margin-bottom:7px;font-size:11px;font-weight:800;color:#475569;"><i class="fas fa-file"></i> LEARNING MATERIAL</label>
+                        <input type="file" id="resource-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4" style="width:100%;box-sizing:border-box;padding:9px;background:#fff;border:1px dashed #cbd5e1;border-radius:9px;font-size:12px;">
+                        <small id="file-edit-info" style="color:#64748b;font-size:10px;display:none;margin-top:6px;">Leave empty to keep existing file</small>
+                    </div>
+
+                    <div style="padding:14px;border:1px solid #ddd6fe;border-radius:13px;background:linear-gradient(135deg,#faf5ff,#f5f3ff);">
+                        <label style="display:block;margin-bottom:7px;font-size:11px;font-weight:800;color:#5b21b6;"><i class="fas fa-podcast"></i> PODCAST / AUDIO</label>
+                        <input type="file" id="resource-podcast-file" accept=".mp3,.m4a,.wav,.ogg,.webm,audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/webm" style="width:100%;box-sizing:border-box;padding:9px;background:#fff;border:1px dashed #c4b5fd;border-radius:9px;font-size:11px;">
+                        <div style="font-size:10px;color:#64748b;margin-top:6px;">Optional prerecorded audio lesson.</div>
+                        <div id="podcast-edit-info" style="display:none;margin-top:9px;padding:8px 10px;border-radius:9px;background:#ecfdf5;border:1px solid #a7f3d0;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                                <span style="font-size:10px;color:#047857;font-weight:800;"><i class="fas fa-check-circle"></i> Audio attached</span>
+                                <a id="podcast-preview-link" href="#" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;background:#059669;color:#fff;text-decoration:none;padding:5px 8px;border-radius:6px;font-size:10px;font-weight:800;"><i class="fas fa-play"></i> Preview</a>
+                            </div>
+                            <div style="font-size:9px;color:#64748b;margin-top:4px;">Upload a new file to replace it.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:14px;">
+                    <label style="display:block;margin:0 0 6px;font-size:11px;font-weight:800;color:#475569;">RESOURCE TITLE</label>
+                    <input type="text" id="resource-title" placeholder="e.g. Leadership and Management II" required style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #dbe3ef;border-radius:10px;font-size:13px;outline:none;">
+                </div>
+
+                <div style="margin-top:12px;">
+                    <label style="display:block;margin:0 0 6px;font-size:11px;font-weight:800;color:#475569;">DESCRIPTION</label>
+                    <textarea id="resource-description" placeholder="Add a short description for students..." rows="2" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #dbe3ef;border-radius:10px;resize:vertical;font-size:13px;outline:none;"></textarea>
+                </div>
+
+                <div id="pastpaper-fields" style="display:none;border-top:1px solid #e9d5ff;padding-top:15px;margin-top:15px;">
+                    <h4 style="margin:0 0 10px;color:#4c1d95;font-size:13px;"><i class="fas fa-history"></i> Past Paper Details</h4>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
+                        <select id="resource_pastpaper_year" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe3ef;border-radius:9px;"><option value="">-- Exam Year --</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
+                        <select id="resource_exam_type" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe3ef;border-radius:9px;"><option value="">-- Exam Type --</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option><option value="END_TERM">End of Term</option><option value="FINAL">Final Exam</option><option value="SUPPLEMENTARY">Supplementary</option><option value="SPECIAL">Special Exam</option></select>
+                        <input type="text" id="resource_course_name" placeholder="Course Name" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe3ef;border-radius:9px;">
+                    </div>
+                </div>
+
+                <!-- EMAIL NOTIFICATION PANEL -->
+                <div id="resource-email-notification-settings" style="margin-top:16px;border:1px solid #a7f3d0;border-radius:15px;overflow:hidden;background:linear-gradient(135deg,#f0fdf4,#ecfdf5);">
+                    <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid #d1fae5;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:38px;height:38px;border-radius:10px;background:#059669;color:#fff;display:flex;align-items:center;justify-content:center;"><i class="fas fa-envelope"></i></div>
+                            <div>
+                                <strong style="display:block;color:#064e3b;font-size:13px;">Student Email Notifications</strong>
+                                <span style="font-size:10px;color:#047857;">Automatically notify selected students when new learning material is published.</span>
                             </div>
                         </div>
+                        <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;">
+                            <input type="checkbox" id="resource_notify_students" checked onchange="updateResourceNotificationCount(); var t=document.getElementById('resource-notification-toggle'),l=document.getElementById('resource-notification-toggle-label'),st=document.getElementById('resource-notification-status'); if(this.checked){t.style.background='#10b981';t.style.justifyContent='flex-end';l.textContent='ON';l.style.color='#047857';st.innerHTML='<i class=&quot;fas fa-check-circle&quot;></i> Notifications Enabled';}else{t.style.background='#94a3b8';t.style.justifyContent='flex-start';l.textContent='OFF';l.style.color='#64748b';st.innerHTML='<i class=&quot;fas fa-bell-slash&quot;></i> Notifications Disabled';}" style="position:absolute;opacity:0;pointer-events:none;">
+                            <span id="resource-notification-toggle" style="width:44px;height:24px;border-radius:999px;background:#10b981;padding:3px;display:inline-flex;justify-content:flex-end;align-items:center;"><span style="width:18px;height:18px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.18);"></span></span>
+                            <span id="resource-notification-toggle-label" style="font-size:10px;font-weight:800;color:#047857;">ON</span>
+                            <span id="resource-notification-status" style="font-size:10px;font-weight:800;color:#047857;">Enabled</span>
+                        </label>
+                    </div>
 
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <div style="padding: 15px; border-radius: 12px; background: linear-gradient(135deg,#ecfdf5,#f0fdf4); border: 1px solid #d1fae5; min-height: 92px;">
-                                <div style="font-size: 11px; font-weight: 800; color: #047857; text-transform: uppercase; letter-spacing: .04em;">Recipient Count</div>
-                                <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-                                    <div style="width:38px;height:38px;border-radius:10px;background:#d1fae5;color:#059669;display:flex;align-items:center;justify-content:center;"><i class="fas fa-users"></i></div>
-                                    <div><strong id="resource_notify_count" style="font-size:24px;line-height:1;color:#065f46;">0</strong><div style="font-size:11px;color:#64748b;margin-top:3px;">students will receive this email</div></div>
+                    <div style="padding:14px 16px;background:rgba(255,255,255,.62);">
+                        <select id="resource_notify_target" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;">
+                            <option value="all" selected>All Students (Program + Block/Term)</option><option value="program">All Students in Program</option><option value="block">Students in Block/Term</option><option value="specific">Specific Students</option>
+                        </select>
+
+                        <div style="font-size:10px;font-weight:850;color:#334155;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;">Send notification to</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;">
+                            <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff;cursor:pointer;">
+                                <input type="radio" name="resource_notify_target" id="resource_notify_target_all" value="all" checked onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='none';" style="margin-top:2px;accent-color:#7c3aed;">
+                                <span><strong style="font-size:11px;color:#312e81;">Program + Block</strong><span style="display:block;font-size:9px;color:#64748b;margin-top:2px;">Students matching both.</span></span>
+                            </label>
+                            <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;">
+                                <input type="radio" name="resource_notify_target" value="program" onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='none';" style="margin-top:2px;accent-color:#7c3aed;">
+                                <span><strong style="font-size:11px;color:#334155;">Program</strong><span style="display:block;font-size:9px;color:#64748b;margin-top:2px;">All approved students.</span></span>
+                            </label>
+                            <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;">
+                                <input type="radio" name="resource_notify_target" value="block" onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='none';" style="margin-top:2px;accent-color:#7c3aed;">
+                                <span><strong style="font-size:11px;color:#334155;">Block / Term</strong><span style="display:block;font-size:9px;color:#64748b;margin-top:2px;">Students in this block.</span></span>
+                            </label>
+                            <label style="display:flex;align-items:flex-start;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;">
+                                <input type="radio" name="resource_notify_target" value="specific" onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='block';" style="margin-top:2px;accent-color:#7c3aed;">
+                                <span><strong style="font-size:11px;color:#334155;">Specific Students</strong><span style="display:block;font-size:9px;color:#64748b;margin-top:2px;">Choose individual students.</span></span>
+                            </label>
+                        </div>
+
+                        <div style="margin-top:12px;display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:10px;">
+                            <div id="resource-specific-students" style="display:none;padding:11px;border:1px solid #ddd6fe;border-radius:11px;background:#faf5ff;">
+                                <div style="font-size:11px;font-weight:800;color:#4c1d95;margin-bottom:7px;"><i class="fas fa-user-check"></i> Select Specific Students</div>
+                                <div style="position:relative;">
+                                    <input type="text" id="resource_student_search" placeholder="Search name, admission number or email..." oninput="searchStudentsForResourceNotification()" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #c4b5fd;border-radius:8px;background:#fff;">
+                                    <div id="resource_student_results" style="display:none;max-height:160px;overflow:auto;margin-top:7px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;"></div>
+                                    <div id="resource_selected_students" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;min-height:18px;"></div>
                                 </div>
                             </div>
-                            <div style="padding: 11px 12px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-size: 11px; line-height: 1.5;">
-                                <i class="fas fa-info-circle" style="margin-right:5px;"></i>
-                                Emails are sent only for <strong>new learning materials</strong>. Editing an existing resource will not send another notification.
+                            <div style="padding:12px;border-radius:11px;background:#fff;border:1px solid #d1fae5;">
+                                <div style="font-size:9px;font-weight:800;color:#047857;text-transform:uppercase;">Recipients</div>
+                                <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                                    <span style="width:31px;height:31px;border-radius:9px;background:#d1fae5;color:#059669;display:flex;align-items:center;justify-content:center;"><i class="fas fa-users"></i></span>
+                                    <div><strong id="resource_notify_count" style="font-size:20px;color:#065f46;">0</strong><div style="font-size:9px;color:#64748b;">students</div></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div id="resource-specific-students" style="display:none; margin-top:14px; padding:14px; border:1px solid #ddd6fe; border-radius:12px; background:#faf5ff;">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;color:#4c1d95;font-weight:800;font-size:13px;"><i class="fas fa-user-check"></i> Select Specific Students</div>
-                        <div style="position:relative;">
-                            <input type="text" id="resource_student_search" placeholder="Search by student name, admission number or email..." oninput="searchStudentsForResourceNotification()" style="width:100%;box-sizing:border-box;padding:10px 12px 10px 38px;border:1px solid #c4b5fd;border-radius:9px;background:white;outline:none;">
-                            <i class="fas fa-search" style="position:absolute;left:13px;top:12px;color:#8b5cf6;font-size:13px;"></i>
-                        </div>
-                        <div id="resource_student_results" style="display:none;max-height:190px;overflow:auto;margin-top:8px;background:white;border:1px solid #e2e8f0;border-radius:9px;"></div>
-                        <div id="resource_selected_students" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;min-height:22px;"></div>
-                    </div>
                 </div>
-            </div>
 
-            <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
-                <button type="submit" id="form-submit-btn">
-                    <i class="fas fa-upload"></i> Upload Resource
-                </button>
-                <button type="button" id="form-cancel-btn" onclick="cancelEditResource()" style="display: none; background: #6b7280; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer;">
-                    <i class="fas fa-times"></i> Cancel
-                </button>
+                <div style="display:flex;gap:9px;margin-top:16px;flex-wrap:wrap;">
+                    <button type="submit" id="form-submit-btn" style="padding:11px 18px;background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:800;font-size:12px;box-shadow:0 7px 16px rgba(76,29,149,.2);">
+                        <i class="fas fa-upload"></i> Upload Resource
+                    </button>
+                    <button type="button" id="form-cancel-btn" onclick="cancelEditResource()" style="display:none;padding:11px 18px;background:#64748b;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:12px;">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODERN SEARCH / FILTER BAR -->
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px;box-shadow:0 7px 24px rgba(15,23,42,.06);margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#334155;font-size:12px;font-weight:850;">
+            <span style="width:30px;height:30px;border-radius:9px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;"><i class="fas fa-sliders-h" style="color:#64748b;"></i></span>
+            Search & Filter Resources
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(240px,1.7fr) repeat(3,minmax(130px,.65fr)) auto auto;gap:9px;align-items:center;">
+            <input type="text" id="resource-search" placeholder="🔍 Search title, description, program..." onkeyup="filterResourcesTable()" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;outline:none;font-size:12px;">
+            <select id="resource-block-filter" onchange="filterResourcesTable()" style="width:100%;padding:11px 9px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font-size:11px;"><option value="all">All Blocks/Terms</option></select>
+            <select id="resource-year-filter" onchange="filterResourcesTable()" style="width:100%;padding:11px 9px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font-size:11px;"><option value="all">All Years</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option></select>
+            <select id="resource-program-filter" onchange="filterResourcesTable()" style="width:100%;padding:11px 9px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font-size:11px;"><option value="all">All Programs</option><option value="KRCHN">KRCHN</option><option value="DPOTT">DPOTT</option><option value="DCH">DCH</option><option value="DHRIT">DHRIT</option><option value="DSL">DSL</option><option value="DSW">DSW</option><option value="DCJS">DCJS</option></select>
+            <button onclick="exportResourcesToCSV()" class="btn-action export-btn" style="white-space:nowrap;padding:11px 13px;border-radius:10px;border:0;cursor:pointer;font-size:11px;font-weight:800;"><i class="fas fa-file-export"></i> Export</button>
+            <button onclick="loadAllResources()" class="btn-action" style="white-space:nowrap;padding:11px 13px;border-radius:10px;border:0;cursor:pointer;font-size:11px;font-weight:800;"><i class="fas fa-sync-alt"></i> Refresh</button>
+        </div>
+    </div>
+
+    <!-- RESOURCES TABLE -->
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 8px 28px rgba(15,23,42,.07);">
+        <div style="padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:9px;">
+                <span style="width:34px;height:34px;border-radius:10px;background:#f3e8ff;color:#6d28d9;display:flex;align-items:center;justify-content:center;"><i class="fas fa-list"></i></span>
+                <div><strong style="display:block;font-size:13px;color:#1e293b;">Published Resources</strong><span style="font-size:10px;color:#64748b;">Manage student-accessible academic content.</span></div>
             </div>
-        </form>
-    </div>
-    
-    <!-- Filters -->
-    <div class="toolbar">
-        <input type="text" id="resource-search" placeholder="🔍 Search resources..." onkeyup="filterResourcesTable()">
-        <select id="resource-block-filter" onchange="filterResourcesTable()">
-            <option value="all">All Blocks/Terms</option>
-        </select>
-        <select id="resource-year-filter" onchange="filterResourcesTable()">
-            <option value="all">All Years</option>
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-            <option value="2027">2027</option>
-            <option value="2028">2028</option>
-        </select>
-        <select id="resource-program-filter" onchange="filterResourcesTable()">
-            <option value="all">All Programs</option>
-            <option value="KRCHN">KRCHN</option>
-            <option value="DPOTT">DPOTT</option>
-            <option value="DCH">DCH</option>
-            <option value="DHRIT">DHRIT</option>
-            <option value="DSL">DSL</option>
-            <option value="DSW">DSW</option>
-            <option value="DCJS">DCJS</option>
-        </select>
-        <button onclick="exportResourcesToCSV()" class="btn-action export-btn">Export List (CSV)</button>
-        <button onclick="loadAllResources()" class="btn-action"><i class="fas fa-sync-alt"></i> Refresh</button>
-    </div>
-    
-    <!-- Resources Table -->
-    <div class="table-responsive">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Year/Intake</th>
-                    <th>Program</th>
-                    <th>Block/Term</th>
-                    <th>Title/Course</th>
-                    <th>Description</th>
-                    <th>Audio</th>
-                    <th>Uploaded By</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="resources-list">
-                <tr><td colspan="9"><div class="loading-spinner"></div> Loading resources...</td></tr>
-            </tbody>
-        </table>
+            <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;color:#64748b;font-size:10px;font-weight:700;"><i class="fas fa-database"></i> Live Resource Library</span>
+        </div>
+
+        <div class="table-responsive" style="overflow-x:auto;">
+            <table class="data-table" style="width:100%;border-collapse:separate;border-spacing:0;min-width:1080px;">
+                <thead>
+                    <tr>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Type</th>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Year/Intake</th>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Program</th>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Block/Term</th>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Title/Course</th>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Description</th>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Audio</th>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Uploaded By</th>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Date</th>
+                        <th style="background:#f8fafc;padding:13px 12px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;letter-spacing:.04em;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="resources-list">
+                    <tr><td colspan="10" style="padding:28px;text-align:center;"><div class="loading-spinner"></div><div style="margin-top:8px;font-size:11px;color:#64748b;">Loading resources...</div></td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </section>
 <!-- Edit Resource Modal -->
-<div id="edit-resource-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
-    <div style="background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0; color: #1e3a5f;"><i class="fas fa-edit"></i> Edit Resource</h3>
-            <button onclick="closeEditModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">×</button>
+<div id="edit-resource-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.68);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:99999;justify-content:center;align-items:center;padding:18px;box-sizing:border-box;">
+    <div style="background:#fff;border-radius:22px;width:min(760px,100%);max-height:92vh;overflow:hidden;box-shadow:0 28px 90px rgba(15,23,42,.30);border:1px solid rgba(255,255,255,.7);display:flex;flex-direction:column;">
+
+        <!-- MODAL HEADER -->
+        <div style="position:relative;overflow:hidden;padding:20px 22px;background:linear-gradient(135deg,#4c1d95,#6d28d9,#7c3aed);color:#fff;">
+            <div style="position:absolute;right:-45px;top:-65px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.08);"></div>
+            <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:15px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-edit" style="font-size:18px;"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin:0;font-size:18px;font-weight:850;letter-spacing:-.01em;">
+                            <i class="fas fa-pen-to-square" style="margin-right:5px;"></i> Edit Resource
+                        </h3>
+                        <div style="margin-top:4px;font-size:10px;color:rgba(255,255,255,.78);">
+                            Update resource details without leaving the Resources page.
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="closeEditModal()" aria-label="Close edit resource"
+                        style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.12);color:#fff;cursor:pointer;font-size:19px;display:flex;align-items:center;justify-content:center;">
+                    ×
+                </button>
+            </div>
         </div>
-        <form id="edit-resource-form" onsubmit="event.preventDefault(); saveEditResource();">
-            <input type="hidden" id="edit_resource_id">
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div>
-                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Program</label>
-                    <select id="edit_resource_program" required class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;">
-                        <option value="KRCHN">KRCHN Nursing</option>
-                        <option value="DPOTT">DPOTT</option>
-                        <option value="DCH">DCH</option>
-                        <option value="DHRIT">DHRIT</option>
-                        <option value="DSL">DSL</option>
-                        <option value="DSW">DSW</option>
-                        <option value="DCJS">DCJS</option>
-                        <option value="DHSS">DHSS</option>
-                        <option value="DICT">DICT</option>
-                        <option value="DME">DME</option>
-                        <option value="CPOTT">CPOTT</option>
-                        <option value="CCH">CCH</option>
-                        <option value="CHRIT">CHRIT</option>
-                        <option value="CPC">CPC</option>
-                        <option value="CSL">CSL</option>
-                        <option value="CSW">CSW</option>
-                        <option value="CCJS">CCJS</option>
-                        <option value="CAG">CAG</option>
-                        <option value="CHSS">CHSS</option>
-                        <option value="CICT">CICT</option>
-                        <option value="ACH">ACH</option>
-                        <option value="AAG">AAG</option>
-                        <option value="ASW">ASW</option>
-                        <option value="CCA">CCA</option>
-                        <option value="PTE">PTE</option>
+
+        <!-- MODAL BODY -->
+        <div style="overflow-y:auto;padding:20px 22px;">
+            <form id="edit-resource-form" onsubmit="event.preventDefault(); saveEditResource();">
+                <input type="hidden" id="edit_resource_id">
+
+                <div style="padding:12px 14px;border:1px solid #ddd6fe;background:#faf5ff;border-radius:12px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+                    <span style="width:32px;height:32px;border-radius:9px;background:#ede9fe;color:#6d28d9;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-circle-info"></i>
+                    </span>
+                    <div style="font-size:11px;color:#5b21b6;">
+                        <strong>Editing mode</strong>
+                        <span style="display:block;color:#64748b;margin-top:2px;">Changes will update the existing resource. Notification emails are not sent for edits.</span>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">Program</label>
+                        <select id="edit_resource_program" required class="form-control"
+                                style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;color:#1e293b;outline:none;">
+                            <option value="KRCHN">KRCHN Nursing</option>
+                            <option value="DPOTT">DPOTT</option><option value="DCH">DCH</option><option value="DHRIT">DHRIT</option>
+                            <option value="DSL">DSL</option><option value="DSW">DSW</option><option value="DCJS">DCJS</option>
+                            <option value="DHSS">DHSS</option><option value="DICT">DICT</option><option value="DME">DME</option>
+                            <option value="CPOTT">CPOTT</option><option value="CCH">CCH</option><option value="CHRIT">CHRIT</option>
+                            <option value="CPC">CPC</option><option value="CSL">CSL</option><option value="CSW">CSW</option>
+                            <option value="CCJS">CCJS</option><option value="CAG">CAG</option><option value="CHSS">CHSS</option>
+                            <option value="CICT">CICT</option><option value="ACH">ACH</option><option value="AAG">AAG</option>
+                            <option value="ASW">ASW</option><option value="CCA">CCA</option><option value="PTE">PTE</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">Intake Year</label>
+                        <select id="edit_resource_intake" required class="form-control"
+                                style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;color:#1e293b;outline:none;">
+                            <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+                            <option value="2027">2027</option><option value="2028">2028</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-top:13px;">
+                    <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">Block / Term</label>
+                    <select id="edit_resource_block" required class="form-control"
+                            style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;color:#1e293b;outline:none;">
+                        <option value="Introductory">Introductory</option><option value="Block 1">Block 1</option><option value="Block 2">Block 2</option>
+                        <option value="Block 3">Block 3</option><option value="Block 4">Block 4</option><option value="Block 5">Block 5</option><option value="Final">Final</option>
                     </select>
                 </div>
-                <div>
-                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year</label>
-                    <select id="edit_resource_intake" required class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;">
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026">2026</option>
-                        <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                    </select>
+
+                <div style="margin-top:13px;">
+                    <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">Title</label>
+                    <input type="text" id="edit_resource_title" required class="form-control"
+                           style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;outline:none;font-size:13px;">
                 </div>
-            </div>
-            
-            <div style="margin-top: 12px;">
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Block/Term</label>
-                <select id="edit_resource_block" required class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;">
-                    <option value="Introductory">Introductory</option>
-                    <option value="Block 1">Block 1</option>
-                    <option value="Block 2">Block 2</option>
-                    <option value="Block 3">Block 3</option>
-                    <option value="Block 4">Block 4</option>
-                    <option value="Block 5">Block 5</option>
-                    <option value="Final">Final</option>
-                </select>
-            </div>
-            
-            <div style="margin-top: 12px;">
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Title</label>
-                <input type="text" id="edit_resource_title" required class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;">
-            </div>
-            
-            <div style="margin-top: 12px;">
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Description</label>
-                <textarea id="edit_resource_description" rows="2" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;"></textarea>
-            </div>
-            
-            <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div>
-                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Past Paper Year</label>
-                    <select id="edit_resource_pastpaper_year" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;">
-                        <option value="">N/A</option>
-                        <option value="2020">2020</option>
-                        <option value="2021">2021</option>
-                        <option value="2022">2022</option>
-                        <option value="2023">2023</option>
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026">2026</option>
-                    </select>
+
+                <div style="margin-top:13px;">
+                    <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">Description</label>
+                    <textarea id="edit_resource_description" rows="3" class="form-control"
+                              style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;resize:vertical;outline:none;font-size:13px;"></textarea>
                 </div>
-                <div>
-                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Exam Type</label>
-                    <select id="edit_resource_exam_type" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;">
-                        <option value="">N/A</option>
-                        <option value="CAT_1">CAT 1</option>
-                        <option value="CAT_2">CAT 2</option>
-                        <option value="END_TERM">End of Term</option>
-                        <option value="FINAL">Final Exam</option>
-                        <option value="SUPPLEMENTARY">Supplementary</option>
-                        <option value="SPECIAL">Special Exam</option>
-                    </select>
+
+                <div style="margin-top:15px;padding:14px;border:1px solid #e9d5ff;border-radius:13px;background:#faf5ff;">
+                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;">
+                        <span style="width:32px;height:32px;border-radius:9px;background:#ede9fe;color:#6d28d9;display:flex;align-items:center;justify-content:center;"><i class="fas fa-file-lines"></i></span>
+                        <div>
+                            <strong style="font-size:12px;color:#4c1d95;">Past Paper Information</strong>
+                            <div style="font-size:9px;color:#64748b;margin-top:2px;">These fields apply when the resource is a past paper.</div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div>
+                            <label style="display:block;margin-bottom:5px;font-size:9px;font-weight:800;color:#64748b;">EXAM YEAR</label>
+                            <select id="edit_resource_pastpaper_year" class="form-control"
+                                    style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe3ef;border-radius:9px;background:#fff;">
+                                <option value="">N/A</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option>
+                                <option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;margin-bottom:5px;font-size:9px;font-weight:800;color:#64748b;">EXAM TYPE</label>
+                            <select id="edit_resource_exam_type" class="form-control"
+                                    style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe3ef;border-radius:9px;background:#fff;">
+                                <option value="">N/A</option><option value="CAT_1">CAT 1</option><option value="CAT_2">CAT 2</option>
+                                <option value="END_TERM">End of Term</option><option value="FINAL">Final Exam</option><option value="SUPPLEMENTARY">Supplementary</option><option value="SPECIAL">Special Exam</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:10px;">
+                        <label style="display:block;margin-bottom:5px;font-size:9px;font-weight:800;color:#64748b;">COURSE NAME</label>
+                        <input type="text" id="edit_resource_course_name" placeholder="e.g., Anatomy, Pharmacology" class="form-control"
+                               style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe3ef;border-radius:9px;">
+                    </div>
                 </div>
-            </div>
-            
-            <div style="margin-top: 12px;">
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Course Name</label>
-                <input type="text" id="edit_resource_course_name" placeholder="e.g., Anatomy, Pharmacology" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;">
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" style="flex: 1; padding: 10px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-save"></i> Save Changes
-                </button>
-                <button type="button" onclick="closeEditModal()" style="flex: 1; padding: 10px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                    Cancel
-                </button>
-            </div>
-        </form>
+
+                <div style="display:flex;gap:9px;margin-top:18px;padding-top:15px;border-top:1px solid #eef2f7;">
+                    <button type="submit"
+                            style="flex:1;padding:12px;background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:850;font-size:12px;box-shadow:0 7px 16px rgba(76,29,149,.2);">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <button type="button" onclick="closeEditModal()"
+                            style="padding:12px 20px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;font-weight:750;font-size:12px;">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
-            <!-- Messages Section -->
-            <section id="messages" class="tab-content">
-                <h2>Inbox / Messages</h2>
-                <form id="send-message-form" class="inline-form">
-                    <select id="msg_program" required><option value="">-- Select Program --</option><option value="ALL">ALL Students</option><option value="KRCHN">KRCHN Students</option><option value="TVET">TVET Students</option></select>
-                    <input type="text" id="msg_subject" placeholder="Subject" required>
-                    <textarea id="msg_body" placeholder="Message" rows="3"></textarea>
-                    <button type="submit">Send Message</button>
+
+          <!-- =========================================================
+     MODERN MESSAGES / INBOX SECTION
+     ========================================================= -->
+<section id="messages" class="tab-content" style="padding:0 0 30px 0;">
+
+    <!-- HEADER -->
+    <div style="position:relative;overflow:hidden;margin-bottom:22px;padding:26px 28px;border-radius:20px;background:linear-gradient(135deg,#4c1d95 0%,#6d28d9 50%,#7c3aed 100%);color:#fff;box-shadow:0 14px 35px rgba(76,29,149,.22);">
+
+        <div style="position:absolute;right:-70px;top:-90px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.08);"></div>
+        <div style="position:absolute;right:110px;bottom:-110px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05);"></div>
+
+        <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+
+            <div style="display:flex;align-items:center;gap:16px;">
+                <div style="width:58px;height:58px;flex:0 0 58px;border-radius:16px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-comments" style="font-size:25px;"></i>
+                </div>
+
+                <div>
+                    <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.78;margin-bottom:4px;">
+                        Communication Management
+                    </div>
+
+                    <h2 style="margin:0;font-size:27px;line-height:1.15;font-weight:850;letter-spacing:-.02em;">
+                        Inbox / Messages
+                    </h2>
+
+                    <p style="margin:7px 0 0;color:rgba(255,255,255,.82);font-size:13px;">
+                        Send student messages, publish official announcements and review communication history.
+                    </p>
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:14px;backdrop-filter:blur(8px);">
+                <span style="width:9px;height:9px;border-radius:50%;background:#86efac;box-shadow:0 0 0 4px rgba(134,239,172,.15);"></span>
+                <span style="font-size:11px;font-weight:800;">Communication Center</span>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- =====================================================
+         SEND MESSAGE + OFFICIAL ANNOUNCEMENT
+         ===================================================== -->
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;margin-bottom:22px;">
+
+        <!-- SEND MESSAGE -->
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 9px 28px rgba(15,23,42,.07);">
+
+            <div style="padding:17px 19px;background:linear-gradient(135deg,#faf5ff,#f5f3ff);border-bottom:1px solid #ede9fe;">
+                <div style="display:flex;align-items:center;gap:11px;">
+                    <div style="width:42px;height:42px;border-radius:12px;background:#4c1d95;color:#fff;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-paper-plane"></i>
+                    </div>
+
+                    <div>
+                        <h3 style="margin:0;color:#312e81;font-size:16px;font-weight:850;">
+                            Send Message
+                        </h3>
+
+                        <p style="margin:4px 0 0;color:#64748b;font-size:10px;">
+                            Send a direct message to students.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding:19px;">
+
+                <form id="send-message-form">
+
+                    <div style="margin-bottom:13px;">
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">
+                            Recipient Program
+                        </label>
+
+                        <select id="msg_program" required
+                                style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;color:#1e293b;font-size:12px;outline:none;">
+                            <option value="">-- Select Program --</option>
+                            <option value="ALL">ALL Students</option>
+                            <option value="KRCHN">KRCHN Students</option>
+                            <option value="TVET">TVET Students</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom:13px;">
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">
+                            Subject
+                        </label>
+
+                        <input type="text"
+                               id="msg_subject"
+                               placeholder="Enter message subject..."
+                               required
+                               style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;font-size:12px;outline:none;">
+                    </div>
+
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">
+                            Message
+                        </label>
+
+                        <textarea id="msg_body"
+                                  placeholder="Type your message here..."
+                                  rows="6"
+                                  style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;font-size:12px;resize:vertical;outline:none;"></textarea>
+                    </div>
+
+                    <button type="submit"
+                            style="width:100%;padding:12px;background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:12px;font-weight:850;box-shadow:0 7px 16px rgba(76,29,149,.18);">
+                        <i class="fas fa-paper-plane"></i>
+                        Send Message
+                    </button>
+
                 </form>
-                
-             <div id="admin-official-announcement">
-    <h3>Official Announcement</h3>
-    
-    <div class="form-group">
-        <label>Announcement Title</label>
-        <input type="text" id="announcement-title" class="form-control" placeholder="e.g., Important Update" value="Official Announcement">
-    </div>
-    
-    <div class="form-group">
-        <label>Target Program</label>
-        <select id="announcement-program" class="form-control">
-            <option value="KRCHN">KRCHN Nursing</option>
-            <option value="TVET">TVET Programs</option>
-            <option value="All">All Programs</option>
-        </select>
-    </div>
-    
-    <div class="form-group">
-        <label>Target Block/Semester</label>
-        <select id="announcement-block" class="form-control">
-            <option value="All">All Blocks</option>
-            <option value="Introductory">Introductory Block</option>
-            <option value="Block 1">Block 1</option>
-            <option value="Block 2">Block 2</option>
-            <option value="Block 3">Block 3</option>
-            <option value="Block 4">Block 4</option>
-            <option value="Block 5">Block 5</option>
-            <option value="Final">Final Block</option>
-        </select>
-    </div>
-    
-    <div class="form-group">
-        <label>Target Intake Year</label>
-        <select id="announcement-intake" class="form-control">
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026" selected>2026</option>
-            <option value="2027">2027</option>
-            <option value="All">All Years</option>
-        </select>
-    </div>
-    
-    <div class="form-group">
-        <label>Announcement Message</label>
-        <textarea id="announcement-body" rows="4" class="form-control" placeholder="Type announcement message here..."></textarea>
-    </div>
-    
-    <div class="form-group">
-        <label>Active Status</label>
-        <select id="announcement-status" class="form-control">
-            <option value="true">Active (Visible to Students)</option>
-            <option value="false">Inactive (Hidden)</option>
-        </select>
-    </div>
-    
-    <br/>
-    <button id="save-announcement" class="btn btn-primary">Save Announcement</button>
-    <button id="test-announcement" class="btn btn-secondary">Test as Student</button>
-    <span id="announcement-feedback"></span>
-</div>
+            </div>
+        </div>
 
-<!-- Display existing announcements -->
-<div id="existing-announcements" style="margin-top: 20px;">
-    <h4>Existing Announcements</h4>
-    <div id="announcements-list"></div>
-</div>
-                
-                <h3>Recent Messages</h3>
-                <div class="toolbar">
-                    <input type="text" id="message-search" placeholder="Search Messages..." onkeyup="filterTable('message-search', 'adminMessagesTableBody', [0,1,2,3])">
-                    <button onclick="exportTableToCSV('adminMessagesTableBody', 'Message_History_Export.csv')" class="btn-action export-btn">Export Messages (CSV)</button>
+
+        <!-- OFFICIAL ANNOUNCEMENT -->
+        <div id="admin-official-announcement"
+             style="background:#fff;border:1px solid #fde68a;border-radius:18px;overflow:hidden;box-shadow:0 9px 28px rgba(15,23,42,.07);">
+
+            <div style="padding:17px 19px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-bottom:1px solid #fde68a;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+
+                    <div style="display:flex;align-items:center;gap:11px;">
+                        <div style="width:42px;height:42px;border-radius:12px;background:#d97706;color:#fff;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-bullhorn"></i>
+                        </div>
+
+                        <div>
+                            <h3 style="margin:0;color:#78350f;font-size:16px;font-weight:850;">
+                                Official Announcement
+                            </h3>
+
+                            <p style="margin:4px 0 0;color:#92400e;font-size:10px;">
+                                Publish an announcement visible to selected students.
+                            </p>
+                        </div>
+                    </div>
+
+                    <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#fff;border:1px solid #fde68a;color:#92400e;font-size:9px;font-weight:800;">
+                        <i class="fas fa-shield-alt"></i>
+                        OFFICIAL
+                    </span>
+
                 </div>
-                
-                <table>
-                    <thead><tr><th>To Program</th><th>Sender</th><th>Subject</th><th>Message</th><th>Date Sent</th><th>Actions</th></tr></thead>
-                    <tbody id="adminMessagesTableBody"><tr><td colspan="6">Loading admin messages...<\/td><\/tr><\/tbody>
-                </table>
-            </section>
+            </div>
 
+
+            <div style="padding:19px;">
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">
+
+                    <div style="grid-column:1/-1;">
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">
+                            Announcement Title
+                        </label>
+
+                        <input type="text"
+                               id="announcement-title"
+                               class="form-control"
+                               placeholder="e.g., Important Update"
+                               value="Official Announcement"
+                               style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;font-size:12px;outline:none;">
+                    </div>
+
+
+                    <div>
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">
+                            Target Program
+                        </label>
+
+                        <select id="announcement-program"
+                                class="form-control"
+                                style="width:100%;box-sizing:border-box;padding:11px 10px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font-size:11px;">
+                            <option value="KRCHN">KRCHN Nursing</option>
+                            <option value="TVET">TVET Programs</option>
+                            <option value="All">All Programs</option>
+                        </select>
+                    </div>
+
+
+                    <div>
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">
+                            Target Block / Semester
+                        </label>
+
+                        <select id="announcement-block"
+                                class="form-control"
+                                style="width:100%;box-sizing:border-box;padding:11px 10px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font-size:11px;">
+                            <option value="All">All Blocks</option>
+                            <option value="Introductory">Introductory Block</option>
+                            <option value="Block 1">Block 1</option>
+                            <option value="Block 2">Block 2</option>
+                            <option value="Block 3">Block 3</option>
+                            <option value="Block 4">Block 4</option>
+                            <option value="Block 5">Block 5</option>
+                            <option value="Final">Final Block</option>
+                        </select>
+                    </div>
+
+
+                    <div>
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">
+                            Target Intake Year
+                        </label>
+
+                        <select id="announcement-intake"
+                                class="form-control"
+                                style="width:100%;box-sizing:border-box;padding:11px 10px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font-size:11px;">
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                            <option value="2026" selected>2026</option>
+                            <option value="2027">2027</option>
+                            <option value="All">All Years</option>
+                        </select>
+                    </div>
+
+
+                    <div>
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">
+                            Active Status
+                        </label>
+
+                        <select id="announcement-status"
+                                class="form-control"
+                                style="width:100%;box-sizing:border-box;padding:11px 10px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font-size:11px;">
+                            <option value="true">Active — Visible to Students</option>
+                            <option value="false">Inactive — Hidden</option>
+                        </select>
+                    </div>
+
+
+                    <div style="grid-column:1/-1;">
+                        <label style="display:block;margin-bottom:6px;font-size:10px;font-weight:850;color:#475569;text-transform:uppercase;">
+                            Announcement Message
+                        </label>
+
+                        <textarea id="announcement-body"
+                                  rows="5"
+                                  class="form-control"
+                                  placeholder="Type announcement message here..."
+                                  style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #dbe3ef;border-radius:10px;font-size:12px;resize:vertical;outline:none;"></textarea>
+                    </div>
+
+                </div>
+
+
+                <div style="display:flex;align-items:center;gap:9px;margin-top:15px;flex-wrap:wrap;">
+
+                    <button id="save-announcement"
+                            class="btn btn-primary"
+                            style="padding:11px 16px;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:11px;font-weight:850;box-shadow:0 6px 14px rgba(217,119,6,.18);">
+                        <i class="fas fa-save"></i>
+                        Save Announcement
+                    </button>
+
+                    <button id="test-announcement"
+                            class="btn btn-secondary"
+                            style="padding:11px 16px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:11px;font-weight:800;">
+                        <i class="fas fa-eye"></i>
+                        Test as Student
+                    </button>
+
+                    <span id="announcement-feedback"
+                          style="font-size:10px;font-weight:700;color:#047857;">
+                    </span>
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         EXISTING ANNOUNCEMENTS
+         ===================================================== -->
+    <div id="existing-announcements"
+         style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;margin-bottom:22px;box-shadow:0 8px 25px rgba(15,23,42,.06);">
+
+        <div style="padding:15px 18px;background:#f8fafc;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="width:36px;height:36px;border-radius:10px;background:#fff7ed;color:#d97706;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-bullhorn"></i>
+                </span>
+
+                <div>
+                    <h4 style="margin:0;color:#1e293b;font-size:13px;font-weight:850;">
+                        Existing Announcements
+                    </h4>
+                    <span style="font-size:9px;color:#64748b;">
+                        Review announcements currently stored in the system.
+                    </span>
+                </div>
+            </div>
+
+            <span style="padding:6px 9px;border-radius:999px;background:#f1f5f9;color:#64748b;font-size:9px;font-weight:800;">
+                <i class="fas fa-history"></i> Announcement History
+            </span>
+
+        </div>
+
+        <div id="announcements-list" style="padding:16px;">
+            <div style="padding:22px;text-align:center;color:#94a3b8;font-size:11px;">
+                Loading announcements...
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         RECENT MESSAGES
+         ===================================================== -->
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;box-shadow:0 8px 28px rgba(15,23,42,.07);">
+
+        <div style="padding:16px 18px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="width:36px;height:36px;border-radius:10px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-envelope-open-text"></i>
+                </span>
+
+                <div>
+                    <h3 style="margin:0;color:#1e293b;font-size:14px;font-weight:850;">
+                        Recent Messages
+                    </h3>
+
+                    <span style="font-size:9px;color:#64748b;">
+                        Review outgoing communication and message history.
+                    </span>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- TOOLBAR -->
+        <div style="padding:13px 15px;background:#f8fafc;border-bottom:1px solid #eef2f7;">
+
+            <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;">
+
+                <div style="position:relative;flex:1;min-width:220px;">
+                    <i class="fas fa-search"
+                       style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:11px;">
+                    </i>
+
+                    <input type="text"
+                           id="message-search"
+                           placeholder="Search messages..."
+                           onkeyup="filterTable('message-search', 'adminMessagesTableBody', [0,1,2,3])"
+                           style="width:100%;box-sizing:border-box;padding:10px 12px 10px 34px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font-size:11px;outline:none;">
+                </div>
+
+
+                <button onclick="exportTableToCSV('adminMessagesTableBody', 'Message_History_Export.csv')"
+                        class="btn-action export-btn"
+                        style="padding:10px 13px;border-radius:10px;border:0;cursor:pointer;font-size:10px;font-weight:850;white-space:nowrap;">
+                    <i class="fas fa-file-export"></i>
+                    Export Messages
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- TABLE -->
+        <div class="table-responsive" style="overflow-x:auto;">
+
+            <table style="width:100%;border-collapse:separate;border-spacing:0;min-width:850px;">
+
+                <thead>
+                    <tr>
+                        <th style="padding:13px 12px;background:#f8fafc;color:#475569;font-size:10px;font-weight:850;text-transform:uppercase;text-align:left;">
+                            To Program
+                        </th>
+
+                        <th style="padding:13px 12px;background:#f8fafc;color:#475569;font-size:10px;font-weight:850;text-transform:uppercase;text-align:left;">
+                            Sender
+                        </th>
+
+                        <th style="padding:13px 12px;background:#f8fafc;color:#475569;font-size:10px;font-weight:850;text-transform:uppercase;text-align:left;">
+                            Subject
+                        </th>
+
+                        <th style="padding:13px 12px;background:#f8fafc;color:#475569;font-size:10px;font-weight:850;text-transform:uppercase;text-align:left;">
+                            Message
+                        </th>
+
+                        <th style="padding:13px 12px;background:#f8fafc;color:#475569;font-size:10px;font-weight:850;text-transform:uppercase;text-align:left;">
+                            Date Sent
+                        </th>
+
+                        <th style="padding:13px 12px;background:#f8fafc;color:#475569;font-size:10px;font-weight:850;text-transform:uppercase;text-align:left;">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody id="adminMessagesTableBody">
+                    <tr>
+                        <td colspan="6" style="padding:28px;text-align:center;color:#94a3b8;font-size:11px;">
+                            <i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>
+                            Loading admin messages...
+                        </td>
+                    </tr>
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
 <!-- Calendar Section WITH TIMETABLE UPLOAD -->
 <section id="calendar" class="tab-content">
     <!-- Header -->
