@@ -15656,6 +15656,7 @@ async function handleResourceUpload(e) {
         let publicUrl = null;
         let file = null;
         let contentType = 'application/octet-stream';
+        let uploadedPodcast = null;
 
         if (fileInput && fileInput.files.length > 0) {
             file = fileInput.files[0];
@@ -15697,11 +15698,37 @@ async function handleResourceUpload(e) {
             publicUrl = urlData?.publicUrl;
         }
 
+        // Upload optional prerecorded podcast/audio before saving the resource record.
+        const podcastInput = document.getElementById('resource-podcast-file');
+        const podcastFile = podcastInput?.files?.[0] || null;
+
+        if (podcastFile) {
+            uploadedPodcast = await uploadResourcePodcastAudio(podcastFile, {
+                program_type: program,
+                intake: intake,
+                block: block,
+                title: title
+            });
+        }
+
+        // Preserve an existing podcast during edit unless a new audio file was selected.
+        let existingResource = null;
+        if (isEdit) {
+            const { data: existingData, error: existingError } = await sb
+                .from('resources')
+                .select('podcast_url, podcast_path')
+                .eq('id', editId)
+                .single();
+
+            if (existingError) throw existingError;
+            existingResource = existingData;
+        }
+
         const dbRecord = {
             title: title,
             description: description,
-            podcast_url: uploadedPodcast?.url || null,
-            podcast_path: uploadedPodcast?.path || null,
+            podcast_url: uploadedPodcast?.url || existingResource?.podcast_url || null,
+            podcast_path: uploadedPodcast?.path || existingResource?.podcast_path || null,
             program_type: program,
             intake: intake,
             block: block,
@@ -15745,7 +15772,7 @@ async function handleResourceUpload(e) {
             document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
             document.getElementById('form-cancel-btn').style.display = 'none';
             document.getElementById('file-edit-info').style.display = 'none';
-            document.getElementById('resource-file').required = false;
+            document.getElementById('resource-file').required = true;
             editingResourceId = null;
             
         } else {
@@ -15795,8 +15822,69 @@ async function handleResourceUpload(e) {
 }
 
 // =====================================================
-// EDIT RESOURCE
+// EDIT RESOURCE - MODERN CENTERED MODAL
 // =====================================================
+function populateEditBlockOptions(program, selectedBlock = '') {
+    const blockSelect = document.getElementById('edit_resource_block');
+    if (!blockSelect) return;
+
+    const isTVET = TVET_PROGRAMS.includes(String(program || '').toUpperCase());
+    const options = isTVET
+        ? [
+            ['Term1', '📘 Term 1'], ['Term2', '📗 Term 2'], ['Term3', '📕 Term 3'],
+            ['Term4', '📙 Term 4'], ['Term5', '📒 Term 5'], ['Term6', '📓 Term 6'],
+            ['Final Term', '🏆 Final Term']
+        ]
+        : [
+            ['Introductory', '🚀 Introductory'], ['Block 1', '📖 Block 1'], ['Block 2', '📗 Block 2'],
+            ['Block 3', '📘 Block 3'], ['Block 4', '📙 Block 4'], ['Block 5', '📕 Block 5'],
+            ['Final', '🏆 Final Block']
+        ];
+
+    blockSelect.innerHTML = '';
+    options.forEach(([value, label]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        blockSelect.appendChild(option);
+    });
+
+    if (selectedBlock) {
+        const exists = Array.from(blockSelect.options).some(o => o.value === String(selectedBlock));
+        if (!exists) {
+            const custom = document.createElement('option');
+            custom.value = selectedBlock;
+            custom.textContent = selectedBlock;
+            blockSelect.appendChild(custom);
+        }
+        blockSelect.value = selectedBlock;
+    }
+}
+
+function openEditResourceModal() {
+    const modal = document.getElementById('edit-resource-modal');
+    if (!modal) return false;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Focus the title field for quick editing.
+    setTimeout(() => document.getElementById('edit_resource_title')?.focus(), 80);
+    return true;
+}
+
+function closeEditModal(silent = false) {
+    const modal = document.getElementById('edit-resource-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+    editingResourceId = null;
+
+    const form = document.getElementById('edit-resource-form');
+    if (form) form.reset();
+
+    if (!silent) showFeedback('Edit cancelled', 'info');
+}
+
 async function editResource(resourceId) {
     try {
         const { data: resource, error } = await sb
@@ -15804,85 +15892,173 @@ async function editResource(resourceId) {
             .select('*')
             .eq('id', resourceId)
             .single();
-        
+
         if (error) throw error;
         if (!resource) {
             showFeedback('Resource not found', 'error');
             return;
         }
 
-        document.getElementById('resource_edit_id').value = resource.id;
-        document.getElementById('resource_program').value = resource.program_type || '';
-        document.getElementById('resource_intake').value = resource.intake || '';
-        
-        // Update block options based on program
-        const programSelect = document.getElementById('resource_program');
-        const isTVET = TVET_PROGRAMS.includes(resource.program_type || '');
-        
-        // Trigger block options update
-        if (programSelect) {
-            programSelect.value = resource.program_type || '';
-            updateBlockOptions();
-            setTimeout(() => {
-                document.getElementById('resource_block').value = resource.block || '';
-            }, 100);
-        }
-        
-        document.getElementById('resource-title').value = resource.title || '';
-        document.getElementById('resource-description').value = resource.description || '';
-        setPodcastEditPreview(resource);
-        
-        const isPastPaper = resource.resource_type === 'pastpaper';
-        document.getElementById('resource_is_pastpaper').checked = isPastPaper;
-        selectedResourceStudents = [];
-        updateResourceSelectedStudentsDisplay();
-        togglePastPaperFields();
-        
-        if (isPastPaper) {
-            document.getElementById('resource_pastpaper_year').value = resource.pastpaper_year || '';
-            document.getElementById('resource_exam_type').value = resource.exam_type || '';
-            document.getElementById('resource_course_name').value = resource.course_name || '';
-        }
-        
-        document.getElementById('form-title').innerHTML = '<i class="fas fa-edit"></i> Edit Resource';
-        document.getElementById('form-subtitle').textContent = `Editing: ${resource.title}`;
-        document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-save"></i> Save Changes';
-        document.getElementById('form-cancel-btn').style.display = 'inline-block';
-        document.getElementById('file-edit-info').style.display = 'block';
-        document.getElementById('resource-file').required = false;
-        
+        // Populate the dedicated modal instead of moving the user to the upload form.
+        const setValue = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.value = value ?? '';
+        };
+
+        setValue('edit_resource_id', resource.id);
+        setValue('edit_resource_program', resource.program_type || 'KRCHN');
+        setValue('edit_resource_intake', resource.intake || '2026');
+        populateEditBlockOptions(resource.program_type || 'KRCHN', resource.block || resource.term || '');
+        setValue('edit_resource_title', resource.title || '');
+        setValue('edit_resource_description', resource.description || '');
+        setValue('edit_resource_pastpaper_year', resource.pastpaper_year || '');
+        setValue('edit_resource_exam_type', resource.exam_type || '');
+        setValue('edit_resource_course_name', resource.course_name || '');
+
         editingResourceId = resourceId;
-        
-        document.getElementById('upload-resource-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        
-        showFeedback('📝 Edit mode activated. Make changes and click Save.', 'info');
-        
+
+        if (!openEditResourceModal()) {
+            showFeedback('Edit modal is not available on this page.', 'error');
+            return;
+        }
+
+        showFeedback(`📝 Editing: ${resource.title}`, 'info');
     } catch (error) {
         console.error('Error loading resource for edit:', error);
-        showFeedback('Failed to load resource data', 'error');
+        showFeedback(`Failed to load resource data: ${error.message}`, 'error');
     }
 }
 
 // =====================================================
-// CANCEL EDIT
+// SAVE CHANGES FROM MODERN EDIT MODAL
+// =====================================================
+async function saveEditResource() {
+    const resourceId = document.getElementById('edit_resource_id')?.value || editingResourceId;
+    if (!resourceId) {
+        showFeedback('No resource selected for editing.', 'error');
+        return;
+    }
+
+    const saveButton = document.querySelector('#edit-resource-form button[type="submit"]');
+    const originalButtonText = saveButton?.innerHTML || '<i class="fas fa-save"></i> Save Changes';
+
+    const program = document.getElementById('edit_resource_program')?.value || '';
+    const intake = document.getElementById('edit_resource_intake')?.value || '';
+    const block = document.getElementById('edit_resource_block')?.value || '';
+    const title = document.getElementById('edit_resource_title')?.value.trim() || '';
+    const description = document.getElementById('edit_resource_description')?.value.trim() || '';
+    const pastpaperYear = document.getElementById('edit_resource_pastpaper_year')?.value || null;
+    const examType = document.getElementById('edit_resource_exam_type')?.value || null;
+    const courseName = document.getElementById('edit_resource_course_name')?.value.trim() || null;
+
+    if (!program || !intake || !block || !title) {
+        showFeedback('Please complete Program, Intake, Block/Term and Title.', 'error');
+        return;
+    }
+
+    if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    }
+
+    try {
+        // Read the existing resource so the modal edits metadata only and never
+        // accidentally removes the existing document or prerecorded podcast.
+        const { data: existing, error: fetchError } = await sb
+            .from('resources')
+            .select('resource_type, file_path, file_url, file_name, podcast_url, podcast_path')
+            .eq('id', resourceId)
+            .single();
+
+        if (fetchError) throw fetchError;
+        if (!existing) throw new Error('Resource could not be found.');
+
+        const isPastPaper = existing.resource_type === 'pastpaper';
+
+        const updatePayload = {
+            program_type: program,
+            intake: intake,
+            block: block,
+            title: title,
+            description: description,
+            updated_at: new Date().toISOString(),
+            pastpaper_year: isPastPaper && pastpaperYear ? parseInt(pastpaperYear, 10) : null,
+            exam_type: isPastPaper ? (examType || null) : null,
+            course_name: isPastPaper ? (courseName || null) : null
+        };
+
+        const { error: updateError } = await sb
+            .from('resources')
+            .update(updatePayload)
+            .eq('id', resourceId);
+
+        if (updateError) throw updateError;
+
+        await logAudit(
+            'RESOURCE_UPDATE',
+            `Updated ${isPastPaper ? 'past paper' : 'material'}: ${title}`,
+            resourceId,
+            'SUCCESS'
+        );
+
+        closeEditModal(true);
+        showFeedback(`✅ "${title}" updated successfully!`, 'success');
+        await loadAllResources();
+    } catch (error) {
+        console.error('Error saving resource edit:', error);
+        await logAudit('RESOURCE_ERROR', `Edit failed: ${title}. ${error.message}`, resourceId, 'FAILURE');
+        showFeedback(`❌ Update failed: ${error.message}`, 'error');
+    } finally {
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.innerHTML = originalButtonText;
+        }
+    }
+}
+
+// =====================================================
+// CANCEL LEGACY UPLOAD-FORM EDIT MODE
 // =====================================================
 function cancelEditResource() {
-    document.getElementById('resource_edit_id').value = '';
-    document.getElementById('form-title').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-    document.getElementById('form-subtitle').textContent = 'Upload new learning materials or past examination papers';
-    document.getElementById('form-submit-btn').innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
-    document.getElementById('form-cancel-btn').style.display = 'none';
-    document.getElementById('file-edit-info').style.display = 'none';
-    document.getElementById('resource-file').required = true;
-    document.getElementById('upload-resource-form').reset();
+    document.getElementById('resource_edit_id')?.setAttribute('value', '');
+    const form = document.getElementById('upload-resource-form');
+    if (form) form.reset();
+
+    const title = document.getElementById('form-title');
+    const subtitle = document.getElementById('form-subtitle');
+    const submit = document.getElementById('form-submit-btn');
+    const cancel = document.getElementById('form-cancel-btn');
+    const info = document.getElementById('file-edit-info');
+    const file = document.getElementById('resource-file');
+
+    if (title) title.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+    if (subtitle) subtitle.textContent = 'Publish a learning material or past paper to the student resource center.';
+    if (submit) submit.innerHTML = '<i class="fas fa-upload"></i> Upload Resource';
+    if (cancel) cancel.style.display = 'none';
+    if (info) info.style.display = 'none';
+    if (file) file.required = true;
+
     setPodcastEditPreview(null);
     selectedResourceStudents = [];
     allResourceStudents = [];
     togglePastPaperFields();
     initializeResourceNotificationUI();
     editingResourceId = null;
-    showFeedback('Edit cancelled', 'info');
+    closeEditModal(true);
 }
+
+// Close when clicking the dimmed backdrop, but not when clicking inside the modal card.
+document.addEventListener('click', (event) => {
+    const modal = document.getElementById('edit-resource-modal');
+    if (modal && event.target === modal) closeEditModal();
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('edit-resource-modal');
+        if (modal && modal.style.display !== 'none') closeEditModal();
+    }
+});
 
 // =====================================================
 // LOAD ALL RESOURCES
@@ -15891,7 +16067,7 @@ async function loadAllResources() {
     const tableBody = document.getElementById('resources-list');
     if (!tableBody) return;
 
-    tableBody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading resources...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="10"><div class="loading-spinner"></div> Loading resources...</td></tr>';
 
     try {
         let query = sb.from('resources').select('*').order('created_at', { ascending: false });
@@ -15952,7 +16128,7 @@ async function loadAllResources() {
         
     } catch (error) {
         console.error('Error loading resources:', error);
-        tableBody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="10" style="color: red;">Error: ${error.message}</td></tr>`;
         await logAudit('RESOURCE_LOAD', `Failed: ${error.message}`, null, 'FAILURE');
     }
 }
@@ -15970,7 +16146,7 @@ function renderResourcesTable(resources) {
             : currentResourceType === 'material'
             ? 'No learning materials found.'
             : 'No resources found.';
-        tableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px;">📁 ${emptyMessage}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 40px;">📁 ${emptyMessage}</td></tr>`;
         return;
     }
     
@@ -16002,6 +16178,18 @@ function renderResourcesTable(resources) {
             <td><span class="badge ${isTVET ? 'badge-tvet' : 'badge-krchn'}">${blockLabel}: ${escapeHtml(blockValue)}</span></td>
             <td><strong>${escapeHtml(titleDisplay)}</strong><br><small>${escapeHtml(resource.course_name || '')}</small></td>
             <td><small>${escapeHtml((resource.description || '-').substring(0, 50))}</small></td>
+            <td>
+                ${resource.podcast_url
+                    ? `<a href="${escapeHtml(resource.podcast_url)}" target="_blank" rel="noopener"
+                         class="btn-action btn-small"
+                         style="background:#059669;color:white;padding:4px 9px;border-radius:4px;text-decoration:none;font-size:11px;display:inline-flex;align-items:center;gap:4px;">
+                         <i class="fas fa-play"></i> Play
+                       </a>`
+                    : `<span style="font-size:11px;color:#94a3b8;display:inline-flex;align-items:center;gap:4px;">
+                         <i class="fas fa-minus-circle"></i> None
+                       </span>`
+                }
+            </td>
             <td>${escapeHtml(resource.uploaded_by_name || 'Unknown')}</td>
             <td>${uploadDate}</td>
             <td style="display: flex; gap: 4px; flex-wrap: wrap;">
@@ -16029,12 +16217,22 @@ async function deleteResourceItem(resourceId, title) {
     try {
         const { data: resource } = await sb
             .from('resources')
-            .select('file_path')
+            .select('file_path, podcast_path')
             .eq('id', resourceId)
             .single();
         
         if (resource?.file_path) {
             await sb.storage.from(RESOURCES_BUCKET).remove([resource.file_path]);
+        }
+
+        if (resource?.podcast_path) {
+            const { error: podcastDeleteError } = await sb.storage
+                .from(RESOURCE_AUDIO_BUCKET)
+                .remove([resource.podcast_path]);
+
+            if (podcastDeleteError) {
+                console.warn('Podcast Storage cleanup failed:', podcastDeleteError);
+            }
         }
         
         await sb.from('resources').delete().eq('id', resourceId);
@@ -16091,7 +16289,7 @@ function exportResourcesToCSV() {
         return;
     }
     
-    let csv = 'Type,Year,Program,Block/Term,Title,Course,Description,Uploaded By,Date\n';
+    let csv = 'Type,Year,Program,Block/Term,Title,Course,Description,Audio,Uploaded By,Date\n';
     
     allResourcesData.forEach(r => {
         const isPastPaper = r.resource_type === 'pastpaper';
@@ -16121,6 +16319,9 @@ window.filterResourceType = filterResourceType;
 window.filterResourcesTable = filterResourcesTable;
 window.deleteResourceItem = deleteResourceItem;
 window.editResource = editResource;
+window.saveEditResource = saveEditResource;
+window.closeEditModal = closeEditModal;
+window.openEditResourceModal = openEditResourceModal;
 window.cancelEditResource = cancelEditResource;
 window.togglePastPaperFields = togglePastPaperFields;
 window.initResourcesSection = initResourcesSection;
