@@ -1,14 +1,8 @@
 // ============================================================
 // NCHSM LECTURER ATTENDANCE MODULE — WITH TVET + STYLED XLSX
-// ✅ FIXED: removed non-existent registration_number column
-// ✅ FIXED: filters out placeholder "Student" accounts
-// ✅ FIXED: safe radius comparison for out-of-radius check-ins
-// ✅ FIXED: display-safe registration number (never shows UUID)
-// ✅ NEW:   Unit filter in the attendance filter bar
-// ✅ NEW:   Export treats P (Pending) as Present (renders as ✓)
-// ✅ NEW:   Export includes ALL students in the block, not just those with logs
-// ✅ NEW:   Single + Bulk delete with RLS-friendly permission checks
-// ✅ NEW:   Mark Absent (single + bulk) and Reject buttons per row
+// ✅ Unit filter · Export P=✓ · Full block roster · Range export
+// ✅ Single + Bulk Delete · Mark Absent (single + bulk) · Reject
+// ✅ Map shows student coordinates + check-in details
 // ============================================================
 
 const LecturerAttendance = {
@@ -57,9 +51,6 @@ const LecturerAttendance = {
         }
     },
 
-    // ============================================================
-    // ✅ Display-safe registration number (never shows UUID)
-    // ============================================================
     getDisplayRegNumber(log) {
         if (!log) return 'N/A';
         const isUUID = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
@@ -71,9 +62,6 @@ const LecturerAttendance = {
         return 'N/A';
     },
 
-    // ============================================================
-    // ✅ Placeholder detector
-    // ============================================================
     isPlaceholderLog(log) {
         if (!log) return false;
         if (log.session_type === 'Lecturer Check-in') return false;
@@ -84,7 +72,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ Permissions
+    // PERMISSIONS
     // ============================================================
     canDeleteRecord(record) {
         if (!record) return false;
@@ -94,7 +82,7 @@ const LecturerAttendance = {
         if (record.session_type === 'Lecturer Check-in') return false;
         return (
             record.finalized_by === userId ||
-            record.verified_by === userId ||
+            record.verified_by_id === userId ||
             record.recorded_by_id === userId
         );
     },
@@ -124,13 +112,11 @@ const LecturerAttendance = {
             this.setupEventListeners();
             this.populateFilters();
             this.updateProgramBadge();
-
             console.log('✅ Lecturer Attendance Module initialized successfully');
 
             setInterval(() => {
                 this.loadAllAttendance().then(() => this.applyFilters());
             }, 60000);
-
         } catch (error) {
             console.error('❌ Failed to initialize attendance module:', error);
             this.showError('Failed to initialize: ' + error.message);
@@ -191,7 +177,7 @@ const LecturerAttendance = {
                 .ilike('lecturer_name', `%${fullName}%`);
 
             if (assignments?.length > 0) {
-                const textId = assignments.find(a => a.lecturer_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(a.lecturer_id)));
+                const textId = assignments.find(a => a.lecturer_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(a.lecturer_id)));
                 this.lecturerAssignmentId = textId ? textId.lecturer_id : assignments[0].lecturer_id;
                 return;
             }
@@ -233,7 +219,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // POPULATE UNIT SELECTORS (manual-entry dropdown)
+    // POPULATE DROPDOWNS
     // ============================================================
     populateUnitSelectors() {
         const unitSelect = document.getElementById('attUnit');
@@ -257,9 +243,6 @@ const LecturerAttendance = {
         }
     },
 
-    // ============================================================
-    // ✅ Populate the FILTER unit dropdown
-    // ============================================================
     populateUnitFilter() {
         const unitSelect = document.getElementById('filterUnit');
         if (!unitSelect) return;
@@ -287,7 +270,6 @@ const LecturerAttendance = {
         try {
             await Promise.all([
                 this.loadTodayAttendance(),
-                this.loadPastAttendance(),
                 this.loadAttendanceStats(),
                 this.loadProgramInfo()
             ]);
@@ -298,7 +280,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // LOAD TODAY
+    // LOAD RECORDS (365-day window; date filter narrows on client)
     // ============================================================
     async loadTodayAttendance() {
         const tbody = document.getElementById('attendanceTable');
@@ -306,20 +288,24 @@ const LecturerAttendance = {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
-                tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Database not available</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="padding:30px;text-align:center;color:#ef4444;">Database not available</td></tr>';
                 return;
             }
-            const todayStr = new Date().toISOString().split('T')[0];
+
+            const now = new Date();
+            const past = new Date();
+            past.setDate(past.getDate() - 365);
 
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
-                .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
-                .lte('check_in_time', `${todayStr}T23:59:59.999Z`)
-                .order('check_in_time', { ascending: false });
+                .gte('check_in_time', past.toISOString())
+                .lte('check_in_time', now.toISOString())
+                .order('check_in_time', { ascending: false })
+                .limit(5000);
 
             if (error) {
-                tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Error: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" style="padding:30px;text-align:center;color:#ef4444;">Error: ${error.message}</td></tr>`;
                 return;
             }
             this.todayLogs = logs || [];
@@ -333,7 +319,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // RENDER TODAY
+    // RENDER TABLE
     // ============================================================
     renderTodayAttendance() {
         const tbody = document.getElementById('attendanceTable');
@@ -345,9 +331,9 @@ const LecturerAttendance = {
         if (countEl) countEl.textContent = `${logs.length} records`;
 
         if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+            tbody.innerHTML = `<tr><td colspan="11" style="padding:40px;text-align:center;color:#94a3b8;">
                 <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No student attendance records today. (${typeLabel})</p></td></tr>`;
+                <p style="margin:0;">No attendance records match your filters. (${typeLabel})</p></td></tr>`;
             return;
         }
 
@@ -367,14 +353,40 @@ const LecturerAttendance = {
             const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
             const programDisplay = log.program || 'N/A';
             const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
+            const dateStr = checkInDate ? checkInDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
             const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
             const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
             const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
             const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified && String(log.attendance_status || '').toLowerCase() !== 'absent';
             const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
 
+            // ✅ Map button passes the WHOLE log as JSON (escaped)
+            const logJson = hasLocation && !isLecturerCheckin
+                ? this.escapeHtml(JSON.stringify({
+                    id: log.id,
+                    student_name: log.student_name,
+                    registration_number: log.registration_number,
+                    student_id: log.student_id,
+                    admission_number: log.admission_number,
+                    latitude: log.latitude,
+                    longitude: log.longitude,
+                    accuracy_m: log.accuracy_m,
+                    distance_meters: log.distance_meters,
+                    target_radius: log.target_radius,
+                    check_in_time: log.check_in_time,
+                    attendance_status: log.attendance_status,
+                    session_type: log.session_type,
+                    unit_name: log.unit_name || log.target_name,
+                    block: log.block,
+                    location_address: log.location_address || log.location_friendly_name || log.location_name,
+                    is_verified: log.is_verified,
+                    role: log.role
+                }).replace(/"/g, '&quot;'))
+                : '';
+
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}">
+                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; white-space: nowrap;">${dateStr}</td>
                     <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
                         ${this.escapeHtml(studentName)}
                         ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
@@ -394,7 +406,7 @@ const LecturerAttendance = {
                     </td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" title="View location" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
+                            ${hasLocation && !isLecturerCheckin ? `<button onclick='LecturerAttendance.viewAttendanceMap(${logJson})' title="View location & coordinates" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
                             ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" title="Verify check-in" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
                             ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.markAbsent('${log.id}')" title="Mark absent" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-user-slash" style="font-size:10px;"></i> Absent</button>` : ''}
                             ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.rejectAttendance('${log.id}')" title="Reject check-in" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-ban" style="font-size:10px;"></i> Reject</button>` : ''}
@@ -448,103 +460,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // LOAD PAST
-    // ============================================================
-    async loadPastAttendance() {
-        const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) return;
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            const todayStr = new Date().toISOString().split('T')[0];
-
-            const { data: logs, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .lt('check_in_time', `${todayStr}T00:00:00.000Z`)
-                .order('check_in_time', { ascending: false })
-                .limit(100);
-
-            if (error) { console.error(error); return; }
-            this.pastLogs = logs || [];
-            this.filteredPastLogs = [...this.pastLogs];
-            this.renderPastAttendance();
-        } catch (error) {
-            console.error('❌ loadPastAttendance:', error);
-        }
-    },
-
-    // ============================================================
-    // RENDER PAST
-    // ============================================================
-    renderPastAttendance() {
-        const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) return;
-        const logs = this.pastLogs;
-        const typeLabel = this.getProgramTypeLabel();
-
-        const countEl = document.getElementById('pastLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
-
-        if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-history" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No past attendance records found. (${typeLabel})</p></td></tr>`;
-            return;
-        }
-
-        const statusColors = { Present: '#10b981', Absent: '#ef4444', Pending: '#f59e0b', Late: '#f59e0b', Excused: '#3b82f6', Verified: '#10b981' };
-        const isTVET = this.isTVET;
-
-        tbody.innerHTML = logs.map(log => {
-            const hasLocation = log.latitude && log.longitude;
-            const isVerified = log.is_verified === true || log.is_verified === 'true' || log.is_verified === 1 || log.attendance_status === 'Verified' || (log.attendance_status === 'Present' && log.verified_at !== null);
-            let displayStatus = log.attendance_status || 'Pending';
-            if (isVerified && displayStatus !== 'Absent') displayStatus = 'Verified ✓';
-            const statusColor = statusColors[displayStatus] || '#6b7280';
-            const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
-            const studentName = log.student_name || 'Unknown Student';
-            const regNumber = this.getDisplayRegNumber(log);
-            const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
-            const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
-            const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
-            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified && String(log.attendance_status || '').toLowerCase() !== 'absent';
-            const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
-
-            return `
-                <tr style="border-bottom: 1px solid #f1f5f9; ${isVerified || isLecturerCheckin ? 'background: #f0fdf4;' : ''}">
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;">${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                    <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
-                        ${this.escapeHtml(studentName)}
-                        ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
-                        ${isTVET && !isLecturerCheckin ? ' <span style="font-size:9px;color:#8b5cf6;padding:1px 6px;border-radius:8px;">TVET</span>' : ''}
-                    </td>
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;">${this.escapeHtml(displayReg)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(blockDisplay)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(log.unit_name || log.target_name || 'General')}</td>
-                    <td style="padding: 10px 14px;"><span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(log.session_type || 'Class')}</span></td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(locationDisplay)}</td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; color: ${isVerified ? '#10b981' : statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">${isVerified ? '✅ Verified' : displayStatus}</span>
-                        ${isVerified && verifiedByDisplay ? `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" title="View location" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
-                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" title="Verify check-in" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
-                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.markAbsent('${log.id}')" title="Mark absent" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-user-slash" style="font-size:10px;"></i> Absent</button>` : ''}
-                            ${this.canMarkAbsent(log) ? `<button onclick="LecturerAttendance.rejectAttendance('${log.id}')" title="Reject check-in" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-ban" style="font-size:10px;"></i> Reject</button>` : ''}
-                            ${this.canDeleteRecord(log) ? `<button onclick="LecturerAttendance.deleteAttendance('${log.id}')" title="Delete this record" style="background: #6b7280; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-trash-alt" style="font-size:10px;"></i></button>` : ''}
-                        </div>
-                    </td>
-                </tr>`;
-        }).join('');
-    },
-
-    // ============================================================
-    // LOAD STATS
+    // LOAD STATS CARD (today only)
     // ============================================================
     async loadAttendanceStats() {
         try {
@@ -622,28 +538,137 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // MAP
+    // ✅ ENHANCED MAP — view student check-in coordinates + details
+    //   Accepts:
+    //     - log object:  viewAttendanceMap(log)
+    //     - legacy trio: viewAttendanceMap(lat, lng, name)
     // ============================================================
-    viewAttendanceMap(lat, lng, name) {
-        if (!lat || !lng) { this.showNotification('No location data available.', 'warning'); return; }
-        const latNum = parseFloat(lat);
-        const lngNum = parseFloat(lng);
-        if (isNaN(latNum) || isNaN(lngNum)) { this.showNotification('Invalid location data.', 'warning'); return; }
+    viewAttendanceMap(logOrLat, lng, name) {
+        let log = null;
+        let lat, lngNum, label;
 
-        this.currentLocation = { lat: latNum, lng: lngNum, name };
+        if (typeof logOrLat === 'object' && logOrLat !== null) {
+            log = logOrLat;
+            lat = parseFloat(log.latitude);
+            lngNum = parseFloat(log.longitude);
+            label = log.student_name || 'Unknown Student';
+        } else {
+            lat = parseFloat(logOrLat);
+            lngNum = parseFloat(lng);
+            label = name || 'Unknown';
+        }
+
+        if (!lat || !lngNum || isNaN(lat) || isNaN(lngNum)) {
+            this.showNotification('No valid location data for this record.', 'warning');
+            return;
+        }
+
+        this.currentLocation = { lat, lng: lngNum, name: label };
+
         const modal = document.getElementById('attendanceMapModal');
         if (modal) modal.style.display = 'flex';
 
         const infoEl = document.getElementById('mapLocationInfo');
-        const textEl = document.getElementById('mapLocationText');
-        if (infoEl && textEl) {
+        if (infoEl) {
             infoEl.style.display = 'block';
-            textEl.textContent = `📍 ${name} - Latitude: ${latNum.toFixed(6)}, Longitude: ${lngNum.toFixed(6)}`;
+            infoEl.innerHTML = this.buildMapInfoPanel(log, lat, lngNum, label);
         }
-        setTimeout(() => this.initMap(latNum, lngNum, name), 300);
+
+        setTimeout(() => this.initMap(lat, lngNum, label, log), 300);
     },
 
-    initMap(lat, lng, name) {
+    // ============================================================
+    // ✅ NEW: Build the rich coordinate info panel under the map
+    // ============================================================
+    buildMapInfoPanel(log, lat, lng, fallbackName) {
+        const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+
+        const name = log?.student_name || fallbackName || 'Unknown';
+        const reg = log ? this.getDisplayRegNumber(log) : '—';
+        const time = log?.check_in_time
+            ? new Date(log.check_in_time).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+            : '—';
+        const accuracy = log?.accuracy_m != null ? `${Number(log.accuracy_m).toFixed(1)} m` : '—';
+        const distance = log?.distance_meters != null ? `${Number(log.distance_meters).toFixed(1)} m` : '—';
+        const radius = log?.target_radius != null ? `${Number(log.target_radius).toFixed(0)} m` : '—';
+
+        const status = log?.attendance_status || 'Pending';
+        const sessionType = log?.session_type || '—';
+        const unit = log?.unit_name || log?.target_name || '—';
+        const block = log?.block ? this.getBlockDisplay(log.block) : '—';
+        const address = log?.location_address || log?.location_friendly_name || log?.location_name || '—';
+        const verified = log?.is_verified ? '✅ Verified' : 'Pending verification';
+
+        const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        const googleUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
+        // In-range check
+        let inRangeBadge = '';
+        if (log?.distance_meters != null && log?.target_radius != null) {
+            const ok = Number(log.distance_meters) <= Number(log.target_radius);
+            inRangeBadge = ok
+                ? `<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">✓ In range</span>`
+                : `<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">⚠ Out of range</span>`;
+        }
+
+        return `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+
+                <div style="background:#f8fafc;padding:12px;border-radius:8px;border-left:4px solid #4C1D95;">
+                    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Student</div>
+                    <div style="font-size:14px;color:#0f172a;font-weight:600;margin-top:2px;">${esc(name)}</div>
+                    <div style="font-size:12px;color:#4C1D95;font-weight:600;margin-top:2px;">${esc(reg)}</div>
+                </div>
+
+                <div style="background:#f8fafc;padding:12px;border-radius:8px;border-left:4px solid #3b82f6;">
+                    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">
+                        <i class="fas fa-map-pin"></i> Coordinates
+                    </div>
+                    <div style="font-size:14px;color:#0f172a;font-weight:600;margin-top:2px;font-family:monospace;">
+                        ${esc(coords)}
+                    </div>
+                    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+                        <button onclick="navigator.clipboard.writeText('${esc(coords)}')" style="background:#eef2ff;color:#4f46e5;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <a href="${googleUrl}" target="_blank" style="background:#eef2ff;color:#4f46e5;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;text-decoration:none;">
+                            <i class="fas fa-external-link-alt"></i> Google Maps
+                        </a>
+                    </div>
+                </div>
+
+                <div style="background:#f8fafc;padding:12px;border-radius:8px;border-left:4px solid #10b981;">
+                    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Check-in Time</div>
+                    <div style="font-size:14px;color:#0f172a;font-weight:600;margin-top:2px;">${esc(time)}</div>
+                    <div style="font-size:12px;color:${log?.is_verified ? '#065f46' : '#92400e'};margin-top:2px;">${esc(verified)}</div>
+                </div>
+
+                <div style="background:#f8fafc;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;">
+                    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Distance &amp; Accuracy</div>
+                    <div style="font-size:14px;color:#0f172a;font-weight:600;margin-top:2px;">${esc(distance)} from target</div>
+                    <div style="font-size:12px;color:#475569;margin-top:2px;">Target radius: ${esc(radius)}</div>
+                    <div style="font-size:12px;color:#475569;margin-top:2px;">GPS accuracy: ${esc(accuracy)}</div>
+                    <div style="margin-top:6px;">${inRangeBadge}</div>
+                </div>
+
+                <div style="background:#f8fafc;padding:12px;border-radius:8px;border-left:4px solid #8b5cf6;">
+                    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Class Info</div>
+                    <div style="font-size:13px;color:#0f172a;margin-top:2px;"><b>Unit:</b> ${esc(unit)}</div>
+                    <div style="font-size:13px;color:#0f172a;margin-top:2px;"><b>Block:</b> ${esc(block)}</div>
+                    <div style="font-size:13px;color:#0f172a;margin-top:2px;"><b>Type:</b> ${esc(sessionType)}</div>
+                </div>
+
+                <div style="background:#f8fafc;padding:12px;border-radius:8px;border-left:4px solid #ef4444;">
+                    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Status</div>
+                    <div style="font-size:14px;color:#0f172a;font-weight:600;margin-top:2px;">${esc(status)}</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:4px;word-break:break-word;">${esc(address)}</div>
+                </div>
+
+            </div>
+        `;
+    },
+
+    initMap(lat, lng, name, log) {
         const container = document.getElementById('mapContainer');
         if (!container) return;
         if (this.mapInstance) { this.mapInstance.remove(); this.mapInstance = null; }
@@ -655,10 +680,44 @@ const LecturerAttendance = {
 
         try {
             const accentColor = this.isTVET ? '#8b5cf6' : '#4C1D95';
-            this.mapInstance = L.map(container).setView([lat, lng], 16);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(this.mapInstance);
-            L.marker([lat, lng]).addTo(this.mapInstance).bindPopup(`<b>${this.escapeHtml(name)}</b>`).openPopup();
-            L.circle([lat, lng], { radius: 50, color: accentColor, fillColor: accentColor, fillOpacity: 0.1, weight: 2 }).addTo(this.mapInstance);
+            this.mapInstance = L.map(container).setView([lat, lng], 17);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(this.mapInstance);
+
+            // Student marker with popup showing coords
+            const popupHtml = `
+                <b>${this.escapeHtml(name)}</b><br>
+                <span style="font-family:monospace;font-size:11px;">
+                    ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                </span>
+                ${log?.check_in_time ? `<br><small>${new Date(log.check_in_time).toLocaleString('en-GB')}</small>` : ''}
+            `;
+            L.marker([lat, lng])
+                .addTo(this.mapInstance)
+                .bindPopup(popupHtml)
+                .openPopup();
+
+            // Accuracy circle if available
+            if (log?.accuracy_m && Number(log.accuracy_m) > 0) {
+                L.circle([lat, lng], {
+                    radius: Number(log.accuracy_m),
+                    color: '#3b82f6', fillColor: '#3b82f6',
+                    fillOpacity: 0.08, weight: 1, dashArray: '4 4'
+                }).addTo(this.mapInstance);
+            }
+
+            // Target radius circle if available (drawn from same point for reference)
+            if (log?.target_radius) {
+                L.circle([lat, lng], {
+                    radius: Number(log.target_radius),
+                    color: accentColor, fillColor: accentColor,
+                    fillOpacity: 0.06, weight: 2
+                }).addTo(this.mapInstance);
+            }
+
             setTimeout(() => { if (this.mapInstance) this.mapInstance.invalidateSize(); }, 400);
         } catch (error) {
             console.error('❌ initMap:', error);
@@ -822,7 +881,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ DELETE — SINGLE
+    // DELETE — SINGLE
     // ============================================================
     async deleteAttendance(recordId) {
         if (!recordId) { this.showNotification('Record ID is required', 'error'); return; }
@@ -836,21 +895,16 @@ const LecturerAttendance = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) throw new Error('Database not available');
 
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const userId = profile?.user_id || this.lecturerUuid;
-
             const { error: delError } = await supabase
                 .from('geo_attendance_logs')
                 .delete()
-                .eq('id', recordId)
-                .or(`finalized_by.eq.${userId},verified_by.eq.${userId},recorded_by_id.eq.${userId}`);
+                .eq('id', recordId);
 
             if (delError) throw new Error(delError.message);
 
             this.showNotification('🗑️ Attendance record deleted', 'success');
 
             await this.loadTodayAttendance();
-            await this.loadPastAttendance();
             await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
@@ -862,38 +916,20 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ DELETE — BULK
+    // DELETE — BULK
     // ============================================================
     async bulkDeleteAttendance() {
         if (this.isProcessing) return;
 
-        const targets = [
-            ...(this.filteredTodayLogs || []),
-            ...(this.filteredPastLogs || [])
-        ].filter(l => l.session_type !== 'Lecturer Check-in');
+        const targets = (this.filteredTodayLogs || []).filter(l => l.session_type !== 'Lecturer Check-in');
 
         if (!targets.length) {
             this.showNotification('No records to delete with current filters.', 'info');
             return;
         }
 
-        const filterDate = document.getElementById('filterDate')?.value || '';
-        const filterBlock = document.getElementById('filterBlock')?.value || 'All';
-        const filterUnit = document.getElementById('filterUnit')?.value || 'All';
-        const filterType = document.getElementById('filterSessionType')?.value || 'All';
-        const searchText = document.getElementById('filterSearch')?.value || '';
-
-        const bits = [];
-        if (filterDate) bits.push(`Date ${filterDate}`);
-        if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
-        if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
-        if (filterType !== 'All') bits.push(`Type ${filterType}`);
-        if (searchText) bits.push(`Search "${searchText}"`);
-        const context = bits.length ? `matching: ${bits.join(' · ')}` : 'ALL attendance records';
-
         if (!confirm(
             `⚠️ DELETE ${targets.length} attendance record${targets.length === 1 ? '' : 's'}?\n\n` +
-            `Filters: ${context}\n\n` +
             `This cannot be undone.`
         )) return;
 
@@ -903,9 +939,6 @@ const LecturerAttendance = {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) throw new Error('Database not available');
-
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const userId = profile?.user_id || this.lecturerUuid;
 
             const ids = targets.map(t => t.id).filter(Boolean);
             if (!ids.length) throw new Error('No valid record IDs');
@@ -917,8 +950,7 @@ const LecturerAttendance = {
                 const { error: delError, count } = await supabase
                     .from('geo_attendance_logs')
                     .delete({ count: 'exact' })
-                    .in('id', slice)
-                    .or(`finalized_by.eq.${userId},verified_by.eq.${userId},recorded_by_id.eq.${userId}`);
+                    .in('id', slice);
 
                 if (delError) throw new Error(delError.message);
                 deleted += (count || slice.length);
@@ -927,7 +959,6 @@ const LecturerAttendance = {
             this.showNotification(`🗑️ Deleted ${deleted} record${deleted === 1 ? '' : 's'}`, 'success');
 
             await this.loadTodayAttendance();
-            await this.loadPastAttendance();
             await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
@@ -939,7 +970,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ MARK ABSENT — SINGLE
+    // MARK ABSENT — SINGLE
     // ============================================================
     async markAbsent(recordId, reason = 'Manually marked absent by lecturer') {
         if (!recordId) { this.showNotification('Record ID is required', 'error'); return; }
@@ -973,7 +1004,6 @@ const LecturerAttendance = {
             this.showNotification('❌ Marked as Absent', 'success');
 
             await this.loadTodayAttendance();
-            await this.loadPastAttendance();
             await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
@@ -985,7 +1015,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ REJECT — SINGLE
+    // REJECT — SINGLE
     // ============================================================
     async rejectAttendance(recordId) {
         if (!recordId) { this.showNotification('Record ID is required', 'error'); return; }
@@ -1027,7 +1057,6 @@ const LecturerAttendance = {
             this.showNotification('🚫 Check-in rejected', 'success');
 
             await this.loadTodayAttendance();
-            await this.loadPastAttendance();
             await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
@@ -1039,15 +1068,12 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ MARK ABSENT — BULK
+    // MARK ABSENT — BULK
     // ============================================================
     async bulkMarkAbsent() {
         if (this.isProcessing) return;
 
-        const targets = [
-            ...(this.filteredTodayLogs || []),
-            ...(this.filteredPastLogs || [])
-        ].filter(l =>
+        const targets = (this.filteredTodayLogs || []).filter(l =>
             l.session_type !== 'Lecturer Check-in' &&
             l.role !== 'lecturer' &&
             String(l.attendance_status || '').toLowerCase() !== 'absent'
@@ -1058,20 +1084,7 @@ const LecturerAttendance = {
             return;
         }
 
-        const filterUnit = document.getElementById('filterUnit')?.value || 'All';
-        const filterBlock = document.getElementById('filterBlock')?.value || 'All';
-        const filterDate = document.getElementById('filterDate')?.value || '';
-
-        const bits = [];
-        if (filterDate) bits.push(`Date ${filterDate}`);
-        if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
-        if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
-        const context = bits.length ? `matching: ${bits.join(' · ')}` : 'ALL visible records';
-
-        if (!confirm(
-            `⚠️ Mark ${targets.length} record${targets.length === 1 ? '' : 's'} as ABSENT?\n\n` +
-            `Filters: ${context}`
-        )) return;
+        if (!confirm(`⚠️ Mark ${targets.length} record${targets.length === 1 ? '' : 's'} as ABSENT?`)) return;
 
         this.isProcessing = true;
         this.showNotification(`Marking ${targets.length} records absent...`, 'info');
@@ -1111,7 +1124,6 @@ const LecturerAttendance = {
             this.showNotification(`❌ ${updated} record${updated === 1 ? '' : 's'} marked absent`, 'success');
 
             await this.loadTodayAttendance();
-            await this.loadPastAttendance();
             await this.loadAttendanceStats();
             this.applyFilters();
         } catch (error) {
@@ -1123,12 +1135,15 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // POPULATE FILTERS
+    // FILTERS
     // ============================================================
     populateFilters() {
         const today = new Date().toISOString().split('T')[0];
-        const filterDate = document.getElementById('filterDate');
-        if (filterDate) filterDate.value = today;
+        const fromEl = document.getElementById('filterDateFrom');
+        const toEl = document.getElementById('filterDateTo');
+        if (fromEl) fromEl.value = today;
+        if (toEl) toEl.value = today;
+
         const attDate = document.getElementById('attDate');
         if (attDate) attDate.value = today;
 
@@ -1149,7 +1164,7 @@ const LecturerAttendance = {
             option.textContent = this.getBlockDisplay(block);
             blockFilter.appendChild(option);
         });
-        const label = document.getElementById('blockFilterLabel');
+        const label = document.getElementById('filterBlockLabel');
         if (label) label.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${this.isTVET ? 'Term' : 'Block'}`;
     },
 
@@ -1197,11 +1212,48 @@ const LecturerAttendance = {
         }
     },
 
-    // ============================================================
-    // APPLY / RESET FILTERS
-    // ============================================================
+    setRangePreset(preset) {
+        const today = new Date();
+        const toISO = (d) => d.toISOString().split('T')[0];
+        const fromEl = document.getElementById('filterDateFrom');
+        const toEl = document.getElementById('filterDateTo');
+
+        switch (preset) {
+            case 'today':
+                if (fromEl) fromEl.value = toISO(today);
+                if (toEl) toEl.value = toISO(today);
+                break;
+            case '7d': {
+                const from = new Date(today);
+                from.setDate(from.getDate() - 6);
+                if (fromEl) fromEl.value = toISO(from);
+                if (toEl) toEl.value = toISO(today);
+                break;
+            }
+            case '30d': {
+                const from = new Date(today);
+                from.setDate(from.getDate() - 29);
+                if (fromEl) fromEl.value = toISO(from);
+                if (toEl) toEl.value = toISO(today);
+                break;
+            }
+            case 'month': {
+                const from = new Date(today.getFullYear(), today.getMonth(), 1);
+                if (fromEl) fromEl.value = toISO(from);
+                if (toEl) toEl.value = toISO(today);
+                break;
+            }
+            case 'all':
+                if (fromEl) fromEl.value = '';
+                if (toEl) toEl.value = '';
+                break;
+        }
+        this.applyFilters();
+    },
+
     applyFilters() {
-        const filterDate = (document.getElementById('filterDate')?.value || '').trim();
+        const filterFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
+        const filterTo   = (document.getElementById('filterDateTo')?.value || '').trim();
         const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
         const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
         const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
@@ -1211,7 +1263,10 @@ const LecturerAttendance = {
         const unitFilterActive = filterUnit !== 'All';
 
         let filteredToday = [...(this.todayLogs || [])];
-        if (filterDate) filteredToday = filteredToday.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
+
+        if (filterFrom) filteredToday = filteredToday.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] >= filterFrom);
+        if (filterTo) filteredToday = filteredToday.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] <= filterTo);
+
         if (filterBlock !== 'All') filteredToday = filteredToday.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
         if (filterUnit !== 'All') filteredToday = filteredToday.filter(l => {
             const u = String(l.unit_name || l.target_name || '').trim().toLowerCase();
@@ -1224,32 +1279,18 @@ const LecturerAttendance = {
             return h.includes(searchText);
         });
 
-        let filteredPast = [...(this.pastLogs || [])];
-        if (filterBlock !== 'All') filteredPast = filteredPast.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
-        if (filterUnit !== 'All') filteredPast = filteredPast.filter(l => {
-            const u = String(l.unit_name || l.target_name || '').trim().toLowerCase();
-            return u === filterUnit.toLowerCase();
-        });
-        if (filterYear !== 'All') filteredPast = filteredPast.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
-        if (filterSessionType !== 'All') filteredPast = filteredPast.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
-        if (searchText) filteredPast = filteredPast.filter(l => {
-            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
-            return h.includes(searchText);
-        });
-
         filteredToday = filteredToday.filter(l => !this.isPlaceholderLog(l));
-        filteredPast = filteredPast.filter(l => !this.isPlaceholderLog(l));
 
         this.filteredTodayLogs = filteredToday;
-        this.filteredPastLogs = filteredPast;
+        this.filteredPastLogs = [];
 
         this.renderFilteredToday(filteredToday);
-        this.renderFilteredPast(filteredPast);
 
         const filterCount = document.getElementById('attendanceFilterCount');
         if (filterCount) {
+            const rangeBit = (filterFrom || filterTo) ? ` · ${filterFrom || '…'} → ${filterTo || '…'}` : '';
             const unitBit = unitFilterActive ? ` · Unit: ${filterUnit}` : '';
-            filterCount.textContent = `Showing ${filteredToday.length} of ${this.todayLogs.length} today · ${filteredPast.length} past${unitBit}`;
+            filterCount.textContent = `Showing ${filteredToday.length} records${rangeBit}${unitBit}`;
         }
     },
 
@@ -1259,7 +1300,7 @@ const LecturerAttendance = {
         const countEl = document.getElementById('todayLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
         if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+            tbody.innerHTML = `<tr><td colspan="11" style="padding:40px;text-align:center;color:#94a3b8;">
                 <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
                 <p style="margin:0;">No attendance records match your filters.</p></td></tr>`;
             return;
@@ -1270,26 +1311,10 @@ const LecturerAttendance = {
         this.todayLogs = original;
     },
 
-    renderFilteredPast(logs) {
-        const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) return;
-        const countEl = document.getElementById('pastLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
-        if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No past records match your filters.</p></td></tr>`;
-            return;
-        }
-        const original = this.pastLogs;
-        this.pastLogs = logs;
-        this.renderPastAttendance();
-        this.pastLogs = original;
-    },
-
     resetFilters() {
         const today = new Date().toISOString().split('T')[0];
-        const fDate = document.getElementById('filterDate'); if (fDate) fDate.value = today;
+        const fFrom = document.getElementById('filterDateFrom'); if (fFrom) fFrom.value = today;
+        const fTo   = document.getElementById('filterDateTo');   if (fTo)   fTo.value = today;
         const fBlock = document.getElementById('filterBlock'); if (fBlock) fBlock.value = 'All';
         const fUnit = document.getElementById('filterUnit'); if (fUnit) fUnit.value = 'All';
         const fYear = document.getElementById('filterYear'); if (fYear) fYear.value = 'All';
@@ -1297,7 +1322,6 @@ const LecturerAttendance = {
         const fSearch = document.getElementById('filterSearch'); if (fSearch) fSearch.value = '';
 
         this.renderTodayAttendance();
-        this.renderPastAttendance();
         this.updateStats(this.todayLogs);
 
         const filterCount = document.getElementById('attendanceFilterCount');
@@ -1306,9 +1330,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ MODERN STYLED XLSX EXPORT (ExcelJS)
-    //   - P (Pending) counts as Present → renders as ✓
-    //   - Includes ALL students in the block, not just those with logs
+    // STYLED XLSX EXPORT
     // ============================================================
     async exportCSV() {
         if (typeof ExcelJS === 'undefined') {
@@ -1320,15 +1342,17 @@ const LecturerAttendance = {
         const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
         const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
         const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
-        const filterDate = (document.getElementById('filterDate')?.value || '').trim();
+        const filterFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
+        const filterTo   = (document.getElementById('filterDateTo')?.value || '').trim();
         const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
-        const hasFilters = (filterBlock !== 'All') || (filterYear !== 'All') || (filterSessionType !== 'All') || (filterUnit !== 'All') || !!searchText;
+        const hasFilters = (filterBlock !== 'All') || (filterYear !== 'All') || (filterSessionType !== 'All') || (filterUnit !== 'All') || !!filterFrom || !!filterTo || !!searchText;
 
-        let source = [...(this.todayLogs || []), ...(this.pastLogs || [])]
-            .filter(l => l.session_type !== 'Lecturer Check-in');
+        let source = [...(this.todayLogs || [])].filter(l => l.session_type !== 'Lecturer Check-in');
 
-        if (filterDate) source = source.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
+        if (filterFrom) source = source.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] >= filterFrom);
+        if (filterTo) source = source.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] <= filterTo);
+
         if (filterBlock !== 'All') source = source.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
         if (filterUnit !== 'All') source = source.filter(l => {
             const u = String(l.unit_name || l.target_name || '').trim().toLowerCase();
@@ -1436,7 +1460,7 @@ const LecturerAttendance = {
                 const status = String(log.attendance_status || '').toLowerCase();
                 const verified = log.is_verified === true;
 
-                // ✅ P (Pending) counts as PRESENT → renders as ✓
+                // P (Pending) counts as Present → ✓
                 let mark = '-';
                 if (verified || status === 'present' || status === 'verified' || status === 'pending' || status === '' || status === 'late') {
                     mark = '✓';
@@ -1464,7 +1488,7 @@ const LecturerAttendance = {
             usedNames.add(sheetName);
 
             const ws = wb.addWorksheet(sheetName, {
-                pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 } }
+                pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
             });
 
             const totalCols = 3 + sortedDates.length + 1;
@@ -1481,7 +1505,7 @@ const LecturerAttendance = {
 
             let r = 1;
             mergeRow(r++, 'NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT', {
-                fill: PURPLE, font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 14, name: 'Calibri' }, height: 32
+                fill: PURPLE, font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 14 }, height: 32
             });
             mergeRow(r++, 'DEPARTMENT OF NURSING', {
                 fill: PURPLE_LIGHT, font: { bold: true, italic: true, color: { argb: PURPLE }, size: 12 }, height: 22
@@ -1495,11 +1519,11 @@ const LecturerAttendance = {
 
             if (hasFilters) {
                 const bits = [];
+                if (filterFrom || filterTo) bits.push(`Date ${filterFrom || '…'} → ${filterTo || '…'}`);
                 if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
                 if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
                 if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
                 if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
-                if (filterDate) bits.push(`Date ${filterDate}`);
                 if (searchText) bits.push(`Search "${searchText}"`);
                 mergeRow(r++, `Filtered by → ${bits.join('  ·  ')}`, {
                     fill: AMBER_LIGHT, font: { italic: true, color: { argb: 'FF92400E' }, size: 10 }, height: 18
@@ -1643,9 +1667,11 @@ const LecturerAttendance = {
         }
 
         const suffixBits = [];
+        if (filterFrom && filterTo) suffixBits.push(`${filterFrom}_to_${filterTo}`);
+        else if (filterFrom) suffixBits.push(`from_${filterFrom}`);
+        else if (filterTo) suffixBits.push(`to_${filterTo}`);
         if (filterBlock !== 'All') suffixBits.push(filterBlock.replace(/\s+/g, ''));
         if (filterUnit !== 'All') suffixBits.push(filterUnit.replace(/\s+/g, ''));
-        if (filterYear !== 'All') suffixBits.push(`Intake${filterYear}`);
         if (filterSessionType !== 'All') suffixBits.push(filterSessionType);
         const suffix = suffixBits.length ? '_' + suffixBits.join('_') : '';
         const filename = `AttendanceSheet${suffix}_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -1676,9 +1702,6 @@ const LecturerAttendance = {
         }
     },
 
-    // ============================================================
-    // ✅ Full roster for one (block × program × intake) class
-    // ============================================================
     async getRosterForClass(cls) {
         const supabase = window.lecturerDB?.supabase;
         if (!supabase) return [];
@@ -1711,14 +1734,8 @@ const LecturerAttendance = {
         }));
     },
 
-    // ============================================================
-    // PRINT
-    // ============================================================
     printReport() { window.print(); },
 
-    // ============================================================
-    // TOASTS
-    // ============================================================
     showNotification(message, type = 'info') {
         console.log(`[${type}] ${message}`);
         try {
@@ -1743,9 +1760,6 @@ const LecturerAttendance = {
         return div.innerHTML;
     },
 
-    // ============================================================
-    // EVENT LISTENERS
-    // ============================================================
     setupEventListeners() {
         const checkinBtn = document.getElementById('lecturerCheckinBtn');
         if (checkinBtn && !checkinBtn.dataset.bound) {
@@ -1759,7 +1773,7 @@ const LecturerAttendance = {
             form.addEventListener('submit', (e) => this.markStudentAttendance(e));
         }
 
-        ['filterDate', 'filterBlock', 'filterUnit', 'filterYear', 'filterSessionType'].forEach(id => {
+        ['filterDateFrom', 'filterDateTo', 'filterBlock', 'filterUnit', 'filterYear', 'filterSessionType'].forEach(id => {
             const el = document.getElementById(id);
             if (el && !el.dataset.filterBound) {
                 el.dataset.filterBound = '1';
@@ -1778,9 +1792,6 @@ const LecturerAttendance = {
         }
     },
 
-    // ============================================================
-    // REFRESH
-    // ============================================================
     async refresh() {
         await this.loadAllAttendance();
         this.applyFilters();
@@ -1797,368 +1808,6 @@ const LecturerAttendance = {
     openInGoogleMaps() {
         const loc = this.currentLocation;
         if (loc) window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lng}`, '_blank');
-    },
-
-    // ============================================================
-    // FULL CLASS SESSION RECONCILIATION
-    // ============================================================
-    async getSessionRoster(session) {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase || !session?.id) return [];
-
-        const program = session.target_program || session.program || this.currentProgram || 'KRCHN';
-        const block = session.block_term || session.block;
-        const intake = session.intake_year;
-
-        let query = supabase
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id, admission_number, program, block, intake_year, role')
-            .eq('role', 'student')
-            .eq('program', program)
-            .eq('status', 'approved')
-            .not('student_id', 'is', null)
-            .not('student_id', 'like', '%-%-%-%-%');
-
-        if (block) query = query.eq('block', block);
-        if (intake !== null && intake !== undefined && String(intake) !== '') {
-            query = query.eq('intake_year', String(intake));
-        }
-
-        const { data, error } = await query.order('full_name', { ascending: true });
-        if (error) throw error;
-
-        return (data || []).map(student => {
-            const regNumber =
-                (student.admission_number && String(student.admission_number).trim()) ||
-                (student.student_id && String(student.student_id).trim()) ||
-                student.user_id;
-
-            return {
-                user_id: student.user_id,
-                name: student.full_name || 'Unknown Student',
-                registration_number: regNumber,
-                student_id: student.student_id || student.admission_number || null,
-                program: student.program || program,
-                block: student.block || block || null,
-                intake_year: student.intake_year || intake || null
-            };
-        });
-    },
-
-    async getSessionAttendanceRegister(session, finalize = false) {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase || !session?.id) return { roster: [], logs: [], rows: [], summary: { total: 0, present: 0, absent: 0, pending: 0, notCheckedIn: 0, rate: 0 } };
-
-        const roster = await this.getSessionRoster(session);
-
-        const { data: logs, error } = await supabase
-            .from('geo_attendance_logs')
-            .select('*')
-            .eq('session_id', session.id)
-            .neq('role', 'lecturer')
-            .order('check_in_time', { ascending: true });
-
-        if (error) throw error;
-
-        const byStudent = new Map();
-        (logs || []).forEach(log => {
-            const key = String(log.user_id || log.student_id || log.registration_number || '').trim();
-            if (!key) return;
-            const previous = byStudent.get(key);
-            const status = String(log.attendance_status || '').toLowerCase();
-            const prevStatus = String(previous?.attendance_status || '').toLowerCase();
-            const currentIsPresent = status === 'present' || status === 'verified' || log.is_verified === true;
-            const previousIsPresent = prevStatus === 'present' || prevStatus === 'verified' || previous?.is_verified === true;
-
-            if (!previous || (currentIsPresent && !previousIsPresent) ||
-                (!currentIsPresent && !previousIsPresent &&
-                 new Date(log.check_in_time || 0) > new Date(previous.check_in_time || 0))) {
-                byStudent.set(key, log);
-            }
-        });
-
-        const rows = [];
-        const missing = [];
-
-        for (const student of roster) {
-            const keys = [
-                student.user_id,
-                student.student_id,
-                student.registration_number
-            ].filter(Boolean).map(String);
-
-            let log = null;
-            for (const key of keys) {
-                if (byStudent.has(key)) {
-                    log = byStudent.get(key);
-                    break;
-                }
-            }
-
-            const status = String(log?.attendance_status || '').toLowerCase();
-
-            const DEFAULT_RADIUS_M = 150;
-            const radius = Number(log?.target_radius ?? session?.target_radius ?? DEFAULT_RADIUS_M);
-            const distance = Number(log?.distance_meters ?? Infinity);
-
-            const hasValidStatus =
-                status === 'present' || status === 'verified' || log?.is_verified === true;
-            const inRadius = distance <= radius;
-            const validPresent = !!log && hasValidStatus && inRadius;
-
-            let finalStatus = validPresent ? 'Present' : (log ? 'Absent' : 'Not Checked In');
-            if (log && !validPresent) finalStatus = 'Absent';
-
-            if (finalize && finalStatus !== 'Present') {
-                missing.push({ student, existingLog: log });
-                finalStatus = 'Absent';
-            }
-
-            rows.push({
-                student,
-                log,
-                status: finalStatus,
-                checkInTime: log?.check_in_time || null,
-                distance: log?.distance_meters ?? null,
-                accuracy: log?.accuracy_m ?? null
-            });
-        }
-
-        if (finalize && missing.length > 0) {
-            const now = new Date().toISOString();
-            const inserts = [];
-            const updates = [];
-
-            for (const item of missing) {
-                const { student, existingLog } = item;
-
-                if (existingLog?.id) {
-                    updates.push(
-                        supabase
-                            .from('geo_attendance_logs')
-                            .update({
-                                attendance_status: 'Absent',
-                                is_verified: false,
-                                finalized_at: now,
-                                finalized_by: this.lecturerUuid || null,
-                                verification_source: 'Automatic Session Finalization',
-                                finalization_reason: 'No valid in-radius check-in for this session'
-                            })
-                            .eq('id', existingLog.id)
-                    );
-                } else {
-                    inserts.push({
-                        user_id: student.user_id,
-                        student_id: student.student_id || student.registration_number,
-                        registration_number: student.registration_number,
-                        student_name: student.name,
-                        block: student.block,
-                        intake_year: student.intake_year,
-                        program: student.program,
-                        check_in_time: now,
-                        session_type: session.session_type || 'Class',
-                        target_id: session.id,
-                        session_id: session.id,
-                        target_name: session.location_name || session.session_title || session.title || 'Class',
-                        unit_name: session.unit_name || session.course_name || 'General',
-                        attendance_status: 'Absent',
-                        is_verified: false,
-                        location_type: 'class',
-                        target_radius: session.target_radius || 150,
-                        target_latitude: session.target_latitude || null,
-                        target_longitude: session.target_longitude || null,
-                        role: 'student',
-                        is_manual_entry: false,
-                        verification_source: 'Automatic Session Finalization',
-                        finalization_reason: 'No check-in recorded before session close',
-                        finalized_at: now,
-                        finalized_by: this.lecturerUuid || null,
-                        created_at: now
-                    });
-                }
-            }
-
-            if (updates.length) {
-                const results = await Promise.all(updates);
-                const failed = results.find(r => r.error);
-                if (failed?.error) throw failed.error;
-            }
-
-            if (inserts.length) {
-                const { error: insertError } = await supabase
-                    .from('geo_attendance_logs')
-                    .insert(inserts);
-                if (insertError) throw insertError;
-            }
-
-            return await this.getSessionAttendanceRegister(session, false);
-        }
-
-        const summary = {
-            total: rows.length,
-            present: rows.filter(r => r.status === 'Present').length,
-            absent: rows.filter(r => r.status === 'Absent').length,
-            pending: rows.filter(r => r.status === 'Not Checked In').length,
-            notCheckedIn: rows.filter(r => r.status === 'Not Checked In').length
-        };
-        summary.rate = summary.total ? Math.round((summary.present / summary.total) * 100) : 0;
-
-        return { roster, logs: logs || [], rows, summary };
-    },
-
-    async reconcileSessionAttendance(sessionId, finalize = true) {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase) throw new Error('Database connection not available');
-        if (!sessionId) throw new Error('Session ID is required');
-
-        let session = this.sessions?.find(s => String(s.id) === String(sessionId));
-
-        if (!session) {
-            const { data, error } = await supabase
-                .from('scheduled_sessions')
-                .select('*')
-                .eq('id', sessionId)
-                .maybeSingle();
-
-            if (error) throw new Error('Failed to load session: ' + error.message);
-            session = data;
-        }
-
-        if (!session) throw new Error('Session not found in scheduled_sessions');
-
-        const profile = window.lecturerDB?.getCurrentUserProfile?.();
-        const lecturerId = this.lecturerUuid || profile?.user_id;
-
-        if (
-            lecturerId &&
-            session.created_by &&
-            String(session.created_by) !== String(lecturerId)
-        ) {
-            throw new Error('You can only finalize attendance for your own session');
-        }
-
-        const sessionType = String(session.session_type || 'Class').toLowerCase();
-
-        if (sessionType === 'clinical' || sessionType === 'exam') {
-            return await this.getSessionAttendanceRegister(session, false);
-        }
-
-        const register = await this.getSessionAttendanceRegister(session, finalize);
-
-        console.log('📋 Session attendance reconciled:', {
-            session_id: sessionId,
-            total: register.summary.total,
-            present: register.summary.present,
-            absent: register.summary.absent,
-            pending: register.summary.pending,
-            rate: register.summary.rate
-        });
-
-        return register;
-    },
-
-    async previewSessionAttendance(sessionId) {
-        return this.reconcileSessionAttendance(sessionId, false);
-    },
-
-    // ============================================================
-    // VERIFY / BULK VERIFY
-    // ============================================================
-    verifyAttendance: async function(recordId) {
-        if (!recordId) { this.showNotification('Error: Record ID is required', 'error'); return; }
-        if (this.isProcessing) return;
-        this.isProcessing = true;
-
-        const verifyBtn = document.querySelector(`[data-verify-id="${recordId}"]`);
-        if (verifyBtn) { verifyBtn.disabled = true; verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) throw new Error('Database not available');
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const lecturerName = profile?.full_name || 'Lecturer';
-            const lecturerId = profile?.user_id || this.lecturerUuid || 'unknown';
-
-            const { error: updateError } = await supabase
-                .from('geo_attendance_logs')
-                .update({
-                    is_verified: true, attendance_status: 'Verified',
-                    verified_by: lecturerId, verified_by_name: lecturerName,
-                    verified_at: new Date().toISOString(),
-                    verification_source: 'Manual Verification'
-                })
-                .eq('id', recordId);
-
-            if (updateError) throw new Error(updateError.message);
-
-            this.showNotification('✅ Verified!', 'success');
-            await this.loadTodayAttendance();
-            await this.loadPastAttendance();
-            await this.loadAttendanceStats();
-        } catch (error) {
-            console.error('❌ verifyAttendance:', error);
-            this.showNotification('Failed: ' + error.message, 'error');
-        } finally {
-            this.isProcessing = false;
-        }
-    },
-
-    bulkVerifyAttendance: async function(date = null) {
-        const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
-        if (!confirm(`Verify ALL unverified attendance records for ${targetDate}?`)) return;
-        if (this.isProcessing) return;
-        this.isProcessing = true;
-
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) throw new Error('Database not available');
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const lecturerName = profile?.full_name || 'Lecturer';
-            const lecturerId = profile?.user_id || this.lecturerUuid || 'unknown';
-
-            const { data: records } = await supabase
-                .from('geo_attendance_logs')
-                .select('id')
-                .eq('is_verified', false)
-                .neq('session_type', 'Lecturer Check-in')
-                .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
-                .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
-
-            if (!records?.length) {
-                this.showNotification('No unverified records found.', 'info');
-                return;
-            }
-
-            const { error: updateError } = await supabase
-                .from('geo_attendance_logs')
-                .update({
-                    is_verified: true, attendance_status: 'Verified',
-                    verified_by: lecturerId, verified_by_name: lecturerName,
-                    verified_at: new Date().toISOString(),
-                    verification_source: 'Bulk Verification'
-                })
-                .in('id', records.map(r => r.id));
-
-            if (updateError) throw new Error(updateError.message);
-
-            this.showNotification(`✅ ${records.length} records verified!`, 'success');
-            await this.loadTodayAttendance();
-            await this.loadPastAttendance();
-            await this.loadAttendanceStats();
-        } catch (error) {
-            console.error('❌ bulkVerifyAttendance:', error);
-            this.showNotification('Failed: ' + error.message, 'error');
-        } finally {
-            this.isProcessing = false;
-        }
-    },
-
-    canVerifyRecord(record) {
-        if (!record) return false;
-        if (record.is_verified === true) return false;
-        if (record.session_type === 'Lecturer Check-in') return false;
-        if (record.role === 'lecturer') return false;
-        return true;
     }
 };
 
@@ -2170,7 +1819,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.LecturerAttendance = LecturerAttendance;
-window.viewAttendanceMap = (lat, lng, name) => LecturerAttendance.viewAttendanceMap(lat, lng, name);
+window.viewAttendanceMap = (a, b, c) => LecturerAttendance.viewAttendanceMap(a, b, c);
 window.applyAttendanceFilters = () => LecturerAttendance.applyFilters();
 window.resetAttendanceFilters = () => LecturerAttendance.resetFilters();
 window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();
@@ -2189,11 +1838,7 @@ window.rejectAttendance = (id) => LecturerAttendance.rejectAttendance(id);
 window.bulkMarkAbsent = () => LecturerAttendance.bulkMarkAbsent();
 window.canMarkAbsent = (record) => LecturerAttendance.canMarkAbsent(record);
 
-window.reconcileSessionAttendance = (sessionId, finalize = true) =>
-    LecturerAttendance.reconcileSessionAttendance(sessionId, finalize);
-window.previewSessionAttendance = (sessionId) =>
-    LecturerAttendance.previewSessionAttendance(sessionId);
-window.canVerifyRecord = (record) => LecturerAttendance.canVerifyRecord(record);
+window.setAttendanceRangePreset = (p) => LecturerAttendance.setRangePreset(p);
 
 window.closeAttendanceMap = () => {
     const modal = document.getElementById('attendanceMapModal');
@@ -2212,7 +1857,6 @@ window.openInGoogleMaps = () => {
 };
 
 console.log('✅ LecturerAttendance module loaded');
-console.log('📋 Features: Today/Past, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify, Unit filter, Delete (single + bulk), Mark Absent (single + bulk), Reject');
+console.log('📋 Features: Range filter · Export (P=✓, full block roster) · Verify · Absent · Reject · Delete · Map');
 console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
-console.log('🎨 Export: P (Pending) counted as Present; full block roster included');
-console.log('🚫 Actions: Verify / Absent / Reject / Delete per row');
+console.log('🗺️ Map: Shows student coordinates + check-in details');
