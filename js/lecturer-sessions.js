@@ -430,25 +430,26 @@ const LecturerSessions = {
                 ? `<span style="background:#f1f5f9;color:#64748b;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:500;">0 checked in</span>`
                 : `<span style="background:#d1fae5;color:#065f46;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;"><i class="fas fa-users"></i> ${attendeeCount} checked in</span>`;
 
+            // Attendance controls:
+            // - An ACTIVE session always shows CLOSE, even after its scheduled date passes.
+            // - An inactive session shows OPEN only when it is today or a future session.
             let sessionControls = '';
-            if (sessionDate && sessionDate >= today) {
-                if (!isActive && status !== 'closed') {
-                    sessionControls += `
-                        <button onclick="LecturerSessions.openSession('${session.id}')" 
-                                style="background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-                            <i class="fas fa-play"></i> Open
-                        </button>
-                    `;
-                } else if (isActive) {
-                    sessionControls += `
-                        <button onclick="LecturerSessions.closeSession('${session.id}')" 
-                                style="background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
-                            <i class="fas fa-stop"></i> Close
-                        </button>
-                    `;
-                }
+            if (isActive) {
+                sessionControls += `
+                    <button onclick="LecturerSessions.closeSession('${session.id}')" 
+                            style="background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                            onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                        <i class="fas fa-stop"></i> Close
+                    </button>
+                `;
+            } else if (sessionDate && sessionDate >= today && status !== 'closed') {
+                sessionControls += `
+                    <button onclick="LecturerSessions.openSession('${session.id}')" 
+                            style="background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                            onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                        <i class="fas fa-play"></i> Open
+                    </button>
+                `;
             }
 
             const titleDisplay = session.session_title || session.title || 'N/A';
