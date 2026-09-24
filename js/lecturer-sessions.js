@@ -1572,7 +1572,11 @@ const LecturerSessions = {
                 session_time: formData.time || '09:00:00',
                 target_program: formData.program,
                 program_type: formData.program,
+                // Store the block in both the legacy field and the explicit
+                // attendance targeting field. This prevents future sessions
+                // from losing the class/block context.
                 block_term: formData.block,
+                target_block: formData.block,
                 block_display: blockDisplay,
                 session_type: formData.type,
                 location_name: formData.location || 'Lecture Hall',
