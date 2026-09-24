@@ -811,6 +811,38 @@ const LecturerAttendance = {
     },
 
     // ============================================================
+    // FILTERED RENDER HELPERS
+    // ============================================================
+    // These methods are intentionally part of the LecturerAttendance object.
+    // The dashboard calls applyFilters() from several controls, so the filtered
+    // result must be rendered without replacing the master todayLogs/pastLogs arrays.
+    renderFilteredToday(logs = []) {
+        const tbody = document.getElementById('attendanceTable');
+        if (!tbody) return;
+
+        const original = this.todayLogs;
+        try {
+            this.todayLogs = Array.isArray(logs) ? logs : [];
+            this.renderTodayAttendance();
+        } finally {
+            this.todayLogs = original;
+        }
+    },
+
+    renderFilteredPast(logs = []) {
+        const tbody = document.getElementById('pastAttendanceTable');
+        if (!tbody) return;
+
+        const original = this.pastLogs;
+        try {
+            this.pastLogs = Array.isArray(logs) ? logs : [];
+            this.renderPastAttendance();
+        } finally {
+            this.pastLogs = original;
+        }
+    },
+
+    // ============================================================
     // APPLY / RESET FILTERS — DATE RANGE COMPATIBLE
     // ============================================================
     applyFilters() {
