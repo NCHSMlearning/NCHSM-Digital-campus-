@@ -1064,7 +1064,29 @@ const LecturerAttendance = {
             return;
         }
 
-        // ---- 1. USE THE EXACT ACTIVE FILTER RESULT ----
+        // ---- 1. CAPTURE ACTIVE FILTER STATE ----
+        // Keep this local to exportCSV so the export never depends on an
+        // undeclared/global hasFilters variable.
+        const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
+        const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
+        const filterLegacyDate = (document.getElementById('filterDate')?.value || '').trim();
+        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
+        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
+        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
+        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
+        const filterSearch = (document.getElementById('filterSearch')?.value || '').trim();
+
+        const hasFilters =
+            !!filterDateFrom ||
+            !!filterDateTo ||
+            (!!filterLegacyDate && !filterDateFrom && !filterDateTo) ||
+            filterBlock !== 'All' ||
+            filterUnit !== 'All' ||
+            filterYear !== 'All' ||
+            filterSessionType !== 'All' ||
+            !!filterSearch;
+
+        // ---- 2. USE THE EXACT ACTIVE FILTER RESULT ----
         // Export must match what the lecturer sees on screen. This includes
         // date range, block, unit, year, session type and search.
         const filteredLogs = this.applyFilters();
