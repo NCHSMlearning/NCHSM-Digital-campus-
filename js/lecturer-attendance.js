@@ -165,9 +165,18 @@ const LecturerAttendance = {
             if (error) { console.error('❌ loadAssignedUnits:', error); return; }
 
             this.assignedUnits = assignments || [];
+
+            // Keep the lecturer's assigned block(s) available to every
+            // session/roster operation. Sessions created before target_block
+            // was introduced can still resolve their block from this table.
+            this.assignedBlocks = [...new Set(this.assignedUnits.map(u => String(u.block || '').trim()).filter(Boolean))];
+
             this.populateUnitSelectors();
             this.populateUnitFilter();
             this.updateProgramBadge();
+
+            console.log('📚 Assigned units:', this.assignedUnits);
+            console.log('📚 Assigned blocks:', this.assignedBlocks);
         } catch (error) {
             console.error('❌ loadAssignedUnits fail:', error);
         }
@@ -562,9 +571,62 @@ const LecturerAttendance = {
     // LOAD STATS
     // ============================================================
     async loadAttendanceStats() {
-        // The visible cards must represent the same dataset the lecturer is viewing.
-        // Avoid a second, conflicting stats query.
+        // Prefer the lecturer's current active session so the cards represent
+        // the actual class roster, not merely the number of check-in rows.
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (supabase && this.lecturerUuid) {
+                const program = this.currentProgram || 'KRCHN';
+                const { data: sessions, error } = await supabase
+                    .from('scheduled_sessions')
+                    .select('*')
+                    .eq('created_by', this.lecturerUuid)
+                    .eq('target_program', program)
+                    .eq('is_active', true)
+                    .order('session_date', { ascending: false })
+                    .limit(5);
+
+                if (!error && sessions?.length) {
+                    const session = sessions.find(s => this.getAssignedBlockForUnit(s.unit_name, s.block_term || s.target_block || s.block));
+                    if (session) {
+                        const register = await this.getSessionAttendanceRegister(session, false);
+                        this.updateRegisterStats(register);
+                        return;
+                    }
+                }
+            }
+        } catch (error) {
+            // Attendance cards must never fail because the optional session lookup failed.
+            console.warn('⚠️ Session-based attendance stats unavailable:', error);
+        }
+
         this.updateStats(this.filteredTodayLogs?.length ? this.filteredTodayLogs : this.todayLogs);
+    },
+
+    updateRegisterStats(register) {
+        const summary = register?.summary || {};
+        const total = Number(summary.total || 0);
+        const present = Number(summary.present || 0);
+        const absent = Number(summary.absent || 0);
+        const pending = Number(summary.pending || 0);
+        const rate = total ? Math.round((present / total) * 100) : 0;
+
+        this.stats = { total, present, absent, pending, rate };
+        const elementMap = {
+            todayTotal: total, todayPresent: present, todayAbsent: absent, todayPending: pending,
+            todayRate: rate + '%', attendanceRate: rate + '%', filteredCount: total,
+            totalStudentsCount: total, presentTodayCount: present, absentTodayCount: absent,
+            pendingCount: pending, todayTotalDisplay: total, todayPresentDisplay: present,
+            todayAbsentDisplay: absent, todayPendingDisplay: pending, attendanceRateDisplay: rate + '%'
+        };
+        for (const [id, value] of Object.entries(elementMap)) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
+        const progressBar = document.getElementById('attendanceProgressBar');
+        if (progressBar) progressBar.style.width = rate + '%';
+        const rateBadge = document.getElementById('attendanceRateBadge');
+        if (rateBadge) rateBadge.textContent = `${rate}% (Class: ${total} students)`;
     },
 
     // ============================================================
@@ -584,8 +646,28 @@ const LecturerAttendance = {
                 .eq('program', program)
                 .in('role', ['student', 'Student']);
 
-            const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-            const currentBlock = blocks.length > 0 ? this.getBlockDisplay(blocks[0]) : 'N/A';
+            const blocks = [...new Set(this.assignedUnits.map(u => String(u.block || '').trim()).filter(Boolean))];
+            const currentBlockRaw = blocks.length > 0 ? blocks[0] : null;
+            const currentBlock = currentBlockRaw ? this.getBlockDisplay(currentBlockRaw) : 'N/A';
+
+            // Count the actual class assigned to this lecturer, not the whole program.
+            let classCount = 0;
+            if (currentBlockRaw) {
+                const result = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('program', program)
+                    .eq('block', currentBlockRaw)
+                    .in('role', ['student', 'Student', 'STUDENT']);
+                if (!result.error) classCount = Number(result.count || 0);
+                else console.warn('⚠️ Block roster count failed:', result.error.message);
+            } else {
+                classCount = Number(studentCount || 0);
+            }
+
+            this.currentAssignedBlock = currentBlockRaw;
+            this.classStudentCount = classCount;
+
             const programDisplay = window.LecturerUtils?.getProgramDisplayName?.(program) || program;
             const typeLabel = this.getProgramTypeLabel();
             const emoji = this.getProgramEmoji();
@@ -594,7 +676,7 @@ const LecturerAttendance = {
                 'programDisplayName': `${emoji} ${programDisplay}`,
                 'programTypeBadge': typeLabel,
                 'currentBlockDisplay': currentBlock,
-                'studentCountDisplay': (studentCount || 0) + ' Students'
+                'studentCountDisplay': classCount + ' Students'
             };
 
             for (const [id, value] of Object.entries(displayMap)) {
@@ -769,7 +851,33 @@ const LecturerAttendance = {
 
             const checkInTime = time ? `${date}T${time}:00.000Z` : `${date}T12:00:00.000Z`;
 
+            // Manual attendance must belong to a real scheduled session.
+            // This preserves the one-occurrence-per-session architecture.
+            const manualProgram = student.program || profile.program || this.currentProgram || 'KRCHN';
+            const manualBlock = student.block || this.getAssignedBlockForUnit(unit);
+            const dayStart = `${date}T00:00:00.000Z`;
+            const dayEnd = `${date}T23:59:59.999Z`;
+            let sessionQuery = supabase
+                .from('scheduled_sessions')
+                .select('*')
+                .eq('target_program', manualProgram)
+                .eq('unit_name', unit)
+                .gte('session_date', dayStart)
+                .lte('session_date', dayEnd)
+                .order('session_date', { ascending: false });
+            const { data: candidateSessions, error: sessionLookupError } = await sessionQuery;
+            if (sessionLookupError) throw new Error('Unable to locate scheduled session: ' + sessionLookupError.message);
+
+            const matchedSession = (candidateSessions || []).find(s => {
+                const sessionBlock = s.target_block || s.block_term || s.block || this.getAssignedBlockForUnit(s.unit_name);
+                return !manualBlock || String(sessionBlock || '').trim().toLowerCase() === String(manualBlock).trim().toLowerCase();
+            });
+            if (!matchedSession?.id) {
+                throw new Error('No scheduled attendance session found for this date, unit and block. Schedule/open the session first.');
+            }
+
             const { error: insertError } = await supabase.from('geo_attendance_logs').insert({
+                session_id: matchedSession.id,
                 student_id: student.student_id || studentId,
                 user_id: studentId,
                 registration_number: student.student_id || studentId,
@@ -1065,29 +1173,7 @@ const LecturerAttendance = {
             return;
         }
 
-        // ---- 1. READ ACTIVE FILTER STATE ----
-        // Keep these variables local to exportCSV. The Excel builder below
-        // uses them for the filter banner, filename and success message.
-        const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
-        const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
-        const legacyDate = (document.getElementById('filterDate')?.value || '').trim();
-        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
-        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
-        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
-        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
-        const rangeFrom = filterDateFrom || legacyDate || '';
-        const rangeTo = filterDateTo || legacyDate || '';
-        const hasFilters = Boolean(
-            rangeFrom || rangeTo ||
-            filterBlock !== 'All' ||
-            filterUnit !== 'All' ||
-            filterYear !== 'All' ||
-            filterSessionType !== 'All' ||
-            searchText
-        );
-
-        // ---- 2. USE THE EXACT ACTIVE FILTER RESULT ----
+        // ---- 1. USE THE EXACT ACTIVE FILTER RESULT ----
         // Export must match what the lecturer sees on screen. This includes
         // date range, block, unit, year, session type and search.
         const filteredLogs = this.applyFilters();
@@ -1440,11 +1526,9 @@ const LecturerAttendance = {
             if (hasFilters) {
                 const bits = [];
                 if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
-                if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
                 if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
                 if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
-                if (rangeFrom && rangeTo && rangeFrom !== rangeTo) bits.push(`Dates ${rangeFrom} → ${rangeTo}`);
-                else if (rangeFrom) bits.push(`Date ${rangeFrom}`);
+                if (filterDate) bits.push(`Date ${filterDate}`);
                 if (searchText) bits.push(`Search "${searchText}"`);
                 mergeRow(r++, `Filtered by → ${bits.join('  ·  ')}`, {
                     fill: AMBER_LIGHT, font: { italic: true, color: { argb: 'FF92400E' }, size: 10 }, height: 18
@@ -1521,7 +1605,6 @@ const LecturerAttendance = {
             const totalStudents = students.length;
             const totalSessions = sortedDates.length;
             const totalPossible = totalStudents * totalSessions;
-            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const rate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
 
             ws.mergeCells(r, 1, r, totalCols);
@@ -1534,6 +1617,7 @@ const LecturerAttendance = {
             r += 2;
 
             // ---- Detailed attendance summary ----
+            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const totalAbsent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === 'A' || v === 'A*').length, 0);
             const totalAutoAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source === 'Automatic Session Finalization').length;
             const totalAttemptedAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source !== 'Automatic Session Finalization').length;
@@ -1649,7 +1733,6 @@ const LecturerAttendance = {
         // ---- 6. WRITE ----
         const suffixBits = [];
         if (filterBlock !== 'All') suffixBits.push(filterBlock.replace(/\s+/g, ''));
-        if (filterUnit !== 'All') suffixBits.push(filterUnit.replace(/\s+/g, '').slice(0, 30));
         if (filterYear !== 'All') suffixBits.push(`Intake${filterYear}`);
         if (filterSessionType !== 'All') suffixBits.push(filterSessionType);
         const suffix = suffixBits.length ? '_' + suffixBits.join('_') : '';
@@ -1728,7 +1811,7 @@ const LecturerAttendance = {
             form.addEventListener('submit', (e) => this.markStudentAttendance(e));
         }
 
-        ['filterDateFrom', 'filterDateTo', 'filterDate', 'filterBlock', 'filterUnit', 'filterYear', 'filterSessionType', 'filterSearch'].forEach(id => {
+        ['filterDateFrom', 'filterDateTo', 'filterDate', 'filterBlock', 'filterUnit', 'filterYear', 'filterSessionType'].forEach(id => {
             const el = document.getElementById(id);
             if (el && !el.dataset.filterBound) {
                 el.dataset.filterBound = '1';
@@ -1775,12 +1858,38 @@ const LecturerAttendance = {
     // against geo check-ins for THIS session, and can finalize
     // missing/invalid students as Absent when the session closes.
     // ============================================================
+    getAssignedBlockForUnit(unitName, preferredBlock = null) {
+        const preferred = String(preferredBlock || '').trim();
+        const unit = String(unitName || '').trim().toLowerCase();
+        const assignments = Array.isArray(this.assignedUnits) ? this.assignedUnits : [];
+
+        if (preferred) {
+            const exact = assignments.find(a =>
+                String(a.block || '').trim().toLowerCase() === preferred.toLowerCase() &&
+                (!unit || String(a.subject_name || '').trim().toLowerCase() === unit)
+            );
+            if (exact) return String(exact.block).trim();
+        }
+
+        if (unit) {
+            const exactUnit = assignments.find(a => String(a.subject_name || '').trim().toLowerCase() === unit);
+            if (exactUnit?.block) return String(exactUnit.block).trim();
+        }
+
+        return this.currentAssignedBlock || this.assignedBlocks?.[0] || null;
+    },
+
     async getSessionRoster(session) {
         const supabase = window.lecturerDB?.supabase;
         if (!supabase || !session?.id) return [];
 
         const program = session.target_program || session.program || this.currentProgram || 'KRCHN';
-        const block = session.block_term || session.block;
+        // New sessions may use target_block; older sessions use block_term.
+        // If both are missing, recover the block from the lecturer's assignment.
+        const block = this.getAssignedBlockForUnit(
+            session.unit_name || session.course_name || session.session_title || session.title,
+            session.target_block || session.block_term || session.block
+        );
         const intake = session.intake_year;
 
         let query = supabase
@@ -1863,10 +1972,16 @@ const LecturerAttendance = {
             }
 
             const status = String(log?.attendance_status || '').toLowerCase();
-            const validPresent =
-                !!log &&
-                (status === 'present' || status === 'verified' || log.is_verified === true) &&
-                Number(log.distance_meters ?? Infinity) <= Number(log.target_radius ?? Infinity);
+            const hasDistance = log?.distance_meters !== null && log?.distance_meters !== undefined &&
+                log?.target_radius !== null && log?.target_radius !== undefined;
+            const withinRadius = hasDistance
+                ? Number(log.distance_meters) <= Number(log.target_radius)
+                : true;
+            const hasCheckIn = !!log?.check_in_time;
+            const validStatus = status === 'present' || status === 'verified' || log?.is_verified === true;
+            // Existing student check-ins may have a NULL attendance_status.
+            // A real check-in within the session target is still Present.
+            const validPresent = !!log && withinRadius && (validStatus || (hasCheckIn && !['absent'].includes(status)));
 
             let finalStatus = validPresent ? 'Present' : (log ? 'Absent' : 'Not Checked In');
 
