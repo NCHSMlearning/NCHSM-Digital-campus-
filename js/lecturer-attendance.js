@@ -740,6 +740,10 @@ const LecturerAttendance = {
     // ============================================================
     populateFilters() {
         const today = new Date().toISOString().split('T')[0];
+        const filterDateFrom = document.getElementById('filterDateFrom');
+        const filterDateTo = document.getElementById('filterDateTo');
+        if (filterDateFrom) filterDateFrom.value = today;
+        if (filterDateTo) filterDateTo.value = today;
         const filterDate = document.getElementById('filterDate');
         if (filterDate) filterDate.value = today;
         const attDate = document.getElementById('attDate');
@@ -807,92 +811,112 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // APPLY / RESET FILTERS
+    // APPLY / RESET FILTERS — DATE RANGE COMPATIBLE
     // ============================================================
     applyFilters() {
-        const filterDate = (document.getElementById('filterDate')?.value || '').trim();
+        const from = (document.getElementById('filterDateFrom')?.value || '').trim();
+        const to = (document.getElementById('filterDateTo')?.value || '').trim();
+        const legacyDate = (document.getElementById('filterDate')?.value || '').trim();
         const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
+        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
         const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
         const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
         const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
-        let filteredToday = [...(this.todayLogs || [])];
-        if (filterDate) filteredToday = filteredToday.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
-        if (filterBlock !== 'All') filteredToday = filteredToday.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
-        if (filterYear !== 'All') filteredToday = filteredToday.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
-        if (filterSessionType !== 'All') filteredToday = filteredToday.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
-        if (searchText) filteredToday = filteredToday.filter(l => {
-            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
-            return h.includes(searchText);
+        const rangeFrom = from || legacyDate || '';
+        const rangeTo = to || legacyDate || '';
+        const allLogs = [...(this.todayLogs || []), ...(this.pastLogs || [])];
+        const unique = [];
+        const seen = new Set();
+
+        for (const log of allLogs) {
+            const key = log.id || [log.user_id || log.student_id || '', log.session_id || '', log.check_in_time || ''].join('|');
+            if (seen.has(key)) continue;
+            seen.add(key);
+            unique.push(log);
+        }
+
+        const filtered = unique.filter(log => {
+            const date = log?.check_in_time ? new Date(log.check_in_time).toISOString().split('T')[0] : '';
+            if (rangeFrom && date < rangeFrom) return false;
+            if (rangeTo && date > rangeTo) return false;
+            if (filterBlock !== 'All' && String(log.block || '').toLowerCase() !== filterBlock.toLowerCase()) return false;
+            if (filterUnit !== 'All' && String(log.unit_name || log.target_name || '').toLowerCase() !== filterUnit.toLowerCase()) return false;
+            if (filterYear !== 'All' && String(log.intake_year || '').toLowerCase() !== filterYear.toLowerCase()) return false;
+            if (filterSessionType !== 'All' && String(log.session_type || '').toLowerCase() !== filterSessionType.toLowerCase()) return false;
+            if (searchText) {
+                const h = [log.student_name, log.student_id, log.registration_number, log.unit_name, log.target_name, log.session_type, log.block, log.program].filter(Boolean).join(' ').toLowerCase();
+                if (!h.includes(searchText)) return false;
+            }
+            return true;
         });
 
-        let filteredPast = [...(this.pastLogs || [])];
-        if (filterBlock !== 'All') filteredPast = filteredPast.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
-        if (filterYear !== 'All') filteredPast = filteredPast.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
-        if (filterSessionType !== 'All') filteredPast = filteredPast.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
-        if (searchText) filteredPast = filteredPast.filter(l => {
-            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
-            return h.includes(searchText);
-        });
+        this.filteredTodayLogs = filtered;
+        this.filteredPastLogs = [];
+        this.renderFilteredToday(filtered);
 
-        this.filteredTodayLogs = filteredToday;
-        this.filteredPastLogs = filteredPast;
-
-        this.renderFilteredToday(filteredToday);
-        this.renderFilteredPast(filteredPast);
-
+        const countEl = document.getElementById('filteredCount');
+        if (countEl) countEl.textContent = String(filtered.length);
+        const logCount = document.getElementById('todayLogCount');
+        if (logCount) logCount.textContent = `${filtered.length} records`;
         const filterCount = document.getElementById('attendanceFilterCount');
-        if (filterCount) filterCount.textContent = `Showing ${filteredToday.length} of ${this.todayLogs.length} today · ${filteredPast.length} past`;
+        if (filterCount) filterCount.textContent = `Showing ${filtered.length} records · ${rangeFrom ? (rangeTo && rangeTo !== rangeFrom ? `${rangeFrom} → ${rangeTo}` : rangeFrom) : 'all dates'}`;
+        return filtered;
     },
 
-    renderFilteredToday(logs) {
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody) return;
-        const countEl = document.getElementById('todayLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
-        if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No attendance records match your filters.</p></td></tr>`;
-            return;
-        }
-        const original = this.todayLogs;
-        this.todayLogs = logs;
-        this.renderTodayAttendance();
-        this.todayLogs = original;
-    },
+    // ============================================================
+    // DATE RANGE PRESETS — matches current lecturer dashboard HTML
+    // today / 7d / 30d / month / all
+    // ============================================================
+    setRangePreset(preset) {
+        const fromEl = document.getElementById('filterDateFrom');
+        const toEl = document.getElementById('filterDateTo');
+        const legacyEl = document.getElementById('filterDate');
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const formatDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        const value = String(preset || 'today').toLowerCase().trim();
+        let from = new Date(now), to = new Date(now);
 
-    renderFilteredPast(logs) {
-        const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) return;
-        const countEl = document.getElementById('pastLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
-        if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No past records match your filters.</p></td></tr>`;
-            return;
+        switch (value) {
+            case 'today': break;
+            case '7d': case '7days': from.setDate(from.getDate() - 6); break;
+            case '30d': case '30days': from.setDate(from.getDate() - 29); break;
+            case 'month': case 'thismonth': case 'this_month': from = new Date(now.getFullYear(), now.getMonth(), 1); break;
+            case 'all': case 'alltime': case 'all_time': from = null; to = null; break;
+            case 'yesterday': from.setDate(from.getDate()-1); to = new Date(from); break;
+            default:
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                    const parsed = new Date(`${value}T00:00:00`);
+                    if (!Number.isNaN(parsed.getTime())) { from = parsed; to = new Date(parsed); }
+                }
         }
-        const original = this.pastLogs;
-        this.pastLogs = logs;
-        this.renderPastAttendance();
-        this.pastLogs = original;
+
+        if (fromEl) fromEl.value = from ? formatDate(from) : '';
+        if (toEl) toEl.value = to ? formatDate(to) : '';
+        if (legacyEl) legacyEl.value = from ? formatDate(from) : '';
+        this.applyFilters();
+
+        const display = document.getElementById('attendanceDateDisplay');
+        if (display) {
+            if (!from && !to) display.textContent = `All dates (${this.getProgramTypeLabel()})`;
+            else if (from && to && formatDate(from) !== formatDate(to)) display.textContent = `${from.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – ${to.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+            else if (from) display.textContent = `${from.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})} (${this.getProgramTypeLabel()})`;
+        }
     },
 
     resetFilters() {
-        const today = new Date().toISOString().split('T')[0];
-        const fDate = document.getElementById('filterDate'); if (fDate) fDate.value = today;
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        const fromEl = document.getElementById('filterDateFrom'); if (fromEl) fromEl.value = today;
+        const toEl = document.getElementById('filterDateTo'); if (toEl) toEl.value = today;
+        const legacyEl = document.getElementById('filterDate'); if (legacyEl) legacyEl.value = today;
         const fBlock = document.getElementById('filterBlock'); if (fBlock) fBlock.value = 'All';
+        const fUnit = document.getElementById('filterUnit'); if (fUnit) fUnit.value = 'All';
         const fYear = document.getElementById('filterYear'); if (fYear) fYear.value = 'All';
         const fType = document.getElementById('filterSessionType'); if (fType) fType.value = 'All';
         const fSearch = document.getElementById('filterSearch'); if (fSearch) fSearch.value = '';
-
-        this.renderTodayAttendance();
-        this.renderPastAttendance();
-        this.updateStats(this.todayLogs);
-
-        const filterCount = document.getElementById('attendanceFilterCount');
-        if (filterCount) filterCount.textContent = `Showing all ${this.getProgramTypeLabel()} records`;
+        this.applyFilters();
         this.showNotification('Filters reset!', 'info');
     },
 
@@ -1557,7 +1581,7 @@ const LecturerAttendance = {
             form.addEventListener('submit', (e) => this.markStudentAttendance(e));
         }
 
-        ['filterDate', 'filterBlock', 'filterYear', 'filterSessionType'].forEach(id => {
+        ['filterDateFrom', 'filterDateTo', 'filterDate', 'filterBlock', 'filterUnit', 'filterYear', 'filterSessionType'].forEach(id => {
             const el = document.getElementById(id);
             if (el && !el.dataset.filterBound) {
                 el.dataset.filterBound = '1';
