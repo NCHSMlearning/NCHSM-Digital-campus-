@@ -198,6 +198,49 @@ const LecturerAttendance = {
     },
 
     // ============================================================
+    // ATTENDANCE NORMALIZATION / FILTER HELPERS
+    // ============================================================
+    normalizeFilterValue(value) {
+        return String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+    },
+
+    attendanceRecordKey(log) {
+        const student = String(log?.user_id || log?.student_id || log?.registration_number || log?.student_name || '').trim().toLowerCase();
+        const session = String(log?.session_id || '').trim().toLowerCase();
+        if (student && session) return `${student}|${session}`;
+        return String(log?.id || `${student}|${log?.check_in_time || ''}`).trim().toLowerCase();
+    },
+
+    attendanceStatusRank(log) {
+        const status = this.normalizeFilterValue(log?.attendance_status);
+        if (log?.is_verified === true || status === 'verified' || status === 'present') return 5;
+        if (status === 'late') return 4;
+        if (status === 'pending' || !status) return 3;
+        if (status === 'absent') return 2;
+        return 1;
+    },
+
+    dedupeAttendanceLogs(logs) {
+        const map = new Map();
+        for (const log of (Array.isArray(logs) ? logs : [])) {
+            const key = this.attendanceRecordKey(log);
+            const existing = map.get(key);
+            if (!existing || this.attendanceStatusRank(log) > this.attendanceStatusRank(existing) ||
+                (this.attendanceStatusRank(log) === this.attendanceStatusRank(existing) && String(log.check_in_time || '') > String(existing.check_in_time || ''))) {
+                map.set(key, log);
+            }
+        }
+        return Array.from(map.values());
+    },
+
+    getAttendanceDate(log) {
+        const raw = log?.check_in_time || log?.attendance_date || log?.session_date || log?.created_at;
+        if (!raw) return '';
+        const d = new Date(raw);
+        return Number.isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+    },
+
+    // ============================================================
     // LOAD ALL
     // ============================================================
     async loadAllAttendance() {
@@ -375,16 +418,28 @@ const LecturerAttendance = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             const todayStr = new Date().toISOString().split('T')[0];
+            const pageSize = 1000;
+            const all = [];
+            let from = 0;
 
-            const { data: logs, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .lt('check_in_time', `${todayStr}T00:00:00.000Z`)
-                .order('check_in_time', { ascending: false })
-                .limit(100);
+            // Load historical records in pages so a busy class cannot hide older
+            // attendance (the previous hard limit of 100 caused this problem).
+            while (true) {
+                const { data: page, error } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('*')
+                    .lt('check_in_time', `${todayStr}T00:00:00.000Z`)
+                    .order('check_in_time', { ascending: false })
+                    .range(from, from + pageSize - 1);
 
-            if (error) { console.error(error); return; }
-            this.pastLogs = logs || [];
+                if (error) throw error;
+                const rows = page || [];
+                all.push(...rows);
+                if (rows.length < pageSize) break;
+                from += pageSize;
+            }
+
+            this.pastLogs = this.dedupeAttendanceLogs(all);
             this.filteredPastLogs = [...this.pastLogs];
             this.renderPastAttendance();
         } catch (error) {
@@ -751,9 +806,6 @@ const LecturerAttendance = {
 
         this.populateStudentSelect();
         this.populateBlockFilter();
-        this.populateUnitFilter();
-        this.populateYearFilter();
-        this.populateSessionTypeFilter();
         this.updateFilterLabels();
     },
 
@@ -770,91 +822,6 @@ const LecturerAttendance = {
         });
         const label = document.getElementById('blockFilterLabel');
         if (label) label.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${this.isTVET ? 'Term' : 'Block'}`;
-    },
-
-    populateUnitFilter() {
-        const unitFilter = document.getElementById('filterUnit');
-        if (!unitFilter) return;
-
-        // Build the list from lecturer assignments first, then use loaded
-        // attendance records as a fallback so historical/current units still
-        // appear even if the assignment query returns no rows.
-        const unitMap = new Map();
-
-        (this.assignedUnits || []).forEach(u => {
-            const name = String(u?.subject_name || '').trim();
-            if (!name) return;
-            const code = String(u?.subject_code || '').trim();
-            unitMap.set(name.toLowerCase(), { name, code });
-        });
-
-        [...(this.todayLogs || []), ...(this.pastLogs || [])].forEach(log => {
-            const name = String(log?.unit_name || log?.target_name || '').trim();
-            if (!name || name.toLowerCase() === 'general') return;
-            const key = name.toLowerCase();
-            if (!unitMap.has(key)) unitMap.set(key, { name, code: '' });
-        });
-
-        const units = [...unitMap.values()].sort((a, b) => a.name.localeCompare(b.name));
-        const currentValue = unitFilter.value || 'All';
-        unitFilter.innerHTML = '<option value="All">All Units</option>';
-
-        units.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit.name;
-            option.textContent = unit.code ? `${unit.code} - ${unit.name}` : unit.name;
-            unitFilter.appendChild(option);
-        });
-
-        if (units.some(u => u.name.toLowerCase() === currentValue.toLowerCase())) {
-            unitFilter.value = currentValue;
-        } else {
-            unitFilter.value = 'All';
-        }
-
-        console.log(`📚 Attendance unit filter populated: ${units.length} unit(s)`);
-    },
-
-    populateYearFilter() {
-        const yearFilter = document.getElementById('filterYear');
-        if (!yearFilter) return;
-
-        const years = new Set();
-        [...(this.assignedUnits || []), ...(this.todayLogs || []), ...(this.pastLogs || [])].forEach(item => {
-            const year = String(item?.academic_year || item?.intake_year || '').trim();
-            if (year) years.add(year);
-        });
-
-        const currentValue = yearFilter.value || 'All';
-        yearFilter.innerHTML = '<option value="All">All Years</option>';
-        [...years].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).forEach(year => {
-            const option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
-            yearFilter.appendChild(option);
-        });
-        if ([...years].includes(currentValue)) yearFilter.value = currentValue;
-    },
-
-    populateSessionTypeFilter() {
-        const typeFilter = document.getElementById('filterSessionType');
-        if (!typeFilter) return;
-
-        const types = new Set();
-        [...(this.todayLogs || []), ...(this.pastLogs || [])].forEach(log => {
-            const type = String(log?.session_type || '').trim();
-            if (type) types.add(type);
-        });
-
-        const currentValue = typeFilter.value || 'All';
-        typeFilter.innerHTML = '<option value="All">All Session Types</option>';
-        [...types].sort().forEach(type => {
-            const option = document.createElement('option');
-            option.value = type;
-            option.textContent = type;
-            typeFilter.appendChild(option);
-        });
-        if ([...types].includes(currentValue)) typeFilter.value = currentValue;
     },
 
     updateFilterLabels() {
@@ -899,38 +866,6 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // FILTERED RENDER HELPERS
-    // ============================================================
-    // These methods are intentionally part of the LecturerAttendance object.
-    // The dashboard calls applyFilters() from several controls, so the filtered
-    // result must be rendered without replacing the master todayLogs/pastLogs arrays.
-    renderFilteredToday(logs = []) {
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody) return;
-
-        const original = this.todayLogs;
-        try {
-            this.todayLogs = Array.isArray(logs) ? logs : [];
-            this.renderTodayAttendance();
-        } finally {
-            this.todayLogs = original;
-        }
-    },
-
-    renderFilteredPast(logs = []) {
-        const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) return;
-
-        const original = this.pastLogs;
-        try {
-            this.pastLogs = Array.isArray(logs) ? logs : [];
-            this.renderPastAttendance();
-        } finally {
-            this.pastLogs = original;
-        }
-    },
-
-    // ============================================================
     // APPLY / RESET FILTERS — DATE RANGE COMPATIBLE
     // ============================================================
     applyFilters() {
@@ -945,32 +880,30 @@ const LecturerAttendance = {
 
         const rangeFrom = from || legacyDate || '';
         const rangeTo = to || legacyDate || '';
-        const allLogs = [...(this.todayLogs || []), ...(this.pastLogs || [])];
-        const unique = [];
-        const seen = new Set();
+        const allLogs = this.dedupeAttendanceLogs([...(this.todayLogs || []), ...(this.pastLogs || [])]);
 
-        for (const log of allLogs) {
-            const key = log.id || [log.user_id || log.student_id || '', log.session_id || '', log.check_in_time || ''].join('|');
-            if (seen.has(key)) continue;
-            seen.add(key);
-            unique.push(log);
-        }
+        const filtered = allLogs.filter(log => {
+            const date = this.getAttendanceDate(log);
+            const unit = String(log.unit_name || log.target_name || '').trim();
+            const block = String(log.block || '').trim();
+            const year = String(log.intake_year || '').trim();
+            const type = String(log.session_type || 'Class').trim();
 
-        const filtered = unique.filter(log => {
-            const date = log?.check_in_time ? new Date(log.check_in_time).toISOString().split('T')[0] : '';
-            if (rangeFrom && date < rangeFrom) return false;
-            if (rangeTo && date > rangeTo) return false;
-            if (filterBlock !== 'All' && String(log.block || '').toLowerCase() !== filterBlock.toLowerCase()) return false;
-            if (filterUnit !== 'All' && String(log.unit_name || log.target_name || '').toLowerCase() !== filterUnit.toLowerCase()) return false;
-            if (filterYear !== 'All' && String(log.intake_year || '').toLowerCase() !== filterYear.toLowerCase()) return false;
-            if (filterSessionType !== 'All' && String(log.session_type || '').toLowerCase() !== filterSessionType.toLowerCase()) return false;
+            if (rangeFrom && (!date || date < rangeFrom)) return false;
+            if (rangeTo && (!date || date > rangeTo)) return false;
+            if (filterBlock !== 'All' && this.normalizeFilterValue(block) !== this.normalizeFilterValue(filterBlock)) return false;
+            if (filterUnit !== 'All' && this.normalizeFilterValue(unit) !== this.normalizeFilterValue(filterUnit)) return false;
+            if (filterYear !== 'All' && this.normalizeFilterValue(year) !== this.normalizeFilterValue(filterYear)) return false;
+            if (filterSessionType !== 'All' && this.normalizeFilterValue(type) !== this.normalizeFilterValue(filterSessionType)) return false;
             if (searchText) {
-                const h = [log.student_name, log.student_id, log.registration_number, log.unit_name, log.target_name, log.session_type, log.block, log.program].filter(Boolean).join(' ').toLowerCase();
+                const h = [log.student_name, log.student_id, log.registration_number, unit, log.target_name, type, block, log.program]
+                    .filter(Boolean).join(' ').toLowerCase();
                 if (!h.includes(searchText)) return false;
             }
             return true;
         });
 
+        filtered.sort((a, b) => String(b.check_in_time || b.created_at || '').localeCompare(String(a.check_in_time || a.created_at || '')));
         this.filteredTodayLogs = filtered;
         this.filteredPastLogs = [];
         this.renderFilteredToday(filtered);
@@ -982,6 +915,26 @@ const LecturerAttendance = {
         const filterCount = document.getElementById('attendanceFilterCount');
         if (filterCount) filterCount.textContent = `Showing ${filtered.length} records · ${rangeFrom ? (rangeTo && rangeTo !== rangeFrom ? `${rangeFrom} → ${rangeTo}` : rangeFrom) : 'all dates'}`;
         return filtered;
+    },
+
+    renderFilteredToday(logs = []) {
+        const original = this.todayLogs;
+        this.todayLogs = Array.isArray(logs) ? logs : [];
+        try {
+            this.renderTodayAttendance();
+        } finally {
+            this.todayLogs = original;
+        }
+    },
+
+    renderFilteredPast(logs = []) {
+        const original = this.pastLogs;
+        this.pastLogs = Array.isArray(logs) ? logs : [];
+        try {
+            this.renderPastAttendance();
+        } finally {
+            this.pastLogs = original;
+        }
     },
 
     // ============================================================
@@ -1049,54 +1002,14 @@ const LecturerAttendance = {
             return;
         }
 
-        // ---- 1. READ FILTERS ----
-        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
-        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
-        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-        const filterDate = (document.getElementById('filterDate')?.value || '').trim();
-        const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
-        const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
-        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
-        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
-
-        const hasFilters = (filterBlock !== 'All') || (filterUnit !== 'All') || (filterYear !== 'All') ||
-            (filterSessionType !== 'All') || !!filterDate || !!filterDateFrom || !!filterDateTo || !!searchText;
-
-        // ---- 2. SOURCE ----
-        // IMPORTANT: Export BOTH today's and historical records. The previous
-        // version exported todayLogs only, so a unit with sessions on 21/09
-        // and 24/09 incorrectly produced a single 24/09 column.
-        const merged = [...(this.pastLogs || []), ...(this.todayLogs || [])]
-            .filter(l => l.session_type !== 'Lecturer Check-in');
-        const seenSource = new Set();
-        let source = merged.filter(l => {
-            const key = l.id || [l.user_id || l.student_id || l.registration_number || '', l.session_id || '', l.check_in_time || '', l.attendance_status || ''].join('|');
-            if (seenSource.has(key)) return false;
-            seenSource.add(key);
-            return true;
-        });
-
-        const rangeFrom = filterDateFrom || filterDate || '';
-        const rangeTo = filterDateTo || filterDate || '';
-        if (rangeFrom) source = source.filter(l => {
-            if (!l.check_in_time) return false;
-            return new Date(l.check_in_time).toISOString().split('T')[0] >= rangeFrom;
-        });
-        if (rangeTo) source = source.filter(l => {
-            if (!l.check_in_time) return false;
-            return new Date(l.check_in_time).toISOString().split('T')[0] <= rangeTo;
-        });
-        if (filterBlock !== 'All') source = source.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
-        if (filterUnit !== 'All') source = source.filter(l => String(l.unit_name || l.target_name || '').toLowerCase() === filterUnit.toLowerCase());
-        if (filterYear !== 'All') source = source.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
-        if (filterSessionType !== 'All') source = source.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
-        if (searchText) source = source.filter(l => {
-            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
-            return h.includes(searchText);
-        });
+        // ---- 1. USE THE EXACT ACTIVE FILTER RESULT ----
+        // Export must match what the lecturer sees on screen. This includes
+        // date range, block, unit, year, session type and search.
+        const filteredLogs = this.applyFilters();
+        const source = this.dedupeAttendanceLogs((filteredLogs || []).filter(l => l.session_type !== 'Lecturer Check-in'));
 
         if (!source.length) {
-            this.showNotification(hasFilters ? 'No records match the current filters.' : 'No attendance data to export.', 'warning');
+            this.showNotification('No records match the current filters.', 'warning');
             return;
         }
 
@@ -1521,10 +1434,6 @@ const LecturerAttendance = {
             const totalStudents = students.length;
             const totalSessions = sortedDates.length;
             const totalPossible = totalStudents * totalSessions;
-            // Calculate before the summary row uses it.
-            // Previously totalPresent was declared later in this function,
-            // causing a Temporal Dead Zone ReferenceError during export.
-            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const rate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
 
             ws.mergeCells(r, 1, r, totalCols);
@@ -1537,6 +1446,7 @@ const LecturerAttendance = {
             r += 2;
 
             // ---- Detailed attendance summary ----
+            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const totalAbsent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === 'A' || v === 'A*').length, 0);
             const totalAutoAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source === 'Automatic Session Finalization').length;
             const totalAttemptedAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source !== 'Automatic Session Finalization').length;
@@ -1754,9 +1664,6 @@ const LecturerAttendance = {
     // ============================================================
     async refresh() {
         await this.loadAllAttendance();
-        this.populateUnitFilter();
-        this.populateYearFilter();
-        this.populateSessionTypeFilter();
         this.applyFilters();
         this.updateProgramBadge();
         this.showNotification(`${this.getProgramTypeLabel()} attendance refreshed!`, 'success');
