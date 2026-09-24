@@ -840,24 +840,21 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
         return;
     }
     
-    // ============================================================
-    // 🔒 DUPLICATE PREVENTION — ONE STUDENT, ONE RECORD PER SESSION
-    // IMPORTANT: Do NOT use opened_at here. Re-opening the same session
-    // must NOT create another attendance record. A second class of the
-    // same unit/day must be created as a NEW scheduled session with a
-    // different session_id.
-    // ============================================================
+    // ✅ Duplicate check-in prevention
+       // ✅ Duplicate check-in prevention — once per OPEN WINDOW
+    // If lecturer re-opens the session (e.g. 2nd class same day),
+    // students can check in again. Old check-ins (before opened_at) don't block.
     const supabase = getSupabase();
     if (supabase) {
         try {
-            const { data: sessionRow, error: sessionError } = await supabase
+            // Fetch the session's current open timestamp
+            const { data: sessionRow } = await supabase
                 .from('scheduled_sessions')
-                .select('status, is_active')
+                .select('opened_at, status, is_active')
                 .eq('id', sessionId)
                 .single();
 
-            if (sessionError) throw sessionError;
-
+            const openedAt = sessionRow?.opened_at || null;
             const isActiveNow = sessionRow?.is_active === true || sessionRow?.status === 'active';
 
             if (!isActiveNow) {
@@ -865,39 +862,30 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
                 return;
             }
 
-            const { data: existing, error: existingError } = await supabase
+            // Count check-ins AFTER the session was last opened
+            let dupQuery = supabase
                 .from('geo_attendance_logs')
-                .select('id, check_in_time, attendance_status, verification_source, is_verified')
+                .select('id, check_in_time')
                 .eq('user_id', sessionInfo.user_id)
                 .eq('session_id', sessionId)
                 .order('check_in_time', { ascending: false })
                 .limit(1);
 
-            if (existingError) throw existingError;
+            if (openedAt) {
+                dupQuery = dupQuery.gte('check_in_time', openedAt);
+            }
+
+            const { data: existing } = await dupQuery;
 
             if (existing && existing.length > 0) {
-                const row = existing[0];
-                const isAutomaticAbsent =
-                    String(row.verification_source || '').toLowerCase().includes('automatic session finalization') &&
-                    String(row.attendance_status || '').toLowerCase() === 'absent' &&
-                    row.is_verified !== true;
-
-                // Reopening the SAME session allows an automatic Absent placeholder
-                // to be replaced by a real GPS check-in, but never creates a second row.
-                if (!isAutomaticAbsent) {
-                    const time = row.check_in_time
-                        ? new Date(row.check_in_time).toLocaleTimeString('en-KE', {
-                            hour: '2-digit', minute: '2-digit'
-                        })
-                        : 'earlier';
-                    showToast(`✅ You already checked in for this class at ${time}.`, 'success', 4000);
-                    return;
-                }
+                const time = new Date(existing[0].check_in_time).toLocaleTimeString('en-KE', {
+                    hour: '2-digit', minute: '2-digit'
+                });
+                showToast(`✅ You already checked in for this class at ${time}`, 'success', 4000);
+                return;
             }
         } catch (e) {
-            console.error('❌ Could not verify session/duplicate status:', e);
-            showToast('Could not verify this attendance session. Please try again.', 'error', 5000);
-            return;
+            console.warn('⚠️ Could not check existing logs:', e);
         }
     }
     // ✅ Build the target DIRECTLY from the session — no dropdown lookup
@@ -2025,18 +2013,7 @@ async function getAccurateLocation() {
                 btn.style.opacity = '1';
                 return;
             }
-
-            // Attendance is session-based. Never create a student attendance
-            // record without a real scheduled session ID.
-            const attendanceSessionId = currentSession?.id || null;
-            if (!attendanceSessionId) {
-                showToast('No attendance session is selected. Please use the active class Check In button.', 'error', 5000);
-                btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
-                btn.style.opacity = '1';
-                return;
-            }
-
+            
             const location = await getAccurateLocation();
         const deviceType = location?.device_type || getDeviceLocationProfile().label;
             
@@ -2130,44 +2107,8 @@ async function getAccurateLocation() {
             }
             
             btn.innerHTML = '💾 Saving...';
-
-            // 🔒 FINAL CLIENT-SIDE DUPLICATE CHECK
-            // Re-check immediately before INSERT because GPS acquisition and
-            // the confirmation modal may take several seconds.
-            const { data: finalExisting, error: finalExistingError } = await supabase
-                .from('geo_attendance_logs')
-                .select('id, check_in_time, attendance_status, verification_source, is_verified')
-                .eq('user_id', userId)
-                .eq('session_id', attendanceSessionId)
-                .order('check_in_time', { ascending: false })
-                .limit(1);
-
-            if (finalExistingError) throw finalExistingError;
-
-            let replaceAttendanceId = null;
-            if (finalExisting && finalExisting.length > 0) {
-                const row = finalExisting[0];
-                const isAutomaticAbsent =
-                    String(row.verification_source || '').toLowerCase().includes('automatic session finalization') &&
-                    String(row.attendance_status || '').toLowerCase() === 'absent' &&
-                    row.is_verified !== true;
-
-                if (isAutomaticAbsent) {
-                    replaceAttendanceId = row.id;
-                } else {
-                    const time = row.check_in_time
-                        ? new Date(row.check_in_time).toLocaleTimeString('en-KE', {
-                            hour: '2-digit', minute: '2-digit'
-                        })
-                        : 'earlier';
-                    showToast(`✅ Attendance already recorded for this session at ${time}.`, 'success', 5000);
-                    await loadHistory();
-                    await updateStats();
-                    return;
-                }
-            }
             
-            const sessionType = sessionTypeSelect?.value || currentSession?.session_type || 'class';
+            const sessionType = sessionTypeSelect?.value || 'class';
             
             const record = {
                 user_id: userId,
@@ -2180,7 +2121,7 @@ async function getAccurateLocation() {
                 check_in_time: new Date().toISOString(),
                 session_type: sessionType,
                 target_id: currentSession?.id || selectedTarget.id,
-                session_id: attendanceSessionId,
+                session_id: currentSession?.id || null,
                 target_name: selectedTarget.name,
                 latitude: location.lat,
                 longitude: location.lon,
@@ -2209,37 +2150,13 @@ async function getAccurateLocation() {
                 distance: record.distance_meters
             });
             
-            let saveError = null;
-            if (replaceAttendanceId) {
-                const { error } = await supabase
-                    .from('geo_attendance_logs')
-                    .update({
-                        ...record,
-                        verification_source: 'Student GPS Check-in (Reopened Session)',
-                        finalized_at: null,
-                        finalized_by: null,
-                        finalization_reason: null
-                    })
-                    .eq('id', replaceAttendanceId)
-                    .eq('user_id', userId)
-                    .eq('session_id', attendanceSessionId);
-                saveError = error;
-            } else {
-                const { error } = await supabase
-                    .from('geo_attendance_logs')
-                    .insert([record]);
-                saveError = error;
-            }
-
-            if (saveError) {
-                if (saveError.code === '23505') {
-                    showToast('✅ You already have attendance recorded for this session.', 'success', 5000);
-                    await loadHistory();
-                    await updateStats();
-                    return;
-                }
-                console.error('❌ Attendance save error:', saveError);
-                throw saveError;
+            const { error } = await supabase
+                .from('geo_attendance_logs')
+                .insert([record]);
+            
+            if (error) {
+                console.error('❌ Insert error:', error);
+                throw error;
             }
             
             let successMessage = 'Check-in recorded successfully!';
