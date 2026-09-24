@@ -840,21 +840,24 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
         return;
     }
     
-    // ✅ Duplicate check-in prevention
-       // ✅ Duplicate check-in prevention — once per OPEN WINDOW
-    // If lecturer re-opens the session (e.g. 2nd class same day),
-    // students can check in again. Old check-ins (before opened_at) don't block.
+    // ============================================================
+    // 🔒 DUPLICATE PREVENTION — ONE STUDENT, ONE RECORD PER SESSION
+    // IMPORTANT: Do NOT use opened_at here. Re-opening the same session
+    // must NOT create another attendance record. A second class of the
+    // same unit/day must be created as a NEW scheduled session with a
+    // different session_id.
+    // ============================================================
     const supabase = getSupabase();
     if (supabase) {
         try {
-            // Fetch the session's current open timestamp
-            const { data: sessionRow } = await supabase
+            const { data: sessionRow, error: sessionError } = await supabase
                 .from('scheduled_sessions')
-                .select('opened_at, status, is_active')
+                .select('status, is_active')
                 .eq('id', sessionId)
                 .single();
 
-            const openedAt = sessionRow?.opened_at || null;
+            if (sessionError) throw sessionError;
+
             const isActiveNow = sessionRow?.is_active === true || sessionRow?.status === 'active';
 
             if (!isActiveNow) {
@@ -862,30 +865,39 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
                 return;
             }
 
-            // Count check-ins AFTER the session was last opened
-            let dupQuery = supabase
+            const { data: existing, error: existingError } = await supabase
                 .from('geo_attendance_logs')
-                .select('id, check_in_time')
+                .select('id, check_in_time, attendance_status, verification_source, is_verified')
                 .eq('user_id', sessionInfo.user_id)
                 .eq('session_id', sessionId)
                 .order('check_in_time', { ascending: false })
                 .limit(1);
 
-            if (openedAt) {
-                dupQuery = dupQuery.gte('check_in_time', openedAt);
-            }
-
-            const { data: existing } = await dupQuery;
+            if (existingError) throw existingError;
 
             if (existing && existing.length > 0) {
-                const time = new Date(existing[0].check_in_time).toLocaleTimeString('en-KE', {
-                    hour: '2-digit', minute: '2-digit'
-                });
-                showToast(`✅ You already checked in for this class at ${time}`, 'success', 4000);
-                return;
+                const row = existing[0];
+                const isAutomaticAbsent =
+                    String(row.verification_source || '').toLowerCase().includes('automatic session finalization') &&
+                    String(row.attendance_status || '').toLowerCase() === 'absent' &&
+                    row.is_verified !== true;
+
+                // Reopening the SAME session allows an automatic Absent placeholder
+                // to be replaced by a real GPS check-in, but never creates a second row.
+                if (!isAutomaticAbsent) {
+                    const time = row.check_in_time
+                        ? new Date(row.check_in_time).toLocaleTimeString('en-KE', {
+                            hour: '2-digit', minute: '2-digit'
+                        })
+                        : 'earlier';
+                    showToast(`✅ You already checked in for this class at ${time}.`, 'success', 4000);
+                    return;
+                }
             }
         } catch (e) {
-            console.warn('⚠️ Could not check existing logs:', e);
+            console.error('❌ Could not verify session/duplicate status:', e);
+            showToast('Could not verify this attendance session. Please try again.', 'error', 5000);
+            return;
         }
     }
     // ✅ Build the target DIRECTLY from the session — no dropdown lookup
@@ -1643,7 +1655,8 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
         }
         
         if (checkBtn) {
-            const allMet = sessionType && sessionType !== '' && targetSelected && location && location.accuracy < 100;
+            const allMet = sessionType && sessionType !== '' && targetSelected && location &&
+                Number.isFinite(Number(location.accuracy)) && location.accuracy <= 200;
             if (allMet) {
                 checkBtn.disabled = false;
                 checkBtn.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed)';
@@ -1833,9 +1846,44 @@ function getLaptopBrowserLocation(options = {}) {
 }
 
 async function getAccurateLocation() {
-        console.log('📍 Getting ULTRA-ACCURATE GPS with 5-point verification...');
-        showToast('📡 Acquiring accurate GPS signal...', 'info', 2000);
-        
+        console.log('📍 Acquiring student location...');
+        showToast('📡 Acquiring your location...', 'info', 2500);
+
+        const normalizeBrowserLocation = (position, source = 'browser') => {
+            if (!position?.coords) return null;
+            const accuracy = Number(position.coords.accuracy || 9999);
+            const lat = Number(position.coords.latitude);
+            const lon = Number(position.coords.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+            return {
+                lat, lon, accuracy,
+                readingsCount: 1,
+                stdDev: 0,
+                confidence: Math.max(0, Math.min(100, 100 - Math.max(0, accuracy - 5))),
+                timestamp: position.timestamp || Date.now(),
+                source,
+                device_type: getDeviceLocationProfile().label,
+                rawReadings: [{
+                    lat, lon, accuracy,
+                    altitude: position.coords.altitude,
+                    speed: position.coords.speed,
+                    heading: position.coords.heading,
+                    timestamp: position.timestamp || Date.now()
+                }],
+                verification: {
+                    passed: accuracy <= 200,
+                    reason: accuracy <= 200 ? '' : `GPS accuracy is ±${accuracy.toFixed(0)}m`
+                }
+            };
+        };
+
+        if (!navigator.geolocation) {
+            showToast('❌ Location services are not available in this browser.', 'error', 5000);
+            return null;
+        }
+
+        // First try the existing 5-reading high-accuracy system.
         try {
             const location = await ultraGPS.getUltraAccurateLocation({
                 minReadings: ACCURACY_CONFIG.MIN_READINGS,
@@ -1843,32 +1891,99 @@ async function getAccurateLocation() {
                 maxAccuracy: ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY,
                 timeout: 25000
             });
-            
-            if (!location) {
-                showToast('❌ Could not get accurate GPS. Please try again in an open area.', 'error', 5000);
-                return null;
-            }
-            
-            console.log('✅ Ultra-accurate GPS acquired:', {
-                lat: location.lat,
-                lon: location.lon,
-                accuracy: location.accuracy,
-                confidence: location.confidence,
-                readings: location.readingsCount
-            });
-            
-            const confidenceEmoji = location.confidence > 80 ? '🟢' : location.confidence > 60 ? '🟡' : '🔴';
-            showToast(`${confidenceEmoji} GPS locked! Accuracy: ±${location.accuracy.toFixed(0)}m (${location.confidence.toFixed(0)}% confidence)`, 'success', 3000);
-            
-            return location;
-            
-        } catch (error) {
-            console.error('GPS Error:', error);
-            showToast('❌ GPS error: ' + error.message, 'error', 5000);
-            return null;
-        }
-    }
 
+            if (location) {
+                console.log('✅ Multi-reading GPS acquired:', location);
+                return location;
+            }
+            console.warn('⚠️ Multi-reading GPS failed; using browser fallback.');
+        } catch (error) {
+            console.warn('⚠️ Multi-reading GPS error:', error);
+        }
+
+        // Browser fallback: important for laptops/desktops and devices
+        // that cannot supply five high-accuracy readings.
+        try {
+            const fallback = await getLaptopBrowserLocation({ timeout: 15000 });
+
+            if (fallback) {
+                const location = {
+                    ...fallback,
+                    lat: fallback.latitude,
+                    lon: fallback.longitude,
+                    readingsCount: 1,
+                    stdDev: 0,
+                    confidence: Math.max(
+                        0,
+                        Math.min(100, 100 - Math.max(0, Number(fallback.accuracy || 9999) - 5))
+                    ),
+                    verification: {
+                        passed: Number(fallback.accuracy || 9999) <= 200,
+                        reason: Number(fallback.accuracy || 9999) <= 200
+                            ? ''
+                            : `GPS accuracy is ±${Number(fallback.accuracy || 9999).toFixed(0)}m`
+                    }
+                };
+
+                try {
+                    location.address = await getAddressFromCoordinates(location.lat, location.lon);
+                } catch (_) {
+                    location.address = `${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}`;
+                }
+
+                console.log('✅ Browser location fallback acquired:', location);
+                showToast(
+                    `📍 Location found (±${Number(location.accuracy || 0).toFixed(0)}m).`,
+                    Number(location.accuracy || 9999) <= 100 ? 'success' : 'warning',
+                    3500
+                );
+                return location;
+            }
+        } catch (error) {
+            console.warn('⚠️ Browser location fallback failed:', error);
+        }
+
+        // Final direct browser attempt with clearer permission/error handling.
+        try {
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    resolve,
+                    reject,
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 0,
+                        timeout: 15000
+                    }
+                );
+            });
+
+            const location = normalizeBrowserLocation(position, 'browser-high-accuracy');
+
+            if (location) {
+                try {
+                    location.address = await getAddressFromCoordinates(location.lat, location.lon);
+                } catch (_) {
+                    location.address = `${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}`;
+                }
+                console.log('✅ Direct browser GPS acquired:', location);
+                return location;
+            }
+        } catch (error) {
+            let message = 'Could not access your location.';
+            if (error?.code === 1) {
+                message = 'Location permission was denied. Allow Location access for this site and try again.';
+            } else if (error?.code === 2) {
+                message = 'Your device could not determine the current location. Turn on Location/GPS and try again.';
+            } else if (error?.code === 3) {
+                message = 'Location request timed out. Move to an area with a clearer GPS signal and try again.';
+            }
+
+            console.error('❌ Browser geolocation error:', error);
+            showToast(`❌ ${message}`, 'error', 7000);
+        }
+
+        return null;
+    }
     // ============================================
     // 🏆 AWARD ATTENDANCE POINTS
     // ============================================
@@ -2013,7 +2128,18 @@ async function getAccurateLocation() {
                 btn.style.opacity = '1';
                 return;
             }
-            
+
+            // Attendance is session-based. Never create a student attendance
+            // record without a real scheduled session ID.
+            const attendanceSessionId = currentSession?.id || null;
+            if (!attendanceSessionId) {
+                showToast('No attendance session is selected. Please use the active class Check In button.', 'error', 5000);
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                btn.style.opacity = '1';
+                return;
+            }
+
             const location = await getAccurateLocation();
         const deviceType = location?.device_type || getDeviceLocationProfile().label;
             
@@ -2107,8 +2233,44 @@ async function getAccurateLocation() {
             }
             
             btn.innerHTML = '💾 Saving...';
+
+            // 🔒 FINAL CLIENT-SIDE DUPLICATE CHECK
+            // Re-check immediately before INSERT because GPS acquisition and
+            // the confirmation modal may take several seconds.
+            const { data: finalExisting, error: finalExistingError } = await supabase
+                .from('geo_attendance_logs')
+                .select('id, check_in_time, attendance_status, verification_source, is_verified')
+                .eq('user_id', userId)
+                .eq('session_id', attendanceSessionId)
+                .order('check_in_time', { ascending: false })
+                .limit(1);
+
+            if (finalExistingError) throw finalExistingError;
+
+            let replaceAttendanceId = null;
+            if (finalExisting && finalExisting.length > 0) {
+                const row = finalExisting[0];
+                const isAutomaticAbsent =
+                    String(row.verification_source || '').toLowerCase().includes('automatic session finalization') &&
+                    String(row.attendance_status || '').toLowerCase() === 'absent' &&
+                    row.is_verified !== true;
+
+                if (isAutomaticAbsent) {
+                    replaceAttendanceId = row.id;
+                } else {
+                    const time = row.check_in_time
+                        ? new Date(row.check_in_time).toLocaleTimeString('en-KE', {
+                            hour: '2-digit', minute: '2-digit'
+                        })
+                        : 'earlier';
+                    showToast(`✅ Attendance already recorded for this session at ${time}.`, 'success', 5000);
+                    await loadHistory();
+                    await updateStats();
+                    return;
+                }
+            }
             
-            const sessionType = sessionTypeSelect?.value || 'class';
+            const sessionType = sessionTypeSelect?.value || currentSession?.session_type || 'class';
             
             const record = {
                 user_id: userId,
@@ -2121,7 +2283,7 @@ async function getAccurateLocation() {
                 check_in_time: new Date().toISOString(),
                 session_type: sessionType,
                 target_id: currentSession?.id || selectedTarget.id,
-                session_id: currentSession?.id || null,
+                session_id: attendanceSessionId,
                 target_name: selectedTarget.name,
                 latitude: location.lat,
                 longitude: location.lon,
@@ -2150,13 +2312,37 @@ async function getAccurateLocation() {
                 distance: record.distance_meters
             });
             
-            const { error } = await supabase
-                .from('geo_attendance_logs')
-                .insert([record]);
-            
-            if (error) {
-                console.error('❌ Insert error:', error);
-                throw error;
+            let saveError = null;
+            if (replaceAttendanceId) {
+                const { error } = await supabase
+                    .from('geo_attendance_logs')
+                    .update({
+                        ...record,
+                        verification_source: 'Student GPS Check-in (Reopened Session)',
+                        finalized_at: null,
+                        finalized_by: null,
+                        finalization_reason: null
+                    })
+                    .eq('id', replaceAttendanceId)
+                    .eq('user_id', userId)
+                    .eq('session_id', attendanceSessionId);
+                saveError = error;
+            } else {
+                const { error } = await supabase
+                    .from('geo_attendance_logs')
+                    .insert([record]);
+                saveError = error;
+            }
+
+            if (saveError) {
+                if (saveError.code === '23505') {
+                    showToast('✅ You already have attendance recorded for this session.', 'success', 5000);
+                    await loadHistory();
+                    await updateStats();
+                    return;
+                }
+                console.error('❌ Attendance save error:', saveError);
+                throw saveError;
             }
             
             let successMessage = 'Check-in recorded successfully!';
@@ -2317,9 +2503,17 @@ async function getAccurateLocation() {
             checkBtn.onclick = () => doCheckIn();
         }
         
-        const location = await getAccurateLocation();
-        currentLocation = location;
-        await updateLocationDisplay(location);
+        // Initial GPS acquisition is helpful but must not block the attendance page.
+        // Check-in retries location again if the first acquisition fails.
+        try {
+            const location = await getAccurateLocation();
+            currentLocation = location;
+            await updateLocationDisplay(location);
+        } catch (locationError) {
+            console.warn('⚠️ Initial location acquisition failed:', locationError);
+            currentLocation = null;
+            await updateLocationDisplay(null);
+        }
         updateRequirementsUI();
         
         await loadHistory();
