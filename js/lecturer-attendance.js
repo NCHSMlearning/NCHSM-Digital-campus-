@@ -1054,14 +1054,40 @@ const LecturerAttendance = {
         const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
         const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
         const filterDate = (document.getElementById('filterDate')?.value || '').trim();
+        const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
+        const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
+        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
         const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
-        const hasFilters = (filterBlock !== 'All') || (filterYear !== 'All') || (filterSessionType !== 'All') || !!searchText;
+        const hasFilters = (filterBlock !== 'All') || (filterUnit !== 'All') || (filterYear !== 'All') ||
+            (filterSessionType !== 'All') || !!filterDate || !!filterDateFrom || !!filterDateTo || !!searchText;
 
         // ---- 2. SOURCE ----
-        let source = [...(this.todayLogs || [])].filter(l => l.session_type !== 'Lecturer Check-in');
-        if (filterDate) source = source.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
+        // IMPORTANT: Export BOTH today's and historical records. The previous
+        // version exported todayLogs only, so a unit with sessions on 21/09
+        // and 24/09 incorrectly produced a single 24/09 column.
+        const merged = [...(this.pastLogs || []), ...(this.todayLogs || [])]
+            .filter(l => l.session_type !== 'Lecturer Check-in');
+        const seenSource = new Set();
+        let source = merged.filter(l => {
+            const key = l.id || [l.user_id || l.student_id || l.registration_number || '', l.session_id || '', l.check_in_time || '', l.attendance_status || ''].join('|');
+            if (seenSource.has(key)) return false;
+            seenSource.add(key);
+            return true;
+        });
+
+        const rangeFrom = filterDateFrom || filterDate || '';
+        const rangeTo = filterDateTo || filterDate || '';
+        if (rangeFrom) source = source.filter(l => {
+            if (!l.check_in_time) return false;
+            return new Date(l.check_in_time).toISOString().split('T')[0] >= rangeFrom;
+        });
+        if (rangeTo) source = source.filter(l => {
+            if (!l.check_in_time) return false;
+            return new Date(l.check_in_time).toISOString().split('T')[0] <= rangeTo;
+        });
         if (filterBlock !== 'All') source = source.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
+        if (filterUnit !== 'All') source = source.filter(l => String(l.unit_name || l.target_name || '').toLowerCase() === filterUnit.toLowerCase());
         if (filterYear !== 'All') source = source.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
         if (filterSessionType !== 'All') source = source.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
         if (searchText) source = source.filter(l => {
