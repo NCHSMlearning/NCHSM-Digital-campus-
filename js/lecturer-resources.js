@@ -205,7 +205,7 @@ async resolveLecturerAssignmentId(profile) {
         this.lecturerIdIsValid = false;
         return null;
     }
-}
+},
 
 async fetchAssignedPrograms(userId) {
 
