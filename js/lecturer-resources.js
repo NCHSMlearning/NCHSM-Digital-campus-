@@ -19,6 +19,7 @@ assignedPrograms: [],
 dashboardUrl: 'https://nchsm.co.ke/student',
 
 resolvedLecturerId: null,
+lecturerIdIsValid: false,
 
 // ==========================================
 
@@ -126,16 +127,37 @@ this.loadFromSession();
 async resolveLecturerAssignmentId(profile) {
     const supabase = window.lecturerDB?.supabase;
     const authId = profile?.user_id || profile?.id || null;
-    const fullName = String(profile?.full_name || '').trim();
+    const fullName = String(profile?.full_name || profile?.name || '').trim();
 
+    // resources.uploaded_by is UUID. Never allow placeholders such as
+    // "lecturer-fallback" to reach a Supabase UUID filter.
+    const isUUID = (value) => {
+        if (!value) return false;
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value).trim());
+    };
+
+    const setId = (value, source) => {
+        const id = String(value || '').trim();
+        if (!isUUID(id)) return false;
+        this.lecturerAssignmentId = id;
+        this.resolvedLecturerId = id;
+        this.lecturerIdIsValid = true;
+        console.log(`✅ Resources using ${source} lecturer ID:`, id);
+        return true;
+    };
+
+    // Auth UUID is always a safe fallback for a UUID column.
     if (!supabase) {
-        this.lecturerAssignmentId = authId;
-        this.resolvedLecturerId = authId;
-        return authId;
+        if (setId(authId, 'Auth')) return authId;
+        this.lecturerAssignmentId = null;
+        this.resolvedLecturerId = null;
+        this.lecturerIdIsValid = false;
+        return null;
     }
 
     try {
-        if (authId) {
+        // 1. Prefer an exact assignment row for the auth UUID.
+        if (isUUID(authId)) {
             const { data: exactRows, error: exactError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
@@ -143,14 +165,12 @@ async resolveLecturerAssignmentId(profile) {
                 .limit(20);
 
             if (!exactError && exactRows?.length) {
-                const row = exactRows.find(r => r?.lecturer_id) || exactRows[0];
-                this.lecturerAssignmentId = String(row.lecturer_id);
-                this.resolvedLecturerId = String(row.lecturer_id);
-                console.log('✅ Resources using lecturer assignment ID:', this.lecturerAssignmentId);
-                return this.lecturerAssignmentId;
+                const row = exactRows.find(r => isUUID(r?.lecturer_id));
+                if (row && setId(row.lecturer_id, 'exact assignment')) return row.lecturer_id;
             }
         }
 
+        // 2. Resolve by lecturer name and prefer a UUID/non-STAFF assignment.
         if (fullName) {
             const { data: nameRows, error: nameError } = await supabase
                 .from('lecturer_subject_assignments')
@@ -159,38 +179,33 @@ async resolveLecturerAssignmentId(profile) {
                 .limit(100);
 
             if (!nameError && nameRows?.length) {
-                const nonStaff = nameRows.find(row => {
-                    const id = String(row?.lecturer_id || '');
-                    return id && !id.toUpperCase().startsWith('STAFF');
-                });
+                const uuidRows = nameRows.filter(r => isUUID(r?.lecturer_id));
+                const nonStaff = uuidRows.find(r => !String(r.lecturer_id).toUpperCase().startsWith('STAFF'));
+                const row = nonStaff || uuidRows[0];
 
-                const row = nonStaff || nameRows.find(r => r?.lecturer_id);
-
-                if (row?.lecturer_id) {
-                    this.lecturerAssignmentId = String(row.lecturer_id);
-                    this.resolvedLecturerId = String(row.lecturer_id);
-                    console.log(
-                        nonStaff
-                            ? '✅ Resources using non-STAFF lecturer ID:'
-                            : '⚠️ Resources using STAFF lecturer ID:',
-                        this.lecturerAssignmentId
-                    );
-                    return this.lecturerAssignmentId;
+                if (row && setId(row.lecturer_id, nonStaff ? 'non-STAFF assignment' : 'assignment')) {
+                    return row.lecturer_id;
                 }
             }
         }
 
-        this.lecturerAssignmentId = authId;
-        this.resolvedLecturerId = authId;
-        console.warn('⚠️ No lecturer assignment ID found; falling back to Auth ID:', authId);
-        return authId;
+        // 3. Safe fallback: Auth UUID only. Never use "lecturer-fallback".
+        if (setId(authId, 'Auth fallback')) return authId;
+
+        this.lecturerAssignmentId = null;
+        this.resolvedLecturerId = null;
+        this.lecturerIdIsValid = false;
+        console.warn('⚠️ No valid UUID lecturer ID could be resolved. Resources query will be skipped.');
+        return null;
     } catch (error) {
         console.error('❌ Failed to resolve lecturer assignment ID:', error);
-        this.lecturerAssignmentId = authId;
-        this.resolvedLecturerId = authId;
-        return authId;
+        if (setId(authId, 'Auth fallback after resolver error')) return authId;
+        this.lecturerAssignmentId = null;
+        this.resolvedLecturerId = null;
+        this.lecturerIdIsValid = false;
+        return null;
     }
-},
+}
 
 async fetchAssignedPrograms(userId) {
 
@@ -255,7 +270,9 @@ this.updateDepartmentDisplay();
 
 this.assignedPrograms = ['KRCHN'];
 
-this.lecturerAssignmentId = 'lecturer-fallback';
+this.lecturerAssignmentId = null;
+this.resolvedLecturerId = null;
+this.lecturerIdIsValid = false;
 
 }
 
@@ -263,7 +280,9 @@ this.lecturerAssignmentId = 'lecturer-fallback';
 
 this.assignedPrograms = ['KRCHN'];
 
-this.lecturerAssignmentId = 'lecturer-fallback';
+this.lecturerAssignmentId = null;
+this.resolvedLecturerId = null;
+this.lecturerIdIsValid = false;
 
 }
 
@@ -609,19 +628,23 @@ return;
 
 }
 
-const userId = this.lecturerAssignmentId || this.lecturerProfile?.user_id;
+const userId = this.lecturerAssignmentId || this.resolvedLecturerId;
+
+// uploaded_by is a UUID column. Never send an invalid placeholder/string.
+if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(userId).trim())) {
+    console.warn('⚠️ Skipping resources query: no valid lecturer UUID resolved.', userId);
+    this.resources = [];
+    this.updateCounts();
+    this.renderTable();
+    return;
+}
 
 // Build query - only show resources for lecturer's assigned programs
-
 let query = supabase
-
-.from('resources')
-
-.select('*')
-
-.eq('uploaded_by', userId)
-
-.order('created_at', { ascending: false });
+    .from('resources')
+    .select('*')
+    .eq('uploaded_by', userId)
+    .order('created_at', { ascending: false });
 
 // If lecturer has specific programs, filter by them
 
