@@ -166,6 +166,7 @@ const LecturerAttendance = {
 
             this.assignedUnits = assignments || [];
             this.populateUnitSelectors();
+            this.populateUnitFilter();
             this.updateProgramBadge();
         } catch (error) {
             console.error('❌ loadAssignedUnits fail:', error);
@@ -178,19 +179,32 @@ const LecturerAttendance = {
     populateUnitSelectors() {
         const unitSelect = document.getElementById('attUnit');
         if (!unitSelect) return;
-        const units = this.assignedUnits;
+
+        // IMPORTANT: this dropdown must contain ONLY units explicitly
+        // assigned to the currently logged-in lecturer. Attendance history
+        // is never used to add unassigned units here.
+        const seen = new Map();
+        (Array.isArray(this.assignedUnits) ? this.assignedUnits : []).forEach(u => {
+            const name = String(u?.subject_name || '').trim();
+            if (!name) return;
+            const key = this.normalizeFilterValue(name);
+            if (!seen.has(key)) seen.set(key, u);
+        });
+        const units = [...seen.values()].sort((a, b) =>
+            String(a.subject_name || '').localeCompare(String(b.subject_name || ''))
+        );
+
         const typeLabel = this.getProgramTypeLabel();
         const emoji = this.getProgramEmoji();
 
-        if (units?.length > 0) {
-            unitSelect.innerHTML = `<option value="">-- ${emoji} Select Unit --</option>` +
+        if (units.length > 0) {
+            unitSelect.innerHTML = `<option value="">-- ${emoji} Select Assigned Unit --</option>` +
                 units.map(u => {
                     const blockDisplay = this.getBlockDisplay(u.block);
-                    return `<option value="${u.subject_name}">
-                        ${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}
-                        ${u.block ? ' (' + blockDisplay + ')' : ''}
-                        ${this.isTVET ? ' 🔧' : ''}
-                    </option>`;
+                    const code = u.subject_code ? `${this.escapeHtml(u.subject_code)} - ` : '';
+                    const name = this.escapeHtml(u.subject_name);
+                    const block = u.block ? ` (${this.escapeHtml(blockDisplay)})` : '';
+                    return `<option value="${name}">${code}${name}${block}${this.isTVET ? ' 🔧' : ''}</option>`;
                 }).join('');
         } else {
             unitSelect.innerHTML = `<option value="">-- No ${typeLabel} units assigned --</option>`;
@@ -817,19 +831,29 @@ const LecturerAttendance = {
     populateUnitFilter() {
         const select = document.getElementById('filterUnit');
         if (!select) return;
+
+        // The lecturer should only be able to filter/select units that are
+        // actually assigned to them. Do NOT add arbitrary units from
+        // historical attendance records.
         const values = new Map();
-        [...(this.assignedUnits || [])].forEach(u => {
-            const name = String(u.subject_name || '').trim();
-            if (name) values.set(this.normalizeFilterValue(name), name);
+        (Array.isArray(this.assignedUnits) ? this.assignedUnits : []).forEach(u => {
+            const name = String(u?.subject_name || '').trim();
+            if (!name) return;
+            values.set(this.normalizeFilterValue(name), name);
         });
-        [...(this.todayLogs || []), ...(this.pastLogs || [])].forEach(l => {
-            const name = String(l.unit_name || l.target_name || '').trim();
-            if (name) values.set(this.normalizeFilterValue(name), name);
-        });
+
         const current = select.value || 'All';
-        select.innerHTML = '<option value="All">All Units</option>' +
-            [...values.values()].sort((a,b)=>a.localeCompare(b)).map(v => `<option value="${this.escapeHtml(v)}">${this.escapeHtml(v)}</option>`).join('');
-        if ([...select.options].some(o => o.value === current)) select.value = current;
+        select.innerHTML = '<option value="All">All Assigned Units</option>' +
+            [...values.values()]
+                .sort((a, b) => a.localeCompare(b))
+                .map(v => `<option value="${this.escapeHtml(v)}">${this.escapeHtml(v)}</option>`)
+                .join('');
+
+        if ([...select.options].some(o => o.value === current)) {
+            select.value = current;
+        } else {
+            select.value = 'All';
+        }
     },
 
     populateYearFilter() {
