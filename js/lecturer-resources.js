@@ -16,6 +16,10 @@ lecturerProfile: null,
 
 assignedPrograms: [],
 
+dashboardUrl: 'https://nchsm.co.ke/student',
+
+resolvedLecturerId: null,
+
 // ==========================================
 
 // INITIALIZE
@@ -92,7 +96,7 @@ await this.fetchAssignedPrograms(profile.user_id);
 
 // Get lecturer assignment ID
 
-this.lecturerAssignmentId = profile.user_id;
+await this.resolveLecturerAssignmentId(profile);
 
 // Update UI with department info
 
@@ -113,6 +117,80 @@ this.loadFromSession();
 // FETCH ASSIGNED PROGRAMS FROM DB
 
 // ==========================================
+
+
+// ==========================================
+// RESOLVE LECTURER ASSIGNMENT ID
+// ==========================================
+
+async resolveLecturerAssignmentId(profile) {
+    const supabase = window.lecturerDB?.supabase;
+    const authId = profile?.user_id || profile?.id || null;
+    const fullName = String(profile?.full_name || '').trim();
+
+    if (!supabase) {
+        this.lecturerAssignmentId = authId;
+        this.resolvedLecturerId = authId;
+        return authId;
+    }
+
+    try {
+        if (authId) {
+            const { data: exactRows, error: exactError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .eq('lecturer_id', String(authId))
+                .limit(20);
+
+            if (!exactError && exactRows?.length) {
+                const row = exactRows.find(r => r?.lecturer_id) || exactRows[0];
+                this.lecturerAssignmentId = String(row.lecturer_id);
+                this.resolvedLecturerId = String(row.lecturer_id);
+                console.log('✅ Resources using lecturer assignment ID:', this.lecturerAssignmentId);
+                return this.lecturerAssignmentId;
+            }
+        }
+
+        if (fullName) {
+            const { data: nameRows, error: nameError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .ilike('lecturer_name', `%${fullName}%`)
+                .limit(100);
+
+            if (!nameError && nameRows?.length) {
+                const nonStaff = nameRows.find(row => {
+                    const id = String(row?.lecturer_id || '');
+                    return id && !id.toUpperCase().startsWith('STAFF');
+                });
+
+                const row = nonStaff || nameRows.find(r => r?.lecturer_id);
+
+                if (row?.lecturer_id) {
+                    this.lecturerAssignmentId = String(row.lecturer_id);
+                    this.resolvedLecturerId = String(row.lecturer_id);
+                    console.log(
+                        nonStaff
+                            ? '✅ Resources using non-STAFF lecturer ID:'
+                            : '⚠️ Resources using STAFF lecturer ID:',
+                        this.lecturerAssignmentId
+                    );
+                    return this.lecturerAssignmentId;
+                }
+            }
+        }
+
+        this.lecturerAssignmentId = authId;
+        this.resolvedLecturerId = authId;
+        console.warn('⚠️ No lecturer assignment ID found; falling back to Auth ID:', authId);
+        return authId;
+    } catch (error) {
+        console.error('❌ Failed to resolve lecturer assignment ID:', error);
+        this.lecturerAssignmentId = authId;
+        this.resolvedLecturerId = authId;
+        return authId;
+    }
+},
 
 async fetchAssignedPrograms(userId) {
 
@@ -166,7 +244,8 @@ this.lecturerProfile = data;
 
 this.assignedPrograms = data.assignedPrograms || [data.department || data.program || 'KRCHN'];
 
-this.lecturerAssignmentId = data.user_id || data.id;
+this.lecturerAssignmentId = data.lecturer_assignment_id || data.lecturer_id || data.user_id || data.id;
+this.resolvedLecturerId = this.lecturerAssignmentId;
 
 this.updateDepartmentDisplay();
 
@@ -644,7 +723,7 @@ const userId = this.lecturerAssignmentId || this.lecturerProfile?.user_id;
 
 tbody.innerHTML = filtered.map(r => {
 
-const isOwner = r.uploaded_by === userId || r.uploaded_by === this.lecturerProfile?.user_id;
+const isOwner = this.isResourceOwner(r);
 
 const typeIcon = this.getResourceTypeIcon(r.resource_type);
 
@@ -715,8 +794,6 @@ ${this.formatDate(r.created_at)}
                     </td>
 
                     <td style="padding: 12px 16px;">
-
-                        <td style="padding: 12px 16px;">
                             ${r.podcast_url ? `
                                 <span style="display:inline-flex;align-items:center;gap:5px;background:#f3e8ff;color:#6d28d9;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:700;">
                                     <i class="fas fa-podcast"></i> Available
@@ -1219,6 +1296,23 @@ this.editingResourceId = null;
 
 // ==========================================
 
+
+// ==========================================
+// RESOURCE OWNER CHECK
+// ==========================================
+
+isResourceOwner(resource) {
+    if (!resource) return false;
+    const ids = [
+        this.lecturerAssignmentId,
+        this.resolvedLecturerId,
+        this.lecturerProfile?.user_id,
+        this.lecturerProfile?.id
+    ].filter(Boolean).map(v => String(v).trim());
+
+    return ids.includes(String(resource.uploaded_by || '').trim());
+},
+
 async deleteResource(resourceId) {
 
 const resource = this.resources.find(r => r.id === resourceId);
@@ -1251,10 +1345,9 @@ if (!supabase) throw new Error('Database not available');
 
 // Delete file from storage
 
-if (resource.file_path) {
-
-await supabase.storage.from('resources').remove([resource.file_path]);
-
+const storagePaths = [resource.file_path, resource.podcast_path].filter(Boolean);
+if (storagePaths.length) {
+    await supabase.storage.from('resources').remove(storagePaths);
 }
 
 // Delete from database
@@ -1296,70 +1389,67 @@ window.showNotification?.('❌ ' + error.message, 'error');
 // ==========================================
 
 editResource(resourceId) {
+    const resource = this.resources.find(r => String(r.id) === String(resourceId));
 
-const resource = this.resources.find(r => r.id === resourceId);
+    if (!resource) {
+        window.showNotification?.('Resource not found.', 'error');
+        return;
+    }
 
-if (!resource) {
+    if (!this.isResourceOwner(resource)) {
+        console.error('❌ Edit denied:', {
+            resourceOwner: resource.uploaded_by,
+            assignmentId: this.lecturerAssignmentId,
+            resolvedLecturerId: this.resolvedLecturerId,
+            authId: this.lecturerProfile?.user_id
+        });
+        window.showNotification?.('You can only edit resources you uploaded.', 'warning');
+        return;
+    }
 
-window.showNotification?.('Resource not found.', 'error');
+    this.populateProgramDropdown();
+    this.populateIntakeOptions();
+    this.populateBlockOptions();
+    this.populatePastPaperYears();
 
-return;
+    const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value == null ? '' : String(value);
+    };
 
-}
+    setValue('edit_resource_id', resource.id);
+    setValue('edit_lecturer_program', resource.target_program || resource.program_type || '');
+    setValue('edit_lecturer_intake', resource.intake || '');
+    setValue('edit_lecturer_block', resource.block || resource.block_term || '');
+    setValue('edit_lecturer_title', resource.title || '');
+    setValue('edit_lecturer_description', resource.description || '');
+    setValue('edit_lecturer_pastpaper_year', resource.pastpaper_year || '');
+    setValue('edit_lecturer_exam_type', resource.exam_type || '');
+    setValue('edit_lecturer_course_name', resource.unit_name || resource.course_name || '');
 
-const userId = this.lecturerAssignmentId || this.lecturerProfile?.user_id;
+    const editPodcastInfo = document.getElementById('edit_lecturer_podcast_info');
+    if (editPodcastInfo) {
+        editPodcastInfo.innerHTML = resource.podcast_url
+            ? '<i class="fas fa-check-circle" style="color:#059669;"></i> Podcast attached. Select a new audio file below to replace it.'
+            : '<i class="fas fa-info-circle"></i> No podcast attached. Select an audio file to add one.';
+    }
 
-if (resource.uploaded_by !== userId) {
+    const editFile = document.getElementById('edit_lecturer_resource_file');
+    const editPodcast = document.getElementById('edit_lecturer_podcast_file');
+    if (editFile) editFile.value = '';
+    if (editPodcast) editPodcast.value = '';
 
-window.showNotification?.('You can only edit resources you uploaded.', 'warning');
+    const modal = document.getElementById('lecturer-edit-modal');
+    if (!modal) {
+        window.showNotification?.('Edit modal is missing from the Lecturer Resources HTML.', 'error');
+        return;
+    }
 
-return;
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
 
-}
-
-// Populate edit modal
-
-document.getElementById('edit_resource_id').value = resource.id;
-
-document.getElementById('edit_lecturer_program').value = resource.target_program || resource.program_type || '';
-
-document.getElementById('edit_lecturer_intake').value = resource.intake || '';
-
-document.getElementById('edit_lecturer_block').value = resource.block || resource.block_term || '';
-
-document.getElementById('edit_lecturer_title').value = resource.title || '';
-
-document.getElementById('edit_lecturer_description').value = resource.description || '';
-
-document.getElementById('edit_lecturer_pastpaper_year').value = resource.pastpaper_year || '';
-
-document.getElementById('edit_lecturer_exam_type').value = resource.exam_type || '';
-
-document.getElementById('edit_lecturer_course_name').value = resource.unit_name || resource.course_name || '';
-
-        const editPodcastInfo = document.getElementById('edit_lecturer_podcast_info');
-        if (editPodcastInfo) {
-            editPodcastInfo.innerHTML = resource.podcast_url
-                ? '<i class="fas fa-check-circle" style="color:#059669;"></i> Existing podcast attached. Choose a file only if you want to replace it.'
-                : 'No podcast currently attached. Upload one if needed.';
-        }
-        const editFile = document.getElementById('edit_lecturer_resource_file');
-        const editPodcast = document.getElementById('edit_lecturer_podcast_file');
-        if (editFile) editFile.value = '';
-        if (editPodcast) editPodcast.value = '';
-
-// Show modal
-
-const modal = document.getElementById('lecturer-edit-modal');
-
-if (modal) {
-
-modal.style.display = 'flex';
-
-modal.className = 'show';
-
-}
-
+    setTimeout(() => document.getElementById('edit_lecturer_title')?.focus(), 100);
 },
 
 // ==========================================
@@ -1369,102 +1459,170 @@ modal.className = 'show';
 // ==========================================
 
 async saveEdit() {
-const resourceId = document.getElementById('edit_resource_id')?.value;
-if (!resourceId) {
-window.showNotification?.('No resource selected for editing.', 'error');
-return;
-}
+    const resourceId = document.getElementById('edit_resource_id')?.value;
 
-const resource = this.resources.find(r => String(r.id) === String(resourceId));
-const userId = this.lecturerAssignmentId || this.lecturerProfile?.user_id;
-if (!resource) {
-window.showNotification?.('Resource not found.', 'error');
-return;
-}
-if (resource.uploaded_by !== userId) {
-window.showNotification?.('You can only edit resources you uploaded.', 'warning');
-return;
-}
+    if (!resourceId) {
+        window.showNotification?.('No resource selected for editing.', 'error');
+        return;
+    }
 
-const supabase = window.lecturerDB?.supabase;
-if (!supabase) throw new Error('Database not available');
+    const resource = this.resources.find(r => String(r.id) === String(resourceId));
 
-const saveBtn = document.querySelector('#lecturer-edit-form button[type="submit"]');
-const originalBtn = saveBtn?.innerHTML || '<i class="fas fa-save"></i> Save Changes';
-if (saveBtn) {
-saveBtn.disabled = true;
-saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-}
+    if (!resource) {
+        window.showNotification?.('Resource not found.', 'error');
+        return;
+    }
 
-try {
-const program = document.getElementById('edit_lecturer_program')?.value;
-const intake = document.getElementById('edit_lecturer_intake')?.value;
-const block = document.getElementById('edit_lecturer_block')?.value;
+    if (!this.isResourceOwner(resource)) {
+        window.showNotification?.('You can only edit resources you uploaded.', 'warning');
+        return;
+    }
 
-const updates = {
-target_program: program,
-program_type: program,
-intake,
-block,
-block_term: block,
-title: document.getElementById('edit_lecturer_title')?.value.trim(),
-description: document.getElementById('edit_lecturer_description')?.value?.trim(),
-pastpaper_year: parseInt(document.getElementById('edit_lecturer_pastpaper_year')?.value) || null,
-exam_type: document.getElementById('edit_lecturer_exam_type')?.value || null,
-unit_name: document.getElementById('edit_lecturer_course_name')?.value?.trim() || null,
-course_name: document.getElementById('edit_lecturer_course_name')?.value?.trim() || null,
-updated_at: new Date().toISOString()
-};
+    const supabase = window.lecturerDB?.supabase;
+    if (!supabase) {
+        window.showNotification?.('Database not available.', 'error');
+        return;
+    }
 
-const newFile = document.getElementById('edit_lecturer_resource_file')?.files?.[0];
-if (newFile) {
-const ext = newFile.name.split('.').pop()?.toLowerCase() || 'bin';
-const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
-const newPath = `resources/${program}/${intake}/${block}/${fileName}`;
-const { error: uploadError } = await supabase.storage.from('resources').upload(newPath, newFile);
-if (uploadError) throw new Error('Failed to upload replacement file: ' + uploadError.message);
-const { data: newUrlData } = supabase.storage.from('resources').getPublicUrl(newPath);
-updates.file_path = newPath;
-updates.file_url = newUrlData?.publicUrl || '';
-updates.file_name = newFile.name;
-updates.file_size = newFile.size;
-updates.file_type = newFile.type || ext;
-if (resource.file_path) await supabase.storage.from('resources').remove([resource.file_path]);
-}
+    const saveBtn = document.querySelector('#lecturer-edit-form button[type="submit"]');
+    const originalBtn = saveBtn?.innerHTML || '<i class="fas fa-save"></i> Save Changes';
 
-const newPodcast = document.getElementById('edit_lecturer_podcast_file')?.files?.[0];
-if (newPodcast) {
-const ext = newPodcast.name.split('.').pop()?.toLowerCase() || 'mp3';
-const podcastName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
-const podcastPath = `podcasts/${program}/${intake}/${String(block).toLowerCase().replace(/\s+/g,'-')}/${podcastName}`;
-const { error: podcastUploadError } = await supabase.storage.from('resources').upload(podcastPath, newPodcast);
-if (podcastUploadError) throw new Error('Failed to upload replacement podcast: ' + podcastUploadError.message);
-const { data: podcastUrlData } = supabase.storage.from('resources').getPublicUrl(podcastPath);
-updates.podcast_path = podcastPath;
-updates.podcast_url = podcastUrlData?.publicUrl || '';
-if (resource.podcast_path) await supabase.storage.from('resources').remove([resource.podcast_path]);
-}
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving document & audio...';
+    }
 
-const { error } = await supabase
-.from('resources')
-.update(updates)
-.eq('id', resourceId)
-.eq('uploaded_by', userId);
+    const oldFilePath = resource.file_path || null;
+    const oldPodcastPath = resource.podcast_path || null;
+    let newFilePath = null;
+    let newPodcastPath = null;
 
-if (error) throw new Error('Failed to update: ' + error.message);
+    try {
+        const program = document.getElementById('edit_lecturer_program')?.value;
+        const intake = document.getElementById('edit_lecturer_intake')?.value;
+        const block = document.getElementById('edit_lecturer_block')?.value;
+        const title = document.getElementById('edit_lecturer_title')?.value.trim();
+        const description = document.getElementById('edit_lecturer_description')?.value?.trim() || '';
 
-window.showNotification?.('✅ Resource updated successfully!', 'success');
-this.closeEditModal();
-await this.loadAllResources();
-} catch (error) {
-console.error('Edit error:', error);
-window.showNotification?.('❌ ' + error.message, 'error');
-} finally {
-if (saveBtn) {
-saveBtn.disabled = false;
-saveBtn.innerHTML = originalBtn;
-}
-}
+        if (!program || !intake || !block || !title) {
+            throw new Error('Please complete Program, Intake, Block and Resource Title.');
+        }
+
+        const newFile = document.getElementById('edit_lecturer_resource_file')?.files?.[0];
+        const newPodcast = document.getElementById('edit_lecturer_podcast_file')?.files?.[0];
+
+        const updates = {
+            target_program: program,
+            program_type: program,
+            intake,
+            block,
+            block_term: block,
+            title,
+            description,
+            pastpaper_year: parseInt(document.getElementById('edit_lecturer_pastpaper_year')?.value) || null,
+            exam_type: document.getElementById('edit_lecturer_exam_type')?.value || null,
+            unit_name: document.getElementById('edit_lecturer_course_name')?.value?.trim() || null,
+            course_name: document.getElementById('edit_lecturer_course_name')?.value?.trim() || null,
+            updated_at: new Date().toISOString()
+        };
+
+        // Replace document
+        if (newFile) {
+            const ext = newFile.name.split('.').pop()?.toLowerCase() || 'bin';
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+            newFilePath = `resources/${program}/${intake}/${block}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('resources')
+                .upload(newFilePath, newFile, { upsert: false });
+
+            if (uploadError) {
+                throw new Error('Failed to upload replacement document: ' + uploadError.message);
+            }
+
+            const { data: newUrlData } = supabase.storage
+                .from('resources')
+                .getPublicUrl(newFilePath);
+
+            updates.file_path = newFilePath;
+            updates.file_url = newUrlData?.publicUrl || '';
+            updates.file_name = newFile.name;
+            updates.file_size = newFile.size;
+            updates.file_type = newFile.type || ext;
+        }
+
+        // Replace/add podcast
+        if (newPodcast) {
+            const ext = newPodcast.name.split('.').pop()?.toLowerCase() || 'mp3';
+            const podcastName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+            newPodcastPath = `podcasts/${program}/${intake}/${String(block).toLowerCase().replace(/\s+/g, '-')}/${podcastName}`;
+
+            const { error: podcastUploadError } = await supabase.storage
+                .from('resources')
+                .upload(newPodcastPath, newPodcast, { upsert: false });
+
+            if (podcastUploadError) {
+                throw new Error('Failed to upload replacement podcast: ' + podcastUploadError.message);
+            }
+
+            const { data: podcastUrlData } = supabase.storage
+                .from('resources')
+                .getPublicUrl(newPodcastPath);
+
+            updates.podcast_path = newPodcastPath;
+            updates.podcast_url = podcastUrlData?.publicUrl || '';
+        }
+
+        const ownerId = this.lecturerAssignmentId || this.resolvedLecturerId || this.lecturerProfile?.user_id;
+
+        const { data: updatedRows, error } = await supabase
+            .from('resources')
+            .update(updates)
+            .eq('id', resourceId)
+            .eq('uploaded_by', ownerId)
+            .select();
+
+        if (error) {
+            throw new Error('Failed to update resource: ' + error.message);
+        }
+
+        if (!updatedRows?.length) {
+            throw new Error('Resource was not updated. Lecturer ownership could not be verified.');
+        }
+
+        // Clean old storage only after DB update succeeds.
+        if (newFilePath && oldFilePath && oldFilePath !== newFilePath) {
+            await supabase.storage.from('resources').remove([oldFilePath]);
+        }
+
+        if (newPodcastPath && oldPodcastPath && oldPodcastPath !== newPodcastPath) {
+            await supabase.storage.from('resources').remove([oldPodcastPath]);
+        }
+
+        window.showNotification?.('✅ Document and podcast updated successfully!', 'success');
+        this.closeEditModal();
+        await this.loadAllResources();
+
+    } catch (error) {
+        console.error('Edit resource error:', error);
+
+        const cleanupPaths = [newFilePath, newPodcastPath].filter(Boolean);
+
+        if (cleanupPaths.length) {
+            try {
+                await supabase.storage.from('resources').remove(cleanupPaths);
+            } catch (cleanupError) {
+                console.warn('Replacement cleanup failed:', cleanupError);
+            }
+        }
+
+        window.showNotification?.('❌ ' + error.message, 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalBtn;
+        }
+    }
 },
 
 closeEditModal() {
@@ -1474,8 +1632,8 @@ const modal = document.getElementById('lecturer-edit-modal');
 if (modal) {
 
 modal.style.display = 'none';
-
-modal.className = '';
+modal.classList.remove('show');
+document.body.style.overflow = '';
 
 }
 
@@ -1621,7 +1779,7 @@ this.getProgramDisplayName(r.target_program || r.program_type || ''),
 r.block || r.block_term || '',
 
 r.intake || r.pastpaper_year || '',
-
+r.podcast_url ? 'Yes' : 'No',
 r.uploaded_by_name || '',
 
 this.formatDate(r.created_at)
@@ -1698,6 +1856,8 @@ getResourceTypeIcon(type) {
 
 const icons = {
 
+'material': '<i class="fas fa-book" style="color: #4C1D95;"></i>',
+
 'general': '<i class="fas fa-file-alt" style="color: #4C1D95;"></i>',
 
 'pastpaper': '<i class="fas fa-history" style="color: #f59e0b;"></i>',
@@ -1714,6 +1874,8 @@ getResourceTypeLabel(type) {
 
 const labels = {
 
+'material': 'Material',
+
 'general': 'Material',
 
 'pastpaper': 'Past Paper',
@@ -1729,6 +1891,8 @@ return labels[type] || 'Material';
 getTypeColor(type) {
 
 const colors = {
+
+'material': '#4C1D95',
 
 'general': '#4C1D95',
 
