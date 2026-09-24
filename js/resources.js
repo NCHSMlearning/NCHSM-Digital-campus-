@@ -323,9 +323,9 @@ class ResourcesModule {
                     <i class="fas fa-file-alt" style="font-size:64px;color:#4C1D95;display:block;margin-bottom:16px;"></i>
                     <p style="font-size:16px;color:#1e293b;font-weight:500;">${this.escapeHtml(resource.title)}</p>
                     <p style="font-size:13px;color:#94a3b8;">File: ${resource.file_path || 'Unknown'}</p>
-                    <button onclick="window.open('${resource.file_url}', '_blank')" 
+                    <button onclick="window.resourcesModule?.openUnsupportedResourceInModal(${resource.id})" 
                             style="margin-top:16px;padding:12px 32px;background:#4C1D95;color:white;border:none;border-radius:40px;cursor:pointer;font-weight:600;">
-                        <i class="fas fa-external-link-alt"></i> Open File
+                        <i class="fas fa-eye"></i> View in Portal
                     </button>
                 </div>
             `;
@@ -1642,7 +1642,18 @@ class ResourcesModule {
         const fileType = this.getFileType(resource.file_path);
         
         if (window.innerWidth < 768) {
-            this.openMobileReader(resource);
+            // MOBILE: keep documents inside the portal.
+            // PPT/PPTX and DOC/DOCX must NOT be sent to the phone's
+            // native download/open handler.
+            if (fileType === 'pdf') {
+                await this.openPDFInModal(resource);
+            } else if (['ppt', 'pptx', 'doc', 'docx'].includes(fileType)) {
+                this.openOfficeDocumentInModal(resource);
+            } else if (fileType === 'image' || fileType === 'video') {
+                this.openMobileReader(resource);
+            } else {
+                this.openUnsupportedResourceInModal(resource);
+            }
             return;
         }
         
