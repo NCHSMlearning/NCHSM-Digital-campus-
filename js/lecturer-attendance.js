@@ -1,1684 +1,65 @@
-// ============================================================
-// NCHSM LECTURER ATTENDANCE MODULE — WITH TVET + STYLED XLSX
-// ============================================================
+/*
+ NCHSM LECTURER ATTENDANCE — FIX PATCH
+ --------------------------------------
+ Append this block to the END of the exact lecturer attendance JS supplied
+ in the conversation. It preserves the existing HTML/global function names.
 
-const LecturerAttendance = {
-    todayLogs: [],
-    pastLogs: [],
-    filteredTodayLogs: [],
-    filteredPastLogs: [],
-    assignedUnits: [],
-    lecturerAssignmentId: null,
-    lecturerUuid: null,
-    mapInstance: null,
-    currentLocation: null,
-    isProcessing: false,
-    isTVET: false,
-    currentProgram: 'KRCHN',
-    stats: { total: 0, present: 0, absent: 0, pending: 0, rate: 0 },
-    sessions: [],
-    selectedSessionId: null,
-    selectedSession: null,
-    sessionRegister: null,
+ Fixes:
+ 1. Manual attendance is tied to the selected scheduled session.
+ 2. Session radius uses the session radius as the authoritative fallback.
+ 3. Session register matches attendance by multiple student identifiers.
+ 4. Selected-session export uses the COMPLETE roster, including Absent/Pending.
+ 5. Selected-session filtering does not destroy the underlying register.
+ 6. Selected session is never silently replaced by generic daily logs when
+    scheduled sessions exist.
+ 7. Finalized sessions display missing students as Absent.
+ 8. Verification refreshes the selected session rather than falling back
+    to generic daily attendance.
+*/
 
-    // ============================================================
-    // PROGRAM TYPE DETECTION
-    // ============================================================
-    getProgramType() { return window.CURRENT_PROGRAM_TYPE || 'KRCHN'; },
-    isTVETProgram() { return this.getProgramType() === 'TVET'; },
-    getProgramTypeLabel() { return this.isTVETProgram() ? '🔧 TVET' : '🎓 Nursing'; },
-    getProgramEmoji() { return this.isTVETProgram() ? '🔧' : '🎓'; },
-    getPassingThreshold() { return this.isTVETProgram() ? 50 : 60; },
+(function () {
+    'use strict';
 
-    getBlockDisplay(blockValue) {
-        if (!blockValue) return 'N/A';
-        const programType = this.getProgramType();
-        if (programType === 'TVET') {
-            const match = blockValue.match(/^Y(\d)T(\d)$/);
-            if (match) {
-                const year = parseInt(match[1]);
-                const term = parseInt(match[2]);
-                const termNames = ['', 'First', 'Second', 'Third'];
-                return `Year ${year} ${termNames[term] || term} Term`;
-            }
-            if (blockValue.includes('Term')) return blockValue;
-            if (blockValue === 'Introductory') return '🌟 Introductory Term';
-            return blockValue;
-        } else {
-            if (blockValue.startsWith('Block ')) return blockValue;
-            if (blockValue === 'Introductory') return '🌟 Introductory Block';
-            if (blockValue === 'Final') return '🏆 Final Block';
-            return `Block ${blockValue}`;
-        }
-    },
+    const LA = window.LecturerAttendance;
+    if (!LA) {
+        console.error('❌ LecturerAttendance was not found. Load the main attendance JS first.');
+        return;
+    }
 
-    // ============================================================
-    // INIT
-    // ============================================================
-    async init() {
-        console.log('📋 Initializing Lecturer Attendance Module...');
-        this.currentProgram = this.getProgramType();
-        this.isTVET = this.isTVETProgram();
-        console.log(`📚 Program Type: ${this.getProgramTypeLabel()}`);
+    // ------------------------------------------------------------
+    // 1. AUTHORITATIVE SESSION RADIUS
+    // ------------------------------------------------------------
+    LA.getSessionRadius = function (session, log = null) {
+        const value =
+            log?.target_radius ??
+            session?.target_radius ??
+            150;
 
-        try {
-            await this.resolveLecturerId();
-            await this.loadAssignedUnits();
-            await this.loadAttendanceSessions();
-            await this.loadAllAttendance();
-            this.setupEventListeners();
-            this.populateFilters();
-            this.updateProgramBadge();
+        const radius = Number(value);
+        return Number.isFinite(radius) && radius > 0 ? radius : 150;
+    };
 
-            console.log('✅ Lecturer Attendance Module initialized successfully');
-
-            setInterval(() => {
-                this.loadAllAttendance().then(() => this.applyFilters());
-            }, 60000);
-
-        } catch (error) {
-            console.error('❌ Failed to initialize attendance module:', error);
-            this.showError('Failed to initialize: ' + error.message);
-        }
-    },
-
-    // ============================================================
-    // PROGRAM BADGE
-    // ============================================================
-    updateProgramBadge() {
-        const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
-        const threshold = this.getPassingThreshold();
-
-        const programDisplay = document.getElementById('programDisplayName');
-        if (programDisplay) programDisplay.textContent = `${this.currentProgram} (${typeLabel})`;
-
-        const programTypeBadge = document.getElementById('programTypeBadge');
-        if (programTypeBadge) {
-            programTypeBadge.textContent = typeLabel;
-            programTypeBadge.style.background = this.isTVET ? 'rgba(139,92,246,0.3)' : 'rgba(76,29,149,0.3)';
-            programTypeBadge.style.color = this.isTVET ? '#7c3aed' : '#1e40af';
-        }
-
-        const blockDisplay = document.getElementById('currentBlockDisplay');
-        if (blockDisplay) {
-            const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-            if (blocks.length > 0) blockDisplay.textContent = this.getBlockDisplay(blocks[0]);
-        }
-
-        const rateBadge = document.getElementById('attendanceRateBadge');
-        if (rateBadge) rateBadge.textContent = `${this.stats.rate || 0}% (Pass: ≥${threshold}%)`;
-
-        const subtitle = document.querySelector('#attendance-content .subtitle');
-        if (subtitle) subtitle.textContent = `${emoji} ${typeLabel} - Track and manage student attendance`;
-    },
-
-    // ============================================================
-    // RESOLVE LECTURER ID
-    // ============================================================
-    async resolveLecturerId() {
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
-
-            const authId = profile.user_id;
-            const fullName = profile.full_name;
-            this.lecturerUuid = authId;
-
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
-            if (!isUUID && authId) { this.lecturerAssignmentId = authId; return; }
-
-            const { data: assignments } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .ilike('lecturer_name', `%${fullName}%`);
-
-            if (assignments?.length > 0) {
-                const textId = assignments.find(a => a.lecturer_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(a.lecturer_id)));
-                this.lecturerAssignmentId = textId ? textId.lecturer_id : assignments[0].lecturer_id;
-                return;
-            }
-            this.lecturerAssignmentId = authId;
-        } catch (error) {
-            console.error('❌ resolveLecturerId:', error);
-            this.lecturerAssignmentId = null;
-            this.lecturerUuid = null;
-        }
-    },
-
-    // ============================================================
-    // LOAD ASSIGNED UNITS
-    // ============================================================
-    async loadAssignedUnits() {
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
-
-            const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            const program = this.currentProgram || profile.program || 'KRCHN';
-
-            const { data: assignments, error } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('subject_name, subject_code, block, program, academic_year')
-                .eq('lecturer_id', String(lecturerId))
-                .eq('program', program);
-
-            if (error) { console.error('❌ loadAssignedUnits:', error); return; }
-
-            this.assignedUnits = assignments || [];
-            this.populateUnitSelectors();
-            this.updateProgramBadge();
-        } catch (error) {
-            console.error('❌ loadAssignedUnits fail:', error);
-        }
-    },
-
-    // ============================================================
-    // POPULATE UNIT SELECTORS
-    // ============================================================
-    populateUnitSelectors() {
-        const unitSelect = document.getElementById('attUnit');
-        if (!unitSelect) return;
-        const units = this.assignedUnits;
-        const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
-
-        if (units?.length > 0) {
-            unitSelect.innerHTML = `<option value="">-- ${emoji} Select Unit --</option>` +
-                units.map(u => {
-                    const blockDisplay = this.getBlockDisplay(u.block);
-                    return `<option value="${u.subject_name}">
-                        ${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}
-                        ${u.block ? ' (' + blockDisplay + ')' : ''}
-                        ${this.isTVET ? ' 🔧' : ''}
-                    </option>`;
-                }).join('');
-        } else {
-            unitSelect.innerHTML = `<option value="">-- No ${typeLabel} units assigned --</option>`;
-        }
-    },
-
-    // ============================================================
-    // LOAD ALL
-    // ============================================================
-    async loadAllAttendance() {
-        try {
-            await Promise.all([
-                this.loadTodayAttendance(),
-                this.loadPastAttendance(),
-                this.loadAttendanceStats(),
-                this.loadProgramInfo()
-            ]);
-        } catch (error) {
-            console.error('❌ loadAllAttendance:', error);
-        }
-    },
-
-    // ============================================================
-    // LOAD TODAY
-    // ============================================================
-    async loadTodayAttendance() {
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody) return;
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Database not available</td></tr>';
-                return;
-            }
-
-            // Attendance is session-based. Every scheduled occurrence has its own UUID.
-            if (this.selectedSessionId) {
-                const session = this.selectedSession || await this.getScheduledSessionById(this.selectedSessionId);
-                if (session) {
-                    this.selectedSession = session;
-                    const isFinalized = String(session.status || '').toLowerCase() === 'closed' ||
-                        !!session.closed_at || session.is_active === false;
-                    const register = await this.getSessionAttendanceRegister(session, false);
-                    this.sessionRegister = register;
-                    this.todayLogs = (register.rows || []).map(r => this.sessionRowToLog(r, session));
-                    this.filteredTodayLogs = [...this.todayLogs];
-                    this.updateSessionStats(register.summary);
-                    this.renderSessionRegister(register, session);
-                    this.updateProgramBadge();
-                    return;
-                }
-            }
-
-            // Safe fallback for pages with no scheduled session selected.
-            const todayStr = new Date().toISOString().split('T')[0];
-            const { data: logs, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
-                .lte('check_in_time', `${todayStr}T23:59:59.999Z`)
-                .order('check_in_time', { ascending: false });
-
-            if (error) {
-                tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Error: ${this.escapeHtml(error.message)}</td></tr>`;
-                return;
-            }
-            this.todayLogs = logs || [];
-            this.filteredTodayLogs = [...this.todayLogs];
-            this.renderTodayAttendance();
-            this.updateStats(this.todayLogs);
-            this.updateProgramBadge();
-        } catch (error) {
-            console.error('❌ loadTodayAttendance:', error);
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Attendance load failed: ${this.escapeHtml(error.message || String(error))}</td></tr>`;
-        }
-    },
-
-    // ============================================================
-    // SESSION-BASED ATTENDANCE CONTEXT
-    // ============================================================
-    async loadAttendanceSessions(preferredId = null) {
+    // ------------------------------------------------------------
+    // 2. SESSION REGISTER — REPLACE WITH STRICTER VERSION
+    // ------------------------------------------------------------
+    LA.getSessionAttendanceRegister = async function (session, finalize = false) {
         const supabase = window.lecturerDB?.supabase;
-        if (!supabase) return [];
 
-        try {
-            const today = new Date();
-            const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-            const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
-
-            const { data, error } = await supabase
-                .from('scheduled_sessions')
-                .select(`id, session_title, title, unit_name, course_name, session_type,
-                    target_program, program_type, intake_year, block_term, block,
-                    session_date, session_time, session_end_time, status, is_active,
-                    opened_at, closed_at, target_radius, target_latitude, target_longitude,
-                    location_name, lecturer_id, created_by`)
-                .gte('session_date', start)
-                .lt('session_date', end)
-                .order('session_time', { ascending: true });
-
-            if (error) throw error;
-
-            const program = this.currentProgram || this.getProgramType() || 'KRCHN';
-            const lecturerIds = new Set([this.lecturerUuid, this.lecturerAssignmentId].filter(Boolean).map(String));
-            let sessions = (data || []).filter(s => {
-                const sessionProgram = String(s.target_program || s.program_type || '').trim();
-                const programMatch = !sessionProgram || sessionProgram.toLowerCase() === String(program).toLowerCase();
-                const ownerMatch = lecturerIds.size === 0 ||
-                    lecturerIds.has(String(s.created_by || '')) ||
-                    lecturerIds.has(String(s.lecturer_id || ''));
-                return programMatch && ownerMatch;
-            });
-
-            // If the database/RLS does not expose lecturer identifiers, retain the program's sessions
-            // rather than leaving the attendance screen empty.
-            if (!sessions.length && data?.length) {
-                sessions = (data || []).filter(s => {
-                    const sessionProgram = String(s.target_program || s.program_type || '').trim();
-                    return !sessionProgram || sessionProgram.toLowerCase() === String(program).toLowerCase();
-                });
-            }
-
-            this.sessions = sessions;
-            this.ensureSessionSelector();
-
-            const urlId = new URLSearchParams(window.location.search).get('session');
-            const savedId = preferredId || urlId || this.selectedSessionId || localStorage.getItem('nchsm_lecturer_attendance_session_id');
-            let selected = sessions.find(s => String(s.id) === String(savedId));
-
-            // Prefer an open/active session; otherwise use the latest scheduled occurrence today.
-            if (!selected) selected = sessions.find(s => s.is_active === true || String(s.status || '').toLowerCase() === 'active');
-            if (!selected && sessions.length) selected = sessions[sessions.length - 1];
-
-            if (selected) await this.selectAttendanceSession(selected.id, false);
-            else this.renderSessionSelector();
-
-            return sessions;
-        } catch (error) {
-            console.error('❌ loadAttendanceSessions:', error);
-            this.sessions = [];
-            this.ensureSessionSelector();
-            this.renderSessionSelector();
-            return [];
-        }
-    },
-
-    async getScheduledSessionById(sessionId) {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase || !sessionId) return null;
-        const { data, error } = await supabase
-            .from('scheduled_sessions')
-            .select(`id, session_title, title, unit_name, course_name, session_type,
-                target_program, program_type, intake_year, block_term, block,
-                session_date, session_time, session_end_time, status, is_active,
-                opened_at, closed_at, target_radius, target_latitude, target_longitude,
-                location_name, lecturer_id, created_by`)
-            .eq('id', sessionId)
-            .maybeSingle();
-        if (error) throw error;
-        if (data) {
-            const existing = this.sessions.findIndex(s => String(s.id) === String(data.id));
-            if (existing >= 0) this.sessions[existing] = data;
-            else this.sessions.push(data);
-        }
-        return data || null;
-    },
-
-    ensureSessionSelector() {
-        if (document.getElementById('attendanceSessionSelector')) return;
-        const table = document.getElementById('attendanceTable');
-        const host = document.getElementById('attendance-content') ||
-            table?.closest('.card, .panel, .section, .attendance-section') ||
-            table?.parentElement ||
-            document.querySelector('[data-section="attendance"]') ||
-            document.body;
-        if (!host) return;
-        const box = document.createElement('div');
-        box.id = 'attendanceSessionSelector';
-        box.style.cssText = 'margin:12px 0 18px;padding:14px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 8px rgba(15,23,42,.05);';
-        box.innerHTML = `
-            <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-                <div style="font-weight:700;color:#334155;font-size:14px;">📋 Attendance Session</div>
-                <select id="attendanceSessionSelect" style="min-width:280px;max-width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#334155;font-weight:600;"></select>
-            </div>
-            <div id="attendanceSessionMeta" style="margin-top:8px;color:#64748b;font-size:12px;"></div>`;
-        const firstChild = host.firstElementChild;
-        if (firstChild) host.insertBefore(box, firstChild); else host.appendChild(box);
-
-        const select = box.querySelector('#attendanceSessionSelect');
-        select.addEventListener('change', async () => {
-            await this.selectAttendanceSession(select.value, true);
-        });
-    },
-
-    renderSessionSelector() {
-        const select = document.getElementById('attendanceSessionSelect');
-        const meta = document.getElementById('attendanceSessionMeta');
-        if (!select) return;
-        if (!this.sessions.length) {
-            select.innerHTML = '<option value="">No scheduled sessions today</option>';
-            select.disabled = true;
-            if (meta) meta.textContent = 'Schedule a new session to create a separate attendance register.';
-            return;
-        }
-        select.disabled = false;
-        select.innerHTML = this.sessions.map(s => {
-            const title = s.session_title || s.title || s.unit_name || 'Class Session';
-            const time = s.session_time ? String(s.session_time).slice(0,5) : '';
-            const status = String(s.status || (s.is_active ? 'active' : '')).toUpperCase();
-            return `<option value="${this.escapeHtml(String(s.id))}">${this.escapeHtml(title)}${time ? ` — ${time}` : ''}${status ? ` [${this.escapeHtml(status)}]` : ''}</option>`;
-        }).join('');
-        select.value = this.selectedSessionId || this.sessions[0].id;
-        const s = this.selectedSession;
-        if (meta && s) meta.textContent = `${s.session_date ? new Date(s.session_date).toLocaleDateString('en-GB') : ''} · ${this.getBlockDisplay(s.block_term || s.block)} · Intake ${s.intake_year || 'N/A'} · Session ID: ${s.id}`;
-    },
-
-    async selectAttendanceSession(sessionId, notify = true) {
-        if (!sessionId) return;
-        const session = this.sessions.find(s => String(s.id) === String(sessionId)) || await this.getScheduledSessionById(sessionId);
-        if (!session) return;
-        this.selectedSessionId = session.id;
-        this.selectedSession = session;
-        this.sessionRegister = null;
-        try { localStorage.setItem('nchsm_lecturer_attendance_session_id', String(session.id)); } catch (e) {}
-        this.renderSessionSelector();
-        await this.loadTodayAttendance();
-        await this.loadAttendanceStats();
-        if (notify) this.showNotification(`Attendance session selected: ${session.session_title || session.title || session.unit_name || 'Class'}`, 'info');
-    },
-
-    sessionRowToLog(row, session) {
-        const log = row.log || {};
-        return {
-            ...log,
-            id: log.id || `roster-${row.student.user_id || row.student.registration_number}`,
-            student_name: row.student.name,
-            student_id: row.student.student_id,
-            registration_number: row.student.registration_number,
-            program: row.student.program,
-            block: row.student.block,
-            intake_year: row.student.intake_year,
-            unit_name: session.unit_name || session.course_name || session.session_title || session.title || 'Class',
-            target_name: session.session_title || session.title || 'Class',
-            session_type: session.session_type || 'Class',
-            session_id: session.id,
-            attendance_status: row.status === 'Not Checked In' ? 'Pending' : row.status,
-            check_in_time: row.checkInTime,
-            distance_meters: row.distance,
-            accuracy_m: row.accuracy
-        };
-    },
-
-    updateSessionStats(summary = {}) {
-        const total = Number(summary.total || 0);
-        const present = Number(summary.present || 0);
-        const absent = Number(summary.absent || 0);
-        const pending = Number(summary.pending || 0);
-        const rate = total ? Math.round((present / total) * 100) : 0;
-        this.stats = { total, present, absent, pending, rate };
-        const map = {
-            totalStudentsCount: total,
-            presentTodayCount: present,
-            absentTodayCount: absent,
-            pendingCount: pending,
-            attendanceRate: rate + '%',
-            todayTotal: total,
-            todayPresent: present,
-            todayAbsent: absent,
-            todayPending: pending,
-            todayRate: rate + '%',
-            filteredCount: total,
-            todayTotalDisplay: total,
-            todayPresentDisplay: present,
-            todayAbsentDisplay: absent,
-            todayPendingDisplay: pending,
-            attendanceRateDisplay: rate + '%'
-        };
-        for (const [id, value] of Object.entries(map)) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        }
-        const progressBar = document.getElementById('attendanceProgressBar');
-        if (progressBar) progressBar.style.width = rate + '%';
-        this.renderSessionSelector();
-    },
-
-    renderSessionRegister(register, session) {
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody) return;
-        const rows = register?.rows || [];
-        const countEl = document.getElementById('todayLogCount');
-        if (countEl) countEl.textContent = `${rows.length} students`;
-        if (!rows.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">No students found for this session's program/block/intake.</td></tr>`;
-            return;
-        }
-        const sessionClosed = String(session.status || '').toLowerCase() === 'closed' || !!session.closed_at || session.is_active === false;
-        tbody.innerHTML = rows.map(row => {
-            const student = row.student || {};
-            const log = row.log || {};
-            const status = row.status || 'Not Checked In';
-            const displayStatus = status === 'Not Checked In' ? (sessionClosed ? 'Absent' : 'Pending') : status;
-            const statusColor = displayStatus === 'Present' ? '#10b981' : displayStatus === 'Absent' ? '#ef4444' : '#f59e0b';
-            const checkInDate = row.checkInTime ? new Date(row.checkInTime) : null;
-            const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}) : '—';
-            const hasLocation = log.latitude != null && log.longitude != null;
-            const verified = displayStatus === 'Present' && (log.is_verified === true || String(log.attendance_status || '').toLowerCase() === 'verified');
-            return `<tr style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:10px 14px;font-weight:600;color:#1e293b;font-size:13px;">${this.escapeHtml(student.name || 'Unknown Student')}</td>
-                <td style="padding:10px 14px;font-weight:600;color:#4C1D95;font-size:12px;">${this.escapeHtml(student.registration_number || student.student_id || 'N/A')}</td>
-                <td style="padding:10px 14px;font-size:12px;">${this.escapeHtml(student.program || 'N/A')}</td>
-                <td style="padding:10px 14px;font-size:12px;">${this.escapeHtml(this.getBlockDisplay(student.block))}</td>
-                <td style="padding:10px 14px;font-size:12px;">${this.escapeHtml(session.unit_name || session.session_title || session.title || 'General')}</td>
-                <td style="padding:10px 14px;font-size:12px;">${this.escapeHtml(session.session_type || 'Class')}</td>
-                <td style="padding:10px 14px;font-size:12px;">${timeStr}</td>
-                <td style="padding:10px 14px;font-size:11px;">${hasLocation ? '📍 Location captured' : '—'}</td>
-                <td style="padding:10px 14px;text-align:center;"><span style="background:${statusColor}20;color:${statusColor};padding:4px 11px;border-radius:12px;font-size:11px;font-weight:700;">${displayStatus === 'Present' ? '✅ Present' : displayStatus === 'Absent' ? '❌ Absent' : '⏳ Pending'}</span>${verified ? '<div style="font-size:9px;color:#10b981;margin-top:2px;">Verified</div>' : ''}</td>
-                <td style="padding:10px 14px;text-align:center;">${hasLocation ? `<button onclick="LecturerAttendance.viewAttendanceMap(${Number(log.latitude)},${Number(log.longitude)},'${this.escapeHtml(student.name || 'Student')}')" style="background:#4C1D95;color:#fff;border:0;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;">📍</button>` : '—'}</td>
-            </tr>`;
-        }).join('');
-    },
-
-    // ============================================================
-    // RENDER TODAY
-    // ============================================================
-    renderTodayAttendance() {
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody) return;
-        const logs = this.todayLogs;
-        const typeLabel = this.getProgramTypeLabel();
-
-        const countEl = document.getElementById('todayLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
-
-        if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No student attendance records today. (${typeLabel})</p></td></tr>`;
-            return;
-        }
-
-        const statusColors = { Present: '#10b981', Absent: '#ef4444', Pending: '#f59e0b', Late: '#f59e0b', Excused: '#3b82f6', Verified: '#10b981' };
-        const isTVET = this.isTVET;
-
-        tbody.innerHTML = logs.map(log => {
-            const hasLocation = log.latitude && log.longitude;
-            const isVerified = log.is_verified === true || log.is_verified === 'true' || log.is_verified === 1 || log.attendance_status === 'Verified' || (log.attendance_status === 'Present' && log.verified_at !== null);
-            let displayStatus = log.attendance_status || 'Pending';
-            if (isVerified && displayStatus !== 'Absent') displayStatus = 'Verified ✓';
-            const statusColor = statusColors[displayStatus] || '#6b7280';
-
-            const studentName = log.student_name || 'Unknown Student';
-            const regNumber = log.registration_number || log.student_id || 'N/A';
-            const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
-            const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
-            const programDisplay = log.program || 'N/A';
-            const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
-            const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
-            const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
-            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified;
-            const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
-
-            return `
-                <tr style="border-bottom: 1px solid #f1f5f9; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}">
-                    <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
-                        ${this.escapeHtml(studentName)}
-                        ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
-                        ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
-                        ${isTVET && !isLecturerCheckin ? ' <span style="font-size:9px;color:#8b5cf6;padding:1px 6px;border-radius:8px;">TVET</span>' : ''}
-                    </td>
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;">${this.escapeHtml(displayReg)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;"><span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(programDisplay)}</span></td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(blockDisplay)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(log.unit_name || log.target_name || 'General')}</td>
-                    <td style="padding: 10px 14px;"><span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(log.session_type || 'Class')}</span></td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${timeStr}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(locationDisplay)}</td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; color: ${isVerified ? '#10b981' : statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">${isVerified ? '✅ Verified' : displayStatus}</span>
-                        ${isVerified && verifiedByDisplay ? `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
-                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
-                        </div>
-                    </td>
-                </tr>`;
-        }).join('');
-    },
-
-    // ============================================================
-    // UPDATE STATS
-    // ============================================================
-    updateStats(logs) {
-        if (!logs) logs = this.todayLogs || [];
-        const total = logs.length;
-        const present = logs.filter(l => (l.attendance_status || '').toLowerCase() === 'present' || l.is_verified === true).length;
-        const absent = logs.filter(l => (l.attendance_status || '').toLowerCase() === 'absent').length;
-        const pending = logs.filter(l => { const s = (l.attendance_status || '').toLowerCase(); return s === 'pending' || s === '' || l.attendance_status === null; }).length;
-        const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-
-        this.stats = { total, present, absent, pending, rate };
-        const threshold = this.getPassingThreshold();
-
-        const elementMap = {
-            'todayTotal': total, 'todayPresent': present, 'todayAbsent': absent, 'todayPending': pending,
-            'todayRate': rate + '%', 'attendanceRate': rate + '%', 'filteredCount': total,
-            'totalStudentsCount': total, 'presentTodayCount': present, 'absentTodayCount': absent,
-            'pendingCount': pending, 'todayTotalDisplay': total, 'todayPresentDisplay': present,
-            'todayAbsentDisplay': absent, 'todayPendingDisplay': pending, 'attendanceRateDisplay': rate + '%'
-        };
-
-        for (const [id, value] of Object.entries(elementMap)) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        }
-
-        const progressBar = document.getElementById('attendanceProgressBar');
-        if (progressBar) {
-            progressBar.style.width = rate + '%';
-            progressBar.style.background = rate >= threshold ? '#10b981' : (rate >= threshold * 0.7 ? '#f59e0b' : '#ef4444');
-        }
-
-        const rateBadge = document.getElementById('attendanceRateBadge');
-        if (rateBadge) {
-            rateBadge.textContent = `${rate}% (Pass: ≥${threshold}%)`;
-            rateBadge.style.background = rate >= threshold ? '#d1fae5' : (rate >= threshold * 0.7 ? '#fef3c7' : '#fee2e2');
-            rateBadge.style.color = rate >= threshold ? '#065f46' : (rate >= threshold * 0.7 ? '#92400e' : '#991b1b');
-        }
-        return this.stats;
-    },
-
-    // ============================================================
-    // LOAD PAST
-    // ============================================================
-    async loadPastAttendance() {
-        const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) return;
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            const todayStr = new Date().toISOString().split('T')[0];
-
-            const { data: logs, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .lt('check_in_time', `${todayStr}T00:00:00.000Z`)
-                .order('check_in_time', { ascending: false })
-                .limit(100);
-
-            if (error) { console.error(error); return; }
-            this.pastLogs = logs || [];
-            this.filteredPastLogs = [...this.pastLogs];
-            this.renderPastAttendance();
-        } catch (error) {
-            console.error('❌ loadPastAttendance:', error);
-        }
-    },
-
-    // ============================================================
-    // RENDER PAST
-    // ============================================================
-    renderPastAttendance() {
-        const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) return;
-        const logs = this.pastLogs;
-        const typeLabel = this.getProgramTypeLabel();
-
-        const countEl = document.getElementById('pastLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
-
-        if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-history" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No past attendance records found. (${typeLabel})</p></td></tr>`;
-            return;
-        }
-
-        const statusColors = { Present: '#10b981', Absent: '#ef4444', Pending: '#f59e0b', Late: '#f59e0b', Excused: '#3b82f6', Verified: '#10b981' };
-        const isTVET = this.isTVET;
-
-        tbody.innerHTML = logs.map(log => {
-            const hasLocation = log.latitude && log.longitude;
-            const isVerified = log.is_verified === true || log.is_verified === 'true' || log.is_verified === 1 || log.attendance_status === 'Verified' || (log.attendance_status === 'Present' && log.verified_at !== null);
-            let displayStatus = log.attendance_status || 'Pending';
-            if (isVerified && displayStatus !== 'Absent') displayStatus = 'Verified ✓';
-            const statusColor = statusColors[displayStatus] || '#6b7280';
-            const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
-            const studentName = log.student_name || 'Unknown Student';
-            const regNumber = log.registration_number || log.student_id || 'N/A';
-            const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
-            const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
-            const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
-            const canVerify = !isLecturerCheckin && log.role !== 'lecturer' && !isVerified;
-            const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
-
-            return `
-                <tr style="border-bottom: 1px solid #f1f5f9; ${isVerified || isLecturerCheckin ? 'background: #f0fdf4;' : ''}">
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;">${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                    <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
-                        ${this.escapeHtml(studentName)}
-                        ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
-                        ${isTVET && !isLecturerCheckin ? ' <span style="font-size:9px;color:#8b5cf6;padding:1px 6px;border-radius:8px;">TVET</span>' : ''}
-                    </td>
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;">${this.escapeHtml(displayReg)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(blockDisplay)}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${this.escapeHtml(log.unit_name || log.target_name || 'General')}</td>
-                    <td style="padding: 10px 14px;"><span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${this.escapeHtml(log.session_type || 'Class')}</span></td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(locationDisplay)}</td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; color: ${isVerified ? '#10b981' : statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">${isVerified ? '✅ Verified' : displayStatus}</span>
-                        ${isVerified && verifiedByDisplay ? `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></button>` : `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
-                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" data-verify-id="${log.id}" style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-check" style="font-size:10px;"></i> Verify</button>` : `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px;">${isVerified ? '✅ Verified' : '—'}</span>`}
-                        </div>
-                    </td>
-                </tr>`;
-        }).join('');
-    },
-
-    // ============================================================
-    // LOAD STATS
-    // ============================================================
-    async loadAttendanceStats() {
-        try {
-            if (this.selectedSessionId) {
-                const session = this.selectedSession || await this.getScheduledSessionById(this.selectedSessionId);
-                if (session) {
-                    const register = this.sessionRegister || await this.getSessionAttendanceRegister(session, false);
-                    this.sessionRegister = register;
-                    this.updateSessionStats(register.summary);
-                    return;
+        if (!supabase || !session?.id) {
+            return {
+                roster: [],
+                logs: [],
+                rows: [],
+                summary: {
+                    total: 0,
+                    present: 0,
+                    absent: 0,
+                    pending: 0,
+                    notCheckedIn: 0,
+                    rate: 0
                 }
-            }
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            const todayStr = new Date().toISOString().split('T')[0];
-            const { data: logs } = await supabase
-                .from('geo_attendance_logs')
-                .select('attendance_status, is_verified')
-                .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
-                .lte('check_in_time', `${todayStr}T23:59:59.999Z`);
-            const total = logs?.length || 0;
-            const present = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'present' || l.is_verified === true).length || 0;
-            const absent = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'absent').length || 0;
-            const pending = Math.max(0, total - present - absent);
-            const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-            this.updateSessionStats({total, present, absent, pending, rate});
-        } catch (error) {
-            console.error('❌ loadAttendanceStats:', error);
-        }
-    },
-
-    // ============================================================
-    // LOAD PROGRAM INFO
-    // ============================================================
-    async loadProgramInfo() {
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = this.currentProgram || profile?.program || profile?.department;
-            if (!program) return;
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-
-            const { count: studentCount } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('*', { count: 'exact', head: true })
-                .eq('program', program)
-                .eq('role', 'student');
-
-            const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-            const currentBlock = blocks.length > 0 ? this.getBlockDisplay(blocks[0]) : 'N/A';
-            const programDisplay = window.LecturerUtils?.getProgramDisplayName?.(program) || program;
-            const typeLabel = this.getProgramTypeLabel();
-            const emoji = this.getProgramEmoji();
-
-            const displayMap = {
-                'programDisplayName': `${emoji} ${programDisplay}`,
-                'programTypeBadge': typeLabel,
-                'currentBlockDisplay': currentBlock,
-                'studentCountDisplay': (studentCount || 0) + ' Students'
             };
-
-            for (const [id, value] of Object.entries(displayMap)) {
-                const el = document.getElementById(id);
-                if (el) el.textContent = value;
-            }
-        } catch (error) {
-            console.error('❌ loadProgramInfo:', error);
         }
-    },
-
-    // ============================================================
-    // MAP
-    // ============================================================
-    viewAttendanceMap(lat, lng, name) {
-        if (!lat || !lng) { this.showNotification('No location data available.', 'warning'); return; }
-        const latNum = parseFloat(lat);
-        const lngNum = parseFloat(lng);
-        if (isNaN(latNum) || isNaN(lngNum)) { this.showNotification('Invalid location data.', 'warning'); return; }
-
-        this.currentLocation = { lat: latNum, lng: lngNum, name };
-        const modal = document.getElementById('attendanceMapModal');
-        if (modal) modal.style.display = 'flex';
-
-        const infoEl = document.getElementById('mapLocationInfo');
-        const textEl = document.getElementById('mapLocationText');
-        if (infoEl && textEl) {
-            infoEl.style.display = 'block';
-            textEl.textContent = `📍 ${name} - Latitude: ${latNum.toFixed(6)}, Longitude: ${lngNum.toFixed(6)}`;
-        }
-        setTimeout(() => this.initMap(latNum, lngNum, name), 300);
-    },
-
-    initMap(lat, lng, name) {
-        const container = document.getElementById('mapContainer');
-        if (!container) return;
-        if (this.mapInstance) { this.mapInstance.remove(); this.mapInstance = null; }
-
-        if (typeof L === 'undefined') {
-            container.innerHTML = `<div style="padding:20px;text-align:center;color:#94a3b8;">Map library not loaded.</div>`;
-            return;
-        }
-
-        try {
-            const accentColor = this.isTVET ? '#8b5cf6' : '#4C1D95';
-            this.mapInstance = L.map(container).setView([lat, lng], 16);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(this.mapInstance);
-            L.marker([lat, lng]).addTo(this.mapInstance).bindPopup(`<b>${this.escapeHtml(name)}</b>`).openPopup();
-            L.circle([lat, lng], { radius: 50, color: accentColor, fillColor: accentColor, fillOpacity: 0.1, weight: 2 }).addTo(this.mapInstance);
-            setTimeout(() => { if (this.mapInstance) this.mapInstance.invalidateSize(); }, 400);
-        } catch (error) {
-            console.error('❌ initMap:', error);
-        }
-    },
-
-    // ============================================================
-    // LECTURER CHECK-IN
-    // ============================================================
-    async lecturerCheckIn() {
-        if (this.isProcessing) { this.showNotification('Please wait...', 'warning'); return; }
-        const btn = document.getElementById('lecturerCheckinBtn');
-        const statusEl = document.getElementById('lecturerCheckinStatus');
-        if (!btn) return;
-
-        this.isProcessing = true;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
-
-        if (!navigator.geolocation) {
-            this.showNotification('Geolocation not supported.', 'error');
-            btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-            this.isProcessing = false; return;
-        }
-
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            try {
-                const supabase = window.lecturerDB?.supabase;
-                const profile = window.lecturerDB?.getCurrentUserProfile();
-                const userId = profile?.user_id || this.lecturerUuid;
-                if (!supabase || !userId) throw new Error('Database or user not available');
-
-                const today = new Date().toISOString().split('T')[0];
-                const { data: existing } = await supabase
-                    .from('geo_attendance_logs')
-                    .select('id')
-                    .eq('user_id', userId)
-                    .eq('session_type', 'Lecturer Check-in')
-                    .gte('check_in_time', `${today}T00:00:00.000Z`)
-                    .lte('check_in_time', `${today}T23:59:59.999Z`)
-                    .limit(1);
-
-                if (existing?.length > 0) {
-                    this.showNotification('✅ You have already checked in today!', 'success');
-                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-                    this.isProcessing = false; return;
-                }
-
-                const program = this.currentProgram || profile?.program || 'KRCHN';
-                const programType = this.getProgramTypeLabel();
-
-                const { error: insertError } = await supabase.from('geo_attendance_logs').insert({
-                    student_id: userId, user_id: userId,
-                    registration_number: profile?.staff_id || 'LECTURER',
-                    student_name: profile?.full_name || 'Lecturer',
-                    check_in_time: new Date().toISOString(),
-                    session_type: 'Lecturer Check-in',
-                    latitude: position.coords.latitude, longitude: position.coords.longitude,
-                    accuracy_m: position.coords.accuracy || null,
-                    attendance_status: 'Present', is_verified: true,
-                    target_name: 'Lecturer Check-in', location_address: 'Lecturer Check-in',
-                    program, block: profile?.block || 'Staff', role: 'lecturer',
-                    program_type: programType, is_tvet: this.isTVET,
-                    created_at: new Date().toISOString()
-                });
-
-                if (insertError) throw new Error(insertError.message);
-
-                this.showNotification(`✅ Lecturer check-in logged!`, 'success');
-                await this.loadTodayAttendance();
-                await this.loadAttendanceStats();
-            } catch (error) {
-                console.error('❌ lecturerCheckIn:', error);
-                this.showNotification('Check-in failed: ' + error.message, 'error');
-            } finally {
-                btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-                this.isProcessing = false;
-            }
-        }, (error) => {
-            this.showNotification('Geolocation error.', 'error');
-            btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-            this.isProcessing = false;
-        }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
-    },
-
-    // ============================================================
-    // MANUAL MARK
-    // ============================================================
-    async markStudentAttendance(e) {
-        if (e) e.preventDefault();
-        if (this.isProcessing) return;
-
-        const form = document.getElementById('manualAttendanceForm');
-        const btn = form?.querySelector('button[type="submit"]');
-        const originalText = btn?.innerHTML || 'Mark Student Present';
-        if (!form || !btn) return;
-
-        this.isProcessing = true;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Marking...';
-
-        try {
-            const studentId = document.getElementById('attStudentId')?.value;
-            const sessionType = document.getElementById('attSessionType')?.value;
-            const unit = document.getElementById('attUnit')?.value;
-            const location = document.getElementById('attLocation')?.value;
-            const date = document.getElementById('attDate')?.value;
-            const time = document.getElementById('attTime')?.value;
-
-            if (!studentId || !sessionType || !date) throw new Error('Please fill all required fields');
-
-            const supabase = window.lecturerDB?.supabase;
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!supabase || !profile) throw new Error('Database not available');
-
-            const { data: student } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('full_name, program, block, intake_year, student_id')
-                .eq('user_id', studentId)
-                .maybeSingle();
-
-            if (!student) throw new Error('Student not found');
-
-            const checkInTime = time ? `${date}T${time}:00.000Z` : `${date}T12:00:00.000Z`;
-
-            const { error: insertError } = await supabase.from('geo_attendance_logs').insert({
-                student_id: studentId,
-                student_name: student.full_name || 'Student',
-                check_in_time: checkInTime,
-                session_type: sessionType,
-                target_name: unit || 'General', unit_name: unit || 'General',
-                attendance_status: 'Present', is_verified: true, is_manual_entry: true,
-                location_friendly_name: location || 'Manual Entry',
-                location_address: `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
-                program: student.program || profile.program || 'KRCHN',
-                block: student.block || profile.block,
-                block_display: student.block ? this.getBlockDisplay(student.block) : 'N/A',
-                intake_year: student.intake_year || profile.intake_year,
-                role: 'student', recorded_by_id: profile.user_id,
-                recorded_by_name: profile.full_name || 'Lecturer',
-                program_type: this.getProgramTypeLabel(),
-                is_tvet: this.isTVET,
-                created_at: new Date().toISOString()
-            });
-
-            if (insertError) throw new Error(insertError.message);
-
-            this.showNotification(`✅ ${student.full_name} marked present!`, 'success');
-            form.reset();
-            document.getElementById('attDate').value = new Date().toISOString().split('T')[0];
-
-            await this.loadTodayAttendance();
-            await this.loadAttendanceStats();
-        } catch (error) {
-            console.error('❌ markStudentAttendance:', error);
-            this.showNotification('Failed: ' + error.message, 'error');
-        } finally {
-            btn.disabled = false; btn.innerHTML = originalText;
-            this.isProcessing = false;
-        }
-    },
-
-    // ============================================================
-    // POPULATE FILTERS
-    // ============================================================
-    populateFilters() {
-        const today = new Date().toISOString().split('T')[0];
-        const filterDate = document.getElementById('filterDate');
-        if (filterDate) filterDate.value = today;
-        const attDate = document.getElementById('attDate');
-        if (attDate) attDate.value = today;
-
-        this.populateStudentSelect();
-        this.populateBlockFilter();
-        this.updateFilterLabels();
-    },
-
-    populateBlockFilter() {
-        const blockFilter = document.getElementById('filterBlock');
-        if (!blockFilter) return;
-        const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-        blockFilter.innerHTML = '<option value="All">All Blocks/Terms</option>';
-        blocks.forEach(block => {
-            const option = document.createElement('option');
-            option.value = block;
-            option.textContent = this.getBlockDisplay(block);
-            blockFilter.appendChild(option);
-        });
-        const label = document.getElementById('blockFilterLabel');
-        if (label) label.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${this.isTVET ? 'Term' : 'Block'}`;
-    },
-
-    updateFilterLabels() {
-        const typeLabel = this.getProgramTypeLabel();
-        const filterCount = document.getElementById('attendanceFilterCount');
-        if (filterCount) filterCount.textContent = `Showing all ${typeLabel} records`;
-
-        const dateDisplay = document.getElementById('attendanceDateDisplay');
-        if (dateDisplay) {
-            const today = new Date();
-            dateDisplay.textContent = `${today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} (${typeLabel})`;
-        }
-    },
-
-    async populateStudentSelect() {
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = this.currentProgram || profile?.program;
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase || !program) return;
-
-            const { data: students } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id, block')
-                .eq('program', program)
-                .eq('role', 'student')
-                .order('full_name');
-
-            const select = document.getElementById('attStudentId');
-            if (select && students) {
-                select.innerHTML = `<option value="">-- Select ${this.getProgramTypeLabel()} Student --</option>`;
-                students.forEach(s => {
-                    const option = document.createElement('option');
-                    option.value = s.user_id;
-                    option.textContent = `${s.full_name} (${s.student_id || 'N/A'})`;
-                    select.appendChild(option);
-                });
-            }
-        } catch (error) {
-            console.error('❌ populateStudentSelect:', error);
-        }
-    },
-
-    // ============================================================
-    // APPLY / RESET FILTERS
-    // ============================================================
-    applyFilters() {
-        if (this.selectedSessionId && this.sessionRegister) {
-            const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
-            const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
-            const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-            const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
-            let rows = [...(this.sessionRegister.rows || [])];
-            if (filterBlock !== 'All') rows = rows.filter(r => String(r.student?.block || '').toLowerCase() === filterBlock.toLowerCase());
-            if (filterYear !== 'All') rows = rows.filter(r => String(r.student?.intake_year || '').toLowerCase() === filterYear.toLowerCase());
-            if (filterSessionType !== 'All') rows = rows.filter(r => String(this.selectedSession?.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
-            if (searchText) rows = rows.filter(r => [r.student?.name, r.student?.registration_number, r.student?.student_id, r.student?.program, this.selectedSession?.unit_name, this.selectedSession?.session_title].filter(Boolean).join(' ').toLowerCase().includes(searchText));
-            this.renderSessionRegister({rows, summary: this.sessionRegister.summary}, this.selectedSession);
-            const count = document.getElementById('attendanceFilterCount');
-            if (count) count.textContent = `Showing ${rows.length} of ${this.sessionRegister.rows?.length || 0} students in selected session`;
-            return;
-        }
-        const filterDate = (document.getElementById('filterDate')?.value || '').trim();
-        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
-        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
-        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
-
-        let filteredToday = [...(this.todayLogs || [])];
-        if (filterDate) filteredToday = filteredToday.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
-        if (filterBlock !== 'All') filteredToday = filteredToday.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
-        if (filterYear !== 'All') filteredToday = filteredToday.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
-        if (filterSessionType !== 'All') filteredToday = filteredToday.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
-        if (searchText) filteredToday = filteredToday.filter(l => {
-            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
-            return h.includes(searchText);
-        });
-
-        let filteredPast = [...(this.pastLogs || [])];
-        if (filterBlock !== 'All') filteredPast = filteredPast.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
-        if (filterYear !== 'All') filteredPast = filteredPast.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
-        if (filterSessionType !== 'All') filteredPast = filteredPast.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
-        if (searchText) filteredPast = filteredPast.filter(l => {
-            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
-            return h.includes(searchText);
-        });
-
-        this.filteredTodayLogs = filteredToday;
-        this.filteredPastLogs = filteredPast;
-
-        this.renderFilteredToday(filteredToday);
-        this.renderFilteredPast(filteredPast);
-
-        const filterCount = document.getElementById('attendanceFilterCount');
-        if (filterCount) filterCount.textContent = `Showing ${filteredToday.length} of ${this.todayLogs.length} today · ${filteredPast.length} past`;
-    },
-
-    renderFilteredToday(logs) {
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody) return;
-        const countEl = document.getElementById('todayLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
-        if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No attendance records match your filters.</p></td></tr>`;
-            return;
-        }
-        const original = this.todayLogs;
-        this.todayLogs = logs;
-        this.renderTodayAttendance();
-        this.todayLogs = original;
-    },
-
-    renderFilteredPast(logs) {
-        const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) return;
-        const countEl = document.getElementById('pastLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
-        if (!logs?.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-filter" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                <p style="margin:0;">No past records match your filters.</p></td></tr>`;
-            return;
-        }
-        const original = this.pastLogs;
-        this.pastLogs = logs;
-        this.renderPastAttendance();
-        this.pastLogs = original;
-    },
-
-    resetFilters() {
-        const today = new Date().toISOString().split('T')[0];
-        const fDate = document.getElementById('filterDate'); if (fDate) fDate.value = today;
-        const fBlock = document.getElementById('filterBlock'); if (fBlock) fBlock.value = 'All';
-        const fYear = document.getElementById('filterYear'); if (fYear) fYear.value = 'All';
-        const fType = document.getElementById('filterSessionType'); if (fType) fType.value = 'All';
-        const fSearch = document.getElementById('filterSearch'); if (fSearch) fSearch.value = '';
-
-        if (this.selectedSessionId && this.sessionRegister) {
-            this.renderSessionRegister(this.sessionRegister, this.selectedSession);
-            const filterCount = document.getElementById('attendanceFilterCount');
-            if (filterCount) filterCount.textContent = `Showing all ${this.sessionRegister.rows?.length || 0} students in selected session`;
-            this.updateSessionStats(this.sessionRegister.summary);
-            this.showNotification('Filters reset!', 'info');
-            return;
-        }
-
-        this.renderTodayAttendance();
-        this.renderPastAttendance();
-        this.updateStats(this.todayLogs);
-
-        const filterCount = document.getElementById('attendanceFilterCount');
-        if (filterCount) filterCount.textContent = `Showing all ${this.getProgramTypeLabel()} records`;
-        this.showNotification('Filters reset!', 'info');
-    },
-
-    // ============================================================
-    // ✅ MODERN STYLED XLSX EXPORT (ExcelJS)
-    // ============================================================
-    async exportCSV() {
-        if (typeof ExcelJS === 'undefined') {
-            this.showNotification('Excel library still loading — try again in a moment.', 'warning');
-            return;
-        }
-
-        // ---- 1. READ FILTERS ----
-        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
-        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
-        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-        const filterDate = (document.getElementById('filterDate')?.value || '').trim();
-        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
-
-        const hasFilters = (filterBlock !== 'All') || (filterYear !== 'All') || (filterSessionType !== 'All') || !!searchText;
-
-        // ---- 2. SOURCE ----
-        // A selected session exports the COMPLETE class register, including students
-        // who have no geo_attendance_logs row yet.
-        let source;
-        if (this.selectedSessionId) {
-            const session = this.selectedSession || await this.getScheduledSessionById(this.selectedSessionId);
-            if (session) {
-                const register = this.sessionRegister || await this.getSessionAttendanceRegister(session, false);
-                source = (register.rows || []).map(row => this.sessionRowToLog(row, session));
-            }
-        }
-        if (!source) source = [...(this.todayLogs || [])].filter(l => l.session_type !== 'Lecturer Check-in');
-        if (filterDate) source = source.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
-        if (filterBlock !== 'All') source = source.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
-        if (filterYear !== 'All') source = source.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
-        if (filterSessionType !== 'All') source = source.filter(l => String(l.session_type || '').toLowerCase() === filterSessionType.toLowerCase());
-        if (searchText) source = source.filter(l => {
-            const h = [l.student_name, l.registration_number, l.student_id, l.unit_name, l.target_name, l.session_type, l.block, l.program].filter(Boolean).join(' ').toLowerCase();
-            return h.includes(searchText);
-        });
-
-        if (!source.length) {
-            this.showNotification(hasFilters ? 'No records match the current filters.' : 'No attendance data to export.', 'warning');
-            return;
-        }
-
-        const typeLabel = this.getProgramTypeLabel();
-
-        // ---- 3. GROUP ----
-        const groups = {};
-        source.forEach(log => {
-            const block = (log.block || 'N/A').trim();
-            const intake = String(log.intake_year || 'N/A');
-            const unit = (log.unit_name || log.target_name || 'General').trim();
-            const program = (log.program || 'KRCHN').trim();
-            const sessionType = (log.session_type || 'Class').trim();
-            const key = `${block}|${intake}|${program}|${unit}|${sessionType}`.toLowerCase();
-
-            if (!groups[key]) groups[key] = {
-                block, blockDisplay: this.getBlockDisplay(block),
-                intake, program, unit, sessionType, logs: []
-            };
-            groups[key].logs.push(log);
-        });
-
-        const classList = Object.values(groups).sort((a, b) => {
-            const c1 = String(a.block).localeCompare(String(b.block), undefined, { numeric: true });
-            if (c1) return c1;
-            return a.unit.localeCompare(b.unit);
-        });
-
-        // ---- 4. COLORS ----
-        const PURPLE = 'FF4F46E5';
-        const PURPLE_LIGHT = 'FFEEF2FF';
-        const GREEN = 'FF10B981';
-        const GREEN_LIGHT = 'FFD1FAE5';
-        const RED = 'FFEF4444';
-        const RED_LIGHT = 'FFFEE2E2';
-        const AMBER = 'FFF59E0B';
-        const AMBER_LIGHT = 'FFFEF3C7';
-        const GREY = 'FF94A3B8';
-        const GREY_LIGHT = 'FFF1F5F9';
-        const DARK = 'FF0F172A';
-        const BORDER = 'FFE2E8F0';
-
-        const wb = new ExcelJS.Workbook();
-        wb.creator = 'NCHSM';
-        wb.created = new Date();
-
-        const usedNames = new Set();
-
-        // ---- 5. BUILD EACH SHEET ----
-        for (const cls of classList) {
-            // Unique dates
-            const dateSet = new Set();
-            cls.logs.forEach(log => {
-                if (!log.check_in_time) return;
-                dateSet.add(new Date(log.check_in_time).toISOString().split('T')[0]);
-            });
-            const sortedDates = [...dateSet].sort();
-            const dateDisplayMap = {};
-            sortedDates.forEach(iso => {
-                const [y, m, d] = iso.split('-');
-                dateDisplayMap[iso] = `${d}/${m}`;
-            });
-
-            // Student map
-            const studentMap = {};
-            cls.logs.forEach(log => {
-                const reg = (log.registration_number || log.student_id || 'N/A').trim();
-                const name = (log.student_name || 'Unknown').trim();
-                const iso = log.check_in_time ? new Date(log.check_in_time).toISOString().split('T')[0] : null;
-                if (!studentMap[reg]) studentMap[reg] = { reg, name, byDate: {} };
-                if (!iso) return;
-
-                const status = (log.attendance_status || '').toLowerCase();
-                const verified = log.is_verified === true;
-                let mark = '-';
-                if (verified || status === 'present' || status === 'verified') mark = '✓';
-                else if (status === 'absent') mark = 'A';
-                else if (status === 'pending' || status === '') mark = 'P';
-
-                const rank = { '✓': 3, 'P': 2, 'A': 1, '-': 0 };
-                const prev = studentMap[reg].byDate[iso];
-                if (!prev || rank[mark] > rank[prev]) studentMap[reg].byDate[iso] = mark;
-            });
-
-            const students = Object.values(studentMap).sort((a, b) =>
-                a.reg.localeCompare(b.reg, undefined, { numeric: true })
-            );
-
-            // Unique sheet name
-            let sheetName = `${cls.blockDisplay} ${cls.unit}`.slice(0, 28).replace(/[\\\/\?\*\[\]:]/g, '-');
-            if (usedNames.has(sheetName)) {
-                let n = 2;
-                while (usedNames.has(`${sheetName} (${n})`.slice(0, 31))) n++;
-                sheetName = `${sheetName} (${n})`.slice(0, 31);
-            }
-            usedNames.add(sheetName);
-
-            const ws = wb.addWorksheet(sheetName, {
-                pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 } }
-            });
-
-            const totalCols = 3 + sortedDates.length + 1; // S/NO + REG + NAME + dates + TOTAL
-
-            // ---- Header rows ----
-            const mergeRow = (rowNumber, text, opts = {}) => {
-                ws.mergeCells(rowNumber, 1, rowNumber, totalCols);
-                const cell = ws.getCell(rowNumber, 1);
-                cell.value = text;
-                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                if (opts.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: opts.fill } };
-                if (opts.font) cell.font = opts.font;
-                if (opts.height) ws.getRow(rowNumber).height = opts.height;
-            };
-
-            let r = 1;
-            mergeRow(r++, 'NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT', {
-                fill: PURPLE, font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 14, name: 'Calibri' }, height: 32
-            });
-            mergeRow(r++, 'DEPARTMENT OF NURSING', {
-                fill: PURPLE_LIGHT, font: { bold: true, italic: true, color: { argb: PURPLE }, size: 12 }, height: 22
-            });
-            mergeRow(r++, `${cls.program} CLASS  |  ${cls.blockDisplay}  |  Intake ${cls.intake}`, {
-                font: { bold: true, color: { argb: DARK }, size: 12 }, height: 22
-            });
-            mergeRow(r++, `UNIT: ${cls.unit}  |  SESSION TYPE: ${cls.sessionType}  |  ${typeLabel}`, {
-                font: { bold: true, color: { argb: DARK }, size: 12 }, height: 22
-            });
-
-            if (hasFilters) {
-                const bits = [];
-                if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
-                if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
-                if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
-                if (filterDate) bits.push(`Date ${filterDate}`);
-                if (searchText) bits.push(`Search "${searchText}"`);
-                mergeRow(r++, `Filtered by → ${bits.join('  ·  ')}`, {
-                    fill: AMBER_LIGHT, font: { italic: true, color: { argb: 'FF92400E' }, size: 10 }, height: 18
-                });
-            }
-
-            mergeRow(r++, 'ATTENDANCE SHEET', {
-                fill: PURPLE_LIGHT, font: { bold: true, color: { argb: PURPLE }, size: 13 }, height: 26
-            });
-
-            r++; // spacer
-
-            // ---- Column header row ----
-            const headerRowIdx = r;
-            const header = ['S/NO', 'REG NO', 'FULL NAME', ...sortedDates.map(d => dateDisplayMap[d]), 'TOTAL'];
-            header.forEach((v, i) => {
-                const cell = ws.getCell(r, i + 1);
-                cell.value = v;
-                cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE } };
-                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                cell.border = { top: { style: 'thin', color: { argb: BORDER } }, bottom: { style: 'thin', color: { argb: BORDER } }, left: { style: 'thin', color: { argb: BORDER } }, right: { style: 'thin', color: { argb: BORDER } } };
-            });
-            ws.getRow(r).height = 24;
-            r++;
-
-            // ---- Student rows ----
-            students.forEach((student, idx) => {
-                const row = ws.getRow(r);
-                row.getCell(1).value = idx + 1;
-                row.getCell(2).value = student.reg;
-                row.getCell(3).value = student.name;
-
-                let present = 0;
-                sortedDates.forEach((iso, i) => {
-                    const mark = student.byDate[iso] || '-';
-                    const cell = row.getCell(4 + i);
-                    cell.value = mark;
-                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-
-                    let fill = GREY_LIGHT, fontColor = GREY;
-                    if (mark === '✓') { fill = GREEN_LIGHT; fontColor = GREEN; }
-                    else if (mark === 'A') { fill = RED_LIGHT; fontColor = RED; }
-                    else if (mark === 'P') { fill = AMBER_LIGHT; fontColor = AMBER; }
-
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
-                    cell.font = { bold: mark !== '-', color: { argb: fontColor }, size: 12 };
-                    if (mark === '✓') present++;
-                });
-
-                const totalCell = row.getCell(4 + sortedDates.length);
-                totalCell.value = `${present}/${sortedDates.length}`;
-                totalCell.alignment = { horizontal: 'center', vertical: 'middle' };
-                totalCell.font = { bold: true, color: { argb: DARK }, size: 11 };
-                totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE_LIGHT } };
-
-                // borders across the row
-                for (let c = 1; c <= totalCols; c++) {
-                    row.getCell(c).border = {
-                        top: { style: 'thin', color: { argb: BORDER } },
-                        bottom: { style: 'thin', color: { argb: BORDER } },
-                        left: { style: 'thin', color: { argb: BORDER } },
-                        right: { style: 'thin', color: { argb: BORDER } }
-                    };
-                    row.getCell(c).alignment = row.getCell(c).alignment || { vertical: 'middle' };
-                    if (!row.getCell(c).font) row.getCell(c).font = { size: 11, color: { argb: DARK } };
-                }
-                row.height = 20;
-                r++;
-            });
-
-            // ---- Summary row ----
-            r++;
-            const totalStudents = students.length;
-            const totalSessions = sortedDates.length;
-            const totalPossible = totalStudents * totalSessions;
-            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
-            const rate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
-
-            ws.mergeCells(r, 1, r, totalCols);
-            const sumCell = ws.getCell(r, 1);
-            sumCell.value = `SUMMARY  ·  Students: ${totalStudents}   Sessions: ${totalSessions}   Present: ${totalPresent}/${totalPossible}   Rate: ${rate}%`;
-            sumCell.alignment = { horizontal: 'center', vertical: 'middle' };
-            sumCell.font = { bold: true, color: { argb: 'FF065F46' }, size: 11 };
-            sumCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN_LIGHT } };
-            ws.getRow(r).height = 24;
-            r += 2;
-
-            // ---- Signature footer ----
-            ws.mergeCells(r, 1, r, totalCols);
-            const sigHeader = ws.getCell(r, 1);
-            sigHeader.value = 'AUTHORIZATION & VERIFICATION';
-            sigHeader.alignment = { horizontal: 'center', vertical: 'middle' };
-            sigHeader.font = { bold: true, color: { argb: PURPLE }, size: 12 };
-            sigHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE_LIGHT } };
-            ws.getRow(r).height = 22;
-            r++;
-
-                      const sigRow = (label) => {
-                // Column A (merged A:B) → the label
-                if (totalCols >= 2) {
-                    ws.mergeCells(r, 1, r, 2);
-                }
-                const labelCell = ws.getCell(r, 1);
-                labelCell.value = label;
-                labelCell.font = { bold: true, size: 11, color: { argb: DARK } };
-                labelCell.alignment = { horizontal: 'left', vertical: 'middle' };
-
-                // Column C → underscore line
-                const lineCell = ws.getCell(r, 3);
-                lineCell.value = '_______________________';
-                lineCell.alignment = { horizontal: 'center', vertical: 'middle' };
-                lineCell.font = { size: 11 };
-
-                // Columns D:E (merged) → Signature line
-                if (totalCols >= 5) {
-                    ws.mergeCells(r, 4, r, 5);
-                }
-                const sigCell = ws.getCell(r, 4);
-                sigCell.value = 'Signature: ______________';
-                sigCell.font = { size: 11 };
-                sigCell.alignment = { horizontal: 'left', vertical: 'middle' };
-
-                // Columns F:end (merged, only if it spans MORE than one col) → Date line
-                if (totalCols > 6) {
-                    ws.mergeCells(r, 6, r, totalCols);
-                }
-                const dateCell = ws.getCell(r, 6);
-                dateCell.value = 'Date: ______________';
-                dateCell.font = { size: 11 };
-                dateCell.alignment = { horizontal: 'left', vertical: 'middle' };
-
-                ws.getRow(r).height = 26;
-                r++;
-            };
-            r++;
-            sigRow('Class Representative:');
-            r++;
-            sigRow('Lecturer:');
-            r++;
-            sigRow('Checked By:');
-
-            // ---- Column widths ----
-            const widths = [];
-            widths.push({ width: 7 });  // S/NO
-            widths.push({ width: 22 }); // REG NO
-            widths.push({ width: 30 }); // NAME
-            sortedDates.forEach(() => widths.push({ width: 8 }));
-            widths.push({ width: 10 }); // TOTAL
-            ws.columns = widths;
-
-            // ---- Freeze header + first 3 cols ----
-            ws.views = [{ state: 'frozen', xSplit: 3, ySplit: headerRowIdx }];
-        }
-
-        // ---- 6. WRITE ----
-        const suffixBits = [];
-        if (filterBlock !== 'All') suffixBits.push(filterBlock.replace(/\s+/g, ''));
-        if (filterYear !== 'All') suffixBits.push(`Intake${filterYear}`);
-        if (filterSessionType !== 'All') suffixBits.push(filterSessionType);
-        const suffix = suffixBits.length ? '_' + suffixBits.join('_') : '';
-        const filename = `AttendanceSheet${suffix}_${new Date().toISOString().split('T')[0]}.xlsx`;
-
-        try {
-            const buffer = await wb.xlsx.writeBuffer();
-            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-            if (typeof saveAs === 'function') {
-                saveAs(blob, filename);
-            } else {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = filename;
-                document.body.appendChild(a); a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
-
-            this.showNotification(
-                `✅ Exported ${classList.length} sheet${classList.length === 1 ? '' : 's'} (${source.length} records)${hasFilters ? ' — filtered view' : ''}`,
-                'success'
-            );
-        } catch (err) {
-            console.error('❌ Export error:', err);
-            this.showNotification('Export failed: ' + err.message, 'error');
-        }
-    },
-
-    // ============================================================
-    // PRINT
-    // ============================================================
-    printReport() { window.print(); },
-
-    // ============================================================
-    // TOASTS
-    // ============================================================
-    showNotification(message, type = 'info') {
-        console.log(`[${type}] ${message}`);
-        try {
-            if (window.LecturerUI?.showNotification) { window.LecturerUI.showNotification(message, type); return; }
-        } catch (e) {}
-        try {
-            const toast = document.createElement('div');
-            const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
-            toast.style.cssText = `position:fixed;bottom:20px;right:20px;padding:12px 24px;background:${colors[type] || '#3b82f6'};color:white;border-radius:8px;font-weight:500;z-index:100000;box-shadow:0 4px 12px rgba(0,0,0,0.2);max-width:400px;font-family:system-ui,sans-serif;`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 3500);
-        } catch (e) {}
-    },
-
-    showError(message) { console.error('❌', message); this.showNotification(message, 'error'); },
-
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    },
-
-    // ============================================================
-    // EVENT LISTENERS
-    // ============================================================
-    setupEventListeners() {
-        const checkinBtn = document.getElementById('lecturerCheckinBtn');
-        if (checkinBtn && !checkinBtn.dataset.bound) {
-            checkinBtn.dataset.bound = '1';
-            checkinBtn.addEventListener('click', () => this.lecturerCheckIn());
-        }
-
-        const form = document.getElementById('manualAttendanceForm');
-        if (form && !form.dataset.bound) {
-            form.dataset.bound = '1';
-            form.addEventListener('submit', (e) => this.markStudentAttendance(e));
-        }
-
-        ['filterDate', 'filterBlock', 'filterYear', 'filterSessionType'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el && !el.dataset.filterBound) {
-                el.dataset.filterBound = '1';
-                el.addEventListener('change', () => this.applyFilters());
-            }
-        });
-
-        const searchInput = document.getElementById('filterSearch');
-        if (searchInput && !searchInput.dataset.filterBound) {
-            searchInput.dataset.filterBound = '1';
-            let timeout;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => this.applyFilters(), 300);
-            });
-        }
-    },
-
-    // ============================================================
-    // REFRESH
-    // ============================================================
-    async refresh() {
-        await this.loadAttendanceSessions(this.selectedSessionId);
-        await this.loadAllAttendance();
-        this.applyFilters();
-        this.updateProgramBadge();
-        this.showNotification(`${this.getProgramTypeLabel()} attendance refreshed!`, 'success');
-    },
-
-    closeMapModal() {
-        const modal = document.getElementById('attendanceMapModal');
-        if (modal) modal.style.display = 'none';
-        if (this.mapInstance) { this.mapInstance.remove(); this.mapInstance = null; }
-    },
-
-    openInGoogleMaps() {
-        const loc = this.currentLocation;
-        if (loc) window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lng}`, '_blank');
-    },
-
-
-    // ============================================================
-    // FULL CLASS SESSION RECONCILIATION
-    // Builds the expected class from student profiles, compares it
-    // against geo check-ins for THIS session, and can finalize
-    // missing/invalid students as Absent when the session closes.
-    // ============================================================
-    async getSessionRoster(session) {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase || !session?.id) return [];
-
-        const program = session.target_program || session.program || this.currentProgram || 'KRCHN';
-        const block = session.block_term || session.block;
-        const intake = session.intake_year;
-
-        let query = supabase
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id, admission_number, registration_number, program, block, intake_year, role')
-            .eq('role', 'student')
-            .eq('program', program);
-
-        if (block) query = query.eq('block', block);
-        if (intake !== null && intake !== undefined && String(intake) !== '') {
-            query = query.eq('intake_year', String(intake));
-        }
-
-        const { data, error } = await query.order('full_name', { ascending: true });
-        if (error) throw error;
-
-        return (data || []).map(student => ({
-            user_id: student.user_id,
-            name: student.full_name || 'Unknown Student',
-            registration_number:
-                student.registration_number ||
-                student.admission_number ||
-                student.student_id ||
-                student.user_id,
-            student_id: student.student_id || student.admission_number || student.registration_number || null,
-            program: student.program || program,
-            block: student.block || block || null,
-            intake_year: student.intake_year || intake || null
-        }));
-    },
-
-    async getSessionAttendanceRegister(session, finalize = false) {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase || !session?.id) return { roster: [], logs: [], rows: [], summary: { total: 0, present: 0, absent: 0, pending: 0, notCheckedIn: 0, rate: 0 } };
 
         const roster = await this.getSessionRoster(session);
 
@@ -1691,82 +72,142 @@ const LecturerAttendance = {
 
         if (error) throw error;
 
-        // One effective log per student: prefer Present/Verified, otherwise latest.
-        const byStudent = new Map();
-        (logs || []).forEach(log => {
-            const key = String(log.user_id || log.student_id || log.registration_number || '').trim();
-            if (!key) return;
-            const previous = byStudent.get(key);
-            const status = String(log.attendance_status || '').toLowerCase();
-            const prevStatus = String(previous?.attendance_status || '').toLowerCase();
-            const currentIsPresent = status === 'present' || status === 'verified' || log.is_verified === true;
-            const previousIsPresent = prevStatus === 'present' || prevStatus === 'verified' || previous?.is_verified === true;
+        /*
+         * Index every attendance log by all identifiers.
+         * This prevents a valid student check-in from being missed when
+         * one record contains user_id while the roster contains student_id.
+         */
+        const byKey = new Map();
 
-            if (!previous || (currentIsPresent && !previousIsPresent) ||
-                (!currentIsPresent && !previousIsPresent &&
-                 new Date(log.check_in_time || 0) > new Date(previous.check_in_time || 0))) {
-                byStudent.set(key, log);
+        const put = (key, log) => {
+            if (!key) return;
+            const k = String(key).trim();
+            if (!k) return;
+
+            const old = byKey.get(k);
+
+            const status = String(log.attendance_status || '').toLowerCase();
+            const oldStatus = String(old?.attendance_status || '').toLowerCase();
+
+            const present =
+                status === 'present' ||
+                status === 'verified' ||
+                log.is_verified === true;
+
+            const oldPresent =
+                oldStatus === 'present' ||
+                oldStatus === 'verified' ||
+                old?.is_verified === true;
+
+            if (
+                !old ||
+                (present && !oldPresent) ||
+                (!present && !oldPresent &&
+                 new Date(log.check_in_time || 0) >
+                 new Date(old.check_in_time || 0))
+            ) {
+                byKey.set(k, log);
             }
+        };
+
+        (logs || []).forEach(log => {
+            put(log.user_id, log);
+            put(log.student_id, log);
+            put(log.registration_number, log);
         });
 
         const rows = [];
-        const missing = [];
-        const rosterKeys = new Set();
+        const finalizeItems = [];
 
         for (const student of roster) {
             const keys = [
                 student.user_id,
                 student.student_id,
                 student.registration_number
-            ].filter(Boolean).map(String);
-
-            keys.forEach(k => rosterKeys.add(k));
+            ]
+                .filter(Boolean)
+                .map(String);
 
             let log = null;
+
             for (const key of keys) {
-                if (byStudent.has(key)) {
-                    log = byStudent.get(key);
+                if (byKey.has(key)) {
+                    log = byKey.get(key);
                     break;
                 }
             }
 
-            const status = String(log?.attendance_status || '').toLowerCase();
+            const rawStatus = String(
+                log?.attendance_status || ''
+            ).toLowerCase();
+
+            const hasPresentStatus =
+                rawStatus === 'present' ||
+                rawStatus === 'verified' ||
+                log?.is_verified === true;
+
+            const radius = this.getSessionRadius(session, log);
+
+            const distance = Number(log?.distance_meters);
+
+            /*
+             * If distance exists, it MUST be inside the session radius.
+             * If the attendance record has no distance value, preserve the
+             * existing verified/manual behaviour instead of automatically
+             * rejecting it.
+             */
+            const withinRadius =
+                !log ||
+                !Number.isFinite(distance) ||
+                distance <= radius;
+
             const validPresent =
                 !!log &&
-                (status === 'present' || status === 'verified' || log.is_verified === true) &&
-                Number(log.distance_meters ?? Infinity) <= Number(log.target_radius ?? Infinity);
+                hasPresentStatus &&
+                withinRadius;
 
-            let finalStatus = validPresent ? 'Present' : (log ? 'Absent' : 'Not Checked In');
+            let status;
 
-            // A student who checked in but was outside the configured target radius
-            // is treated as absent for the finalized class register.
-            if (log && !validPresent) finalStatus = 'Absent';
+            if (validPresent) {
+                status = 'Present';
+            } else if (log) {
+                status = 'Absent';
+            } else {
+                status = 'Not Checked In';
+            }
 
-            if (finalize && finalStatus !== 'Present') {
-                missing.push({ student, existingLog: log });
-                finalStatus = 'Absent';
+            if (finalize && status !== 'Present') {
+                finalizeItems.push({
+                    student,
+                    existingLog: log
+                });
+
+                status = 'Absent';
             }
 
             rows.push({
                 student,
                 log,
-                status: finalStatus,
+                status,
                 checkInTime: log?.check_in_time || null,
                 distance: log?.distance_meters ?? null,
-                accuracy: log?.accuracy_m ?? null
+                accuracy: log?.accuracy_m ?? log?.accuracy || null
             });
         }
 
-        if (finalize && missing.length > 0) {
+        // --------------------------------------------------------
+        // FINALIZE ABSENCES
+        // --------------------------------------------------------
+        if (finalize && finalizeItems.length) {
             const now = new Date().toISOString();
             const inserts = [];
             const updates = [];
 
-            for (const item of missing) {
-                const { student, existingLog } = item;
+            for (const item of finalizeItems) {
+                const student = item.student;
+                const existingLog = item.existingLog;
 
                 if (existingLog?.id) {
-                    // Convert weak/out-of-radius/pending records to final Absent.
                     updates.push(
                         supabase
                             .from('geo_attendance_logs')
@@ -1775,37 +216,68 @@ const LecturerAttendance = {
                                 is_verified: false,
                                 finalized_at: now,
                                 finalized_by: this.lecturerUuid || null,
-                                verification_source: 'Automatic Session Finalization',
-                                finalization_reason: 'No valid in-radius check-in for this session'
+                                verification_source:
+                                    'Automatic Session Finalization',
+                                finalization_reason:
+                                    'No valid in-radius check-in for this session'
                             })
                             .eq('id', existingLog.id)
                     );
                 } else {
-                    // No check-in at all: create a single Absent record.
                     inserts.push({
-                        user_id: student.user_id,
-                        student_id: student.student_id || student.registration_number,
-                        registration_number: student.registration_number,
-                        student_name: student.name,
-                        block: student.block,
-                        intake_year: student.intake_year,
-                        program: student.program,
+                        user_id: student.user_id || null,
+                        student_id:
+                            student.student_id ||
+                            student.registration_number ||
+                            null,
+                        registration_number:
+                            student.registration_number || null,
+                        student_name: student.name || 'Unknown Student',
+                        block: student.block || null,
+                        intake_year: student.intake_year || null,
+                        program: student.program || null,
+
+                        /*
+                         * The record is an absence marker. The timestamp is
+                         * finalization time because there was no check-in.
+                         */
                         check_in_time: now,
+
                         session_type: session.session_type || 'Class',
+
                         target_id: session.id,
                         session_id: session.id,
-                        target_name: session.location_name || session.session_title || session.title || 'Class',
-                        unit_name: session.unit_name || session.course_name || 'General',
+
+                        target_name:
+                            session.location_name ||
+                            session.session_title ||
+                            session.title ||
+                            'Class',
+
+                        unit_name:
+                            session.unit_name ||
+                            session.course_name ||
+                            'General',
+
                         attendance_status: 'Absent',
                         is_verified: false,
                         location_type: 'class',
-                        target_radius: session.target_radius || 150,
-                        target_latitude: session.target_latitude || null,
-                        target_longitude: session.target_longitude || null,
+
+                        target_radius: this.getSessionRadius(session),
+                        target_latitude:
+                            session.target_latitude ?? null,
+                        target_longitude:
+                            session.target_longitude ?? null,
+
                         role: 'student',
                         is_manual_entry: false,
-                        verification_source: 'Automatic Session Finalization',
-                        finalization_reason: 'No check-in recorded before session close',
+
+                        verification_source:
+                            'Automatic Session Finalization',
+
+                        finalization_reason:
+                            'No check-in recorded before session close',
+
                         finalized_at: now,
                         finalized_by: this.lecturerUuid || null,
                         created_at: now
@@ -1813,22 +285,24 @@ const LecturerAttendance = {
                 }
             }
 
-            // Run updates in parallel. Insert absent rows in one batch.
             if (updates.length) {
                 const results = await Promise.all(updates);
-                const failed = results.find(r => r.error);
-                if (failed?.error) throw failed.error;
+                const failed = results.find(result => result.error);
+
+                if (failed?.error) {
+                    throw failed.error;
+                }
             }
 
             if (inserts.length) {
-                const { error: insertError } = await supabase
+                const { error } = await supabase
                     .from('geo_attendance_logs')
                     .insert(inserts);
-                if (insertError) throw insertError;
+
+                if (error) throw error;
             }
 
-            // Re-read the finalized register so the caller gets final truth.
-            return await this.getSessionAttendanceRegister(session, false);
+            return this.getSessionAttendanceRegister(session, false);
         }
 
         const summary = {
@@ -1836,182 +310,1100 @@ const LecturerAttendance = {
             present: rows.filter(r => r.status === 'Present').length,
             absent: rows.filter(r => r.status === 'Absent').length,
             pending: rows.filter(r => r.status === 'Not Checked In').length,
-            notCheckedIn: rows.filter(r => r.status === 'Not Checked In').length
+            notCheckedIn:
+                rows.filter(r => r.status === 'Not Checked In').length
         };
-        summary.rate = summary.total ? Math.round((summary.present / summary.total) * 100) : 0;
 
-        return { roster, logs: logs || [], rows, summary };
-    },
+        summary.rate = summary.total
+            ? Math.round((summary.present / summary.total) * 100)
+            : 0;
 
-    async reconcileSessionAttendance(sessionId, finalize = true) {
-        let session = this.sessions?.find(s => String(s.id) === String(sessionId));
-        if (!session) session = await this.getScheduledSessionById(sessionId);
-        if (!session) throw new Error('Session not found');
+        return {
+            roster,
+            logs: logs || [],
+            rows,
+            summary
+        };
+    };
 
-        const sessionType = String(session.session_type || 'Class').toLowerCase();
-        if (sessionType === 'clinical' || sessionType === 'exam') {
-            return await this.getSessionAttendanceRegister(session, false);
-        }
-
-        const register = await this.getSessionAttendanceRegister(session, finalize);
-
-        console.log('📋 Session attendance reconciled:', {
-            session_id: sessionId,
-            total: register.summary.total,
-            present: register.summary.present,
-            absent: register.summary.absent,
-            pending: register.summary.pending
-        });
-
-        return register;
-    },
-
-    async previewSessionAttendance(sessionId) {
-        return this.reconcileSessionAttendance(sessionId, false);
-    },
-
-    // ============================================================
-    // VERIFY / BULK VERIFY
-    // ============================================================
-    verifyAttendance: async function(recordId) {
-        if (!recordId) { this.showNotification('Error: Record ID is required', 'error'); return; }
+    // ------------------------------------------------------------
+    // 3. MANUAL MARK — ALWAYS ATTACH TO SELECTED SESSION
+    // ------------------------------------------------------------
+    LA.markStudentAttendance = async function (e) {
+        if (e) e.preventDefault();
         if (this.isProcessing) return;
-        this.isProcessing = true;
 
-        const verifyBtn = document.querySelector(`[data-verify-id="${recordId}"]`);
-        if (verifyBtn) { verifyBtn.disabled = true; verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+        const form = document.getElementById('manualAttendanceForm');
+        const btn = form?.querySelector('button[type="submit"]');
+
+        if (!form || !btn) return;
+
+        const originalText = btn.innerHTML;
+
+        this.isProcessing = true;
+        btn.disabled = true;
+        btn.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> Marking...';
 
         try {
+            const studentId =
+                document.getElementById('attStudentId')?.value;
+
+            const sessionType =
+                document.getElementById('attSessionType')?.value;
+
+            const unit =
+                document.getElementById('attUnit')?.value;
+
+            const location =
+                document.getElementById('attLocation')?.value;
+
+            const date =
+                document.getElementById('attDate')?.value;
+
+            const time =
+                document.getElementById('attTime')?.value;
+
+            if (!studentId || !sessionType || !date) {
+                throw new Error('Please fill all required fields');
+            }
+
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) throw new Error('Database not available');
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const lecturerName = profile?.full_name || 'Lecturer';
-            const lecturerId = profile?.user_id || this.lecturerUuid || 'unknown';
+            const profile =
+                window.lecturerDB?.getCurrentUserProfile();
 
-            const { error: updateError } = await supabase
-                .from('geo_attendance_logs')
-                .update({
-                    is_verified: true, attendance_status: 'Verified',
-                    verified_by: lecturerId, verified_by_name: lecturerName,
-                    verified_at: new Date().toISOString(),
-                    verification_source: 'Manual Verification'
-                })
-                .eq('id', recordId);
+            if (!supabase || !profile) {
+                throw new Error('Database not available');
+            }
 
-            if (updateError) throw new Error(updateError.message);
+            /*
+             * A manual class attendance mark MUST have a session.
+             * Otherwise it becomes a generic record that cannot appear
+             * in the selected session register.
+             */
+            if (!this.selectedSessionId) {
+                throw new Error(
+                    'Please select an attendance session before marking a student.'
+                );
+            }
 
-            this.showNotification('✅ Verified!', 'success');
+            const session =
+                this.selectedSession ||
+                await this.getScheduledSessionById(
+                    this.selectedSessionId
+                );
+
+            if (!session) {
+                throw new Error(
+                    'Selected attendance session could not be found.'
+                );
+            }
+
+            const { data: student, error: studentError } =
+                await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select(
+                        'user_id, full_name, program, block, intake_year, student_id, admission_number, registration_number'
+                    )
+                    .eq('user_id', studentId)
+                    .maybeSingle();
+
+            if (studentError) throw studentError;
+            if (!student) throw new Error('Student not found');
+
+            /*
+             * Strict duplicate check for THIS session only.
+             */
+            const { data: existing, error: existingError } =
+                await supabase
+                    .from('geo_attendance_logs')
+                    .select('id, attendance_status')
+                    .eq('session_id', this.selectedSessionId)
+                    .or(
+                        `user_id.eq.${student.user_id},student_id.eq.${student.student_id || student.registration_number || ''},registration_number.eq.${student.registration_number || student.student_id || ''}`
+                    )
+                    .limit(1);
+
+            if (existingError) {
+                console.warn(
+                    'Session duplicate lookup warning:',
+                    existingError
+                );
+            }
+
+            if (existing?.length) {
+                throw new Error(
+                    `${student.full_name || 'Student'} already has an attendance record for this session.`
+                );
+            }
+
+            const checkInTime = time
+                ? `${date}T${time}:00.000Z`
+                : `${date}T12:00:00.000Z`;
+
+            const registrationNumber =
+                student.registration_number ||
+                student.admission_number ||
+                student.student_id ||
+                null;
+
+            const { error: insertError } =
+                await supabase
+                    .from('geo_attendance_logs')
+                    .insert({
+                        user_id: student.user_id || null,
+                        student_id:
+                            student.student_id ||
+                            student.admission_number ||
+                            registrationNumber,
+
+                        registration_number: registrationNumber,
+
+                        student_name:
+                            student.full_name || 'Student',
+
+                        check_in_time: checkInTime,
+
+                        /*
+                         * CRITICAL FIX:
+                         */
+                        session_id: this.selectedSessionId,
+                        target_id: this.selectedSessionId,
+
+                        session_type:
+                            session.session_type ||
+                            sessionType ||
+                            'Class',
+
+                        target_name:
+                            session.session_title ||
+                            session.title ||
+                            unit ||
+                            'Class',
+
+                        unit_name:
+                            session.unit_name ||
+                            unit ||
+                            'General',
+
+                        attendance_status: 'Present',
+                        is_verified: true,
+                        is_manual_entry: true,
+
+                        location_friendly_name:
+                            location || 'Manual Entry',
+
+                        location_address:
+                            `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
+
+                        program:
+                            student.program ||
+                            session.target_program ||
+                            profile.program ||
+                            'KRCHN',
+
+                        block:
+                            student.block ||
+                            session.block_term ||
+                            session.block ||
+                            profile.block ||
+                            null,
+
+                        block_display:
+                            student.block
+                                ? this.getBlockDisplay(student.block)
+                                : 'N/A',
+
+                        intake_year:
+                            student.intake_year ||
+                            session.intake_year ||
+                            profile.intake_year ||
+                            null,
+
+                        role: 'student',
+
+                        recorded_by_id:
+                            profile.user_id,
+
+                        recorded_by_name:
+                            profile.full_name ||
+                            'Lecturer',
+
+                        program_type:
+                            this.getProgramTypeLabel(),
+
+                        is_tvet: this.isTVET,
+
+                        target_radius:
+                            this.getSessionRadius(session),
+
+                        target_latitude:
+                            session.target_latitude ?? null,
+
+                        target_longitude:
+                            session.target_longitude ?? null,
+
+                        verification_source:
+                            'Manual Lecturer Entry',
+
+                        created_at:
+                            new Date().toISOString()
+                    });
+
+            if (insertError) throw insertError;
+
+            this.showNotification(
+                `✅ ${student.full_name} marked present for this session!`,
+                'success'
+            );
+
+            form.reset();
+
+            const dateInput =
+                document.getElementById('attDate');
+
+            if (dateInput) {
+                dateInput.value =
+                    new Date().toISOString().split('T')[0];
+            }
+
             await this.loadTodayAttendance();
-            await this.loadPastAttendance();
             await this.loadAttendanceStats();
+
         } catch (error) {
-            console.error('❌ verifyAttendance:', error);
-            this.showNotification('Failed: ' + error.message, 'error');
+            console.error(
+                '❌ markStudentAttendance:',
+                error
+            );
+
+            this.showNotification(
+                'Failed: ' + (error.message || error),
+                'error'
+            );
+
         } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
             this.isProcessing = false;
         }
-    },
+    };
 
-    bulkVerifyAttendance: async function(date = null) {
-        const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
-        if (!confirm(`Verify ALL unverified attendance records for ${targetDate}?`)) return;
-        if (this.isProcessing) return;
-        this.isProcessing = true;
+    // ------------------------------------------------------------
+    // 4. SESSION-FIRST TODAY LOADING
+    // ------------------------------------------------------------
+    LA.loadTodayAttendance = async function () {
+        const tbody =
+            document.getElementById('attendanceTable');
+
+        if (!tbody) return;
 
         try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) throw new Error('Database not available');
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const lecturerName = profile?.full_name || 'Lecturer';
-            const lecturerId = profile?.user_id || this.lecturerUuid || 'unknown';
+            const supabase =
+                window.lecturerDB?.supabase;
 
-            const { data: records } = await supabase
-                .from('geo_attendance_logs')
-                .select('id')
-                .eq('is_verified', false)
-                .neq('session_type', 'Lecturer Check-in')
-                .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
-                .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
-
-            if (!records?.length) {
-                this.showNotification('No unverified records found.', 'info');
+            if (!supabase) {
+                tbody.innerHTML =
+                    '<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Database not available</td></tr>';
                 return;
             }
 
-            const { error: updateError } = await supabase
-                .from('geo_attendance_logs')
-                .update({
-                    is_verified: true, attendance_status: 'Verified',
-                    verified_by: lecturerId, verified_by_name: lecturerName,
-                    verified_at: new Date().toISOString(),
-                    verification_source: 'Bulk Verification'
-                })
-                .in('id', records.map(r => r.id));
+            if (this.selectedSessionId) {
+                const session =
+                    this.selectedSession ||
+                    await this.getScheduledSessionById(
+                        this.selectedSessionId
+                    );
 
-            if (updateError) throw new Error(updateError.message);
+                if (session) {
+                    this.selectedSession = session;
 
-            this.showNotification(`✅ ${records.length} records verified!`, 'success');
-            await this.loadTodayAttendance();
-            await this.loadPastAttendance();
-            await this.loadAttendanceStats();
+                    const register =
+                        await this.getSessionAttendanceRegister(
+                            session,
+                            false
+                        );
+
+                    this.sessionRegister = register;
+
+                    this.todayLogs =
+                        (register.rows || [])
+                            .map(row =>
+                                this.sessionRowToLog(
+                                    row,
+                                    session
+                                )
+                            );
+
+                    this.filteredTodayLogs =
+                        [...this.todayLogs];
+
+                    this.updateSessionStats(
+                        register.summary
+                    );
+
+                    this.renderSessionRegister(
+                        register,
+                        session
+                    );
+
+                    this.updateProgramBadge();
+                    return;
+                }
+            }
+
+            /*
+             * No selected session: do NOT mix all historical/current
+             * attendance into a supposed class register.
+             */
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10"
+                        style="padding:40px;text-align:center;color:#94a3b8;">
+                        <i class="fas fa-calendar-check"
+                           style="font-size:32px;display:block;margin-bottom:10px;color:#cbd5e1;"></i>
+                        <p style="margin:0;font-weight:600;">
+                            Select or schedule an attendance session.
+                        </p>
+                        <small>
+                            Attendance is now organized by scheduled session.
+                        </small>
+                    </td>
+                </tr>`;
+
+            this.todayLogs = [];
+            this.filteredTodayLogs = [];
+
+            this.updateSessionStats({
+                total: 0,
+                present: 0,
+                absent: 0,
+                pending: 0,
+                rate: 0
+            });
+
         } catch (error) {
-            console.error('❌ bulkVerifyAttendance:', error);
-            this.showNotification('Failed: ' + error.message, 'error');
-        } finally {
-            this.isProcessing = false;
+            console.error(
+                '❌ loadTodayAttendance:',
+                error
+            );
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10"
+                        style="padding:30px;text-align:center;color:#ef4444;">
+                        Attendance load failed:
+                        ${this.escapeHtml(error.message || String(error))}
+                    </td>
+                </tr>`;
         }
-    },
+    };
 
-    canVerifyRecord(record) {
-        if (!record) return false;
-        if (record.is_verified === true) return false;
-        if (record.session_type === 'Lecturer Check-in') return false;
-        if (record.role === 'lecturer') return false;
-        return true;
-    }
-};
+    // ------------------------------------------------------------
+    // 5. SESSION-FIRST EXPORT
+    // ------------------------------------------------------------
+    const originalExport = LA.exportCSV.bind(LA);
 
-// ============================================================
-// INIT + GLOBAL EXPOSURE
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => LecturerAttendance.init(), 750);
-});
+    LA.exportCSV = async function () {
+        /*
+         * For a selected session, build the export source directly from
+         * the complete session register. This guarantees absent students
+         * are exported even when they never checked in.
+         */
+        if (this.selectedSessionId) {
+            if (typeof ExcelJS === 'undefined') {
+                this.showNotification(
+                    'Excel library still loading — try again in a moment.',
+                    'warning'
+                );
+                return;
+            }
 
-window.LecturerAttendance = LecturerAttendance;
-window.viewAttendanceMap = (lat, lng, name) => LecturerAttendance.viewAttendanceMap(lat, lng, name);
-window.applyAttendanceFilters = () => LecturerAttendance.applyFilters();
-window.resetAttendanceFilters = () => LecturerAttendance.resetFilters();
-window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();  // still named CSV for HTML compatibility
-window.printAttendanceReport = () => LecturerAttendance.printReport();
-window.lecturerCheckin = () => LecturerAttendance.lecturerCheckIn();
-window.markAttendance = (e) => LecturerAttendance.markStudentAttendance(e);
-window.verifyAttendance = (id) => LecturerAttendance.verifyAttendance(id);
-window.bulkVerifyAttendance = (date) => LecturerAttendance.bulkVerifyAttendance(date);
+            try {
+                const session =
+                    this.selectedSession ||
+                    await this.getScheduledSessionById(
+                        this.selectedSessionId
+                    );
 
-window.reconcileSessionAttendance = (sessionId, finalize = true) =>
-    LecturerAttendance.reconcileSessionAttendance(sessionId, finalize);
-window.previewSessionAttendance = (sessionId) =>
-    LecturerAttendance.previewSessionAttendance(sessionId);
-window.canVerifyRecord = (record) => LecturerAttendance.canVerifyRecord(record);
+                if (!session) {
+                    throw new Error(
+                        'Selected session could not be found.'
+                    );
+                }
 
-window.closeAttendanceMap = () => {
-    const modal = document.getElementById('attendanceMapModal');
-    if (modal) modal.style.display = 'none';
-    if (LecturerAttendance.mapInstance) {
-        LecturerAttendance.mapInstance.remove();
-        LecturerAttendance.mapInstance = null;
-    }
-};
+                const register =
+                    await this.getSessionAttendanceRegister(
+                        session,
+                        false
+                    );
 
-window.openInGoogleMaps = () => {
-    const loc = LecturerAttendance.currentLocation;
-    if (loc) {
-        window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lng}`, '_blank');
-    }
-};
+                const filterBlock =
+                    (document.getElementById('filterBlock')?.value || 'All').trim();
 
-console.log('✅ LecturerAttendance module loaded');
-console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify');
-console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
-console.log('🎨 Export: Modern styled .xlsx with colored cells, merged headers, frozen panes');
+                const filterYear =
+                    (document.getElementById('filterYear')?.value || 'All').trim();
+
+                const filterSessionType =
+                    (document.getElementById('filterSessionType')?.value || 'All').trim();
+
+                const searchText =
+                    (document.getElementById('filterSearch')?.value || '')
+                        .trim()
+                        .toLowerCase();
+
+                let rows = [...(register.rows || [])];
+
+                if (filterBlock !== 'All') {
+                    rows = rows.filter(row =>
+                        String(row.student?.block || '')
+                            .toLowerCase() ===
+                        filterBlock.toLowerCase()
+                    );
+                }
+
+                if (filterYear !== 'All') {
+                    rows = rows.filter(row =>
+                        String(row.student?.intake_year || '')
+                            .toLowerCase() ===
+                        filterYear.toLowerCase()
+                    );
+                }
+
+                if (filterSessionType !== 'All') {
+                    rows = rows.filter(() =>
+                        String(session.session_type || '')
+                            .toLowerCase() ===
+                        filterSessionType.toLowerCase()
+                    );
+                }
+
+                if (searchText) {
+                    rows = rows.filter(row => {
+                        const haystack = [
+                            row.student?.name,
+                            row.student?.registration_number,
+                            row.student?.student_id,
+                            row.student?.program,
+                            row.student?.block,
+                            session.unit_name,
+                            session.session_title,
+                            session.title
+                        ]
+                            .filter(Boolean)
+                            .join(' ')
+                            .toLowerCase();
+
+                        return haystack.includes(searchText);
+                    });
+                }
+
+                if (!rows.length) {
+                    this.showNotification(
+                        'No students match the current filters.',
+                        'warning'
+                    );
+                    return;
+                }
+
+                /*
+                 * Build a session-specific one-sheet workbook.
+                 */
+                const PURPLE = 'FF4F46E5';
+                const PURPLE_LIGHT = 'FFEEF2FF';
+                const GREEN = 'FF10B981';
+                const GREEN_LIGHT = 'FFD1FAE5';
+                const RED = 'FFEF4444';
+                const RED_LIGHT = 'FFFEE2E2';
+                const AMBER = 'FFF59E0B';
+                const AMBER_LIGHT = 'FFFEF3C7';
+                const DARK = 'FF0F172A';
+                const BORDER = 'FFE2E8F0';
+                const GREY = 'FF64748B';
+                const GREY_LIGHT = 'FFF1F5F9';
+
+                const wb = new ExcelJS.Workbook();
+
+                wb.creator = 'NCHSM';
+                wb.created = new Date();
+
+                let sheetName =
+                    (
+                        session.session_title ||
+                        session.title ||
+                        session.unit_name ||
+                        'Attendance'
+                    )
+                        .replace(/[\\\/\?\*\[\]:]/g, '-')
+                        .slice(0, 31);
+
+                if (!sheetName) sheetName = 'Attendance';
+
+                const ws = wb.addWorksheet(sheetName, {
+                    pageSetup: {
+                        paperSize: 9,
+                        orientation: 'landscape',
+                        fitToPage: true,
+                        fitToWidth: 1,
+                        fitToHeight: 0,
+                        margins: {
+                            left: 0.3,
+                            right: 0.3,
+                            top: 0.4,
+                            bottom: 0.4,
+                            header: 0.2,
+                            footer: 0.2
+                        }
+                    }
+                });
+
+                const totalCols = 9;
+
+                const mergeRow = (
+                    rowNumber,
+                    value,
+                    fill = null,
+                    font = {}
+                ) => {
+                    ws.mergeCells(
+                        rowNumber,
+                        1,
+                        rowNumber,
+                        totalCols
+                    );
+
+                    const cell =
+                        ws.getCell(rowNumber, 1);
+
+                    cell.value = value;
+
+                    cell.alignment = {
+                        horizontal: 'center',
+                        vertical: 'middle',
+                        wrapText: true
+                    };
+
+                    if (fill) {
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: fill }
+                        };
+                    }
+
+                    cell.font = font;
+                };
+
+                let r = 1;
+
+                mergeRow(
+                    r++,
+                    'NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT',
+                    PURPLE,
+                    {
+                        bold: true,
+                        color: { argb: 'FFFFFFFF' },
+                        size: 14
+                    }
+                );
+
+                mergeRow(
+                    r++,
+                    'DEPARTMENT OF NURSING',
+                    PURPLE_LIGHT,
+                    {
+                        bold: true,
+                        color: { argb: PURPLE },
+                        size: 12
+                    }
+                );
+
+                const program =
+                    session.target_program ||
+                    session.program_type ||
+                    this.currentProgram ||
+                    'KRCHN';
+
+                const block =
+                    session.block_term ||
+                    session.block ||
+                    'N/A';
+
+                mergeRow(
+                    r++,
+                    `${program} CLASS  |  ${this.getBlockDisplay(block)}  |  Intake ${session.intake_year || 'N/A'}`,
+                    null,
+                    {
+                        bold: true,
+                        color: { argb: DARK },
+                        size: 12
+                    }
+                );
+
+                mergeRow(
+                    r++,
+                    `UNIT: ${session.unit_name || session.title || 'General'}  |  SESSION: ${session.session_type || 'Class'}`,
+                    null,
+                    {
+                        bold: true,
+                        color: { argb: DARK },
+                        size: 12
+                    }
+                );
+
+                mergeRow(
+                    r++,
+                    `DATE: ${session.session_date ? new Date(session.session_date).toLocaleDateString('en-GB') : 'N/A'}  |  TIME: ${(session.session_time || '').slice(0,5)}  |  SESSION ID: ${session.id}`,
+                    PURPLE_LIGHT,
+                    {
+                        color: { argb: PURPLE },
+                        size: 10
+                    }
+                );
+
+                r++;
+
+                const headers = [
+                    'S/NO',
+                    'REG NO',
+                    'FULL NAME',
+                    'PROGRAM',
+                    'BLOCK / TERM',
+                    'INTAKE',
+                    'SESSION',
+                    'STATUS',
+                    'CHECK-IN TIME'
+                ];
+
+                headers.forEach((header, i) => {
+                    const cell =
+                        ws.getCell(r, i + 1);
+
+                    cell.value = header;
+
+                    cell.font = {
+                        bold: true,
+                        color: { argb: 'FFFFFFFF' },
+                        size: 10
+                    };
+
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: PURPLE }
+                    };
+
+                    cell.alignment = {
+                        horizontal: 'center',
+                        vertical: 'middle',
+                        wrapText: true
+                    };
+
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: BORDER } },
+                        bottom: { style: 'thin', color: { argb: BORDER } },
+                        left: { style: 'thin', color: { argb: BORDER } },
+                        right: { style: 'thin', color: { argb: BORDER } }
+                    };
+                });
+
+                ws.getRow(r).height = 24;
+                r++;
+
+                let present = 0;
+                let absent = 0;
+                let pending = 0;
+
+                rows.forEach((row, index) => {
+                    const student = row.student || {};
+                    const status = row.status || 'Not Checked In';
+
+                    if (status === 'Present') present++;
+                    else if (status === 'Absent') absent++;
+                    else pending++;
+
+                    const excelStatus =
+                        status === 'Not Checked In'
+                            ? 'Pending'
+                            : status;
+
+                    const values = [
+                        index + 1,
+                        student.registration_number ||
+                            student.student_id ||
+                            'N/A',
+                        student.name || 'Unknown Student',
+                        student.program || program,
+                        this.getBlockDisplay(
+                            student.block || block
+                        ),
+                        student.intake_year ||
+                            session.intake_year ||
+                            'N/A',
+                        session.session_type || 'Class',
+                        excelStatus,
+                        row.checkInTime
+                            ? new Date(
+                                row.checkInTime
+                              ).toLocaleTimeString(
+                                'en-GB',
+                                {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                }
+                              )
+                            : '—'
+                    ];
+
+                    const excelRow =
+                        ws.getRow(r);
+
+                    values.forEach((value, i) => {
+                        const cell =
+                            excelRow.getCell(i + 1);
+
+                        cell.value = value;
+
+                        cell.border = {
+                            top: { style: 'thin', color: { argb: BORDER } },
+                            bottom: { style: 'thin', color: { argb: BORDER } },
+                            left: { style: 'thin', color: { argb: BORDER } },
+                            right: { style: 'thin', color: { argb: BORDER } }
+                        };
+
+                        cell.alignment = {
+                            vertical: 'middle',
+                            horizontal:
+                                i === 0 ||
+                                i >= 6
+                                    ? 'center'
+                                    : 'left'
+                        };
+
+                        cell.font = {
+                            size: 10,
+                            color: { argb: DARK }
+                        };
+                    });
+
+                    const statusCell =
+                        excelRow.getCell(8);
+
+                    if (status === 'Present') {
+                        statusCell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: GREEN_LIGHT }
+                        };
+                        statusCell.font = {
+                            bold: true,
+                            color: { argb: GREEN }
+                        };
+                    } else if (status === 'Absent') {
+                        statusCell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: RED_LIGHT }
+                        };
+                        statusCell.font = {
+                            bold: true,
+                            color: { argb: RED }
+                        };
+                    } else {
+                        statusCell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: AMBER_LIGHT }
+                        };
+                        statusCell.font = {
+                            bold: true,
+                            color: { argb: AMBER }
+                        };
+                    }
+
+                    excelRow.height = 20;
+                    r++;
+                });
+
+                r++;
+
+                const total =
+                    rows.length;
+
+                const rate =
+                    total
+                        ? Math.round(
+                            (present / total) * 100
+                          )
+                        : 0;
+
+                ws.mergeCells(
+                    r,
+                    1,
+                    r,
+                    totalCols
+                );
+
+                const summary =
+                    ws.getCell(r, 1);
+
+                summary.value =
+                    `SUMMARY  ·  Students: ${total}   Present: ${present}   Absent: ${absent}   Pending: ${pending}   Attendance Rate: ${rate}%`;
+
+                summary.alignment = {
+                    horizontal: 'center',
+                    vertical: 'middle'
+                };
+
+                summary.font = {
+                    bold: true,
+                    color: {
+                        argb: 'FF065F46'
+                    },
+                    size: 11
+                };
+
+                summary.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: {
+                        argb: GREEN_LIGHT
+                    }
+                };
+
+                ws.getRow(r).height = 24;
+
+                ws.columns = [
+                    { width: 7 },
+                    { width: 23 },
+                    { width: 30 },
+                    { width: 13 },
+                    { width: 20 },
+                    { width: 10 },
+                    { width: 16 },
+                    { width: 15 },
+                    { width: 16 }
+                ];
+
+                ws.views = [{
+                    state: 'frozen',
+                    xSplit: 3,
+                    ySplit: 7
+                }];
+
+                const filename =
+                    `Attendance_${String(program).replace(/\s+/g,'_')}_${String(
+                        session.unit_name ||
+                        session.title ||
+                        'Session'
+                    ).replace(/[^a-zA-Z0-9_-]+/g,'_')}_${new Date()
+                        .toISOString()
+                        .split('T')[0]}.xlsx`;
+
+                const buffer =
+                    await wb.xlsx.writeBuffer();
+
+                const blob =
+                    new Blob(
+                        [buffer],
+                        {
+                            type:
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        }
+                    );
+
+                if (typeof saveAs === 'function') {
+                    saveAs(blob, filename);
+                } else {
+                    const url =
+                        URL.createObjectURL(blob);
+
+                    const a =
+                        document.createElement('a');
+
+                    a.href = url;
+                    a.download = filename;
+
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+
+                    setTimeout(
+                        () => URL.revokeObjectURL(url),
+                        1000
+                    );
+                }
+
+                this.showNotification(
+                    `✅ Exported ${rows.length} students — Present: ${present}, Absent: ${absent}, Pending: ${pending}`,
+                    'success'
+                );
+
+            } catch (error) {
+                console.error(
+                    '❌ Session export error:',
+                    error
+                );
+
+                this.showNotification(
+                    'Export failed: ' +
+                    (error.message || error),
+                    'error'
+                );
+            }
+
+            return;
+        }
+
+        /*
+         * If there is no selected session, retain the original export
+         * behaviour for compatibility with older/non-session views.
+         */
+        return originalExport();
+    };
+
+    // ------------------------------------------------------------
+    // 6. VERIFICATION — REFRESH SELECTED SESSION
+    // ------------------------------------------------------------
+    const originalVerify =
+        LA.verifyAttendance.bind(LA);
+
+    LA.verifyAttendance = async function (recordId) {
+        await originalVerify(recordId);
+
+        if (this.selectedSessionId) {
+            await this.loadTodayAttendance();
+            await this.loadAttendanceStats();
+            this.applyFilters();
+        }
+    };
+
+    // ------------------------------------------------------------
+    // 7. SELECTED SESSION FILTER COUNT
+    // ------------------------------------------------------------
+    const originalApplyFilters =
+        LA.applyFilters.bind(LA);
+
+    LA.applyFilters = function () {
+        if (
+            this.selectedSessionId &&
+            this.sessionRegister
+        ) {
+            const filterBlock =
+                (document.getElementById('filterBlock')?.value || 'All').trim();
+
+            const filterYear =
+                (document.getElementById('filterYear')?.value || 'All').trim();
+
+            const filterSessionType =
+                (document.getElementById('filterSessionType')?.value || 'All').trim();
+
+            const searchText =
+                (document.getElementById('filterSearch')?.value || '')
+                    .trim()
+                    .toLowerCase();
+
+            let rows =
+                [...(this.sessionRegister.rows || [])];
+
+            if (filterBlock !== 'All') {
+                rows = rows.filter(row =>
+                    String(row.student?.block || '')
+                        .toLowerCase() ===
+                    filterBlock.toLowerCase()
+                );
+            }
+
+            if (filterYear !== 'All') {
+                rows = rows.filter(row =>
+                    String(row.student?.intake_year || '')
+                        .toLowerCase() ===
+                    filterYear.toLowerCase()
+                );
+            }
+
+            if (filterSessionType !== 'All') {
+                rows = rows.filter(() =>
+                    String(this.selectedSession?.session_type || '')
+                        .toLowerCase() ===
+                    filterSessionType.toLowerCase()
+                );
+            }
+
+            if (searchText) {
+                rows = rows.filter(row => {
+                    const text = [
+                        row.student?.name,
+                        row.student?.registration_number,
+                        row.student?.student_id,
+                        row.student?.program,
+                        row.student?.block,
+                        this.selectedSession?.unit_name,
+                        this.selectedSession?.session_title,
+                        this.selectedSession?.title
+                    ]
+                        .filter(Boolean)
+                        .join(' ')
+                        .toLowerCase();
+
+                    return text.includes(searchText);
+                });
+            }
+
+            this.renderSessionRegister(
+                {
+                    rows,
+                    summary: this.sessionRegister.summary
+                },
+                this.selectedSession
+            );
+
+            const count =
+                document.getElementById(
+                    'attendanceFilterCount'
+                );
+
+            if (count) {
+                count.textContent =
+                    `Showing ${rows.length} of ${this.sessionRegister.rows.length} students in selected session`;
+            }
+
+            return;
+        }
+
+        return originalApplyFilters();
+    };
+
+    // ------------------------------------------------------------
+    // 8. GLOBALS REMAIN HTML-COMPATIBLE
+    // ------------------------------------------------------------
+    window.LecturerAttendance = LA;
+
+    window.markAttendance =
+        e => LA.markStudentAttendance(e);
+
+    window.exportAttendanceCSV =
+        () => LA.exportCSV();
+
+    window.applyAttendanceFilters =
+        () => LA.applyFilters();
+
+    window.resetAttendanceFilters =
+        () => LA.resetFilters();
+
+    window.verifyAttendance =
+        id => LA.verifyAttendance(id);
+
+    console.log(
+        '✅ LecturerAttendance FIX PATCH loaded'
+    );
+    console.log(
+        '📋 Session ID enforcement: ENABLED'
+    );
+    console.log(
+        '📊 Full class register/export: ENABLED'
+    );
+    console.log(
+        '📍 Session radius validation: ENABLED'
+    );
+
+})();
