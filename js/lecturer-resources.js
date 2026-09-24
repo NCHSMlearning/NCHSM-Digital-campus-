@@ -1286,31 +1286,38 @@ btn.innerHTML = originalText;
 // ==========================================
 
 resetForm() {
+    // Reset the form itself if it exists.
+    const form = document.getElementById('lecturer-upload-form');
+    if (form) form.reset();
 
-const form = document.getElementById('lecturer-upload-form');
+    // IMPORTANT: every element lookup below is optional.
+    // Some portal layouts do not include the optional helper labels/buttons.
+    // A missing element must NEVER make a successful upload look like a failed upload.
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+    const setDisplay = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = value;
+    };
 
-if (form) form.reset();
+    setText('lecturer_file_name', 'No file selected');
+    setDisplay('lecturer-pastpaper-fields', 'none');
 
-document.getElementById('lecturer_file_name').textContent = 'No file selected';
+    const pastPaper = document.getElementById('lecturer_is_pastpaper');
+    if (pastPaper) pastPaper.checked = false;
 
-document.getElementById('lecturer-pastpaper-fields').style.display = 'none';
+    setDisplay('lecturer_file_edit_info', 'none');
+    setText('lecturer_podcast_file_name', 'No audio selected');
+    setDisplay('lecturer_podcast_edit_info', 'none');
+    setDisplay('lecturer-form-cancel-btn', 'none');
+    setText('lecturer-submit-btn-text', 'Upload Resource');
+    // Hidden inputs use .value rather than textContent.
+    const editId = document.getElementById('lecturer_edit_id');
+    if (editId) editId.value = '';
 
-document.getElementById('lecturer_is_pastpaper').checked = false;
-
-document.getElementById('lecturer_file_edit_info').style.display = 'none';
-const podcastName = document.getElementById('lecturer_podcast_file_name');
-const podcastInfo = document.getElementById('lecturer_podcast_edit_info');
-if (podcastName) podcastName.textContent = 'No audio selected';
-if (podcastInfo) podcastInfo.style.display = 'none';
-
-document.getElementById('lecturer-form-cancel-btn').style.display = 'none';
-
-document.getElementById('lecturer-submit-btn-text').textContent = 'Upload Resource';
-
-document.getElementById('lecturer_edit_id').value = '';
-
-this.editingResourceId = null;
-
+    this.editingResourceId = null;
 },
 
 // ==========================================
