@@ -725,7 +725,7 @@ const LecturerSessions = {
                         <div style="display:flex;gap:8px;align-items:flex-start;background:#eff6ff;border-radius:10px;padding:10px 12px;margin-top:16px;">
                             <i class="fas fa-info-circle" style="color:#3b82f6;font-size:13px;margin-top:2px;"></i>
                             <div style="font-size:12px;color:#1e40af;line-height:1.5;">
-                                You may change the date/time before attendance starts. If attendance already exists, the date is locked so historical attendance stays on the correct day. Changing the location updates the geo-target coordinates automatically.
+                                You may change the date and time at any point. Changing the date reschedules this same session (the session ID remains unchanged), so it can be opened on the new date. Changing the location updates the geo-target coordinates automatically.
                             </div>
                         </div>
 
@@ -806,19 +806,11 @@ const LecturerSessions = {
                 const supabase = window.lecturerDB?.supabase;
                 if (!supabase) throw new Error('Database not available');
 
-                // If attendance already exists, changing the date would move
-                // historical attendance to another calendar day. Prevent that.
-                const existingAttendance = await this.getSessionAttendanceCount(sessionId);
+                // Date changes are intentionally allowed even when attendance exists.
+                // The SAME scheduled_sessions row/session ID is retained. This lets the
+                // lecturer move/reschedule the session and open it on the new date.
                 const oldDate = this.getSessionDateString(session);
-
-                if (existingAttendance > 0 && newDate !== oldDate) {
-                    showError(
-                        `This session already has ${existingAttendance} attendance record(s). ` +
-                        `The date cannot be changed after attendance has started. ` +
-                        `Create a new session for ${newDate} instead.`
-                    );
-                    return;
-                }
+                const dateChanged = newDate !== oldDate;
 
                 const updateData = {
                     session_date: newDate,
@@ -852,7 +844,12 @@ const LecturerSessions = {
 
                 if (error) throw error;
 
-                window.showNotification(`✅ Session updated to ${newDate} at ${newTime}. Students can check in on that date when the session is opened.`, 'success');
+                window.showNotification(
+                    dateChanged
+                        ? `✅ Session rescheduled to ${newDate} at ${newTime}. The same session can now be opened on that date.`
+                        : `✅ Session updated to ${newDate} at ${newTime}.`,
+                    'success'
+                );
                 window._closeEditSessionModal();
                 await this.loadSessions();
 
