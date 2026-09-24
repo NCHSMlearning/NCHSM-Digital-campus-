@@ -547,7 +547,7 @@ const LecturerSessions = {
                         <i class="fas fa-stop"></i> Close
                     </button>
                 `;
-            } else if (sessionDate && sessionDate.toDateString() === today.toDateString() && status !== 'closed') {
+            } else if (sessionDate && sessionDate.toDateString() === today.toDateString()) {
                 sessionControls += `
                     <button onclick="LecturerSessions.openSession('${session.id}')" 
                             style="background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
@@ -1006,40 +1006,16 @@ const LecturerSessions = {
             return;
         }
 
-        // 🔒 OCCURRENCE SAFETY:
-        // A session ID belongs to ONE attendance occurrence.
-        // Never reopen a closed/scheduled row that already has student
-        // attendance records. Create a NEW session instead.
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) throw new Error('Database connection not available');
-
-            const { count, error: attendanceCheckError } = await supabase
-                .from('geo_attendance_logs')
-                .select('id', { count: 'exact', head: true })
-                .eq('session_id', sessionId)
-                .neq('role', 'lecturer');
-
-            if (attendanceCheckError) throw attendanceCheckError;
-
-            if (Number(count || 0) > 0) {
-                window.showNotification(
-                    '🔒 This session already contains attendance history. Create a NEW session for this attendance occurrence.',
-                    'warning',
-                    6000
-                );
-                this.isProcessing = false;
-                return;
-            }
-        } catch (attendanceError) {
-            console.error('❌ Could not verify session attendance history:', attendanceError);
-            window.showNotification(
-                'Could not verify attendance history. Session was not opened.',
-                'error'
-            );
-            this.isProcessing = false;
-            return;
-        }
+        // 🔓 REOPEN/OPEN THE SAME ATTENDANCE OCCURRENCE
+        // Attendance history does NOT prevent reopening this exact session.
+        // The session UUID represents the occurrence, so reopening updates the
+        // SAME scheduled_sessions row and keeps the SAME session_id on all
+        // existing attendance records.
+        //
+        // Creating a NEW occurrence is handled separately by editSession():
+        // when date/time is changed after attendance exists, the old row is
+        // preserved and a new scheduled_sessions row (new UUID) is created.
+        // Therefore, do NOT block openSession() merely because history exists.
 
         if (!confirm(`Open "${session.session_title || session.title}" for student attendance?`)) {
             this.isProcessing = false;
