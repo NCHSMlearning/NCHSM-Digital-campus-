@@ -61,11 +61,6 @@ const LecturerAttendance = {
             await this.resolveLecturerId();
             await this.loadAssignedUnits();
             await this.loadAllAttendance();
-            // loadAllAttendance() also loads program information, but call it
-            // explicitly once more after assignments are available so the
-            // banner cannot remain at its HTML defaults (0 Students / N/A).
-            await this.loadProgramInfo();
-            this.updateProgramBadge();
             this.setupEventListeners();
             this.populateFilters();
             this.updateProgramBadge();
@@ -409,7 +404,8 @@ const LecturerAttendance = {
                             ${!isLecturerCheckin ? `<button onclick="LecturerAttendance.setAttendanceStatus('${String(log.id).replace(/'/g, "\'")}', 'Present')" data-attendance-action-id="${this.escapeHtml(String(log.id || ''))}" title="Mark Present" style="background:${String(displayStatus).toLowerCase().includes('present') || isVerified ? '#059669' : '#10b981'};color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;"><i class="fas fa-check"></i> Present</button>
                             <button onclick="LecturerAttendance.setAttendanceStatus('${String(log.id).replace(/'/g, "\'")}', 'Absent')" data-attendance-action-id="${this.escapeHtml(String(log.id || ''))}" title="Mark Absent" style="background:${String(displayStatus).toLowerCase() === 'absent' ? '#b91c1c' : '#ef4444'};color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;"><i class="fas fa-user-slash"></i> Absent</button>` : ''}
                             ${hasLocation && !isLecturerCheckin ? `<button onclick="LecturerAttendance.viewAttendanceMap(${Number(log.latitude)},${Number(log.longitude)},'${actionName}')" title="View location" style="background:#4C1D95;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;"><i class="fas fa-map-marker-alt"></i></button>` : `<span style="color:#94a3b8;font-size:11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`}
-                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${String(log.id).replace(/'/g, "\'")}')" data-verify-id="${this.escapeHtml(String(log.id || ''))}" title="Verify" style="background:#8b5cf6;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:10px;"><i class="fas fa-check-double"></i> Verify</button>` : ''}
+                            ${canVerify ? `<button onclick="LecturerAttendance.verifyAttendance('${String(log.id).replace(/'/g, "\\'")}')" data-verify-id="${this.escapeHtml(String(log.id || ''))}" title="Verify" style="background:#8b5cf6;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:10px;"><i class="fas fa-check-double"></i> Verify</button>` : ''}
+                            ${!isLecturerCheckin && log.id ? `<button onclick="LecturerAttendance.deleteAttendanceRecord('${String(log.id).replace(/'/g, "\\'")}')" data-delete-id="${this.escapeHtml(String(log.id || ''))}" title="Delete attendance record" style="background:#dc2626;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;"><i class="fas fa-trash-alt"></i> Delete</button>` : ''}
                         </div>
                     </td>
                 </tr>`;
@@ -582,33 +578,11 @@ const LecturerAttendance = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
 
-            let studentCount = 0;
-
-            const countResult = await supabase
+            const { count: studentCount } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('*', { count: 'exact', head: true })
                 .eq('program', program)
                 .in('role', ['student', 'Student']);
-
-            if (!countResult.error && Number.isFinite(countResult.count)) {
-                studentCount = Number(countResult.count);
-            }
-
-            // Some Supabase/RLS configurations do not return an exact HEAD
-            // count. Fall back to fetching only identifiers/names so the UI
-            // does not incorrectly remain at "0 Students".
-            if (!studentCount) {
-                const { data: studentRows, error: studentRowsError } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id')
-                    .eq('program', program)
-                    .in('role', ['student', 'Student'])
-                    .limit(5000);
-
-                if (!studentRowsError && Array.isArray(studentRows)) {
-                    studentCount = studentRows.length;
-                }
-            }
 
             const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
             const currentBlock = blocks.length > 0 ? this.getBlockDisplay(blocks[0]) : 'N/A';
@@ -1091,32 +1065,7 @@ const LecturerAttendance = {
             return;
         }
 
-        // ---- 1. CAPTURE THE CURRENT HTML FILTER STATE ----
-        // The current HTML uses filterDateFrom/filterDateTo (not filterDate).
-        // Keep filterDate as a compatibility alias because the export template
-        // below uses it when describing a filtered sheet.
-        const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
-        const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
-        const legacyFilterDate = (document.getElementById('filterDate')?.value || '').trim();
-        const filterDate = filterDateFrom || filterDateTo || legacyFilterDate || '';
-
-        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
-        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
-        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
-        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
-
-        const hasFilters =
-            !!filterDateFrom ||
-            !!filterDateTo ||
-            (!!legacyFilterDate && !filterDateFrom && !filterDateTo) ||
-            filterBlock !== 'All' ||
-            filterUnit !== 'All' ||
-            filterYear !== 'All' ||
-            filterSessionType !== 'All' ||
-            !!searchText;
-
-        // ---- 2. USE THE EXACT ACTIVE FILTER RESULT ----
+        // ---- 1. USE THE EXACT ACTIVE FILTER RESULT ----
         // Export must match what the lecturer sees on screen. This includes
         // date range, block, unit, year, session type and search.
         const filteredLogs = this.applyFilters();
@@ -1469,14 +1418,9 @@ const LecturerAttendance = {
             if (hasFilters) {
                 const bits = [];
                 if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
-                if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
                 if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
                 if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
-                if (filterDateFrom && filterDateTo && filterDateFrom !== filterDateTo) {
-                    bits.push(`Dates ${filterDateFrom} → ${filterDateTo}`);
-                } else if (filterDate) {
-                    bits.push(`Date ${filterDate}`);
-                }
+                if (filterDate) bits.push(`Date ${filterDate}`);
                 if (searchText) bits.push(`Search "${searchText}"`);
                 mergeRow(r++, `Filtered by → ${bits.join('  ·  ')}`, {
                     fill: AMBER_LIGHT, font: { italic: true, color: { argb: 'FF92400E' }, size: 10 }, height: 18
@@ -2241,6 +2185,57 @@ const LecturerAttendance = {
         } finally { this.isProcessing = false; }
     },
 
+    async deleteAttendanceRecord(recordId) {
+        if (!recordId) {
+            this.showNotification('Attendance record ID is required.', 'error');
+            return;
+        }
+        if (this.isProcessing) return;
+
+        const record = [...(this.todayLogs || []), ...(this.pastLogs || [])]
+            .find(r => String(r?.id) === String(recordId));
+
+        if (record?.session_type === 'Lecturer Check-in' || record?.role === 'lecturer') {
+            this.showNotification('Lecturer check-in records cannot be deleted from student attendance.', 'warning');
+            return;
+        }
+
+        const studentName = record?.student_name || 'this student';
+        const regNo = record?.registration_number || record?.student_id || '';
+        const label = regNo ? `${studentName} (${regNo})` : studentName;
+
+        if (!confirm(`Delete attendance for ${label}?\n\nThis deletes only this attendance record and cannot be undone.`)) return;
+
+        const deleteBtn = document.querySelector(`[data-delete-id="${CSS.escape(String(recordId))}"]`);
+        if (deleteBtn) {
+            deleteBtn.disabled = true;
+            deleteBtn.style.opacity = '0.65';
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+
+        this.isProcessing = true;
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database not available');
+
+            const { error } = await supabase
+                .from('geo_attendance_logs')
+                .delete()
+                .eq('id', recordId);
+
+            if (error) throw error;
+
+            this.showNotification(`🗑️ Attendance for ${studentName} deleted.`, 'success');
+            await this.loadAllAttendance();
+            this.applyFilters();
+        } catch (error) {
+            console.error('❌ deleteAttendanceRecord:', error);
+            this.showNotification('Delete failed: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
+        }
+    },
+
     async bulkDeleteAttendance() {
         if (this.isProcessing) return;
         const rows = this.applyFilters().filter(r => r?.id && r.session_type !== 'Lecturer Check-in');
@@ -2290,6 +2285,7 @@ window.setAttendanceStatus = (id, status) => LecturerAttendance.setAttendanceSta
 window.bulkVerifyAttendance = (date) => LecturerAttendance.bulkVerifyAttendance(date);
 window.bulkMarkAbsent = () => LecturerAttendance.bulkMarkAbsent();
 window.bulkDeleteAttendance = () => LecturerAttendance.bulkDeleteAttendance();
+window.deleteAttendanceRecord = (id) => LecturerAttendance.deleteAttendanceRecord(id);
 
 window.reconcileSessionAttendance = (sessionId, finalize = true) =>
     LecturerAttendance.reconcileSessionAttendance(sessionId, finalize);
