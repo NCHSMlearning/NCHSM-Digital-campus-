@@ -1065,7 +1065,29 @@ const LecturerAttendance = {
             return;
         }
 
-        // ---- 1. USE THE EXACT ACTIVE FILTER RESULT ----
+        // ---- 1. READ ACTIVE FILTER STATE ----
+        // Keep these variables local to exportCSV. The Excel builder below
+        // uses them for the filter banner, filename and success message.
+        const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
+        const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
+        const legacyDate = (document.getElementById('filterDate')?.value || '').trim();
+        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
+        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
+        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
+        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
+        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
+        const rangeFrom = filterDateFrom || legacyDate || '';
+        const rangeTo = filterDateTo || legacyDate || '';
+        const hasFilters = Boolean(
+            rangeFrom || rangeTo ||
+            filterBlock !== 'All' ||
+            filterUnit !== 'All' ||
+            filterYear !== 'All' ||
+            filterSessionType !== 'All' ||
+            searchText
+        );
+
+        // ---- 2. USE THE EXACT ACTIVE FILTER RESULT ----
         // Export must match what the lecturer sees on screen. This includes
         // date range, block, unit, year, session type and search.
         const filteredLogs = this.applyFilters();
@@ -1418,9 +1440,11 @@ const LecturerAttendance = {
             if (hasFilters) {
                 const bits = [];
                 if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
+                if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
                 if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
                 if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
-                if (filterDate) bits.push(`Date ${filterDate}`);
+                if (rangeFrom && rangeTo && rangeFrom !== rangeTo) bits.push(`Dates ${rangeFrom} → ${rangeTo}`);
+                else if (rangeFrom) bits.push(`Date ${rangeFrom}`);
                 if (searchText) bits.push(`Search "${searchText}"`);
                 mergeRow(r++, `Filtered by → ${bits.join('  ·  ')}`, {
                     fill: AMBER_LIGHT, font: { italic: true, color: { argb: 'FF92400E' }, size: 10 }, height: 18
@@ -1497,6 +1521,7 @@ const LecturerAttendance = {
             const totalStudents = students.length;
             const totalSessions = sortedDates.length;
             const totalPossible = totalStudents * totalSessions;
+            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const rate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
 
             ws.mergeCells(r, 1, r, totalCols);
@@ -1509,7 +1534,6 @@ const LecturerAttendance = {
             r += 2;
 
             // ---- Detailed attendance summary ----
-            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const totalAbsent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === 'A' || v === 'A*').length, 0);
             const totalAutoAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source === 'Automatic Session Finalization').length;
             const totalAttemptedAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source !== 'Automatic Session Finalization').length;
@@ -1625,6 +1649,7 @@ const LecturerAttendance = {
         // ---- 6. WRITE ----
         const suffixBits = [];
         if (filterBlock !== 'All') suffixBits.push(filterBlock.replace(/\s+/g, ''));
+        if (filterUnit !== 'All') suffixBits.push(filterUnit.replace(/\s+/g, '').slice(0, 30));
         if (filterYear !== 'All') suffixBits.push(`Intake${filterYear}`);
         if (filterSessionType !== 'All') suffixBits.push(filterSessionType);
         const suffix = suffixBits.length ? '_' + suffixBits.join('_') : '';
@@ -1703,7 +1728,7 @@ const LecturerAttendance = {
             form.addEventListener('submit', (e) => this.markStudentAttendance(e));
         }
 
-        ['filterDateFrom', 'filterDateTo', 'filterDate', 'filterBlock', 'filterUnit', 'filterYear', 'filterSessionType'].forEach(id => {
+        ['filterDateFrom', 'filterDateTo', 'filterDate', 'filterBlock', 'filterUnit', 'filterYear', 'filterSessionType', 'filterSearch'].forEach(id => {
             const el = document.getElementById(id);
             if (el && !el.dataset.filterBound) {
                 el.dataset.filterBound = '1';
