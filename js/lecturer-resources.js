@@ -1,3 +1,115 @@
+/* =========================================================
+   LECTURER RESOURCES - MOBILE TABLE FIX
+   ========================================================= */
+(function injectLecturerResourcesResponsiveCSS(){
+    if (document.getElementById('lecturer-resources-responsive-fix')) return;
+    const style = document.createElement('style');
+    style.id = 'lecturer-resources-responsive-fix';
+    style.textContent = `
+        .table-responsive {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto !important;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            position: relative;
+        }
+        .table-responsive table {
+            width: 100%;
+            min-width: 1080px;
+            border-collapse: separate !important;
+            border-spacing: 0;
+        }
+        .table-responsive th,
+        .table-responsive td {
+            vertical-align: middle;
+        }
+        .lecturer-resource-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+        .lecturer-resource-action {
+            height: 36px;
+            min-width: 76px;
+            padding: 0 12px;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+        .lecturer-resource-delete {
+            width: 38px;
+            min-width: 38px;
+            padding: 0;
+        }
+        @media (max-width: 700px) {
+            .table-responsive {
+                border-radius: 14px !important;
+            }
+            .table-responsive table {
+                min-width: 1080px !important;
+                font-size: 13px !important;
+            }
+            .table-responsive thead th:last-child {
+                position: sticky !important;
+                right: 0 !important;
+                z-index: 20 !important;
+                background: #f8fafc !important;
+                box-shadow: -7px 0 14px rgba(15,23,42,.10);
+            }
+            .table-responsive tbody td:last-child {
+                position: sticky !important;
+                right: 0 !important;
+                z-index: 10 !important;
+                background: #fff !important;
+                box-shadow: -7px 0 14px rgba(15,23,42,.08);
+            }
+            .lecturer-resource-action {
+                height: 34px;
+                min-width: 70px;
+                padding: 0 10px;
+                font-size: 11px;
+            }
+            .lecturer-resource-delete {
+                width: 36px;
+                min-width: 36px;
+            }
+        }
+        @media (min-width: 701px) {
+            .table-responsive tbody td:last-child,
+            .table-responsive thead th:last-child {
+                position: static !important;
+                box-shadow: none !important;
+            }
+        }
+        @media (max-width: 600px) {
+            .toolbar {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+            }
+            .toolbar > * {
+                width: 100% !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
 const LecturerResources = {
 
 // State
@@ -295,17 +407,18 @@ this.lecturerIdIsValid = false;
 // ==========================================
 
 updateDepartmentDisplay() {
+    const deptName = this.getProgramDisplayName(this.assignedPrograms[0] || 'KRCHN');
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value ?? '';
+    };
 
-const deptName = this.getProgramDisplayName(this.assignedPrograms[0] || 'KRCHN');
-
-document.getElementById('lecturer-dept-name').textContent = deptName;
-
-document.getElementById('lecturer-dept-display').textContent = this.assignedPrograms[0] || 'KRCHN';
-
-document.getElementById('lecturer-current-block-display').textContent = 
-
-this.lecturerProfile?.current_block || this.lecturerProfile?.block || 'Not Assigned';
-
+    setText('lecturer-dept-name', deptName);
+    setText('lecturer-dept-display', this.assignedPrograms[0] || 'KRCHN');
+    setText(
+        'lecturer-current-block-display',
+        this.lecturerProfile?.current_block || this.lecturerProfile?.block || 'Not Assigned'
+    );
 },
 
 // ==========================================
@@ -685,23 +798,20 @@ this.renderTable();
 // ==========================================
 
 updateCounts() {
+    const total = this.resources.length;
+    const materials = this.resources.filter(r => ['material','general'].includes(r.resource_type) || !r.resource_type);
+    const pastPapers = this.resources.filter(r => r.resource_type === 'pastpaper');
+    const examResources = this.resources.filter(r => r.resource_type === 'exam');
 
-const total = this.resources.length;
+    const setCount = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(value);
+    };
 
-const materials = this.resources.filter(r => ['material','general'].includes(r.resource_type) || !r.resource_type);
-
-const pastPapers = this.resources.filter(r => r.resource_type === 'pastpaper');
-
-const examResources = this.resources.filter(r => r.resource_type === 'exam');
-
-document.getElementById('lecturer-all-count').textContent = total;
-
-document.getElementById('lecturer-material-count').textContent = materials.length;
-
-document.getElementById('lecturer-pastpaper-count').textContent = pastPapers.length;
-
-document.getElementById('lecturer-exam-count').textContent = examResources.length;
-
+    setCount('lecturer-all-count', total);
+    setCount('lecturer-material-count', materials.length);
+    setCount('lecturer-pastpaper-count', pastPapers.length);
+    setCount('lecturer-exam-count', examResources.length);
 },
 
 // ==========================================
@@ -713,163 +823,133 @@ document.getElementById('lecturer-exam-count').textContent = examResources.lengt
 renderTable() {
 
 const tbody = document.getElementById('lecturer-resources-list');
-
 if (!tbody) return;
+
+const table = tbody.closest('table');
+if (table) {
+    table.style.minWidth = '980px';
+    table.style.width = '100%';
+}
 
 let filtered = this.getFilteredResources();
 
 if (filtered.length === 0) {
-
-tbody.innerHTML = `
-
-                <tr>
-
-                    <td colspan="9" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
-
-                        <i class="fas fa-file-upload" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-
-                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Resources Found</h3>
-
-                        <p style="margin: 0; font-size: 14px;">Upload your first resource using the form above.</p>
-
-                    </td>
-
-                </tr>
-
-            `;
-
-return;
-
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="9" style="padding:50px 20px;text-align:center;color:#94a3b8;">
+                <i class="fas fa-file-upload" style="font-size:48px;display:block;margin-bottom:15px;color:#e2e8f0;"></i>
+                <h3 style="color:#475569;margin:0 0 8px 0;">No Resources Found</h3>
+                <p style="margin:0;font-size:14px;">Upload your first resource using the form above.</p>
+            </td>
+        </tr>`;
+    return;
 }
 
-const userId = this.lecturerAssignmentId || this.lecturerProfile?.user_id;
+
+// Keep the action column usable on phones while the rest of the table scrolls.
+const actionCellStyle = 'padding:10px 12px;min-width:245px;width:245px;background:#fff;';
+
+// Repair/standardize the table wrapper for horizontal mobile scrolling.
+const wrapper = table?.parentElement;
+if (wrapper) {
+    wrapper.style.overflowX = 'auto';
+    wrapper.style.overflowY = 'hidden';
+    wrapper.style.webkitOverflowScrolling = 'touch';
+}
+
+// Responsive CSS controls the Actions column: normal on desktop,
+// sticky on phones while the rest of the table scrolls horizontally.
+const actionHeader = table?.querySelector('thead tr th:last-child');
+if (actionHeader) {
+    actionHeader.style.minWidth = '245px';
+    actionHeader.style.width = '245px';
+}
 
 tbody.innerHTML = filtered.map(r => {
+    const isOwner = this.isResourceOwner(r);
+    const typeIcon = this.getResourceTypeIcon(r.resource_type);
+    const typeLabel = this.getResourceTypeLabel(r.resource_type);
 
-const isOwner = this.isResourceOwner(r);
+    const viewButton = r.file_url && r.file_url !== '#'
+        ? `<a href="${this.escapeHtml(r.file_url)}" target="_blank" rel="noopener noreferrer"
+              class="lecturer-resource-action" style="background:#4C1D95;color:#fff;"
+              aria-label="View ${this.escapeHtml(r.title || 'resource')}">
+                <i class="fas fa-eye"></i><span>View</span>
+           </a>`
+        : '';
 
-const typeIcon = this.getResourceTypeIcon(r.resource_type);
+    const editButton = isOwner
+        ? `<button type="button" onclick="LecturerResources.editResource('${String(r.id).replace(/'/g, "\\'")}')"
+              class="lecturer-resource-action" style="background:#dbeafe;color:#1e40af;"
+              aria-label="Edit ${this.escapeHtml(r.title || 'resource')}">
+                <i class="fas fa-edit"></i><span>Edit</span>
+           </button>`
+        : '';
 
-const typeLabel = this.getResourceTypeLabel(r.resource_type);
+    const deleteButton = isOwner
+        ? `<button type="button" onclick="LecturerResources.deleteResource('${String(r.id).replace(/'/g, "\\'")}')"
+              class="lecturer-resource-action lecturer-resource-delete" style="background:#fee2e2;color:#dc2626;"
+              aria-label="Delete ${this.escapeHtml(r.title || 'resource')}">
+                <i class="fas fa-trash"></i>
+           </button>`
+        : '';
 
-return `
+    return `
+        <tr style="border-bottom:1px solid #f1f5f9;transition:background .2s;">
+            <td style="padding:12px 16px;min-width:180px;">
+                <span style="display:flex;align-items:center;gap:7px;min-width:0;">
+                    ${typeIcon}
+                    <span style="font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;">
+                        ${this.escapeHtml(r.title || 'Untitled')}
+                    </span>
+                </span>
+            </td>
 
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+            <td style="padding:12px 16px;color:#64748b;min-width:180px;max-width:220px;">
+                <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    ${this.escapeHtml(r.description || '—')}
+                </div>
+            </td>
 
-                    onmouseover="this.style.background='#f8fafc'" 
+            <td style="padding:12px 16px;white-space:nowrap;">
+                <span style="background:${this.getTypeColor(r.resource_type)};color:white;padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;">
+                    ${typeLabel}
+                </span>
+            </td>
 
-                    onmouseout="this.style.background='transparent'">
+            <td style="padding:12px 16px;font-size:13px;color:#475569;white-space:nowrap;">
+                ${this.escapeHtml(this.getProgramDisplayName(r.target_program || r.program_type || 'N/A'))}
+            </td>
 
-                    <td style="padding: 12px 16px;">
+            <td style="padding:12px 16px;font-size:13px;color:#475569;white-space:nowrap;">
+                ${this.escapeHtml(r.block || r.block_term || 'N/A')}
+            </td>
 
-                        <span style="display: flex; align-items: center; gap: 6px;">
+            <td style="padding:12px 16px;font-size:13px;color:#475569;white-space:nowrap;">
+                ${this.formatDate(r.created_at)}
+            </td>
 
-${typeIcon}
+            <td style="padding:12px 16px;white-space:nowrap;">
+                <span style="background:#d1fae5;color:#065f46;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;">
+                    <i class="fas fa-check-circle" style="font-size:11px;"></i> Published
+                </span>
+            </td>
 
-                            <span style="font-weight: 500; color: #1e293b;">${this.escapeHtml(r.title || 'Untitled')}</span>
+            <td style="padding:12px 16px;white-space:nowrap;">
+                ${r.podcast_url
+                    ? `<span style="display:inline-flex;align-items:center;gap:5px;background:#f3e8ff;color:#6d28d9;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;"><i class="fas fa-podcast"></i> Audio</span>`
+                    : `<span style="color:#94a3b8;font-size:11px;white-space:nowrap;">No audio</span>`}
+            </td>
 
-                        </span>
-
-                    </td>
-
-                    <td style="padding: 12px 16px; color: #64748b; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-
-${this.escapeHtml(r.description || '—')}
-
-                    </td>
-
-                    <td style="padding: 12px 16px;">
-
-                        <span style="background: ${this.getTypeColor(r.resource_type)}; color: white; padding: 2px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-
-${typeLabel}
-
-                        </span>
-
-                    </td>
-
-                    <td style="padding: 12px 16px; font-size: 13px; color: #475569;">
-
-${this.getProgramDisplayName(r.target_program || r.program_type || 'N/A')}
-
-                    </td>
-
-                    <td style="padding: 12px 16px; font-size: 13px; color: #475569;">
-
-${this.escapeHtml(r.block || r.block_term || 'N/A')}
-
-                    </td>
-
-                    <td style="padding: 12px 16px; font-size: 13px; color: #475569;">
-
-${this.formatDate(r.created_at)}
-
-                    </td>
-
-                    <td style="padding: 12px 16px;">
-
-                        <span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
-
-                            <i class="fas fa-check-circle" style="font-size: 11px;"></i> Published
-
-                        </span>
-
-                    </td>
-
-                    <td style="padding: 12px 16px;">
-                            ${r.podcast_url ? `
-                                <span style="display:inline-flex;align-items:center;gap:5px;background:#f3e8ff;color:#6d28d9;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:700;">
-                                    <i class="fas fa-podcast"></i> Available
-                                </span>` : `
-                                <span style="color:#94a3b8;font-size:11px;">No audio</span>`}
-                        </td>
-
-                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-
-${r.file_url && r.file_url !== '#' ? `
-
-                                <a href="${r.file_url}" target="_blank" style="background: #4C1D95; color: white; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" 
-
-                                   onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
-
-                                    <i class="fas fa-download"></i> View
-
-                                </a>
-
-                            ` : ''}
-
-${isOwner ? `
-
-                                <button onclick="LecturerResources.editResource('${r.id}')" 
-
-                                        style="background: #dbeafe; color: #1e40af; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;" 
-
-                                        onmouseover="this.style.background='#bfdbfe'" onmouseout="this.style.background='#dbeafe'">
-
-                                    <i class="fas fa-edit"></i> Edit
-
-                                </button>
-
-                                <button onclick="LecturerResources.deleteResource('${r.id}')" 
-
-                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;" 
-
-                                        onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-
-                                    <i class="fas fa-trash"></i>
-
-                                </button>
-
-                            ` : ''}
-
-                        </div>
-
-                    </td>
-
-                </tr>
-
-            `;
-
+            <!-- IMPORTANT: Actions are now inside a proper TD. -->
+            <td style="${actionCellStyle}">
+                <div class="lecturer-resource-actions">
+                    ${viewButton}
+                    ${editButton}
+                    ${deleteButton}
+                </div>
+            </td>
+        </tr>`;
 }).join('');
 
 },
@@ -1089,6 +1169,8 @@ return;
 }
 
 const file = fileInput.files[0];
+let uploadedMainPath = null;
+let uploadedPodcastPath = null;
 
 // Determine resource type
 
@@ -1118,6 +1200,7 @@ const { error: uploadError } = await supabase.storage
 
 .upload(filePath, file);
 
+if (!uploadError) uploadedMainPath = filePath;
 if (uploadError) throw new Error('Failed to upload file: ' + uploadError.message);
 
 const { data: urlData } = supabase.storage.from('resources').getPublicUrl(filePath);
@@ -1138,6 +1221,7 @@ const fileUrl = urlData?.publicUrl || '';
                 .from('resources')
                 .upload(podcastPath, podcastFile);
 
+            if (!podcastUploadError) uploadedPodcastPath = podcastPath;
             if (podcastUploadError) throw new Error('Failed to upload podcast: ' + podcastUploadError.message);
 
             const { data: podcastUrlData } = supabase.storage
@@ -1258,6 +1342,15 @@ await this.loadAllResources();
 } catch (error) {
 
 console.error('Upload error:', error);
+
+const cleanupPaths = [uploadedMainPath, uploadedPodcastPath].filter(Boolean);
+if (cleanupPaths.length) {
+    try {
+        await supabase.storage.from('resources').remove(cleanupPaths);
+    } catch (cleanupError) {
+        console.warn('⚠️ Upload cleanup failed:', cleanupError);
+    }
+}
 
 window.showNotification?.('❌ ' + error.message, 'error') ||
 
