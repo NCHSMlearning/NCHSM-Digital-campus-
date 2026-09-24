@@ -61,6 +61,11 @@ const LecturerAttendance = {
             await this.resolveLecturerId();
             await this.loadAssignedUnits();
             await this.loadAllAttendance();
+            // loadAllAttendance() also loads program information, but call it
+            // explicitly once more after assignments are available so the
+            // banner cannot remain at its HTML defaults (0 Students / N/A).
+            await this.loadProgramInfo();
+            this.updateProgramBadge();
             this.setupEventListeners();
             this.populateFilters();
             this.updateProgramBadge();
@@ -577,11 +582,33 @@ const LecturerAttendance = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
 
-            const { count: studentCount } = await supabase
+            let studentCount = 0;
+
+            const countResult = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('*', { count: 'exact', head: true })
                 .eq('program', program)
                 .in('role', ['student', 'Student']);
+
+            if (!countResult.error && Number.isFinite(countResult.count)) {
+                studentCount = Number(countResult.count);
+            }
+
+            // Some Supabase/RLS configurations do not return an exact HEAD
+            // count. Fall back to fetching only identifiers/names so the UI
+            // does not incorrectly remain at "0 Students".
+            if (!studentCount) {
+                const { data: studentRows, error: studentRowsError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id')
+                    .eq('program', program)
+                    .in('role', ['student', 'Student'])
+                    .limit(5000);
+
+                if (!studentRowsError && Array.isArray(studentRows)) {
+                    studentCount = studentRows.length;
+                }
+            }
 
             const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
             const currentBlock = blocks.length > 0 ? this.getBlockDisplay(blocks[0]) : 'N/A';
@@ -1064,27 +1091,30 @@ const LecturerAttendance = {
             return;
         }
 
-        // ---- 1. CAPTURE ACTIVE FILTER STATE ----
-        // Keep this local to exportCSV so the export never depends on an
-        // undeclared/global hasFilters variable.
+        // ---- 1. CAPTURE THE CURRENT HTML FILTER STATE ----
+        // The current HTML uses filterDateFrom/filterDateTo (not filterDate).
+        // Keep filterDate as a compatibility alias because the export template
+        // below uses it when describing a filtered sheet.
         const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
         const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
-        const filterLegacyDate = (document.getElementById('filterDate')?.value || '').trim();
+        const legacyFilterDate = (document.getElementById('filterDate')?.value || '').trim();
+        const filterDate = filterDateFrom || filterDateTo || legacyFilterDate || '';
+
         const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
         const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
         const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
         const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-        const filterSearch = (document.getElementById('filterSearch')?.value || '').trim();
+        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
         const hasFilters =
             !!filterDateFrom ||
             !!filterDateTo ||
-            (!!filterLegacyDate && !filterDateFrom && !filterDateTo) ||
+            (!!legacyFilterDate && !filterDateFrom && !filterDateTo) ||
             filterBlock !== 'All' ||
             filterUnit !== 'All' ||
             filterYear !== 'All' ||
             filterSessionType !== 'All' ||
-            !!filterSearch;
+            !!searchText;
 
         // ---- 2. USE THE EXACT ACTIVE FILTER RESULT ----
         // Export must match what the lecturer sees on screen. This includes
@@ -1439,9 +1469,14 @@ const LecturerAttendance = {
             if (hasFilters) {
                 const bits = [];
                 if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
+                if (filterUnit !== 'All') bits.push(`Unit ${filterUnit}`);
                 if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
                 if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
-                if (filterDate) bits.push(`Date ${filterDate}`);
+                if (filterDateFrom && filterDateTo && filterDateFrom !== filterDateTo) {
+                    bits.push(`Dates ${filterDateFrom} → ${filterDateTo}`);
+                } else if (filterDate) {
+                    bits.push(`Date ${filterDate}`);
+                }
                 if (searchText) bits.push(`Search "${searchText}"`);
                 mergeRow(r++, `Filtered by → ${bits.join('  ·  ')}`, {
                     fill: AMBER_LIGHT, font: { italic: true, color: { argb: 'FF92400E' }, size: 10 }, height: 18
