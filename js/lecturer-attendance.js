@@ -49,198 +49,6 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // SESSION-SAFE ATTENDANCE HELPERS
-    // ============================================================
-    getLocalDateString(date = new Date()) {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    },
-
-    isValidAttendanceStatus(log) {
-        const status = String(log?.attendance_status || '').toLowerCase();
-        return status === 'present' || status === 'verified' || log?.is_verified === true;
-    },
-
-    attendanceIdentity(log) {
-        return String(log?.user_id || log?.student_id || log?.registration_number || '').trim();
-    },
-
-    chooseEffectiveAttendanceRows(logs = []) {
-        const byKey = new Map();
-        const rank = (log) => {
-            const status = String(log?.attendance_status || '').toLowerCase();
-            if (status === 'verified' || log?.is_verified === true) return 4;
-            if (status === 'present') return 3;
-            if (status === 'pending') return 2;
-            if (status === 'absent') return 1;
-            return 0;
-        };
-
-        for (const log of logs) {
-            const key = `${this.attendanceIdentity(log)}|${String(log?.session_id || 'NO_SESSION')}`;
-            if (!key || key.startsWith('|')) continue;
-            const previous = byKey.get(key);
-            if (!previous ||
-                rank(log) > rank(previous) ||
-                (rank(log) === rank(previous) &&
-                 new Date(log?.check_in_time || log?.created_at || 0) >
-                 new Date(previous?.check_in_time || previous?.created_at || 0))) {
-                byKey.set(key, log);
-            }
-        }
-        return [...byKey.values()];
-    },
-
-    async getScheduledSessionsByIds(sessionIds = []) {
-        const supabase = window.lecturerDB?.supabase;
-        const ids = [...new Set(sessionIds.filter(Boolean).map(String))];
-        if (!supabase || !ids.length) return new Map();
-
-        const { data, error } = await supabase
-            .from('scheduled_sessions')
-            .select('id, session_date, session_time, session_type, unit_name, course_name, title, session_title, block, block_term, intake_year, target_program, program, location_name, target_radius')
-            .in('id', ids);
-
-        if (error) {
-            console.warn('⚠️ Could not load session metadata:', error.message);
-            return new Map();
-        }
-
-        return new Map((data || []).map(session => [String(session.id), session]));
-    },
-
-    async attachSessionMetadata(logs = []) {
-        const sessionIds = logs.map(l => l.session_id).filter(Boolean);
-        const sessionMap = await this.getScheduledSessionsByIds(sessionIds);
-        return logs.map(log => {
-            const session = sessionMap.get(String(log.session_id));
-            return session ? { ...log, _session: session } : log;
-        });
-    },
-
-    async getSessionForManualAttendance({ date, unit, sessionType }) {
-        const supabase = window.lecturerDB?.supabase;
-        const profile = window.lecturerDB?.getCurrentUserProfile?.();
-        const lecturerId = this.lecturerUuid || profile?.user_id;
-        if (!supabase || !date) return null;
-
-        let query = supabase
-            .from('scheduled_sessions')
-            .select('*')
-            .eq('session_date', date)
-            .in('status', ['scheduled', 'active', 'closed'])
-            .order('session_time', { ascending: true });
-
-        if (lecturerId) query = query.eq('created_by', lecturerId);
-        if (unit) query = query.eq('unit_name', unit);
-        if (sessionType) query = query.eq('session_type', sessionType);
-
-        const { data, error } = await query.limit(10);
-        if (error) {
-            console.warn('⚠️ Manual attendance session lookup failed:', error.message);
-            return null;
-        }
-        return (data || [])[0] || null;
-    },
-
-    async findExistingAttendance(userId, sessionId) {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase || !userId || !sessionId) return null;
-
-        const { data, error } = await supabase
-            .from('geo_attendance_logs')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('session_id', sessionId)
-            .neq('role', 'lecturer')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-            throw new Error(error.message);
-        }
-        return data || null;
-    },
-
-    async saveAttendanceForSession({ userId, student, session, attendance = {} }) {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase || !userId || !session?.id) throw new Error('Student and session are required');
-
-        const now = new Date().toISOString();
-        const existing = await this.findExistingAttendance(userId, session.id);
-
-        const base = {
-            user_id: userId,
-            student_id: student?.student_id || student?.admission_number || student?.registration_number || userId,
-            registration_number: student?.registration_number || student?.admission_number || student?.student_id || userId,
-            student_name: student?.full_name || student?.name || 'Student',
-            session_id: session.id,
-            target_id: session.id,
-            session_type: session.session_type || 'Class',
-            target_name: session.location_name || session.session_title || session.title || 'Class',
-            unit_name: session.unit_name || session.course_name || attendance.unit_name || 'General',
-            program: student?.program || session.target_program || session.program || this.currentProgram || 'KRCHN',
-            block: student?.block || session.block_term || session.block || null,
-            intake_year: student?.intake_year || session.intake_year || null,
-            role: 'student'
-        };
-
-        const updatePayload = {
-            ...attendance,
-            ...base,
-            attendance_status: 'Present',
-            is_verified: attendance.is_verified ?? false,
-            finalized_at: null,
-            finalized_by: null,
-            verification_source: attendance.verification_source || 'Student Check-in',
-            finalization_reason: null,
-            check_in_time: attendance.check_in_time || now
-        };
-
-        if (existing?.id) {
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .update(updatePayload)
-                .eq('id', existing.id)
-                .select('*')
-                .maybeSingle();
-
-            if (error) throw new Error(error.message);
-            return { data, reused: true };
-        }
-
-        const { data, error } = await supabase
-            .from('geo_attendance_logs')
-            .insert({ ...updatePayload, created_at: now })
-            .select('*')
-            .maybeSingle();
-
-        if (error) {
-            // If a DB uniqueness constraint has already been installed, handle
-            // a concurrent insert by re-reading the existing row.
-            if (String(error.code || '').startsWith('23')) {
-                const concurrent = await this.findExistingAttendance(userId, session.id);
-                if (concurrent?.id) {
-                    const { data: updated, error: updateError } = await supabase
-                        .from('geo_attendance_logs')
-                        .update(updatePayload)
-                        .eq('id', concurrent.id)
-                        .select('*')
-                        .maybeSingle();
-                    if (updateError) throw new Error(updateError.message);
-                    return { data: updated, reused: true };
-                }
-            }
-            throw new Error(error.message);
-        }
-
-        return { data, reused: false };
-    },
-
-    // ============================================================
     // INIT
     // ============================================================
     async init() {
@@ -417,12 +225,11 @@ const LecturerAttendance = {
                 tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Database not available</td></tr>';
                 return;
             }
+            const todayStr = new Date().toISOString().split('T')[0];
 
-            const todayStr = this.getLocalDateString();
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
-                .neq('role', 'lecturer')
                 .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .lte('check_in_time', `${todayStr}T23:59:59.999Z`)
                 .order('check_in_time', { ascending: false });
@@ -431,9 +238,7 @@ const LecturerAttendance = {
                 tbody.innerHTML = `<tr><td colspan="10" style="padding:30px;text-align:center;color:#ef4444;">Error: ${error.message}</td></tr>`;
                 return;
             }
-
-            const enriched = await this.attachSessionMetadata(logs || []);
-            this.todayLogs = this.chooseEffectiveAttendanceRows(enriched);
+            this.todayLogs = logs || [];
             this.filteredTodayLogs = [...this.todayLogs];
             this.renderTodayAttendance();
             this.updateStats(this.todayLogs);
@@ -569,20 +374,17 @@ const LecturerAttendance = {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
+            const todayStr = new Date().toISOString().split('T')[0];
 
-            const todayStr = this.getLocalDateString();
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
-                .neq('role', 'lecturer')
                 .lt('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .order('check_in_time', { ascending: false })
-                .limit(1000);
+                .limit(100);
 
             if (error) { console.error(error); return; }
-
-            const enriched = await this.attachSessionMetadata(logs || []);
-            this.pastLogs = this.chooseEffectiveAttendanceRows(enriched);
+            this.pastLogs = logs || [];
             this.filteredPastLogs = [...this.pastLogs];
             this.renderPastAttendance();
         } catch (error) {
@@ -663,33 +465,24 @@ const LecturerAttendance = {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
+            const todayStr = new Date().toISOString().split('T')[0];
 
-            const todayStr = this.getLocalDateString();
-            const { data: logs, error } = await supabase
+            const { data: logs } = await supabase
                 .from('geo_attendance_logs')
-                .select('*')
-                .neq('role', 'lecturer')
+                .select('attendance_status, is_verified')
                 .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .lte('check_in_time', `${todayStr}T23:59:59.999Z`);
 
-            if (error) throw error;
-
-            const effective = this.chooseEffectiveAttendanceRows(logs || []);
-            const total = effective.length;
-            const present = effective.filter(l => this.isValidAttendanceStatus(l)).length;
-            const absent = effective.filter(l => String(l.attendance_status || '').toLowerCase() === 'absent').length;
-            const pending = effective.filter(l => {
-                const status = String(l.attendance_status || '').toLowerCase();
-                return status === 'pending' || status === '';
-            }).length;
+            const total = logs?.length || 0;
+            const present = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'present' || l.is_verified === true).length || 0;
+            const absent = logs?.filter(l => (l.attendance_status || '').toLowerCase() === 'absent').length || 0;
+            const pending = total - present - absent;
             const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
             const cardMap = {
-                totalStudentsCount: total,
-                presentTodayCount: present,
-                absentTodayCount: absent,
-                pendingCount: pending,
-                attendanceRate: rate + '%'
+                'totalStudentsCount': total, 'presentTodayCount': present,
+                'absentTodayCount': absent, 'pendingCount': pending,
+                'attendanceRate': rate + '%'
             };
 
             for (const [id, value] of Object.entries(cardMap)) {
@@ -810,7 +603,7 @@ const LecturerAttendance = {
                 const userId = profile?.user_id || this.lecturerUuid;
                 if (!supabase || !userId) throw new Error('Database or user not available');
 
-                const today = this.getLocalDateString();
+                const today = new Date().toISOString().split('T')[0];
                 const { data: existing } = await supabase
                     .from('geo_attendance_logs')
                     .select('id')
@@ -895,60 +688,41 @@ const LecturerAttendance = {
 
             const { data: student } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, program, block, intake_year, student_id, admission_number, registration_number')
+                .select('full_name, program, block, intake_year, student_id')
                 .eq('user_id', studentId)
                 .maybeSingle();
 
             if (!student) throw new Error('Student not found');
 
-            // Manual attendance must belong to a real scheduled session.
-            // This preserves the same one-student/one-session architecture
-            // used by GPS check-in and session reconciliation.
-            const session = await this.getSessionForManualAttendance({
-                date,
-                unit,
-                sessionType
+            const checkInTime = time ? `${date}T${time}:00.000Z` : `${date}T12:00:00.000Z`;
+
+            const { error: insertError } = await supabase.from('geo_attendance_logs').insert({
+                student_id: student.student_id || studentId,
+                user_id: studentId,
+                registration_number: student.student_id || studentId,
+                student_name: student.full_name || 'Student',
+                check_in_time: checkInTime,
+                session_type: sessionType,
+                target_name: unit || 'General', unit_name: unit || 'General',
+                attendance_status: 'Present', is_verified: true, is_manual_entry: true,
+                location_friendly_name: location || 'Manual Entry',
+                location_address: `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
+                program: student.program || profile.program || 'KRCHN',
+                block: student.block || profile.block,
+                block_display: student.block ? this.getBlockDisplay(student.block) : 'N/A',
+                intake_year: student.intake_year || profile.intake_year,
+                role: 'student', recorded_by_id: profile.user_id,
+                recorded_by_name: profile.full_name || 'Lecturer',
+                program_type: this.getProgramTypeLabel(),
+                is_tvet: this.isTVET,
+                created_at: new Date().toISOString()
             });
 
-            if (!session) {
-                throw new Error(`No scheduled session found for ${date}${unit ? ` and unit "${unit}"` : ''}. Create/open the session first.`);
-            }
+            if (insertError) throw new Error(insertError.message);
 
-            const checkInTime = time
-                ? `${date}T${time}:00.000Z`
-                : new Date().toISOString();
-
-            const result = await this.saveAttendanceForSession({
-                userId: studentId,
-                student,
-                session,
-                attendance: {
-                    check_in_time: checkInTime,
-                    latitude: null,
-                    longitude: null,
-                    accuracy_m: null,
-                    distance_meters: null,
-                    is_manual_entry: true,
-                    is_verified: true,
-                    location_friendly_name: location || 'Manual Entry',
-                    location_address: `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
-                    recorded_by_id: profile.user_id,
-                    recorded_by_name: profile.full_name || 'Lecturer',
-                    program_type: this.getProgramTypeLabel(),
-                    is_tvet: this.isTVET,
-                    verification_source: 'Manual Lecturer Entry'
-                }
-            });
-
-            this.showNotification(
-                result.reused
-                    ? `✅ Existing attendance for ${student.full_name} updated — no duplicate created.`
-                    : `✅ ${student.full_name} marked present!`,
-                'success'
-            );
-
+            this.showNotification(`✅ ${student.full_name} marked present!`, 'success');
             form.reset();
-            document.getElementById('attDate').value = this.getLocalDateString();
+            document.getElementById('attDate').value = new Date().toISOString().split('T')[0];
 
             await this.loadTodayAttendance();
             await this.loadAttendanceStats();
@@ -956,8 +730,7 @@ const LecturerAttendance = {
             console.error('❌ markStudentAttendance:', error);
             this.showNotification('Failed: ' + error.message, 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            btn.disabled = false; btn.innerHTML = originalText;
             this.isProcessing = false;
         }
     },
@@ -1578,8 +1351,6 @@ const LecturerAttendance = {
             const totalStudents = students.length;
             const totalSessions = sortedDates.length;
             const totalPossible = totalStudents * totalSessions;
-            const totalPresent = students.reduce((sum, x) =>
-                sum + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const rate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
 
             ws.mergeCells(r, 1, r, totalCols);
@@ -1592,6 +1363,7 @@ const LecturerAttendance = {
             r += 2;
 
             // ---- Detailed attendance summary ----
+            const totalPresent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === '✓').length, 0);
             const totalAbsent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === 'A' || v === 'A*').length, 0);
             const totalAutoAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source === 'Automatic Session Finalization').length;
             const totalAttemptedAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source !== 'Automatic Session Finalization').length;
@@ -1842,7 +1614,7 @@ const LecturerAttendance = {
 
         let query = supabase
             .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id, admission_number, registration_number, program, block, intake_year, role')
+            .select('user_id, full_name, student_id, program, block, intake_year, role')
             .eq('role', 'student')
             .eq('program', program);
 
@@ -1857,12 +1629,8 @@ const LecturerAttendance = {
         return (data || []).map(student => ({
             user_id: student.user_id,
             name: student.full_name || 'Unknown Student',
-            registration_number:
-                student.registration_number ||
-                student.admission_number ||
-                student.student_id ||
-                student.user_id,
-            student_id: student.student_id || student.admission_number || student.registration_number || null,
+            registration_number: student.student_id || student.user_id,
+            student_id: student.student_id || student.user_id,
             program: student.program || program,
             block: student.block || block || null,
             intake_year: student.intake_year || intake || null
@@ -1871,16 +1639,11 @@ const LecturerAttendance = {
 
     async getSessionAttendanceRegister(session, finalize = false) {
         const supabase = window.lecturerDB?.supabase;
-        if (!supabase || !session?.id) {
-            return {
-                roster: [], logs: [], rows: [],
-                summary: { total: 0, present: 0, absent: 0, pending: 0, notCheckedIn: 0, rate: 0 }
-            };
-        }
+        if (!supabase || !session?.id) return { roster: [], logs: [], rows: [], summary: { total: 0, present: 0, absent: 0, pending: 0, notCheckedIn: 0, rate: 0 } };
 
         const roster = await this.getSessionRoster(session);
 
-        const { data: rawLogs, error } = await supabase
+        const { data: logs, error } = await supabase
             .from('geo_attendance_logs')
             .select('*')
             .eq('session_id', session.id)
@@ -1889,19 +1652,27 @@ const LecturerAttendance = {
 
         if (error) throw error;
 
-        // The database may currently contain historical duplicates.
-        // For the session register, always reduce them to one effective
-        // record per student + session.
-        const logs = this.chooseEffectiveAttendanceRows(rawLogs || []);
+        // One effective log per student: prefer Present/Verified, otherwise latest.
         const byStudent = new Map();
+        (logs || []).forEach(log => {
+            const key = String(log.user_id || log.student_id || log.registration_number || '').trim();
+            if (!key) return;
+            const previous = byStudent.get(key);
+            const status = String(log.attendance_status || '').toLowerCase();
+            const prevStatus = String(previous?.attendance_status || '').toLowerCase();
+            const currentIsPresent = status === 'present' || status === 'verified' || log.is_verified === true;
+            const previousIsPresent = prevStatus === 'present' || prevStatus === 'verified' || previous?.is_verified === true;
 
-        logs.forEach(log => {
-            const key = this.attendanceIdentity(log);
-            if (key) byStudent.set(key, log);
+            if (!previous || (currentIsPresent && !previousIsPresent) ||
+                (!currentIsPresent && !previousIsPresent &&
+                 new Date(log.check_in_time || 0) > new Date(previous.check_in_time || 0))) {
+                byStudent.set(key, log);
+            }
         });
 
         const rows = [];
         const missing = [];
+        const rosterKeys = new Set();
 
         for (const student of roster) {
             const keys = [
@@ -1909,6 +1680,8 @@ const LecturerAttendance = {
                 student.student_id,
                 student.registration_number
             ].filter(Boolean).map(String);
+
+            keys.forEach(k => rosterKeys.add(k));
 
             let log = null;
             for (const key of keys) {
@@ -1919,18 +1692,16 @@ const LecturerAttendance = {
             }
 
             const status = String(log?.attendance_status || '').toLowerCase();
-            const hasDistance = log?.distance_meters !== null &&
-                                log?.distance_meters !== undefined &&
-                                log?.distance_meters !== '';
-            const withinRadius = !hasDistance ||
-                Number(log.distance_meters) <= Number(log.target_radius || session.target_radius || 150);
-
             const validPresent =
                 !!log &&
                 (status === 'present' || status === 'verified' || log.is_verified === true) &&
-                withinRadius;
+                Number(log.distance_meters ?? Infinity) <= Number(log.target_radius ?? Infinity);
 
             let finalStatus = validPresent ? 'Present' : (log ? 'Absent' : 'Not Checked In');
+
+            // A student who checked in but was outside the configured target radius
+            // is treated as absent for the finalized class register.
+            if (log && !validPresent) finalStatus = 'Absent';
 
             if (finalize && finalStatus !== 'Present') {
                 missing.push({ student, existingLog: log });
@@ -1952,10 +1723,11 @@ const LecturerAttendance = {
             const inserts = [];
             const updates = [];
 
-            for (const { student, existingLog } of missing) {
+            for (const item of missing) {
+                const { student, existingLog } = item;
+
                 if (existingLog?.id) {
-                    // Keep the SAME row. Never create another row for the
-                    // same student + session.
+                    // Convert weak/out-of-radius/pending records to final Absent.
                     updates.push(
                         supabase
                             .from('geo_attendance_logs')
@@ -1970,10 +1742,11 @@ const LecturerAttendance = {
                             .eq('id', existingLog.id)
                     );
                 } else {
+                    // No check-in at all: create a single Absent record.
                     inserts.push({
                         user_id: student.user_id,
-                        student_id: student.student_id || student.registration_number,
-                        registration_number: student.registration_number,
+                        student_id: student.student_id,
+                        registration_number: student.student_id,
                         student_name: student.name,
                         block: student.block,
                         intake_year: student.intake_year,
@@ -2001,6 +1774,7 @@ const LecturerAttendance = {
                 }
             }
 
+            // Run updates in parallel. Insert absent rows in one batch.
             if (updates.length) {
                 const results = await Promise.all(updates);
                 const failed = results.find(r => r.error);
@@ -2008,33 +1782,13 @@ const LecturerAttendance = {
             }
 
             if (inserts.length) {
-                // Re-check immediately before insertion to reduce duplicate
-                // creation when two close/reconcile calls happen together.
-                const studentIds = inserts.map(x => x.user_id).filter(Boolean);
-                const { data: existingNow, error: existingError } = await supabase
+                const { error: insertError } = await supabase
                     .from('geo_attendance_logs')
-                    .select('id,user_id,session_id')
-                    .eq('session_id', session.id)
-                    .in('user_id', studentIds);
-
-                if (existingError) throw existingError;
-
-                const existingKeys = new Set(
-                    (existingNow || []).map(x => `${x.user_id}|${x.session_id}`)
-                );
-
-                const safeInserts = inserts.filter(
-                    x => !existingKeys.has(`${x.user_id}|${x.session_id}`)
-                );
-
-                if (safeInserts.length) {
-                    const { error: insertError } = await supabase
-                        .from('geo_attendance_logs')
-                        .insert(safeInserts);
-                    if (insertError) throw insertError;
-                }
+                    .insert(inserts);
+                if (insertError) throw insertError;
             }
 
+            // Re-read the finalized register so the caller gets final truth.
             return await this.getSessionAttendanceRegister(session, false);
         }
 
