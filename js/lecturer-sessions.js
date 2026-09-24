@@ -806,11 +806,28 @@ const LecturerSessions = {
                 const supabase = window.lecturerDB?.supabase;
                 if (!supabase) throw new Error('Database not available');
 
-                // Date changes are intentionally allowed even when attendance exists.
-                // The SAME scheduled_sessions row/session ID is retained. This lets the
-                // lecturer move/reschedule the session and open it on the new date.
+                // RESCHEDULING / OCCURRENCE SAFETY
+                // A session ID represents one actual attendance occurrence.
+                // If attendance already exists and the date/time is changed, preserve
+                // the old occurrence and create a fresh scheduled_sessions row/ID for
+                // the new occurrence. If no attendance exists, safely update the same row.
                 const oldDate = this.getSessionDateString(session);
+                const oldTime = String(session.session_time || '').substring(0, 5);
                 const dateChanged = newDate !== oldDate;
+                const timeChanged = newTime !== oldTime;
+
+                let attendanceExists = false;
+                if (dateChanged || timeChanged) {
+                    const { data: existingAttendance, error: attendanceCheckError } = await supabase
+                        .from('geo_attendance_logs')
+                        .select('id')
+                        .eq('session_id', sessionId)
+                        .neq('role', 'lecturer')
+                        .limit(1);
+
+                    if (attendanceCheckError) throw attendanceCheckError;
+                    attendanceExists = Array.isArray(existingAttendance) && existingAttendance.length > 0;
+                }
 
                 const updateData = {
                     session_date: newDate,
@@ -836,20 +853,62 @@ const LecturerSessions = {
                     }
                 }
 
-                const { error } = await supabase
-                    .from('scheduled_sessions')
-                    .update(updateData)
-                    .eq('id', sessionId)
-                    .eq('created_by', this.lecturerUuid || profile?.user_id);
+                const ownerId = this.lecturerUuid || profile?.user_id;
 
-                if (error) throw error;
+                if (attendanceExists && (dateChanged || timeChanged)) {
+                    // Preserve the old session + its attendance history.
+                    // Clone the scheduled session without the old primary key and
+                    // reset attendance lifecycle fields so the new occurrence starts clean.
+                    const newSession = { ...session, ...updateData };
 
-                window.showNotification(
-                    dateChanged
-                        ? `✅ Session rescheduled to ${newDate} at ${newTime}. The same session can now be opened on that date.`
-                        : `✅ Session updated to ${newDate} at ${newTime}.`,
-                    'success'
-                );
+                    delete newSession.id;
+                    delete newSession.created_at;
+                    delete newSession.opened_at;
+                    delete newSession.closed_at;
+                    delete newSession.updated_at;
+
+                    newSession.status = 'scheduled';
+                    newSession.is_active = false;
+                    newSession.opened_by = null;
+                    newSession.closed_at = null;
+
+                    // Keep the current lecturer as owner.
+                    newSession.created_by = ownerId;
+
+                    const { data: createdSession, error: createError } = await supabase
+                        .from('scheduled_sessions')
+                        .insert(newSession)
+                        .select('*')
+                        .single();
+
+                    if (createError) throw createError;
+
+                    window.showNotification(
+                        `✅ New class occurrence created for ${newDate} at ${newTime}. Previous attendance was preserved.`,
+                        'success'
+                    );
+                    console.log('📅 Rescheduled occurrence:', {
+                        old_session_id: sessionId,
+                        new_session_id: createdSession?.id,
+                        old_date: oldDate,
+                        new_date: newDate
+                    });
+                } else {
+                    const { error } = await supabase
+                        .from('scheduled_sessions')
+                        .update(updateData)
+                        .eq('id', sessionId)
+                        .eq('created_by', ownerId);
+
+                    if (error) throw error;
+
+                    window.showNotification(
+                        dateChanged
+                            ? `✅ Session rescheduled to ${newDate} at ${newTime}.`
+                            : `✅ Session updated to ${newDate} at ${newTime}.`,
+                        'success'
+                    );
+                }
                 window._closeEditSessionModal();
                 await this.loadSessions();
 
