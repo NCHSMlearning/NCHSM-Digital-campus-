@@ -1,4 +1,4 @@
-// js/lecturer-sessions.js - COMPLETE WITH TVET + INTAKE YEAR + EDIT SESSION + GEO COORDINATES
+// js/lecturer-sessions.js - COMPLETE WITH TVET + INTAKE YEAR + OCCURRENCE-SAFE ATTENDANCE + GEO COORDINATES
 /**
  * NCHSM Lecturer Sessions Module
  * Uses scheduled_sessions table with correct column names
@@ -8,6 +8,9 @@
  * ✅ intake_year taken from lecturer's dropdown selection
  * ✅ lecturer_id populated for proper joins
  * ✅ editSession() — lecturer can edit date/time/location
+ * ✅ Each attendance occurrence uses its own scheduled_sessions UUID
+ * ✅ Sessions with attendance cannot be reopened/reused
+ * ✅ Editing date/time after attendance creates a fresh session UUID
  * ✅ NEW: CAMPUS_LOCATIONS map — auto-populates target lat/lng/radius
  * ✅ NEW: Location-aware target coordinates on create AND edit
  */
@@ -1003,6 +1006,41 @@ const LecturerSessions = {
             return;
         }
 
+        // 🔒 OCCURRENCE SAFETY:
+        // A session ID belongs to ONE attendance occurrence.
+        // Never reopen a closed/scheduled row that already has student
+        // attendance records. Create a NEW session instead.
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database connection not available');
+
+            const { count, error: attendanceCheckError } = await supabase
+                .from('geo_attendance_logs')
+                .select('id', { count: 'exact', head: true })
+                .eq('session_id', sessionId)
+                .neq('role', 'lecturer');
+
+            if (attendanceCheckError) throw attendanceCheckError;
+
+            if (Number(count || 0) > 0) {
+                window.showNotification(
+                    '🔒 This session already contains attendance history. Create a NEW session for this attendance occurrence.',
+                    'warning',
+                    6000
+                );
+                this.isProcessing = false;
+                return;
+            }
+        } catch (attendanceError) {
+            console.error('❌ Could not verify session attendance history:', attendanceError);
+            window.showNotification(
+                'Could not verify attendance history. Session was not opened.',
+                'error'
+            );
+            this.isProcessing = false;
+            return;
+        }
+
         if (!confirm(`Open "${session.session_title || session.title}" for student attendance?`)) {
             this.isProcessing = false;
             return;
@@ -1012,13 +1050,16 @@ const LecturerSessions = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) throw new Error('Database connection not available');
 
-            // IMPORTANT: reopening updates the SAME session row/id.
+            // This row has no previous attendance, so it is safe to open.
+            // Keep the same UUID for this single occurrence and clear any stale
+            // lifecycle timestamp from an earlier failed/open-close attempt.
             const { error } = await supabase
                 .from('scheduled_sessions')
                 .update({
                     status: 'active',
                     is_active: true,
                     opened_at: new Date().toISOString(),
+                    closed_at: null,
                     opened_by: profile?.full_name || lecturerId
                 })
                 .eq('id', sessionId)
@@ -1185,20 +1226,48 @@ const LecturerSessions = {
             if (error) throw error;
 
             if (!sessions || sessions.length === 0) {
-                window.showNotification('No scheduled or closed sessions for today.', 'info');
+                window.showNotification('No new attendance session available for today. Create a NEW session first.', 'info');
                 this.isProcessing = false;
                 return;
             }
 
-            const session = sessions[0];
+            // Never reopen a row that already contains attendance.
+            // Each attendance occurrence must have its own scheduled_sessions UUID.
+            let session = null;
 
-            // Reopen/reactivate the existing row. No new session ID is generated.
+            for (const candidate of sessions) {
+                const { count, error: attendanceCheckError } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('session_id', candidate.id)
+                    .neq('role', 'lecturer');
+
+                if (attendanceCheckError) throw attendanceCheckError;
+
+                if (Number(count || 0) === 0) {
+                    session = candidate;
+                    break;
+                }
+            }
+
+            if (!session) {
+                window.showNotification(
+                    '🔒 All available sessions for today already have attendance history. Create a NEW session for the next attendance occurrence.',
+                    'warning',
+                    6000
+                );
+                this.isProcessing = false;
+                return;
+            }
+
+            // Open only a clean session occurrence. Its UUID remains unique to this occurrence.
             const { error: updateError } = await supabase
                 .from('scheduled_sessions')
                 .update({
                     status: 'active',
                     is_active: true,
                     opened_at: new Date().toISOString(),
+                    closed_at: null,
                     opened_by: profile?.full_name || lecturerId
                 })
                 .eq('id', session.id)
