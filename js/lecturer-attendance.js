@@ -364,8 +364,14 @@ const LecturerAttendance = {
     },
 
     ensureSessionSelector() {
-        const host = document.getElementById('attendance-content') || document.querySelector('#attendance-content');
-        if (!host || document.getElementById('attendanceSessionSelector')) return;
+        if (document.getElementById('attendanceSessionSelector')) return;
+        const table = document.getElementById('attendanceTable');
+        const host = document.getElementById('attendance-content') ||
+            table?.closest('.card, .panel, .section, .attendance-section') ||
+            table?.parentElement ||
+            document.querySelector('[data-section="attendance"]') ||
+            document.body;
+        if (!host) return;
         const box = document.createElement('div');
         box.id = 'attendanceSessionSelector';
         box.style.cssText = 'margin:12px 0 18px;padding:14px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 8px rgba(15,23,42,.05);';
@@ -1193,7 +1199,17 @@ const LecturerAttendance = {
         const hasFilters = (filterBlock !== 'All') || (filterYear !== 'All') || (filterSessionType !== 'All') || !!searchText;
 
         // ---- 2. SOURCE ----
-        let source = [...(this.todayLogs || [])].filter(l => l.session_type !== 'Lecturer Check-in');
+        // A selected session exports the COMPLETE class register, including students
+        // who have no geo_attendance_logs row yet.
+        let source;
+        if (this.selectedSessionId) {
+            const session = this.selectedSession || await this.getScheduledSessionById(this.selectedSessionId);
+            if (session) {
+                const register = this.sessionRegister || await this.getSessionAttendanceRegister(session, false);
+                source = (register.rows || []).map(row => this.sessionRowToLog(row, session));
+            }
+        }
+        if (!source) source = [...(this.todayLogs || [])].filter(l => l.session_type !== 'Lecturer Check-in');
         if (filterDate) source = source.filter(l => l.check_in_time && new Date(l.check_in_time).toISOString().split('T')[0] === filterDate);
         if (filterBlock !== 'All') source = source.filter(l => String(l.block || '').toLowerCase() === filterBlock.toLowerCase());
         if (filterYear !== 'All') source = source.filter(l => String(l.intake_year || '').toLowerCase() === filterYear.toLowerCase());
