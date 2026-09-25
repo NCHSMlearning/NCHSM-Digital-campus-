@@ -2318,7 +2318,7 @@
                 '</table>' +
 
                 '<p style="text-align:center;margin-top:24px;">' +
-                '<a href="https://nchms.co.ke/student" style="background:#0A3D62;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;">Access Student Portal</a>' +
+                '<a href="https://nchsm.co.ke/student" style="background:#0A3D62;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;">Access Student Portal</a>' +
                 '</p>' +
 
                 '<p style="color:#94a3b8;font-size:12px;margin-top:20px;">This is an automated notification.</p>' +
