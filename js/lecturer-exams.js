@@ -1,6 +1,9 @@
-// js/lecturer-exams.js 
+// js/lecturer-exams.js
+// NCHSM Lecturer Exams / CATs
+// Super Admin-aligned fields + Lecturer scope/permissions
 
-(function () { ‘use strict’;
+(function () {
+    'use strict';
 
     const EDGE_FUNCTION_URL =
         'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email';
@@ -556,125 +559,18 @@
             const selector = this.$('exam_class_selector');
             if (!selector) return;
 
-            const program = this.value([
-                'exam_program',
-                'examProgram'
-            ]);
+            const program = this.value(['exam_program','examProgram']);
+            const intake = this.value(['exam_intake','examIntake']);
+            const block = this.value(['exam_block_term','examBlockTerm']);
 
-            const intake = this.value([
-                'exam_intake',
-                'examIntake'
-            ]);
+            const label = [program, intake, block].filter(Boolean).join(' - ') || 'Assigned Class';
 
-            selector.innerHTML =
-                '<div style="color:#94a3b8;font-size:13px;grid-column:1/-1;text-align:center;padding:8px;">' +
-                '<i class="fas fa-spinner fa-spin"></i> Loading classes...' +
-                '</div>';
-
-            const sb = this.sb();
-
-            if (!sb) {
-                this.renderClassFallback(selector);
-                return;
-            }
-
-            try {
-                const { data, error } = await sb
-                    .from('classes')
-                    .select('*')
-                    .limit(500);
-
-                if (error) throw error;
-
-                let rows = data || [];
-
-                rows = rows.filter(c => {
-                    const cp =
-                        c.program ||
-                        c.program_code ||
-                        c.target_program ||
-                        '';
-
-                    const cy =
-                        c.intake_year ||
-                        c.intake ||
-                        c.year ||
-                        '';
-
-                    const programOk = !program || !cp || cp === program;
-                    const intakeOk = !intake || !cy || String(cy) === String(intake);
-
-                    return programOk && intakeOk;
-                });
-
-                this.classes = rows;
-
-                if (!rows.length) {
-                    this.renderClassFallback(selector);
-                    return;
-                }
-
-                selector.innerHTML = rows.map((c, i) => {
-                    const id = c.id || c.class_id || ('class_' + i);
-
-                    const label =
-                        c.class_name ||
-                        c.name ||
-                        c.class_code ||
-                        c.code ||
-                        ('Class ' + (i + 1));
-
-                    return (
-                        '<label style="display:flex;align-items:center;gap:7px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;cursor:pointer;">' +
-                        '<input type="checkbox" class="exam-class-checkbox" value="' +
-                        this.esc(id) +
-                        '" data-class-name="' +
-                        this.esc(label) +
-                        '" style="accent-color:#4C1D95;">' +
-                        '<span>' + this.esc(label) + '</span>' +
-                        '</label>'
-                    );
-                });
-
-            } catch (err) {
-                console.warn('Class loading:', err.message);
-                this.renderClassFallback(selector);
-            }
-        },
-
-        renderClassFallback(selector) {
-            const program = this.value([
-                'exam_program',
-                'examProgram'
-            ]);
-
-            const intake = this.value([
-                'exam_intake',
-                'examIntake'
-            ]);
-
-            const label =
-                [program, intake].filter(Boolean).join(' - ') ||
-                'Assigned Class';
-
+            this.classes = [{ id: block || '', name: label }];
             selector.innerHTML =
                 '<label style="display:flex;align-items:center;gap:7px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;cursor:pointer;">' +
-                '<input type="checkbox" class="exam-class-checkbox" value="" data-class-name="' +
-                this.esc(label) +
-                '" style="accent-color:#4C1D95;">' +
+                '<input type="checkbox" class="exam-class-checkbox" value="' + this.esc(block || '') + '" data-class-name="' + this.esc(block || label) + '" style="accent-color:#4C1D95;" checked>' +
                 '<span>' + this.esc(label) + '</span>' +
                 '</label>';
-        },
-
-        selectedClasses() {
-            return Array.from(
-                document.querySelectorAll(
-                    '#exam_class_selector .exam-class-checkbox:checked'
-                )
-            ).map(el => ({
-                id: el.value,
-                name: el.dataset.className || ''
-            }));
         },
 
         // --------------------------------------------------------
@@ -886,41 +782,15 @@
                 const program = p.program || p.department || null;
 
                 const fields = [
-                    'id',
-                    'title',
-                    'exam_name',
-                    'exam_type',
-                    'exam_basis',
-                    'exam_date',
-                    'exam_start_time',
-                    'exam_deadline',
-                    'duration_minutes',
-                    'status',
-                    'approval_status',
-                    'created_by',
-                    'target_program',
-                    'program_type',
-                    'block',
-                    'block_term',
-                    'intake_year',
-                    'intake_month',
-                    'course_code',
-                    'course_id',
-                    'marks_out_of',
-                    'total_marks',
-                    'MARKS',
-                    'pass_mark',
-                    'min_fee_balance',
-                    'online_link',
-                    'exam_link',
-                    'venue',
-                    'class_ids',
-                    'class_names',
-                    'show_attendance',
-                    'show_grades',
-                    'show_teacher_remarks',
-                    'show_principal_remarks',
-                    'show_performance_metrics'
+                    'id','program_type','title','exam_date','status','intake_year',
+                    'block','created_at','course_id','block_term','exam_name',
+                    'target_program','MARKS','duration_minutes','exam_start_time',
+                    'exam_type','online_link','updated_at','created_by','course_code',
+                    'exam_link','retake_link','instructions','total_marks','pass_mark',
+                    'marks_out_of','marks_entry_deadline','assigned_classes','exam_basis',
+                    'min_fee_balance','intake_month','approval_status','approved_by',
+                    'approved_at','rejection_reason','description','start_time','end_time',
+                    'is_active','is_published'
                 ].join(',');
 
                 let q = sb
@@ -1000,6 +870,19 @@
             };
 
             return map[raw.toLowerCase()] || raw || 'Draft';
+        },
+
+        dbStatus(status) {
+            const raw = String(status || '').trim();
+            const map = {
+                Upcoming: 'upcoming',
+                InProgress: 'inprogress',
+                Completed: 'completed',
+                published: 'published',
+                Draft: 'draft',
+                Cancelled: 'cancelled'
+            };
+            return map[raw] || raw.toLowerCase() || 'draft';
         },
 
         statusBadge(status) {
@@ -1597,81 +1480,46 @@
                 const normalizedStatus =
                     this.normalizeStatus(status);
 
-                const row = {
-                    title: title,
-                    exam_name: title,
+                const assignedClasses = selectedClasses
+                    .map(c => c.name || c.id)
+                    .filter(Boolean);
 
+                const description = venue ? 'Venue: ' + venue : null;
+
+                const row = {
+                    title,
+                    exam_name: title,
                     exam_type: type,
                     exam_basis: basis,
-
                     exam_date: date,
                     exam_start_time: startTime,
-                    exam_deadline: deadline,
+                    marks_entry_deadline: deadline,
                     duration_minutes: duration,
-
                     target_program: program,
                     program_type: program,
-
-                    block: block,
+                    block,
                     block_term: block,
-
-                    intake_year:
-                        parseInt(intake, 10) || null,
-
+                    intake_year: parseInt(intake, 10) || null,
                     intake_month: intakeMonth,
-
                     course_id: courseId,
                     course_code: courseCode,
-
                     marks_out_of: marksOutOf,
                     total_marks: marksOutOf,
                     MARKS: String(marksOutOf),
-
                     pass_mark: passMark,
                     min_fee_balance: minFeeBalance,
-
                     online_link: link,
                     exam_link: link,
-                    venue: venue,
-
-                    status: normalizedStatus,
-
+                    description,
+                    assigned_classes: assignedClasses,
+                    status: this.dbStatus(status),
                     created_by: this.lecturerUuid,
                     approval_status: 'pending',
-
-                    class_ids:
-                        selectedClasses
-                            .map(c => c.id)
-                            .filter(Boolean),
-
-                    class_names:
-                        selectedClasses
-                            .map(c => c.name)
-                            .filter(Boolean),
-
-                    show_attendance:
-                        this.checked('exam_show_attendance'),
-
-                    show_grades:
-                        this.checked('exam_show_grades'),
-
-                    show_teacher_remarks:
-                        this.checked('exam_show_teacher_remarks'),
-
-                    show_principal_remarks:
-                        this.checked('exam_show_principal_remarks'),
-
-                    show_performance_metrics:
-                        this.checked('exam_show_performance_metrics'),
-
+                    is_active: true,
+                    is_published: false,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 };
-
-                // Remove optional undefined/null values only where useful.
-                Object.keys(row).forEach(key => {
-                    if (row[key] === undefined) delete row[key];
-                });
 
                 let result = await sb
                     .from('exams')
@@ -1686,49 +1534,6 @@
                  * core columns instead of leaving the lecturer unable
                  * to create an assessment.
                  */
-                if (result.error) {
-                    console.warn(
-                        'Enhanced exam insert failed:',
-                        result.error.message
-                    );
-
-                    const legacyRow = {
-                        title: title,
-                        exam_name: title,
-                        exam_type: type,
-                        exam_date: date,
-                        exam_start_time: startTime,
-                        duration_minutes: duration,
-                        target_program: program,
-                        program_type: program,
-                        block: block,
-                        block_term: block,
-                        intake_year: parseInt(intake, 10) || null,
-                        course_code: courseCode,
-                        marks_out_of: marksOutOf,
-                        total_marks: marksOutOf,
-                        MARKS: String(marksOutOf),
-                        pass_mark: passMark,
-                        min_fee_balance: minFeeBalance,
-                        online_link: link,
-                        exam_link: link,
-                        description: venue
-                            ? 'Venue: ' + venue
-                            : null,
-                        status: normalizedStatus,
-                        created_by: this.lecturerUuid,
-                        approval_status: 'pending',
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    };
-
-                    result = await sb
-                        .from('exams')
-                        .insert([legacyRow])
-                        .select('id')
-                        .single();
-                }
-
                 if (result.error) {
                     throw result.error;
                 }
@@ -1752,7 +1557,7 @@
                     'success'
                 );
 
-                this.resetForm();
+                this.resetForm(true);
 
                 await this.loadExams();
 
@@ -1775,10 +1580,10 @@
             }
         },
 
-        resetForm() {
+        resetForm(doNativeReset = true) {
             const form = this.$('addExamForm');
 
-            if (form) {
+            if (form && doNativeReset) {
                 form.reset();
             }
 
@@ -2354,7 +2159,7 @@
                     'reset',
                     () => {
                         setTimeout(
-                            () => this.resetForm(),
+                            () => this.resetForm(false),
                             0
                         );
                     }
