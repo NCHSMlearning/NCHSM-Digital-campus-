@@ -420,7 +420,7 @@ const LecturerAttendance = {
                 target_name: log.target_name || session?.session_title || session?.title || 'Class',
                 session_type: log.session_type || session?.session_type || 'Class',
                 attendance_status: row.status === 'Not Checked In' ? 'Pending' : row.status,
-                check_in_time: log.check_in_time || (row.status === 'Not Checked In' ? null : fallbackTime),
+                check_in_time: log.check_in_time || fallbackTime,
                 created_at: log.created_at || fallbackTime,
                 verification_source: log.verification_source || (row.status === 'Absent' ? 'Automatic Session Finalization' : null),
                 finalization_reason: log.finalization_reason || (row.status === 'Absent' ? 'No check-in recorded before session close' : null)
@@ -1200,9 +1200,16 @@ const LecturerAttendance = {
         this.populateUnitFilter();
         this.populateYearFilter();
 
-        // When a scheduled occurrence is selected, filters operate only on
-        // that occurrence's complete class register. Never merge unrelated
-        // historical/global geo-attendance rows into the selected session.
+        /*
+         * IMPORTANT: The date filter is the source of truth for the table.
+         * A selected session is used to supply the complete current-session
+         * roster, but it must NEVER hide historical attendance when the
+         * lecturer selects yesterday, 7 days, 30 days, a month, or all dates.
+         *
+         * Today/current session + historical logs are therefore combined first,
+         * then the requested filters are applied. The session UUID remains on
+         * each row, so different occurrences are never merged by date alone.
+         */
         const selectedSession = this.getSelectedSession();
         const sessionLogs = selectedSession
             ? this.sessionRegisterToLogs(
@@ -1210,11 +1217,18 @@ const LecturerAttendance = {
                 selectedSession
               )
             : [];
-        const allLogs = selectedSession
-            ? sessionLogs
-            : this.dedupeAttendanceLogs([...(this.todayLogs || []), ...(this.pastLogs || [])]);
+
+        const combined = [
+            ...(this.pastLogs || []),
+            ...(selectedSession ? sessionLogs : (this.todayLogs || []))
+        ];
+
+        const allLogs = this.dedupeAttendanceLogs(combined);
 
         const filtered = allLogs.filter(log => {
+            /* For finalized absences check_in_time may intentionally be null.
+             * Fall back to the session occurrence date so historical filtering
+             * still places the absence on the correct teaching day. */
             const date = this.getAttendanceDate(log);
             const unit = String(log.unit_name || log.target_name || '').trim();
             const block = String(log.block || '').trim();
@@ -1235,10 +1249,20 @@ const LecturerAttendance = {
             return true;
         });
 
-        filtered.sort((a, b) => String(b.check_in_time || b.created_at || '').localeCompare(String(a.check_in_time || a.created_at || '')));
+        filtered.sort((a, b) => {
+            const da = this.getAttendanceDate(a);
+            const db = this.getAttendanceDate(b);
+            if (db !== da) return String(db).localeCompare(String(da));
+            return String(b.check_in_time || b.created_at || '').localeCompare(String(a.check_in_time || a.created_at || ''));
+        });
+
         this.filteredTodayLogs = filtered;
-        this.filteredPastLogs = [];
+        this.filteredPastLogs = filtered.filter(log => this.getAttendanceDate(log) !== this.getNairobiDateString());
+
+        // The main dashboard table is the filtered table. Do not require a
+        // separate past table in order to display historical records.
         this.renderFilteredToday(filtered);
+        if (document.getElementById('pastAttendanceTable')) this.renderFilteredPast(this.filteredPastLogs);
         this.updateStats(filtered);
 
         const countEl = document.getElementById('filteredCount');
@@ -1247,6 +1271,14 @@ const LecturerAttendance = {
         if (logCount) logCount.textContent = `${filtered.length} records`;
         const filterCount = document.getElementById('attendanceFilterCount');
         if (filterCount) filterCount.textContent = `Showing ${filtered.length} records · ${rangeFrom ? (rangeTo && rangeTo !== rangeFrom ? `${rangeFrom} → ${rangeTo}` : rangeFrom) : 'all dates'}`;
+
+        const dateDisplay = document.getElementById('attendanceDateDisplay');
+        if (dateDisplay) {
+            if (!rangeFrom && !rangeTo) dateDisplay.textContent = `All dates (${this.getProgramTypeLabel()})`;
+            else if (rangeFrom && rangeTo && rangeFrom !== rangeTo) dateDisplay.textContent = `${rangeFrom} → ${rangeTo}`;
+            else dateDisplay.textContent = `${rangeFrom || rangeTo} (${this.getProgramTypeLabel()})`;
+        }
+
         return filtered;
     },
 
@@ -1335,33 +1367,35 @@ const LecturerAttendance = {
             return;
         }
 
+        // Read ALL active filters. These variables are intentionally declared
+        // here because the workbook header/filename below uses them too.
         const filterDate = (document.getElementById('filterDate')?.value || '').trim();
         const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
         const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
+        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
+        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
+        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
+        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
         const searchText = (document.getElementById('filterSearch')?.value || '').trim();
-        const hasFilters = Boolean(filterDate || filterDateFrom || filterDateTo ||
-            (document.getElementById('filterBlock')?.value || 'All') !== 'All' ||
-            (document.getElementById('filterUnit')?.value || 'All') !== 'All' ||
-            (document.getElementById('filterYear')?.value || 'All') !== 'All' ||
-            (document.getElementById('filterSessionType')?.value || 'All') !== 'All' || searchText);
+        const hasFilters = Boolean(
+            filterDate || filterDateFrom || filterDateTo ||
+            filterBlock !== 'All' || filterUnit !== 'All' ||
+            filterYear !== 'All' || filterSessionType !== 'All' || searchText
+        );
 
-        // ---- 1. USE THE EXACT ACTIVE FILTER RESULT ----
-        // Export must match what the lecturer sees on screen. This includes
-        // date range, block, unit, year, session type and search.
+        // IMPORTANT: export exactly what applyFilters() displays.
+        // The old version reloaded the selected session after applying filters,
+        // which meant a past-date filter could still export today's session.
         const filteredLogs = this.applyFilters();
-        let source;
-        const selectedSession = this.getSelectedSession();
-        if (selectedSession) {
-            const register = this.sessionRegister || await this.getSessionAttendanceRegister(selectedSession, false);
-            this.sessionRegister = register;
-            const sessionLogs = this.sessionRegisterToLogs(register, selectedSession);
-            source = sessionLogs.filter(l => l.session_type !== 'Lecturer Check-in');
-        } else {
-            source = this.dedupeAttendanceLogs((filteredLogs || []).filter(l => l.session_type !== 'Lecturer Check-in'));
-        }
+        const source = this.dedupeAttendanceLogs(
+            (filteredLogs || []).filter(l => l.session_type !== 'Lecturer Check-in')
+        );
 
         if (!source.length) {
-            this.showNotification('No records match the current filters.', 'warning');
+            this.showNotification(
+                hasFilters ? 'No records match the current filters.' : 'No attendance data to export.',
+                'warning'
+            );
             return;
         }
 
@@ -2209,7 +2243,11 @@ const LecturerAttendance = {
                         block: student.block,
                         intake_year: student.intake_year,
                         program: student.program,
-                        check_in_time: now,
+                        // This is NOT a real check-in. Store the session
+                        // occurrence timestamp so date filters/history place the
+                        // automatic absence on the actual class day. The UI
+                        // still displays "No check-in" from verification_source.
+                        check_in_time: this.getSessionDateTime(session)?.toISOString() || null,
                         session_type: session.session_type || 'Class',
                         target_id: session.id,
                         session_id: session.id,
