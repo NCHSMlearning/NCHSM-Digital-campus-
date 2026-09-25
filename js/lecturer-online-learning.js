@@ -1360,6 +1360,10 @@ window.LecturerOnlineLearning = (() => {
         box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Institutional Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(marks)}/${esc(max)} (${esc(pct)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Criterion evidence (${esc((report.rubric_grades||[]).length)})</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
     }
 
+    function setGradeActionLoading(submissionId, loading){ try{ document.querySelectorAll(`[data-submission-id="${String(submissionId).replace(/"/g,'\\"')}"]`).forEach(btn=>{btn.disabled=!!loading;btn.setAttribute('aria-busy',loading?'true':'false');}); }catch(e){ console.debug('setGradeActionLoading:',e); } }
+    function renderAutoGradeLoading(message='Preparing deterministic grading...',percent=0){ const box=$('olAIGradeReport'); if(!box)return; const safe=Math.max(0,Math.min(100,Number(percent)||0)); box.innerHTML=`<div style="margin-top:12px;padding:14px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc"><div style="font-weight:800;color:#334155"><i class="fas fa-circle-notch fa-spin"></i> Automatic Institutional Marking</div><div id="olDeterministicGradeMessage" style="font-size:12px;color:#64748b;margin-top:6px">${esc(message)}</div><div style="height:7px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:10px"><div id="olDeterministicGradeProgress" style="height:100%;width:${safe}%;background:#6366f1;transition:width .25s ease"></div></div><div id="olDeterministicGradeProgressText" style="font-size:10px;color:#64748b;margin-top:5px;text-align:right">${safe}%</div></div>`; }
+    function updateAutoGradeLoading(message,percent){ const msg=$('olDeterministicGradeMessage'),bar=$('olDeterministicGradeProgress'),txt=$('olDeterministicGradeProgressText'); const safe=Math.max(0,Math.min(100,Number(percent)||0)); if(msg)msg.textContent=String(message||'Processing...'); if(bar)bar.style.width=safe+'%'; if(txt)txt.textContent=safe+'%'; }
+
     async function autoGradeUsingMarkingKey(id){
         const s=state.submissions.find(x=>x.id===id);
         if(!s)return null;
@@ -1538,12 +1542,9 @@ window.LecturerOnlineLearning = (() => {
             graded_at:now,
             result_released:release,
             released_at:release?now:null,
-            review_required:false,
-            grading_engine:window._activeServerGrade
-                ? 'SUPABASE_DETERMINISTIC_RUBRIC_ENGINE_V1'
-                : 'LECTURER_MANUAL_REVIEW'
+            review_required:false
         };
-        let {error}=await db.from('online_submissions').update({...payload,percentage}).eq('id',id);
+        let {error}=await db.from('online_submissions').update(payload).eq('id',id);
         if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}
         if(error){notify(error.message,'error');return;}
 
@@ -1552,7 +1553,8 @@ window.LecturerOnlineLearning = (() => {
         window._activeDeterministicGradeSubmissionId=null;
 
         if(release){
-            const emailSent=await sendAssignmentResultNotification(s,assignment);
+            const {data:updatedSubmission}=await db.from('online_submissions').select('*').eq('id',id).maybeSingle();
+            const emailSent=await sendAssignmentResultNotification(updatedSubmission||s,assignment);
             notify(emailSent
                 ? `Released: ${marks}/${maxMarks} (${percentage}%). Student email notification sent.`
                 : `Released: ${marks}/${maxMarks} (${percentage}%), but the student email notification could not be sent.`,
