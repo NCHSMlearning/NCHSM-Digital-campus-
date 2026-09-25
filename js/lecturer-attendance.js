@@ -346,11 +346,97 @@ const LecturerAttendance = {
 
             this.selectedSession = selected || null;
             this.selectedSessionId = selected?.id || null;
+            this.renderAttendanceSessionSelector();
             return this.sessions;
         } catch (error) {
             console.error('❌ loadAttendanceSessions:', error);
             return [];
         }
+    },
+
+    renderAttendanceSessionSelector() {
+        const filters = document.querySelector('#attendance-content .attendance-filters');
+        if (!filters) return;
+        let wrapper = document.getElementById('attendanceSessionSelectorWrap');
+        if (!wrapper) {
+            wrapper = document.createElement('div');
+            wrapper.id = 'attendanceSessionSelectorWrap';
+            wrapper.style.cssText = 'background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:15px;';
+            const heading = document.createElement('div');
+            heading.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:7px;';
+            heading.innerHTML = '<strong style=\"color:#0A3D62;font-size:13px;\"><i class=\"fas fa-calendar-check\" style=\"color:#4C1D95;margin-right:6px;\"></i>Attendance Session</strong><span id=\"attendanceSessionHint\" style=\"font-size:11px;color:#64748b;\"></span>';
+            const select = document.createElement('select');
+            select.id = 'attendanceSessionSelector';
+            select.style.cssText = 'width:100%;padding:10px 12px;border:2px solid #e2e8f0;border-radius:8px;background:white;font-size:13px;';
+            wrapper.appendChild(heading);
+            wrapper.appendChild(select);
+            filters.insertBefore(wrapper, filters.firstElementChild?.nextElementSibling || filters.firstChild);
+        }
+        const select = document.getElementById('attendanceSessionSelector');
+        const hint = document.getElementById('attendanceSessionHint');
+        if (!select) return;
+        const current = this.selectedSessionId ? String(this.selectedSessionId) : '';
+        const sessions = Array.isArray(this.sessions) ? this.sessions : [];
+        const statusLabel = s => {
+            const status = String(s.status || '').toLowerCase();
+            if (s.closed_at || status === 'closed') return '🔴 Closed';
+            if (s.is_active === true || status === 'active' || (s.opened_at && !s.closed_at)) return '🟢 Active';
+            return '🟡 Scheduled';
+        };
+        select.innerHTML = '<option value=\"\">-- All attendance records / date-range mode --</option>' + sessions.map(s => {
+            const date = this.getNairobiDateString(s.session_date);
+            const time = String(s.session_time || '').slice(0,5);
+            const unit = s.unit_name || s.course_name || s.session_title || s.title || 'General Session';
+            const block = s.target_block || s.block_term || s.block || '';
+            const label = `${date} ${time ? '· '+time+' ' : ''}· ${unit}${block ? ' · '+this.getBlockDisplay(block) : ''} · ${statusLabel(s)}`;
+            return `<option value=\"${this.escapeHtml(String(s.id))}\">${this.escapeHtml(label)}</option>`;
+        }).join('');
+        if (current && sessions.some(s => String(s.id) === current)) select.value = current;
+        else select.value = '';
+        if (hint) hint.textContent = this.selectedSession ? 'Selected occurrence: attendance is tied to this session UUID.' : 'Use a session for a complete class register; use All for historical date-range reporting.';
+        if (!select.dataset.sessionBound) {
+            select.dataset.sessionBound = '1';
+            select.addEventListener('change', async () => {
+                try {
+                    await this.setAttendanceSession(select.value || null, true);
+                    this.applyFilters();
+                } catch (error) {
+                    console.error('❌ attendance session selection:', error);
+                    this.showNotification('Unable to load attendance session: ' + error.message, 'error');
+                }
+            });
+        }
+    },
+
+    async filterLecturerAttendanceLogs(logs) {
+        const rows = Array.isArray(logs) ? logs : [];
+        const program = this.currentProgram || 'KRCHN';
+        const assignedUnits = new Set((this.assignedUnits || []).map(u => this.normalizeFilterValue(u?.subject_name)).filter(Boolean));
+        const supabase = window.lecturerDB?.supabase;
+        let ownedSessionIds = new Set();
+        if (supabase && this.lecturerUuid) {
+            try {
+                const { data } = await supabase.from('scheduled_sessions').select('id,unit_name,target_program').eq('created_by', this.lecturerUuid);
+                ownedSessionIds = new Set((data || []).map(s => String(s.id)));
+            } catch (e) { console.warn('⚠️ Could not load owned attendance sessions:', e); }
+        }
+        return rows.filter(log => {
+            if (String(log?.role || '').toLowerCase() === 'lecturer') return true;
+            if (log?.session_id && ownedSessionIds.has(String(log.session_id))) return true;
+            if (this.normalizeFilterValue(log?.program) !== this.normalizeFilterValue(program)) return false;
+            const unit = this.normalizeFilterValue(log?.unit_name || log?.target_name);
+            return assignedUnits.size === 0 || assignedUnits.has(unit);
+        });
+    },
+
+    getFilterableAttendanceLogs(selectedSession = this.getSelectedSession(), rangeFrom = '', rangeTo = '') {
+        const globalLogs = this.dedupeAttendanceLogs([...(this.todayLogs || []), ...(this.pastLogs || [])]);
+        if (!selectedSession) return globalLogs;
+        const sessionDate = this.getNairobiDateString(selectedSession.session_date);
+        const includesSessionDate = (!rangeFrom || sessionDate >= rangeFrom) && (!rangeTo || sessionDate <= rangeTo);
+        if (!includesSessionDate) return globalLogs;
+        const sessionLogs = this.sessionRegisterToLogs(this.sessionRegister || { rows: [] }, selectedSession);
+        return this.dedupeAttendanceLogs([...globalLogs, ...sessionLogs]);
     },
 
     async setAttendanceSession(sessionId, refresh = true) {
@@ -420,7 +506,7 @@ const LecturerAttendance = {
                 target_name: log.target_name || session?.session_title || session?.title || 'Class',
                 session_type: log.session_type || session?.session_type || 'Class',
                 attendance_status: row.status === 'Not Checked In' ? 'Pending' : row.status,
-                check_in_time: log.check_in_time || fallbackTime,
+                check_in_time: log.check_in_time || (row.status === 'Not Checked In' ? null : fallbackTime),
                 created_at: log.created_at || fallbackTime,
                 verification_source: log.verification_source || (row.status === 'Absent' ? 'Automatic Session Finalization' : null),
                 finalization_reason: log.finalization_reason || (row.status === 'Absent' ? 'No check-in recorded before session close' : null)
@@ -457,28 +543,30 @@ const LecturerAttendance = {
                 return;
             }
 
+            const today = this.getNairobiDateString();
+            const bounds = this.getNairobiDayBounds(today);
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .gte('check_in_time', bounds.start)
+                .lte('check_in_time', bounds.end)
+                .order('check_in_time', { ascending: false });
+            if (error) throw error;
+
+            this.todayLogs = this.dedupeAttendanceLogs(await this.filterLecturerAttendanceLogs(data || []));
+
             const session = this.getSelectedSession();
             if (session) {
                 const register = await this.getSessionAttendanceRegister(session, false);
                 this.sessionRegister = register;
-                this.todayLogs = this.sessionRegisterToLogs(register, session);
-                this.filteredTodayLogs = [...this.todayLogs];
-                this.renderTodayAttendance();
+                const sessionRows = this.sessionRegisterToLogs(register, session);
+                this.renderFilteredToday(sessionRows);
                 this.updateRegisterStats(register);
-                this.updateProgramBadge();
-                return;
+            } else {
+                this.sessionRegister = null;
+                this.renderFilteredToday(this.todayLogs);
+                this.updateStats(this.todayLogs);
             }
-
-            // No scheduled occurrence is selected: do not mix unrelated
-            // attendance rows from other classes into the lecturer's register.
-            this.todayLogs = [];
-            this.filteredTodayLogs = [];
-            this.sessionRegister = null;
-            tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                <i class="fas fa-calendar-check" style="font-size:32px;display:block;margin-bottom:10px;color:#cbd5e1;"></i>
-                <p style="margin:0;font-weight:600;">No scheduled attendance session selected.</p>
-                <p style="margin:6px 0 0;">Schedule/open a session first, then select that occurrence.</p></td></tr>`;
-            this.updateStats([]);
             this.updateProgramBadge();
         } catch (error) {
             console.error('❌ loadTodayAttendance:', error);
@@ -969,7 +1057,7 @@ const LecturerAttendance = {
 
             if (!student) throw new Error('Student not found');
 
-            const checkInTime = time ? `${date}T${time}:00.000Z` : `${date}T12:00:00.000Z`;
+            const checkInTime = time ? new Date(`${date}T${time}:00+03:00`).toISOString() : new Date(`${date}T12:00:00+03:00`).toISOString();
 
             // Manual attendance must belong to ONE exact scheduled occurrence.
             // Never silently attach it to an arbitrary session when several
@@ -1083,6 +1171,7 @@ const LecturerAttendance = {
         this.populateBlockFilter();
         this.populateUnitFilter();
         this.populateYearFilter();
+        this.renderAttendanceSessionSelector();
         this.updateFilterLabels();
     },
 
@@ -1200,35 +1289,13 @@ const LecturerAttendance = {
         this.populateUnitFilter();
         this.populateYearFilter();
 
-        /*
-         * IMPORTANT: The date filter is the source of truth for the table.
-         * A selected session is used to supply the complete current-session
-         * roster, but it must NEVER hide historical attendance when the
-         * lecturer selects yesterday, 7 days, 30 days, a month, or all dates.
-         *
-         * Today/current session + historical logs are therefore combined first,
-         * then the requested filters are applied. The session UUID remains on
-         * each row, so different occurrences are never merged by date alone.
-         */
+        // Date-range reporting must always include historical records. A selected
+        // session contributes its complete roster only when that session date is
+        // inside the requested range; it must never hide older attendance.
         const selectedSession = this.getSelectedSession();
-        const sessionLogs = selectedSession
-            ? this.sessionRegisterToLogs(
-                this.sessionRegister || { rows: [] },
-                selectedSession
-              )
-            : [];
-
-        const combined = [
-            ...(this.pastLogs || []),
-            ...(selectedSession ? sessionLogs : (this.todayLogs || []))
-        ];
-
-        const allLogs = this.dedupeAttendanceLogs(combined);
+        const allLogs = this.getFilterableAttendanceLogs(selectedSession, rangeFrom, rangeTo);
 
         const filtered = allLogs.filter(log => {
-            /* For finalized absences check_in_time may intentionally be null.
-             * Fall back to the session occurrence date so historical filtering
-             * still places the absence on the correct teaching day. */
             const date = this.getAttendanceDate(log);
             const unit = String(log.unit_name || log.target_name || '').trim();
             const block = String(log.block || '').trim();
@@ -1249,20 +1316,10 @@ const LecturerAttendance = {
             return true;
         });
 
-        filtered.sort((a, b) => {
-            const da = this.getAttendanceDate(a);
-            const db = this.getAttendanceDate(b);
-            if (db !== da) return String(db).localeCompare(String(da));
-            return String(b.check_in_time || b.created_at || '').localeCompare(String(a.check_in_time || a.created_at || ''));
-        });
-
-        this.filteredTodayLogs = filtered;
-        this.filteredPastLogs = filtered.filter(log => this.getAttendanceDate(log) !== this.getNairobiDateString());
-
-        // The main dashboard table is the filtered table. Do not require a
-        // separate past table in order to display historical records.
+        filtered.sort((a, b) => String(b.check_in_time || b.created_at || '').localeCompare(String(a.check_in_time || a.created_at || '')));
+        this.filteredTodayLogs = filtered.filter(l => this.getAttendanceDate(l) === this.getNairobiDateString());
+        this.filteredPastLogs = filtered.filter(l => this.getAttendanceDate(l) !== this.getNairobiDateString());
         this.renderFilteredToday(filtered);
-        if (document.getElementById('pastAttendanceTable')) this.renderFilteredPast(this.filteredPastLogs);
         this.updateStats(filtered);
 
         const countEl = document.getElementById('filteredCount');
@@ -1271,14 +1328,6 @@ const LecturerAttendance = {
         if (logCount) logCount.textContent = `${filtered.length} records`;
         const filterCount = document.getElementById('attendanceFilterCount');
         if (filterCount) filterCount.textContent = `Showing ${filtered.length} records · ${rangeFrom ? (rangeTo && rangeTo !== rangeFrom ? `${rangeFrom} → ${rangeTo}` : rangeFrom) : 'all dates'}`;
-
-        const dateDisplay = document.getElementById('attendanceDateDisplay');
-        if (dateDisplay) {
-            if (!rangeFrom && !rangeTo) dateDisplay.textContent = `All dates (${this.getProgramTypeLabel()})`;
-            else if (rangeFrom && rangeTo && rangeFrom !== rangeTo) dateDisplay.textContent = `${rangeFrom} → ${rangeTo}`;
-            else dateDisplay.textContent = `${rangeFrom || rangeTo} (${this.getProgramTypeLabel()})`;
-        }
-
         return filtered;
     },
 
@@ -1354,6 +1403,11 @@ const LecturerAttendance = {
         const fYear = document.getElementById('filterYear'); if (fYear) fYear.value = 'All';
         const fType = document.getElementById('filterSessionType'); if (fType) fType.value = 'All';
         const fSearch = document.getElementById('filterSearch'); if (fSearch) fSearch.value = '';
+        const sessionSelect = document.getElementById('attendanceSessionSelector');
+        if (sessionSelect) sessionSelect.value = '';
+        this.selectedSessionId = null;
+        this.selectedSession = null;
+        this.sessionRegister = null;
         this.applyFilters();
         this.showNotification('Filters reset!', 'info');
     },
@@ -1367,35 +1421,28 @@ const LecturerAttendance = {
             return;
         }
 
-        // Read ALL active filters. These variables are intentionally declared
-        // here because the workbook header/filename below uses them too.
         const filterDate = (document.getElementById('filterDate')?.value || '').trim();
         const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
         const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
-        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
-        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
-        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
-        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
         const searchText = (document.getElementById('filterSearch')?.value || '').trim();
-        const hasFilters = Boolean(
-            filterDate || filterDateFrom || filterDateTo ||
-            filterBlock !== 'All' || filterUnit !== 'All' ||
-            filterYear !== 'All' || filterSessionType !== 'All' || searchText
-        );
+        const hasFilters = Boolean(filterDate || filterDateFrom || filterDateTo ||
+            (document.getElementById('filterBlock')?.value || 'All') !== 'All' ||
+            (document.getElementById('filterUnit')?.value || 'All') !== 'All' ||
+            (document.getElementById('filterYear')?.value || 'All') !== 'All' ||
+            (document.getElementById('filterSessionType')?.value || 'All') !== 'All' || searchText);
 
-        // IMPORTANT: export exactly what applyFilters() displays.
-        // The old version reloaded the selected session after applying filters,
-        // which meant a past-date filter could still export today's session.
+        // ---- 1. USE THE EXACT ACTIVE FILTER RESULT ----
+        // Export must match what the lecturer sees on screen. This includes
+        // date range, block, unit, year, session type and search.
         const filteredLogs = this.applyFilters();
-        const source = this.dedupeAttendanceLogs(
-            (filteredLogs || []).filter(l => l.session_type !== 'Lecturer Check-in')
-        );
+        // Export exactly what is currently filtered/displayed. Never replace it
+        // with the selected-session register because that would silently ignore
+        // historical date ranges.
+        const source = this.dedupeAttendanceLogs((filteredLogs || []).filter(l => l.session_type !== 'Lecturer Check-in'));
+        const selectedSession = this.getSelectedSession();
 
         if (!source.length) {
-            this.showNotification(
-                hasFilters ? 'No records match the current filters.' : 'No attendance data to export.',
-                'warning'
-            );
+            this.showNotification('No records match the current filters.', 'warning');
             return;
         }
 
@@ -1744,7 +1791,7 @@ const LecturerAttendance = {
                 if (filterBlock !== 'All') bits.push(`Block ${filterBlock}`);
                 if (filterYear !== 'All') bits.push(`Intake ${filterYear}`);
                 if (filterSessionType !== 'All') bits.push(`Type ${filterSessionType}`);
-                if (filterDate) bits.push(`Date ${filterDate}`);
+                if (filterDateFrom || filterDateTo) bits.push(`Date ${filterDateFrom || '…'} → ${filterDateTo || '…'}`);
                 if (searchText) bits.push(`Search "${searchText}"`);
                 mergeRow(r++, `Filtered by → ${bits.join('  ·  ')}`, {
                     fill: AMBER_LIGHT, font: { italic: true, color: { argb: 'FF92400E' }, size: 10 }, height: 18
@@ -2051,6 +2098,7 @@ const LecturerAttendance = {
     // REFRESH
     // ============================================================
     async refresh() {
+        await this.loadAttendanceSessions();
         await this.loadAllAttendance();
         this.applyFilters();
         this.updateProgramBadge();
@@ -2243,11 +2291,7 @@ const LecturerAttendance = {
                         block: student.block,
                         intake_year: student.intake_year,
                         program: student.program,
-                        // This is NOT a real check-in. Store the session
-                        // occurrence timestamp so date filters/history place the
-                        // automatic absence on the actual class day. The UI
-                        // still displays "No check-in" from verification_source.
-                        check_in_time: this.getSessionDateTime(session)?.toISOString() || null,
+                        check_in_time: now,
                         session_type: session.session_type || 'Class',
                         target_id: session.id,
                         session_id: session.id,
@@ -2632,6 +2676,7 @@ window.bulkDeleteAttendance = () => LecturerAttendance.bulkDeleteAttendance();
 window.deleteAttendanceRecord = (id) => LecturerAttendance.deleteAttendanceRecord(id);
 
 window.setAttendanceSession = (sessionId) => LecturerAttendance.setAttendanceSession(sessionId, true);
+window.refreshAttendanceSessions = () => LecturerAttendance.loadAttendanceSessions();
 window.getAttendanceSession = () => LecturerAttendance.getSelectedSession();
 
 window.reconcileSessionAttendance = (sessionId, finalize = true) =>
