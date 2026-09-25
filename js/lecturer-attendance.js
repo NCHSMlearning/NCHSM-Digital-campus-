@@ -1421,10 +1421,14 @@ const LecturerAttendance = {
             return;
         }
 
-        const filterDate = (document.getElementById('filterDate')?.value || '').trim();
-        const filterDateFrom = (document.getElementById('filterDateFrom')?.value || '').trim();
-        const filterDateTo = (document.getElementById('filterDateTo')?.value || '').trim();
-        const searchText = (document.getElementById('filterSearch')?.value || '').trim();
+        const filterDate = String(document.getElementById('filterDate')?.value ?? '').trim();
+        const filterDateFrom = String(document.getElementById('filterDateFrom')?.value ?? '').trim();
+        const filterDateTo = String(document.getElementById('filterDateTo')?.value ?? '').trim();
+        const filterBlock = String(document.getElementById('filterBlock')?.value ?? 'All').trim() || 'All';
+        const filterUnit = String(document.getElementById('filterUnit')?.value ?? 'All').trim() || 'All';
+        const filterYear = String(document.getElementById('filterYear')?.value ?? 'All').trim() || 'All';
+        const filterSessionType = String(document.getElementById('filterSessionType')?.value ?? 'All').trim() || 'All';
+        const searchText = String(document.getElementById('filterSearch')?.value ?? '').trim();
         const hasFilters = Boolean(filterDate || filterDateFrom || filterDateTo ||
             (document.getElementById('filterBlock')?.value || 'All') !== 'All' ||
             (document.getElementById('filterUnit')?.value || 'All') !== 'All' ||
@@ -1996,9 +2000,9 @@ const LecturerAttendance = {
 
         // ---- 6. WRITE ----
         const suffixBits = [];
-        if (filterBlock !== 'All') suffixBits.push(filterBlock.replace(/\s+/g, ''));
-        if (filterYear !== 'All') suffixBits.push(`Intake${filterYear}`);
-        if (filterSessionType !== 'All') suffixBits.push(filterSessionType);
+        if (filterBlock !== 'All') suffixBits.push(String(filterBlock).replace(/\s+/g, ''));
+        if (filterYear !== 'All') suffixBits.push(`Intake${String(filterYear)}`);
+        if (filterSessionType !== 'All') suffixBits.push(String(filterSessionType));
         const suffix = suffixBits.length ? '_' + suffixBits.join('_') : '';
         const filename = `AttendanceSheet${suffix}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
