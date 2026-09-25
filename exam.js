@@ -94,6 +94,14 @@ const AppState = {
     attemptNumber: 0,
     examAutoSubmitted: false,
 
+    // ============================================================
+    // SERVER-SIDE LIVE EXAM SESSION LOCK
+    // ============================================================
+    sessionToken: null,
+    sessionClaimed: false,
+    sessionHeartbeatFailures: 0,
+    sessionLost: false,
+
     // ✅ NEW: built once after questions load, used by saveAnswerToDatabase()
     // to score each answer as soon as the student picks it.
     correctAnswerMap: {},       // { question_id: 'A' | 'B' | 'C' | 'D' | ... }
@@ -472,32 +480,294 @@ async function getOrCreateCurrentAttempt() {
 }
 
 // ============================================================
-// CHECK ACTIVE SESSION
+// SERVER-SIDE LIVE EXAM SESSION LOCK
 // ============================================================
-async function checkActiveSession() {
+// One student + one exam = one live session.
+// The database RPC is authoritative; the old exam_heartbeats SELECT
+// was only a soft client-side check and could allow two tabs to start.
+
+function getOrCreateSessionToken() {
+    const examId = String(AppState.examId || 'unknown');
+    const studentId = String(AppState.studentId || 'unknown');
+    const key = `nchsm_live_exam_session_token_${studentId}_${examId}`;
+
     try {
-        const { data } = await sb
-            .from('exam_heartbeats')
-            .select('timestamp')
-            .eq('student_id', AppState.studentId)
-            .eq('exam_id', parseInt(AppState.examId))
-            .order('timestamp', { ascending: false })
-            .limit(1);
-            
-        if (data && data.length > 0) {
-            const lastHeartbeat = new Date(data[0].timestamp);
-            const now = new Date();
-            const diff = (now - lastHeartbeat) / 1000 / 60;
-            
-            if (diff < 2) {
-                showToast('⚠️ Exam already active on another device', 'warning', 5000);
-                return false;
-            }
+        let token = sessionStorage.getItem(key);
+
+        if (!token) {
+            token = (window.crypto && typeof window.crypto.randomUUID === 'function')
+                ? window.crypto.randomUUID()
+                : `tok-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+
+            sessionStorage.setItem(key, token);
         }
-        return true;
-    } catch (e) {
+
+        AppState.sessionToken = token;
+        return token;
+    } catch (error) {
+        // sessionStorage can be blocked in privacy/restricted browser modes.
+        // A per-page token still prevents duplicate claims from this page.
+        if (!AppState.sessionToken) {
+            AppState.sessionToken =
+                (window.crypto && typeof window.crypto.randomUUID === 'function')
+                    ? window.crypto.randomUUID()
+                    : `tok-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
+
+        return AppState.sessionToken;
+    }
+}
+
+function getDeviceFingerprint() {
+    try {
+        const raw = [
+            navigator.userAgent || '',
+            `${screen.width || 0}x${screen.height || 0}`,
+            `${screen.colorDepth || 0}`,
+            Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+            navigator.language || '',
+            navigator.hardwareConcurrency || 0,
+            navigator.platform || ''
+        ].join('|');
+
+        // Keep this lightweight and compatible with browsers without SubtleCrypto.
+        return btoa(unescape(encodeURIComponent(raw))).slice(0, 64);
+    } catch (error) {
+        return 'unknown';
+    }
+}
+
+function showExamSessionLockOverlay(title, message) {
+    // Reuse the fatal overlay if the application already has one.
+    if (typeof showFatalOverlay === 'function') {
+        showFatalOverlay(title, message, '#dc2626');
+        return;
+    }
+
+    document.getElementById('nchsm-session-lock-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'nchsm-session-lock-overlay';
+    overlay.style.cssText = `
+        position:fixed;
+        inset:0;
+        z-index:2147483647;
+        background:rgba(0,0,0,.94);
+        color:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:24px;
+        font-family:Inter,Arial,sans-serif;
+        text-align:center;
+    `;
+
+    overlay.innerHTML = `
+        <div style="max-width:520px;width:100%;">
+            <div style="font-size:4rem;margin-bottom:16px;">🔒</div>
+            <h1 style="margin:0 0 12px;color:#f87171;font-size:1.65rem;">
+                ${title}
+            </h1>
+            <p style="color:#cbd5e1;line-height:1.7;margin:0 0 24px;">
+                ${message}
+            </p>
+            <button type="button" id="nchsm-session-lock-reload" style="
+                padding:13px 28px;
+                border:0;
+                border-radius:12px;
+                background:#0A3D62;
+                color:#fff;
+                font-weight:700;
+                font-size:1rem;
+                cursor:pointer;
+            ">Reload Page</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    document.getElementById('nchsm-session-lock-reload')?.addEventListener('click', () => {
+        window.location.reload();
+    });
+}
+
+async function claimExamSessionLock() {
+    if (AppState.sessionClaimed && AppState.sessionToken) {
         return true;
     }
+
+    if (!AppState.studentId || !AppState.examId) {
+        showToast('❌ Missing student or exam information.', 'error', 5000);
+        return false;
+    }
+
+    const token = getOrCreateSessionToken();
+    const deviceFingerprint = getDeviceFingerprint();
+
+    try {
+        console.log('🔐 Claiming live exam session...');
+
+        const { data, error } = await sb.rpc('claim_exam_session', {
+            p_student_id: AppState.studentId,
+            p_exam_id: parseInt(AppState.examId, 10),
+            p_session_token: token,
+            p_device_fingerprint: deviceFingerprint,
+            p_user_agent: (navigator.userAgent || '').slice(0, 500)
+        });
+
+        if (error) {
+            console.error('❌ Session claim RPC failed:', error);
+            showToast(
+                '⚠️ Could not verify the exam session. Please check your connection and try again.',
+                'error',
+                7000
+            );
+            return false;
+        }
+
+        const result = Array.isArray(data) ? data[0] : data;
+
+        if (!result || result.ok !== true) {
+            AppState.sessionClaimed = false;
+            AppState.sessionLost = true;
+
+            console.warn('🚫 Exam session rejected:', result);
+
+            showExamSessionLockOverlay(
+                'Exam Already Open',
+                result?.reason ||
+                'This exam is already active in another tab, browser, or device. Close the other session before continuing.'
+            );
+
+            return false;
+        }
+
+        AppState.sessionToken = token;
+        AppState.sessionClaimed = true;
+        AppState.sessionLost = false;
+        AppState.sessionHeartbeatFailures = 0;
+
+        console.log(
+            '✅ Live exam session claimed:',
+            token.slice(0, 8),
+            result.reason || 'Claimed'
+        );
+
+        return true;
+    } catch (error) {
+        console.error('❌ Unexpected session claim error:', error);
+        showToast(
+            '⚠️ Could not verify the exam session. Please try again.',
+            'error',
+            7000
+        );
+        return false;
+    }
+}
+
+async function releaseExamSessionLock() {
+    if (!AppState.sessionToken || !AppState.studentId || !AppState.examId) {
+        return false;
+    }
+
+    const token = AppState.sessionToken;
+
+    try {
+        const { data, error } = await sb.rpc('release_exam_session', {
+            p_student_id: AppState.studentId,
+            p_exam_id: parseInt(AppState.examId, 10),
+            p_session_token: token
+        });
+
+        if (error) {
+            console.warn('⚠️ Could not release live exam session:', error);
+            return false;
+        }
+
+        AppState.sessionClaimed = false;
+        AppState.sessionLost = false;
+        AppState.sessionHeartbeatFailures = 0;
+
+        console.log('✅ Live exam session released:', data);
+        return data !== false;
+    } catch (error) {
+        console.warn('⚠️ Session release failed:', error);
+        return false;
+    }
+}
+
+async function sendLiveExamSessionHeartbeat() {
+    if (
+        !AppState.isExamActive ||
+        !AppState.sessionClaimed ||
+        !AppState.sessionToken ||
+        !AppState.studentId ||
+        !AppState.examId ||
+        AppState.sessionLost
+    ) {
+        return true;
+    }
+
+    try {
+        const { data, error } = await sb.rpc('heartbeat_exam_session', {
+            p_student_id: AppState.studentId,
+            p_exam_id: parseInt(AppState.examId, 10),
+            p_session_token: AppState.sessionToken
+        });
+
+        if (error) {
+            AppState.sessionHeartbeatFailures++;
+            console.warn(
+                `⚠️ Live session heartbeat failed (${AppState.sessionHeartbeatFailures}):`,
+                error.message || error
+            );
+
+            // Do not immediately terminate the exam on a temporary network error.
+            return false;
+        }
+
+        AppState.sessionHeartbeatFailures = 0;
+
+        // FALSE is authoritative: the server no longer recognizes this tab's lock.
+        if (data === false) {
+            AppState.sessionClaimed = false;
+            AppState.sessionLost = true;
+
+            console.error('🚫 Live exam session was lost/taken over.');
+
+            if (AppState.heartbeatInterval) {
+                clearInterval(AppState.heartbeatInterval);
+                AppState.heartbeatInterval = null;
+            }
+
+            showExamSessionLockOverlay(
+                'Exam Session Lost',
+                'This exam session is no longer active on this tab. Another tab or device may have taken over the session, or the session expired.'
+            );
+
+            // Stop the active exam safely.
+            AppState.isExamActive = false;
+            AppState.isExamPaused = true;
+
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        AppState.sessionHeartbeatFailures++;
+        console.warn(
+            `⚠️ Live session heartbeat exception (${AppState.sessionHeartbeatFailures}):`,
+            error
+        );
+        return false;
+    }
+}
+
+// Legacy name retained so any other code that calls checkActiveSession()
+// continues to work, but it now uses the authoritative RPC.
+async function checkActiveSession() {
+    return claimExamSessionLock();
 }
 
 // ============================================================
@@ -964,12 +1234,15 @@ window.startExam = async function() {
         return;
     }
 
-    if (!AppState.isRetake) {
-        const sessionOk = await checkActiveSession();
-        if (!sessionOk) {
-            showToast('⚠️ You already have an active exam session on another device', 'error', 5000);
-            return;
-        }
+    // ========================================================
+    // SERVER-SIDE SINGLE-SESSION LOCK
+    // Claim this exam before any exam DB write.
+    // This applies to BOTH normal attempts and admin-authorized
+    // continuation/retake attempts.
+    // ========================================================
+    const sessionOk = await claimExamSessionLock();
+    if (!sessionOk) {
+        return;
     }
 
     const cameraVideo = document.getElementById('cameraVideo');
@@ -996,6 +1269,10 @@ window.startExam = async function() {
         } else {
             showToast(msg, 'error', 6000);
         }
+
+        // The claim was made before attempt preparation. Do not leave
+        // a healthy session lock behind when the attempt cannot start.
+        await releaseExamSessionLock();
         return;
     }
 
@@ -2399,6 +2676,11 @@ async function executeSubmissionWithLoading() {
         await yieldToBrowser();
         await calculateAndSaveGrade();
 
+        // The submission and grade are now safely stored.
+        // Release the server-side one-tab/device lock before redirecting.
+        updateSubmissionProgress('🔓 Closing exam session...');
+        await releaseExamSessionLock();
+
         updateSubmissionProgress('🧹 Cleaning up...');
         await yieldToBrowser();
         if (CONFIG.CLEANUP_ON_COMPLETE) {
@@ -3292,6 +3574,26 @@ function setupBeforeUnloadHandler() {
 }
 
 // ============================================================
+// LIVE SESSION PAGE LIFECYCLE
+// ============================================================
+// Do NOT rely on an async Supabase RPC inside beforeunload: browsers can
+// terminate the request. The server's 60-second stale-session rule and
+// cron cleanup are the reliable crash-recovery mechanism.
+//
+// Same-tab reload is safe because sessionStorage preserves the token.
+
+function handleLiveSessionPageHide() {
+    if (AppState.isSubmitting || !AppState.sessionClaimed) return;
+
+    console.log(
+        'ℹ️ Exam page hidden/unloaded. Live session will remain claimed ' +
+        'until the next heartbeat or server-side stale-session timeout.'
+    );
+}
+
+window.addEventListener('pagehide', handleLiveSessionPageHide);
+
+// ============================================================
 // INACTIVITY TIMER
 // ============================================================
 function setupInactivityTimer() {
@@ -3404,6 +3706,20 @@ function startSnapshotCapture() {
 // ============================================================
 async function sendHeartbeat() {
     if (!AppState.isExamActive) return;
+
+    // ------------------------------------------------------------
+    // PRIMARY SESSION LOCK HEARTBEAT
+    // ------------------------------------------------------------
+    // This is the authoritative heartbeat for the one-tab/device lock.
+    // If the RPC returns false, the server says this tab no longer owns
+    // the exam session and the exam is immediately locked.
+    await sendLiveExamSessionHeartbeat();
+
+    if (AppState.sessionLost) return;
+
+    // ------------------------------------------------------------
+    // EXISTING PROCTORING / PROGRESS HEARTBEAT
+    // ------------------------------------------------------------
     try {
         await sb.from('exam_heartbeats').insert({
             student_id: AppState.studentId,
@@ -4667,6 +4983,23 @@ async function createNchsmWebRTCOffer(viewerId) {
         nchsmWebRTCPeers.delete(viewerId);
     }
 }
+
+
+// ============================================================
+// DEBUG: LIVE SESSION STATUS
+// ============================================================
+window.getLiveExamSessionStatus = function() {
+    return {
+        studentId: AppState.studentId,
+        examId: AppState.examId,
+        sessionClaimed: AppState.sessionClaimed,
+        sessionLost: AppState.sessionLost,
+        sessionToken: AppState.sessionToken
+            ? AppState.sessionToken.slice(0, 8) + '…'
+            : null,
+        heartbeatFailures: AppState.sessionHeartbeatFailures
+    };
+};
 
 // Start signaling as soon as the exam becomes active.
 const nchsmOriginalInitExam = initExam;
