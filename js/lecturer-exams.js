@@ -89,6 +89,7 @@
         selectedStudents: [],
         selectedCourse: null,
         isProcessing: false,
+        editingExamId: null,
         _bound: false,
 
         $(id) {
@@ -744,13 +745,71 @@
             });
         },
 
-        updateStudentCount() {
+        async updateStudentCount() {
             const el = this.$('student_notify_count');
-            if (el) {
+            if (!el) return;
+
+            const target = this.$('exam_notify_target')?.value || 'all';
+
+            if (target === 'specific') {
                 el.innerHTML =
                     '<i class="fas fa-users"></i> ' +
                     this.selectedStudents.length +
                     ' students';
+                return;
+            }
+
+            const sb = this.sb();
+            if (!sb) {
+                el.innerHTML = '<i class="fas fa-users"></i> 0 students';
+                return;
+            }
+
+            const program = this.value(['exam_program', 'examProgram']);
+            const block = this.value(['exam_block_term', 'examBlockTerm']);
+
+            if (target === 'all' && (!program || !block)) {
+                el.innerHTML = '<i class="fas fa-users"></i> 0 students';
+                return;
+            }
+
+            el.innerHTML =
+                '<i class="fas fa-spinner fa-spin"></i> Loading...';
+
+            try {
+                let q = sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id', { count: 'exact', head: true })
+                    .eq('role', 'student')
+                    .eq('status', 'approved');
+
+                if (target === 'all') {
+                    q = q.eq('program', program).eq('block', block);
+                } else if (target === 'program') {
+                    if (!program) {
+                        el.innerHTML = '<i class="fas fa-users"></i> 0 students';
+                        return;
+                    }
+                    q = q.eq('program', program);
+                } else if (target === 'block') {
+                    if (!block) {
+                        el.innerHTML = '<i class="fas fa-users"></i> 0 students';
+                        return;
+                    }
+                    q = q.eq('block', block);
+                }
+
+                const { count, error } = await q;
+                if (error) throw error;
+
+                el.innerHTML =
+                    '<i class="fas fa-users"></i> ' +
+                    Number(count || 0) +
+                    ' students';
+            } catch (err) {
+                console.error('Student count:', err);
+                el.innerHTML =
+                    '<i class="fas fa-users"></i> 0 students';
             }
         },
 
@@ -1046,6 +1105,14 @@
                 if (owner) {
                     actions =
                         '<button type="button" ' +
+                        'onclick="LecturerExams.edit(\'' +
+                        this.esc(ex.id) +
+                        '\')" ' +
+                        'style="background:#ede9fe;color:#6d28d9;border:0;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;margin-right:4px;" ' +
+                        'title="Edit">' +
+                        '<i class="fas fa-edit"></i>' +
+                        '</button>' +
+                        '<button type="button" ' +
                         'onclick="LecturerExams.del(\'' +
                         this.esc(ex.id) +
                         '\')" ' +
@@ -1314,6 +1381,10 @@
 
         async create(e) {
             if (e) e.preventDefault();
+
+            if (this.editingExamId) {
+                return this.update(e);
+            }
 
             if (this.isProcessing) return;
 
@@ -1612,6 +1683,328 @@
             if (grades) grades.checked = true;
 
             this.updateNotificationTargetVisibility();
+            this.updateStudentCount();
+        },
+
+        // --------------------------------------------------------
+        // EDIT / UPDATE
+        // --------------------------------------------------------
+
+        async edit(id) {
+            const ex = this.exams.find(x =>
+                String(x.id) === String(id)
+            );
+
+            if (!ex) {
+                this.notify('Assessment not found.', 'error');
+                return;
+            }
+
+            if (
+                this.lecturerUuid &&
+                String(ex.created_by) !== String(this.lecturerUuid)
+            ) {
+                this.notify(
+                    'You can only edit your own assessments.',
+                    'warning'
+                );
+                return;
+            }
+
+            this.editingExamId = ex.id;
+
+            const setValue = (ids, value) => {
+                const el = this.firstEl(ids);
+                if (el) el.value = value == null ? '' : String(value);
+            };
+
+            setValue(['exam_title', 'examTitle'], ex.title || ex.exam_name);
+            setValue(['exam_type', 'examType'], ex.exam_type);
+            setValue(['exam_status', 'examStatus'], this.normalizeStatus(ex.status));
+            setValue(['exam_basis'], ex.exam_basis || 'ordinary');
+            setValue(['exam_out_of'], ex.marks_out_of ?? ex.total_marks ?? ex.MARKS ?? 100);
+            setValue(['exam_pass_mark'], ex.pass_mark ?? 50);
+            setValue(['exam_min_fee'], ex.min_fee_balance ?? 0);
+            setValue(['exam_duration_minutes', 'examDurationMinutes'], ex.duration_minutes ?? 120);
+            setValue(['exam_date', 'examDate'], ex.exam_date || '');
+            setValue(['exam_start_time', 'examStartTime'], ex.exam_start_time || '');
+            setValue(['exam_deadline'], ex.marks_entry_deadline || '');
+            setValue(['exam_link', 'examLink'], ex.exam_link || ex.online_link || '');
+            setValue(['exam_intake', 'examIntake'], ex.intake_year || '');
+            setValue(['exam_intake_month'], ex.intake_month || '');
+            setValue(['exam_block_term', 'examBlockTerm'], ex.block_term || ex.block || '');
+
+            const program = this.firstEl(['exam_program', 'examProgram']);
+            if (program) {
+                program.value = ex.target_program || ex.program_type || '';
+            }
+
+            await this.loadClasses();
+
+            const classBoxes = document.querySelectorAll('.exam-class-checkbox');
+            classBoxes.forEach(box => {
+                const name = box.dataset.className || box.value;
+                const assigned = Array.isArray(ex.assigned_classes)
+                    ? ex.assigned_classes
+                    : [];
+                box.checked =
+                    assigned.length === 0 ||
+                    assigned.some(x => String(x) === String(name));
+            });
+
+            const venueEl = this.firstEl(['exam_venue', 'examVenue']);
+            if (venueEl) {
+                const desc = String(ex.description || '');
+                venueEl.value = desc.replace(/^Venue:\s*/i, '');
+            }
+
+            if (ex.course_id) {
+                const course = this.courses
+                    .map(c => this.normalizeCourse(c))
+                    .find(c => String(c.id) === String(ex.course_id));
+
+                if (course) {
+                    this.selectCourse(course);
+                } else {
+                    const hidden = this.$('exam_course_id');
+                    if (hidden) hidden.value = ex.course_id;
+                    const input = this.$('createCourseSearchInput');
+                    if (input) input.value = ex.course_code || '';
+                }
+            } else if (ex.course_code) {
+                const input = this.$('createCourseSearchInput');
+                if (input) input.value = ex.course_code;
+            }
+
+            const submit =
+                document.querySelector('#addExamForm button[type="submit"]');
+            if (submit) {
+                submit.innerHTML =
+                    '<i class="fas fa-save"></i> Update Assessment';
+                submit.dataset.originalText = submit.dataset.originalText || submit.innerHTML;
+            }
+
+            let cancel = this.$('cancelExamEditButton');
+            if (!cancel && submit?.parentElement) {
+                cancel = document.createElement('button');
+                cancel.type = 'button';
+                cancel.id = 'cancelExamEditButton';
+                cancel.style.cssText =
+                    'margin-left:8px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;' +
+                    'padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;';
+                cancel.innerHTML =
+                    '<i class="fas fa-times"></i> Cancel Edit';
+                cancel.addEventListener('click', () => this.cancelEdit());
+                submit.parentElement.appendChild(cancel);
+            }
+
+            this.updateNotificationTargetVisibility();
+            await this.updateStudentCount();
+
+            const form = this.$('addExamForm');
+            if (form) {
+                form.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+
+            this.notify(
+                '✏️ Editing "' + (ex.title || ex.exam_name || 'assessment') + '".',
+                'info'
+            );
+        },
+
+        cancelEdit() {
+            this.editingExamId = null;
+
+            const form = this.$('addExamForm');
+            if (form) form.reset();
+
+            const submit =
+                document.querySelector('#addExamForm button[type="submit"]');
+            if (submit) {
+                submit.innerHTML =
+                    '<i class="fas fa-save"></i> Create Assessment';
+            }
+
+            const cancel = this.$('cancelExamEditButton');
+            if (cancel) cancel.remove();
+
+            this.resetForm(false);
+            this.notify('Edit cancelled.', 'info');
+        },
+
+        async update(e) {
+            if (e) e.preventDefault();
+
+            if (!this.editingExamId) {
+                return this.create(e);
+            }
+
+            if (this.isProcessing) return;
+            this.isProcessing = true;
+
+            const btn =
+                e?.submitter ||
+                document.querySelector('#addExamForm button[type="submit"]');
+
+            const original =
+                btn?.innerHTML || '<i class="fas fa-save"></i> Update Assessment';
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML =
+                    '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            }
+
+            try {
+                const title = this.value(['exam_title', 'examTitle']).trim();
+                const type = this.value(['exam_type', 'examType']);
+                const status = this.value(['exam_status', 'examStatus']) || 'Draft';
+                const basis = this.value(['exam_basis']) || 'ordinary';
+                const date = this.value(['exam_date', 'examDate']);
+                const startTime = this.value(['exam_start_time', 'examStartTime']) || '09:00';
+                const deadline = this.value(['exam_deadline']) || null;
+                const duration = parseInt(
+                    this.value(['exam_duration_minutes', 'examDurationMinutes']),
+                    10
+                );
+                const program = this.value(['exam_program', 'examProgram']);
+                const intake = this.value(['exam_intake', 'examIntake']);
+                const intakeMonth = this.value(['exam_intake_month']) || null;
+                const block = this.value(['exam_block_term', 'examBlockTerm']);
+                const courseId = this.value(['exam_course_id']) || null;
+                const courseCode =
+                    this.selectedCourse?.code ||
+                    this.selectedCourse?.name ||
+                    this.value(['createCourseSearchInput']) ||
+                    null;
+                const marksOutOf = Number(this.value(['exam_out_of']) || 100);
+                const passMark = Number(this.value(['exam_pass_mark']) || 50);
+                const minFeeBalance = Number(this.value(['exam_min_fee']) || 0);
+                const link = this.value(['exam_link', 'examLink']).trim() || null;
+                const venue = this.value(['exam_venue', 'examVenue']).trim() || null;
+                const selectedClasses = this.selectedClasses();
+
+                if (!title || !type || !date || !program || !intake || !block) {
+                    throw new Error(
+                        'Please complete Exam Title, Exam Type, Date, Program, Intake Year and Block/Term.'
+                    );
+                }
+
+                if (!duration || duration <= 0) {
+                    throw new Error('Duration must be greater than 0.');
+                }
+
+                if (marksOutOf <= 0) {
+                    throw new Error('Marks Out Of must be greater than 0.');
+                }
+
+                if (passMark < 0 || passMark > marksOutOf) {
+                    throw new Error(
+                        'Pass Mark must be between 0 and Marks Out Of.'
+                    );
+                }
+
+                const sb = this.sb();
+                if (!sb) throw new Error('No database connection.');
+                if (!this.lecturerUuid) {
+                    throw new Error('Lecturer account could not be resolved.');
+                }
+
+                const existing = this.exams.find(x =>
+                    String(x.id) === String(this.editingExamId)
+                );
+
+                if (
+                    existing &&
+                    existing.created_by &&
+                    String(existing.created_by) !== String(this.lecturerUuid)
+                ) {
+                    throw new Error('You can only edit your own assessment.');
+                }
+
+                const assignedClasses = selectedClasses
+                    .map(c => c.name || c.id)
+                    .filter(Boolean);
+
+                const row = {
+                    title,
+                    exam_name: title,
+                    exam_type: type,
+                    exam_basis: basis,
+                    exam_date: date,
+                    exam_start_time: startTime,
+                    marks_entry_deadline: deadline,
+                    duration_minutes: duration,
+                    target_program: program,
+                    program_type: program,
+                    block,
+                    block_term: block,
+                    intake_year: parseInt(intake, 10) || null,
+                    intake_month: intakeMonth,
+                    course_id: courseId,
+                    course_code: courseCode,
+                    marks_out_of: marksOutOf,
+                    total_marks: marksOutOf,
+                    MARKS: String(marksOutOf),
+                    pass_mark: passMark,
+                    min_fee_balance: minFeeBalance,
+                    online_link: link,
+                    exam_link: link,
+                    description: venue ? 'Venue: ' + venue : null,
+                    assigned_classes: assignedClasses,
+                    status: this.dbStatus(status),
+                    updated_at: new Date().toISOString()
+                };
+
+                const { error } = await sb
+                    .from('exams')
+                    .update(row)
+                    .eq('id', this.editingExamId)
+                    .eq('created_by', this.lecturerUuid);
+
+                if (error) throw error;
+
+                this.notify(
+                    '✅ Assessment updated successfully.',
+                    'success'
+                );
+
+                this.editingExamId = null;
+
+                if (btn) {
+                    btn.innerHTML =
+                        '<i class="fas fa-save"></i> Create Assessment';
+                }
+
+                const cancel = this.$('cancelExamEditButton');
+                if (cancel) cancel.remove();
+
+                this.resetForm(true);
+                await this.loadExams();
+
+            } catch (err) {
+                console.error('update:', err);
+                this.notify(
+                    'Failed to update assessment: ' +
+                    (err.message || err),
+                    'error'
+                );
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    if (!this.editingExamId) {
+                        btn.innerHTML =
+                            '<i class="fas fa-save"></i> Create Assessment';
+                    } else {
+                        btn.innerHTML = original;
+                    }
+                }
+
+                this.isProcessing = false;
+            }
         },
 
         // --------------------------------------------------------
@@ -2214,9 +2607,27 @@
             if (notifyTarget) {
                 notifyTarget.addEventListener(
                     'change',
-                    () =>
-                        this.updateNotificationTargetVisibility()
+                    async () => {
+                        this.updateNotificationTargetVisibility();
+                        await this.updateStudentCount();
+                    }
                 );
+            }
+
+            const programForCount = this.firstEl(['exam_program', 'examProgram']);
+            if (programForCount) {
+                programForCount.addEventListener('change', async () => {
+                    await this.loadClasses();
+                    await this.updateStudentCount();
+                });
+            }
+
+            const blockForCount = this.firstEl(['exam_block_term', 'examBlockTerm']);
+            if (blockForCount) {
+                blockForCount.addEventListener('change', async () => {
+                    await this.loadClasses();
+                    await this.updateStudentCount();
+                });
             }
 
             const studentSearch =
@@ -2252,6 +2663,9 @@
 
     window.loadExams =
         () => LecturerExams.loadExams();
+
+    window.editExam =
+        id => LecturerExams.edit(id);
 
     window.deleteExam =
         id => LecturerExams.del(id);
