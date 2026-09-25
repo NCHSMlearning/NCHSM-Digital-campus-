@@ -48,16 +48,60 @@ window.LecturerOnlineLearning = (() => {
     }
     async function loadQuestionCount(id){ const db=client(); const {count}=await db.from('online_assignment_questions').select('*',{count:'exact',head:true}).eq('assignment_id',id); const el=$(`olqcount-${id}`); if(el)el.textContent=count??0; }
     function populateAssignmentFilter(){const s=$('olSubmissionAssignmentFilter');if(!s)return;const cur=s.value;s.innerHTML='<option value="">All assignments</option>'+state.assignments.map(a=>`<option value="${esc(a.id)}">${esc(a.title)}</option>`).join('');s.value=cur;}
+    function resolveSubmissionMaxMarks(submission,assignment={}){
+        const candidates=[
+            submission?.max_marks,
+            assignment?.max_marks,
+            assignment?.marking_key?.max_marks,
+            submission?.online_assignments?.max_marks,
+            window._activeSubmissionMarkingKey?.max_marks
+        ];
+        for(const value of candidates){
+            const n=Number(value);
+            if(Number.isFinite(n)&&n>0) return n;
+        }
+        return 0;
+    }
+
+    async function syncSubmissionMaximumMarks(){
+        const db=client();
+        if(!db || !Array.isArray(state.submissions) || !state.submissions.length) return;
+        const updates=[];
+        for(const s of state.submissions){
+            const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+            const maxMarks=resolveSubmissionMaxMarks(s,assignment);
+            if(maxMarks>0 && Number(s.max_marks)!==maxMarks){
+                updates.push({id:s.id,max_marks:maxMarks});
+            }
+        }
+        for(const item of updates){
+            const r=await db.from('online_submissions').update({max_marks:item.max_marks}).eq('id',item.id);
+            if(r.error) console.warn('Could not backfill submission max_marks:',r.error.message);
+            else {
+                const local=state.submissions.find(s=>s.id===item.id);
+                if(local) local.max_marks=item.max_marks;
+            }
+        }
+    }
+
     async function loadSubmissions(){
         const db=client();if(!db)return; const filter=$('olSubmissionAssignmentFilter')?.value;
         let q=db.from('online_submissions').select('*, online_assignments(title,unit_code)').order('submitted_at',{ascending:false}); if(filter)q=q.eq('assignment_id',filter);
         const {data,error}=await q; if(error){console.warn('Submission load:',error.message);state.submissions=[];}else state.submissions=data||[];
+        await syncSubmissionMaximumMarks();
         const body=$('olSubmissionsTable');if(!body)return; if(!state.submissions.length){body.innerHTML='<tr><td colspan="7" class="ol-empty">No student submissions yet.</td></tr>';updateStats();return;}
         // Resolve profile names through consolidated_user_profiles_table. RLS should permit lecturers/admins.
         const ids=[...new Set(state.submissions.map(s=>s.student_id).filter(Boolean))]; let profiles=[];
         if(ids.length){const r=await db.from('consolidated_user_profiles_table').select('user_id,full_name,student_id,admission_number,email').in('user_id',ids);profiles=r.data||[];}
         const map=new Map(profiles.map(p=>[p.user_id,p]));
-        body.innerHTML=state.submissions.map(s=>{const p=map.get(s.student_id)||{};const mark=s.marks_obtained==null?'—':`${s.marks_obtained}/${s.max_marks||'?'}`;const pct=s.marks_obtained==null?'—':formatPercentage(s.marks_obtained,s.max_marks);return `<tr><td><b>${esc(p.full_name||'Student')}</b><div style="font-size:11px;color:#64748b">${esc(p.admission_number||p.student_id||s.student_id||'')}</div></td><td>${esc(s.online_assignments?.title||s.assignment_id)}</td><td>${fmtDate(s.submitted_at)}</td><td>${esc(s.attempt_number||1)}</td><td><b>${mark}</b><div style="font-size:11px;color:#64748b;margin-top:2px">${pct}</div></td><td><span class="ol-badge ${s.result_released?'ol-returned':s.review_required?'ol-review':'ol-draft'}">${s.result_released?'RELEASED':s.review_required?'REVIEW':'SUBMITTED'}</span></td><td><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.reviewSubmission('${s.id}')">Review</button></td></tr>`}).join('');updateStats();
+        body.innerHTML=state.submissions.map(s=>{
+            const p=map.get(s.student_id)||{};
+            const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+            const maxMarks=resolveSubmissionMaxMarks(s,assignment);
+            const mark=s.marks_obtained==null?'—':`${s.marks_obtained}/${maxMarks||'?'}`;
+            const pct=s.marks_obtained==null?'—':formatPercentage(s.marks_obtained,maxMarks);
+            return `<tr><td><b>${esc(p.full_name||'Student')}</b><div style="font-size:11px;color:#64748b">${esc(p.admission_number||p.student_id||s.student_id||'')}</div></td><td>${esc(s.online_assignments?.title||assignment.title||s.assignment_id)}</td><td>${fmtDate(s.submitted_at)}</td><td>${esc(s.attempt_number||1)}</td><td><b>${mark}</b><div style="font-size:11px;color:#64748b;margin-top:2px">${pct}</div></td><td><span class="ol-badge ${s.result_released?'ol-returned':s.review_required?'ol-review':'ol-draft'}">${s.result_released?'RELEASED':s.review_required?'REVIEW':'SUBMITTED'}</span></td><td><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.reviewSubmission('${s.id}')">Review</button></td></tr>`;
+        }).join('');updateStats();
     }
     function resetQuestionEditors(questions=[]){const c=$('olQuestions');if(!c)return;c.innerHTML='';(questions.length?questions:[{}]).forEach(q=>addQuestionEditor(q));}
     function addQuestionEditor(q={}){const c=$('olQuestions');if(!c)return;const n=c.children.length+1;const d=document.createElement('div');d.className='ol-q';d.dataset.index=n;d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b>Question ${n}</b><button type="button" class="ol-btn ol-danger" onclick="this.closest('.ol-q').remove();LecturerOnlineLearning.renumberQuestions()"><i class="fas fa-trash"></i></button></div><div class="ol-form" style="margin-top:10px"><div class="ol-full"><label>Question *</label><textarea class="ol-q-text" rows="3" required>${esc(q.question_text||'')}</textarea></div><div><label>Type *</label><select class="ol-q-type"><option value="mcq" ${q.question_type==='mcq'?'selected':''}>MCQ</option><option value="true_false" ${q.question_type==='true_false'?'selected':''}>True / False</option><option value="short_answer" ${q.question_type==='short_answer'?'selected':''}>Short Answer</option><option value="case_study" ${q.question_type==='case_study'?'selected':''}>Case Study</option></select></div><div><label>Marks *</label><input class="ol-q-marks" type="number" min="0.1" step="0.1" value="${esc(q.marks??1)}"></div><div class="ol-full"><label>Options (MCQ only, one per line)</label><textarea class="ol-q-options" rows="3" placeholder="A. ...\nB. ...\nC. ...\nD. ...">${esc(Array.isArray(q.options)?q.options.join('\n'):(q.options||''))}</textarea></div><div><label>Correct Answer / Expected Answer</label><input class="ol-q-correct" value="${esc(q.correct_answer||'')}"></div><div><label>Accepted Answers (comma separated)</label><input class="ol-q-accepted" value="${esc(Array.isArray(q.accepted_answers)?q.accepted_answers.join(', '):(q.accepted_answers||''))}"></div><div><label>Keywords (comma separated)</label><input class="ol-q-keywords" value="${esc(Array.isArray(q.keywords)?q.keywords.join(', '):(q.keywords||''))}"></div><div><label>Keyword Marks</label><input class="ol-q-keywordmarks" type="number" min="0" step="0.1" value="${esc(q.keyword_marks??0)}"></div></div>`;c.appendChild(d);}
@@ -321,35 +365,17 @@ window.LecturerOnlineLearning = (() => {
 
     function normalizeText(t){return String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();}
     function shingles(t,n=8){const w=normalizeText(t).split(' ').filter(Boolean), out=[];for(let i=0;i<=w.length-n;i++)out.push(w.slice(i,i+n).join(' '));return [...new Set(out)];}
-    const submissionTextCache=new Map();
     async function extractSubmissionText(s){
-        const cacheKey=String(s?.id||s?.file_path||'');
-        if(cacheKey && submissionTextCache.has(cacheKey)) return submissionTextCache.get(cacheKey);
         const url=await signedDocumentUrl(s), ext=extOf(s.file_name||s.file_path||'');
-        let promise=(async()=>{
-            if(['txt','csv','md'].includes(ext)) return await (await fetch(url)).text();
-            if(['doc','docx'].includes(ext)){const blob=await (await fetch(url)).blob();await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');const r=await window.mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()});return r.value||'';}
-            if(ext==='pdf'){
-                await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','olPdfJs');
-                if(!window.pdfjsLib) throw new Error('PDF text extraction library is unavailable.');
-                const pdf=await window.pdfjsLib.getDocument({url}).promise; let text='';
-                const batch=5;
-                for(let start=1;start<=pdf.numPages;start+=batch){
-                    const end=Math.min(pdf.numPages,start+batch-1);
-                    const pages=await Promise.all(Array.from({length:end-start+1},(_,j)=>pdf.getPage(start+j)));
-                    const chunks=await Promise.all(pages.map(async pg=>{const c=await pg.getTextContent();return c.items.map(x=>x.str).join(' ');}));
-                    text+=chunks.join('\n')+'\n';
-                    await new Promise(resolve=>setTimeout(resolve,0));
-                }
-                return text;
-            }
-            return '';
-        })();
-        if(cacheKey) submissionTextCache.set(cacheKey,promise);
-        try{return await promise;}catch(e){if(cacheKey)submissionTextCache.delete(cacheKey);throw e;}
+        if(['txt','csv','md'].includes(ext)) return await (await fetch(url)).text();
+        if(['doc','docx'].includes(ext)){const blob=await (await fetch(url)).blob();await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');const r=await window.mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()});return r.value||'';}
+        if(ext==='pdf'){
+            await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','olPdfJs');
+            if(!window.pdfjsLib) throw new Error('PDF text extraction library is unavailable.');
+            const pdf=await window.pdfjsLib.getDocument(url).promise; let text=''; for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const c=await pg.getTextContent();text+=c.items.map(x=>x.str).join(' ')+'\n';} return text;
+        }
+        return '';
     }
-
-
     async function localSimilarity(s,text){
         const db=client(); if(!db || !text) return {score:0,matches:[],source:'local'};
         const {data}=await db.from('online_submissions').select('id,student_id,assignment_id,submitted_at,answers').eq('assignment_id',s.assignment_id).neq('id',s.id).limit(100);
@@ -489,22 +515,7 @@ window.LecturerOnlineLearning = (() => {
     function parseJsonArray(value){
       if(Array.isArray(value)) return value;
       if(value==null || value==='') return [];
-      if(typeof value==='object'){
-        if(Array.isArray(value.criteria)) return value.criteria;
-        if(Array.isArray(value.items)) return value.items;
-        if(Array.isArray(value.requirements)) return value.requirements;
-        return [];
-      }
-      try{
-        const parsed=JSON.parse(value);
-        if(Array.isArray(parsed)) return parsed;
-        if(parsed && typeof parsed==='object'){
-          if(Array.isArray(parsed.criteria)) return parsed.criteria;
-          if(Array.isArray(parsed.items)) return parsed.items;
-          if(Array.isArray(parsed.requirements)) return parsed.requirements;
-        }
-        return [];
-      }catch(e){
+      try{const parsed=JSON.parse(value);return Array.isArray(parsed)?parsed:[];}catch(e){
         return String(value).split(',').map(x=>x.trim()).filter(Boolean);
       }
     }
@@ -610,43 +621,7 @@ window.LecturerOnlineLearning = (() => {
     // ============================================================
     function markKeyArray(value){
         if(Array.isArray(value)) return value;
-        if(value && typeof value==='object'){
-            if(Array.isArray(value.criteria)) return value.criteria;
-            if(Array.isArray(value.items)) return value.items;
-            if(Array.isArray(value.rubric)) return value.rubric;
-            if(Array.isArray(value.sections)) return value.sections;
-            return [];
-        }
         return parseJsonArray(value);
-    }
-
-    function resolveMarkingKeyCriteria(key){
-        if(!key) return [];
-        const candidates=[
-            key.criteria,
-            key.rubric,
-            key.marking_criteria,
-            key.criteria_json,
-            key.rubric_json
-        ];
-        for(const value of candidates){
-            const parsed=markKeyArray(value);
-            if(parsed.length) return parsed;
-        }
-        return [];
-    }
-
-    function resolveMarkingKeyMaxMarks(key,fallback=0){
-        if(!key) return Number(fallback)||0;
-        const direct=Number(key.max_marks);
-        if(Number.isFinite(direct)&&direct>0) return direct;
-        const allocated=Number(key.allocated_marks);
-        if(Number.isFinite(allocated)&&allocated>0) return allocated;
-        const criteria=resolveMarkingKeyCriteria(key);
-        const nodes=criterionNodes(criteria);
-        const total=nodes.reduce((sum,c)=>sum+Number(c.max_marks||0),0);
-        if(total>0) return total;
-        return Number(fallback)||0;
     }
 
     function cleanWords(text){
@@ -778,25 +753,22 @@ window.LecturerOnlineLearning = (() => {
      *
      * The function deliberately keeps the original {score, matched} contract.
      */
-    // FAST / STRICT EVIDENCE MATCHER V6
-    // No Levenshtein/edit-distance loops. Exact phrases and meaningful token
-    // coverage are used instead. This keeps automatic marking responsive while
-    // avoiding generic-word false positives.
     function termCoverage(text,terms){
         const hay=normalizedPhrase(text);
-        if(!hay) return {score:0,matched:[],strong:0,partial:0};
+        const alternatives=(Array.isArray(terms)?terms:[String(terms||'')])
+            .map(x=>normalizedPhrase(x))
+            .filter(Boolean);
 
-        const alternatives=[...(Array.isArray(terms)?terms:[String(terms||'')])]
-            .map(normalizedPhrase).filter(Boolean);
         if(!alternatives.length) return {score:0,matched:[],strong:0,partial:0};
 
         const generic=new Set([
-            'case','study','student','students','name','class','date','family','health',
-            'care','assessment','introduction','information','history','status','problem',
-            'problems','intervention','evaluation','summary','conclusion','recommendation',
-            'recommendations','visit','first','second','third','fourth','section','home',
-            'client','patient','content','present','available','general','description',
-            'report','page','table','chapter','include','including','provide','provided'
+            'case','study','student','name','class','date','family','health',
+            'care','assessment','introduction','information','history','status',
+            'problem','problems','intervention','evaluation','summary',
+            'conclusion','recommendation','recommendations','visit','first',
+            'second','third','fourth','section','home','client','patient',
+            'content','present','available','general','description','report',
+            'page','table','chapter'
         ]);
 
         const synonymGroups=[
@@ -809,59 +781,112 @@ window.LecturerOnlineLearning = (() => {
             ['educate','educated','education','educational','teaching','health education'],
             ['plan','planned','planning','plans'],
             ['describe','described','describes','description'],
+            ['provide','provided','provides','provision'],
             ['need','needs','needed','needing'],
             ['visit','visits','visited'],
             ['conclude','concluded','conclusion','conclusions'],
             ['summarize','summarized','summary','summaries'],
+            ['family member','family members','members of the family'],
             ['immunize','immunized','immunization','immunisation','vaccination','vaccinated'],
             ['sanitize','sanitation','sanitary'],
             ['dispose','disposal','disposed'],
             ['water source','source of water','water supply']
         ];
+
         const synonymMap=new Map();
         synonymGroups.forEach(group=>{
-            const n=group.map(normalizedPhrase);
-            n.forEach(x=>synonymMap.set(x,n));
+            const normalized=group.map(x=>normalizedPhrase(x));
+            normalized.forEach(term=>synonymMap.set(term,normalized));
         });
 
-        const tokenVariants=t=>{
-            const x=normalizedPhrase(t), out=new Set([x]);
-            const group=synonymMap.get(x); if(group) group.forEach(v=>out.add(v));
-            if(x.length>5){
-                ['ization','isation','ation','ations','ingly','edly','ing','ed','ies','es','s'].forEach(suffix=>{
-                    if(x.endsWith(suffix) && x.length-suffix.length>=4) out.add(x.slice(0,-suffix.length));
-                });
+        const tokenVariants=token=>{
+            const t=normalizedPhrase(token);
+            const variants=new Set([t]);
+            const group=synonymMap.get(t);
+            if(group) group.forEach(x=>variants.add(x));
+
+            // Lightweight morphology support for common academic wording.
+            if(t.length>5){
+                ['ization','isation','ations','ation','ingly','edly','ing','ed','ies','es','s']
+                    .forEach(suffix=>{
+                        if(t.endsWith(suffix) && t.length-suffix.length>=4){
+                            variants.add(t.slice(0,t.length-suffix.length));
+                        }
+                    });
             }
-            return [...out];
+            return [...variants];
         };
 
-        const hayTokens=new Set(hay.split(/\s+/).filter(Boolean));
-        const hayPhrases=hay;
-        const matched=[]; let strong=0, partial=0;
+        const meaningfulTokens=value=>normalizedPhrase(value)
+            .split(/\s+/)
+            .filter(token=>token.length>=4 && !generic.has(token));
 
-        for(const phrase of alternatives){
-            // Exact configured phrase = strongest evidence.
-            if(hayPhrases.includes(phrase)){
-                matched.push(phrase); strong++; continue;
-            }
-            const tokens=phrase.split(/\s+/)
-                .filter(t=>t.length>=4 && !generic.has(t));
-            if(!tokens.length) continue;
-            let hits=0;
-            for(const token of tokens){
-                const variants=tokenVariants(token);
-                if(variants.some(v=>v.includes(' ')?hayPhrases.includes(v):hayTokens.has(v))){ hits++; }
-            }
-            const ratio=hits/tokens.length;
-            if(ratio>=0.80){ matched.push(phrase); strong++; }
-            else if(ratio>=0.55){ matched.push(phrase); partial++; }
-        }
+        const tokenPresent=(token)=>{
+            const variants=tokenVariants(token);
+            return variants.some(v=>{
+                if(v.includes(' ')) return hay.includes(v);
+                return hay.split(/\s+/).some(h=>{
+                    if(h===v) return true;
+                    if(v.length>=6 && h.length>=6){
+                        const a=v,b=h;
+                        const max=Math.max(a.length,b.length);
+                        let prev=Array(max+1).fill(0).map((_,i)=>i);
+                        for(let i=1;i<=a.length;i++){
+                            const cur=[i];
+                            for(let j=1;j<=b.length;j++){
+                                cur[j]=Math.min(
+                                    cur[j-1]+1,
+                                    prev[j]+1,
+                                    prev[j-1]+(a[i-1]===b[j-1]?0:1)
+                                );
+                            }
+                            prev=cur;
+                        }
+                        const distance=prev[b.length];
+                        return distance<=Math.max(1,Math.floor(max*0.17));
+                    }
+                    return false;
+                });
+            });
+        };
 
-        const denominator=Math.max(1,Math.min(alternatives.length,8));
-        const score=Math.min(1,(strong+partial*0.45)/denominator);
-        return {score:Math.round(score*100)/100,matched:matched.slice(0,20),strong,partial};
+        const matched=[];
+        let strong=0;
+        let partial=0;
+
+        alternatives.forEach(phrase=>{
+            if(hay.includes(phrase)){
+                matched.push(phrase);
+                strong++;
+                return;
+            }
+
+            const tokens=meaningfulTokens(phrase);
+            if(tokens.length===0) return;
+
+            const hits=tokens.filter(tokenPresent);
+            const ratio=hits.length/tokens.length;
+
+            if(ratio>=0.75){
+                matched.push(phrase);
+                strong++;
+            }else if(ratio>=0.5){
+                matched.push(phrase);
+                partial++;
+            }
+        });
+
+        // Do not let a large keyword list make one or two matches look complete.
+        const denominator=Math.max(1,Math.min(alternatives.length,6));
+        const score=Math.min(1,(strong+(partial*0.5))/denominator);
+
+        return {
+            score:Math.round(score*100)/100,
+            matched:matched.slice(0,20),
+            strong,
+            partial
+        };
     }
-
 
     function looksLikeContentsLine(p){
         const x=String(p||'').trim();
@@ -877,74 +902,54 @@ window.LecturerOnlineLearning = (() => {
         return !/[.!?]$/.test(x) || /^[A-Z0-9][A-Z0-9\s:()\-\/&]+$/.test(x);
     }
 
-    function findCriterionWindow(text,node){
+    function findCriterionWindow(text,node,allNodes=[]){
         const paragraphs=paragraphize(text);
-        const criterion=normalizedPhrase(node.criterion);
-        const description=normalizedPhrase(node.description);
-        const candidates=[];
+        const criterion=normalizedPhrase(node?.criterion||'');
+        const description=normalizedPhrase(node?.description||'');
+        const otherCriteria=(Array.isArray(allNodes)?allNodes:[])
+            .map(n=>normalizedPhrase(n?.criterion||''))
+            .filter(Boolean);
 
-        const headingSimilarity=(paragraph,terms)=>{
-            const words=normalizedPhrase(paragraph)
-                .split(/\s+/)
-                .filter(x=>x.length>=4);
-            if(!words.length) return 0;
-            const coverage=termCoverage(paragraph,terms);
-            return coverage.score;
+        const isCriterionHeading=(paragraph)=>{
+            const p=normalizedPhrase(paragraph);
+            if(!p) return false;
+            return otherCriteria.some(name =>
+                p===name ||
+                p.startsWith(name+':') ||
+                p.startsWith(name+' -') ||
+                p.startsWith(name+' —') ||
+                p.startsWith(name+' ')
+            );
         };
 
-        // First prefer an exact institutional criterion heading.
+        // Prefer the exact institutional criterion heading.
+        let index=-1;
         for(let i=0;i<paragraphs.length;i++){
             const p=normalizedPhrase(paragraphs[i]);
             if(criterion && (
                 p===criterion ||
                 p.startsWith(criterion+':') ||
                 p.startsWith(criterion+' -') ||
+                p.startsWith(criterion+' —') ||
                 p.startsWith(criterion+' ')
             )){
-                if(!looksLikeContentsLine(paragraphs[i])) candidates.push(i);
+                index=i;
             }
         }
 
-        let index=candidates.length ? candidates[candidates.length-1] : -1;
-
-        // Then recognise common student variations of the institutional heading.
+        // If the exact heading is absent, locate the strongest content window
+        // using the criterion + its own requirement vocabulary.
         if(index<0){
-            const headingTerms=[criterion,description].filter(Boolean);
+            const reqTerms=(Array.isArray(node?.requirements)?node.requirements:[])
+                .flatMap(r=>Array.isArray(r?.evidence_terms)?r.evidence_terms:[]);
+            const searchTerms=[criterion,description,...reqTerms].filter(Boolean);
             let best={score:0,index:-1};
-
-            paragraphs.forEach((p,i)=>{
-                if(!looksLikeHeading(p) || looksLikeContentsLine(p)) return;
-
-                const score=headingSimilarity(p,headingTerms);
-                if(score>best.score) best={score,index:i};
-            });
-
-            if(best.score>=0.45) index=best.index;
-        }
-
-        /*
-         * If the student omitted the criterion heading, locate the strongest
-         * content block instead of grading the entire document. This prevents
-         * evidence copied into the table of contents or another section from
-         * contaminating this criterion.
-         */
-        if(index<0){
-            const reqs=Array.isArray(node.requirements)?node.requirements:[];
-            const searchTerms=[
-                criterion,
-                description,
-                ...reqs.flatMap(r=>Array.isArray(r.evidence_terms)?r.evidence_terms:[])
-            ].filter(Boolean);
-
-            let best={score:0,index:-1};
-
             for(let i=0;i<paragraphs.length;i++){
-                const window=paragraphs.slice(i,Math.min(paragraphs.length,i+8)).join(' ');
+                const window=paragraphs.slice(i,Math.min(paragraphs.length,i+12)).join(' ');
                 const score=termCoverage(window,searchTerms).score;
                 if(score>best.score) best={score,index:i};
             }
-
-            if(best.score>=0.30) index=best.index;
+            if(best.score>=0.20) index=best.index;
         }
 
         if(index<0){
@@ -957,20 +962,29 @@ window.LecturerOnlineLearning = (() => {
             };
         }
 
-        // Stop at the next plausible major heading.
-        let end=Math.min(paragraphs.length,index+60);
-        for(let i=index+1;i<Math.min(paragraphs.length,index+60);i++){
+        // A DOCX text extractor often puts headings and body text on separate
+        // paragraphs. Therefore do NOT stop at arbitrary punctuation-free lines.
+        // Stop only when another rubric criterion is actually encountered.
+        let end=paragraphs.length;
+        for(let i=index+1;i<paragraphs.length;i++){
             if(i-index<2) continue;
-            if(looksLikeHeading(paragraphs[i]) && paragraphs[i].length<=120){
+            if(isCriterionHeading(paragraphs[i])){
                 end=i;
                 break;
             }
         }
 
+        // Keep a sensible upper bound when no later rubric heading is present.
+        if(end===paragraphs.length){
+            end=Math.min(paragraphs.length,index+80);
+        }
+
+        // If the matched paragraph was a false heading, broaden the context
+        // enough to capture the actual section content.
         const section=paragraphs.slice(index,end).join('\n');
         return {
             text:section,
-            headingFound:candidates.includes(index) || index>=0,
+            headingFound:true,
             paragraphs,
             index,
             noSection:false
@@ -982,117 +996,335 @@ window.LecturerOnlineLearning = (() => {
         const context=String(criterionWindow?.text||'');
         const headingFound=!!criterionWindow?.headingFound;
         const contentWords=cleanWords(context).length;
+
+        /*
+         * Build evidence vocabulary from the institutional schema. The engine
+         * never invents a requirement; it only expands the matching vocabulary
+         * using the requirement's own description and the parent criterion.
+         */
+        const configured=Array.isArray(req.evidence_terms)?req.evidence_terms:[];
+        const description=String(req.description||'').trim();
+        const parentDescription=String(criterionNode?.description||'').trim();
+
+        const evidenceTerms=[
+            ...configured,
+            description,
+            // The parent criterion is supporting context, not a substitute
+            // for requirement-specific evidence.
+            parentDescription
+        ].filter(Boolean);
+
+        const coverage=termCoverage(context,evidenceTerms);
+
         if(!context || contentWords<8){
-            return {id:String(req.id||''),description:String(req.description||''),score:0,matched:[],matched_text:'',content_words:contentWords,heading_found:headingFound,evidence_excerpt:''};
+            return {
+                id:String(req.id||''),
+                description,
+                score:0,
+                matched:[],
+                matched_text:'',
+                content_words:contentWords,
+                heading_found:headingFound,
+                evidence_excerpt:''
+            };
         }
 
-        const configured=Array.isArray(req.evidence_terms)?req.evidence_terms.filter(Boolean):[];
-        const description=String(req.description||'').trim();
-        // Explicit evidence is authoritative. Description is used only when the
-        // requirement has no configured evidence terms.
-        const evidenceTerms=configured.length?configured:[description];
-        const coverage=termCoverage(context,evidenceTerms);
-        let score=coverage.score;
+        /*
+         * Requirement-specific terms are weighted more heavily than the
+         * generic parent criterion. This avoids giving marks merely because
+         * the student used words such as "family" or "health".
+         */
+        const specificCoverage=termCoverage(
+            context,
+            [...configured,description].filter(Boolean)
+        );
 
-        // A heading only locates the section. It NEVER earns marks.
-        // No structural bonus is applied either.
-        if(configured.length>=3 && coverage.strong<2) score=Math.min(score,0.70);
+        let score=specificCoverage.score;
+
+        // A recognised section heading establishes presence, but never earns
+        // a requirement by itself.
+        if(headingFound && score<0.20 && contentWords>=25){
+            score=0.20;
+        }
+
+        // Substantive discussion can lift a partial match, but cannot turn
+        // unsupported content into a full mark.
+        if(contentWords>=60 && specificCoverage.strong>=2){
+            score=Math.max(score,Math.min(1,specificCoverage.score+0.05));
+        }
+
+        // If the requirement has several explicit evidence terms, require
+        // broader coverage before awarding the top band.
+        const explicitCount=Math.max(1,configured.length);
+        if(explicitCount>=3 && specificCoverage.strong<2){
+            score=Math.min(score,0.70);
+        }
+
+        /*
+         * Structural indicators are useful evidence for requirements such as
+         * prioritisation, lesson plans and recommendations. They supplement
+         * content matching; they never create marks on their own.
+         */
+        const lower=normalizedPhrase(context);
+        const structuralPatterns=[
+            /\b(first|1st|one)\b.*\b(priority|problem|need)\b/,
+            /\b(second|2nd|two|third|3rd)\b.*\b(priority|problem|need)\b/,
+            /\bobjective(s)?\b/,
+            /\bactivities?\b/,
+            /\bintervention(s)?\b/,
+            /\bevaluation\b/,
+            /\brecommendation(s)?\b/,
+            /\baction plan\b/,
+            /\blesson plan\b/
+        ];
+
+        const structuralHits=structuralPatterns.filter(rx=>rx.test(lower)).length;
+        if(structuralHits>=2 && specificCoverage.score>=0.35){
+            score=Math.max(score,Math.min(0.85,specificCoverage.score+0.10));
+        }
+
+        // A very short section should not receive a high score from a heading
+        // plus a single matching phrase.
         if(contentWords<30) score=Math.min(score,0.60);
         if(contentWords<15) score=Math.min(score,0.35);
 
         let evidenceExcerpt='';
-        const first=coverage.matched[0];
+        const first=specificCoverage.matched[0] || coverage.matched[0];
         if(first){
-            const hay=normalizedPhrase(context), needle=normalizedPhrase(first), pos=hay.indexOf(needle);
+            const lowerContext=context.toLowerCase();
+            const needle=normalizedPhrase(first);
+            let pos=lowerContext.indexOf(needle);
+
+            if(pos<0){
+                const token=needle.split(/\s+/).find(t=>t.length>=4);
+                pos=token?lowerContext.indexOf(token):-1;
+            }
+
             if(pos>=0){
-                const originalPos=context.toLowerCase().indexOf(needle);
-                const start=Math.max(0,(originalPos>=0?originalPos:0)-220);
-                evidenceExcerpt=context.slice(start,start+650);
+                evidenceExcerpt=context.slice(
+                    Math.max(0,pos-220),
+                    Math.min(context.length,pos+650)
+                );
             }
         }
+
         return {
-            id:String(req.id||''), description,
+            id:String(req.id||''),
+            description,
             score:Math.round(Math.max(0,Math.min(1,score))*100)/100,
-            matched:coverage.matched.slice(0,15),
-            matched_text:coverage.matched.slice(0,15).join(' | '),
-            strong_matches:Number(coverage.strong||0), partial_matches:Number(coverage.partial||0),
-            content_words:contentWords, heading_found:headingFound, evidence_excerpt:evidenceExcerpt
+            matched:(specificCoverage.matched.length
+                ? specificCoverage.matched
+                : coverage.matched).slice(0,15),
+            matched_text:(specificCoverage.matched.length
+                ? specificCoverage.matched
+                : coverage.matched).slice(0,15).join(' | '),
+            strong_matches:Number(specificCoverage.strong||0),
+            partial_matches:Number(specificCoverage.partial||0),
+            content_words:contentWords,
+            heading_found:headingFound,
+            structural_hits:structuralHits,
+            evidence_excerpt:evidenceExcerpt
         };
     }
 
+    function deterministicGradeMarkingKey(text,key,maxMarks){
+        const criteria=criterionNodes(markKeyArray(key?.criteria));
+        if(!criteria.length){
+            throw new Error('The institutional marking key has no usable numeric criteria.');
+        }
 
-    async function deterministicGradeMarkingKey(text,key,maxMarks){
-        const criteria=criterionNodes(resolveMarkingKeyCriteria(key));
-        if(!criteria.length) throw new Error('The institutional marking key has no numeric criteria to grade against.');
         const assignmentMax=Number(maxMarks||key?.max_marks||0);
         const totalRubricMarks=criteria.reduce((sum,c)=>sum+Number(c.max_marks||0),0);
-        if(!Number.isFinite(assignmentMax)||assignmentMax<=0) throw new Error('The institutional marking key has no valid maximum mark.');
-        if(totalRubricMarks<=0) throw new Error('The institutional marking key has no usable criterion allocations.');
-        if(totalRubricMarks>assignmentMax+0.001) throw new Error(`Marking key allocation (${totalRubricMarks}) exceeds assignment maximum (${assignmentMax}).`);
-
         const declaredAllocated=Number(key?.allocated_marks);
-        const rubricAllocationMismatch=Number.isFinite(declaredAllocated)&&Math.abs(declaredAllocated-totalRubricMarks)>0.001;
+
+        if(!Number.isFinite(assignmentMax)||assignmentMax<=0){
+            throw new Error('The institutional marking key has no valid maximum mark.');
+        }
+        if(totalRubricMarks<=0){
+            throw new Error('The institutional marking key has no usable criterion allocations.');
+        }
+        if(totalRubricMarks>assignmentMax+0.001){
+            throw new Error(`Marking key allocation (${totalRubricMarks}) exceeds assignment maximum (${assignmentMax}).`);
+        }
+
+        const rubricAllocationMismatch=
+            Number.isFinite(declaredAllocated) &&
+            Math.abs(declaredAllocated-totalRubricMarks)>0.001;
+
         const requirementAllocation=(requirements,criterionMarks)=>{
             const reqs=Array.isArray(requirements)?requirements:[];
-            if(!reqs.length) return [{id:'criterion',description:'Criterion-level evidence',evidence_terms:[],weight:1,allocated_marks:Number(criterionMarks)}];
-            const explicit=reqs.map(r=>Number(r.allocated_marks));
-            const explicitValid=explicit.every(n=>Number.isFinite(n)&&n>=0);
-            const explicitTotal=explicit.reduce((a,b)=>a+(Number.isFinite(b)?b:0),0);
-            if(explicitValid && explicitTotal>0){
-                // Always make the requirement allocation equal the parent
-                // criterion. This prevents hidden unallocated marks.
-                const scale=Number(criterionMarks)/explicitTotal;
-                return reqs.map((r,i)=>({...r,allocated_marks:Math.round(explicit[i]*scale*100)/100}));
+
+            if(!reqs.length){
+                return [{
+                    id:'criterion',
+                    description:'Criterion-level evidence',
+                    evidence_terms:[],
+                    weight:1,
+                    allocated_marks:Number(criterionMarks)
+                }];
             }
-            const weights=reqs.map(r=>{const w=Number(r.weight);return Number.isFinite(w)&&w>0?w:1;});
-            const total=weights.reduce((a,b)=>a+b,0)||reqs.length;
-            return reqs.map((r,i)=>({...r,allocated_marks:Number(criterionMarks)*weights[i]/total}));
+
+            // Explicit marks take priority. Zero-mark requirements are retained
+            // but do not consume marks.
+            const explicit=reqs.map(r=>{
+                const n=Number(r?.allocated_marks);
+                return Number.isFinite(n)&&n>0?n:null;
+            });
+            const explicitTotal=explicit.reduce((a,b)=>a+(b||0),0);
+            if(explicit.some(v=>v!==null) && explicitTotal>0 && explicitTotal<=Number(criterionMarks)+0.001){
+                const remainder=Math.max(0,Number(criterionMarks)-explicitTotal);
+                const missing=explicit.filter(v=>v===null).length;
+                return reqs.map((r,i)=>({
+                    ...r,
+                    allocated_marks:explicit[i]!==null
+                        ? explicit[i]
+                        : (missing?remainder/missing:0)
+                }));
+            }
+
+            const weights=reqs.map(r=>{
+                const n=Number(r?.weight);
+                return Number.isFinite(n)&&n>0?n:1;
+            });
+            const totalWeight=weights.reduce((a,b)=>a+b,0)||reqs.length;
+
+            return reqs.map((r,i)=>({
+                ...r,
+                allocated_marks:Number(criterionMarks)*weights[i]/totalWeight
+            }));
         };
 
-        const rubricGrades=[];
-        for(const node of criteria){
-            // Yield between criteria so the browser remains responsive.
-            await new Promise(resolve=>setTimeout(resolve,0));
-            const window=findCriterionWindow(text,node);
-            let requirements=Array.isArray(node.requirements)?node.requirements:[];
-            if(!requirements.length){
-                const fallbackTerms=Array.isArray(node.criterion_keywords)?node.criterion_keywords.filter(Boolean):[];
-                requirements=[{id:'criterion_evidence',description:node.description||node.criterion||'Criterion evidence',evidence_terms:fallbackTerms,allocated_marks:Number(node.max_marks),weight:1}];
+        const rubricGrades=criteria.map(node=>{
+            const window=findCriterionWindow(text,node,criteria);
+            let normalizedRequirements=Array.isArray(node.requirements)
+                ? node.requirements
+                : [];
+
+            if(!normalizedRequirements.length){
+                const fallbackTerms=[
+                    ...(Array.isArray(node.criterion_keywords)?node.criterion_keywords:[]),
+                    ...phraseTokens(node.description||''),
+                    ...phraseTokens(node.criterion||'')
+                ].filter(Boolean);
+
+                normalizedRequirements=[{
+                    id:'criterion_evidence',
+                    description:node.description||node.criterion||'Criterion evidence',
+                    evidence_terms:[...new Set(fallbackTerms)],
+                    allocated_marks:Number(node.max_marks),
+                    weight:1
+                }];
             }
-            const allocated=requirementAllocation(requirements,Number(node.max_marks));
-            const reqGrades=allocated.map(req=>{
+
+            const allocatedRequirements=requirementAllocation(
+                normalizedRequirements,
+                Number(node.max_marks)
+            );
+
+            const reqGrades=allocatedRequirements.map(req=>{
                 const scored=scoreRequirement(req,window,node);
-                return {...scored,weight:Number(req.allocated_marks||0),allocated_marks:Number(req.allocated_marks||0)};
+                return {
+                    ...scored,
+                    weight:Number(req.allocated_marks||0),
+                    allocated_marks:Number(req.allocated_marks||0)
+                };
             });
-            let earnedRaw=reqGrades.reduce((sum,r)=>sum+Number(r.score||0)*Number(r.allocated_marks||0),0);
+
+            const earnedRaw=reqGrades.reduce(
+                (sum,r)=>sum+(Number(r.score||0)*Number(r.allocated_marks||0)),
+                0
+            );
+
             let earned=Math.round(earnedRaw*2)/2;
             earned=Math.max(0,Math.min(Number(node.max_marks),earned));
-            const fully=reqGrades.filter(r=>r.score>=0.85), strong=reqGrades.filter(r=>r.score>=0.60&&r.score<0.85), partial=reqGrades.filter(r=>r.score>0&&r.score<0.60), none=reqGrades.filter(r=>r.score<=0);
-            rubricGrades.push({
-                criterion:node.path||node.criterion,max_marks:Number(node.max_marks),marks_awarded:earned,
-                allocated_requirement_marks:Math.round(reqGrades.reduce((s,r)=>s+Number(r.allocated_marks||0),0)*100)/100,
-                evidence:fully.length||strong.length?[...fully,...strong].slice(0,8).map(r=>r.description||r.id).join(' | '):partial.length?`Partial evidence: ${partial.slice(0,6).map(r=>r.description||r.id).join(' | ')}`:'No sufficient criterion-specific evidence found.',
-                rationale:`${Math.round((Number(node.max_marks)>0?earned/Number(node.max_marks):0)*100)}% of criterion marks supported by configured evidence. ${fully.length} fully supported, ${strong.length} strongly supported, ${partial.length} partially supported, ${none.length} unsupported requirement(s).`,
-                matched_signals:reqGrades.flatMap(r=>r.matched||[]).slice(0,40),requirements:reqGrades,
-                evidence_excerpts:reqGrades.filter(r=>r.score>=0.50).slice(0,4).map(r=>r.evidence_excerpt).filter(Boolean),scoring_rule:String(node.scoring_rule||'')
-            });
-        }
+
+            const fullyEvidence=reqGrades.filter(r=>r.score>=0.85);
+            const strong=reqGrades.filter(r=>r.score>=0.60 && r.score<0.85);
+            const partial=reqGrades.filter(r=>r.score>0 && r.score<0.60);
+            const noEvidence=reqGrades.filter(r=>r.score<=0);
+
+            const evidence=fullyEvidence.length||strong.length
+                ? [...fullyEvidence,...strong].slice(0,8)
+                    .map(r=>r.description||r.id).join(' | ')
+                : partial.length
+                    ? `Partial evidence: ${partial.slice(0,6).map(r=>r.description||r.id).join(' | ')}`
+                    : 'No sufficient criterion-specific evidence found.';
+
+            const excerpts=reqGrades
+                .filter(r=>r.score>=0.50)
+                .slice(0,4)
+                .map(r=>r.evidence_excerpt)
+                .filter(Boolean);
+
+            const allocatedRequirementMarks=reqGrades.reduce(
+                (sum,r)=>sum+Number(r.allocated_marks||0),0
+            );
+            const coverage=allocatedRequirementMarks>0
+                ? earned/allocatedRequirementMarks
+                : 0;
+
+            return {
+                criterion:node.path||node.criterion,
+                max_marks:Number(node.max_marks),
+                marks_awarded:earned,
+                allocated_requirement_marks:Math.round(allocatedRequirementMarks*100)/100,
+                evidence,
+                rationale:
+                    `${Math.round(coverage*100)}% of allocated criterion marks supported by evidence. `+
+                    `${fullyEvidence.length} fully supported, ${strong.length} strongly supported, `+
+                    `${partial.length} partially supported, ${noEvidence.length} unsupported requirement(s).`,
+                matched_signals:reqGrades.flatMap(r=>r.matched||[]).slice(0,40),
+                requirements:reqGrades,
+                evidence_excerpts:excerpts,
+                scoring_rule:String(node.scoring_rule||'')
+            };
+        });
+
         let earned=rubricGrades.reduce((sum,g)=>sum+Number(g.marks_awarded||0),0);
         earned=Math.round(Math.min(earned,totalRubricMarks,assignmentMax)*2)/2;
-        const percentage=assignmentMax>0?Math.round((earned/assignmentMax)*10000)/100:0;
+        const percentage=assignmentMax>0
+            ? Math.round((earned/assignmentMax)*10000)/100
+            : 0;
+
+        const criteriaWithEvidence=rubricGrades.filter(g=>g.marks_awarded>0).length;
         const criteriaCount=rubricGrades.length;
-        const confidence=criteriaCount?Math.round(rubricGrades.reduce((sum,g)=>{const m=Number(g.max_marks)||0;return sum+(m?Number(g.marks_awarded||0)/m:0)},0)/criteriaCount*100):0;
+        const confidence=criteriaCount
+            ? Math.round(
+                rubricGrades.reduce((sum,g)=>{
+                    const max=Number(g.max_marks)||0;
+                    return sum+(max?Number(g.marks_awarded||0)/max:0);
+                },0)/criteriaCount*100
+              )
+            : 0;
+
         return {
-            marks_awarded:earned,max_marks:assignmentMax,percentage,
+            marks_awarded:earned,
+            max_marks:assignmentMax,
+            percentage,
             rubric_allocated_marks:Math.round(totalRubricMarks*100)/100,
-            rubric_allocated_percentage:assignmentMax>0?Math.round((totalRubricMarks/assignmentMax)*10000)/100:0,
-            confidence,rubric_grades:rubricGrades,
-            feedback:`Automatic evidence-based grading against the Supabase institutional marking key. Review each criterion and adjust marks where necessary before saving or releasing.`,
-            note:rubricAllocationMismatch?`Supabase marking key declares ${declaredAllocated} allocated marks, but its structured criteria sum to ${totalRubricMarks}. Verify the rubric before release.`:totalRubricMarks===assignmentMax?'All declared criterion marks are allocated.':`The supplied marking key allocates ${totalRubricMarks} of ${assignmentMax} marks.`,
-            grading_mode:'SUPABASE_INSTITUTIONAL_MARKING_KEY_SCHEMA_DRIVEN_V6',provider:'supabase-institutional-marking-key-schema-driven-engine-v6',source:'public.online_marking_keys',marking_key_id:key?.id||null,marking_key_title:key?.title||null,marking_key_version:key?.version||null,grading_schema_version:key?.grading_schema_version||2
+            rubric_allocated_percentage:assignmentMax>0
+                ? Math.round((totalRubricMarks/assignmentMax)*10000)/100
+                : 0,
+            confidence,
+            rubric_grades:rubricGrades,
+            feedback:
+                `Automatic evidence-based grading against the Supabase institutional marking key. `+
+                `${criteriaWithEvidence} of ${criteriaCount} criteria contain qualifying evidence. `+
+                `Review each criterion and adjust marks where necessary before saving or releasing.`,
+            note:rubricAllocationMismatch
+                ? `Supabase marking key declares ${declaredAllocated} allocated marks, but its structured criteria sum to ${totalRubricMarks}. Verify the rubric before release.`
+                : totalRubricMarks===assignmentMax
+                    ? 'All declared criterion marks are allocated.'
+                    : `The supplied marking key allocates ${totalRubricMarks} of ${assignmentMax} marks. No unallocated marks were invented.`,
+            grading_mode:'SUPABASE_INSTITUTIONAL_MARKING_KEY_SCHEMA_DRIVEN_V6',
+            provider:'supabase-institutional-marking-key-schema-driven-engine-v6',
+            source:'public.online_marking_keys',
+            marking_key_id:key?.id||null,
+            marking_key_title:key?.title||null,
+            marking_key_version:key?.version||null,
+            grading_schema_version:key?.grading_schema_version||2
         };
     }
-
 
     function renderDeterministicGradeReport(report){
         const marks=Number(report.marks_awarded)||0;
@@ -1109,196 +1341,82 @@ window.LecturerOnlineLearning = (() => {
         box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Institutional Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(marks)}/${esc(max)} (${esc(pct)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Criterion evidence (${esc((report.rubric_grades||[]).length)})</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
     }
 
-    function setGradeActionLoading(id,loading){
-        const modal=$('olSubmissionModal');
-        if(!modal)return;
-        const buttons=[...modal.querySelectorAll('button')];
-        buttons.forEach(b=>{
-            const onclick=b.getAttribute('onclick')||'';
-            if(onclick.includes(`gradeSubmission('${id}',false)`) || onclick.includes(`gradeSubmission('${id}',true)`)){
-                b.disabled=loading;
-                b.style.opacity=loading?'0.6':'';
-                b.style.pointerEvents=loading?'none':'';
-            }
-        });
-    }
-
-    function renderAutoGradeLoading(message='Preparing automatic marking...',progress=10){
-        const box=$('olAIGradeReport');
-        if(!box)return;
-        box.innerHTML=`
-            <div id="olAutoGradeLoading" style="margin-top:12px;padding:18px;border:1px solid #ddd6fe;border-radius:12px;background:#faf5ff;text-align:center">
-                <div style="width:42px;height:42px;margin:0 auto 10px;border:4px solid #ede9fe;border-top-color:#7c3aed;border-radius:50%;animation:olAutoGradeSpin .8s linear infinite"></div>
-                <div style="font-size:15px;font-weight:800;color:#5b21b6">Automatically Marking Submission</div>
-                <div id="olAutoGradeStatus" style="margin-top:6px;font-size:12px;color:#64748b">${esc(message)}</div>
-                <div style="margin-top:12px;height:7px;background:#ede9fe;border-radius:20px;overflow:hidden">
-                    <div id="olAutoGradeProgress" style="height:100%;width:${Math.max(5,Math.min(100,progress))}%;background:#7c3aed;border-radius:20px;transition:width .3s ease"></div>
-                </div>
-                <div style="margin-top:8px;font-size:11px;color:#94a3b8">Please wait. Do not close the review window.</div>
-            </div>
-            <style>@keyframes olAutoGradeSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>`;
-    }
-
-    function updateAutoGradeLoading(message,progress){
-        const status=$('olAutoGradeStatus');
-        const bar=$('olAutoGradeProgress');
-        if(status)status.textContent=message;
-        if(bar)bar.style.width=`${Math.max(5,Math.min(100,progress))}%`;
-    }
-
     async function autoGradeUsingMarkingKey(id){
         const s=state.submissions.find(x=>x.id===id);
-        if(!s)return null;
+        if(!s)return;
         const assignment=state.assignments.find(x=>x.id===s.assignment_id)||{};
-        const btn=$('olAIGradeBtn')||$('olAutoGradeBtn');
-        const originalHTML=btn?.innerHTML||'';
-
-        if(btn){
-            btn.disabled=true;
-            btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Marking...';
-            btn.setAttribute('aria-busy','true');
-        }
-        setGradeActionLoading(id,true);
-        renderAutoGradeLoading('Preparing institutional marking key...',10);
-
+        const btn=$('olAutoGradeBtn') || $('olAIGradeBtn');
+        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Reading Work & Marking…';}
         try{
-            updateAutoGradeLoading('Loading institutional marking key...',20);
             const config=await getAssignmentGradingConfig(assignment);
             const key=config.markingKey;
-            if(config.mode!=='marking_key'||!key){
-                throw new Error('No Supabase institutional marking key is attached to this assignment. Edit the assignment and select a Formal Marking Key.');
-            }
-            if(key.validation_status==='needs_review'){
-                notify('Warning: this Supabase marking key is marked needs_review. Verify the rubric before release.','warning');
-            }
-
-            updateAutoGradeLoading('Reading student submission...',35);
+            if(config.mode!=='marking_key' || !key)throw new Error('No Supabase institutional marking key is attached to this assignment. Edit the assignment and select a Formal Marking Key.');
+            if(key.validation_status==='needs_review') notify('Warning: this Supabase marking key is marked needs_review. Verify the rubric before release.','warning');
             const text=await extractSubmissionText(s);
-            if(!String(text||'').trim())throw new Error('No readable text was extracted from the submitted document.');
-
-            updateAutoGradeLoading('Analysing submission against marking criteria...',55);
-            await new Promise(r=>setTimeout(r,40));
-
-            let maxMarks=resolveMarkingKeyMaxMarks(key,0);
-            if(!maxMarks)maxMarks=Number(assignment.max_marks||s.max_marks||0);
-            if(!maxMarks)throw new Error('The institutional marking key has no maximum mark configured and its criterion allocations could not be used to determine one.');
-
-            updateAutoGradeLoading('Calculating criterion marks...',75);
+            if(!String(text||'').trim()) throw new Error('No readable text was extracted from the submitted document.');
+            const maxMarks=resolveSubmissionMaxMarks(s,assignment) || Number(key.max_marks||0);
+            if(!maxMarks)throw new Error('The institutional marking key has no maximum mark configured.');
             const report=deterministicGradeMarkingKey(text,key,maxMarks);
-
-            updateAutoGradeLoading('Preparing grading report...',92);
-            await new Promise(r=>setTimeout(r,40));
-
-            if($('olReviewMarks'))$('olReviewMarks').value=report.marks_awarded;
-            if($('olReviewPercentage'))$('olReviewPercentage').textContent=formatPercentage(report.marks_awarded,report.max_marks);
-            if($('olReviewFeedback'))$('olReviewFeedback').value=report.feedback||'';
+            $('olReviewMarks').value=report.marks_awarded;
+            if($('olReviewPercentage')) $('olReviewPercentage').textContent=formatPercentage(report.marks_awarded,report.max_marks);
+            if($('olReviewFeedback')) $('olReviewFeedback').value=report.feedback||'';
             renderDeterministicGradeReport(report);
             window._activeDeterministicGrade=report;
-            window._activeDeterministicGradeSubmissionId=id;
-
             notify(`Automatic Supabase marking completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,'success');
             return report;
         }catch(e){
             console.error('Deterministic Supabase marking:',e);
-            const box=$('olAIGradeReport');
-            if(box){
-                box.innerHTML=`<div style="margin-top:12px;padding:14px;border:1px solid #fecaca;border-radius:12px;background:#fff7f7"><b style="color:#b91c1c"><i class="fas fa-circle-exclamation"></i> Automatic Marking Failed</b><div style="margin-top:6px;font-size:12px;color:#7f1d1d">${esc(e?.message||'Automatic marking failed.')}</div><button type="button" class="ol-btn ol-muted" style="margin-top:10px" onclick="LecturerOnlineLearning.autoGradeUsingMarkingKey('${id}')"><i class="fas fa-rotate-right"></i> Try Again</button></div>`;
-            }
-            notify(e?.message||'Automatic marking failed.','error');
+            notify(e.message||'Automatic marking failed.','error');
             return null;
         }finally{
-            if(btn){
-                btn.disabled=false;
-                btn.innerHTML=originalHTML||'<i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Marking Key';
-                btn.removeAttribute('aria-busy');
-            }
-            setGradeActionLoading(id,false);
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Supabase Marking Key';}
         }
     }
 
     async function aiGradeSubmission(id){
+        notify('Automatically Grade Using Marking Key is disabled in this configuration. Use Automatically Grade Using Marking Key.','warning');
         return autoGradeUsingMarkingKey(id);
     }
 
     async function sendAssignmentResultNotification(submission,assignment){
         try{
             const db=client();
-            if(!db)return false;
+            if(!db) return false;
 
-            let email=null;
-            let studentName=submission.student_id||'Student';
-            const studentId=submission.student_id;
+            // Prefer the existing portal notification function when available.
+            const existing=[
+                window.sendAssignmentResultNotification,
+                window.LecturerDashboard?.sendAssignmentResultNotification,
+                window.NCHSM?.sendAssignmentResultNotification
+            ].find(fn=>typeof fn==='function');
 
-            if(studentId){
-                const r=await db.from('consolidated_user_profiles_table')
-                    .select('full_name,email,student_id,admission_number')
-                    .eq('user_id',studentId)
-                    .maybeSingle();
-                if(!r.error&&r.data){
-                    email=r.data.email||null;
-                    studentName=r.data.full_name||r.data.admission_number||r.data.student_id||studentName;
-                }
+            if(existing){
+                const result=await existing(submission,assignment);
+                return result!==false;
             }
 
-            if(!email){
-                console.warn('Result notification: student email not found.',studentId);
-                return false;
-            }
-
-            const payload={
-                to:email,
-                student_name:studentName,
-                assignment_title:assignment?.title||submission.online_assignments?.title||'Online Assignment',
-                unit_code:assignment?.unit_code||'',
-                submission_id:submission.id,
-                assignment_id:submission.assignment_id
-            };
-
-            if(typeof window.sendAssignmentResultEmail==='function'){
-                try{
-                    await window.sendAssignmentResultEmail(payload);
-                    return true;
-                }catch(e){
-                    console.error('Assignment result email bridge failed:',e);
-                }
-            }
-
+            // No email sender is hard-coded here. If the institution has a
+            // Supabase Edge Function for result notifications, use it.
             if(db.functions?.invoke){
-                const r=await db.functions.invoke('send-assignment-result-email',{body:payload});
-                if(r.error){
-                    console.error('Assignment result email function failed:',r.error);
-                    return false;
-                }
-                return true;
+                const result=await db.functions.invoke('send-assignment-result-notification',{
+                    body:{
+                        submission_id:submission?.id,
+                        assignment_id:assignment?.id,
+                        student_id:submission?.student_id,
+                        marks_obtained:submission?.marks_obtained,
+                        max_marks:submission?.max_marks || assignment?.max_marks,
+                        percentage:submission?.percentage
+                    }
+                });
+                if(!result.error) return true;
+                console.warn('Result notification function:',result.error.message);
             }
 
-            console.warn('No assignment result email service is available.');
             return false;
-        }catch(e){
-            console.error('sendAssignmentResultNotification:',e);
+        }catch(err){
+            console.warn('Assignment result notification failed:',err);
             return false;
         }
-    }
-
-    // Resolve the real maximum mark for a submission.
-    async function getEffectiveSubmissionMaxMarks(submission,assignment){
-        const activeReport=window._activeDeterministicGrade;
-        if(activeReport && String(window._activeDeterministicGradeSubmissionId||'')===String(submission?.id||'') && Number(activeReport.max_marks)>0) return Number(activeReport.max_marks);
-        const direct=Number(submission?.max_marks||assignment?.max_marks||0);
-        if(direct>0) return direct;
-        if(assignment?.marking_key_id){
-            const db=client();
-            const r=await db.from('online_marking_keys').select('max_marks,allocated_marks,criteria').eq('id',assignment.marking_key_id).eq('is_active',true).maybeSingle();
-            if(!r.error && r.data){
-                const keyMax=Number(r.data.max_marks||0);
-                if(keyMax>0) return keyMax;
-                const allocated=Number(r.data.allocated_marks||0);
-                if(allocated>0) return allocated;
-                const resolved=resolveMarkingKeyMaxMarks(r.data,0);
-                if(resolved>0) return resolved;
-            }
-        }
-        return 0;
     }
 
     async function gradeSubmission(id,release){
@@ -1306,50 +1424,37 @@ window.LecturerOnlineLearning = (() => {
         const s=state.submissions.find(x=>x.id===id);
         if(!s)return;
         const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
-        const maxMarks=await getEffectiveSubmissionMaxMarks(s,assignment);
-        if(!maxMarks){notify('Cannot save this grade because no valid maximum mark is configured. Attach a valid institutional marking key or set the assignment maximum marks.','error');return;}
+        const maxMarks=resolveSubmissionMaxMarks(s,assignment);
         const marks=clampMarks($('olReviewMarks').value,maxMarks);
         const feedback=$('olReviewFeedback').value.trim()||null;
         const percentage=Number(formatPercentage(marks,maxMarks).replace('%',''));
 
+        // ALWAYS show the exact score before a release can happen.
         if(release){
-            const confirmed=window.confirm(`RELEASE RESULT\n\nStudent: ${s.student_id||'Student'}\nAssignment: ${assignment.title||s.online_assignments?.title||'Assignment'}\nScore: ${marks}/${maxMarks}\nPercentage: ${percentage}%\n\nThe student will be notified by email after release.\n\nClick OK to release this exact score, or Cancel to return to the review.`);
+            const confirmed=window.confirm(
+                `RELEASE RESULT\n\nStudent: ${s.student_id||'Student'}\nAssignment: ${assignment.title||s.online_assignments?.title||'Assignment'}\nScore: ${marks}/${maxMarks}\nPercentage: ${percentage}%\n\nThe student will be notified by email after release.\n\nClick OK to release this exact score, or Cancel to return to the review.`
+            );
             if(!confirmed)return;
         }
 
-        setGradeActionLoading(id,true);
-        const actionButtons=$('olSubmissionModal')?.querySelectorAll('button');
-        const clickedButtons=[...actionButtons||[]].filter(b=>b.disabled);
-        const releaseButton=[...actionButtons||[]].find(b=>(b.getAttribute('onclick')||'').includes(`gradeSubmission('${id}',true)`));
-        const saveButton=[...actionButtons||[]].find(b=>(b.getAttribute('onclick')||'').includes(`gradeSubmission('${id}',false)`));
-        const activeButton=release?releaseButton:saveButton;
-        const original=activeButton?.innerHTML;
-        if(activeButton){activeButton.disabled=true;activeButton.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Saving...';}
+        const now=new Date().toISOString();
+        let payload={marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:now,result_released:release,released_at:release?now:null,review_required:false};
+        let {error}=await db.from('online_submissions').update({...payload,percentage}).eq('id',id);
+        if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}
+        if(error){notify(error.message,'error');return;}
 
-        try{
-            const now=new Date().toISOString();
-            const payload={marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:now,result_released:release,released_at:release?now:null,review_required:false};
-            let {error}=await db.from('online_submissions').update({...payload,percentage}).eq('id',id);
-            if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}
-            if(error){notify(error.message,'error');return;}
-
-            if(release){
-                const emailSent=await sendAssignmentResultNotification(s,assignment);
-                notify(emailSent?`Released: ${marks}/${maxMarks} (${percentage}%). Student email notification sent.`:`Released: ${marks}/${maxMarks} (${percentage}%). Result released, but the student email notification could not be sent.`,emailSent?'success':'warning');
-            }else{
-                notify(`Grade saved: ${marks}/${maxMarks} (${percentage}%).`,'success');
-            }
-
-            closeModal('olSubmissionModal');
-            await loadSubmissions();
-            updateStats();
-        }catch(e){
-            console.error('gradeSubmission:',e);
-            notify(e?.message||'Could not save grade.','error');
-        }finally{
-            setGradeActionLoading(id,false);
-            if(activeButton){activeButton.disabled=false;activeButton.innerHTML=original|| (release?'Grade & Release':'Save Grade');}
+        if(release){
+            const emailSent=await sendAssignmentResultNotification(s,assignment);
+            notify(emailSent
+                ? `Released: ${marks}/${maxMarks} (${percentage}%). Student email notification sent.`
+                : `Released: ${marks}/${maxMarks} (${percentage}%), but the student email notification could not be sent.`,
+                emailSent?'success':'warning');
+        }else{
+            notify(`Grade saved: ${marks}/${maxMarks} (${percentage}%).`,'success');
         }
+        closeModal('olSubmissionModal');
+        await loadSubmissions();
+        updateStats();
     }
     async function runAIAssignmentGrade(payload){
         const db=client();
@@ -2760,51 +2865,8 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         });
     }
 
-    async function reviewSubmission(id){
-        const db=client();
-        const s=state.submissions.find(x=>x.id===id);
-        if(!s)return;
-
-        let questions=[];
-        const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');
-        questions=qr.data||[];
-        const answers=s.answers||{};
-        const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();
-        const p=profiles.data||{};
-        const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
-
-        let maxMarks=Number(s.max_marks||assignment.max_marks||0);
-        if(!maxMarks && assignment.marking_key_id){
-            try{
-                const keyConfig=await getAssignmentGradingConfig(assignment);
-                maxMarks=resolveMarkingKeyMaxMarks(keyConfig.markingKey,0);
-            }catch(e){
-                console.warn('Could not resolve marking-key maximum for review:',e);
-            }
-        }
-
-        const currentPct=formatPercentage(s.marks_obtained,maxMarks);
-        const body=$('olSubmissionBody');
-
-        body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> Automatically Grade Using Marking Key</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;
-
-        $('olSubmissionModal').dataset.submissionId=id;
-        $('olSubmissionModal').style.display='flex';
-    }
-    async function updateGradePercentage(){
-        const id=$('olSubmissionModal')?.dataset?.submissionId;
-        const s=state.submissions.find(x=>x.id===id);
-        const assignment=state.assignments.find(a=>a.id===s?.assignment_id)||{};
-        let max=Number(s?.max_marks||assignment?.max_marks||0);
-        if(!max && assignment?.marking_key_id){
-            try{
-                const cfg=await getAssignmentGradingConfig(assignment);
-                max=resolveMarkingKeyMaxMarks(cfg.markingKey,0);
-            }catch(e){}
-        }
-        const pct=formatPercentage($('olReviewMarks')?.value,max);
-        if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;
-    }
+    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> Automatically Grade Using Marking Key</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
+    function updateGradePercentage(){const s=state.submissions.find(x=>x.id===$('olSubmissionModal')?.dataset?.submissionId);const max=Number(s?.max_marks||state.assignments.find(a=>a.id===s?.assignment_id)?.max_marks||0);const pct=formatPercentage($('olReviewMarks')?.value,max);if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;}
     // ============================================================
     // 📧 ASSIGNMENT RESULT EMAIL NOTIFICATION
     // Sends only when the lecturer RELEASES the graded result.
@@ -2817,6 +2879,10 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         await loadResearch();
     }
 
-    return {loadMarkingKeys,markingKeyState,getAssignmentGradingConfig,fetchSubmissionMarkingKey,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
+    return {
+        syncSubmissionMaximumMarks,
+        resolveSubmissionMaxMarks,
+        autoGradeUsingMarkingKey,
+        gradeSubmission,loadMarkingKeys,markingKeyState,getAssignmentGradingConfig,fetchSubmissionMarkingKey,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
 ;
