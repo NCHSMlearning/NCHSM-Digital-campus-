@@ -1,8 +1,4 @@
-// js/lecturer-exams.js //
-============================================================ // NCHSM
-Lecturer Exams / CATs // Super Admin-aligned fields + Lecturer
-scope/permissions //
-============================================================
+// js/lecturer-exams.js 
 
 (function () { ‘use strict’;
 
