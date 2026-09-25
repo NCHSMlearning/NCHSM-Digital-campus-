@@ -20,7 +20,6 @@ const ZERO_QUESTION_ID = '00000000-0000-0000-0000-000000000000';
     // Initialize Supabase
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     window.supabase = sb;
-    window.sb = sb;
     // ============================================
     // 📦 STATE
     // ============================================
