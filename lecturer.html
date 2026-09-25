@@ -2940,6 +2940,17 @@
             <span style="margin-left: auto; font-size: 12px; color: #94a3b8;" id="attendanceFilterCount">Showing all records</span>
         </div>
 
+        <!-- Attendance Session: each occurrence has its own scheduled_sessions UUID -->
+        <div id="attendanceSessionSelectorWrap" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:15px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:7px;">
+                <strong style="color:#0A3D62;font-size:13px;"><i class="fas fa-calendar-check" style="color:#4C1D95;margin-right:6px;"></i>Attendance Session</strong>
+                <span id="attendanceSessionHint" style="font-size:11px;color:#64748b;">Use a session for a complete class register; use All for historical date-range reporting.</span>
+            </div>
+            <select id="attendanceSessionSelector" style="width:100%;padding:10px 12px;border:2px solid #e2e8f0;border-radius:8px;background:white;font-size:13px;">
+                <option value="">-- All attendance records / date-range mode --</option>
+            </select>
+        </div>
+
         <!-- Row 1: Date range, Block, Unit, Year, Session Type -->
         <div class="filter-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 15px;">
             <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
@@ -4449,8 +4460,14 @@
         </div>
     </div>
 
-    <!-- ===== ADD QUESTION BUTTON ===== -->
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+    <!-- ===== ADD / BULK QUESTION BUTTONS ===== -->
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button onclick="LecturerQuestions.openPasteBulkModal()" style="background: linear-gradient(135deg, #0A3D62, #155e75); color: white; border: none; padding: 12px 22px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+            <i class="fas fa-file-import"></i> Paste Full Question Paper
+        </button>
+        <button onclick="LecturerQuestions.openBulkUploadModal()" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border: none; padding: 12px 22px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(5,150,105,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+            <i class="fas fa-file-excel"></i> Excel / CSV
+        </button>
         <button onclick="LecturerQuestions.openAddModal()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
             <i class="fas fa-plus-circle"></i> Add Question
         </button>
@@ -4505,6 +4522,73 @@
                 <span onclick="LecturerQuestions.exportQuestions()" style="font-size: 12px; color: #94a3b8; cursor: pointer;">
                     <i class="fas fa-file-export"></i> Export
                 </span>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 📄 PASTE FULL QUESTION PAPER MODAL         -->
+    <!-- ========================================== -->
+    <div id="lecBulkPasteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); z-index:10000; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+        <div style="background:white; border-radius:16px; width:96%; max-width:1100px; max-height:92vh; overflow:hidden; box-shadow:0 20px 70px rgba(0,0,0,0.35);">
+            <div style="padding:20px 24px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; background:#f8fafc;">
+                <div>
+                    <h3 style="margin:0; color:#0A3D62; font-size:19px; display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-file-import" style="color:#0A3D62;"></i> Paste Full Question Paper
+                    </h3>
+                    <p style="margin:4px 0 0; color:#64748b; font-size:12px;">Paste the entire document. The system will separate questions, options, answers and marks.</p>
+                </div>
+                <button onclick="LecturerQuestions.closePasteBulkModal()" style="background:none; border:none; font-size:28px; cursor:pointer; color:#94a3b8;">&times;</button>
+            </div>
+
+            <div style="padding:22px; max-height:calc(92vh - 82px); overflow-y:auto;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+                    <div>
+                        <label style="font-weight:700; color:#475569; font-size:13px; display:block; margin-bottom:7px;">
+                            <i class="fas fa-paste"></i> Paste Question Document
+                        </label>
+                        <textarea id="lecBulkPasteText" placeholder="Example:
+
+1. What is the normal adult pulse rate?
+A. 40–60 bpm
+B. 60–100 bpm
+C. 100–140 bpm
+D. 140–180 bpm
+Answer: B
+Marks: 1
+
+2. Explain the nursing process.
+Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:vertical; padding:14px; border:2px solid #e2e8f0; border-radius:10px; font-size:13px; line-height:1.55; font-family:Arial,sans-serif;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+                        <div style="margin-top:8px; color:#64748b; font-size:11px;">
+                            Supported: <strong>1.</strong>, <strong>1)</strong>, <strong>Question 1:</strong> · A–D options · Answer/Correct Answer · Marks
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
+                            <label style="font-weight:700; color:#475569; font-size:13px;">
+                                <i class="fas fa-eye"></i> Preview
+                            </label>
+                            <span style="font-size:11px; color:#94a3b8;">Review before upload</span>
+                        </div>
+                        <div id="lecBulkPastePreview" style="height:520px; overflow-y:auto; border:2px solid #e2e8f0; border-radius:10px; padding:12px; background:#fff;">
+                            <div style="padding:20px; text-align:center; color:#94a3b8;">Paste your questions, then click <strong>Parse & Preview</strong>.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:18px; padding-top:16px; border-top:1px solid #e5e7eb;">
+                    <button type="button" onclick="LecturerQuestions.closePasteBulkModal()" style="padding:11px 22px; border:2px solid #e2e8f0; border-radius:8px; background:white; color:#64748b; cursor:pointer; font-weight:600;">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="LecturerQuestions.previewPastedQuestions()" style="padding:11px 22px; border:none; border-radius:8px; background:#0A3D62; color:white; cursor:pointer; font-weight:600;">
+                        <i class="fas fa-magic"></i> Parse & Preview
+                    </button>
+                    <button type="button" id="lecBulkPasteUploadBtn" disabled onclick="LecturerQuestions.uploadPastedQuestions()" style="padding:11px 22px; border:none; border-radius:8px; background:linear-gradient(135deg,#059669,#10b981); color:white; cursor:pointer; font-weight:600;">
+                        <i class="fas fa-cloud-upload-alt"></i> Upload All Questions
+                    </button>
+                </div>
             </div>
         </div>
     </div>
