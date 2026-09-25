@@ -394,7 +394,26 @@ const LecturerQuestions = {
     /**
      * Open Add Question Modal
      */
+
+    requireSelectedExam: function() {
+        const select = document.getElementById('lecQuestionExamSelect');
+        const examId = select && select.value;
+
+        if (!examId) {
+            if (window.showToast) {
+                window.showToast('⚠️ Please select an exam first before uploading questions.', 'warning');
+            } else {
+                alert('Please select an exam first before uploading questions.');
+            }
+            return false;
+        }
+
+        this.currentExamId = examId;
+        return true;
+    },
+
     openAddModal: function() {
+        if (!this.requireSelectedExam()) return;
         const examSelect = document.getElementById('lecQuestionExamSelect');
         if (!examSelect || !examSelect.value) {
             if (window.showToast) {
@@ -781,6 +800,7 @@ const LecturerQuestions = {
     },
 
     openBulkUploadModal: function() {
+        if (!this.requireSelectedExam()) return;
         const examId = this.getSelectedExamId();
         if (!examId) {
             if (window.showToast) window.showToast('⚠️ Please select an exam first', 'warning');
@@ -853,6 +873,7 @@ const LecturerQuestions = {
     },
 
     parsePastedQuestions: function(text) {
+        if (!this.requireSelectedExam()) return;
         const source = String(text || '').replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ');
         if (!source.trim()) return [];
 
