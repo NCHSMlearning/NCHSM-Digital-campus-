@@ -574,6 +574,16 @@
                 '</label>';
         },
 
+        // Return the classes currently selected in the exam form.
+        selectedClasses() {
+            return Array.from(
+                document.querySelectorAll('.exam-class-checkbox:checked')
+            ).map(box => ({
+                id: box.value || '',
+                name: box.dataset.className || box.value || ''
+            }));
+        },
+
         // --------------------------------------------------------
         // STUDENT NOTIFICATIONS
         // --------------------------------------------------------
