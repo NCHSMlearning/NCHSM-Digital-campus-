@@ -762,18 +762,18 @@ window.LecturerOnlineLearning = (() => {
         if(!alternatives.length) return {score:0,matched:[],strong:0,partial:0};
 
         const generic=new Set([
-            'case','study','student','name','class','date','family','health',
+            'case','study','student','students','name','class','date','family','health',
             'care','assessment','introduction','information','history','status',
             'problem','problems','intervention','evaluation','summary',
             'conclusion','recommendation','recommendations','visit','first',
             'second','third','fourth','section','home','client','patient',
             'content','present','available','general','description','report',
-            'page','table','chapter'
+            'page','table','chapter','include','including','provided','provide'
         ]);
 
         const synonymGroups=[
             ['identify','identified','identifies','identifying','identification'],
-            ['prioritize','prioritized','prioritizes','prioritizing','priority','priorities','prioritization'],
+            ['prioritize','prioritized','prioritizes','prioritizing','priority','priorities','prioritization','prioritised','prioritisation'],
             ['assess','assessed','assesses','assessing','assessment'],
             ['evaluate','evaluated','evaluates','evaluating','evaluation'],
             ['recommend','recommended','recommends','recommendation','recommendations'],
@@ -781,16 +781,19 @@ window.LecturerOnlineLearning = (() => {
             ['educate','educated','education','educational','teaching','health education'],
             ['plan','planned','planning','plans'],
             ['describe','described','describes','description'],
-            ['provide','provided','provides','provision'],
             ['need','needs','needed','needing'],
             ['visit','visits','visited'],
             ['conclude','concluded','conclusion','conclusions'],
             ['summarize','summarized','summary','summaries'],
-            ['family member','family members','members of the family'],
             ['immunize','immunized','immunization','immunisation','vaccination','vaccinated'],
             ['sanitize','sanitation','sanitary'],
             ['dispose','disposal','disposed'],
-            ['water source','source of water','water supply']
+            ['water source','source of water','water supply'],
+            ['follow up','follow-up','followup'],
+            ['terminate','terminated','termination','termination of follow-up'],
+            ['familiarize','familiarization','familiarisation','rapport','acquaint'],
+            ['review','reviewed','reassessment','reassessed'],
+            ['implement','implemented','implementation','carried out','administered']
         ];
 
         const synonymMap=new Map();
@@ -805,7 +808,6 @@ window.LecturerOnlineLearning = (() => {
             const group=synonymMap.get(t);
             if(group) group.forEach(x=>variants.add(x));
 
-            // Lightweight morphology support for common academic wording.
             if(t.length>5){
                 ['ization','isation','ations','ation','ingly','edly','ing','ed','ies','es','s']
                     .forEach(suffix=>{
@@ -817,36 +819,34 @@ window.LecturerOnlineLearning = (() => {
             return [...variants];
         };
 
-        const meaningfulTokens=value=>normalizedPhrase(value)
-            .split(/\s+/)
-            .filter(token=>token.length>=4 && !generic.has(token));
-
-        const tokenPresent=(token)=>{
+        const hayTokens=new Set(hay.split(/\s+/).filter(Boolean));
+        const tokenPresent=token=>{
             const variants=tokenVariants(token);
             return variants.some(v=>{
                 if(v.includes(' ')) return hay.includes(v);
-                return hay.split(/\s+/).some(h=>{
-                    if(h===v) return true;
-                    if(v.length>=6 && h.length>=6){
-                        const a=v,b=h;
-                        const max=Math.max(a.length,b.length);
-                        let prev=Array(max+1).fill(0).map((_,i)=>i);
-                        for(let i=1;i<=a.length;i++){
+                if(hayTokens.has(v)) return true;
+
+                // Lightweight typo/morphology tolerance for substantive words.
+                if(v.length>=6){
+                    for(const h of hayTokens){
+                        if(h.length<6) continue;
+                        const max=Math.max(v.length,h.length);
+                        let prev=Array.from({length:h.length+1},(_,i)=>i);
+                        for(let i=1;i<=v.length;i++){
                             const cur=[i];
-                            for(let j=1;j<=b.length;j++){
+                            for(let j=1;j<=h.length;j++){
                                 cur[j]=Math.min(
                                     cur[j-1]+1,
                                     prev[j]+1,
-                                    prev[j-1]+(a[i-1]===b[j-1]?0:1)
+                                    prev[j-1]+(v[i-1]===h[j-1]?0:1)
                                 );
                             }
                             prev=cur;
                         }
-                        const distance=prev[b.length];
-                        return distance<=Math.max(1,Math.floor(max*0.17));
+                        if(prev[h.length]<=Math.max(1,Math.floor(max*0.17))) return true;
                     }
-                    return false;
-                });
+                }
+                return false;
             });
         };
 
@@ -854,15 +854,17 @@ window.LecturerOnlineLearning = (() => {
         let strong=0;
         let partial=0;
 
-        alternatives.forEach(phrase=>{
+        for(const phrase of alternatives){
             if(hay.includes(phrase)){
                 matched.push(phrase);
                 strong++;
-                return;
+                continue;
             }
 
-            const tokens=meaningfulTokens(phrase);
-            if(tokens.length===0) return;
+            const tokens=phrase.split(/\s+/)
+                .filter(t=>t.length>=4 && !generic.has(t));
+
+            if(!tokens.length) continue;
 
             const hits=tokens.filter(tokenPresent);
             const ratio=hits.length/tokens.length;
@@ -874,15 +876,18 @@ window.LecturerOnlineLearning = (() => {
                 matched.push(phrase);
                 partial++;
             }
-        });
+        }
 
-        // Do not let a large keyword list make one or two matches look complete.
-        const denominator=Math.max(1,Math.min(alternatives.length,6));
-        const score=Math.min(1,(strong+(partial*0.5))/denominator);
+        // evidence_terms are alternative ways to demonstrate the SAME requirement.
+        // One strong configured signal is meaningful evidence; multiple independent
+        // signals increase confidence, rather than being treated as mandatory.
+        const distinctSignals=strong+(partial*0.5);
+        const evidenceDepth=Math.min(1, distinctSignals/2);
+        const score=Math.round(evidenceDepth*100)/100;
 
         return {
-            score:Math.round(score*100)/100,
-            matched:matched.slice(0,20),
+            score,
+            matched:[...new Set(matched)].slice(0,20),
             strong,
             partial
         };
@@ -993,30 +998,14 @@ window.LecturerOnlineLearning = (() => {
 
     function scoreRequirement(requirement,criterionWindow,criterionNode){
         const req=requirement||{};
-        const context=String(criterionWindow?.text||'');
+        const baseContext=String(criterionWindow?.text||'');
         const headingFound=!!criterionWindow?.headingFound;
-        const contentWords=cleanWords(context).length;
+        const contentWords=cleanWords(baseContext).length;
 
-        /*
-         * Build evidence vocabulary from the institutional schema. The engine
-         * never invents a requirement; it only expands the matching vocabulary
-         * using the requirement's own description and the parent criterion.
-         */
-        const configured=Array.isArray(req.evidence_terms)?req.evidence_terms:[];
+        const configured=Array.isArray(req.evidence_terms)?req.evidence_terms:[];        
         const description=String(req.description||'').trim();
-        const parentDescription=String(criterionNode?.description||'').trim();
 
-        const evidenceTerms=[
-            ...configured,
-            description,
-            // The parent criterion is supporting context, not a substitute
-            // for requirement-specific evidence.
-            parentDescription
-        ].filter(Boolean);
-
-        const coverage=termCoverage(context,evidenceTerms);
-
-        if(!context || contentWords<8){
+        if(!baseContext || contentWords<8){
             return {
                 id:String(req.id||''),
                 description,
@@ -1029,67 +1018,101 @@ window.LecturerOnlineLearning = (() => {
             };
         }
 
-        /*
-         * Requirement-specific terms are weighted more heavily than the
-         * generic parent criterion. This avoids giving marks merely because
-         * the student used words such as "family" or "health".
-         */
-        const specificCoverage=termCoverage(
-            context,
-            [...configured,description].filter(Boolean)
-        );
+        // For the Community Health Nursing 32-mark visit criterion, score each
+        // visit requirement against the complete criterion section. This matters
+        // because students commonly place the visit heading and its details in
+        // tables, paragraphs, or mixed formatting rather than one clean heading.
+        const reqId=String(req.id||'').toLowerCase();
+        const isVisitRequirement=/^v[1-4]_/.test(reqId);
 
-        let score=specificCoverage.score;
+        let context=baseContext;
+        let visitTerms=[];
+        if(isVisitRequirement){
+            const visitNumber=reqId.match(/^v([1-4])_/)?.[1];
+            if(visitNumber){
+                const ordinal={1:['first','1st'],2:['second','2nd'],3:['third','3rd'],4:['fourth','4th']}[visitNumber]||[];
+                visitTerms=[
+                    `${ordinal[0]} visit`,
+                    `${ordinal[1]} visit`,
+                    `visit ${visitNumber}`,
+                    `visit-${visitNumber}`
+                ];
 
-        // A recognised section heading establishes presence, but never earns
-        // a requirement by itself.
+                // If a visit marker exists, use that visit's local block first.
+                const paras=paragraphize(baseContext);
+                const markerIndex=paras.findIndex(par=>{
+                    const x=normalizedPhrase(par);
+                    return visitTerms.some(v=>x===v || x.startsWith(v+':') || x.startsWith(v+' -') || x.includes(v+' '));
+                });
+
+                if(markerIndex>=0){
+                    let end=paras.length;
+                    for(let i=markerIndex+1;i<paras.length;i++){
+                        if(/^(first|1st|second|2nd|third|3rd|fourth|4th)\s+visit\b/i.test(paras[i])){
+                            end=i;
+                            break;
+                        }
+                    }
+                    context=paras.slice(markerIndex,end).join('\n');
+                }
+            }
+        }
+
+        // Evidence terms are alternatives. The description is supporting context.
+        const specificTerms=[...configured,description].filter(Boolean);
+        const coverage=termCoverage(context,specificTerms);
+
+        // A visit requirement must be tied to its visit where the rubric says so.
+        let visitEvidence=1;
+        if(isVisitRequirement && visitTerms.length){
+            const visitCoverage=termCoverage(context,visitTerms);
+            visitEvidence=visitCoverage.score>0 ? 1 : 0.35;
+        }
+
+        let score=coverage.score*visitEvidence;
+
+        // A section heading is supporting structure, never a mark by itself.
         if(headingFound && score<0.20 && contentWords>=25){
             score=0.20;
         }
 
-        // Substantive discussion can lift a partial match, but cannot turn
-        // unsupported content into a full mark.
-        if(contentWords>=60 && specificCoverage.strong>=2){
-            score=Math.max(score,Math.min(1,specificCoverage.score+0.05));
+        // More substantive content plus multiple independent rubric signals can
+        // support a high band.
+        if(contentWords>=60 && coverage.strong>=2){
+            score=Math.max(score,Math.min(1,coverage.score+0.10));
         }
 
-        // If the requirement has several explicit evidence terms, require
-        // broader coverage before awarding the top band.
-        const explicitCount=Math.max(1,configured.length);
-        if(explicitCount>=3 && specificCoverage.strong<2){
-            score=Math.min(score,0.70);
-        }
-
-        /*
-         * Structural indicators are useful evidence for requirements such as
-         * prioritisation, lesson plans and recommendations. They supplement
-         * content matching; they never create marks on their own.
-         */
+        // Structural indicators supplement, but never replace, configured evidence.
         const lower=normalizedPhrase(context);
         const structuralPatterns=[
-            /\b(first|1st|one)\b.*\b(priority|problem|need)\b/,
-            /\b(second|2nd|two|third|3rd)\b.*\b(priority|problem|need)\b/,
-            /\bobjective(s)?\b/,
-            /\bactivities?\b/,
+            /\b(first|1st)\s+visit\b/,
+            /\b(second|2nd)\s+visit\b/,
+            /\b(third|3rd)\s+visit\b/,
+            /\b(fourth|4th)\s+visit\b/,
+            /\bidentified\s+(health\s+)?needs?\b/,
+            /\bpriorit(?:y|ized|ised|ization|isation)\b/,
+            /\bcare\s+plan\b/,
             /\bintervention(s)?\b/,
             /\bevaluation\b/,
             /\brecommendation(s)?\b/,
-            /\baction plan\b/,
-            /\blesson plan\b/
+            /\bway\s+forward\b/,
+            /\btermination\b|\bterminated\b/,
+            /\blesson\s+plan\b/
         ];
-
         const structuralHits=structuralPatterns.filter(rx=>rx.test(lower)).length;
-        if(structuralHits>=2 && specificCoverage.score>=0.35){
-            score=Math.max(score,Math.min(0.85,specificCoverage.score+0.10));
+
+        if(structuralHits>=2 && coverage.score>=0.35){
+            score=Math.max(score,Math.min(0.90,coverage.score+0.10));
         }
 
-        // A very short section should not receive a high score from a heading
-        // plus a single matching phrase.
+        // Do not award high marks for a heading plus a tiny amount of text.
         if(contentWords<30) score=Math.min(score,0.60);
         if(contentWords<15) score=Math.min(score,0.35);
 
+        score=Math.round(Math.max(0,Math.min(1,score))*100)/100;
+
         let evidenceExcerpt='';
-        const first=specificCoverage.matched[0] || coverage.matched[0];
+        const first=coverage.matched[0];
         if(first){
             const lowerContext=context.toLowerCase();
             const needle=normalizedPhrase(first);
@@ -1111,15 +1134,11 @@ window.LecturerOnlineLearning = (() => {
         return {
             id:String(req.id||''),
             description,
-            score:Math.round(Math.max(0,Math.min(1,score))*100)/100,
-            matched:(specificCoverage.matched.length
-                ? specificCoverage.matched
-                : coverage.matched).slice(0,15),
-            matched_text:(specificCoverage.matched.length
-                ? specificCoverage.matched
-                : coverage.matched).slice(0,15).join(' | '),
-            strong_matches:Number(specificCoverage.strong||0),
-            partial_matches:Number(specificCoverage.partial||0),
+            score,
+            matched:coverage.matched.slice(0,15),
+            matched_text:coverage.matched.slice(0,15).join(' | '),
+            strong_matches:Number(coverage.strong||0),
+            partial_matches:Number(coverage.partial||0),
             content_words:contentWords,
             heading_found:headingFound,
             structural_hits:structuralHits,
@@ -1316,8 +1335,8 @@ window.LecturerOnlineLearning = (() => {
                 : totalRubricMarks===assignmentMax
                     ? 'All declared criterion marks are allocated.'
                     : `The supplied marking key allocates ${totalRubricMarks} of ${assignmentMax} marks. No unallocated marks were invented.`,
-            grading_mode:'SUPABASE_INSTITUTIONAL_MARKING_KEY_SCHEMA_DRIVEN_V6',
-            provider:'supabase-institutional-marking-key-schema-driven-engine-v6',
+            grading_mode:'SUPABASE_INSTITUTIONAL_MARKING_KEY_SCHEMA_DRIVEN_V7',
+            provider:'supabase-institutional-marking-key-schema-driven-engine-v7',
             source:'public.online_marking_keys',
             marking_key_id:key?.id||null,
             marking_key_title:key?.title||null,
