@@ -3183,288 +3183,1105 @@
         </div>
     </div>
 </section>
-          <!-- ===== EXAMS / CATS SECTION - FULLY FIXED ===== -->
-<section id="cats-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+          <!-- ============================================================
+     LECTURER EXAMS / CATS SECTION
+     Aligned with Super Admin Exams structure
+     Lecturer scope/permissions remain controlled by JS
+     ============================================================ -->
+
+<section id="cats-content"
+         class="tab-content"
+         style="display:none; animation:fadeIn 0.3s ease;">
+
+    <!-- ========================================================
+         HEADER
+         ======================================================== -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom:25px;">
+
         <div>
-            <h2 style="margin: 0;"><i class="fas fa-file-alt" style="color: #FDB913;"></i> Exam & CAT Management</h2>
-            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Create and manage exams, CATs, and assessments for your assigned units</p>
+            <h2 style="margin:0; color:#0A3D62; font-size:24px;">
+                <i class="fas fa-file-alt" style="color:#FDB913;"></i>
+                Exam & CAT Management
+            </h2>
+
+            <p style="color:#64748b; margin:5px 0 0; font-size:14px;">
+                Create and manage exams, CATs and assessments for your assigned units.
+            </p>
         </div>
-        <div style="display: flex; gap: 10px;">
-            <span style="background: #dbeafe; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
-                <i class="fas fa-file-signature"></i> <span id="examCountBadge2">0</span> Exams
+
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+
+            <span style="background:#dbeafe; padding:7px 14px; border-radius:20px; font-size:12px; color:#1e40af; display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-file-signature"></i>
+                <span id="examCountBadge2">0</span> Assessments
             </span>
-            <button onclick="LecturerExams.refresh()" style="background: #4C1D95; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <i class="fas fa-sync-alt"></i> Refresh
+
+            <button type="button"
+                    onclick="LecturerExams.refresh()"
+                    style="background:#4C1D95; color:white; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
             </button>
+
         </div>
     </div>
-    
-    <!-- Exam Stats Cards -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
-        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #4C1D95;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="background: #ede9fe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-file-alt" style="color: #4C1D95; font-size: 18px;"></i>
+
+
+    <!-- ========================================================
+         STATISTICS
+         ======================================================== -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:15px; margin-bottom:25px;">
+
+        <!-- TOTAL -->
+        <div style="background:white; border-radius:12px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.08); border-left:4px solid #4C1D95;">
+            <div style="display:flex; align-items:center; gap:12px;">
+
+                <div style="background:#ede9fe; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-file-alt" style="color:#4C1D95; font-size:18px;"></i>
                 </div>
+
                 <div>
-                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="totalExamsStat">0</div>
-                    <div style="font-size: 12px; color: #6b7280;">Total Exams</div>
+                    <div id="totalExamsStat"
+                         style="font-size:22px; font-weight:800; color:#0A3D62;">
+                        0
+                    </div>
+
+                    <div style="font-size:12px; color:#6b7280;">
+                        Total Assessments
+                    </div>
                 </div>
+
             </div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="background: #fef3c7; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-clock" style="color: #f59e0b; font-size: 18px;"></i>
+
+
+        <!-- UPCOMING -->
+        <div style="background:white; border-radius:12px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.08); border-left:4px solid #f59e0b;">
+            <div style="display:flex; align-items:center; gap:12px;">
+
+                <div style="background:#fef3c7; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-clock" style="color:#f59e0b; font-size:18px;"></i>
                 </div>
+
                 <div>
-                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="scheduledExamsStat">0</div>
-                    <div style="font-size: 12px; color: #6b7280;">Scheduled</div>
+                    <div id="scheduledExamsStat"
+                         style="font-size:22px; font-weight:800; color:#0A3D62;">
+                        0
+                    </div>
+
+                    <div style="font-size:12px; color:#6b7280;">
+                        Upcoming
+                    </div>
                 </div>
+
             </div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #10b981;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="background: #d1fae5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-check-circle" style="color: #10b981; font-size: 18px;"></i>
+
+
+        <!-- COMPLETED -->
+        <div style="background:white; border-radius:12px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.08); border-left:4px solid #10b981;">
+            <div style="display:flex; align-items:center; gap:12px;">
+
+                <div style="background:#d1fae5; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-check-circle" style="color:#10b981; font-size:18px;"></i>
                 </div>
+
                 <div>
-                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="completedExamsStat">0</div>
-                    <div style="font-size: 12px; color: #6b7280;">Completed</div>
+                    <div id="completedExamsStat"
+                         style="font-size:22px; font-weight:800; color:#0A3D62;">
+                        0
+                    </div>
+
+                    <div style="font-size:12px; color:#6b7280;">
+                        Completed
+                    </div>
                 </div>
+
             </div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #ef4444;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="background: #fee2e2; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 18px;"></i>
+
+
+        <!-- PENDING -->
+        <div style="background:white; border-radius:12px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.08); border-left:4px solid #ef4444;">
+            <div style="display:flex; align-items:center; gap:12px;">
+
+                <div style="background:#fee2e2; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-exclamation-circle" style="color:#ef4444; font-size:18px;"></i>
                 </div>
+
                 <div>
-                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="pendingExamsStat">0</div>
-                    <div style="font-size: 12px; color: #6b7280;">Pending</div>
+                    <div id="pendingExamsStat"
+                         style="font-size:22px; font-weight:800; color:#0A3D62;">
+                        0
+                    </div>
+
+                    <div style="font-size:12px; color:#6b7280;">
+                        Pending
+                    </div>
                 </div>
+
             </div>
         </div>
+
     </div>
-    
-    <!-- Create Exam Form - ✅ FIXED onsubmit -->
-    <form id="addExamForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-            <i class="fas fa-plus-circle" style="color: #4C1D95; font-size: 22px;"></i>
-            <h4 style="margin: 0; color: #0A3D62; font-size: 17px;">Create New Exam / CAT Record</h4>
-            <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-info-circle"></i> All fields required unless optional
-            </span>
+
+
+    <!-- ========================================================
+         CREATE ASSESSMENT
+         ======================================================== -->
+    <form id="addExamForm"
+          onsubmit="event.preventDefault(); handleAddExam(event);"
+          style="background:white; border-radius:14px; padding:25px; box-shadow:0 1px 4px rgba(0,0,0,.08); border:1px solid #e5e7eb; margin-bottom:25px;">
+
+        <!-- FORM HEADER -->
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:22px; padding-bottom:15px; border-bottom:1px solid #eef0f2;">
+
+            <div style="width:42px; height:42px; border-radius:10px; background:#ede9fe; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-plus-circle" style="color:#4C1D95; font-size:20px;"></i>
+            </div>
+
+            <div>
+                <h4 style="margin:0; color:#0A3D62; font-size:18px;">
+                    Create New Exam / Assessment
+                </h4>
+
+                <p style="margin:3px 0 0; color:#94a3b8; font-size:12px;">
+                    Configure the assessment using the same structure as Super Admin.
+                </p>
+            </div>
+
         </div>
-        
-        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examTitle" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-tag" style="color: #4C1D95; width: 18px;"></i> Exam/CAT Title *
+
+
+        <!-- ====================================================
+             ROW 1 — TITLE / TYPE / STATUS / BASIS
+             ==================================================== -->
+        <div style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+
+            <!-- TITLE -->
+            <div>
+                <label for="exam_title"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Exam Title *
                 </label>
-                <input type="text" id="examTitle" placeholder="e.g., Block A Mid-Term CAT" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+
+                <input type="text"
+                       id="exam_title"
+                       placeholder="e.g. End of Term Exam"
+                       required
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px; outline:none;">
             </div>
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examDate" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-calendar-day" style="color: #4C1D95; width: 18px;"></i> Date *
+
+
+            <!-- TYPE -->
+            <div>
+                <label for="exam_type"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Exam Type *
                 </label>
-                <input type="date" id="examDate" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
-            </div>
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examType" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-file-signature" style="color: #4C1D95; width: 18px;"></i> Exam Type *
-                </label>
-                <select id="examType" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
-                    <option value="">-- Select Type --</option>
-                    <option value="CAT">CAT</option>
-                    <option value="Exam">End of Block Exam</option>
-                    <option value="Practical">Practical</option>
-                    <option value="Quiz">Quiz</option>
+
+                <select id="exam_type"
+                        required
+                        style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px; outline:none;">
+
+                    <option value="">-- Select --</option>
+                    <option value="EXAM">📝 Final Exam</option>
+                    <option value="CAT">📋 CAT</option>
+                    <option value="CAT_1">📋 CAT 1</option>
+                    <option value="CAT_2">📋 CAT 2</option>
+                    <option value="ASSIGNMENT">📄 Assignment</option>
+
                 </select>
             </div>
-        </div>
-        
-        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examProgram" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-graduation-cap" style="color: #4C1D95; width: 18px;"></i> Program *
+
+
+            <!-- STATUS -->
+            <div>
+                <label for="exam_status"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Status
                 </label>
-                <select id="examProgram" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+
+                <select id="exam_status"
+                        style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px; outline:none;">
+
+                    <option value="Upcoming">📅 Upcoming</option>
+                    <option value="InProgress">⏳ In Progress</option>
+                    <option value="Completed">✅ Completed</option>
+                    <option value="published">📢 Published</option>
+                    <option value="Draft">📝 Draft</option>
+
+                </select>
+            </div>
+
+
+            <!-- BASIS -->
+            <div>
+                <label for="exam_basis"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Exam Basis
+                </label>
+
+                <select id="exam_basis"
+                        style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px; outline:none;">
+
+                    <option value="ordinary">Ordinary</option>
+                    <option value="consolidated">Consolidated</option>
+                    <option value="supplementary">Supplementary</option>
+                    <option value="special">Special</option>
+
+                </select>
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             ROW 2 — MARKING
+             ==================================================== -->
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:16px;">
+
+            <div>
+                <label for="exam_out_of"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Marks Out Of *
+                </label>
+
+                <input type="number"
+                       id="exam_out_of"
+                       value="100"
+                       min="1"
+                       required
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+            </div>
+
+
+            <div>
+                <label for="exam_pass_mark"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Pass Mark (%) *
+                </label>
+
+                <input type="number"
+                       id="exam_pass_mark"
+                       value="50"
+                       min="0"
+                       required
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+            </div>
+
+
+            <div>
+                <label for="exam_min_fee"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Min Fee Balance (%)
+                </label>
+
+                <input type="number"
+                       id="exam_min_fee"
+                       value="0"
+                       min="0"
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+            </div>
+
+
+            <div>
+                <label for="exam_duration_minutes"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Duration (Min) *
+                </label>
+
+                <input type="number"
+                       id="exam_duration_minutes"
+                       value="120"
+                       min="1"
+                       required
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             ROW 3 — DATE / TIME
+             ==================================================== -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+
+            <div>
+                <label for="exam_date"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Exam Date *
+                </label>
+
+                <input type="date"
+                       id="exam_date"
+                       required
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+            </div>
+
+
+            <div>
+                <label for="exam_start_time"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Start Time *
+                </label>
+
+                <input type="time"
+                       id="exam_start_time"
+                       required
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+            </div>
+
+
+            <div>
+                <label for="exam_deadline"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Entry Deadline
+                </label>
+
+                <input type="date"
+                       id="exam_deadline"
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+            </div>
+
+
+            <div>
+                <label for="exam_link"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Online Link
+                </label>
+
+                <input type="url"
+                       id="exam_link"
+                       placeholder="https://..."
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             ROW 4 — PROGRAM / INTAKE / MONTH / BLOCK
+             ==================================================== -->
+        <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+
+            <!-- PROGRAM -->
+            <div>
+                <label for="exam_program"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Program *
+                </label>
+
+                <select id="exam_program"
+                        required
+                        style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:13px; outline:none;">
+
                     <option value="">-- Select Program --</option>
+
+                    <optgroup label="🎓 KRCHN Nursing">
+                        <option value="KRCHN">
+                            KRCHN - Kenya Registered Community Health Nursing
+                        </option>
+                    </optgroup>
+
+                    <optgroup label="🎯 TVET Diploma Programs">
+                        <option value="DPOTT">DPOTT - Diploma in Perioperative Theatre Technology</option>
+                        <option value="DCH">DCH - Diploma in Community Health</option>
+                        <option value="DHRIT">DHRIT - Diploma in Health Records & IT</option>
+                        <option value="DSL">DSL - Diploma in Science Lab</option>
+                        <option value="DSW">DSW - Diploma in Social Work</option>
+                        <option value="DCJS">DCJS - Diploma in Criminal Justice</option>
+                        <option value="DHSS">DHSS - Diploma in Health Support Services</option>
+                        <option value="DICT">DICT - Diploma in ICT</option>
+                        <option value="DME">DME - Diploma in Medical Engineering</option>
+                    </optgroup>
+
+                    <optgroup label="📜 TVET Certificate Programs">
+                        <option value="CPOTT">CPOTT - Certificate in Perioperative Theatre Technology</option>
+                        <option value="CCH">CCH - Certificate in Community Health</option>
+                        <option value="CHRIT">CHRIT - Certificate in Health Records & IT</option>
+                        <option value="CPC">CPC - Certificate in Patient Care</option>
+                        <option value="CSL">CSL - Certificate in Science Lab</option>
+                        <option value="CSW">CSW - Certificate in Social Work</option>
+                        <option value="CCJS">CCJS - Certificate in Criminal Justice</option>
+                        <option value="CAG">CAG - Certificate in Agriculture</option>
+                        <option value="CHSS">CHSS - Certificate in Health Support Services</option>
+                        <option value="CICT">CICT - Certificate in ICT</option>
+                        <option value="CCG">CCG - Certificate in Caregiver</option>
+                        <option value="COMT">COMT - Certificate in Orthopedic Trauma Medicine</option>
+                    </optgroup>
+
+                    <optgroup label="🔧 TVET Artisan Programs">
+                        <option value="ACH">ACH - Artisan in Community Health</option>
+                        <option value="AAG">AAG - Artisan in Agriculture</option>
+                        <option value="ASW">ASW - Artisan in Social Work</option>
+                    </optgroup>
+
+                    <optgroup label="📊 Other TVET Programs">
+                        <option value="CCA">CCA - Certificate in Computer Applications</option>
+                        <option value="PTE">PTE - TVET/CDACC (PTE)</option>
+                    </optgroup>
+
                 </select>
             </div>
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examIntake" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-calendar-alt" style="color: #4C1D95; width: 18px;"></i> Intake Year *
+
+
+            <!-- INTAKE YEAR -->
+            <div>
+                <label for="exam_intake"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Intake Year *
                 </label>
-                <select id="examIntake" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
-                    <option value="">-- Select Intake --</option>
+
+                <select id="exam_intake"
+                        required
+                        style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+
+                    <option value="">-- Select --</option>
                     <option value="2024">2024</option>
                     <option value="2025">2025</option>
                     <option value="2026">2026</option>
                     <option value="2027">2027</option>
                     <option value="2028">2028</option>
+
                 </select>
             </div>
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examBlockTerm" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> Block/Term *
+
+
+            <!-- INTAKE MONTH -->
+            <div>
+                <label for="exam_intake_month"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Intake Month
                 </label>
-                <select id="examBlockTerm" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
-                    <option value="">-- Select Block/Term --</option>
+
+                <select id="exam_intake_month"
+                        style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+
+                    <option value="">-- Select --</option>
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <option value="March">March</option>
+                    <option value="April">April</option>
+                    <option value="May">May</option>
+                    <option value="June">June</option>
+                    <option value="July">July</option>
+                    <option value="August">August</option>
+                    <option value="September">September</option>
+                    <option value="October">October</option>
+                    <option value="November">November</option>
+                    <option value="December">December</option>
+
                 </select>
             </div>
+
+
+            <!-- BLOCK -->
+            <div>
+                <label for="exam_block_term"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+
+                    <span id="exam_block_label">
+                        Block/Term
+                    </span> *
+
+                </label>
+
+                <select id="exam_block_term"
+                        required
+                        style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px;">
+
+                    <option value="">-- Select --</option>
+
+                </select>
+
+                <div style="font-size:10px; color:#94a3b8; margin-top:4px;">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="exam_block_hint">
+                        Select a program to load available blocks/terms.
+                    </span>
+                </div>
+
+            </div>
+
         </div>
-        
-        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examUnit" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-book" style="color: #4C1D95; width: 18px;"></i> Unit
-                </label>
-                <select id="examUnit" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
-                    <option value="">-- Select Unit (Optional) --</option>
-                </select>
+
+
+        <!-- ====================================================
+             COURSE / UNIT SEARCH
+             ==================================================== -->
+        <div style="margin-bottom:16px;">
+
+            <label for="createCourseSearchInput"
+                   style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+
+                Course / Unit
+
+                <span style="font-weight:400; text-transform:none; color:#94a3b8; margin-left:8px;">
+                    <i class="fas fa-search"></i>
+                    Search by name or code
+                </span>
+
+            </label>
+
+            <div id="createCourseSearchContainer"
+                 style="position:relative; width:100%;">
+
+                <input type="text"
+                       id="createCourseSearchInput"
+                       placeholder="🔍 Search course or unit..."
+                       autocomplete="off"
+                       style="width:100%; box-sizing:border-box; padding:11px 16px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; outline:none; background:white;"
+                       onfocus="this.style.borderColor='#7c3aed'; this.style.boxShadow='0 0 0 3px rgba(124,58,237,.08)'"
+                       onblur="setTimeout(function(){this.style.borderColor='#e2e8f0'; this.style.boxShadow='none';}.bind(this),150)">
+
+                <div id="createCourseDropdownList"
+                     style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:white; border:1px solid #e2e8f0; border-radius:0 0 10px 10px; box-shadow:0 6px 18px rgba(0,0,0,.1); display:none; z-index:1000;">
+                </div>
+
+                <input type="hidden"
+                       id="exam_course_id"
+                       value="">
+
             </div>
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examStartTime" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-clock" style="color: #4C1D95; width: 18px;"></i> Start Time
-                </label>
-                <input type="time" id="examStartTime" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+
+            <div style="font-size:11px; color:#94a3b8; margin-top:5px;">
+
+                <span>
+                    <i class="fas fa-info-circle"></i>
+                    Type to search and select a unit.
+                </span>
+
+                <span id="createSelectedCourseDisplay"
+                      style="display:none; color:#7c3aed; font-weight:600; margin-left:12px;">
+
+                    <i class="fas fa-check-circle"></i>
+                    Selected:
+                    <span id="createSelectedCourseName"></span>
+
+                </span>
+
             </div>
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examDurationMinutes" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-hourglass-half" style="color: #4C1D95; width: 18px;"></i> Duration (minutes) *
-                </label>
-                <input type="number" id="examDurationMinutes" placeholder="e.g., 120" min="1" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
-            </div>
+
         </div>
-        
-        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examLink" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-link" style="color: #4C1D95; width: 18px;"></i> Online Link (Optional)
-                </label>
-                <input type="url" id="examLink" placeholder="https://..." style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+
+
+        <!-- ====================================================
+             CLASSES
+             ==================================================== -->
+        <div style="margin-bottom:16px;">
+
+            <label style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                Select Classes
+            </label>
+
+            <div id="exam_class_selector"
+                 style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; padding:14px; background:#f8fafc; border-radius:12px; min-height:55px; max-height:160px; overflow-y:auto; border:1px solid #e2e8f0;">
+
+                <div style="color:#94a3b8; font-size:13px; grid-column:1/-1; text-align:center; padding:8px;">
+                    <i class="fas fa-info-circle"></i>
+                    Select program and intake to load classes.
+                </div>
+
             </div>
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examStatus" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-circle" style="color: #4C1D95; width: 18px;"></i> Status *
-                </label>
-                <select id="examStatus" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
-                    <option value="Scheduled">📅 Scheduled</option>
-                    <option value="InProgress">🔄 In Progress</option>
-                    <option value="Completed">✅ Completed</option>
-                    <option value="Cancelled">❌ Cancelled</option>
-                </select>
-            </div>
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                <label for="examVenue" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-map-pin" style="color: #4C1D95; width: 18px;"></i> Venue (Optional)
-                </label>
-                <input type="text" id="examVenue" placeholder="e.g., Lecture Hall 3" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
-            </div>
+
         </div>
-        
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-            <button type="submit" onclick="handleAddExam(event)" class="btn btn-action" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 10px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <i class="fas fa-plus-circle"></i> Create Exam Record
+
+
+        <!-- ====================================================
+             VENUE
+             ==================================================== -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+
+            <div>
+                <label for="exam_venue"
+                       style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:6px;">
+                    Venue
+                </label>
+
+                <input type="text"
+                       id="exam_venue"
+                       placeholder="e.g. Lecture Hall 3"
+                       style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; font-size:14px;">
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             REPORT CARD SETTINGS
+             ==================================================== -->
+        <div style="margin-bottom:18px;">
+
+            <label style="font-weight:600; font-size:11px; text-transform:uppercase; color:#475569; display:block; margin-bottom:7px;">
+                Report Card Settings
+            </label>
+
+            <div style="display:flex; flex-wrap:wrap; gap:10px 20px; padding:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+
+                <label style="display:flex; align-items:center; gap:7px; font-size:13px; color:#334155; cursor:pointer;">
+                    <input type="checkbox"
+                           id="exam_show_attendance">
+                    Show Attendance
+                </label>
+
+                <label style="display:flex; align-items:center; gap:7px; font-size:13px; color:#334155; cursor:pointer;">
+                    <input type="checkbox"
+                           id="exam_show_grades"
+                           checked>
+                    Show Grades
+                </label>
+
+                <label style="display:flex; align-items:center; gap:7px; font-size:13px; color:#334155; cursor:pointer;">
+                    <input type="checkbox"
+                           id="exam_show_teacher_remarks">
+                    Teacher Remarks
+                </label>
+
+                <label style="display:flex; align-items:center; gap:7px; font-size:13px; color:#334155; cursor:pointer;">
+                    <input type="checkbox"
+                           id="exam_show_principal_remarks">
+                    Principal Remarks
+                </label>
+
+                <label style="display:flex; align-items:center; gap:7px; font-size:13px; color:#334155; cursor:pointer;">
+                    <input type="checkbox"
+                           id="exam_show_performance_metrics">
+                    Performance Metrics
+                </label>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             EMAIL NOTIFICATIONS
+             ==================================================== -->
+        <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:12px; padding:16px 20px; margin-bottom:18px;">
+
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:14px; color:#065f46;">
+
+                    <input type="checkbox"
+                           id="exam_notify_students"
+                           checked
+                           style="width:18px; height:18px; accent-color:#059669;">
+
+                    <i class="fas fa-envelope"></i>
+                    Notify Students via Email
+
+                </label>
+
+                <span style="font-size:11px; color:#6b7280; background:#d1fae5; padding:3px 10px; border-radius:20px;">
+                    <i class="fas fa-info-circle"></i>
+                    Students will receive assessment details.
+                </span>
+
+                <span id="student_notify_count"
+                      style="font-size:12px; color:#059669; font-weight:600; background:white; padding:3px 10px; border-radius:20px; border:1px solid #86efac;">
+                    <i class="fas fa-users"></i>
+                    0 students
+                </span>
+
+            </div>
+
+
+            <div id="exam_student_selection">
+
+                <div style="display:grid; grid-template-columns:1fr 2fr; gap:12px;">
+
+                    <!-- TARGET -->
+                    <div>
+
+                        <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:5px;">
+                            <i class="fas fa-users"></i>
+                            Students to Notify
+                        </label>
+
+                        <select id="exam_notify_target"
+                                style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #d1d5db; font-size:13px; background:white;">
+
+                            <option value="all">
+                                📢 All Students (Program + Block)
+                            </option>
+
+                            <option value="program">
+                                🎓 All Students in Program
+                            </option>
+
+                            <option value="block">
+                                📚 All Students in Block
+                            </option>
+
+                            <option value="specific">
+                                👤 Specific Students
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- SPECIFIC STUDENTS -->
+                    <div id="specific_students_container">
+
+                        <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:5px;">
+                            <i class="fas fa-search"></i>
+                            Search & Select Students
+                        </label>
+
+                        <div style="display:flex; gap:7px;">
+
+                            <input type="text"
+                                   id="exam_student_search"
+                                   placeholder="Type student name, admission number or email..."
+                                   style="flex:1; padding:9px 12px; border-radius:8px; border:1px solid #d1d5db; font-size:13px;">
+
+                            <button type="button"
+                                    onclick="searchStudentsForNotification()"
+                                    style="padding:9px 16px; background:#4C1D95; color:white; border:none; border-radius:8px; cursor:pointer; font-size:12px;">
+
+                                <i class="fas fa-search"></i>
+                                Search
+
+                            </button>
+
+                        </div>
+
+
+                        <div id="student_search_results"
+                             style="max-height:150px; overflow-y:auto; margin-top:7px; border:1px solid #e5e7eb; border-radius:8px; padding:4px; background:white; display:none;">
+                        </div>
+
+
+                        <div id="selected_students_list"
+                             style="display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; min-height:24px;">
+
+                            <span style="font-size:12px; color:#94a3b8;">
+                                <i class="fas fa-info-circle"></i>
+                                No students selected
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             ACTIONS
+             ==================================================== -->
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding-top:15px; border-top:1px solid #e2e8f0;">
+
+            <button type="submit"
+                    style="background:linear-gradient(135deg,#4C1D95,#7c3aed); color:white; border:none; padding:12px 28px; border-radius:9px; cursor:pointer; font-weight:700; font-size:14px; display:flex; align-items:center; gap:9px; box-shadow:0 4px 14px rgba(76,29,149,.2);">
+
+                <i class="fas fa-save"></i>
+                Create Assessment
+
             </button>
-            <button type="reset" style="background: transparent; color: #64748b; border: 2px solid #e2e8f0; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                <i class="fas fa-undo"></i> Reset
+
+
+            <button type="reset"
+                    style="background:#f1f5f9; color:#475569; border:none; padding:12px 24px; border-radius:9px; cursor:pointer; font-weight:600; font-size:13px;">
+
+                <i class="fas fa-undo"></i>
+                Reset
+
             </button>
+
         </div>
+
     </form>
-    
-    <!-- My Exams & CATs -->
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-        <h3 style="color: #0A3D62; margin: 0;"><i class="fas fa-list"></i> My Exams & CATs</h3>
-        <div style="display: flex; gap: 8px;">
-            <span style="font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-circle" style="color: #f59e0b;"></i> Scheduled
-            </span>
-            <span style="font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-circle" style="color: #3b82f6;"></i> In Progress
-            </span>
-            <span style="font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-circle" style="color: #10b981;"></i> Completed
-            </span>
-            <span style="font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-circle" style="color: #ef4444;"></i> Cancelled
-            </span>
+
+
+    <!-- ========================================================
+         ASSESSMENT LIST HEADER
+         ======================================================== -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:15px;">
+
+        <div>
+            <h3 style="color:#0A3D62; margin:0;">
+                <i class="fas fa-list"></i>
+                My Exams & CATs
+            </h3>
+
+            <p style="font-size:12px; color:#94a3b8; margin:4px 0 0;">
+                Assessments available within your lecturer scope.
+            </p>
         </div>
-    </div>
-    
-    <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 200px; position: relative;">
-            <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-            <input type="text" id="examSearch" placeholder="Search exams by title, unit, or type..." style="width: 100%; padding: 12px 14px 12px 40px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'" onkeyup="filterExams()">
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; font-size:12px;">
+
+            <span style="color:#64748b;">
+                <i class="fas fa-circle" style="color:#f59e0b;"></i>
+                Upcoming
+            </span>
+
+            <span style="color:#64748b;">
+                <i class="fas fa-circle" style="color:#3b82f6;"></i>
+                In Progress
+            </span>
+
+            <span style="color:#64748b;">
+                <i class="fas fa-circle" style="color:#10b981;"></i>
+                Completed
+            </span>
+
+            <span style="color:#64748b;">
+                <i class="fas fa-circle" style="color:#94a3b8;"></i>
+                Draft
+            </span>
+
         </div>
-        <button class="btn btn-action" onclick="filterExams()" style="background: #4C1D95; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-            <i class="fas fa-search"></i> Search
-        </button>
-        <button onclick="exportExams()" style="background: #10b981; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-            <i class="fas fa-file-export"></i> Export
-        </button>
+
     </div>
-    
-    <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+
+
+    <!-- ========================================================
+         SEARCH + FILTERS
+         ======================================================== -->
+    <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+
+        <!-- SEARCH -->
+        <div style="flex:2; min-width:220px; position:relative;">
+
+            <i class="fas fa-search"
+               style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8;">
+            </i>
+
+            <input type="text"
+                   id="examSearch"
+                   placeholder="Search assessments, units or titles..."
+                   onkeyup="filterExams()"
+                   style="width:100%; box-sizing:border-box; padding:11px 14px 11px 40px; border:1px solid #e2e8f0; border-radius:9px; font-size:13px; outline:none;">
+        </div>
+
+
+        <!-- PROGRAM FILTER -->
+        <select id="examFilterProgram"
+                onchange="filterExams()"
+                style="flex:1; min-width:150px; padding:11px 12px; border:1px solid #e2e8f0; border-radius:9px; background:white; font-size:13px;">
+
+            <option value="">
+                All Programs
+            </option>
+
+        </select>
+
+
+        <!-- STATUS FILTER -->
+        <select id="examFilterStatus"
+                onchange="filterExams()"
+                style="flex:1; min-width:140px; padding:11px 12px; border:1px solid #e2e8f0; border-radius:9px; background:white; font-size:13px;">
+
+            <option value="">
+                All Status
+            </option>
+
+            <option value="Upcoming">
+                Upcoming
+            </option>
+
+            <option value="InProgress">
+                In Progress
+            </option>
+
+            <option value="Completed">
+                Completed
+            </option>
+
+            <option value="published">
+                Published
+            </option>
+
+            <option value="Draft">
+                Draft
+            </option>
+
+        </select>
+
+
+        <!-- INTAKE MONTH -->
+        <select id="examFilterIntakeMonth"
+                onchange="filterExams()"
+                style="flex:1; min-width:140px; padding:11px 12px; border:1px solid #e2e8f0; border-radius:9px; background:white; font-size:13px;">
+
+            <option value="">
+                All Intake Months
+            </option>
+
+            <option value="January">January</option>
+            <option value="February">February</option>
+            <option value="March">March</option>
+            <option value="April">April</option>
+            <option value="May">May</option>
+            <option value="June">June</option>
+            <option value="July">July</option>
+            <option value="August">August</option>
+            <option value="September">September</option>
+            <option value="October">October</option>
+            <option value="November">November</option>
+            <option value="December">December</option>
+
+        </select>
+
+
+        <!-- EXPORT -->
+        <button type="button"
+                onclick="exportExams()"
+                style="background:#10b981; color:white; border:none; padding:11px 18px; border-radius:9px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:7px;">
+
+            <i class="fas fa-file-export"></i>
+            Export
+
+        </button>
+
+    </div>
+
+
+    <!-- ========================================================
+         ASSESSMENT TABLE
+         ======================================================== -->
+    <div style="background:white; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.08); border:1px solid #e5e7eb;">
+
+        <div style="overflow-x:auto;">
+
+            <table id="examsTable"
+                   style="width:100%; min-width:1250px; border-collapse:collapse; font-size:13px;">
+
                 <thead>
-                    <tr style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
-                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-file-signature" style="margin-right: 8px; color: #4C1D95;"></i> Type
+
+                    <tr style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);">
+
+                        <th style="padding:13px 15px; text-align:left; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Type
                         </th>
-                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-tag" style="margin-right: 8px; color: #4C1D95;"></i> Title
+
+                        <th style="padding:13px 15px; text-align:left; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Program
                         </th>
-                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-book" style="margin-right: 8px; color: #4C1D95;"></i> Unit
+
+                        <th style="padding:13px 15px; text-align:left; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Course / Unit
                         </th>
-                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-graduation-cap" style="margin-right: 8px; color: #4C1D95;"></i> Program/Block
+
+                        <th style="padding:13px 15px; text-align:left; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Title
                         </th>
-                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-calendar" style="margin-right: 8px; color: #4C1D95;"></i> Date/Time
+
+                        <th style="padding:13px 15px; text-align:center; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Marks
                         </th>
-                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-hourglass-half" style="margin-right: 8px; color: #4C1D95;"></i> Duration
+
+                        <th style="padding:13px 15px; text-align:center; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Pass Mark
                         </th>
-                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-circle" style="margin-right: 8px; color: #4C1D95;"></i> Status
+
+                        <th style="padding:13px 15px; text-align:left; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Date / Time
                         </th>
-                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-cog" style="margin-right: 8px; color: #4C1D95;"></i> Actions
+
+                        <th style="padding:13px 15px; text-align:center; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Duration
                         </th>
+
+                        <th style="padding:13px 15px; text-align:left; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Intake
+                        </th>
+
+                        <th style="padding:13px 15px; text-align:left; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Block / Term
+                        </th>
+
+                        <th style="padding:13px 15px; text-align:center; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Status
+                        </th>
+
+                        <th style="padding:13px 15px; text-align:center; font-weight:700; color:#0A3D62; border-bottom:2px solid #e2e8f0;">
+                            Actions
+                        </th>
+
                     </tr>
+
                 </thead>
-                <tbody id="examsTable">
+
+
+                <tbody id="examsTableBody">
+
+                    <!-- Existing JS may populate this body -->
+
                     <tr>
-                        <td colspan="8" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
-                            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                            <p style="margin: 15px 0 0 0; font-weight: 500;">Loading exams...</p>
+
+                        <td colspan="12"
+                            style="padding:45px 20px; text-align:center; color:#94a3b8;">
+
+                            <i class="fas fa-file-alt"
+                               style="font-size:30px; margin-bottom:10px; display:block; color:#cbd5e1;">
+                            </i>
+
+                            <div style="font-weight:600;">
+                                Loading assessments...
+                            </div>
+
                         </td>
+
                     </tr>
+
                 </tbody>
+
             </table>
+
         </div>
-        
-        <!-- Table Footer -->
-        <div style="padding: 12px 18px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <span style="font-size: 13px; color: #64748b;">
-                <i class="fas fa-database"></i> <span id="examCountDisplay">0</span> exams found
+
+
+        <!-- TABLE FOOTER -->
+        <div style="padding:12px 18px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+
+            <span style="font-size:13px; color:#64748b;">
+
+                <i class="fas fa-database"></i>
+
+                <span id="examCountDisplay">
+                    0
+                </span>
+
+                assessments found
+
             </span>
-            <div style="display: flex; gap: 8px;">
-                <span onclick="window.print()" style="font-size: 12px; color: #94a3b8; cursor: pointer;">
-                    <i class="fas fa-print"></i> Print
+
+
+            <div style="display:flex; gap:15px;">
+
+                <span onclick="window.print()"
+                      style="font-size:12px; color:#64748b; cursor:pointer;">
+
+                    <i class="fas fa-print"></i>
+                    Print
+
                 </span>
-                <span onclick="exportExams()" style="font-size: 12px; color: #94a3b8; cursor: pointer;">
-                    <i class="fas fa-file-export"></i> Export
+
+                <span onclick="exportExams()"
+                      style="font-size:12px; color:#64748b; cursor:pointer;">
+
+                    <i class="fas fa-file-export"></i>
+                    Export
+
                 </span>
+
             </div>
+
         </div>
+
     </div>
+
 </section>
 <!-- ============================================================ -->
 <!-- ONLINE LEARNING / ASSIGNMENT MANAGEMENT                     -->
