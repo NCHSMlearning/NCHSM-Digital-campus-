@@ -1128,8 +1128,14 @@ window.LecturerOnlineLearning = (() => {
             updateAutoGradeLoading('Analysing submission against marking criteria...',55);
             await new Promise(r=>setTimeout(r,40));
 
-            const maxMarks=Number(key.max_marks||assignment.max_marks||s.max_marks||0);
-            if(!maxMarks)throw new Error('The institutional marking key has no maximum mark configured.');
+            let maxMarks=Number(key.max_marks||0);
+            if(!maxMarks)maxMarks=Number(key.allocated_marks||0);
+            if(!maxMarks){
+                const criteria=criterionNodes(markKeyArray(key.criteria));
+                maxMarks=criteria.reduce((sum,c)=>sum+Number(c.max_marks||0),0);
+            }
+            if(!maxMarks)maxMarks=Number(assignment.max_marks||s.max_marks||0);
+            if(!maxMarks)throw new Error('The institutional marking key has no maximum mark configured and its criterion allocations could not be used to determine one.');
 
             updateAutoGradeLoading('Calculating criterion marks...',75);
             const report=deterministicGradeMarkingKey(text,key,maxMarks);
@@ -1142,6 +1148,7 @@ window.LecturerOnlineLearning = (() => {
             if($('olReviewFeedback'))$('olReviewFeedback').value=report.feedback||'';
             renderDeterministicGradeReport(report);
             window._activeDeterministicGrade=report;
+            window._activeDeterministicGradeSubmissionId=id;
 
             notify(`Automatic Supabase marking completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,'success');
             return report;
@@ -1227,12 +1234,35 @@ window.LecturerOnlineLearning = (() => {
         }
     }
 
+    // Resolve the real maximum mark for a submission.
+    async function getEffectiveSubmissionMaxMarks(submission,assignment){
+        const activeReport=window._activeDeterministicGrade;
+        if(activeReport && String(window._activeDeterministicGradeSubmissionId||'')===String(submission?.id||'') && Number(activeReport.max_marks)>0) return Number(activeReport.max_marks);
+        const direct=Number(submission?.max_marks||assignment?.max_marks||0);
+        if(direct>0) return direct;
+        if(assignment?.marking_key_id){
+            const db=client();
+            const r=await db.from('online_marking_keys').select('max_marks,allocated_marks,criteria').eq('id',assignment.marking_key_id).eq('is_active',true).maybeSingle();
+            if(!r.error && r.data){
+                const keyMax=Number(r.data.max_marks||0);
+                if(keyMax>0) return keyMax;
+                const allocated=Number(r.data.allocated_marks||0);
+                if(allocated>0) return allocated;
+                const criteria=criterionNodes(markKeyArray(r.data.criteria));
+                const total=criteria.reduce((sum,c)=>sum+Number(c.max_marks||0),0);
+                if(total>0) return total;
+            }
+        }
+        return 0;
+    }
+
     async function gradeSubmission(id,release){
         const db=client();
         const s=state.submissions.find(x=>x.id===id);
         if(!s)return;
         const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
-        const maxMarks=Number(s.max_marks||assignment.max_marks||0);
+        const maxMarks=await getEffectiveSubmissionMaxMarks(s,assignment);
+        if(!maxMarks){notify('Cannot save this grade because no valid maximum mark is configured. Attach a valid institutional marking key or set the assignment maximum marks.','error');return;}
         const marks=clampMarks($('olReviewMarks').value,maxMarks);
         const feedback=$('olReviewFeedback').value.trim()||null;
         const percentage=Number(formatPercentage(marks,maxMarks).replace('%',''));
