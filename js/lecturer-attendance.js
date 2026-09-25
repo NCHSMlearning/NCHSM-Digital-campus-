@@ -519,12 +519,18 @@ const LecturerAttendance = {
     // ============================================================
     async loadAllAttendance() {
         try {
-            await Promise.all([
-                this.loadTodayAttendance(),
-                this.loadPastAttendance(),
-                this.loadAttendanceStats(),
-                this.loadProgramInfo()
-            ]);
+            // Load in a deterministic order. The session register is the
+            // authoritative source for selected-session statistics; running
+            // the four loaders concurrently allowed a later async operation
+            // to overwrite correct stats with an empty/default set.
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+            await this.loadProgramInfo();
+
+            // Always finish from the same filtered dataset that the lecturer
+            // sees in the table. This keeps cards, table and export aligned.
+            this.applyFilters();
         } catch (error) {
             console.error('❌ loadAllAttendance:', error);
         }
@@ -650,14 +656,17 @@ const LecturerAttendance = {
     // UPDATE STATS
     // ============================================================
     updateStats(logs) {
-        const rows = Array.isArray(logs) ? logs : [];
+        const rows = Array.isArray(logs) ? logs.filter(l => String(l?.session_type || '').toLowerCase() !== 'lecturer check-in') : [];
         const total = rows.length;
         const present = rows.filter(l => {
-            const s = String(l.attendance_status || '').toLowerCase();
-            return s === 'present' || s === 'verified' || l.is_verified === true;
+            const s = String(l?.attendance_status || '').trim().toLowerCase();
+            return s === 'present' || s === 'verified' || l?.is_verified === true || l?.is_verified === 'true' || l?.is_verified === 1;
         }).length;
-        const absent = rows.filter(l => String(l.attendance_status || '').toLowerCase() === 'absent').length;
-        const pending = Math.max(0, total - present - absent);
+        const absent = rows.filter(l => String(l?.attendance_status || '').trim().toLowerCase() === 'absent').length;
+        const pending = rows.filter(l => {
+            const s = String(l?.attendance_status || '').trim().toLowerCase();
+            return s === 'pending' || s === 'not checked in' || s === 'late' || (!s && !l?.check_in_time);
+        }).length;
         const rate = total ? Math.round((present / total) * 100) : 0;
         this.stats = { total, present, absent, pending, rate };
 
@@ -672,6 +681,11 @@ const LecturerAttendance = {
             const el = document.getElementById(id);
             if (el) el.textContent = value;
         });
+
+        const progressBar = document.getElementById('attendanceProgressBar');
+        if (progressBar) progressBar.style.width = `${rate}%`;
+        const rateBadge = document.getElementById('attendanceRateBadge');
+        if (rateBadge) rateBadge.textContent = `${rate}% (Class: ${total} students)`;
         return this.stats;
     },
 
@@ -798,17 +812,16 @@ const LecturerAttendance = {
     async loadAttendanceStats() {
         try {
             const session = this.getSelectedSession();
-            if (session) {
-                const register = this.sessionRegister || await this.getSessionAttendanceRegister(session, false);
-                this.sessionRegister = register;
-                this.updateRegisterStats(register);
-                return;
+            if (session && !this.sessionRegister) {
+                this.sessionRegister = await this.getSessionAttendanceRegister(session, false);
             }
         } catch (error) {
-            console.warn('⚠️ Session-based attendance stats unavailable:', error);
+            console.warn('⚠️ Session-based attendance register unavailable:', error);
         }
 
-        this.updateStats([]);
+        // applyFilters() is the single source of truth for the visible table
+        // and statistics. Do not reset stats to zero here.
+        return this.stats;
     },
 
     updateRegisterStats(register) {
@@ -1275,14 +1288,14 @@ const LecturerAttendance = {
     // APPLY / RESET FILTERS — DATE RANGE COMPATIBLE
     // ============================================================
     applyFilters() {
-        const from = (document.getElementById('filterDateFrom')?.value || '').trim();
-        const to = (document.getElementById('filterDateTo')?.value || '').trim();
-        const legacyDate = (document.getElementById('filterDate')?.value || '').trim();
-        const filterBlock = (document.getElementById('filterBlock')?.value || 'All').trim();
-        const filterUnit = (document.getElementById('filterUnit')?.value || 'All').trim();
-        const filterYear = (document.getElementById('filterYear')?.value || 'All').trim();
-        const filterSessionType = (document.getElementById('filterSessionType')?.value || 'All').trim();
-        const searchText = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
+        const from = String(document.getElementById('filterDateFrom')?.value ?? '').trim();
+        const to = String(document.getElementById('filterDateTo')?.value ?? '').trim();
+        const legacyDate = String(document.getElementById('filterDate')?.value ?? '').trim();
+        const filterBlock = String(document.getElementById('filterBlock')?.value ?? 'All').trim() || 'All';
+        const filterUnit = String(document.getElementById('filterUnit')?.value ?? 'All').trim() || 'All';
+        const filterYear = String(document.getElementById('filterYear')?.value ?? 'All').trim() || 'All';
+        const filterSessionType = String(document.getElementById('filterSessionType')?.value ?? 'All').trim() || 'All';
+        const searchText = String(document.getElementById('filterSearch')?.value ?? '').trim().toLowerCase();
 
         const rangeFrom = from || legacyDate || '';
         const rangeTo = to || legacyDate || '';
