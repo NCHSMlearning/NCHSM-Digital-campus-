@@ -4,6 +4,16 @@
 // ============================================================
 
 const LecturerQuestions = {
+    // HTML-safe output helper used by bulk preview and question rendering
+    esc: function(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    },
     currentQuestions: [],
     currentExamId: null,
     lecturerUuid: null,
