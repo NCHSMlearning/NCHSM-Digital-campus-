@@ -1335,8 +1335,8 @@ window.LecturerOnlineLearning = (() => {
                 : totalRubricMarks===assignmentMax
                     ? 'All declared criterion marks are allocated.'
                     : `The supplied marking key allocates ${totalRubricMarks} of ${assignmentMax} marks. No unallocated marks were invented.`,
-            grading_mode:'SUPABASE_EDGE_AI_INSTITUTIONAL_RUBRIC_V1',
-            provider:'supabase-edge-ai-institutional-rubric-engine-v1',
+            grading_mode:'SUPABASE_INSTITUTIONAL_MARKING_KEY_SCHEMA_DRIVEN_V7',
+            provider:'supabase-institutional-marking-key-schema-driven-engine-v7',
             source:'public.online_marking_keys',
             marking_key_id:key?.id||null,
             marking_key_title:key?.title||null,
@@ -1370,20 +1370,20 @@ window.LecturerOnlineLearning = (() => {
 
         if(btn){
             btn.disabled=true;
-            btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Secure Grading...';
+            btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Secure Marking...';
             btn.setAttribute('aria-busy','true');
         }
 
         setGradeActionLoading(id,true);
-        renderAutoGradeLoading('Preparing secure institutional grading...',10);
+        renderAutoGradeLoading('Preparing deterministic institutional grading...',10);
 
         try{
             const db=client();
             if(!db?.functions?.invoke){
-                throw new Error('Secure grading service is unavailable.');
+                throw new Error('Secure deterministic grading service is unavailable.');
             }
 
-            updateAutoGradeLoading('Verifying institutional marking key...',20);
+            updateAutoGradeLoading('Loading official marking key...',20);
             const config=await getAssignmentGradingConfig(assignment);
             const key=config.markingKey;
 
@@ -1395,36 +1395,31 @@ window.LecturerOnlineLearning = (() => {
                 notify('Warning: this marking key is marked needs_review. Verify the rubric before release.','warning');
             }
 
-            updateAutoGradeLoading('Reading student submission...',35);
+            updateAutoGradeLoading('Extracting student submission...',35);
             const extractedText=await extractSubmissionText(s);
             if(!String(extractedText||'').trim()){
                 throw new Error('No readable text was extracted from the submitted document.');
             }
 
-            updateAutoGradeLoading('Sending work to secure grading service...',50);
+            updateAutoGradeLoading('Running deterministic rubric engine...',55);
 
-            /*
-             * The browser no longer decides the academic mark. It only extracts
-             * the submitted document and sends it to the Supabase Edge Function.
-             * The server retrieves the authoritative marking key and performs
-             * structured rubric grading.
-             */
+            // No AI is called. The Edge Function retrieves the authoritative
+            // rubric and executes the same deterministic evidence engine
+            // server-side so the browser cannot alter the academic algorithm.
             const result=await db.functions.invoke('grade-online-submission',{
                 body:{
                     submission_id:id,
                     assignment_id:s.assignment_id,
-                    document_text:String(extractedText),
-                    marking_key_id:key.id
+                    marking_key_id:key.id,
+                    document_text:String(extractedText)
                 }
             });
 
-            if(result.error){
-                throw result.error;
-            }
+            if(result.error)throw result.error;
 
             const report=result.data?.report||result.data;
             if(!report || typeof report.marks_awarded==='undefined'){
-                throw new Error('Secure grading service returned an invalid grading report.');
+                throw new Error('Deterministic grading service returned an invalid report.');
             }
 
             updateAutoGradeLoading('Rendering criterion-by-criterion result...',90);
@@ -1440,26 +1435,26 @@ window.LecturerOnlineLearning = (() => {
             window._activeServerGrade=true;
 
             notify(
-                `Secure institutional grading completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,
+                `Deterministic institutional grading completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,
                 'success'
             );
 
             return report;
         }catch(e){
-            console.error('Secure institutional grading:',e);
+            console.error('Secure deterministic grading:',e);
 
             const box=$('olAIGradeReport');
             if(box){
                 box.innerHTML=`<div style="margin-top:12px;padding:14px;border:1px solid #fecaca;border-radius:12px;background:#fff7f7">
-                    <b style="color:#b91c1c"><i class="fas fa-circle-exclamation"></i> Secure Automatic Marking Failed</b>
-                    <div style="margin-top:6px;font-size:12px;color:#7f1d1d">${esc(e?.message||'Secure grading failed.')}</div>
+                    <b style="color:#b91c1c"><i class="fas fa-circle-exclamation"></i> Automatic Marking Failed</b>
+                    <div style="margin-top:6px;font-size:12px;color:#7f1d1d">${esc(e?.message||'Deterministic grading failed.')}</div>
                     <button type="button" class="ol-btn ol-muted" style="margin-top:10px" onclick="LecturerOnlineLearning.autoGradeUsingMarkingKey('${id}')">
                         <i class="fas fa-rotate-right"></i> Try Again
                     </button>
                 </div>`;
             }
 
-            notify(e?.message||'Secure automatic marking failed.','error');
+            notify(e?.message||'Deterministic automatic marking failed.','error');
             return null;
         }finally{
             if(btn){
@@ -1544,7 +1539,9 @@ window.LecturerOnlineLearning = (() => {
             result_released:release,
             released_at:release?now:null,
             review_required:false,
-            grading_engine:window._activeServerGrade?'SUPABASE_EDGE_AI_RUBRIC_V1':'LECTURER_MANUAL_REVIEW'
+            grading_engine:window._activeServerGrade
+                ? 'SUPABASE_DETERMINISTIC_RUBRIC_ENGINE_V1'
+                : 'LECTURER_MANUAL_REVIEW'
         };
         let {error}=await db.from('online_submissions').update({...payload,percentage}).eq('id',id);
         if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}
