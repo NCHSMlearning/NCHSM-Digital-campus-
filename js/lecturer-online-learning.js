@@ -1335,8 +1335,8 @@ window.LecturerOnlineLearning = (() => {
                 : totalRubricMarks===assignmentMax
                     ? 'All declared criterion marks are allocated.'
                     : `The supplied marking key allocates ${totalRubricMarks} of ${assignmentMax} marks. No unallocated marks were invented.`,
-            grading_mode:'SUPABASE_INSTITUTIONAL_MARKING_KEY_SCHEMA_DRIVEN_V7',
-            provider:'supabase-institutional-marking-key-schema-driven-engine-v7',
+            grading_mode:'SUPABASE_EDGE_AI_INSTITUTIONAL_RUBRIC_V1',
+            provider:'supabase-edge-ai-institutional-rubric-engine-v1',
             source:'public.online_marking_keys',
             marking_key_id:key?.id||null,
             marking_key_title:key?.title||null,
@@ -1362,38 +1362,116 @@ window.LecturerOnlineLearning = (() => {
 
     async function autoGradeUsingMarkingKey(id){
         const s=state.submissions.find(x=>x.id===id);
-        if(!s)return;
+        if(!s)return null;
+
         const assignment=state.assignments.find(x=>x.id===s.assignment_id)||{};
-        const btn=$('olAutoGradeBtn') || $('olAIGradeBtn');
-        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Reading Work & Marking…';}
+        const btn=$('olAIGradeBtn')||$('olAutoGradeBtn');
+        const originalHTML=btn?.innerHTML||'';
+
+        if(btn){
+            btn.disabled=true;
+            btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Secure Grading...';
+            btn.setAttribute('aria-busy','true');
+        }
+
+        setGradeActionLoading(id,true);
+        renderAutoGradeLoading('Preparing secure institutional grading...',10);
+
         try{
+            const db=client();
+            if(!db?.functions?.invoke){
+                throw new Error('Secure grading service is unavailable.');
+            }
+
+            updateAutoGradeLoading('Verifying institutional marking key...',20);
             const config=await getAssignmentGradingConfig(assignment);
             const key=config.markingKey;
-            if(config.mode!=='marking_key' || !key)throw new Error('No Supabase institutional marking key is attached to this assignment. Edit the assignment and select a Formal Marking Key.');
-            if(key.validation_status==='needs_review') notify('Warning: this Supabase marking key is marked needs_review. Verify the rubric before release.','warning');
-            const text=await extractSubmissionText(s);
-            if(!String(text||'').trim()) throw new Error('No readable text was extracted from the submitted document.');
-            const maxMarks=resolveSubmissionMaxMarks(s,assignment) || Number(key.max_marks||0);
-            if(!maxMarks)throw new Error('The institutional marking key has no maximum mark configured.');
-            const report=deterministicGradeMarkingKey(text,key,maxMarks);
-            $('olReviewMarks').value=report.marks_awarded;
-            if($('olReviewPercentage')) $('olReviewPercentage').textContent=formatPercentage(report.marks_awarded,report.max_marks);
-            if($('olReviewFeedback')) $('olReviewFeedback').value=report.feedback||'';
+
+            if(config.mode!=='marking_key'||!key){
+                throw new Error('No Supabase institutional marking key is attached to this assignment.');
+            }
+
+            if(key.validation_status==='needs_review'){
+                notify('Warning: this marking key is marked needs_review. Verify the rubric before release.','warning');
+            }
+
+            updateAutoGradeLoading('Reading student submission...',35);
+            const extractedText=await extractSubmissionText(s);
+            if(!String(extractedText||'').trim()){
+                throw new Error('No readable text was extracted from the submitted document.');
+            }
+
+            updateAutoGradeLoading('Sending work to secure grading service...',50);
+
+            /*
+             * The browser no longer decides the academic mark. It only extracts
+             * the submitted document and sends it to the Supabase Edge Function.
+             * The server retrieves the authoritative marking key and performs
+             * structured rubric grading.
+             */
+            const result=await db.functions.invoke('grade-online-submission',{
+                body:{
+                    submission_id:id,
+                    assignment_id:s.assignment_id,
+                    document_text:String(extractedText),
+                    marking_key_id:key.id
+                }
+            });
+
+            if(result.error){
+                throw result.error;
+            }
+
+            const report=result.data?.report||result.data;
+            if(!report || typeof report.marks_awarded==='undefined'){
+                throw new Error('Secure grading service returned an invalid grading report.');
+            }
+
+            updateAutoGradeLoading('Rendering criterion-by-criterion result...',90);
+
+            if($('olReviewMarks'))$('olReviewMarks').value=report.marks_awarded;
+            if($('olReviewPercentage'))$('olReviewPercentage').textContent=formatPercentage(report.marks_awarded,report.max_marks);
+            if($('olReviewFeedback'))$('olReviewFeedback').value=report.feedback||'';
+
             renderDeterministicGradeReport(report);
+
             window._activeDeterministicGrade=report;
-            notify(`Automatic Supabase marking completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,'success');
+            window._activeDeterministicGradeSubmissionId=id;
+            window._activeServerGrade=true;
+
+            notify(
+                `Secure institutional grading completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,
+                'success'
+            );
+
             return report;
         }catch(e){
-            console.error('Deterministic Supabase marking:',e);
-            notify(e.message||'Automatic marking failed.','error');
+            console.error('Secure institutional grading:',e);
+
+            const box=$('olAIGradeReport');
+            if(box){
+                box.innerHTML=`<div style="margin-top:12px;padding:14px;border:1px solid #fecaca;border-radius:12px;background:#fff7f7">
+                    <b style="color:#b91c1c"><i class="fas fa-circle-exclamation"></i> Secure Automatic Marking Failed</b>
+                    <div style="margin-top:6px;font-size:12px;color:#7f1d1d">${esc(e?.message||'Secure grading failed.')}</div>
+                    <button type="button" class="ol-btn ol-muted" style="margin-top:10px" onclick="LecturerOnlineLearning.autoGradeUsingMarkingKey('${id}')">
+                        <i class="fas fa-rotate-right"></i> Try Again
+                    </button>
+                </div>`;
+            }
+
+            notify(e?.message||'Secure automatic marking failed.','error');
             return null;
         }finally{
-            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Supabase Marking Key';}
+            if(btn){
+                btn.disabled=false;
+                btn.innerHTML=originalHTML||'<i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Marking Key';
+                btn.removeAttribute('aria-busy');
+            }
+            setGradeActionLoading(id,false);
         }
     }
 
     async function aiGradeSubmission(id){
-        notify('Automatically Grade Using Marking Key is disabled in this configuration. Use Automatically Grade Using Marking Key.','warning');
         return autoGradeUsingMarkingKey(id);
     }
 
@@ -1457,10 +1535,24 @@ window.LecturerOnlineLearning = (() => {
         }
 
         const now=new Date().toISOString();
-        let payload={marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:now,result_released:release,released_at:release?now:null,review_required:false};
+        let payload={
+            marks_obtained:marks,
+            feedback,
+            status:'graded',
+            graded_by:state.userId,
+            graded_at:now,
+            result_released:release,
+            released_at:release?now:null,
+            review_required:false,
+            grading_engine:window._activeServerGrade?'SUPABASE_EDGE_AI_RUBRIC_V1':'LECTURER_MANUAL_REVIEW'
+        };
         let {error}=await db.from('online_submissions').update({...payload,percentage}).eq('id',id);
         if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}
         if(error){notify(error.message,'error');return;}
+
+        window._activeServerGrade=false;
+        window._activeDeterministicGrade=null;
+        window._activeDeterministicGradeSubmissionId=null;
 
         if(release){
             const emailSent=await sendAssignmentResultNotification(s,assignment);
