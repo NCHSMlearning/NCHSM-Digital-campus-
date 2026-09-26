@@ -1673,6 +1673,220 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-research-file{back
 body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background:#0d1b2d!important;color:#dbe8f5!important;border-color:#35516b!important}
 </style>
 
+
+<style id="nchsm-streak-events-final-polish">
+/* ============================================================
+   FINAL STREAK + UPCOMING EVENTS POLISH
+   Two equal-width feature cards, matching Next Class / Next Exam.
+   Data/JS hooks are unchanged.
+   ============================================================ */
+#dashboard .nchsm-streak-events-grid,
+#dashboard .nchsm-dashboard-bottom-grid.nchsm-streak-events-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:12px!important;
+  margin-top:12px!important;
+  align-items:stretch!important;
+}
+
+#dashboard .nchsm-streak-events-grid>.streak-card,
+#dashboard .nchsm-streak-events-grid>.events-card{
+  min-width:0!important;
+  height:178px!important;
+  min-height:178px!important;
+  max-height:178px!important;
+  border-radius:12px!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+  background:#fff!important;
+  border:1px solid #dbe7f1!important;
+  box-shadow:0 4px 14px rgba(25,63,97,.06)!important;
+}
+
+/* Header follows the same compact proportions as Next Class / Next Exam. */
+#dashboard .nchsm-streak-events-grid .nchsm-card-head{
+  height:54px!important;
+  min-height:54px!important;
+  padding:8px 13px!important;
+  box-sizing:border-box!important;
+  border-bottom:1px solid #e6eef5!important;
+  background:#fff!important;
+}
+#dashboard .nchsm-streak-events-grid .nchsm-card-title{
+  min-width:0!important;
+  gap:9px!important;
+}
+#dashboard .nchsm-streak-events-grid .nchsm-card-title>i{
+  width:34px!important;
+  height:34px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:9px!important;
+  font-size:17px!important;
+  background:#fff3df!important;
+  color:#ff7a00!important;
+}
+#dashboard .nchsm-streak-events-grid .events-card .nchsm-card-title>i{
+  background:#eaf5ff!important;
+  color:#087bf0!important;
+}
+#dashboard .nchsm-streak-events-grid .nchsm-card-title h2{
+  font-size:15px!important;
+  line-height:1.05!important;
+  margin:0!important;
+}
+#dashboard .nchsm-streak-events-grid .nchsm-card-title small{
+  font-size:10px!important;
+  margin-top:3px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* Daily Streak: compact information row, progress and action. */
+#dashboard .streak-card .nchsm-days-pill{
+  flex:0 0 auto!important;
+  background:#fff2cf!important;
+  color:#8a5a00!important;
+  border:1px solid #f7d889!important;
+  border-radius:16px!important;
+  padding:6px 10px!important;
+  font-size:10px!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+}
+#dashboard .streak-card .nchsm-streak-body{
+  height:124px!important;
+  min-height:124px!important;
+  box-sizing:border-box!important;
+  padding:10px 13px 9px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+}
+#dashboard .streak-card .nchsm-milestones{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:6px!important;
+  margin:0 0 9px!important;
+}
+#dashboard .streak-card .streak-milestone{
+  min-width:0!important;
+  padding:6px 4px!important;
+  border-radius:8px!important;
+  background:#edf4fa!important;
+  color:#58728d!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  text-align:center!important;
+  white-space:nowrap!important;
+}
+#dashboard .streak-card .streak-milestone.active{
+  background:#ffe08a!important;
+  color:#7d5800!important;
+  box-shadow:none!important;
+}
+#dashboard .streak-card .nchsm-streak-line{
+  height:7px!important;
+  margin:0 0 8px!important;
+  background:#dbe7f2!important;
+  border-radius:99px!important;
+}
+#dashboard .streak-card .nchsm-streak-line span{
+  height:100%!important;
+  border-radius:99px!important;
+  background:#2c8ef4!important;
+}
+#dashboard .streak-card .nchsm-start-streak{
+  align-self:flex-start!important;
+  margin:0!important;
+  min-height:30px!important;
+  padding:6px 11px!important;
+  border:1px solid #9ccaf2!important;
+  border-radius:8px!important;
+  background:#eef8ff!important;
+  color:#0875dc!important;
+  font-size:10px!important;
+  font-weight:900!important;
+  cursor:pointer!important;
+}
+#dashboard .streak-card .nchsm-streak-status{
+  margin-top:5px!important;
+  font-size:9px!important;
+  line-height:1.2!important;
+  color:#66809e!important;
+}
+
+/* Upcoming Events: compact list when data exists. */
+#dashboard .events-card .nchsm-events{
+  height:124px!important;
+  min-height:124px!important;
+  box-sizing:border-box!important;
+  padding:5px 12px!important;
+  overflow:hidden!important;
+}
+#dashboard .events-card .nchsm-event{
+  min-height:49px!important;
+  height:49px!important;
+  padding:5px 0!important;
+  box-sizing:border-box!important;
+  gap:10px!important;
+}
+#dashboard .events-card .event-date{
+  width:43px!important;
+  height:40px!important;
+  flex:0 0 43px!important;
+  border-radius:7px!important;
+}
+#dashboard .events-card .event-date b{font-size:8px!important;padding:2px 0!important}
+#dashboard .events-card .event-date strong{font-size:15px!important;line-height:21px!important}
+#dashboard .events-card .event-info>strong{font-size:11px!important;line-height:1.2!important}
+#dashboard .events-card .event-info>span{font-size:9px!important;margin-top:3px!important}
+
+/* No giant blank white panel when there are no events. */
+#dashboard .events-card .nchsm-events:not(:has(.nchsm-event)){
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+}
+#dashboard .events-card .nchsm-events:not(:has(.nchsm-event))::before{
+  content:"📅  No upcoming events";
+  display:block!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  color:#334b68!important;
+}
+#dashboard .events-card .nchsm-events:not(:has(.nchsm-event))::after{
+  content:"You're all caught up! New events will appear here.";
+  position:absolute!important;
+  margin-top:38px!important;
+  font-size:9px!important;
+  color:#7a90a7!important;
+  font-weight:500!important;
+}
+#dashboard .events-card .nchsm-events{position:relative!important}
+
+/* Same responsive behavior as the Next Class / Next Exam pair. */
+@media(max-width:760px){
+  #dashboard .nchsm-streak-events-grid,
+  #dashboard .nchsm-dashboard-bottom-grid.nchsm-streak-events-grid{
+    grid-template-columns:1fr!important;
+  }
+  #dashboard .nchsm-streak-events-grid>.streak-card,
+  #dashboard .nchsm-streak-events-grid>.events-card{
+    height:178px!important;
+    min-height:178px!important;
+    max-height:178px!important;
+  }
+}
+@media(max-width:420px){
+  #dashboard .streak-card .nchsm-streak-body{padding-left:10px!important;padding-right:10px!important}
+  #dashboard .streak-card .streak-milestone{font-size:9px!important;padding:6px 2px!important}
+  #dashboard .streak-card .nchsm-streak-status{font-size:8px!important}
+}
+</style>
+
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -1753,9 +1967,9 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 <button aria-label="Close notifications" id="nchsm-notification-close" type="button">×</button>
 </div>
 <div class="nchsm-notification-panel-body">
-<button class="nchsm-notification-link" data-tab="announcements" type="button"><i class="fas fa-bullhorn"></i><span><strong>Announcements</strong><small>View the latest official notices.</small></span></button>
+<button class="nchsm-notification-link" data-tab="newsletter" type="button"><i class="fas fa-bullhorn"></i><span><strong>Announcements</strong><small>View the latest official notices.</small></span></button>
 <button class="nchsm-notification-link" data-tab="messages" type="button"><i class="fas fa-envelope"></i><span><strong>Messages</strong><small>Open your student messages.</small></span></button>
-<button class="nchsm-notification-link" data-tab="student-tickets" type="button"><i class="fas fa-headset"></i><span><strong>Support</strong><small>Check your support tickets.</small></span></button>
+<button class="nchsm-notification-link" data-tab="support-tickets" type="button"><i class="fas fa-headset"></i><span><strong>Support</strong><small>Check your support tickets.</small></span></button>
 </div>
 </div>
 <div class="user-profile-dropdown nchsm-header-profile" id="header-profile-dropdown">
@@ -1922,6 +2136,13 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 <span class="nav-text">Support Tickets</span>
 </a>
 </li>
+<li role="none">
+<a data-tab="reviews" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-star"></i><span class="nav-icon-bg"></span></span>
+<span class="nav-text">Reviews</span>
+<span class="nav-badge-premium" id="reviewsBadge-sidebar" style="display:none;">0</span>
+</a>
+</li>
 <li aria-hidden="true" class="nav-section-label" role="presentation">
 <span>COMMUNICATION</span>
 </li>
@@ -1941,7 +2162,7 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 <li role="none">
 <a data-tab="newsletter" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-bullhorn"></i><span class="nav-icon-bg"></span></span>
-<span class="nav-text">Announcements</span>
+<span class="nav-text">Newsletter</span>
 </a>
 </li>
 <li aria-hidden="true" class="nav-section-label" role="presentation"><span>STUDENT SUCCESS</span></li>
@@ -12861,6 +13082,13 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
     } 
     
     function showTab(tabId) {
+        // Backward-compatible aliases for older UI controls.
+        const tabAliases = {
+            announcements: 'newsletter',
+            'student-tickets': 'support-tickets'
+        };
+        tabId = tabAliases[tabId] || tabId;
+
         console.log('📂 Opening tab:', tabId);
         
         if (window.innerWidth <= 768) {
