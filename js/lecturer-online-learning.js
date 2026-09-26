@@ -248,7 +248,7 @@ window.LecturerOnlineLearning = (() => {
         if(!state.userId){notify('Lecturer user ID could not be resolved.','error');return false;}
 
         const id=$('olAssignmentId').value;
-        const gradingMode=$('olGradingMode')?.value||'topic_keywords';
+        const gradingMode=$('olGradingMode')?.value||'manual';
         const markingKeyId=$('olMarkingKeyId')?.value||null;
         const keywords=parseJsonArray($('olGradingKeywords')?.value||'');
         const expectedTopics=String($('olExpectedTopics')?.value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
@@ -282,8 +282,20 @@ window.LecturerOnlineLearning = (() => {
         };
 
         if(gradingMode==='marking_key' && !markingKeyId){
-            notify('Select the institutional marking key stored in Supabase.','error');
+            notify('Select an institutional marking key before saving this assignment.','error');
             return false;
+        }
+        if(gradingMode==='marking_key'){
+            if(!markingKeyState.loaded) await loadMarkingKeys();
+            const verified=markingKeyState.keys.find(k=>String(k.id)===String(markingKeyId));
+            if(!verified){
+                notify('The selected marking key could not be verified from Supabase.','error');
+                return false;
+            }
+            if(String(verified.validation_status||'').toLowerCase()!=='verified'){
+                notify('Only a VERIFIED institutional marking key can be used for a marking-key assignment.','error');
+                return false;
+            }
         }
 
         let assignment,err;
@@ -314,188 +326,6 @@ window.LecturerOnlineLearning = (() => {
     // ============================================================
     // DOCUMENT VIEWER + ACADEMIC INTEGRITY AGENT
     // ============================================================
-    const integrityState = { currentSubmission:null, extractedText:'', report:null };
-    const INTEGRITY_FUNCTION = window.NCHSM_AI_INTEGRITY_FUNCTION || 'academic-integrity-scan';
-    const STORAGE_BUCKET = window.NCHSM_ASSIGNMENT_BUCKET || 'assignment-submissions';
-
-    function ensureStyle(){
-        if(document.getElementById('olIntegrityStyles')) return;
-        const st=document.createElement('style'); st.id='olIntegrityStyles';
-        st.textContent=`
-        .ol-document-viewer{position:fixed;inset:0;background:rgba(15,23,42,.78);z-index:100005;display:none;align-items:center;justify-content:center;padding:12px}
-        .ol-document-card{background:#fff;width:min(1200px,100%);height:min(94vh,1000px);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.35)}
-        .ol-document-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid #e5e7eb}
-        .ol-document-body{flex:1;overflow:auto;background:#f1f5f9;padding:16px}.ol-document-frame{width:100%;height:100%;min-height:650px;border:0;background:#fff}.ol-docx{background:#fff;max-width:900px;margin:auto;padding:45px 55px;min-height:90%;box-shadow:0 1px 8px rgba(15,23,42,.08);line-height:1.65}.ol-docx img{max-width:100%}
-        .ol-integrity{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;padding:14px;background:#f8fafc}.ol-integrity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.ol-integrity-stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px}.ol-integrity-stat b{display:block;font-size:20px}.ol-integrity-match{padding:9px;border-radius:9px;background:#fff;border:1px solid #e5e7eb;margin-top:7px;font-size:13px}.ol-integrity-note{font-size:12px;color:#64748b;line-height:1.5}@media(max-width:760px){.ol-integrity-grid{grid-template-columns:1fr}.ol-document-viewer{padding:5px}.ol-document-card{height:98vh}.ol-docx{padding:22px}.ol-document-body{padding:6px}}
-        `;document.head.appendChild(st);
-    }
-    function ensureViewer(){
-        ensureStyle(); if($('olDocumentViewer')) return;
-        const d=document.createElement('div'); d.id='olDocumentViewer'; d.className='ol-document-viewer';
-        d.innerHTML=`<div class="ol-document-card"><div class="ol-document-head"><div><b id="olDocumentTitle">Uploaded Work</b><div id="olDocumentMeta" style="font-size:11px;color:#64748b"></div></div><div style="display:flex;gap:6px"><button class="ol-btn ol-muted" id="olDocumentDownload">Download</button><button class="ol-btn ol-danger" onclick="LecturerOnlineLearning.closeDocumentViewer()">Close</button></div></div><div class="ol-document-body" id="olDocumentBody"><div class="ol-empty">Loading document…</div></div></div>`;
-        document.body.appendChild(d);
-    }
-    async function signedDocumentUrl(s){
-        const db=client(); if(!db || !s?.file_path) throw new Error('No uploaded document is attached to this submission.');
-        const r=await db.storage.from(STORAGE_BUCKET).createSignedUrl(s.file_path,3600);
-        if(r.error) throw r.error; return r.data?.signedUrl;
-    }
-    function extOf(name=''){ const x=name.toLowerCase().split('.').pop(); return x==='jpeg'?'jpg':x; }
-    function loadScriptOnce(src,id){return new Promise((resolve,reject)=>{if(id&&document.getElementById(id))return resolve();const s=document.createElement('script');s.src=src;if(id)s.id=id;s.onload=resolve;s.onerror=()=>reject(new Error('Could not load '+src));document.head.appendChild(s);});}
-    async function renderDocument(s){
-        ensureViewer(); const url=await signedDocumentUrl(s); const body=$('olDocumentBody'); const ext=extOf(s.file_name||s.file_path||'');
-        $('olDocumentTitle').textContent=s.file_name||'Uploaded Work'; $('olDocumentMeta').textContent=`${s.online_assignments?.title||'Submission'} · ${fmtDate(s.submitted_at)}`;
-        $('olDocumentDownload').onclick=()=>{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click();};
-        body.innerHTML='<div class="ol-empty">Opening document…</div>';
-        if(['pdf'].includes(ext)){body.innerHTML=`<iframe class="ol-document-frame" title="${esc(s.file_name||'PDF')}" src="${esc(url)}"></iframe>`;return;}
-        if(['doc','docx'].includes(ext)){
-            const blob=await (await fetch(url)).blob();
-            await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');
-            const ab=await blob.arrayBuffer(); const r=await window.mammoth.convertToHtml({arrayBuffer:ab}); body.innerHTML=`<article class="ol-docx">${r.value||'<p>No readable text found.</p>'}</article>`; if(r.messages?.length) body.insertAdjacentHTML('beforeend',`<div class="ol-integrity-note" style="padding:10px">Some document formatting may not be reproduced exactly in browser preview.</div>`); return;
-        }
-        if(['txt','csv','md'].includes(ext)){const txt=await (await fetch(url)).text();body.innerHTML=`<pre style="white-space:pre-wrap;background:#fff;padding:24px;max-width:1000px;margin:auto;line-height:1.6">${esc(txt)}</pre>`;return;}
-        if(['png','jpg','gif','webp'].includes(ext)){body.innerHTML=`<div style="text-align:center"><img src="${esc(url)}" style="max-width:100%;max-height:85vh;object-fit:contain;background:#fff;padding:8px;border-radius:10px"></div>`;return;}
-        body.innerHTML=`<div class="ol-empty">Browser preview is not available for <b>${esc(ext||'this file type')}</b>. Use Download to open the complete original document.</div>`;
-    }
-    async function viewSubmissionDocument(id){
-        try{const s=state.submissions.find(x=>x.id===id);if(!s)throw new Error('Submission not found.');await renderDocument(s);$('olDocumentViewer').style.display='flex';}
-        catch(e){console.error(e);notify('Could not open the uploaded document: '+e.message,'error');}
-    }
-    function closeDocumentViewer(){if($('olDocumentViewer'))$('olDocumentViewer').style.display='none';}
-
-    function normalizeText(t){return String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();}
-    function shingles(t,n=8){const w=normalizeText(t).split(' ').filter(Boolean), out=[];for(let i=0;i<=w.length-n;i++)out.push(w.slice(i,i+n).join(' '));return [...new Set(out)];}
-    async function extractSubmissionText(s){
-        const url=await signedDocumentUrl(s), ext=extOf(s.file_name||s.file_path||'');
-        if(['txt','csv','md'].includes(ext)) return await (await fetch(url)).text();
-        if(['doc','docx'].includes(ext)){const blob=await (await fetch(url)).blob();await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');const r=await window.mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()});return r.value||'';}
-        if(ext==='pdf'){
-            await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','olPdfJs');
-            if(!window.pdfjsLib) throw new Error('PDF text extraction library is unavailable.');
-            const pdf=await window.pdfjsLib.getDocument(url).promise; let text=''; for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const c=await pg.getTextContent();text+=c.items.map(x=>x.str).join(' ')+'\n';} return text;
-        }
-        return '';
-    }
-    async function localSimilarity(s,text){
-        const db=client(); if(!db || !text) return {score:0,matches:[],source:'local'};
-        const {data}=await db.from('online_submissions').select('id,student_id,assignment_id,submitted_at,answers').eq('assignment_id',s.assignment_id).neq('id',s.id).limit(100);
-        const sourceShingles=shingles(text,8); const set=new Set(sourceShingles); const matches=[];
-        for(const other of (data||[])){const otherText=Object.values(other.answers||{}).join(' ');const osh=shingles(otherText,8);let hit=0;for(const x of osh)if(set.has(x))hit++;if(hit>=2)matches.push({submission_id:other.id,student_id:other.student_id,matched_phrases:hit});}
-        matches.sort((a,b)=>b.matched_phrases-a.matched_phrases);return {score:sourceShingles.length?Math.min(100,Math.round(((matches[0]?.matched_phrases||0)/Math.max(1,sourceShingles.length))*10000)/100):0,matches:matches.slice(0,10),source:'institutional-submission-similarity'};
-    }
-    async function runIntegrityScan(id){
-        const s=state.submissions.find(x=>x.id===id);
-        if(!s)return;
-
-        const btn=$('olIntegrityBtn');
-        if(btn){
-            btn.disabled=true;
-            btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Scanning…';
-        }
-
-        try{
-            const extracted=await extractSubmissionText(s);
-            integrityState.currentSubmission=s;
-            integrityState.extractedText=extracted;
-
-            if(!extracted.trim()){
-                throw new Error(
-                    'No extractable text was found. Image-only/scanned PDFs require OCR before AI analysis.'
-                );
-            }
-
-            const payload={
-                submission_id:s.id,
-                assignment_id:s.assignment_id,
-                student_id:s.student_id,
-                assignment_title:s.online_assignments?.title||'',
-                student_name:'',
-                text:extracted.slice(0,120000),
-                file_name:s.file_name||''
-            };
-
-            let report=null;
-            let serviceError=null;
-
-            /*
-             * Prefer the secure dashboard bridge when it is available.
-             * This keeps provider/authentication details inside the Edge
-             * Function and lets the JS remain provider-independent.
-             */
-            if(typeof window.runAcademicIntegrityScan==='function'){
-                try{
-                    report=await window.runAcademicIntegrityScan(payload);
-                }catch(e){
-                    serviceError=e;
-                    console.error('Academic Integrity bridge error:',e);
-                }
-            }else{
-                /*
-                 * Backward-compatible fallback for dashboards that do not
-                 * yet contain the secure bridge.
-                 */
-                const db=client();
-                if(db?.functions?.invoke){
-                    const r=await db.functions.invoke(INTEGRITY_FUNCTION,{body:payload});
-                    if(r.error){
-                        serviceError=r.error;
-                        console.error('Academic Integrity Edge Function error:',r.error);
-                    }else{
-                        report=r.data;
-                    }
-                }else{
-                    serviceError=new Error(
-                        'Supabase Functions client is unavailable.'
-                    );
-                }
-            }
-
-            /*
-             * Do not silently replace a real AI/provider error with a local
-             * similarity result. Local similarity is useful only when the
-             * AI service is genuinely unavailable and the user can see that
-             * the result is local/institutional only.
-             */
-            if(!report){
-                const local=await localSimilarity(s,extracted);
-
-                if(serviceError){
-                    local.provider_error=serviceError.message||String(serviceError);
-                    local.notice=
-                        'AI analysis was unavailable. The displayed result is institutional submission similarity only.';
-                    local.status='LOCAL_ONLY';
-                }
-
-                report=local;
-            }
-
-            integrityState.report=report;
-            renderIntegrityReport(report,extracted);
-
-        }catch(e){
-            console.error('Integrity scan:',e);
-            notify(
-                'Integrity scan could not be completed: '+(e?.message||String(e)),
-                'error'
-            );
-        }finally{
-            if(btn){
-                btn.disabled=false;
-                btn.innerHTML='<i class="fas fa-shield-alt"></i> Run Integrity Scan';
-            }
-        }
-    }
-    function renderIntegrityReport(r,text){
-        const box=$('olIntegrityReport');if(!box)return;const sim=Number(r.similarity_score??r.similarity??r.score??0);const ai=r.ai_probability??r.ai_score??null;const matches=r.matches||r.sources||[];
-        const localOnly=r.status==='LOCAL_ONLY';
-        const statusText=localOnly?'LOCAL ONLY':(r.status||r.analysis?.overall_signal||'REVIEW');
-        const analysis=r.analysis||r;
-        const analysisSim=analysis.similarity_signal?.level||'';
-        const analysisAi=analysis.ai_writing_signal?.level||'';
-
-        box.innerHTML=`<div class="ol-integrity"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b><i class="fas fa-shield-alt"></i> Academic Integrity Agent</b><span class="ol-badge ${localOnly?'ol-draft':sim>=40?'ol-review':'ol-published'}">${esc(statusText)}</span></div><div class="ol-integrity-grid" style="margin-top:10px"><div class="ol-integrity-stat"><small>Similarity</small><b>${sim}%</b></div><div class="ol-integrity-stat"><small>AI signal</small><b>${ai==null?(analysisAi?esc(analysisAi):'—'):esc(ai)+'%'}</b></div><div class="ol-integrity-stat"><small>Words scanned</small><b>${text.trim().split(/\s+/).filter(Boolean).length.toLocaleString()}</b></div></div>${analysis.summary?`<div style="margin-top:12px;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:9px"><b>AI Review Summary</b><div style="margin-top:5px;line-height:1.5">${esc(analysis.summary)}</div></div>`:''}${matches.length?`<div style="margin-top:12px"><b>Potential matches</b>${matches.slice(0,8).map(m=>`<div class="ol-integrity-match"><b>${esc(m.source_title||m.title||m.student_id||m.source||'Possible matching submission')}</b><div>${esc(m.matched_phrases??m.match_count??m.similarity??'')} ${m.matched_phrases?'matching phrase(s)':''}</div></div>`).join('')}</div>`:''}${analysis.evidence?.length?`<div style="margin-top:12px"><b>AI Evidence Flags</b>${analysis.evidence.slice(0,8).map(e=>`<div class="ol-integrity-match"><b>${esc(e.type||'Review point')} · ${esc(e.severity||'')}</b><div style="margin-top:4px">${esc(e.reason||'')}</div>${e.excerpt?`<div style="margin-top:5px;color:#64748b">“${esc(e.excerpt)}”</div>`:''}</div>`).join('')}</div>`:''}<p class="ol-integrity-note">This is an academic-integrity screening aid, not a final plagiarism finding. Similarity is not proof of plagiarism, and AI-writing signals can produce false positives. ${localOnly?'The AI provider was unavailable, so this result is based only on institutional submission similarity. ':''}${r.notice?esc(r.notice):''} ${r.source?'Scan source: '+esc(r.source)+'.':''}</p></div>`;
-    }
-
     function collectSubmissionQuestions(questions,answers){
         return (questions||[]).map((q,i)=>({
             id:q.id, question_order:q.question_order||i+1, question_text:q.question_text||'', question_type:q.question_type||'short_answer',
@@ -504,1076 +334,538 @@ window.LecturerOnlineLearning = (() => {
         }));
     }
     // ============================================================
+
     // ============================================================
-    // SUPABASE INSTITUTIONAL MARKING KEYS
+    // DETERMINISTIC INSTITUTIONAL GRADING WORKSPACE
     // ============================================================
-    // The authoritative institutional rubrics live in public.online_marking_keys.
-    // This module NEVER maintains a second local copy of the official rubric.
+    // No AI / LLM / provider is used anywhere in this grading path.
+    // The browser selects the institutional key and submits the document
+    // text to the secure Edge Function. The server-side deterministic
+    // rubric engine is authoritative. The browser is presentation only.
     // ============================================================
-    const markingKeyState={keys:[],loaded:false};
+
+    const markingKeyState = { keys: [], loaded:false };
+    const gradingState = {
+        submission:null,
+        assignment:null,
+        key:null,
+        criteria:[],
+        grades:new Map(),
+        automaticReport:null,
+        selectedCriterionIndex:0,
+        loaded:false
+    };
 
     function parseJsonArray(value){
-      if(Array.isArray(value)) return value;
-      if(value==null || value==='') return [];
-      try{const parsed=JSON.parse(value);return Array.isArray(parsed)?parsed:[];}catch(e){
-        return String(value).split(',').map(x=>x.trim()).filter(Boolean);
-      }
-    }
-
-    async function loadMarkingKeys(){
-      const db=client(); if(!db)return [];
-      const r=await db.from('online_marking_keys')
-        .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,created_by,grading_schema_version,source_document,source_notes,allocated_marks,validation_status')
-        .eq('is_active',true)
-        .order('title',{ascending:true});
-      if(r.error){
-        console.error('NCHSM Marking Keys: Supabase load failed:',r.error);
-        markingKeyState.keys=[]; markingKeyState.loaded=false;
-        throw r.error;
-      }
-      markingKeyState.keys=r.data||[]; markingKeyState.loaded=true;
-      return markingKeyState.keys;
-    }
-
-    async function ensureAssignmentGradingFields(){
-      let wrap=$('olAssignmentGradingFields'); if(wrap)return wrap;
-      const anchor=$('olInstructions'); if(!anchor)return null;
-      const host=anchor.closest('.ol-form')||anchor.parentElement?.parentElement||anchor.parentElement; if(!host)return null;
-      wrap=document.createElement('div'); wrap.id='olAssignmentGradingFields'; wrap.className='ol-full';
-      wrap.style.cssText='margin-top:12px;padding:14px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc';
-      wrap.innerHTML=`
-        <div style="font-weight:800;color:#18304d;margin-bottom:4px"><i class="fas fa-clipboard-check"></i> Institutional Grading Configuration</div>
-        <div style="font-size:11px;color:#64748b;margin-bottom:12px">Formal marking keys are loaded directly from Supabase. The selected key is the authoritative institutional rubric used by the grading engine.</div>
-        <div class="ol-form">
-          <div><label>Grading Mode</label><select id="olGradingMode"><option value="topic_keywords">Topic / Keywords</option><option value="marking_key">Formal Marking Key</option></select></div>
-          <div><label>Formal Marking Key</label><select id="olMarkingKeyId"><option value="">No marking key</option></select></div>
-          <div class="ol-full"><label>Keywords / Key Concepts</label><textarea id="olGradingKeywords" rows="2" placeholder="Optional for topic-based grading"></textarea></div>
-          <div class="ol-full"><label>Expected Topics / Areas</label><textarea id="olExpectedTopics" rows="3" placeholder="Optional for topic-based grading"></textarea></div>
-          <div class="ol-full"><label>Grading Guidance</label><textarea id="olGradingGuidance" rows="2" placeholder="Optional grading guidance"></textarea></div>
-        </div>`;
-      host.parentElement?.insertBefore(wrap,host.nextSibling)||host.appendChild(wrap);
-      const mode=$('olGradingMode'),key=$('olMarkingKeyId');
-      mode?.addEventListener('change',()=>{if(key)key.disabled=mode.value!=='marking_key';});
-      key?.addEventListener('change',()=>{
-        const selected=markingKeyState.keys.find(k=>String(k.id)===String(key.value)); if(!selected)return;
-        mode.value='marking_key'; key.disabled=false;
-        if($('olMaxMarks'))$('olMaxMarks').value=selected.max_marks||$('olMaxMarks').value;
-        $('olGradingKeywords').value=parseJsonArray(selected.keywords).join(', ');
-        $('olExpectedTopics').value=parseJsonArray(selected.expected_topics).join('\n');
-        $('olGradingGuidance').value=selected.grading_guidance||'';
-      });
-      await loadMarkingKeys();
-      key.innerHTML='<option value="">No marking key</option>'+markingKeyState.keys.map(k=>`<option value="${esc(k.id)}">${esc(k.title||'Marking Key')}${k.version?` — v${esc(k.version)}`:''}</option>`).join('');
-      return wrap;
-    }
-
-    async function populateAssignmentGradingFields(a=null){
-      try{await ensureAssignmentGradingFields();}catch(e){console.error(e);notify('Could not load institutional marking keys from Supabase.','error');return;}
-      const mode=$('olGradingMode'),key=$('olMarkingKeyId'); if(!mode||!key)return;
-      mode.value=a?.grading_mode||((a?.marking_key_id)?'marking_key':'topic_keywords');
-      key.value=a?.marking_key_id||''; key.disabled=mode.value!=='marking_key';
-      $('olGradingKeywords').value=parseJsonArray(a?.grading_keywords||a?.keywords).join(', ');
-      $('olExpectedTopics').value=parseJsonArray(a?.expected_topics).join('\n');
-      $('olGradingGuidance').value=a?.grading_guidance||'';
-    }
-
-    async function getAssignmentGradingConfig(assignment){
-      const db=client(); let markingKey=null;
-      if(assignment?.marking_key_id){
-        const r=await db.from('online_marking_keys')
-          .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,grading_schema_version,source_document,source_notes,allocated_marks,validation_status')
-          .eq('id',assignment.marking_key_id).eq('is_active',true).maybeSingle();
-        if(r.error)throw r.error;
-        markingKey=r.data||null;
-      }
-      return {mode:assignment?.grading_mode||'topic_keywords',markingKey,keywords:parseJsonArray(assignment?.grading_keywords||assignment?.keywords),expectedTopics:parseJsonArray(assignment?.expected_topics),guidance:String(assignment?.grading_guidance||'')};
-    }
-
-    async function fetchSubmissionMarkingKey(id){
-      const db=client(),s=state.submissions.find(x=>x.id===id); if(!s)throw new Error('Submission could not be found.');
-      const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{}; if(!assignment.marking_key_id)throw new Error('No marking key is attached to this assignment. Edit the assignment and select a Formal Marking Key first.');
-      const r=await db.from('online_marking_keys').select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,created_by,grading_schema_version,source_document,source_notes,allocated_marks,validation_status').eq('id',assignment.marking_key_id).eq('is_active',true).maybeSingle();
-      if(r.error)throw r.error; if(!r.data)throw new Error('The attached marking key was not found or is inactive.');
-      window._activeSubmissionMarkingKey=r.data; window._activeSubmissionMarkingKeyId=r.data.id;
-      const box=$('olSubmissionMarkingKey');
-      if(box){const k=r.data,c=parseJsonArray(k.criteria);box.innerHTML=`<div style="font-weight:800;color:#18304d"><i class="fas fa-database"></i> ${esc(k.title||'Marking Key')}</div><div style="font-size:12px;color:#64748b;margin-top:3px">Supabase · Version ${esc(k.version||'1')} · Maximum ${esc(k.max_marks||100)} marks${k.validation_status?` · ${esc(k.validation_status)}`:''}</div>${k.source_document?`<div style="font-size:11px;color:#64748b;margin-top:4px">Source: ${esc(k.source_document)}</div>`:''}<details open style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Marking Criteria (${c.length})</summary><div style="margin-top:7px">${c.map((x,i)=>{const title=x?.criterion||x?.title||x?.name||x?.description||'Criterion';const m=x?.max_marks??x?.marks??'';return `<div style="padding:7px 0;border-bottom:1px solid #e5e7eb"><b>${i+1}. ${esc(title)}</b>${m!==''?` <span style="color:#64748b">(${esc(m)} marks)</span>`:''}</div>`}).join('')}</div></details>${k.grading_guidance?`<div style="margin-top:9px"><b>Grading guidance:</b><div style="white-space:pre-wrap;margin-top:3px">${esc(k.grading_guidance)}</div></div>`:''}`;}
-      notify(`Marking key loaded from Supabase: ${r.data.title}`,'success'); return r.data;
-    }
-
-    // ============================================================
-    // DETERMINISTIC INSTITUTIONAL MARKING-KEY ENGINE
-    // ============================================================
-    // This is the primary "Automatically Grade" engine. It does NOT
-    // call Gemini/OpenAI. The authoritative rubric comes from the institutional marking key
-    // stored in public.online_marking_keys and the student's extracted submission.
-    // It behaves like Online Exams: configured answers/rubric -> score.
-    // ============================================================
-    // ============================================================
-    // DETERMINISTIC INSTITUTIONAL MARKING-KEY ENGINE V2
-    // ============================================================
-    // The Supabase institutional rubric is authoritative. Each criterion contains
-    // criterion-specific requirements. The engine NEVER awards marks from
-    // global keyword frequency. It evaluates the requirements belonging to
-    // the current criterion only and records the evidence used.
-    //
-    // This remains an automated evidence engine, not a replacement for a
-    // lecturer's academic judgement. The lecturer must review before save.
-    // ============================================================
-    function markKeyArray(value){
         if(Array.isArray(value)) return value;
-        return parseJsonArray(value);
+        if(value==null || value==='') return [];
+        try{
+            const parsed=JSON.parse(value);
+            return Array.isArray(parsed)?parsed:[];
+        }catch(e){
+            return String(value).split(',').map(x=>x.trim()).filter(Boolean);
+        }
     }
 
-    function cleanWords(text){
-        return normalizeText(text)
-            .replace(/[^a-z0-9\s%./-]/gi,' ')
-            .split(/\s+/)
-            .filter(Boolean);
-    }
-
-    function phraseTokens(text){
-        const stop=new Set([
-            'the','and','for','with','from','into','that','this','are','was','were','has','have','had','all','any','not','only','also','then','than','their','they','them','your','student','students','case','study','general','description','information','actual','ideal','marks','marking','criterion','criteria','section','content','present','provided','include','including','should','where','applicable','according','source'
-        ]);
-        return cleanWords(text).filter(w=>w.length>=3&&!stop.has(w));
-    }
-
-    function uniqueWords(text){ return [...new Set(phraseTokens(text))]; }
-
-    /*
-     * Normalize any institutional marking-key schema into one common internal
-     * representation. Nothing here is discipline-specific: Community Health,
-     * General Nursing, Mental Health, Midwifery, or future keys can all use the
-     * same engine.
-     */
     function criterionNodes(criteria,parent=''){
         const out=[];
-
-        const numericMark=value=>{
-            const n=Number(value);
-            return Number.isFinite(n)&&n>0?n:null;
-        };
-
-        const normalizeRequirements=requirements=>{
-            if(!Array.isArray(requirements)||!requirements.length) return [];
-
-            return requirements.map((r,index)=>{
-                const req=(r&&typeof r==='object')?r:{};
-                const explicitMarks=
-                    numericMark(req.max_marks) ??
-                    numericMark(req.marks) ??
-                    numericMark(req.allocated_marks);
-
-                const explicitWeight=
-                    Number.isFinite(Number(req.weight)) && Number(req.weight)>=0
-                        ? Number(req.weight)
-                        : null;
-
-                const evidenceTerms=Array.isArray(req.evidence_terms)
-                    ? req.evidence_terms.filter(Boolean).map(String)
-                    : Array.isArray(req.keywords)
-                        ? req.keywords.filter(Boolean).map(String)
-                        : [];
-
-                return {
-                    ...req,
-                    id:String(req.id||`requirement_${index+1}`),
-                    description:String(req.description||req.title||req.name||req.id||`Requirement ${index+1}`),
-                    evidence_terms:evidenceTerms,
-                    weight:explicitWeight,
-                    allocated_marks:explicitMarks
-                };
-            });
-        };
-
+        const mark=v=>{const n=Number(v);return Number.isFinite(n)&&n>=0?n:null;};
         for(const c of (Array.isArray(criteria)?criteria:[])){
             if(!c || typeof c!=='object') continue;
-
             const name=String(c.criterion||c.title||c.name||'').trim();
             const description=String(c.description||'').trim();
-            const ownMarks=
-                numericMark(c.max_marks) ??
-                numericMark(c.marks) ??
-                numericMark(c.allocated_marks) ??
-                numericMark(c.score);
-
+            const max=mark(c.max_marks) ?? mark(c.marks) ?? mark(c.allocated_marks);
             const path=parent ? `${parent} > ${name}` : name;
-            const subs=Array.isArray(c.subcriteria)?c.subcriteria:[];
-            const requirements=normalizeRequirements(c.requirements);
-
-            if(ownMarks!==null){
-                out.push({
-                    criterion:name||path,
-                    description,
-                    max_marks:ownMarks,
-                    path,
-                    source:c,
-                    requirements,
-                    scoring_rule:String(c.scoring_rule||c.scoringRule||''),
-                    criterion_keywords:Array.isArray(c.keywords)?c.keywords.filter(Boolean).map(String):[]
-                });
-            }else if(subs.length){
-                out.push(...criterionNodes(subs,path));
+            const requirements=Array.isArray(c.requirements) ? c.requirements.map((r,i)=>({
+                ...r,
+                id:String(r?.id||`requirement_${i+1}`),
+                description:String(r?.description||r?.title||r?.name||r?.id||`Requirement ${i+1}`),
+                evidence_terms:Array.isArray(r?.evidence_terms)?r.evidence_terms.map(String):
+                    Array.isArray(r?.keywords)?r.keywords.map(String):[],
+                max_marks:mark(r?.max_marks) ?? mark(r?.marks) ?? mark(r?.allocated_marks),
+                weight:Number.isFinite(Number(r?.weight))?Number(r.weight):null
+            })):[];
+            if(max!==null){
+                out.push({criterion:name||path,description,max_marks:max,path,source:c,requirements});
+            }else if(Array.isArray(c.subcriteria)){
+                out.push(...criterionNodes(c.subcriteria,path));
             }
         }
-
         return out;
     }
 
-    function paragraphize(text){
-        return String(text||'')
-            .replace(/\r/g,'\n')
-            .split(/\n+/)
-            .map(x=>x.replace(/\s+/g,' ').trim())
-            .filter(Boolean);
+    async function loadMarkingKeys(){
+        const db=client(); if(!db)return [];
+        const r=await db.from('online_marking_keys')
+            .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,created_by,grading_schema_version,source_document,source_notes,allocated_marks,validation_status')
+            .eq('is_active',true)
+            .order('title',{ascending:true});
+        if(r.error) throw r.error;
+        markingKeyState.keys=r.data||[];
+        markingKeyState.loaded=true;
+        return markingKeyState.keys;
     }
 
-    function normalizedPhrase(text){
-        return normalizeText(String(text||'')).replace(/\s+/g,' ').trim();
+    function markingKeyVersionsFor(id){
+        return markingKeyState.keys.filter(k=>String(k.id)===String(id));
     }
 
-    function containsPhrase(text,phrase){
-        const hay=normalizedPhrase(text);
-        const needle=normalizedPhrase(phrase);
-        return !!needle && hay.includes(needle);
+    function renderKeyStatus(key){
+        const status=$('olMarkingKeyStatus');
+        if(!status)return;
+        if(!key){
+            status.innerHTML='<span class="ol-badge ol-draft">Not selected</span>';
+            return;
+        }
+        const ok=String(key.validation_status||'').toLowerCase()==='verified';
+        status.innerHTML=`<span class="ol-badge ${ok?'ol-published':'ol-review'}">${esc(key.validation_status||'UNVERIFIED')}</span>`;
     }
 
-    // Strict evidence matching. The old engine used a fallback that awarded
-    // evidence from shared individual words (for example "health", "class",
-    // "conclusion", "investigations"). That can create false positives.
-    // Institutional grading now requires an actual configured phrase.
-    /*
-     * Institutional evidence matcher.
-     *
-     * The Supabase marking key is authoritative, but students are not
-     * required to reproduce its wording verbatim. We therefore score:
-     *   - exact configured phrases strongly;
-     *   - close multi-word token matches partially/strongly;
-     *   - generic single words only as supporting evidence, never as sole proof.
-     *
-     * The function deliberately keeps the original {score, matched} contract.
-     */
-    function termCoverage(text,terms){
-        const hay=normalizedPhrase(text);
-        const alternatives=(Array.isArray(terms)?terms:[String(terms||'')])
-            .map(x=>normalizedPhrase(x))
-            .filter(Boolean);
+    async function populateAssignmentGradingFields(a=null){
+        const key=$('olMarkingKeyId'), version=$('olMarkingKeyVersion'), mode=$('olGradingMode');
+        if(!key)return;
+        await loadMarkingKeys();
+        const currentId=a?.marking_key_id||'';
+        key.innerHTML='<option value="">Select verified marking key</option>'+
+            markingKeyState.keys.map(k=>`<option value="${esc(k.id)}">${esc(k.title||'Marking Key')}</option>`).join('');
+        key.value=currentId;
+        if(version){
+            const selected=markingKeyState.keys.find(k=>String(k.id)===String(currentId));
+            version.innerHTML=selected?
+                `<option value="${esc(selected.version||'1')}">Version ${esc(selected.version||'1')}</option>`:
+                '<option value="">Select version</option>';
+            version.value=selected?String(selected.version||'1'):'';
+        }
+        renderKeyStatus(markingKeyState.keys.find(k=>String(k.id)===String(currentId))||null);
+        if(mode) mode.value=a?.grading_mode||'manual';
 
-        if(!alternatives.length) return {score:0,matched:[],strong:0,partial:0};
-
-        const generic=new Set([
-            'case','study','student','students','name','class','date','family','health',
-            'care','assessment','introduction','information','history','status',
-            'problem','problems','intervention','evaluation','summary',
-            'conclusion','recommendation','recommendations','visit','first',
-            'second','third','fourth','section','home','client','patient',
-            'content','present','available','general','description','report',
-            'page','table','chapter','include','including','provided','provide'
-        ]);
-
-        const synonymGroups=[
-            ['identify','identified','identifies','identifying','identification'],
-            ['prioritize','prioritized','prioritizes','prioritizing','priority','priorities','prioritization','prioritised','prioritisation'],
-            ['assess','assessed','assesses','assessing','assessment'],
-            ['evaluate','evaluated','evaluates','evaluating','evaluation'],
-            ['recommend','recommended','recommends','recommendation','recommendations'],
-            ['intervene','intervened','intervention','interventions'],
-            ['educate','educated','education','educational','teaching','health education'],
-            ['plan','planned','planning','plans'],
-            ['describe','described','describes','description'],
-            ['need','needs','needed','needing'],
-            ['visit','visits','visited'],
-            ['conclude','concluded','conclusion','conclusions'],
-            ['summarize','summarized','summary','summaries'],
-            ['immunize','immunized','immunization','immunisation','vaccination','vaccinated'],
-            ['sanitize','sanitation','sanitary'],
-            ['dispose','disposal','disposed'],
-            ['water source','source of water','water supply'],
-            ['follow up','follow-up','followup'],
-            ['terminate','terminated','termination','termination of follow-up'],
-            ['familiarize','familiarization','familiarisation','rapport','acquaint'],
-            ['review','reviewed','reassessment','reassessed'],
-            ['implement','implemented','implementation','carried out','administered']
-        ];
-
-        const synonymMap=new Map();
-        synonymGroups.forEach(group=>{
-            const normalized=group.map(x=>normalizedPhrase(x));
-            normalized.forEach(term=>synonymMap.set(term,normalized));
-        });
-
-        const tokenVariants=token=>{
-            const t=normalizedPhrase(token);
-            const variants=new Set([t]);
-            const group=synonymMap.get(t);
-            if(group) group.forEach(x=>variants.add(x));
-
-            if(t.length>5){
-                ['ization','isation','ations','ation','ingly','edly','ing','ed','ies','es','s']
-                    .forEach(suffix=>{
-                        if(t.endsWith(suffix) && t.length-suffix.length>=4){
-                            variants.add(t.slice(0,t.length-suffix.length));
-                        }
-                    });
-            }
-            return [...variants];
-        };
-
-        const hayTokens=new Set(hay.split(/\s+/).filter(Boolean));
-        const tokenPresent=token=>{
-            const variants=tokenVariants(token);
-            return variants.some(v=>{
-                if(v.includes(' ')) return hay.includes(v);
-                if(hayTokens.has(v)) return true;
-
-                // Lightweight typo/morphology tolerance for substantive words.
-                if(v.length>=6){
-                    for(const h of hayTokens){
-                        if(h.length<6) continue;
-                        const max=Math.max(v.length,h.length);
-                        let prev=Array.from({length:h.length+1},(_,i)=>i);
-                        for(let i=1;i<=v.length;i++){
-                            const cur=[i];
-                            for(let j=1;j<=h.length;j++){
-                                cur[j]=Math.min(
-                                    cur[j-1]+1,
-                                    prev[j]+1,
-                                    prev[j-1]+(v[i-1]===h[j-1]?0:1)
-                                );
-                            }
-                            prev=cur;
-                        }
-                        if(prev[h.length]<=Math.max(1,Math.floor(max*0.17))) return true;
-                    }
+        if(!key.dataset.gradingBound){
+            key.dataset.gradingBound='1';
+            key.addEventListener('change',()=>{
+                const selected=markingKeyState.keys.find(k=>String(k.id)===String(key.value));
+                if(version){
+                    version.innerHTML=selected?
+                        `<option value="${esc(selected.version||'1')}">Version ${esc(selected.version||'1')}</option>`:
+                        '<option value="">Select version</option>';
+                    version.value=selected?String(selected.version||'1'):'';
                 }
-                return false;
-            });
-        };
-
-        const matched=[];
-        let strong=0;
-        let partial=0;
-
-        for(const phrase of alternatives){
-            if(hay.includes(phrase)){
-                matched.push(phrase);
-                strong++;
-                continue;
-            }
-
-            const tokens=phrase.split(/\s+/)
-                .filter(t=>t.length>=4 && !generic.has(t));
-
-            if(!tokens.length) continue;
-
-            const hits=tokens.filter(tokenPresent);
-            const ratio=hits.length/tokens.length;
-
-            if(ratio>=0.75){
-                matched.push(phrase);
-                strong++;
-            }else if(ratio>=0.5){
-                matched.push(phrase);
-                partial++;
-            }
-        }
-
-        // evidence_terms are alternative ways to demonstrate the SAME requirement.
-        // One strong configured signal is meaningful evidence; multiple independent
-        // signals increase confidence, rather than being treated as mandatory.
-        const distinctSignals=strong+(partial*0.5);
-        const evidenceDepth=Math.min(1, distinctSignals/2);
-        const score=Math.round(evidenceDepth*100)/100;
-
-        return {
-            score,
-            matched:[...new Set(matched)].slice(0,20),
-            strong,
-            partial
-        };
-    }
-
-    function looksLikeContentsLine(p){
-        const x=String(p||'').trim();
-        return /(?:\.{3,}|\s\.{2,}\s)\d{1,4}$/.test(x) || /\bpage\s*\d+$/i.test(x);
-    }
-
-    function looksLikeHeading(p){
-        const x=String(p||'').trim();
-        if(!x || x.length>140 || looksLikeContentsLine(x)) return false;
-        const words=x.split(/\s+/);
-        if(words.length>18) return false;
-        // Headings often have no terminal punctuation and are relatively short.
-        return !/[.!?]$/.test(x) || /^[A-Z0-9][A-Z0-9\s:()\-\/&]+$/.test(x);
-    }
-
-    function findCriterionWindow(text,node,allNodes=[]){
-        const paragraphs=paragraphize(text);
-        const criterion=normalizedPhrase(node?.criterion||'');
-        const description=normalizedPhrase(node?.description||'');
-        const otherCriteria=(Array.isArray(allNodes)?allNodes:[])
-            .map(n=>normalizedPhrase(n?.criterion||''))
-            .filter(Boolean);
-
-        const isCriterionHeading=(paragraph)=>{
-            const p=normalizedPhrase(paragraph);
-            if(!p) return false;
-            return otherCriteria.some(name =>
-                p===name ||
-                p.startsWith(name+':') ||
-                p.startsWith(name+' -') ||
-                p.startsWith(name+' —') ||
-                p.startsWith(name+' ')
-            );
-        };
-
-        // Prefer the exact institutional criterion heading.
-        let index=-1;
-        for(let i=0;i<paragraphs.length;i++){
-            const p=normalizedPhrase(paragraphs[i]);
-            if(criterion && (
-                p===criterion ||
-                p.startsWith(criterion+':') ||
-                p.startsWith(criterion+' -') ||
-                p.startsWith(criterion+' —') ||
-                p.startsWith(criterion+' ')
-            )){
-                index=i;
-            }
-        }
-
-        // If the exact heading is absent, locate the strongest content window
-        // using the criterion + its own requirement vocabulary.
-        if(index<0){
-            const reqTerms=(Array.isArray(node?.requirements)?node.requirements:[])
-                .flatMap(r=>Array.isArray(r?.evidence_terms)?r.evidence_terms:[]);
-            const searchTerms=[criterion,description,...reqTerms].filter(Boolean);
-            let best={score:0,index:-1};
-            for(let i=0;i<paragraphs.length;i++){
-                const window=paragraphs.slice(i,Math.min(paragraphs.length,i+12)).join(' ');
-                const score=termCoverage(window,searchTerms).score;
-                if(score>best.score) best={score,index:i};
-            }
-            if(best.score>=0.20) index=best.index;
-        }
-
-        if(index<0){
-            return {
-                text:'',
-                headingFound:false,
-                paragraphs,
-                index:-1,
-                noSection:true
-            };
-        }
-
-        // A DOCX text extractor often puts headings and body text on separate
-        // paragraphs. Therefore do NOT stop at arbitrary punctuation-free lines.
-        // Stop only when another rubric criterion is actually encountered.
-        let end=paragraphs.length;
-        for(let i=index+1;i<paragraphs.length;i++){
-            if(i-index<2) continue;
-            if(isCriterionHeading(paragraphs[i])){
-                end=i;
-                break;
-            }
-        }
-
-        // Keep a sensible upper bound when no later rubric heading is present.
-        if(end===paragraphs.length){
-            end=Math.min(paragraphs.length,index+80);
-        }
-
-        // If the matched paragraph was a false heading, broaden the context
-        // enough to capture the actual section content.
-        const section=paragraphs.slice(index,end).join('\n');
-        return {
-            text:section,
-            headingFound:true,
-            paragraphs,
-            index,
-            noSection:false
-        };
-    }
-
-    function scoreRequirement(requirement,criterionWindow,criterionNode){
-        const req=requirement||{};
-        const baseContext=String(criterionWindow?.text||'');
-        const headingFound=!!criterionWindow?.headingFound;
-        const contentWords=cleanWords(baseContext).length;
-
-        const configured=Array.isArray(req.evidence_terms)?req.evidence_terms:[];        
-        const description=String(req.description||'').trim();
-
-        if(!baseContext || contentWords<8){
-            return {
-                id:String(req.id||''),
-                description,
-                score:0,
-                matched:[],
-                matched_text:'',
-                content_words:contentWords,
-                heading_found:headingFound,
-                evidence_excerpt:''
-            };
-        }
-
-        // For the Community Health Nursing 32-mark visit criterion, score each
-        // visit requirement against the complete criterion section. This matters
-        // because students commonly place the visit heading and its details in
-        // tables, paragraphs, or mixed formatting rather than one clean heading.
-        const reqId=String(req.id||'').toLowerCase();
-        const isVisitRequirement=/^v[1-4]_/.test(reqId);
-
-        let context=baseContext;
-        let visitTerms=[];
-        if(isVisitRequirement){
-            const visitNumber=reqId.match(/^v([1-4])_/)?.[1];
-            if(visitNumber){
-                const ordinal={1:['first','1st'],2:['second','2nd'],3:['third','3rd'],4:['fourth','4th']}[visitNumber]||[];
-                visitTerms=[
-                    `${ordinal[0]} visit`,
-                    `${ordinal[1]} visit`,
-                    `visit ${visitNumber}`,
-                    `visit-${visitNumber}`
-                ];
-
-                // If a visit marker exists, use that visit's local block first.
-                const paras=paragraphize(baseContext);
-                const markerIndex=paras.findIndex(par=>{
-                    const x=normalizedPhrase(par);
-                    return visitTerms.some(v=>x===v || x.startsWith(v+':') || x.startsWith(v+' -') || x.includes(v+' '));
-                });
-
-                if(markerIndex>=0){
-                    let end=paras.length;
-                    for(let i=markerIndex+1;i<paras.length;i++){
-                        if(/^(first|1st|second|2nd|third|3rd|fourth|4th)\s+visit\b/i.test(paras[i])){
-                            end=i;
-                            break;
-                        }
-                    }
-                    context=paras.slice(markerIndex,end).join('\n');
+                renderKeyStatus(selected);
+                if(selected && $('olMaxMarks')) $('olMaxMarks').value=selected.max_marks||$('olMaxMarks').value;
+                const validation=$('olMarkingKeyValidation');
+                if(validation){
+                    const verified=String(selected?.validation_status||'').toLowerCase()==='verified';
+                    validation.className='ol-validation '+(verified?'ok':'warn');
+                    validation.innerHTML=verified?
+                        '<i class="fas fa-circle-check"></i><div>Verified institutional marking key selected.</div>':
+                        '<i class="fas fa-circle-info"></i><div>Select a verified marking key before publishing.</div>';
                 }
-            }
+            });
         }
-
-        // Evidence terms are alternatives. The description is supporting context.
-        const specificTerms=[...configured,description].filter(Boolean);
-        const coverage=termCoverage(context,specificTerms);
-
-        // A visit requirement must be tied to its visit where the rubric says so.
-        let visitEvidence=1;
-        if(isVisitRequirement && visitTerms.length){
-            const visitCoverage=termCoverage(context,visitTerms);
-            visitEvidence=visitCoverage.score>0 ? 1 : 0.35;
+        if(mode && !mode.dataset.gradingBound){
+            mode.dataset.gradingBound='1';
+            mode.addEventListener('change',()=>{
+                const panel=$('olAssignmentMarkingKeyPanel');
+                if(panel) panel.style.display=mode.value==='marking_key'?'block':'none';
+            });
         }
-
-        let score=coverage.score*visitEvidence;
-
-        // A section heading is supporting structure, never a mark by itself.
-        if(headingFound && score<0.20 && contentWords>=25){
-            score=0.20;
-        }
-
-        // More substantive content plus multiple independent rubric signals can
-        // support a high band.
-        if(contentWords>=60 && coverage.strong>=2){
-            score=Math.max(score,Math.min(1,coverage.score+0.10));
-        }
-
-        // Structural indicators supplement, but never replace, configured evidence.
-        const lower=normalizedPhrase(context);
-        const structuralPatterns=[
-            /\b(first|1st)\s+visit\b/,
-            /\b(second|2nd)\s+visit\b/,
-            /\b(third|3rd)\s+visit\b/,
-            /\b(fourth|4th)\s+visit\b/,
-            /\bidentified\s+(health\s+)?needs?\b/,
-            /\bpriorit(?:y|ized|ised|ization|isation)\b/,
-            /\bcare\s+plan\b/,
-            /\bintervention(s)?\b/,
-            /\bevaluation\b/,
-            /\brecommendation(s)?\b/,
-            /\bway\s+forward\b/,
-            /\btermination\b|\bterminated\b/,
-            /\blesson\s+plan\b/
-        ];
-        const structuralHits=structuralPatterns.filter(rx=>rx.test(lower)).length;
-
-        if(structuralHits>=2 && coverage.score>=0.35){
-            score=Math.max(score,Math.min(0.90,coverage.score+0.10));
-        }
-
-        // Do not award high marks for a heading plus a tiny amount of text.
-        if(contentWords<30) score=Math.min(score,0.60);
-        if(contentWords<15) score=Math.min(score,0.35);
-
-        score=Math.round(Math.max(0,Math.min(1,score))*100)/100;
-
-        let evidenceExcerpt='';
-        const first=coverage.matched[0];
-        if(first){
-            const lowerContext=context.toLowerCase();
-            const needle=normalizedPhrase(first);
-            let pos=lowerContext.indexOf(needle);
-
-            if(pos<0){
-                const token=needle.split(/\s+/).find(t=>t.length>=4);
-                pos=token?lowerContext.indexOf(token):-1;
-            }
-
-            if(pos>=0){
-                evidenceExcerpt=context.slice(
-                    Math.max(0,pos-220),
-                    Math.min(context.length,pos+650)
-                );
-            }
-        }
-
-        return {
-            id:String(req.id||''),
-            description,
-            score,
-            matched:coverage.matched.slice(0,15),
-            matched_text:coverage.matched.slice(0,15).join(' | '),
-            strong_matches:Number(coverage.strong||0),
-            partial_matches:Number(coverage.partial||0),
-            content_words:contentWords,
-            heading_found:headingFound,
-            structural_hits:structuralHits,
-            evidence_excerpt:evidenceExcerpt
-        };
+        const panel=$('olAssignmentMarkingKeyPanel');
+        if(panel) panel.style.display=mode?.value==='marking_key'?'block':'block';
     }
 
-    function deterministicGradeMarkingKey(text,key,maxMarks){
-        const criteria=criterionNodes(markKeyArray(key?.criteria));
-        if(!criteria.length){
-            throw new Error('The institutional marking key has no usable numeric criteria.');
-        }
-
-        const assignmentMax=Number(maxMarks||key?.max_marks||0);
-        const totalRubricMarks=criteria.reduce((sum,c)=>sum+Number(c.max_marks||0),0);
-        const declaredAllocated=Number(key?.allocated_marks);
-
-        if(!Number.isFinite(assignmentMax)||assignmentMax<=0){
-            throw new Error('The institutional marking key has no valid maximum mark.');
-        }
-        if(totalRubricMarks<=0){
-            throw new Error('The institutional marking key has no usable criterion allocations.');
-        }
-        if(totalRubricMarks>assignmentMax+0.001){
-            throw new Error(`Marking key allocation (${totalRubricMarks}) exceeds assignment maximum (${assignmentMax}).`);
-        }
-
-        const rubricAllocationMismatch=
-            Number.isFinite(declaredAllocated) &&
-            Math.abs(declaredAllocated-totalRubricMarks)>0.001;
-
-        const requirementAllocation=(requirements,criterionMarks)=>{
-            const reqs=Array.isArray(requirements)?requirements:[];
-
-            if(!reqs.length){
-                return [{
-                    id:'criterion',
-                    description:'Criterion-level evidence',
-                    evidence_terms:[],
-                    weight:1,
-                    allocated_marks:Number(criterionMarks)
-                }];
-            }
-
-            // Explicit marks take priority. Zero-mark requirements are retained
-            // but do not consume marks.
-            const explicit=reqs.map(r=>{
-                const n=Number(r?.allocated_marks);
-                return Number.isFinite(n)&&n>0?n:null;
-            });
-            const explicitTotal=explicit.reduce((a,b)=>a+(b||0),0);
-            if(explicit.some(v=>v!==null) && explicitTotal>0 && explicitTotal<=Number(criterionMarks)+0.001){
-                const remainder=Math.max(0,Number(criterionMarks)-explicitTotal);
-                const missing=explicit.filter(v=>v===null).length;
-                return reqs.map((r,i)=>({
-                    ...r,
-                    allocated_marks:explicit[i]!==null
-                        ? explicit[i]
-                        : (missing?remainder/missing:0)
-                }));
-            }
-
-            const weights=reqs.map(r=>{
-                const n=Number(r?.weight);
-                return Number.isFinite(n)&&n>0?n:1;
-            });
-            const totalWeight=weights.reduce((a,b)=>a+b,0)||reqs.length;
-
-            return reqs.map((r,i)=>({
-                ...r,
-                allocated_marks:Number(criterionMarks)*weights[i]/totalWeight
-            }));
-        };
-
-        const rubricGrades=criteria.map(node=>{
-            const window=findCriterionWindow(text,node,criteria);
-            let normalizedRequirements=Array.isArray(node.requirements)
-                ? node.requirements
-                : [];
-
-            if(!normalizedRequirements.length){
-                const fallbackTerms=[
-                    ...(Array.isArray(node.criterion_keywords)?node.criterion_keywords:[]),
-                    ...phraseTokens(node.description||''),
-                    ...phraseTokens(node.criterion||'')
-                ].filter(Boolean);
-
-                normalizedRequirements=[{
-                    id:'criterion_evidence',
-                    description:node.description||node.criterion||'Criterion evidence',
-                    evidence_terms:[...new Set(fallbackTerms)],
-                    allocated_marks:Number(node.max_marks),
-                    weight:1
-                }];
-            }
-
-            const allocatedRequirements=requirementAllocation(
-                normalizedRequirements,
-                Number(node.max_marks)
-            );
-
-            const reqGrades=allocatedRequirements.map(req=>{
-                const scored=scoreRequirement(req,window,node);
-                return {
-                    ...scored,
-                    weight:Number(req.allocated_marks||0),
-                    allocated_marks:Number(req.allocated_marks||0)
-                };
-            });
-
-            const earnedRaw=reqGrades.reduce(
-                (sum,r)=>sum+(Number(r.score||0)*Number(r.allocated_marks||0)),
-                0
-            );
-
-            let earned=Math.round(earnedRaw*2)/2;
-            earned=Math.max(0,Math.min(Number(node.max_marks),earned));
-
-            const fullyEvidence=reqGrades.filter(r=>r.score>=0.85);
-            const strong=reqGrades.filter(r=>r.score>=0.60 && r.score<0.85);
-            const partial=reqGrades.filter(r=>r.score>0 && r.score<0.60);
-            const noEvidence=reqGrades.filter(r=>r.score<=0);
-
-            const evidence=fullyEvidence.length||strong.length
-                ? [...fullyEvidence,...strong].slice(0,8)
-                    .map(r=>r.description||r.id).join(' | ')
-                : partial.length
-                    ? `Partial evidence: ${partial.slice(0,6).map(r=>r.description||r.id).join(' | ')}`
-                    : 'No sufficient criterion-specific evidence found.';
-
-            const excerpts=reqGrades
-                .filter(r=>r.score>=0.50)
-                .slice(0,4)
-                .map(r=>r.evidence_excerpt)
-                .filter(Boolean);
-
-            const allocatedRequirementMarks=reqGrades.reduce(
-                (sum,r)=>sum+Number(r.allocated_marks||0),0
-            );
-            const coverage=allocatedRequirementMarks>0
-                ? earned/allocatedRequirementMarks
-                : 0;
-
-            return {
-                criterion:node.path||node.criterion,
-                max_marks:Number(node.max_marks),
-                marks_awarded:earned,
-                allocated_requirement_marks:Math.round(allocatedRequirementMarks*100)/100,
-                evidence,
-                rationale:
-                    `${Math.round(coverage*100)}% of allocated criterion marks supported by evidence. `+
-                    `${fullyEvidence.length} fully supported, ${strong.length} strongly supported, `+
-                    `${partial.length} partially supported, ${noEvidence.length} unsupported requirement(s).`,
-                matched_signals:reqGrades.flatMap(r=>r.matched||[]).slice(0,40),
-                requirements:reqGrades,
-                evidence_excerpts:excerpts,
-                scoring_rule:String(node.scoring_rule||'')
-            };
-        });
-
-        let earned=rubricGrades.reduce((sum,g)=>sum+Number(g.marks_awarded||0),0);
-        earned=Math.round(Math.min(earned,totalRubricMarks,assignmentMax)*2)/2;
-        const percentage=assignmentMax>0
-            ? Math.round((earned/assignmentMax)*10000)/100
-            : 0;
-
-        const criteriaWithEvidence=rubricGrades.filter(g=>g.marks_awarded>0).length;
-        const criteriaCount=rubricGrades.length;
-        const confidence=criteriaCount
-            ? Math.round(
-                rubricGrades.reduce((sum,g)=>{
-                    const max=Number(g.max_marks)||0;
-                    return sum+(max?Number(g.marks_awarded||0)/max:0);
-                },0)/criteriaCount*100
-              )
-            : 0;
-
-        return {
-            marks_awarded:earned,
-            max_marks:assignmentMax,
-            percentage,
-            rubric_allocated_marks:Math.round(totalRubricMarks*100)/100,
-            rubric_allocated_percentage:assignmentMax>0
-                ? Math.round((totalRubricMarks/assignmentMax)*10000)/100
-                : 0,
-            confidence,
-            rubric_grades:rubricGrades,
-            feedback:
-                `Automatic evidence-based grading against the Supabase institutional marking key. `+
-                `${criteriaWithEvidence} of ${criteriaCount} criteria contain qualifying evidence. `+
-                `Review each criterion and adjust marks where necessary before saving or releasing.`,
-            note:rubricAllocationMismatch
-                ? `Supabase marking key declares ${declaredAllocated} allocated marks, but its structured criteria sum to ${totalRubricMarks}. Verify the rubric before release.`
-                : totalRubricMarks===assignmentMax
-                    ? 'All declared criterion marks are allocated.'
-                    : `The supplied marking key allocates ${totalRubricMarks} of ${assignmentMax} marks. No unallocated marks were invented.`,
-            grading_mode:'SUPABASE_INSTITUTIONAL_MARKING_KEY_SCHEMA_DRIVEN_V7',
-            provider:'supabase-institutional-marking-key-schema-driven-engine-v7',
-            source:'public.online_marking_keys',
-            marking_key_id:key?.id||null,
-            marking_key_title:key?.title||null,
-            marking_key_version:key?.version||null,
-            grading_schema_version:key?.grading_schema_version||2
-        };
+    async function getAssignmentGradingConfig(assignment){
+        const db=client();
+        if(!assignment?.marking_key_id) return {mode:assignment?.grading_mode||'manual',markingKey:null};
+        const r=await db.from('online_marking_keys')
+            .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,created_by,grading_schema_version,source_document,source_notes,allocated_marks,validation_status')
+            .eq('id',assignment.marking_key_id).eq('is_active',true).maybeSingle();
+        if(r.error) throw r.error;
+        return {mode:assignment?.grading_mode||'marking_key',markingKey:r.data||null};
     }
 
-    function renderDeterministicGradeReport(report){
-        const marks=Number(report.marks_awarded)||0;
-        const max=Number(report.max_marks)||0;
-        const pct=max?Math.round((marks/max)*10000)/100:0;
-        if($('olReviewMarks')) $('olReviewMarks').value=marks;
-        if($('olReviewPercentage')) $('olReviewPercentage').textContent=pct+'%';
-        if($('olReviewFeedback') && report.feedback) $('olReviewFeedback').value=report.feedback;
-        const box=$('olAIGradeReport'); if(!box)return;
-        const rows=(report.rubric_grades||[]).map(g=>{
-            const reqRows=(g.requirements||[]).map(r=>`<div style="margin:5px 0;padding:7px 9px;border-left:3px solid #ddd"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(r.description||r.id)}</b><b>${esc(Number(r.score||0)*Number(r.allocated_marks||0))}/${esc(Number(r.allocated_marks||0))}</b></div><div style="font-size:11px;color:#475569;margin-top:2px">Evidence support: ${esc(Math.round(Number(r.score||0)*100))}%</div><div style="font-size:10px;color:#64748b;margin-top:2px">${r.matched?.length?esc(r.matched.join(', ')):'No configured evidence match'}</div>${r.evidence_excerpt?`<div style="margin-top:5px;padding:5px;background:#f8fafc;border-radius:6px;font-size:10px;color:#475569">${esc(r.evidence_excerpt)}</div>`:''}</div>`).join('');
-            return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(g.criterion)}</b><b>${esc(g.marks_awarded)}/${esc(g.max_marks)}</b></div><div style="font-size:11px;color:#475569;margin-top:4px">${esc(g.evidence)}</div><div style="font-size:10px;color:#64748b;margin-top:3px">${esc(g.rationale)}</div><details style="margin-top:5px"><summary style="cursor:pointer;font-size:11px">Requirement evidence</summary><div style="margin-top:4px">${reqRows||'No requirements configured.'}</div></details></div>`;
-        }).join('');
-        box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Institutional Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(marks)}/${esc(max)} (${esc(pct)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Criterion evidence (${esc((report.rubric_grades||[]).length)})</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
-    }
-
-    function setGradeActionLoading(submissionId, loading){ try{ document.querySelectorAll(`[data-submission-id="${String(submissionId).replace(/"/g,'\\"')}"]`).forEach(btn=>{btn.disabled=!!loading;btn.setAttribute('aria-busy',loading?'true':'false');}); }catch(e){ console.debug('setGradeActionLoading:',e); } }
-    function renderAutoGradeLoading(message='Preparing deterministic grading...',percent=0){ const box=$('olAIGradeReport'); if(!box)return; const safe=Math.max(0,Math.min(100,Number(percent)||0)); box.innerHTML=`<div style="margin-top:12px;padding:14px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc"><div style="font-weight:800;color:#334155"><i class="fas fa-circle-notch fa-spin"></i> Automatic Institutional Marking</div><div id="olDeterministicGradeMessage" style="font-size:12px;color:#64748b;margin-top:6px">${esc(message)}</div><div style="height:7px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-top:10px"><div id="olDeterministicGradeProgress" style="height:100%;width:${safe}%;background:#6366f1;transition:width .25s ease"></div></div><div id="olDeterministicGradeProgressText" style="font-size:10px;color:#64748b;margin-top:5px;text-align:right">${safe}%</div></div>`; }
-    function updateAutoGradeLoading(message,percent){ const msg=$('olDeterministicGradeMessage'),bar=$('olDeterministicGradeProgress'),txt=$('olDeterministicGradeProgressText'); const safe=Math.max(0,Math.min(100,Number(percent)||0)); if(msg)msg.textContent=String(message||'Processing...'); if(bar)bar.style.width=safe+'%'; if(txt)txt.textContent=safe+'%'; }
-
-    async function autoGradeUsingMarkingKey(id){
+    async function fetchSubmissionMarkingKey(id){
         const s=state.submissions.find(x=>x.id===id);
-        if(!s)return null;
-
-        const assignment=state.assignments.find(x=>x.id===s.assignment_id)||{};
-        const btn=$('olAIGradeBtn')||$('olAutoGradeBtn');
-        const originalHTML=btn?.innerHTML||'';
-
-        if(btn){
-            btn.disabled=true;
-            btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Secure Marking...';
-            btn.setAttribute('aria-busy','true');
+        if(!s) throw new Error('Submission could not be found.');
+        const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+        const cfg=await getAssignmentGradingConfig(assignment);
+        if(cfg.mode!=='marking_key'||!cfg.markingKey){
+            throw new Error('This assignment does not have an active institutional marking key.');
         }
+        gradingState.submission=s;
+        gradingState.assignment=assignment;
+        gradingState.key=cfg.markingKey;
+        gradingState.criteria=criterionNodes(parseJsonArray(cfg.markingKey.criteria));
+        window._activeSubmissionMarkingKey=cfg.markingKey;
+        window._activeSubmissionMarkingKeyId=cfg.markingKey.id;
+        return cfg.markingKey;
+    }
 
-        setGradeActionLoading(id,true);
-        renderAutoGradeLoading('Preparing deterministic institutional grading...',10);
+    function renderGradingKeyHeader(key){
+        const title=$('olGradeKeyTitle'), meta=$('olGradeKeyMeta'), max=$('olGradeMaxMarks');
+        if(title) title.textContent=key?.title||'Marking key not selected';
+        if(meta) meta.textContent=key ?
+            `Version ${key.version||'1'} · ${key.validation_status||'unverified'} · Institutional rubric` :
+            'Select the institutional marking key assigned to this assessment.';
+        if(max) max.textContent=key?.max_marks!=null?String(key.max_marks):'—';
+        const keySelect=$('olGradeMarkingKey');
+        if(keySelect && key) keySelect.value=key.id;
+        const version=$('olGradeMarkingKeyVersion');
+        if(version){
+            version.innerHTML=key?`<option value="${esc(key.version||'1')}">Version ${esc(key.version||'1')}</option>`:'<option value="">Select version</option>';
+            if(key)version.value=String(key.version||'1');
+        }
+    }
 
+    function renderRubricNavigation(){
+        const panel=$('olRubricPanel');
+        if(!panel)return;
+        const grades=gradingState.grades;
+        panel.innerHTML=gradingState.criteria.length ? gradingState.criteria.map((c,i)=>{
+            const g=grades.get(i);
+            const finalMark=g?.final_mark ?? g?.automatic_mark ?? null;
+            const complete=finalMark!==null && finalMark!==undefined;
+            const max=Number(c.max_marks)||0;
+            return `<button type="button" class="ol-rubric-item ${i===gradingState.selectedCriterionIndex?'active':''}" data-rubric-index="${i}" style="display:block;width:100%;text-align:left;border:0;border-radius:9px;padding:10px;margin-bottom:5px;background:${i===gradingState.selectedCriterionIndex?'#f1f5ff':'transparent'};cursor:pointer">
+                <div style="display:flex;justify-content:space-between;gap:8px"><strong>${esc(c.criterion||`Criterion ${i+1}`)}</strong><span style="font-size:10px;color:${complete?'#059669':'#94a3b8'}">${complete?'✓ ':''}${finalMark??'—'}/${max}</span></div>
+                <div style="font-size:10px;color:#64748b;margin-top:3px">${esc(c.description||'')}</div>
+            </button>`;
+        }).join(''):'<div class="ol-empty" style="padding:35px 10px">No criteria found in this marking key.</div>';
+        panel.querySelectorAll('[data-rubric-index]').forEach(btn=>btn.addEventListener('click',()=>{
+            gradingState.selectedCriterionIndex=Number(btn.dataset.rubricIndex)||0;
+            renderRubricNavigation();
+            renderSelectedCriterion();
+        }));
+        const totalMax=gradingState.criteria.reduce((s,c)=>s+Number(c.max_marks||0),0);
+        const done=[...grades.values()].filter(g=>g?.final_mark!==null&&g?.final_mark!==undefined).length;
+        if($('olRubricTotal')) $('olRubricTotal').textContent=`${done} / ${gradingState.criteria.length}`;
+    }
+
+    function renderSelectedCriterion(){
+        const i=gradingState.selectedCriterionIndex;
+        const c=gradingState.criteria[i];
+        const g=gradingState.grades.get(i)||{};
+        if(!c){
+            if($('olSelectedCriterionTitle'))$('olSelectedCriterionTitle').textContent='—';
+            if($('olEvidencePanel'))$('olEvidencePanel').innerHTML='<div class="ol-empty" style="padding:25px 10px">Select a criterion.</div>';
+            return;
+        }
+        const auto=Number(g.automatic_mark??0), final=Number(g.final_mark??auto);
+        const max=Number(c.max_marks)||0;
+        if($('olSelectedCriterionTitle'))$('olSelectedCriterionTitle').textContent=c.criterion||`Criterion ${i+1}`;
+        if($('olCriterionAutomaticMark'))$('olCriterionAutomaticMark').value=auto;
+        if($('olCriterionFinalMark')){
+            $('olCriterionFinalMark').value=final;
+            $('olCriterionFinalMark').max=max;
+        }
+        if($('olCriterionProgressText'))$('olCriterionProgressText').textContent=`${final} / ${max}`;
+        if($('olCriterionProgressBar'))$('olCriterionProgressBar').style.width=(max?Math.max(0,Math.min(100,final/max*100)):0)+'%';
+        if($('olCriterionStatus')) $('olCriterionStatus').textContent=g.manual_adjusted?'MANUAL ADJUSTMENT':(g.evidence?.length?'EVIDENCE FOUND':'NOT GRADED');
+        const ep=$('olEvidencePanel');
+        if(ep){
+            const reqs=g.requirements||[];
+            ep.innerHTML=reqs.length?reqs.map(r=>{
+                const score=Math.round(Number(r.score||0)*100);
+                const marks=Math.round(Number(r.allocated_marks||0)*Number(r.score||0)*100)/100;
+                const state=score>=85?'FULL':score>0?'PARTIAL':'NOT DEMONSTRATED';
+                return `<div class="ol-evidence-item"><i class="fas ${state==='FULL'?'fa-circle-check':state==='PARTIAL'?'fa-circle-half-stroke':'fa-circle-xmark'}"></i><b>${esc(r.description||r.id)}</b><div style="font-size:10px;color:#64748b;margin-top:3px">${esc(state)} · ${esc(marks)}/${esc(r.allocated_marks||0)}</div>${r.matched?.length?`<div style="font-size:10px;color:#475569;margin-top:3px">Matched: ${esc(r.matched.join(', '))}</div>`:''}${r.evidence_excerpt?`<div style="margin-top:5px;padding:6px;background:#fff;border-radius:6px;font-size:10px;color:#475569">${esc(r.evidence_excerpt)}</div>`:''}</div>`;
+            }).join(''):'<div class="ol-empty" style="padding:25px 10px">No evidence report yet. Run Auto Grade.</div>';
+        }
+        if($('olCriterionComment')) $('olCriterionComment').value=g.comment||'';
+    }
+
+    function renderGradingTotals(){
+        const max=Number(gradingState.key?.max_marks||gradingState.assignment?.max_marks||100);
+        const auto=[...gradingState.grades.values()].reduce((s,g)=>s+Number(g?.automatic_mark||0),0);
+        const final=[...gradingState.grades.values()].reduce((s,g)=>s+Number(g?.final_mark??g?.automatic_mark??0),0);
+        const autoClamped=Math.min(max,Math.max(0,auto));
+        const finalClamped=Math.min(max,Math.max(0,final));
+        if($('olAutomaticGradeTotal'))$('olAutomaticGradeTotal').textContent=autoClamped.toFixed(2);
+        if($('olAutomaticGradeMax'))$('olAutomaticGradeMax').textContent=max;
+        if($('olFinalGradeTotal'))$('olFinalGradeTotal').textContent=finalClamped.toFixed(2);
+        if($('olFinalGradeMax'))$('olFinalGradeMax').textContent=max;
+        if($('olFinalGradePercentage'))$('olFinalGradePercentage').textContent=(max?((finalClamped/max)*100).toFixed(2):'0.00')+'%';
+        if($('olGradeAdjustmentNote')){
+            const adjusted=Math.abs(finalClamped-autoClamped)>0.0001;
+            $('olGradeAdjustmentNote').style.display=adjusted?'inline':'none';
+            $('olGradeAdjustmentNote').textContent=adjusted?'Manual adjustments applied':'';
+        }
+        return {auto:autoClamped,final:finalClamped,max};
+    }
+
+    async function loadSubmissionDocumentIntoWorkspace(s){
+        const box=$('olDocumentPreview');
+        if(!box || !s?.file_path){
+            if(box)box.innerHTML='<div class="ol-doc-placeholder"><i class="fas fa-file-circle-question"></i><div>No uploaded document.</div></div>';
+            return;
+        }
+        box.innerHTML='<div class="ol-empty">Opening student document…</div>';
         try{
+            const url=await signedDocumentUrl(s);
+            const ext=extOf(s.file_name||s.file_path||'');
+            $('olOpenDocumentBtn')?.addEventListener('click',()=>window.open(url,'_blank','noopener'),{once:true});
+            if($('olDownloadDocumentBtn')){
+                $('olDownloadDocumentBtn').onclick=()=>{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click();};
+            }
+            if(ext==='pdf'){
+                box.innerHTML=`<iframe class="ol-document-frame" style="width:100%;height:620px;border:0" src="${esc(url)}" title="Student submission"></iframe>`;
+            }else if(ext==='docx'||ext==='doc'){
+                const blob=await (await fetch(url)).blob();
+                await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');
+                const out=await window.mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});
+                box.innerHTML=`<article class="ol-docx" style="max-width:850px;margin:0 auto;padding:38px 48px;line-height:1.65;background:#fff;min-height:100%">${out.value||'<p>No readable text found.</p>'}</article>`;
+                gradingState.documentText=await window.mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()}).then(r=>r.value||'');
+            }else if(['txt','md','csv'].includes(ext)){
+                const text=await (await fetch(url)).text();
+                gradingState.documentText=text;
+                box.innerHTML=`<pre style="white-space:pre-wrap;background:#fff;padding:25px;max-width:900px;margin:0 auto;min-height:100%;line-height:1.6">${esc(text)}</pre>`;
+            }else if(['png','jpg','jpeg','gif','webp'].includes(ext)){
+                box.innerHTML=`<div style="padding:20px;text-align:center"><img src="${esc(url)}" style="max-width:100%;max-height:700px;object-fit:contain"></div>`;
+            }else{
+                box.innerHTML=`<div class="ol-empty">Preview unavailable for ${esc(ext||'this file type')}. Use Open or Download.</div>`;
+            }
+        }catch(e){
+            console.error('Document workspace:',e);
+            box.innerHTML=`<div class="ol-empty" style="color:#b91c1c">${esc(e.message||e)}</div>`;
+        }
+    }
+
+    async function runDeterministicGrade(){
+        const s=gradingState.submission;
+        const key=gradingState.key;
+        if(!s||!key)return notify('Open a submission and select its institutional marking key first.','warning');
+        const btn=$('olRunAutoGradeBtn');
+        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Auto Grading…';}
+        if($('olGradingStatusBadge')) $('olGradingStatusBadge').textContent='GRADING';
+        try{
+            if(!gradingState.documentText){
+                const url=await signedDocumentUrl(s);
+                const ext=extOf(s.file_name||s.file_path||'');
+                if(ext==='docx'||ext==='doc'){
+                    const blob=await (await fetch(url)).blob();
+                    await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');
+                    const r=await window.mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()});
+                    gradingState.documentText=r.value||'';
+                }else if(ext==='txt'||ext==='md'||ext==='csv'){
+                    gradingState.documentText=await (await fetch(url)).text();
+                }else if(ext==='pdf'){
+                    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','olPdfJs');
+                    const pdf=await window.pdfjsLib.getDocument(url).promise;
+                    let t='';
+                    for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const c=await pg.getTextContent();t+=c.items.map(x=>x.str).join(' ')+'\n';}
+                    gradingState.documentText=t;
+                }
+            }
+            if(!String(gradingState.documentText||'').trim()) throw new Error('No readable document text was extracted.');
             const db=client();
-            if(!db?.functions?.invoke){
-                throw new Error('Secure deterministic grading service is unavailable.');
-            }
-
-            updateAutoGradeLoading('Loading official marking key...',20);
-            const config=await getAssignmentGradingConfig(assignment);
-            const key=config.markingKey;
-
-            if(config.mode!=='marking_key'||!key){
-                throw new Error('No Supabase institutional marking key is attached to this assignment.');
-            }
-
-            if(key.validation_status==='needs_review'){
-                notify('Warning: this marking key is marked needs_review. Verify the rubric before release.','warning');
-            }
-
-            updateAutoGradeLoading('Extracting student submission...',35);
-            const extractedText=await extractSubmissionText(s);
-            if(!String(extractedText||'').trim()){
-                throw new Error('No readable text was extracted from the submitted document.');
-            }
-
-            updateAutoGradeLoading('Running deterministic rubric engine...',55);
-
-            // No AI is called. The Edge Function retrieves the authoritative
-            // rubric and executes the same deterministic evidence engine
-            // server-side so the browser cannot alter the academic algorithm.
+            if(!db?.functions?.invoke) throw new Error('Deterministic grading service is unavailable.');
             const result=await db.functions.invoke('grade-online-submission',{
                 body:{
-                    submission_id:id,
+                    submission_id:s.id,
                     assignment_id:s.assignment_id,
                     marking_key_id:key.id,
-                    document_text:String(extractedText)
+                    document_text:String(gradingState.documentText)
                 }
             });
-
             if(result.error)throw result.error;
-
             const report=result.data?.report||result.data;
-            if(!report || typeof report.marks_awarded==='undefined'){
-                throw new Error('Deterministic grading service returned an invalid report.');
-            }
-
-            updateAutoGradeLoading('Rendering criterion-by-criterion result...',90);
-
-            if($('olReviewMarks'))$('olReviewMarks').value=report.marks_awarded;
-            if($('olReviewPercentage'))$('olReviewPercentage').textContent=formatPercentage(report.marks_awarded,report.max_marks);
-            if($('olReviewFeedback'))$('olReviewFeedback').value=report.feedback||'';
-
-            renderDeterministicGradeReport(report);
-
-            window._activeDeterministicGrade=report;
-            window._activeDeterministicGradeSubmissionId=id;
-            window._activeServerGrade=true;
-
-            notify(
-                `Deterministic institutional grading completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,
-                'success'
-            );
-
-            return report;
+            if(!report||report.marks_awarded===undefined)throw new Error('The grading service returned an invalid deterministic report.');
+            gradingState.automaticReport=report;
+            gradingState.grades.clear();
+            (report.rubric_grades||[]).forEach((g,i)=>{
+                gradingState.grades.set(i,{
+                    automatic_mark:Number(g.marks_awarded||0),
+                    final_mark:Number(g.marks_awarded||0),
+                    requirements:g.requirements||[],
+                    evidence:g.evidence||'',
+                    rationale:g.rationale||'',
+                    comment:''
+                });
+            });
+            renderRubricNavigation();renderSelectedCriterion();renderGradingTotals();
+            if($('olGradingStatusBadge'))$('olGradingStatusBadge').textContent='AUTO GRADED';
+            notify(`Deterministic grade completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before submitting.`,'success');
         }catch(e){
-            console.error('Secure deterministic grading:',e);
-
-            const box=$('olAIGradeReport');
-            if(box){
-                box.innerHTML=`<div style="margin-top:12px;padding:14px;border:1px solid #fecaca;border-radius:12px;background:#fff7f7">
-                    <b style="color:#b91c1c"><i class="fas fa-circle-exclamation"></i> Automatic Marking Failed</b>
-                    <div style="margin-top:6px;font-size:12px;color:#7f1d1d">${esc(e?.message||'Deterministic grading failed.')}</div>
-                    <button type="button" class="ol-btn ol-muted" style="margin-top:10px" onclick="LecturerOnlineLearning.autoGradeUsingMarkingKey('${id}')">
-                        <i class="fas fa-rotate-right"></i> Try Again
-                    </button>
-                </div>`;
-            }
-
-            notify(e?.message||'Deterministic automatic marking failed.','error');
-            return null;
+            console.error('Deterministic grading:',e);
+            if($('olGradingStatusBadge'))$('olGradingStatusBadge').textContent='ERROR';
+            notify(e.message||'Deterministic grading failed.','error');
         }finally{
-            if(btn){
-                btn.disabled=false;
-                btn.innerHTML=originalHTML||'<i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Marking Key';
-                btn.removeAttribute('aria-busy');
-            }
-            setGradeActionLoading(id,false);
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-bolt"></i> Auto Grade';}
         }
     }
 
-    async function aiGradeSubmission(id){
-        return autoGradeUsingMarkingKey(id);
+    function saveCriterionMark(){
+        const i=gradingState.selectedCriterionIndex;
+        const c=gradingState.criteria[i];
+        if(!c)return;
+        const g=gradingState.grades.get(i)||{automatic_mark:0};
+        const final=clampMarks($('olCriterionFinalMark')?.value,c.max_marks);
+        g.final_mark=final;
+        g.manual_adjusted=Math.abs(final-Number(g.automatic_mark||0))>0.0001;
+        g.comment=$('olCriterionComment')?.value.trim()||'';
+        gradingState.grades.set(i,g);
+        renderRubricNavigation();renderSelectedCriterion();renderGradingTotals();
+        notify(`Criterion saved: ${final}/${c.max_marks}`,'success');
     }
 
-    async function sendAssignmentResultNotification(submission,assignment){
+    function gradingReportPayload(){
+        const totals=renderGradingTotals();
+        const rubric_grades=gradingState.criteria.map((c,i)=>{
+            const g=gradingState.grades.get(i)||{};
+            return {
+                criterion:c.criterion,
+                max_marks:Number(c.max_marks||0),
+                automatic_mark:Number(g.automatic_mark||0),
+                final_mark:Number(g.final_mark??g.automatic_mark??0),
+                manual_adjusted:!!g.manual_adjusted,
+                comment:g.comment||'',
+                requirements:g.requirements||[],
+                evidence:g.evidence||'',
+                rationale:g.rationale||''
+            };
+        });
+        return { ...totals, rubric_grades };
+    }
+
+    async function saveGradingDraft(){
+        const s=gradingState.submission;
+        if(!s)return;
+        const db=client();
+        const report=gradingReportPayload();
+        if(!db)throw new Error('Supabase client unavailable.');
+        const rpc=await db.rpc('save_online_submission_grade',{
+            p_submission_id:s.id,
+            p_assignment_id:s.assignment_id,
+            p_marking_key_id:gradingState.key?.id||null,
+            p_marks_awarded:report.final,
+            p_max_marks:report.max,
+            p_percentage:report.max?Number(((report.final/report.max)*100).toFixed(2)):0,
+            p_confidence:gradingState.automaticReport?.confidence??null,
+            p_report:report,
+            p_model:null,
+            p_grader_version:'SUPABASE_DETERMINISTIC_RUBRIC_ENGINE_V10',
+            p_release:false
+        });
+        if(rpc.error)throw rpc.error;
+        const local=state.submissions.find(x=>x.id===s.id);
+        if(local){local.marks_obtained=report.final;local.max_marks=report.max;local.feedback=report.rubric_grades.map(g=>g.comment).filter(Boolean).join('\n')||local.feedback;local.status='graded';local.result_released=false;}
+        renderGradingTotals();
+        notify(`Draft saved: ${report.final}/${report.max}.`,'success');
+        await loadSubmissions();
+    }
+
+    async function returnSubmission(){
+        const s=gradingState.submission;if(!s)return;
+        const reason=prompt('Enter the reason / correction required for returning this submission:');
+        if(reason===null)return;
+        const db=client();if(!db)throw new Error('Supabase client unavailable.');
+        const report=gradingReportPayload();
+        const r=await db.rpc('save_online_submission_grade',{
+            p_submission_id:s.id,p_assignment_id:s.assignment_id,p_marking_key_id:gradingState.key?.id||null,
+            p_marks_awarded:report.final,p_max_marks:report.max,
+            p_percentage:report.max?Number(((report.final/report.max)*100).toFixed(2)):0,
+            p_confidence:gradingState.automaticReport?.confidence??null,
+            p_report:{...report,return_reason:reason},
+            p_model:null,p_grader_version:'SUPABASE_DETERMINISTIC_RUBRIC_ENGINE_V10',p_release:false
+        });
+        if(r.error)throw r.error;
+        await db.from('online_submissions').update({review_required:true,status:'submitted',feedback:reason}).eq('id',s.id);
+        notify('Submission returned for revision.','success');
+        closeModal('olSubmissionModal');await loadSubmissions();
+    }
+
+    async function submitFinalGrade(){
+        const s=gradingState.submission;if(!s)return;
+        const report=gradingReportPayload();
+        if(String(gradingState.assignment?.grading_mode||'manual')==='marking_key'){
+            const incomplete=gradingState.criteria.some((c,i)=>{
+                const g=gradingState.grades.get(i);
+                return !g || g.final_mark===null || g.final_mark===undefined || Number(g.final_mark)<0;
+            });
+            if(incomplete){
+                notify('Complete and save every rubric criterion before submitting the final grade.','warning');
+                return;
+            }
+        }
+        const confirmed=confirm(`Submit final grade ${report.final}/${report.max} (${report.max?((report.final/report.max)*100).toFixed(2):0}%)?\\n\\nThis will release the final lecturer grade to the student.`);
+        if(!confirmed)return;
+        const db=client();
+        const r=await db.rpc('save_online_submission_grade',{
+            p_submission_id:s.id,p_assignment_id:s.assignment_id,p_marking_key_id:gradingState.key?.id||null,
+            p_marks_awarded:report.final,p_max_marks:report.max,
+            p_percentage:report.max?Number(((report.final/report.max)*100).toFixed(2)):0,
+            p_confidence:gradingState.automaticReport?.confidence??null,
+            p_report:report,p_model:null,p_grader_version:'SUPABASE_DETERMINISTIC_RUBRIC_ENGINE_V10',p_release:true
+        });
+        if(r.error)throw r.error;
+        notify('Final grade submitted and released.','success');
+        closeModal('olSubmissionModal');await loadSubmissions();
+    }
+
+    async function openSubmissionDocument(){
+        const s=gradingState.submission;if(!s)return;
+        await loadSubmissionDocumentIntoWorkspace(s);
+    }
+
+    async function downloadSubmissionDocument(){
+        const s=gradingState.submission;if(!s)return;
+        const url=await signedDocumentUrl(s);
+        const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click();
+    }
+
+    async function reviewSubmission(id){
         try{
             const db=client();
-            if(!db) return false;
+            const s=state.submissions.find(x=>x.id===id);
+            if(!s)throw new Error('Submission not found.');
+            const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+            gradingState.submission=s;gradingState.assignment=assignment;gradingState.documentText='';gradingState.automaticReport=null;
+            gradingState.grades=new Map();gradingState.selectedCriterionIndex=0;gradingState.loaded=true;
 
-            // Prefer the existing portal notification function when available.
-            const existing=[
-                window.sendAssignmentResultNotification,
-                window.LecturerDashboard?.sendAssignmentResultNotification,
-                window.NCHSM?.sendAssignmentResultNotification
-            ].find(fn=>typeof fn==='function');
-
-            if(existing){
-                const result=await existing(submission,assignment);
-                return result!==false;
+            if(String(assignment.grading_mode||'manual')==='marking_key'){
+                await fetchSubmissionMarkingKey(id);
+            }else{
+                const max=resolveSubmissionMaxMarks(s,assignment)||100;
+                gradingState.key={
+                    id:null,
+                    title:'Manual Marking',
+                    version:'—',
+                    validation_status:'manual',
+                    max_marks:max,
+                    criteria:[{criterion:'Final Manual Grade',description:'Lecturer-entered final mark',max_marks:max,requirements:[]}]
+                };
+                gradingState.criteria=criterionNodes(gradingState.key.criteria);
+                window._activeSubmissionMarkingKey=null;
+                window._activeSubmissionMarkingKeyId=null;
             }
+            renderGradingKeyHeader(gradingState.key);
+            renderRubricNavigation();
+            renderSelectedCriterion();
+            renderGradingTotals();
 
-            // No email sender is hard-coded here. If the institution has a
-            // Supabase Edge Function for result notifications, use it.
-            if(db.functions?.invoke){
-                const result=await db.functions.invoke('send-assignment-result-notification',{
-                    body:{
-                        submission_id:submission?.id,
-                        assignment_id:assignment?.id,
-                        student_id:submission?.student_id,
-                        marks_obtained:submission?.marks_obtained,
-                        max_marks:submission?.max_marks || assignment?.max_marks,
-                        percentage:submission?.percentage
-                    }
-                });
-                if(!result.error) return true;
-                console.warn('Result notification function:',result.error.message);
+            const profiles=await db.from('consolidated_user_profiles_table')
+                .select('full_name,student_id,admission_number,email')
+                .eq('user_id',s.student_id).maybeSingle();
+            const p=profiles.data||{};
+            if($('olGradingStudentMeta'))$('olGradingStudentMeta').textContent=
+                `${p.full_name||'Student'} · ${p.admission_number||p.student_id||s.student_id||''} · ${assignment.title||s.online_assignments?.title||'Assignment'}`;
+            if($('olGradingStatusBadge'))$('olGradingStatusBadge').textContent=s.result_released?'RELEASED':(s.review_required?'REVIEW':(String(assignment.grading_mode||'manual')==='marking_key'?'DRAFT':'MANUAL'));
+
+            // Load prior deterministic report if it exists.
+            if(s.grading_report && typeof s.grading_report==='object'){
+                const prior=s.grading_report.rubric_grades||[];
+                prior.forEach((g,i)=>gradingState.grades.set(i,g));
+                gradingState.automaticReport=s.grading_report;
             }
-
-            return false;
-        }catch(err){
-            console.warn('Assignment result notification failed:',err);
-            return false;
+            renderRubricNavigation();renderSelectedCriterion();renderGradingTotals();
+            $('olSubmissionModal').dataset.submissionId=id;
+            $('olSubmissionModal').style.display='flex';
+            await loadSubmissionDocumentIntoWorkspace(s);
+        }catch(e){
+            console.error('Review submission:',e);
+            notify(e.message||'Could not open grading workspace.','error');
         }
     }
 
-    async function gradeSubmission(id,release){
-        const db=client();
-        const s=state.submissions.find(x=>x.id===id);
-        if(!s)return;
-        const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
-        const maxMarks=resolveSubmissionMaxMarks(s,assignment);
-        const marks=clampMarks($('olReviewMarks').value,maxMarks);
-        const feedback=$('olReviewFeedback').value.trim()||null;
-        const percentage=Number(formatPercentage(marks,maxMarks).replace('%',''));
-
-        // ALWAYS show the exact score before a release can happen.
-        if(release){
-            const confirmed=window.confirm(
-                `RELEASE RESULT\n\nStudent: ${s.student_id||'Student'}\nAssignment: ${assignment.title||s.online_assignments?.title||'Assignment'}\nScore: ${marks}/${maxMarks}\nPercentage: ${percentage}%\n\nThe student will be notified by email after release.\n\nClick OK to release this exact score, or Cancel to return to the review.`
-            );
-            if(!confirmed)return;
-        }
-
-        const now=new Date().toISOString();
-        let payload={
-            marks_obtained:marks,
-            feedback,
-            status:'graded',
-            graded_by:state.userId,
-            graded_at:now,
-            result_released:release,
-            released_at:release?now:null,
-            review_required:false
-        };
-        let {error}=await db.from('online_submissions').update(payload).eq('id',id);
-        if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}
-        if(error){notify(error.message,'error');return;}
-
-        window._activeServerGrade=false;
-        window._activeDeterministicGrade=null;
-        window._activeDeterministicGradeSubmissionId=null;
-
-        if(release){
-            const {data:updatedSubmission}=await db.from('online_submissions').select('*').eq('id',id).maybeSingle();
-            const emailSent=await sendAssignmentResultNotification(updatedSubmission||s,assignment);
-            notify(emailSent
-                ? `Released: ${marks}/${maxMarks} (${percentage}%). Student email notification sent.`
-                : `Released: ${marks}/${maxMarks} (${percentage}%), but the student email notification could not be sent.`,
-                emailSent?'success':'warning');
-        }else{
-            notify(`Grade saved: ${marks}/${maxMarks} (${percentage}%).`,'success');
-        }
-        closeModal('olSubmissionModal');
-        await loadSubmissions();
-        updateStats();
-    }
-    async function runAIAssignmentGrade(payload){
-        const db=client();
-        if(typeof window.runAIAssignmentGrade==='function' && window.runAIAssignmentGrade!==runAIAssignmentGrade) return window.runAIAssignmentGrade(payload);
-        if(db?.functions?.invoke){const r=await db.functions.invoke('ai-grade-assignment',{body:payload});if(r.error)throw r.error;return r.data;}
-        throw new Error('Secure AI grading service is unavailable.');
-    }
-
-    function closeModal(id){const m=$(id);if(m)m.style.display='none';}
+    function updateGradePercentage(){ renderGradingTotals(); }
 
     // ============================================================
     // RESEARCH SUBMISSIONS — LECTURER REVIEW MODULE
@@ -2975,8 +2267,6 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         });
     }
 
-    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> Automatically Grade Using Marking Key</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
-    function updateGradePercentage(){const s=state.submissions.find(x=>x.id===$('olSubmissionModal')?.dataset?.submissionId);const max=Number(s?.max_marks||state.assignments.find(a=>a.id===s?.assignment_id)?.max_marks||0);const pct=formatPercentage($('olReviewMarks')?.value,max);if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;}
     // ============================================================
     // 📧 ASSIGNMENT RESULT EMAIL NOTIFICATION
     // Sends only when the lecturer RELEASES the graded result.
@@ -2989,10 +2279,216 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         await loadResearch();
     }
 
+
+    // ============================================================
+    // MARKING KEY MANAGER
+    // ============================================================
+    let managerSelectedKeyId=null;
+
+    function renderMarkingKeyList(){
+        const list=$('olMarkingKeyList');
+        if(!list)return;
+        if(!markingKeyState.keys.length){
+            list.innerHTML='<div class="ol-empty" style="padding:30px 10px">No active institutional marking keys found.</div>';
+            return;
+        }
+        list.innerHTML=markingKeyState.keys.map(k=>{
+            const active=String(k.id)===String(managerSelectedKeyId);
+            const verified=String(k.validation_status||'').toLowerCase()==='verified';
+            return `<button type="button" data-key-id="${esc(k.id)}" style="display:block;width:100%;text-align:left;border:1px solid ${active?'#a5b4fc':'#e5e7eb'};background:${active?'#f5f3ff':'#fff'};border-radius:10px;padding:11px;margin-bottom:7px;cursor:pointer">
+                <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+                    <strong style="font-size:12px;color:#0f172a">${esc(k.title||'Untitled Key')}</strong>
+                    <span class="ol-badge ${verified?'ol-published':'ol-review'}">${esc(k.validation_status||'UNVERIFIED')}</span>
+                </div>
+                <div style="font-size:10px;color:#64748b;margin-top:4px">v${esc(k.version||'1')} · ${esc(k.max_marks||0)} marks</div>
+            </button>`;
+        }).join('');
+        list.querySelectorAll('[data-key-id]').forEach(b=>b.addEventListener('click',()=>{
+            managerSelectedKeyId=b.dataset.keyId;
+            previewMarkingKey(managerSelectedKeyId);
+            renderMarkingKeyList();
+        }));
+    }
+
+    function renderMarkingKeyEditor(key){
+        const title=$('olKeyEditorTitle'),meta=$('olKeyEditorMeta'),body=$('olCriteriaEditorBody'),summary=$('olKeyValidationSummary');
+        if(!key){
+            if(title)title.textContent='Select a marking key';
+            if(meta)meta.textContent='No key selected.';
+            if(body)body.innerHTML='<div class="ol-empty">Choose a marking key from the left.</div>';
+            if(summary)summary.className='ol-validation warn';
+            return;
+        }
+        if(title)title.textContent=key.title||'Marking Key';
+        if(meta)meta.textContent=`Version ${key.version||'1'} · ${key.max_marks||0} marks · ${key.source_document||'Institutional source'}`;
+        const criteria=criterionNodes(parseJsonArray(key.criteria));
+        const sum=criteria.reduce((n,c)=>n+Number(c.max_marks||0),0);
+        const verified=String(key.validation_status||'').toLowerCase()==='verified';
+        if(summary){
+            summary.className='ol-validation '+(verified?'ok':'warn');
+            summary.innerHTML=verified
+                ? `<i class="fas fa-circle-check"></i><div><b>Verified</b> · ${criteria.length} criteria · ${sum} structured marks.</div>`
+                : `<i class="fas fa-circle-info"></i><div><b>${esc(key.validation_status||'Unverified')}</b> · ${criteria.length} criteria · ${sum} structured marks.</div>`;
+        }
+        if(body){
+            body.innerHTML=criteria.map((c,i)=>{
+                const reqs=c.requirements||[];
+                return `<div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:9px;background:#fff">
+                    <div style="display:flex;justify-content:space-between;gap:10px"><strong>${i+1}. ${esc(c.criterion)}</strong><strong>${esc(c.max_marks)} marks</strong></div>
+                    ${c.description?`<div style="font-size:11px;color:#64748b;margin-top:4px">${esc(c.description)}</div>`:''}
+                    ${reqs.length?`<div style="margin-top:8px">${reqs.map(r=>`<div style="padding:6px 8px;border-left:3px solid #c7d2fe;margin:4px 0;background:#f8fafc;font-size:11px"><b>${esc(r.description)}</b><span style="float:right">${esc(r.max_marks??r.weight??'—')}</span>${r.evidence_terms?.length?`<div style="color:#64748b;margin-top:2px">${esc(r.evidence_terms.join(' · '))}</div>`:''}</div>`).join('')}</div>`:'<div style="font-size:11px;color:#94a3b8;margin-top:7px">No sub-requirements configured.</div>'}
+                </div>`;
+            }).join('')||'<div class="ol-empty">No structured criteria.</div>';
+        }
+    }
+
+    async function openMarkingKeyManager(){
+        try{
+            await loadMarkingKeys();
+            managerSelectedKeyId=markingKeyState.keys[0]?.id||null;
+            renderMarkingKeyList();
+            previewMarkingKey(managerSelectedKeyId);
+            $('olMarkingKeyModal').style.display='flex';
+        }catch(e){console.error(e);notify('Could not load marking keys: '+(e.message||e),'error');}
+    }
+
+    async function previewMarkingKey(id){
+        const key=markingKeyState.keys.find(k=>String(k.id)===String(id));
+        if(!key)return;
+        managerSelectedKeyId=key.id;
+        renderMarkingKeyEditor(key);
+    }
+
+    async function previewAssignmentMarkingKey(){
+        const id=$('olMarkingKeyId')?.value;
+        const key=markingKeyState.keys.find(k=>String(k.id)===String(id));
+        if(!key)return notify('Select a marking key first.','warning');
+        renderMarkingKeyEditor(key);
+        const title=key.title||'Marking Key';
+        alert(`${title}\nVersion ${key.version||'1'}\nStatus: ${key.validation_status||'unverified'}\nMaximum: ${key.max_marks||0} marks\n\nThe full criteria are shown in the Marking Key Manager.`);
+    }
+
+    async function duplicateMarkingKey(){
+        const source=markingKeyState.keys.find(k=>String(k.id)===String(managerSelectedKeyId));
+        if(!source)return notify('Select a marking key first.','warning');
+        const next=Number(source.version||1)+1;
+        const title=prompt('Title for the new marking-key version:',`${source.title} v${next}`);
+        if(title===null)return;
+        const db=client();if(!db)throw new Error('Supabase client unavailable.');
+        await resolveUser();
+        const payload={
+            title:title.trim()||source.title,
+            description:source.description||null,
+            max_marks:source.max_marks,
+            criteria:source.criteria,
+            keywords:source.keywords||[],
+            expected_topics:source.expected_topics||[],
+            grading_guidance:source.grading_guidance||null,
+            version:next,
+            is_active:false,
+            created_by:state.userId,
+            grading_schema_version:source.grading_schema_version||2,
+            source_document:source.source_document||null,
+            source_notes:source.source_notes||null,
+            allocated_marks:source.allocated_marks||source.max_marks,
+            validation_status:'draft'
+        };
+        const r=await db.from('online_marking_keys').insert(payload).select().single();
+        if(r.error)throw r.error;
+        notify(`Created marking-key version ${next} as a draft. It must be validated/published according to institutional workflow.`,'success');
+        await loadMarkingKeys();managerSelectedKeyId=r.data.id;renderMarkingKeyList();renderMarkingKeyEditor(r.data);
+    }
+
+    async function createMarkingKey(){
+        const title=prompt('New institutional marking key title:');
+        if(title===null||!title.trim())return;
+        const db=client();if(!db)throw new Error('Supabase client unavailable.');
+        await resolveUser();
+        const r=await db.from('online_marking_keys').insert({
+            title:title.trim(),
+            description:null,max_marks:100,criteria:[],keywords:[],expected_topics:[],
+            grading_guidance:null,version:1,is_active:false,created_by:state.userId,
+            grading_schema_version:2,source_document:null,source_notes:null,
+            allocated_marks:100,validation_status:'draft'
+        }).select().single();
+        if(r.error)throw r.error;
+        notify('Draft marking key created. Add the institutional criteria in the manager/editor workflow.','success');
+        await loadMarkingKeys();managerSelectedKeyId=r.data.id;renderMarkingKeyList();renderMarkingKeyEditor(r.data);
+    }
+
+    async function validateMarkingKey(){
+        const key=markingKeyState.keys.find(k=>String(k.id)===String(managerSelectedKeyId));
+        if(!key)return notify('Select a marking key first.','warning');
+        const criteria=criterionNodes(parseJsonArray(key.criteria));
+        const total=criteria.reduce((n,c)=>n+Number(c.max_marks||0),0);
+        const declared=Number(key.allocated_marks??key.max_marks??0);
+        const max=Number(key.max_marks??0);
+        const missing=criteria.filter(c=>!c.criterion||Number(c.max_marks)<=0);
+        const summary=$('olKeyValidationSummary');
+        const problems=[];
+        if(!criteria.length)problems.push('No structured criteria are configured.');
+        if(max<=0)problems.push('Maximum marks must be greater than zero.');
+        if(total!==max)problems.push(`Structured criteria total ${total}, declared maximum ${max}.`);
+        if(declared>0&&total!==declared)problems.push(`Allocated marks field is ${declared}, while structured criteria total ${total}.`);
+        if(missing.length)problems.push('One or more criteria have missing marks.');
+        if(summary){
+            summary.className='ol-validation '+(problems.length?'warn':'ok');
+            summary.innerHTML=problems.length
+                ? `<i class="fas fa-triangle-exclamation"></i><div><b>Validation review required</b><br>${esc(problems.join(' '))}</div>`
+                : `<i class="fas fa-circle-check"></i><div><b>Structurally valid</b> · ${criteria.length} criteria · ${total} marks.</div>`;
+        }
+        renderMarkingKeyEditor(key);
+        return {valid:!problems.length,problems,total,max};
+    }
+
     return {
         syncSubmissionMaximumMarks,
         resolveSubmissionMaxMarks,
-        autoGradeUsingMarkingKey,
-        gradeSubmission,loadMarkingKeys,markingKeyState,getAssignmentGradingConfig,fetchSubmissionMarkingKey,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
+        init,
+        load,
+        renderAssignments,
+        loadSubmissions,
+        openAssignmentModal,
+        editAssignment,
+        saveAssignment,
+        saveAndPublish,
+        addQuestionEditor,
+        renumberQuestions,
+        togglePublish,
+        deleteAssignment,
+        loadAssignmentTargeting,
+        refreshIntakesForProgram,
+        refreshBlocksForProgramIntake,
+        loadMarkingKeys,
+        markingKeyState,
+        openMarkingKeyManager,
+        previewMarkingKey,
+        previewAssignmentMarkingKey,
+        duplicateMarkingKey,
+        validateMarkingKey,
+        createMarkingKey,
+        getAssignmentGradingConfig,
+        fetchSubmissionMarkingKey,
+        populateAssignmentGradingFields,
+        reviewSubmission,
+        runDeterministicGrade,
+        autoGradeUsingMarkingKey: runDeterministicGrade,
+        saveCriterionMark,
+        saveGradingDraft,
+        returnSubmission,
+        submitFinalGrade,
+        openSubmissionDocument,
+        downloadSubmissionDocument,
+        updateGradePercentage,
+        closeModal,
+        viewSubmissionDocument,
+        closeDocumentViewer,
+        initResearch,
+        loadResearch,
+        openResearchReview,
+        saveResearchReview,
+        closeResearchModal
+    };
+
 })();
 ;
