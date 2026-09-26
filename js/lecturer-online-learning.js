@@ -499,6 +499,46 @@ window.LecturerOnlineLearning = (() => {
         return cfg.markingKey;
     }
 
+    function closeModal(id){
+        const el=$(id);
+        if(!el)return;
+        el.style.display='none';
+        el.setAttribute('aria-hidden','true');
+        if(id==='olSubmissionModal'){
+            gradingState.selectedCriterionIndex=0;
+            gradingState.documentText='';
+        }
+    }
+
+    async function populateGradingWorkspaceKeySelectors(key){
+        const keySelect=$('olGradeMarkingKey');
+        const versionSelect=$('olGradeMarkingKeyVersion');
+        if(!keySelect || !versionSelect || !key)return;
+        try{
+            const keys=await loadMarkingKeys();
+            const matching=keys.filter(k=>String(k.id)===String(key.id));
+            keySelect.innerHTML=(matching.length?matching:keys).map(k=>
+                `<option value="${esc(k.id)}">${esc(k.title||'Marking Key')} · Version ${esc(k.version||'1')}</option>`
+            ).join('');
+            keySelect.value=String(key.id);
+            versionSelect.innerHTML=`<option value="${esc(key.version||'1')}">Version ${esc(key.version||'1')}</option>`;
+            versionSelect.value=String(key.version||'1');
+            // A submission inherits the marking key locked to its assignment.
+            // Changing it here would make the final RPC inconsistent with the assignment.
+            keySelect.disabled=true;
+            versionSelect.disabled=true;
+            keySelect.title='Marking key is locked to the assignment.';
+            versionSelect.title='Version is locked to the assignment marking key.';
+        }catch(err){
+            console.warn('Could not populate grading-key selectors:',err);
+            keySelect.innerHTML=`<option value="${esc(key.id)}">${esc(key.title||'Marking Key')} · Version ${esc(key.version||'1')}</option>`;
+            keySelect.value=String(key.id);
+            versionSelect.innerHTML=`<option value="${esc(key.version||'1')}">Version ${esc(key.version||'1')}</option>`;
+            keySelect.disabled=true;
+            versionSelect.disabled=true;
+        }
+    }
+
     function renderGradingKeyHeader(key){
         const title=$('olGradeKeyTitle'), meta=$('olGradeKeyMeta'), max=$('olGradeMaxMarks');
         if(title) title.textContent=key?.title||'Marking key not selected';
@@ -882,7 +922,7 @@ window.LecturerOnlineLearning = (() => {
             });
             renderRubricNavigation();renderSelectedCriterion();renderGradingTotals();
             if($('olGradingStatusBadge'))$('olGradingStatusBadge').textContent='AUTO GRADED';
-            notify(`Deterministic grade completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before submitting.`,'success');
+            notify(`Automatic rubric grade completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review each criterion, adjust Lecturer Final where necessary, then Save Draft or Submit Final Grade.`,'success');
         }catch(e){
             console.error('Deterministic grading:',e);
             if($('olGradingStatusBadge'))$('olGradingStatusBadge').textContent='ERROR';
@@ -1035,7 +1075,10 @@ window.LecturerOnlineLearning = (() => {
                 gradingState.criteria=criterionNodes(gradingState.key.criteria);
                 window._activeSubmissionMarkingKey=null;
                 window._activeSubmissionMarkingKeyId=null;
+                if($('olGradeMarkingKey')){ $('olGradeMarkingKey').innerHTML='<option value="">Manual marking</option>'; $('olGradeMarkingKey').disabled=true; }
+                if($('olGradeMarkingKeyVersion')){ $('olGradeMarkingKeyVersion').innerHTML='<option value="">—</option>'; $('olGradeMarkingKeyVersion').disabled=true; }
             }
+            if(String(assignment.grading_mode||'manual')==='marking_key') await populateGradingWorkspaceKeySelectors(gradingState.key);
             renderGradingKeyHeader(gradingState.key);
             renderRubricNavigation();
             renderSelectedCriterion();
