@@ -4794,10 +4794,15 @@
                         <label>Maximum</label>
                         <div id="olGradeMaxMarks" class="ol-grade-max">—</div>
                     </div>
-                    <button class="ol-btn ol-primary" id="olRunAutoGradeBtn" onclick="if(window.LecturerOnlineLearning.runDeterministicGrade) window.LecturerOnlineLearning.runDeterministicGrade()">
+                    <button class="ol-btn ol-success" id="olRunAutoGradeBtn" style="min-height:40px;padding:10px 14px;font-weight:800;white-space:nowrap" onclick="if(window.LecturerOnlineLearning.runDeterministicGrade) window.LecturerOnlineLearning.runDeterministicGrade()">
                         <i class="fas fa-bolt"></i> Auto Grade
                     </button>
                 </div>
+            </div>
+
+            <div class="ol-grading-guide" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 12px;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;color:#1e3a8a;font-size:11px;line-height:1.5">
+                <strong><i class="fas fa-list-check"></i> How to grade:</strong>
+                <span>1. Click <b>Auto Grade</b> → 2. Review evidence criterion-by-criterion → 3. Adjust <b>Lecturer Final</b> if needed → 4. <b>Save Criterion Mark</b> → 5. <b>Save Draft</b> or <b>Submit Final Grade</b>.</span>
             </div>
 
             <div class="ol-grading-layout">
