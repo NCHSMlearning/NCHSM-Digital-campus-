@@ -1036,7 +1036,16 @@ window.LecturerOnlineLearning = (() => {
             p_report:report,p_model:null,p_grader_version:'SUPABASE_DETERMINISTIC_RUBRIC_ENGINE_V10',p_release:true
         });
         if(r.error)throw r.error;
-        notify('Final grade submitted and released.','success');
+
+        // Release first, then send the student result notification.
+        // The notification service intentionally does not expose marks in the email.
+        const releasedSubmission={...s,marks_obtained:report.final,max_marks:report.max,percentage:report.max?Number(((report.final/report.max)*100).toFixed(2)):0,result_released:true};
+        const notificationSent=await sendAssignmentResultNotification(releasedSubmission,gradingState.assignment||{});
+        if(notificationSent){
+            notify('Final grade saved, released, and result notification sent to the student.','success');
+        }else{
+            notify('Final grade was saved and released, but the student email notification could not be confirmed. Check the notification service.','warning');
+        }
         closeModal('olSubmissionModal');await loadSubmissions();
     }
 
