@@ -591,6 +591,206 @@ window.LecturerOnlineLearning = (() => {
         return {auto:autoClamped,final:finalClamped,max};
     }
 
+
+    // ============================================================
+    // DOCUMENT VIEWER COMPATIBILITY LAYER
+    // ============================================================
+    // Assignment uploads use the student portal's assignment-submissions
+    // storage bucket. The fallback list keeps older deployments compatible.
+    const ONLINE_ASSIGNMENT_BUCKETS = [
+        window.NCHSM_ONLINE_LEARNING_BUCKET,
+        window.ONLINE_LEARNING_STORAGE_BUCKET,
+        window.ASSIGNMENT_SUBMISSIONS_BUCKET,
+        'assignment-submissions',
+        'online-learning',
+        'online_submissions'
+    ].filter(Boolean);
+
+    function extOf(name=''){
+        const raw=String(name||'').toLowerCase().split('?')[0];
+        const ext=raw.includes('.')?raw.split('.').pop():'';
+        return ext==='jpeg'?'jpg':ext;
+    }
+
+    function loadScriptOnce(src,id){
+        return new Promise((resolve,reject)=>{
+            if(id && document.getElementById(id)) return resolve();
+            const script=document.createElement('script');
+            script.src=src;
+            if(id)script.id=id;
+            script.onload=()=>resolve();
+            script.onerror=()=>reject(new Error('Could not load '+src));
+            document.head.appendChild(script);
+        });
+    }
+
+    async function signedDocumentUrl(s){
+        const db=client();
+        if(!db) throw new Error('Supabase client is unavailable.');
+        if(!s?.file_path) throw new Error('No uploaded document is attached to this submission.');
+
+        let lastError=null;
+        for(const bucket of [...new Set(ONLINE_ASSIGNMENT_BUCKETS)]){
+            try{
+                const r=await db.storage.from(bucket).createSignedUrl(s.file_path,3600);
+                if(!r.error && r.data?.signedUrl) return r.data.signedUrl;
+                lastError=r.error||lastError;
+            }catch(e){
+                lastError=e;
+            }
+        }
+        throw new Error(lastError?.message || 'Could not create a secure document viewing link.');
+    }
+
+    function ensureDocumentViewer(){
+        let viewer=$('olDocumentViewer');
+        if(viewer)return viewer;
+
+        const styleId='nchsmOnlineDocumentViewerStyles';
+        if(!$(styleId)){
+            const st=document.createElement('style');
+            st.id=styleId;
+            st.textContent=`
+                #olDocumentViewer{
+                    position:fixed;inset:0;z-index:100050;
+                    display:none;align-items:center;justify-content:center;
+                    padding:12px;background:rgba(15,23,42,.78);
+                }
+                #olDocumentViewer .ol-document-card{
+                    width:min(1400px,98vw);height:min(94vh,980px);
+                    background:#fff;border-radius:14px;overflow:hidden;
+                    box-shadow:0 25px 80px rgba(0,0,0,.28);
+                    display:flex;flex-direction:column;
+                }
+                #olDocumentViewer .ol-document-head{
+                    display:flex;align-items:center;justify-content:space-between;
+                    gap:12px;padding:12px 16px;border-bottom:1px solid #e2e8f0;
+                    background:#f8fafc;flex:0 0 auto;
+                }
+                #olDocumentViewer .ol-document-body{
+                    flex:1;overflow:auto;background:#eef2f7;padding:10px;
+                }
+                #olDocumentViewer .ol-document-frame{
+                    width:100%;height:100%;min-height:680px;border:0;background:#fff;
+                }
+                #olDocumentViewer .ol-docx{
+                    max-width:900px;margin:0 auto;padding:42px 52px;
+                    background:#fff;min-height:100%;line-height:1.65;
+                }
+            `;
+            document.head.appendChild(st);
+        }
+
+        viewer=document.createElement('div');
+        viewer.id='olDocumentViewer';
+        viewer.innerHTML=`
+            <div class="ol-document-card">
+                <div class="ol-document-head">
+                    <div>
+                        <b id="olDocumentTitle">Uploaded Work</b>
+                        <div id="olDocumentMeta" style="font-size:11px;color:#64748b;margin-top:2px"></div>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button type="button" class="ol-btn ol-muted" id="olDocumentDownload">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button type="button" class="ol-btn ol-danger" id="olDocumentClose">
+                            <i class="fas fa-xmark"></i> Close
+                        </button>
+                    </div>
+                </div>
+                <div class="ol-document-body" id="olDocumentBody">
+                    <div class="ol-empty">Loading document…</div>
+                </div>
+            </div>`;
+        document.body.appendChild(viewer);
+
+        $('olDocumentClose')?.addEventListener('click',closeDocumentViewer);
+        viewer.addEventListener('click',e=>{
+            if(e.target===viewer)closeDocumentViewer();
+        });
+        return viewer;
+    }
+
+    async function renderDocument(s){
+        const viewer=ensureDocumentViewer();
+        const body=$('olDocumentBody');
+        if(!s?.file_path){
+            if(body)body.innerHTML='<div class="ol-empty">No uploaded document was attached to this submission.</div>';
+            viewer.style.display='flex';
+            return;
+        }
+
+        const url=await signedDocumentUrl(s);
+        const ext=extOf(s.file_name||s.file_path||'');
+
+        if($('olDocumentTitle'))$('olDocumentTitle').textContent=s.file_name||'Uploaded Work';
+        if($('olDocumentMeta'))$('olDocumentMeta').textContent=
+            `${s.online_assignments?.title||'Submission'} · ${fmtDate(s.submitted_at)}`;
+
+        if($('olDocumentDownload')){
+            $('olDocumentDownload').onclick=()=>{
+                const a=document.createElement('a');
+                a.href=url;a.target='_blank';a.rel='noopener';a.download=s.file_name||'submission';
+                a.click();
+            };
+        }
+
+        if(body)body.innerHTML='<div class="ol-empty"><i class="fas fa-spinner fa-spin"></i> Opening document…</div>';
+
+        if(ext==='pdf'){
+            body.innerHTML=`<iframe class="ol-document-frame" title="${esc(s.file_name||'PDF')}" src="${esc(url)}"></iframe>`;
+        }else if(ext==='docx'||ext==='doc'){
+            const response=await fetch(url);
+            if(!response.ok)throw new Error(`Could not download the submitted document (${response.status}).`);
+            const blob=await response.blob();
+            await loadScriptOnce(
+                'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js',
+                'olMammoth'
+            );
+            const arrayBuffer=await blob.arrayBuffer();
+            const converted=await window.mammoth.convertToHtml({arrayBuffer});
+            body.innerHTML=
+                `<article class="ol-docx">${converted.value||'<p>No readable text found.</p>'}</article>`;
+        }else if(['txt','md','csv'].includes(ext)){
+            const response=await fetch(url);
+            if(!response.ok)throw new Error(`Could not download the submitted document (${response.status}).`);
+            const raw=await response.text();
+            body.innerHTML=
+                `<pre style="white-space:pre-wrap;background:#fff;padding:28px;max-width:1000px;margin:0 auto;min-height:100%;line-height:1.6">${esc(raw)}</pre>`;
+        }else if(['png','jpg','gif','webp'].includes(ext)){
+            body.innerHTML=
+                `<div style="height:100%;display:flex;align-items:center;justify-content:center;padding:20px">
+                    <img src="${esc(url)}" alt="${esc(s.file_name||'Uploaded work')}"
+                         style="max-width:100%;max-height:90%;object-fit:contain;background:#fff;border-radius:8px">
+                 </div>`;
+        }else{
+            body.innerHTML=
+                `<div class="ol-empty">
+                    Browser preview is unavailable for <b>${esc(ext||'this file type')}</b>.
+                    Use <b>Download</b> to open the original document.
+                 </div>`;
+        }
+
+        viewer.style.display='flex';
+    }
+
+    async function viewSubmissionDocument(id){
+        try{
+            const s=state.submissions.find(x=>String(x.id)===String(id));
+            if(!s)throw new Error('Submission not found.');
+            await renderDocument(s);
+        }catch(e){
+            console.error('View submission document:',e);
+            notify('Could not open the uploaded document: '+(e.message||e),'error');
+        }
+    }
+
+    function closeDocumentViewer(){
+        const viewer=$('olDocumentViewer');
+        if(viewer)viewer.style.display='none';
+    }
+
     async function loadSubmissionDocumentIntoWorkspace(s){
         const box=$('olDocumentPreview');
         if(!box || !s?.file_path){
