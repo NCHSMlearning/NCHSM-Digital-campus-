@@ -4301,53 +4301,616 @@
 <!-- ============================================================ -->
 <section id="online-learning-content" class="tab-content" style="display:none;animation:fadeIn .3s ease;">
 <style>
-.ol-wrap{--ol-primary:#4c1d95;--ol-accent:#10b981;--ol-bg:#f8fafc;color:#0f172a}.ol-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:0 0 22px}.ol-stat{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04)}.ol-stat b{font-size:25px;display:block}.ol-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px rgba(0,0,0,.04)}.ol-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.ol-toolbar input,.ol-toolbar select,.ol-form input,.ol-form select,.ol-form textarea{width:100%;box-sizing:border-box;border:1px solid #dbe1ea;border-radius:9px;padding:10px 12px;font:inherit;background:#fff}.ol-btn{border:0;border-radius:9px;padding:10px 15px;cursor:pointer;font-weight:700;display:inline-flex;gap:7px;align-items:center}.ol-primary{background:#4c1d95;color:#fff}.ol-success{background:#059669;color:#fff}.ol-warning{background:#d97706;color:#fff}.ol-danger{background:#dc2626;color:#fff}.ol-muted{background:#f1f5f9;color:#334155}.ol-table{width:100%;border-collapse:collapse}.ol-table th,.ol-table td{padding:11px 10px;border-bottom:1px solid #eef2f7;text-align:left;font-size:13px;vertical-align:top}.ol-table th{background:#f8fafc;color:#475569}.ol-badge{display:inline-flex;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700}.ol-draft{background:#f1f5f9;color:#475569}.ol-published{background:#dcfce7;color:#166534}.ol-review{background:#fef3c7;color:#92400e}.ol-returned{background:#dbeafe;color:#1e40af}.ol-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.ol-full{grid-column:1/-1}.ol-q{border:1px solid #e2e8f0;border-radius:12px;padding:15px;margin-top:12px;background:#fbfdff}.ol-q-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}.ol-modal{position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:100001;display:none;align-items:center;justify-content:center;padding:18px}.ol-modal-box{background:#fff;width:min(980px,100%);max-height:92vh;overflow:auto;border-radius:18px;box-shadow:0 25px 80px rgba(0,0,0,.25)}.ol-modal-head{padding:17px 20px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:10px;align-items:center}.ol-modal-body{padding:20px}.ol-empty{text-align:center;padding:45px 20px;color:#64748b}.ol-submission-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}.ol-mark{font-size:28px;font-weight:800;color:#4c1d95}@media(max-width:760px){.ol-form,.ol-submission-grid{grid-template-columns:1fr}.ol-table{min-width:800px}.ol-card{padding:15px}.ol-modal{padding:8px}}
+/* ============================================================
+   NCHSM ONLINE LEARNING — GRADING WORKSPACE V1
+   HTML/UI layer only. Existing JS hooks are preserved.
+   ============================================================ */
+.ol-wrap{
+    --ol-primary:#4c1d95;
+    --ol-primary-2:#6d28d9;
+    --ol-accent:#059669;
+    --ol-bg:#f8fafc;
+    --ol-border:#e5e7eb;
+    --ol-text:#0f172a;
+    --ol-muted:#64748b;
+    color:var(--ol-text)
+}
+.ol-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:0 0 22px}
+.ol-stat{background:#fff;border:1px solid var(--ol-border);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.ol-stat b{font-size:25px;display:block}
+.ol-card{background:#fff;border:1px solid var(--ol-border);border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+.ol-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.ol-toolbar input,.ol-toolbar select,.ol-form input,.ol-form select,.ol-form textarea{
+    width:100%;box-sizing:border-box;border:1px solid #dbe1ea;border-radius:9px;
+    padding:10px 12px;font:inherit;background:#fff
+}
+.ol-toolbar input:focus,.ol-toolbar select:focus,.ol-form input:focus,.ol-form select:focus,.ol-form textarea:focus{
+    outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(124,58,237,.10)
+}
+.ol-btn{
+    border:0;border-radius:9px;padding:10px 15px;cursor:pointer;font-weight:700;
+    display:inline-flex;gap:7px;align-items:center;justify-content:center;transition:.18s ease
+}
+.ol-btn:hover{transform:translateY(-1px)}
+.ol-primary{background:var(--ol-primary);color:#fff}
+.ol-primary:hover{background:#3b176f}
+.ol-success{background:#059669;color:#fff}
+.ol-warning{background:#d97706;color:#fff}
+.ol-danger{background:#dc2626;color:#fff}
+.ol-muted{background:#f1f5f9;color:#334155}
+.ol-outline{background:#fff;color:#4c1d95;border:1px solid #c4b5fd}
+.ol-table{width:100%;border-collapse:collapse}
+.ol-table th,.ol-table td{padding:11px 10px;border-bottom:1px solid #eef2f7;text-align:left;font-size:13px;vertical-align:top}
+.ol-table th{background:#f8fafc;color:#475569}
+.ol-badge{display:inline-flex;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.ol-draft{background:#f1f5f9;color:#475569}
+.ol-published{background:#dcfce7;color:#166534}
+.ol-review{background:#fef3c7;color:#92400e}
+.ol-returned{background:#dbeafe;color:#1e40af}
+.ol-verified{background:#dcfce7;color:#166534}
+.ol-warning-badge{background:#fff7ed;color:#c2410c}
+.ol-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.ol-full{grid-column:1/-1}
+.ol-q{border:1px solid #e2e8f0;border-radius:12px;padding:15px;margin-top:12px;background:#fbfdff}
+.ol-q-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.ol-modal{position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:100001;display:none;align-items:center;justify-content:center;padding:18px}
+.ol-modal-box{background:#fff;width:min(1180px,100%);max-height:94vh;overflow:auto;border-radius:18px;box-shadow:0 25px 80px rgba(0,0,0,.25)}
+.ol-modal-head{padding:17px 20px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:10px;align-items:center;position:sticky;top:0;background:#fff;z-index:2}
+.ol-modal-body{padding:20px}
+.ol-empty{text-align:center;padding:45px 20px;color:#64748b}
+.ol-submission-grid{display:grid;grid-template-columns:1.05fr 1.35fr .9fr;gap:14px;align-items:start}
+.ol-mark{font-size:28px;font-weight:800;color:#4c1d95}
+.ol-panel{background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden}
+.ol-panel-head{padding:13px 15px;border-bottom:1px solid #e5e7eb;background:#f8fafc;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ol-panel-body{padding:14px}
+.ol-rubric-row{display:flex;align-items:flex-start;gap:10px;padding:11px 10px;border:1px solid #eef2f7;border-radius:10px;margin-bottom:8px;background:#fff;cursor:pointer}
+.ol-rubric-row:hover{border-color:#c4b5fd;background:#faf7ff}
+.ol-rubric-row.active{border-color:#8b5cf6;background:#f5f3ff}
+.ol-rubric-title{font-weight:700;font-size:13px;color:#1e293b}
+.ol-rubric-sub{font-size:11px;color:#64748b;margin-top:3px}
+.ol-rubric-mark{margin-left:auto;font-weight:800;font-size:12px;white-space:nowrap}
+.ol-evidence{border:1px solid #e2e8f0;border-radius:10px;padding:11px;background:#f8fafc;margin-bottom:9px}
+.ol-evidence strong{display:block;font-size:12px;margin-bottom:4px}
+.ol-evidence p{margin:0;font-size:12px;line-height:1.55;color:#475569}
+.ol-score-box{border:1px solid #ddd6fe;background:#faf5ff;border-radius:14px;padding:16px;margin-bottom:12px}
+.ol-score-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ol-score-field label{display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:5px}
+.ol-score-field input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:9px;font-size:16px;font-weight:800}
+.ol-score-field input:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(124,58,237,.10)}
+.ol-progress{height:7px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+.ol-progress>span{display:block;height:100%;background:linear-gradient(90deg,#4c1d95,#7c3aed);border-radius:99px}
+.ol-key-card{border:1px solid #ddd6fe;background:linear-gradient(135deg,#faf5ff,#fff);border-radius:14px;padding:15px}
+.ol-key-grid{display:grid;grid-template-columns:1.3fr .8fr .8fr auto;gap:10px;align-items:end}
+.ol-key-grid label{font-size:11px;font-weight:700;color:#64748b;display:block;margin-bottom:5px}
+.ol-key-grid select{width:100%;padding:10px;border:1px solid #dbe1ea;border-radius:9px;background:#fff}
+.ol-validation{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:10px;font-size:12px;margin-top:10px}
+.ol-validation.ok{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+.ol-validation.warn{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+.ol-action-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding-top:15px;margin-top:15px;border-top:1px solid #e5e7eb}
+.ol-action-group{display:flex;gap:8px;flex-wrap:wrap}
+.ol-doc-preview{min-height:360px;max-height:62vh;overflow:auto;border:1px solid #e2e8f0;border-radius:10px;background:#fff;padding:18px;line-height:1.65;font-size:13px}
+.ol-doc-placeholder{text-align:center;padding:80px 20px;color:#64748b}
+.ol-final-total{font-size:24px;font-weight:900;color:#0f172a}
+.ol-final-total small{font-size:12px;font-weight:600;color:#64748b}
+.ol-adjustment-note{font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-top:8px}
+.ol-key-manager{display:none}
+.ol-key-manager.open{display:block}
+.ol-key-editor{display:grid;grid-template-columns:280px 1fr;gap:15px}
+.ol-key-list{border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:10px}
+.ol-key-item{padding:11px 12px;border-radius:10px;cursor:pointer;border:1px solid transparent;margin-bottom:6px}
+.ol-key-item:hover{background:#f8fafc}
+.ol-key-item.active{background:#f5f3ff;border-color:#c4b5fd}
+.ol-key-item b{display:block;font-size:12px}
+.ol-key-item span{font-size:11px;color:#64748b}
+.ol-criteria-editor{border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:16px}
+.ol-criterion-editor{border:1px solid #e2e8f0;border-radius:12px;padding:13px;margin-bottom:10px}
+.ol-criterion-editor-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ol-small-input{padding:8px 9px;border:1px solid #dbe1ea;border-radius:8px;width:90px}
+@media(max-width:1000px){.ol-submission-grid{grid-template-columns:1fr 1fr}.ol-submission-grid .ol-panel-doc{grid-column:1/-1;order:-1}.ol-key-editor{grid-template-columns:1fr}}
+@media(max-width:760px){
+    .ol-form,.ol-submission-grid{grid-template-columns:1fr}
+    .ol-table{min-width:800px}.ol-card{padding:15px}.ol-modal{padding:8px}
+    .ol-key-grid{grid-template-columns:1fr}
+}
 </style>
+
 <div class="ol-wrap">
+
+<!-- HEADER -->
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:15px;flex-wrap:wrap;margin-bottom:22px">
- <div><h2 style="margin:0;font-size:27px"><i class="fas fa-laptop-code" style="color:#4c1d95"></i> Online Learning</h2><p style="margin:5px 0 0;color:#64748b">Create, publish, assess and release assignments, case studies and quizzes.</p></div>
- <button class="ol-btn ol-primary" onclick="window.LecturerOnlineLearning.openAssignmentModal()"><i class="fas fa-plus"></i> Create Assignment</button>
+    <div>
+        <h2 style="margin:0;font-size:27px">
+            <i class="fas fa-laptop-code" style="color:#4c1d95"></i> Online Learning
+        </h2>
+        <p style="margin:5px 0 0;color:#64748b">
+            Create, publish, assess and release assignments, case studies and quizzes.
+        </p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="ol-btn ol-outline" onclick="if(window.LecturerOnlineLearning.openMarkingKeyManager) window.LecturerOnlineLearning.openMarkingKeyManager()">
+            <i class="fas fa-list-check"></i> Marking Keys
+        </button>
+        <button class="ol-btn ol-primary" onclick="window.LecturerOnlineLearning.openAssignmentModal()">
+            <i class="fas fa-plus"></i> Create Assignment
+        </button>
+    </div>
 </div>
+
+<!-- STATS -->
 <div class="ol-grid">
- <div class="ol-stat"><span style="color:#64748b;font-size:12px">TOTAL</span><b id="olTotal">0</b><span style="font-size:12px;color:#94a3b8">Assignments</span></div>
- <div class="ol-stat"><span style="color:#64748b;font-size:12px">PUBLISHED</span><b id="olPublished">0</b><span style="font-size:12px;color:#94a3b8">Visible to eligible students</span></div>
- <div class="ol-stat"><span style="color:#64748b;font-size:12px">SUBMISSIONS</span><b id="olSubmissions">0</b><span style="font-size:12px;color:#94a3b8">Student submissions</span></div>
- <div class="ol-stat"><span style="color:#64748b;font-size:12px">TO REVIEW</span><b id="olToReview">0</b><span style="font-size:12px;color:#94a3b8">Need lecturer review</span></div>
+    <div class="ol-stat"><span style="color:#64748b;font-size:12px">TOTAL</span><b id="olTotal">0</b><span style="font-size:12px;color:#94a3b8">Assignments</span></div>
+    <div class="ol-stat"><span style="color:#64748b;font-size:12px">PUBLISHED</span><b id="olPublished">0</b><span style="font-size:12px;color:#94a3b8">Visible to eligible students</span></div>
+    <div class="ol-stat"><span style="color:#64748b;font-size:12px">SUBMISSIONS</span><b id="olSubmissions">0</b><span style="font-size:12px;color:#94a3b8">Student submissions</span></div>
+    <div class="ol-stat"><span style="color:#64748b;font-size:12px">TO REVIEW</span><b id="olToReview">0</b><span style="font-size:12px;color:#94a3b8">Need lecturer review</span></div>
 </div>
-<div class="ol-card"><div class="ol-toolbar">
- <div style="flex:1;min-width:210px"><input id="olSearch" placeholder="Search assignments by title or unit..." oninput="window.LecturerOnlineLearning.renderAssignments()"></div>
- <select id="olStatusFilter" style="max-width:170px" onchange="window.LecturerOnlineLearning.renderAssignments()"><option value="">All statuses</option><option value="draft">Draft</option><option value="published">Published</option></select>
- <button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.load()"><i class="fas fa-sync"></i> Refresh</button>
-</div></div>
-<div class="ol-card"><div style="overflow-x:auto"><table class="ol-table"><thead><tr><th>Assignment</th><th>Unit</th><th>Target</th><th>Due</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody id="olAssignmentsTable"></tbody></table></div></div>
-<div class="ol-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h3 style="margin:0">Student Submissions</h3><p style="margin:4px 0;color:#64748b;font-size:13px">Review, grade and release submitted work.</p></div><select id="olSubmissionAssignmentFilter" style="max-width:320px" onchange="window.LecturerOnlineLearning.loadSubmissions()"><option value="">All assignments</option></select></div><div style="overflow-x:auto;margin-top:14px"><table class="ol-table"><thead><tr><th>Student</th><th>Assignment</th><th>Submitted</th><th>Attempt</th><th>Mark</th><th>Status</th><th>Action</th></tr></thead><tbody id="olSubmissionsTable"></tbody></table></div></div>
+
+<!-- ASSIGNMENT FILTERS -->
+<div class="ol-card">
+    <div class="ol-toolbar">
+        <div style="flex:1;min-width:210px">
+            <input id="olSearch" placeholder="Search assignments by title or unit..." oninput="window.LecturerOnlineLearning.renderAssignments()">
+        </div>
+        <select id="olStatusFilter" style="max-width:170px" onchange="window.LecturerOnlineLearning.renderAssignments()">
+            <option value="">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+        </select>
+        <button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.load()">
+            <i class="fas fa-sync"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<!-- ASSIGNMENTS -->
+<div class="ol-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px">
+        <div>
+            <h3 style="margin:0">Assignments</h3>
+            <p style="margin:4px 0;color:#64748b;font-size:13px">Create, publish and configure grading.</p>
+        </div>
+    </div>
+    <div style="overflow-x:auto">
+        <table class="ol-table">
+            <thead>
+                <tr>
+                    <th>Assignment</th><th>Unit</th><th>Target</th><th>Due</th>
+                    <th>Questions</th><th>Grading</th><th>Status</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="olAssignmentsTable"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MARKING KEY QUICK MANAGEMENT -->
+<div class="ol-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+            <h3 style="margin:0"><i class="fas fa-list-check" style="color:#4c1d95"></i> Marking Keys</h3>
+            <p style="margin:4px 0;color:#64748b;font-size:13px">
+                Select a verified institutional key when grading. Draft keys can be improved without changing locked versions.
+            </p>
+        </div>
+        <div class="ol-action-group">
+            <button class="ol-btn ol-outline" onclick="if(window.LecturerOnlineLearning.openMarkingKeyManager) window.LecturerOnlineLearning.openMarkingKeyManager()">
+                <i class="fas fa-sliders"></i> Manage Keys
+            </button>
+            <button class="ol-btn ol-muted" onclick="if(window.LecturerOnlineLearning.createMarkingKey) window.LecturerOnlineLearning.createMarkingKey()">
+                <i class="fas fa-plus"></i> New Key
+            </button>
+        </div>
+    </div>
+
+    <div class="ol-key-card" style="margin-top:14px">
+        <div class="ol-key-grid">
+            <div>
+                <label>Selected Marking Key</label>
+                <select id="olQuickMarkingKey">
+                    <option value="">Loading verified keys...</option>
+                </select>
+            </div>
+            <div>
+                <label>Version</label>
+                <select id="olQuickMarkingKeyVersion">
+                    <option value="">Select version</option>
+                </select>
+            </div>
+            <div>
+                <label>Maximum Marks</label>
+                <div style="font-weight:900;font-size:17px;padding:9px 0" id="olQuickKeyMaxMarks">—</div>
+            </div>
+            <button class="ol-btn ol-primary" onclick="if(window.LecturerOnlineLearning.previewMarkingKey) window.LecturerOnlineLearning.previewMarkingKey()">
+                <i class="fas fa-eye"></i> View Key
+            </button>
+        </div>
+        <div class="ol-validation ok">
+            <i class="fas fa-shield-check"></i>
+            <div><strong>Deterministic grading</strong><br>Automatic marks are calculated from the selected institutional rubric. Lecturer adjustments remain separate and auditable.</div>
+        </div>
+    </div>
+</div>
+
+<!-- STUDENT SUBMISSIONS -->
+<div class="ol-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+            <h3 style="margin:0">Student Submissions</h3>
+            <p style="margin:4px 0;color:#64748b;font-size:13px">Review, automatically grade, manually adjust and release submitted work.</p>
+        </div>
+        <select id="olSubmissionAssignmentFilter" style="max-width:320px" onchange="window.LecturerOnlineLearning.loadSubmissions()">
+            <option value="">All assignments</option>
+        </select>
+    </div>
+    <div style="overflow-x:auto;margin-top:14px">
+        <table class="ol-table">
+            <thead>
+                <tr>
+                    <th>Student</th><th>Assignment</th><th>Submitted</th><th>Attempt</th>
+                    <th>Automatic</th><th>Final</th><th>Status</th><th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="olSubmissionsTable"></tbody>
+        </table>
+    </div>
+</div>
+
 </div>
 </section>
 
+<!-- ============================================================
+     ASSIGNMENT MODAL
+     ============================================================ -->
 <div id="olAssignmentModal" class="ol-modal" onclick="if(event.target===this)LecturerOnlineLearning.closeModal('olAssignmentModal')">
-<div class="ol-modal-box"><div class="ol-modal-head"><h3 id="olAssignmentModalTitle" style="margin:0">Create Assignment</h3><button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olAssignmentModal')"><i class="fas fa-times"></i></button></div>
-<div class="ol-modal-body"><form id="olAssignmentForm" class="ol-form" onsubmit="window.LecturerOnlineLearning.saveAssignment(event)">
-<input type="hidden" id="olAssignmentId">
-<div><label>Title *</label><input id="olTitle" required placeholder="e.g. Cardiovascular System Assignment"></div>
-<div><label>Type *</label><select id="olType" required><option value="assignment">Assignment</option><option value="case_study">Case Study</option><option value="quiz">Quiz</option></select></div>
-<div><label>Unit Code *</label><input id="olUnitCode" required placeholder="e.g. NCHSM 103"></div>
-<div><label>Unit Name</label><input id="olUnitName" placeholder="Unit name"></div>
-<div><label>Program *</label><input id="olProgram" required placeholder="e.g. KRCHN"></div>
-<div><label>Intake Year *</label><input id="olIntake" required placeholder="e.g. 2026"></div>
-<div><label>Block</label><input id="olBlock" placeholder="e.g. Block 5 / Y1T1"></div>
-<div><label>Due Date & Time *</label><input id="olDueAt" type="datetime-local" required></div>
-<div><label>Maximum Marks *</label><input id="olMaxMarks" type="number" min="1" step="0.01" value="20" required></div>
-<div><label>Max Attempts</label><input id="olMaxAttempts" type="number" min="1" value="1"></div>
-<div class="ol-full"><label>Instructions</label><textarea id="olInstructions" rows="4" placeholder="Instructions students will see..."></textarea></div>
-<div class="ol-full" style="display:flex;gap:16px;flex-wrap:wrap"><label><input id="olAllowUpload" type="checkbox" checked> Allow document upload</label><label><input id="olAllowResubmit" type="checkbox"> Allow resubmission</label></div>
-<div class="ol-full" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h4 style="margin:0">Questions</h4><button type="button" class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.addQuestionEditor()"><i class="fas fa-plus"></i> Add Question</button></div>
-<div id="olQuestions" class="ol-full"></div>
-<div class="ol-full" style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e5e7eb;padding-top:16px"><button type="button" class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olAssignmentModal')">Cancel</button><button type="submit" class="ol-btn ol-primary"><i class="fas fa-save"></i> Save Draft</button><button type="button" class="ol-btn ol-success" onclick="window.LecturerOnlineLearning.saveAndPublish()"><i class="fas fa-paper-plane"></i> Save & Publish</button></div>
-</form></div></div></div>
+    <div class="ol-modal-box">
+        <div class="ol-modal-head">
+            <h3 id="olAssignmentModalTitle" style="margin:0">Create Assignment</h3>
+            <button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olAssignmentModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ol-modal-body">
+            <form id="olAssignmentForm" class="ol-form" onsubmit="window.LecturerOnlineLearning.saveAssignment(event)">
+                <input type="hidden" id="olAssignmentId">
 
-<div id="olSubmissionModal" class="ol-modal" onclick="if(event.target===this)LecturerOnlineLearning.closeModal('olSubmissionModal')"><div class="ol-modal-box"><div class="ol-modal-head"><h3 style="margin:0">Submission Review</h3><button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olSubmissionModal')"><i class="fas fa-times"></i></button></div><div class="ol-modal-body" id="olSubmissionBody"></div></div></div>
-</section>
-            <!-- ========================================== -->
+                <div><label>Title *</label><input id="olTitle" required placeholder="e.g. Cardiovascular System Assignment"></div>
+                <div><label>Type *</label><select id="olType" required><option value="assignment">Assignment</option><option value="case_study">Case Study</option><option value="quiz">Quiz</option></select></div>
+                <div><label>Unit Code *</label><input id="olUnitCode" required placeholder="e.g. NCHSM 103"></div>
+                <div><label>Unit Name</label><input id="olUnitName" placeholder="Unit name"></div>
+                <div><label>Program *</label><input id="olProgram" required placeholder="e.g. KRCHN"></div>
+                <div><label>Intake Year *</label><input id="olIntake" required placeholder="e.g. 2026"></div>
+                <div><label>Block</label><input id="olBlock" placeholder="e.g. Block 5 / Y1T1"></div>
+                <div><label>Due Date & Time *</label><input id="olDueAt" type="datetime-local" required></div>
+
+                <div>
+                    <label>Grading Mode *</label>
+                    <select id="olGradingMode" required>
+                        <option value="manual">Manual Marking</option>
+                        <option value="marking_key">Marking Key</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Maximum Marks *</label>
+                    <input id="olMaxMarks" type="number" min="1" step="0.01" value="20" required>
+                </div>
+
+                <div class="ol-full" id="olAssignmentMarkingKeyPanel">
+                    <div class="ol-key-card">
+                        <div style="font-weight:800;margin-bottom:10px"><i class="fas fa-list-check" style="color:#4c1d95"></i> Marking Key Configuration</div>
+                        <div class="ol-key-grid">
+                            <div>
+                                <label>Marking Key</label>
+                                <select id="olMarkingKeyId">
+                                    <option value="">Select verified marking key</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Key Version</label>
+                                <select id="olMarkingKeyVersion">
+                                    <option value="">Select version</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Key Status</label>
+                                <div id="olMarkingKeyStatus" style="padding:10px 0"><span class="ol-badge ol-draft">Not selected</span></div>
+                            </div>
+                            <button type="button" class="ol-btn ol-outline" onclick="if(window.LecturerOnlineLearning.previewAssignmentMarkingKey) window.LecturerOnlineLearning.previewAssignmentMarkingKey()">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                        </div>
+                        <div id="olMarkingKeyValidation" class="ol-validation warn">
+                            <i class="fas fa-circle-info"></i>
+                            <div>Select a verified marking key before publishing a marking-key assignment.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div><label>Max Attempts</label><input id="olMaxAttempts" type="number" min="1" value="1"></div>
+                <div><label>Submission Type</label><select id="olSubmissionType"><option value="document">Document Upload</option><option value="text">Online Text</option><option value="both">Document + Online Text</option></select></div>
+                <div class="ol-full"><label>Instructions</label><textarea id="olInstructions" rows="4" placeholder="Instructions students will see..."></textarea></div>
+                <div class="ol-full" style="display:flex;gap:16px;flex-wrap:wrap">
+                    <label><input id="olAllowUpload" type="checkbox" checked> Allow document upload</label>
+                    <label><input id="olAllowResubmit" type="checkbox"> Allow resubmission</label>
+                </div>
+
+                <div class="ol-full" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                    <h4 style="margin:0">Questions</h4>
+                    <button type="button" class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.addQuestionEditor()"><i class="fas fa-plus"></i> Add Question</button>
+                </div>
+                <div id="olQuestions" class="ol-full"></div>
+
+                <div class="ol-full" style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e5e7eb;padding-top:16px">
+                    <button type="button" class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olAssignmentModal')">Cancel</button>
+                    <button type="submit" class="ol-btn ol-primary"><i class="fas fa-save"></i> Save Draft</button>
+                    <button type="button" class="ol-btn ol-success" onclick="window.LecturerOnlineLearning.saveAndPublish()"><i class="fas fa-paper-plane"></i> Save & Publish</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     MARKING KEY MANAGER MODAL
+     ============================================================ -->
+<div id="olMarkingKeyModal" class="ol-modal" onclick="if(event.target===this)LecturerOnlineLearning.closeModal('olMarkingKeyModal')">
+    <div class="ol-modal-box">
+        <div class="ol-modal-head">
+            <div>
+                <h3 style="margin:0">Marking Key Manager</h3>
+                <p style="margin:4px 0 0;color:#64748b;font-size:12px">Create, validate and version institutional rubrics.</p>
+            </div>
+            <button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olMarkingKeyModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ol-modal-body">
+            <div class="ol-key-editor">
+                <div class="ol-key-list" id="olMarkingKeyList">
+                    <div class="ol-empty" style="padding:30px 10px">Loading marking keys...</div>
+                </div>
+                <div class="ol-criteria-editor">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+                        <div>
+                            <h3 id="olKeyEditorTitle" style="margin:0">Select a marking key</h3>
+                            <p id="olKeyEditorMeta" style="margin:4px 0;color:#64748b;font-size:12px">No key selected.</p>
+                        </div>
+                        <div class="ol-action-group">
+                            <button class="ol-btn ol-muted" onclick="if(window.LecturerOnlineLearning.duplicateMarkingKey) window.LecturerOnlineLearning.duplicateMarkingKey()"><i class="fas fa-copy"></i> New Version</button>
+                            <button class="ol-btn ol-success" onclick="if(window.LecturerOnlineLearning.validateMarkingKey) window.LecturerOnlineLearning.validateMarkingKey()"><i class="fas fa-shield-check"></i> Validate</button>
+                        </div>
+                    </div>
+                    <div id="olKeyValidationSummary" class="ol-validation warn">
+                        <i class="fas fa-circle-info"></i>
+                        <div>Select a key to view its validation status.</div>
+                    </div>
+                    <div id="olCriteriaEditorBody">
+                        <div class="ol-empty">Choose a marking key from the left.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     SUBMISSION / GRADING WORKSPACE — REFINED
+     ============================================================ -->
+<style>
+    /* Refined grading workspace */
+    #olSubmissionModal .ol-modal-box {
+        width:min(1540px, 98vw) !important;
+        max-height:96vh;
+        border-radius:18px;
+        overflow:hidden;
+    }
+    #olSubmissionModal .ol-modal-head {
+        padding:18px 22px;
+        background:linear-gradient(135deg,#ffffff 0%,#f8fafc 100%);
+        border-bottom:1px solid #e5e7eb;
+    }
+    #olSubmissionModal .ol-modal-body { padding:18px; background:#f8fafc; }
+    .ol-grade-header {
+        display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;
+        padding:15px 16px; margin-bottom:14px; background:#fff; border:1px solid #e2e8f0;
+        border-radius:14px; box-shadow:0 2px 8px rgba(15,23,42,.04);
+    }
+    .ol-grade-key-info { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .ol-secure-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#ecfdf5; color:#047857; font-size:11px; font-weight:800; }
+    .ol-grade-key-title { font-size:14px; font-weight:850; color:#0f172a; }
+    .ol-grade-key-meta { font-size:11px; color:#64748b; margin-top:2px; }
+    .ol-grade-key-selects { display:flex; gap:8px; align-items:end; flex-wrap:wrap; }
+    .ol-grade-key-selects > div { min-width:190px; }
+    .ol-grade-key-selects label { display:block; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px; }
+    .ol-grade-key-selects select { width:100%; box-sizing:border-box; padding:9px 10px; border:1px solid #dbe1ea; border-radius:9px; background:#fff; font-size:12px; }
+    .ol-grade-max { min-width:90px; padding:9px 12px; border-radius:9px; background:#f1f5f9; font-size:13px; font-weight:900; color:#0f172a; }
+    .ol-grading-layout { display:grid; grid-template-columns:300px minmax(0,1fr); gap:14px; align-items:start; }
+    .ol-rubric-sidebar { min-width:0; background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; position:sticky; top:0; max-height:calc(96vh - 180px); }
+    .ol-rubric-sidebar .ol-panel-head { padding:13px 14px; background:#f8fafc; border-bottom:1px solid #e5e7eb; }
+    .ol-rubric-sidebar .ol-panel-body { max-height:calc(96vh - 235px); overflow:auto; padding:8px; }
+    .ol-workspace-main { min-width:0; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr); gap:14px; }
+    .ol-doc-panel, .ol-mark-panel { min-width:0; background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(15,23,42,.03); }
+    .ol-doc-panel { grid-row:span 2; }
+    .ol-doc-panel .ol-panel-head, .ol-mark-panel .ol-panel-head { padding:13px 14px; background:#fff; border-bottom:1px solid #e5e7eb; }
+    .ol-doc-panel .ol-panel-body { padding:12px; }
+    .ol-doc-preview { min-height:620px; max-height:calc(96vh - 255px); overflow:auto; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:10px; }
+    .ol-mark-panel .ol-panel-body { padding:14px; max-height:calc(96vh - 235px); overflow:auto; }
+    .ol-score-hero { padding:14px; border-radius:12px; background:linear-gradient(135deg,#f5f3ff,#eef2ff); border:1px solid #ddd6fe; margin-bottom:13px; }
+    .ol-score-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .ol-score-field { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:10px; }
+    .ol-score-field label { display:block; font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:5px; }
+    .ol-score-field input { width:100%; box-sizing:border-box; border:0; outline:0; background:transparent; font-size:21px; font-weight:900; color:#0f172a; }
+    .ol-evidence-item { padding:10px 11px; border:1px solid #e2e8f0; border-radius:9px; margin-bottom:7px; background:#f8fafc; font-size:12px; line-height:1.45; }
+    .ol-evidence-item i { color:#059669; margin-right:5px; }
+    .ol-final-bar { margin-top:14px; background:#0f172a; color:#fff; border-radius:14px; padding:15px 16px; }
+    .ol-final-bar .ol-final-number { font-size:29px; font-weight:950; line-height:1; }
+    .ol-final-bar small { color:#cbd5e1; font-size:12px; }
+    .ol-final-meta { display:flex; gap:18px; flex-wrap:wrap; margin-top:6px; color:#cbd5e1; font-size:11px; }
+    .ol-grade-actions { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.12); }
+    .ol-grade-actions .ol-action-group { display:flex; gap:8px; flex-wrap:wrap; }
+    @media (max-width:1100px) {
+        .ol-workspace-main { grid-template-columns:1fr; }
+        .ol-doc-panel { grid-row:auto; }
+        .ol-doc-preview { min-height:420px; max-height:55vh; }
+        .ol-mark-panel .ol-panel-body { max-height:none; }
+    }
+    @media (max-width:760px) {
+        #olSubmissionModal .ol-modal-body { padding:10px; }
+        .ol-grading-layout { grid-template-columns:1fr; }
+        .ol-rubric-sidebar { position:relative; max-height:280px; }
+        .ol-rubric-sidebar .ol-panel-body { max-height:220px; }
+        .ol-grade-key-selects > div { min-width:145px; flex:1; }
+        .ol-score-grid { grid-template-columns:1fr; }
+    }
+</style>
+
+<div id="olSubmissionModal" class="ol-modal" onclick="if(event.target===this)LecturerOnlineLearning.closeModal('olSubmissionModal')">
+    <div class="ol-modal-box">
+        <div class="ol-modal-head">
+            <div style="min-width:0">
+                <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                    <h3 style="margin:0;font-size:18px"><i class="fas fa-file-signature" style="color:#4c1d95;margin-right:7px"></i>Grade Submission</h3>
+                    <span id="olGradingStatusBadge" class="ol-badge ol-review">DRAFT</span>
+                </div>
+                <div id="olGradingStudentMeta" style="margin-top:5px;color:#64748b;font-size:12px">Student submission</div>
+            </div>
+            <button class="ol-btn ol-muted" onclick="window.LecturerOnlineLearning.closeModal('olSubmissionModal')" aria-label="Close grading workspace"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="ol-modal-body" id="olSubmissionBody">
+            <!-- VERIFIED KEY HEADER -->
+            <div class="ol-grade-header">
+                <div class="ol-grade-key-info">
+                    <span class="ol-secure-badge"><i class="fas fa-shield-check"></i> Deterministic Rubric</span>
+                    <div>
+                        <div class="ol-grade-key-title" id="olGradeKeyTitle">Marking key not selected</div>
+                        <div class="ol-grade-key-meta" id="olGradeKeyMeta">Select the institutional marking key assigned to this assessment.</div>
+                    </div>
+                </div>
+                <div class="ol-grade-key-selects">
+                    <div>
+                        <label>Marking Key</label>
+                        <select id="olGradeMarkingKey"><option value="">Select marking key</option></select>
+                    </div>
+                    <div>
+                        <label>Version</label>
+                        <select id="olGradeMarkingKeyVersion"><option value="">Select version</option></select>
+                    </div>
+                    <div>
+                        <label>Maximum</label>
+                        <div id="olGradeMaxMarks" class="ol-grade-max">—</div>
+                    </div>
+                    <button class="ol-btn ol-primary" id="olRunAutoGradeBtn" onclick="if(window.LecturerOnlineLearning.runDeterministicGrade) window.LecturerOnlineLearning.runDeterministicGrade()">
+                        <i class="fas fa-bolt"></i> Auto Grade
+                    </button>
+                </div>
+            </div>
+
+            <div class="ol-grading-layout">
+                <!-- RUBRIC NAVIGATION -->
+                <aside class="ol-rubric-sidebar">
+                    <div class="ol-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                        <strong><i class="fas fa-list-check" style="color:#4c1d95;margin-right:5px"></i> Assessment Rubric</strong>
+                        <span id="olRubricTotal" class="ol-badge ol-review">0 / 0</span>
+                    </div>
+                    <div class="ol-panel-body" id="olRubricPanel">
+                        <div class="ol-empty" style="padding:35px 10px">Select a marking key.</div>
+                    </div>
+                </aside>
+
+                <!-- DOCUMENT + MARKING -->
+                <div class="ol-workspace-main">
+                    <section class="ol-doc-panel">
+                        <div class="ol-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                            <div>
+                                <strong><i class="fas fa-file-lines" style="color:#2563eb;margin-right:5px"></i> Student Submission</strong>
+                                <div style="font-size:10px;color:#94a3b8;margin-top:2px">Review the submitted document alongside the rubric.</div>
+                            </div>
+                            <div class="ol-action-group">
+                                <button class="ol-btn ol-muted" id="olOpenDocumentBtn" onclick="if(window.LecturerOnlineLearning.openSubmissionDocument) window.LecturerOnlineLearning.openSubmissionDocument()"><i class="fas fa-external-link-alt"></i> Open</button>
+                                <button class="ol-btn ol-muted" id="olDownloadDocumentBtn" onclick="if(window.LecturerOnlineLearning.downloadSubmissionDocument) window.LecturerOnlineLearning.downloadSubmissionDocument()" aria-label="Download document"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                        <div class="ol-panel-body">
+                            <div id="olDocumentPreview" class="ol-doc-preview">
+                                <div class="ol-doc-placeholder">
+                                    <i class="fas fa-file-circle-question" style="font-size:38px;margin-bottom:12px"></i>
+                                    <div>Student document preview will appear here.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="ol-mark-panel">
+                        <div class="ol-panel-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                            <strong><i class="fas fa-clipboard-check" style="color:#059669;margin-right:5px"></i> Criterion Marking</strong>
+                            <span id="olCriterionStatus" class="ol-badge ol-review">Select criterion</span>
+                        </div>
+                        <div class="ol-panel-body">
+                            <div class="ol-score-hero">
+                                <div style="font-size:10px;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.05em">Selected Criterion</div>
+                                <div id="olSelectedCriterionTitle" style="font-size:16px;font-weight:900;margin:4px 0 11px">—</div>
+                                <div class="ol-score-grid">
+                                    <div class="ol-score-field">
+                                        <label>Automatic Mark</label>
+                                        <input id="olCriterionAutomaticMark" type="number" min="0" step="0.01" readonly>
+                                    </div>
+                                    <div class="ol-score-field">
+                                        <label>Lecturer Final</label>
+                                        <input id="olCriterionFinalMark" type="number" min="0" step="0.01">
+                                    </div>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;font-size:10px;color:#64748b;margin:10px 0 5px">
+                                    <span>Criterion progress</span><span id="olCriterionProgressText">0 / 0</span>
+                                </div>
+                                <div class="ol-progress"><span id="olCriterionProgressBar" style="width:0%"></span></div>
+                            </div>
+
+                            <div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+                                    <div style="font-size:12px;font-weight:850">Evidence found</div>
+                                    <span style="font-size:10px;color:#94a3b8">Based on the submitted document</span>
+                                </div>
+                                <div id="olEvidencePanel">
+                                    <div class="ol-empty" style="padding:25px 10px">Run automatic grading or select a criterion.</div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top:12px">
+                                <label style="font-size:11px;font-weight:850;display:block;margin-bottom:6px">Lecturer Comment</label>
+                                <textarea id="olCriterionComment" rows="3" style="width:100%;box-sizing:border-box;border:1px solid #dbe1ea;border-radius:9px;padding:10px;resize:vertical" placeholder="Explain any manual adjustment or provide feedback..."></textarea>
+                            </div>
+                            <button class="ol-btn ol-primary" style="width:100%;margin-top:10px" onclick="if(window.LecturerOnlineLearning.saveCriterionMark) window.LecturerOnlineLearning.saveCriterionMark()">
+                                <i class="fas fa-check"></i> Save Criterion Mark
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- FINAL DECISION BAR -->
+            <div class="ol-final-bar">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap">
+                    <div>
+                        <div style="font-size:10px;color:#94a3b8;font-weight:800;text-transform:uppercase;letter-spacing:.06em">Lecturer Final Grade</div>
+                        <div><span id="olFinalGradeTotal" class="ol-final-number">0.00</span> <small>/ <span id="olFinalGradeMax">100</span></small></div>
+                        <div class="ol-final-meta">
+                            <span>Automatic: <strong id="olAutomaticGradeTotal">0.00</strong> / <span id="olAutomaticGradeMax">100</span></span>
+                            <span id="olFinalGradePercentage">0.00%</span>
+                            <span id="olGradeAdjustmentNote" style="display:none"></span>
+                        </div>
+                    </div>
+                    <div class="ol-grade-actions">
+                        <div class="ol-action-group">
+                            <button class="ol-btn ol-muted" onclick="if(window.LecturerOnlineLearning.saveGradingDraft) window.LecturerOnlineLearning.saveGradingDraft()"><i class="fas fa-save"></i> Save Draft</button>
+                            <button class="ol-btn ol-outline" onclick="if(window.LecturerOnlineLearning.runDeterministicGrade) window.LecturerOnlineLearning.runDeterministicGrade()"><i class="fas fa-rotate"></i> Recalculate</button>
+                        </div>
+                        <div class="ol-action-group">
+                            <button class="ol-btn ol-warning" onclick="if(window.LecturerOnlineLearning.returnSubmission) window.LecturerOnlineLearning.returnSubmission()"><i class="fas fa-rotate-left"></i> Return for Revision</button>
+                            <button class="ol-btn ol-success" onclick="if(window.LecturerOnlineLearning.submitFinalGrade) window.LecturerOnlineLearning.submitFinalGrade()"><i class="fas fa-lock"></i> Submit Final Grade</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
 <!-- 📝 QUESTION BANK - LECTURER WITH ADMIN APPROVAL -->
 <!-- ========================================== -->
 <section id="lecturer-questions-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
