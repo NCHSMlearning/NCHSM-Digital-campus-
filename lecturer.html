@@ -4802,7 +4802,7 @@
 
             <div class="ol-grading-guide" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 12px;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;color:#1e3a8a;font-size:11px;line-height:1.5">
                 <strong><i class="fas fa-list-check"></i> How to grade:</strong>
-                <span>1. Click <b>Auto Grade</b> → 2. Review evidence criterion-by-criterion → 3. Adjust <b>Lecturer Final</b> if needed → 4. <b>Save Criterion Mark</b> → 5. <b>Save Draft</b> or <b>Save & Release + Email</b>.</span>
+                <span>1. Click <b>Auto Grade</b> → 2. Review evidence criterion-by-criterion → 3. Adjust <b>Lecturer Final</b> if needed → 4. <b>Save Criterion Mark</b> → 5. <b>Save Draft</b> or <b>Submit Final Grade</b>.</span>
             </div>
 
             <div class="ol-grading-layout">
@@ -5966,7 +5966,7 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
                     <i class="fas fa-clock" style="color: #ec4899; font-size: 18px;"></i>
                 </div>
                 <div>
-                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;">87%</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="reportEngagementRate">—</div>
                     <div style="font-size: 12px; color: #6b7280;">Engagement</div>
                 </div>
             </div>
@@ -5977,7 +5977,7 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
                     <i class="fas fa-check-circle" style="color: #06b6d4; font-size: 18px;"></i>
                 </div>
                 <div>
-                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;">92%</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="reportPassRate">—</div>
                     <div style="font-size: 12px; color: #6b7280;">Pass Rate</div>
                 </div>
             </div>
@@ -6259,13 +6259,13 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
             </div>
             <div style="background: #f8fafc; padding: 14px 18px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
                 <span style="display: block; font-size: 11px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Popular Format</span>
-                <span style="display: block; font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">PDF</span>
-                <span style="display: block; font-size: 11px; color: #94a3b8;">68% of reports</span>
+                <span style="display: block; font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="reportPopularFormat">—</span>
+                <span style="display: block; font-size: 11px; color: #94a3b8;" id="reportPopularFormatMeta">Based on loaded reports</span>
             </div>
             <div style="background: #f8fafc; padding: 14px 18px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
                 <span style="display: block; font-size: 11px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Avg. Generation Time</span>
-                <span style="display: block; font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">2.4s</span>
-                <span style="display: block; font-size: 11px; color: #94a3b8;">Fast & efficient</span>
+                <span style="display: block; font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="reportAvgGenerationTime">—</span>
+                <span style="display: block; font-size: 11px; color: #94a3b8;">Measured when timing data is available</span>
             </div>
         </div>
     </div>
@@ -7844,7 +7844,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <!-- ============================================================ -->
 <!-- ONLINE LEARNING LECTURER MODULE                              -->
 <!-- ============================================================ -->
-<script src="js/lecturer-online-learning.js?v=20260923" id="nchsmLecturerOnlineLearningScript"></script>
+<script src="lecturer-online-learning-GRADE-UI-FIXED-V10-NO-AI.js?v=20260927-v10" id="nchsmLecturerOnlineLearningScript"></script>
 <script>
 // ONLINE LEARNING BOOTSTRAP — external JS is the single source of truth.
 // Cache-busting prevents an older cached lecturer-online-learning.js from being used.
@@ -7863,6 +7863,192 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 
 <!-- Main Entry Point -->
 <script src="js/lecturer-main.js"></script>
+
+<!-- ============================================================ -->
+<!-- NCHSM REPORTS RELIABILITY BRIDGE — FINAL HTML FIX             -->
+<!-- ============================================================ -->
+<script>
+(function () {
+    'use strict';
+
+    const WAIT_LIMIT = 30;
+    let attempts = 0;
+    let bootTimer = null;
+
+    function notify(message, type) {
+        try {
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(message, type || 'info');
+                return;
+            }
+        } catch (_) {}
+        console.log('[NCHSM Reports]', message);
+    }
+
+    function setText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value == null || value === '' ? '—' : String(value);
+    }
+
+    function getReports() {
+        const mod = window.LecturerReports;
+        if (!mod) return [];
+        const rows = Array.isArray(mod.reports) ? mod.reports : [];
+        return rows.filter(Boolean);
+    }
+
+    function reportDate(row) {
+        return row?.generated_at || row?.created_at || row?.generatedAt || row?.createdAt || row?.date || null;
+    }
+
+    function labelType(value) {
+        const map = {
+            AttendanceSummary: 'Attendance',
+            CourseGradeBook: 'Grade Book',
+            EnrollmentList: 'Enrollment',
+            PerformanceAnalysis: 'Performance',
+            ClassRoster: 'Roster',
+            UnitProgress: 'Progress'
+        };
+        return map[value] || value || 'Other';
+    }
+
+    function syncReportAnalytics() {
+        const rows = getReports();
+        setText('totalReportsCount', rows.length);
+        setText('reportCountDisplay', rows.length);
+
+        const studentTypes = new Set(['EnrollmentList', 'ClassRoster']);
+        const performanceTypes = new Set(['PerformanceAnalysis', 'CourseGradeBook', 'UnitProgress']);
+        const studentCount = rows.filter(r => studentTypes.has(r.report_type || r.type)).length;
+        const performanceCount = rows.filter(r => performanceTypes.has(r.report_type || r.type)).length;
+        const units = new Set(rows.map(r => r.unit_name || r.unit || r.course_name || r.course || r.unit_id).filter(Boolean));
+
+        setText('studentReportsCount', studentCount);
+        setText('performanceReportsCount', performanceCount);
+        setText('unitReportsCount', units.size);
+
+        const typeCounts = {};
+        const unitCounts = {};
+        const formatCounts = {};
+        rows.forEach(r => {
+            const type = r.report_type || r.type;
+            const unit = r.unit_name || r.unit || r.course_name || r.course;
+            const format = r.format || r.output_format;
+            if (type) typeCounts[type] = (typeCounts[type] || 0) + 1;
+            if (unit) unitCounts[unit] = (unitCounts[unit] || 0) + 1;
+            if (format) formatCounts[String(format).toUpperCase()] = (formatCounts[String(format).toUpperCase()] || 0) + 1;
+        });
+
+        const top = obj => Object.entries(obj).sort((a,b) => b[1]-a[1])[0];
+        const topType = top(typeCounts);
+        const topUnit = top(unitCounts);
+        const topFormat = top(formatCounts);
+
+        setText('mostGeneratedType', topType ? labelType(topType[0]) : '—');
+        setText('mostActiveUnit', topUnit ? topUnit[0] : '—');
+        setText('reportPopularFormat', topFormat ? topFormat[0] : '—');
+        setText('reportPopularFormatMeta', topFormat ? `${topFormat[1]} of ${rows.length} loaded report${rows.length === 1 ? '' : 's'}` : 'Based on loaded reports');
+
+        // These must never be fabricated. If the reports module exposes aggregate values,
+        // use them; otherwise leave them as an em dash rather than showing fake 87%/92% values.
+        const mod = window.LecturerReports || {};
+        const engagement = mod.engagementRate ?? mod.analytics?.engagementRate ?? mod.stats?.engagementRate;
+        const passRate = mod.passRate ?? mod.analytics?.passRate ?? mod.stats?.passRate;
+        setText('reportEngagementRate', engagement != null ? `${Number(engagement).toFixed(0)}%` : '—');
+        setText('reportPassRate', passRate != null ? `${Number(passRate).toFixed(0)}%` : '—');
+
+        const times = rows.map(r => Number(r.generation_time_ms ?? r.generationTimeMs ?? r.generation_time)).filter(Number.isFinite).filter(v => v >= 0);
+        if (times.length) {
+            const avg = times.reduce((a,b) => a+b, 0) / times.length;
+            setText('reportAvgGenerationTime', avg >= 1000 ? `${(avg/1000).toFixed(1)}s` : `${Math.round(avg)}ms`);
+        } else {
+            setText('reportAvgGenerationTime', '—');
+        }
+    }
+
+    function safeCall(name, ...args) {
+        const mod = window.LecturerReports;
+        if (!mod || typeof mod[name] !== 'function') {
+            notify(`Reports service is still loading. Please try again in a moment.`, 'warning');
+            return false;
+        }
+        try {
+            const result = mod[name](...args);
+            Promise.resolve(result).finally(syncReportAnalytics);
+            return true;
+        } catch (err) {
+            console.error(`[NCHSM Reports] ${name} failed`, err);
+            notify(`Could not complete the report action: ${err.message || 'Unknown error'}`, 'error');
+            return false;
+        }
+    }
+
+    function bootReports() {
+        const mod = window.LecturerReports;
+        const dbReady = !!(window.lecturerDB?.supabase || window.supabaseClient || window._supabase || window.supabase);
+
+        if (!mod || !dbReady) {
+            attempts++;
+            if (attempts < WAIT_LIMIT) bootTimer = setTimeout(bootReports, 500);
+            else console.warn('[NCHSM Reports] Timed out waiting for lecturer reports/database module.');
+            return;
+        }
+
+        // The legacy reports module can initialize before lecturer-main finishes
+        // resolving the authenticated lecturer. Re-run it after the database is ready.
+        try {
+            if (typeof mod.init === 'function') {
+                Promise.resolve(mod.init()).then(function () {
+                    syncReportAnalytics();
+                }).catch(function (err) {
+                    console.warn('[NCHSM Reports] Late init warning:', err);
+                });
+            }
+        } catch (err) {
+            console.warn('[NCHSM Reports] Late init failed:', err);
+        }
+
+        syncReportAnalytics();
+        clearTimeout(bootTimer);
+    }
+
+    // Keep existing module functionality but add safe late initialization.
+    window.NCHSMReports = {
+        refresh: () => safeCall('refresh'),
+        generate: () => safeCall('generateReport', window.event),
+        preview: () => safeCall('previewReport'),
+        pdf: () => safeCall('exportToPDF')
+    };
+
+    // Re-sync whenever the Reports tab is opened.
+    const oldShowTab = window.showTab;
+    if (typeof oldShowTab === 'function' && !oldShowTab.__nchsmReportsWrapped) {
+        window.showTab = function (tabId) {
+            const result = oldShowTab.apply(this, arguments);
+            if (tabId === 'reports') {
+                setTimeout(bootReports, 50);
+                setTimeout(syncReportAnalytics, 400);
+            }
+            return result;
+        };
+        window.showTab.__nchsmReportsWrapped = true;
+    }
+
+    // Catch direct changes from the reports module without replacing its renderer.
+    setInterval(function () {
+        if (document.getElementById('reports-content')?.style.display !== 'none') {
+            syncReportAnalytics();
+        }
+    }, 1500);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(bootReports, 800); }, { once: true });
+    } else {
+        setTimeout(bootReports, 800);
+    }
+})();
+</script>
 
 </body>
 </html>
