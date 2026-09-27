@@ -1624,7 +1624,7 @@ function viewStudentMarks(admissionNumber) {
         return;
     }
     
-    var marks = PUBLISHED_STATE.marks.filter(function(m) { return m.admission_number === admissionNumber; });
+    var marks = (PUBLISHED_STATE.filtered || []).filter(function(m) { return m.admission_number === admissionNumber; });
     
     if (marks.length === 0) {
         if (typeof window.showNotification === 'function') {
