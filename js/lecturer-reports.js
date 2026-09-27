@@ -182,7 +182,7 @@ const LecturerReports = {
             
             const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
-                .select('subject_name, subject_code, block, program, academic_year')
+                .select('id, subject_name, subject_code, block, program, academic_year')
                 .eq('lecturer_id', lecturerId)
                 .eq('program', program);
             
@@ -377,58 +377,11 @@ const LecturerReports = {
     },
     
     getMockReports() {
-        const isTVET = this.isTVETProgram();
-        const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
-        
-        if (isTVET) {
-            return [
-                {
-                    id: 'mock-1',
-                    title: 'Perioperative Technology - Attendance Summary',
-                    type: 'AttendanceSummary',
-                    department: 'TVET Department',
-                    status: 'completed',
-                    file_url: '#',
-                    file_name: 'attendance_report.pdf',
-                    unit_id: 'unit-1',
-                    unit_name: 'Perioperative Theatre Technology',
-                    created_at: new Date().toISOString(),
-                    program_type: '🔧 TVET'
-                }
-            ];
-        } else {
-            return [
-                {
-                    id: 'mock-1',
-                    title: 'Maternal Health - Attendance Summary',
-                    type: 'AttendanceSummary',
-                    department: 'Nursing',
-                    status: 'completed',
-                    file_url: '#',
-                    file_name: 'attendance_report.pdf',
-                    unit_id: 'unit-1',
-                    unit_name: 'Maternal Health',
-                    created_at: new Date().toISOString(),
-                    program_type: '🎓 Nursing'
-                },
-                {
-                    id: 'mock-2',
-                    title: 'Clinical Skills - Grade Book',
-                    type: 'CourseGradeBook',
-                    department: 'Nursing',
-                    status: 'pending',
-                    file_url: '#',
-                    file_name: 'grade_book.xlsx',
-                    unit_id: 'unit-2',
-                    unit_name: 'Clinical Skills',
-                    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-                    program_type: '🎓 Nursing'
-                }
-            ];
-        }
+        // Reports must always reflect real institutional data.
+        // Do not create fake/demo reports when Supabase is unavailable.
+        return [];
     },
-    
+
     // ─── RENDER REPORTS TABLE ───
     renderReports(reports) {
         const tbody = document.getElementById('reportsTable');
@@ -520,7 +473,7 @@ const LecturerReports = {
                     </td>
                     <td style="padding: 14px 18px;">
                         <span style="font-size: 12px; color: #475569;">
-                            <i class="fas fa-chart-bar"></i> ${Math.floor(Math.random() * 20 + 80)}%
+                            <i class="fas fa-chart-bar"></i> ${report.metric_value != null ? this.escapeHtml(String(report.metric_value)) + '%' : '-'}
                         </span>
                     </td>
                     <td style="padding: 14px 18px;">
@@ -654,7 +607,12 @@ const LecturerReports = {
                 created_at: new Date().toISOString(),
                 format: format,
                 program_type: typeLabel,
-                is_tvet: this.isTVET
+                is_tvet: this.isTVET,
+                report_data: reportData,
+                metric_value: reportType === 'PerformanceAnalysis' ? reportData.averageScore :
+                    reportType === 'AttendanceSummary' ? reportData.attendance :
+                    reportType === 'EnrollmentList' || reportType === 'ClassRoster' ? reportData.totalStudents :
+                    reportType === 'CourseGradeBook' ? reportData.passRate : null
             };
             
             const supabase = window.lecturerDB?.supabase;
@@ -718,7 +676,12 @@ const LecturerReports = {
                 type: reportType,
                 unit_name: unitName,
                 created_at: new Date().toISOString(),
-                is_tvet: this.isTVET
+                is_tvet: this.isTVET,
+                report_data: reportData,
+                metric_value: reportType === 'PerformanceAnalysis' ? reportData.averageScore :
+                    reportType === 'AttendanceSummary' ? reportData.attendance :
+                    reportType === 'EnrollmentList' || reportType === 'ClassRoster' ? reportData.totalStudents :
+                    reportType === 'CourseGradeBook' ? reportData.passRate : null
             };
         }
         
@@ -753,7 +716,8 @@ const LecturerReports = {
         const emoji = this.getProgramEmoji();
         const threshold = this.getPassingThreshold();
         const gradingDisplay = this.getGradingDisplay();
-        const sampleData = this.getSampleReportData(reportType);
+        const liveData = reportData?.report_data || reportData?.data || null;
+        const sampleData = liveData || { totalStudents: 0, averageScore: null, passRate: null, attendance: null, students: [] };
         const profile = window.lecturerDB?.getCurrentUserProfile();
         
         return `
@@ -771,7 +735,7 @@ const LecturerReports = {
                     <div style="text-align: right; color: #94a3b8; font-size: 13px;">
                         <span style="display: block; margin: 2px 0;"><i class="fas fa-calendar"></i> Generated: ${new Date().toLocaleString()}</span>
                         <span style="display: block; margin: 2px 0;"><i class="fas fa-user"></i> Lecturer: ${profile?.full_name || 'N/A'}</span>
-                        <span style="display: block; margin: 2px 0;"><i class="fas fa-tag"></i> Report ID: ${reportData?.id?.slice(-8) || 'N/A'}</span>
+                        <span style="display: block; margin: 2px 0;"><i class="fas fa-tag"></i> Report ID: ${reportData?.id?.slice(-8) || 'N/A'}<br><span style="font-size:10px;">${reportData?.report_data?.source || 'Preview only'}</span></span>
                     </div>
                 </div>
                 
@@ -793,16 +757,16 @@ const LecturerReports = {
                     </div>
                     <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
                         <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Average Score</span>
-                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${sampleData.averageScore}%</span>
+                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${this.formatMetric(sampleData.averageScore, '%')}</span>
                     </div>
                     <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
                         <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Pass Rate</span>
-                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${sampleData.passRate}%</span>
+                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${this.formatMetric(sampleData.passRate, '%')}</span>
                         <div style="font-size: 9px; color: #94a3b8;">Passing: ≥${threshold}%</div>
                     </div>
                     <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
                         <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Attendance</span>
-                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${sampleData.attendance}%</span>
+                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${this.formatMetric(sampleData.attendance, '%')}</span>
                     </div>
                 </div>
                 
@@ -820,8 +784,8 @@ const LecturerReports = {
                             </tr>
                         </thead>
                         <tbody>
-                            ${sampleData.students.map((student, index) => {
-                                const gradeInfo = this.getGrade(student.grade);
+                            ${(sampleData.students.length ? sampleData.students : [{name:'No live student data available',reg:'',grade:null,attendance:null,status:'Pending'}]).map((student, index) => {
+                                const gradeInfo = Number.isFinite(Number(student.grade)) ? this.getGrade(Number(student.grade)) : { grade: '-', points: 0, remarks: 'Pending', color: '#64748b' };
                                 return `
                                     <tr>
                                         <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${index + 1}</td>
@@ -854,36 +818,152 @@ const LecturerReports = {
         `;
     },
     
-    getSampleReportData(reportType) {
-        const threshold = this.getPassingThreshold();
-        const isTVET = this.isTVETProgram();
-        
-        const students = [
-            { name: 'John Mwangi', reg: 'NUR-2024-001', grade: 85, attendance: 95, status: 'Pass' },
-            { name: 'Mary Wanjiru', reg: 'NUR-2024-002', grade: 92, attendance: 98, status: 'Pass' },
-            { name: 'Peter Ochieng', reg: 'NUR-2024-003', grade: 78, attendance: 82, status: 'Pass' },
-            { name: 'Sarah Akinyi', reg: 'NUR-2024-004', grade: 65, attendance: 70, status: 'Pass' },
-            { name: 'David Otieno', reg: 'NUR-2024-005', grade: 55, attendance: 60, status: isTVET ? 'Pass' : 'Fail' },
-            { name: 'Grace Muthoni', reg: 'NUR-2024-006', grade: 88, attendance: 92, status: 'Pass' },
-            { name: 'Michael Kiprop', reg: 'NUR-2024-007', grade: 73, attendance: 78, status: 'Pass' },
-            { name: 'Faith Chepkorir', reg: 'NUR-2024-008', grade: 45, attendance: 50, status: 'Fail' }
-        ];
-        
-        const scores = students.map(s => s.grade);
-        const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-        const passCount = students.filter(s => s.status === 'Pass').length;
-        const passRate = Math.round((passCount / students.length) * 100);
-        const avgAttendance = Math.round(students.reduce((a, b) => a + b.attendance, 0) / students.length);
-        
+    async getReportData(unitId, reportType) {
+        const supabase = window.lecturerDB?.supabase;
+        const unit = this.assignedUnits.find(u => String(u.id) === String(unitId));
+        if (!supabase || !unit) {
+            return { totalStudents: 0, averageScore: null, passRate: null, attendance: null, students: [], source: 'No live data source' };
+        }
+
+        const program = unit.program || this.currentProgram || 'KRCHN';
+        const block = unit.block;
+        const unitName = unit.name || unit.code || 'Selected Unit';
+
+        // Resolve students registered for the selected unit.
+        let registrations = [];
+        try {
+            let q = supabase
+                .from('student_unit_registrations')
+                .select('student_id, unit_name, block, program, status')
+                .eq('program', program)
+                .eq('unit_name', unitName)
+                .eq('status', 'approved');
+            if (block) q = q.eq('block', block);
+            const res = await q;
+            if (!res.error && Array.isArray(res.data)) registrations = res.data;
+        } catch (err) {
+            console.warn('Registration data unavailable:', err);
+        }
+
+        const studentIds = [...new Set(registrations.map(r => r.student_id).filter(Boolean))];
+
+        // Resolve profile data without assuming one exact profile schema.
+        const studentsById = {};
+        if (studentIds.length) {
+            try {
+                const res = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .in('id', studentIds);
+                if (!res.error && Array.isArray(res.data)) {
+                    res.data.forEach(st => {
+                        const id = st.id || st.user_id || st.student_id;
+                        if (id) studentsById[id] = st;
+                    });
+                }
+            } catch (err) {
+                console.warn('Student profile lookup unavailable:', err);
+            }
+        }
+
+        // Grade/attendance tables differ across portal versions. Read only when the
+        // table exists and gracefully continue if RLS/schema does not expose it.
+        let gradeRows = [];
+        let attendanceRows = [];
+
+        const gradeTables = ['online_submissions', 'grades', 'student_grades'];
+        for (const table of gradeTables) {
+            if (!studentIds.length) break;
+            try {
+                let q = supabase.from(table).select('*').in('student_id', studentIds);
+                const res = await q;
+                if (!res.error && Array.isArray(res.data) && res.data.length) {
+                    gradeRows = res.data;
+                    break;
+                }
+            } catch (_) {}
+        }
+
+        const attendanceTables = ['attendance', 'student_attendance'];
+        for (const table of attendanceTables) {
+            if (!studentIds.length) break;
+            try {
+                let q = supabase.from(table).select('*').in('student_id', studentIds);
+                const res = await q;
+                if (!res.error && Array.isArray(res.data) && res.data.length) {
+                    attendanceRows = res.data;
+                    break;
+                }
+            } catch (_) {}
+        }
+
+        const findScore = (studentId) => {
+            const rows = gradeRows.filter(r => String(r.student_id || r.student_uuid || r.student) === String(studentId));
+            const vals = rows.map(r => Number(
+                r.marks_obtained ?? r.score ?? r.marks ?? r.grade ?? r.percentage
+            )).filter(Number.isFinite);
+            if (!vals.length) return null;
+            return Math.max(0, Math.min(100, vals[vals.length - 1]));
+        };
+
+        const findAttendance = (studentId) => {
+            const rows = attendanceRows.filter(r => String(r.student_id || r.student_uuid || r.student) === String(studentId));
+            if (!rows.length) return null;
+            const explicit = rows.map(r => Number(r.attendance_percentage ?? r.percentage ?? r.attendance_percent))
+                .find(Number.isFinite);
+            if (Number.isFinite(explicit)) return Math.max(0, Math.min(100, explicit));
+            const present = rows.filter(r => {
+                const v = String(r.status ?? r.attendance ?? '').toLowerCase();
+                return ['present', 'p', 'attended', 'true', '1'].includes(v) || r.present === true;
+            }).length;
+            return Math.round((present / rows.length) * 100);
+        };
+
+        const students = studentIds.map((id, index) => {
+            const st = studentsById[id] || {};
+            const score = findScore(id);
+            const attendance = findAttendance(id);
+            const name = st.full_name || st.name || st.student_name || st.display_name || `Student ${index + 1}`;
+            const reg = st.admission_number || st.student_id || st.registration_number || st.reg_no || id;
+            return {
+                name: this.escapeHtml(String(name)),
+                reg: this.escapeHtml(String(reg)),
+                grade: score,
+                attendance,
+                status: score == null ? 'Pending' : (score >= this.getPassingThreshold() ? 'Pass' : 'Fail')
+            };
+        });
+
+        const scoreValues = students.map(s => s.grade).filter(Number.isFinite);
+        const attendanceValues = students.map(s => s.attendance).filter(Number.isFinite);
+        const avgScore = scoreValues.length
+            ? Math.round((scoreValues.reduce((a,b) => a+b, 0) / scoreValues.length) * 10) / 10
+            : null;
+        const passRate = scoreValues.length
+            ? Math.round((scoreValues.filter(v => v >= this.getPassingThreshold()).length / scoreValues.length) * 1000) / 10
+            : null;
+        const avgAttendance = attendanceValues.length
+            ? Math.round((attendanceValues.reduce((a,b) => a+b, 0) / attendanceValues.length) * 10) / 10
+            : null;
+
         return {
             totalStudents: students.length,
             averageScore: avgScore,
-            passRate: passRate,
+            passRate,
             attendance: avgAttendance,
-            students: students
+            students,
+            source: 'Live Supabase data',
+            program,
+            block,
+            unitName,
+            reportType
         };
     },
-    
+
+    formatMetric(value, suffix = '') {
+        return value == null || value === '' ? '-' : `${value}${suffix}`;
+    },
+
     // ─── UTILITY METHODS ───
     getUnitName(unitId) {
         if (!unitId) return null;
@@ -941,8 +1021,39 @@ const LecturerReports = {
     },
     
     setupEventListeners() {
-        // Form submit is handled inline with onsubmit
-        // Search, filter, date changes are handled inline with onkeyup/onchange
+        const search = document.getElementById('reportSearch');
+        const type = document.getElementById('reportTypeFilter');
+        const unit = document.getElementById('reportUnitFilter');
+        const date = document.getElementById('reportDateFilter');
+
+        if (search && !search.dataset.reportsBound) {
+            search.dataset.reportsBound = '1';
+            search.addEventListener('input', e => {
+                this.currentFilters.search = e.target.value.trim();
+                this.renderReports(this.reports);
+            });
+        }
+        if (type && !type.dataset.reportsBound) {
+            type.dataset.reportsBound = '1';
+            type.addEventListener('change', e => {
+                this.currentFilters.type = e.target.value || 'all';
+                this.renderReports(this.reports);
+            });
+        }
+        if (unit && !unit.dataset.reportsBound) {
+            unit.dataset.reportsBound = '1';
+            unit.addEventListener('change', e => {
+                this.currentFilters.unit = e.target.value || 'all';
+                this.renderReports(this.reports);
+            });
+        }
+        if (date && !date.dataset.reportsBound) {
+            date.dataset.reportsBound = '1';
+            date.addEventListener('change', e => {
+                this.currentFilters.date = e.target.value || 'all';
+                this.renderReports(this.reports);
+            });
+        }
     },
     
     formatType(type) {
@@ -1185,7 +1296,11 @@ const LecturerReports = {
             r.program_type || typeLabel
         ]);
         
-        const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const csvEscape = value => {
+            const v = String(value ?? '');
+            return /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+        };
+        const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\n');
         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1295,7 +1410,20 @@ const LecturerReports = {
         const recipients = document.getElementById('scheduleRecipients')?.value || '';
         const typeLabel = this.getProgramTypeLabel();
         
-        this.showNotification(`✅ ${typeLabel} report scheduled ${frequency} starting ${startDate}`, 'success');
+        const schedule = {
+            id: `schedule-${Date.now()}`,
+            unit_id: document.getElementById('reportUnit')?.value || null,
+            report_type: document.getElementById('reportType')?.value || null,
+            frequency,
+            start_date: startDate,
+            recipients: recipients.split(',').map(v => v.trim()).filter(Boolean),
+            program_type: this.currentProgram,
+            created_at: new Date().toISOString()
+        };
+        const existing = JSON.parse(localStorage.getItem('nchsm_report_schedules') || '[]');
+        existing.push(schedule);
+        localStorage.setItem('nchsm_report_schedules', JSON.stringify(existing));
+        this.showNotification(`✅ ${typeLabel} report schedule saved on this device.`, 'success');
         
         const modal = document.getElementById('scheduleModal');
         if (modal) modal.remove();
