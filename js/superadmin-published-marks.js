@@ -1624,11 +1624,14 @@ function viewStudentMarks(admissionNumber) {
         return;
     }
     
-    var marks = (PUBLISHED_STATE.filtered || []).filter(function(m) { return m.admission_number === admissionNumber; });
+    // ✅ FIX: Respect current filters — use PUBLISHED_STATE.filtered, not .marks
+    var marks = (PUBLISHED_STATE.filtered || []).filter(function(m) {
+        return m.admission_number === admissionNumber;
+    });
     
     if (marks.length === 0) {
         if (typeof window.showNotification === 'function') {
-            window.showNotification('No marks found for this student', 'warning');
+            window.showNotification('No marks match the current filter for this student', 'warning');
         }
         return;
     }
@@ -1698,12 +1701,20 @@ function viewStudentMarks(admissionNumber) {
     var failedUnits = 0;
     var pendingUnits = 0;
     for (var j = 0; j < marks.length; j++) {
-        var m = marks[j];
-        if (m.final_score >= threshold) passedUnits++;
-        else if (m.final_score > 0 && m.final_score < threshold) failedUnits++;
+        var mm = marks[j];
+        if (mm.final_score >= threshold) passedUnits++;
+        else if (mm.final_score > 0 && mm.final_score < threshold) failedUnits++;
         else pendingUnits++;
     }
     var gpa = calculateGPA(marks);
+    
+    var filterNote = '';
+    var fYear = document.getElementById('pm_academic_year')?.value;
+    var fBlock = document.getElementById('pm_block_filter')?.value;
+    var fProg = document.getElementById('pm_program_filter')?.value;
+    if ((fYear && fYear !== 'all') || (fBlock && fBlock !== 'all') || (fProg && fProg !== 'all')) {
+        filterNote = '<span style="margin-left: 8px; background: #dbeafe; color: #1e40af; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 600;">🔍 Filtered View</span>';
+    }
     
     var modalHtml = 
         '<div id="studentMarksModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px);">' +
@@ -1713,6 +1724,7 @@ function viewStudentMarks(admissionNumber) {
                     '<div>' +
                         '<h3 style="margin: 0; color: #0A3D62; font-size: 20px;">' +
                             '<i class="fas fa-user-graduate"></i> ' + escapeHtml(firstMark.student_name || 'Student') +
+                            filterNote +
                             (studentHasRetake ? '<span style="display: inline-block; margin-left: 8px; background: #f59e0b; color: white; font-size: 10px; padding: 2px 12px; border-radius: 12px; font-weight: 700;">⭐ R' + totalStudentRetakes + '</span>' : '') +
                         '</h3>' +
                         '<p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">' +
@@ -1780,13 +1792,13 @@ function viewStudentMarks(admissionNumber) {
                                 'style="background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;" ' +
                                 'onmouseover="this.style.background=\'#059669\'" ' +
                                 'onmouseout="this.style.background=\'#10b981\'">' +
-                            '<i class="fas fa-check-double"></i> Publish All Units' +
+                            '<i class="fas fa-check-double"></i> Publish ' + (filterNote ? 'Filtered' : 'All') + ' Units' +
                         '</button>' +
                         '<button onclick="unpublishStudentAllMarks(\'' + escapeHtml(admissionNumber) + '\'); closeStudentMarksModal();" ' +
                                 'style="background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;" ' +
                                 'onmouseover="this.style.background=\'#b91c1c\'" ' +
                                 'onmouseout="this.style.background=\'#dc2626\'">' +
-                            '<i class="fas fa-lock"></i> Unpublish All Units' +
+                            '<i class="fas fa-lock"></i> Unpublish ' + (filterNote ? 'Filtered' : 'All') + ' Units' +
                         '</button>' +
                     '</div>' +
                     '<button onclick="closeStudentMarksModal()" ' +
@@ -1807,12 +1819,9 @@ function viewStudentMarks(admissionNumber) {
     document.body.appendChild(modalContainer.firstElementChild);
     
     document.getElementById('studentMarksModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeStudentMarksModal();
-        }
+        if (e.target === this) closeStudentMarksModal();
     });
 }
-
 function closeStudentMarksModal() {
     var modal = document.getElementById('studentMarksModal');
     if (modal) modal.remove();
@@ -1961,11 +1970,28 @@ async function publishStudentAllMarks(admissionNumber) {
         return;
     }
     
-    // Check if student has any retakes
-    const { data: retakes, error: retakeError } = await window.sb
+    // ✅ FIX: Only operate on marks currently visible (filtered)
+    var visibleMarkIds = (PUBLISHED_STATE.filtered || [])
+        .filter(function(m) { return m.admission_number === admissionNumber; })
+        .map(function(m) { return m.id; });
+    
+    if (visibleMarkIds.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No visible marks to publish for this student', 'warning');
+        }
+        return;
+    }
+    
+    // Retake warning
+    const { data: retakes } = await window.sb
         .from('student_retakes')
         .select('subject_name, attempt_number, exam_score')
-        .eq('admission_number', admissionNumber);
+        .eq('admission_number', admissionNumber)
+        .in('subject_name',
+            (PUBLISHED_STATE.filtered || [])
+                .filter(function(m) { return m.admission_number === admissionNumber; })
+                .map(function(m) { return m.subject_name; })
+        );
     
     let retakeMessage = '';
     if (retakes && retakes.length > 0) {
@@ -1975,7 +2001,10 @@ async function publishStudentAllMarks(admissionNumber) {
         retakeMessage = `\n\n⚠️ STUDENT HAS RETAKE RECORDS:\n${retakeList}\n\nPublishing will make these retake scores visible.`;
     }
     
-    if (!confirm('⚠️ Publish ALL marks for student ' + admissionNumber + '?' + retakeMessage)) return;
+    var isFiltered = visibleMarkIds.length < PUBLISHED_STATE.marks.filter(function(m) { return m.admission_number === admissionNumber; }).length;
+    var scopeNote = isFiltered ? ' (FILTERED — ' + visibleMarkIds.length + ' units only)' : '';
+    
+    if (!confirm('⚠️ Publish ' + (isFiltered ? 'FILTERED' : 'ALL') + ' marks for student ' + admissionNumber + scopeNote + '?' + retakeMessage)) return;
     
     try {
         if (typeof window.showLoading === 'function') window.showLoading('Publishing marks...');
@@ -1987,7 +2016,7 @@ async function publishStudentAllMarks(admissionNumber) {
                 published_at: new Date().toISOString(),
                 published_by: window.currentUser?.id || null
             })
-            .eq('admission_number', admissionNumber)
+            .in('id', visibleMarkIds)
             .select();
         
         if (result.error) throw result.error;
@@ -2012,13 +2041,8 @@ async function publishStudentAllMarks(admissionNumber) {
                 if (profileResult.data && profileResult.data.email) {
                     await sendMarksPublishedEmail(
                         profileResult.data.email,
-                        studentName,
-                        program,
-                        block,
-                        count,
-                        academicYear
+                        studentName, program, block, count, academicYear
                     );
-                    console.log('✅ Email notification sent to ' + profileResult.data.email);
                 }
             } catch (emailError) {
                 console.error('❌ Error sending email:', emailError);
@@ -2026,8 +2050,7 @@ async function publishStudentAllMarks(admissionNumber) {
         }
         
         if (typeof window.showNotification === 'function') {
-            const retakeNote = retakes && retakes.length > 0 ? ` (${retakes.length} retake unit${retakes.length > 1 ? 's' : ''})` : '';
-            window.showNotification('✅ Published ' + count + ' marks for ' + admissionNumber + retakeNote, 'success');
+            window.showNotification('✅ Published ' + count + ' marks for ' + admissionNumber + scopeNote, 'success');
         }
         
         await loadPublishedMarks();
@@ -2041,7 +2064,6 @@ async function publishStudentAllMarks(admissionNumber) {
         if (typeof window.hideLoading === 'function') window.hideLoading();
     }
 }
-
 async function unpublishStudentAllMarks(admissionNumber) {
     if (!admissionNumber) {
         if (typeof window.showNotification === 'function') {
@@ -2050,7 +2072,22 @@ async function unpublishStudentAllMarks(admissionNumber) {
         return;
     }
     
-    if (!confirm('⚠️ Unpublish ALL marks for student ' + admissionNumber + '?')) return;
+    // ✅ FIX: Only operate on marks currently visible (filtered)
+    var visibleMarkIds = (PUBLISHED_STATE.filtered || [])
+        .filter(function(m) { return m.admission_number === admissionNumber; })
+        .map(function(m) { return m.id; });
+    
+    if (visibleMarkIds.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No visible marks to unpublish for this student', 'warning');
+        }
+        return;
+    }
+    
+    var isFiltered = visibleMarkIds.length < PUBLISHED_STATE.marks.filter(function(m) { return m.admission_number === admissionNumber; }).length;
+    var scopeNote = isFiltered ? ' (FILTERED — ' + visibleMarkIds.length + ' units only)' : '';
+    
+    if (!confirm('⚠️ Unpublish ' + (isFiltered ? 'FILTERED' : 'ALL') + ' marks for student ' + admissionNumber + scopeNote + '?')) return;
     
     try {
         if (typeof window.showLoading === 'function') window.showLoading('Unpublishing marks...');
@@ -2062,7 +2099,7 @@ async function unpublishStudentAllMarks(admissionNumber) {
                 published_at: null,
                 published_by: null
             })
-            .eq('admission_number', admissionNumber)
+            .in('id', visibleMarkIds)
             .select();
         
         if (result.error) throw result.error;
@@ -2070,7 +2107,7 @@ async function unpublishStudentAllMarks(admissionNumber) {
         var count = result.data?.length || 0;
         
         if (typeof window.showNotification === 'function') {
-            window.showNotification('🔒 Unpublished ' + count + ' marks for ' + admissionNumber, 'info');
+            window.showNotification('🔒 Unpublished ' + count + ' marks for ' + admissionNumber + scopeNote, 'info');
         }
         
         await loadPublishedMarks();
@@ -2084,7 +2121,6 @@ async function unpublishStudentAllMarks(admissionNumber) {
         if (typeof window.hideLoading === 'function') window.hideLoading();
     }
 }
-
 // ============================================================
 // BATCH PUBLISH/UNPUBLISH
 // ============================================================
