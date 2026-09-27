@@ -2442,6 +2442,13 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
     }
 
 
+    async function viewSubmissionDocument(id){
+        try{const s=state.submissions.find(x=>x.id===id);if(!s)throw new Error('Submission not found.');await renderDocument(s);$('olDocumentViewer').style.display='flex';}
+        catch(e){console.error(e);notify('Could not open the uploaded document: '+e.message,'error');}
+    }
+    function closeDocumentViewer(){if($('olDocumentViewer'))$('olDocumentViewer').style.display='none';}
+
+
     // ============================================================
     // V15 GRADING UI COMPATIBILITY / ACTION LAYER
     // Matches the pixel-matched V17 HTML without changing the
@@ -2617,4 +2624,3 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         }
     });
 })();
-
