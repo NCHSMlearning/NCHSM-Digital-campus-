@@ -8862,5 +8862,111 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 })();
 </script>
 
+
+<!-- ============================================================
+     NCHSM TAB VISIBILITY / DISPLAY REPAIR V17
+     Prevents global CSS or late modules from hiding the active
+     dashboard/online-learning section.
+     ============================================================ -->
+<style id="nchsm-tab-display-repair-v17">
+    /* The active section must always occupy the main content area. */
+    .main > .tab-content.active,
+    .main > section.tab-content.active,
+    #dashboard-content.tab-content.active,
+    #online-learning-content.tab-content.active,
+    #profile-content.tab-content.active,
+    #my-courses-content.tab-content.active,
+    #my-students-content.tab-content.active,
+    #academic-portfolio-content.tab-content.active,
+    #sessions-content.tab-content.active,
+    #attendance-content.tab-content.active,
+    #cats-content.tab-content.active,
+    #lecturer-questions-content.tab-content.active,
+    #marks-management-content.tab-content.active,
+    #resources-content.tab-content.active,
+    #reports-content.tab-content.active,
+    #nursing-system-content.tab-content.active,
+    #messages-content.tab-content.active,
+    #calendar-content.tab-content.active,
+    #settings-content.tab-content.active {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        height: auto !important;
+        min-height: 1px !important;
+        overflow: visible;
+    }
+</style>
+<script>
+(function(){
+    'use strict';
+    function forceActiveTab(){
+        var tabs=document.querySelectorAll('.main > .tab-content, .main > section.tab-content');
+        if(!tabs.length) return;
+        var active=document.querySelector('.main > .tab-content.active, .main > section.tab-content.active');
+        if(!active){
+            active=document.getElementById('dashboard-content');
+            if(active){ active.classList.add('active'); }
+        }
+        tabs.forEach(function(tab){
+            if(tab===active){
+                tab.style.setProperty('display','block','important');
+                tab.style.setProperty('visibility','visible','important');
+                tab.style.setProperty('opacity','1','important');
+                tab.style.setProperty('height','auto','important');
+            }else{
+                tab.style.setProperty('display','none','important');
+            }
+        });
+    }
+
+    window.__NCHSMForceActiveTab=forceActiveTab;
+
+    function safeShowTab(tabId){
+        if(typeof window.showTab!=='function') return false;
+        try{
+            window.showTab(tabId);
+            setTimeout(forceActiveTab,20);
+            setTimeout(forceActiveTab,250);
+            setTimeout(forceActiveTab,800);
+            return true;
+        }catch(e){
+            console.error('[NCHSM] showTab failed:',e);
+            forceActiveTab();
+            return false;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded',function(){
+        /* Give the existing application boot sequence time to authenticate,
+           then guarantee that the active section is visible. */
+        setTimeout(forceActiveTab,50);
+        setTimeout(forceActiveTab,350);
+        setTimeout(forceActiveTab,1000);
+        setTimeout(forceActiveTab,2500);
+
+        document.querySelectorAll('#mainNav a[data-tab]').forEach(function(link){
+            link.addEventListener('click',function(){
+                var id=this.getAttribute('data-tab');
+                setTimeout(function(){safeShowTab(id);},0);
+            },true);
+        });
+    },{once:true});
+
+    /* If another module hides the active section after initialization,
+       repair it without touching the contents or grading logic. */
+    var lastActive='';
+    setInterval(function(){
+        var active=document.querySelector('.main > .tab-content.active, .main > section.tab-content.active');
+        if(active){
+            if(lastActive!==active.id || getComputedStyle(active).display==='none'){
+                lastActive=active.id;
+                forceActiveTab();
+            }
+        }
+    },500);
+})();
+</script>
+
 </body>
 </html>
