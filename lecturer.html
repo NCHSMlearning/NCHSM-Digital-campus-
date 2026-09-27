@@ -7831,7 +7831,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <script src="js/lecturer-marks.js"></script>
 <script src="js/lecturer-resources.js"></script>
 <script src="js/lecturer-messages.js"></script>
-<script src="js/lecturer-reports.js"></script>
+<script src="js/lecturer-reports.js?v=20260927-v12"></script>
 <script src="js/lecturer-calendar.js"></script>
 <script src="js/lecturer-nck.js"></script>
 
@@ -7844,7 +7844,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <!-- ============================================================ -->
 <!-- ONLINE LEARNING LECTURER MODULE                              -->
 <!-- ============================================================ -->
-<script src="lecturer-online-learning"></script>
+<script src="js/lecturer-online-learning.js?v=20260927-v12"></script>
 <script>
 // ONLINE LEARNING BOOTSTRAP — external JS is the single source of truth.
 // Cache-busting prevents an older cached lecturer-online-learning.js from being used.
@@ -7854,7 +7854,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
       window.LecturerOnlineLearning.init();
       return;
     }
-    console.error('NCHSM Online Learning: js/lecturer-online-learning.js loaded but LecturerOnlineLearning was not exposed. Check the deployed JS file/path.');
+    console.error('NCHSM Online Learning: LecturerOnlineLearning was not exposed. Check js/lecturer-online-learning.js deployment.');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(boot, 50); }, {once:true});
   else setTimeout(boot, 50);
