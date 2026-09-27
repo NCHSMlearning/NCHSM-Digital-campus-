@@ -1,1588 +1,2759 @@
-// js/lecturer-reports.js - COMPLETE WITH TVET SUPPORT
-/**
- * NCHSM Lecturer Reports Module
- * Generate and manage academic reports for assigned units and students
- * Supports both Nursing (KRCHN) and TVET programs
- */
+/* ================================================================
+   LECTURER REPORTS — MARKS-INTEGRATED MODULE
+   Version: 2026-09
+   Source of marks: student_marks
+   Student/class source: consolidated_user_profiles_table
+   Assignment source: lecturer_subject_assignments
 
-const LecturerReports = {
-    reports: [],
-    assignedUnits: [],
-    lecturerAssignmentId: null,
-    currentFilters: {
+   Designed to work with the Lecturer Marks module:
+   - full       = CAT1 + CAT2 + Exam
+   - single_cat = CAT + Exam
+   - exam_only  = Exam only
+   - cats_only  = CAT1 + CAT2
+   - cat_only   = CAT only
+
+   Nursing:
+     A 75-100 = Distinction
+     B 65-74  = Credit
+     C 60-64  = Pass
+     D 0-59   = Fail
+
+   TVET:
+     A 80-100 = MASTERY
+     B 65-79  = PROFICIENT
+     C 50-64  = COMPETENT
+     E 0-49   = NOT YET COMPETENT
+
+   IMPORTANT:
+   This module READS the existing marks. It does not create duplicate
+   marks or alter student_marks.
+================================================================ */
+
+(function () {
+    'use strict';
+
+    const LecturerReports = window.LecturerReports || {};
+
+    LecturerReports.reports = Array.isArray(LecturerReports.reports)
+        ? LecturerReports.reports
+        : [];
+
+    LecturerReports.currentFilters = LecturerReports.currentFilters || {
         search: '',
         type: 'all',
         unit: 'all',
         date: 'all'
-    },
-    isPreviewOpen: false,
-    isTVET: false,
-    currentProgram: 'KRCHN',
-    
-    // ─── PROGRAM TYPE DETECTION ───
-    getProgramType() {
+    };
+
+    LecturerReports.currentReport = null;
+    LecturerReports._cache = LecturerReports._cache || {};
+    LecturerReports._initialized = false;
+
+    /* ============================================================
+       DATABASE
+    ============================================================ */
+
+    function db() {
+        if (window.db?.supabase?.from) return window.db.supabase;
+        if (window.supabase?.from) return window.supabase;
+        if (window.sb?.from) return window.sb;
+        return null;
+    }
+
+    function esc(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function currentProgram() {
+        return window.CURRENT_PROGRAM || window.currentProgram || 'KRCHN';
+    }
+
+    function currentProgramType() {
+        if (typeof window.getProgramType === 'function') {
+            try { return window.getProgramType(); } catch (_) {}
+        }
         return window.CURRENT_PROGRAM_TYPE || 'KRCHN';
-    },
-    
-    isTVETProgram() {
-        return this.getProgramType() === 'TVET';
-    },
-    
-    getProgramTypeLabel() {
-        return this.isTVETProgram() ? '🔧 TVET' : '🎓 Nursing';
-    },
-    
-    getProgramEmoji() {
-        return this.isTVETProgram() ? '🔧' : '🎓';
-    },
-    
-    getPassingThreshold() {
-        return this.isTVETProgram() ? 50 : 60;
-    },
-    
-    getGradingDisplay() {
-        if (this.isTVETProgram()) {
-            return 'A (80-100%) = 4.0 MASTERY | B (65-79%) = 3.0 PROFICIENT | C (50-64%) = 2.0 COMPETENT | E (0-49%) = 0.0 NOT YET COMPETENT';
-        } else {
-            return 'A (75-100%) = 4.0 | B (65-74%) = 3.0 | C (60-64%) = 2.0 | D (0-59%) = 0.0';
-        }
-    },
-    
-    getGrade(score) {
-        const programType = this.getProgramType();
-        if (programType === 'TVET') {
-            if (score >= 80) return { grade: 'A', points: 4.0, remarks: 'MASTERY', color: '#065f46' };
-            if (score >= 65) return { grade: 'B', points: 3.0, remarks: 'PROFICIENT', color: '#1e40af' };
-            if (score >= 50) return { grade: 'C', points: 2.0, remarks: 'COMPETENT', color: '#92400e' };
-            return { grade: 'E', points: 0.0, remarks: 'NOT YET COMPETENT', color: '#991b1b' };
-        } else {
-            if (score >= 75) return { grade: 'A', points: 4.0, remarks: 'Distinction', color: '#065f46' };
-            if (score >= 65) return { grade: 'B', points: 3.0, remarks: 'Credit', color: '#1e40af' };
-            if (score >= 60) return { grade: 'C', points: 2.0, remarks: 'Pass', color: '#92400e' };
-            return { grade: 'D', points: 0.0, remarks: 'Fail', color: '#991b1b' };
-        }
-    },
-    
-    // ─── INITIALIZATION ───
-    async init() {
-        console.log('📊 Initializing Lecturer Reports...');
-        this.currentProgram = this.getProgramType();
-        this.isTVET = this.isTVETProgram();
-        console.log(`📚 Program Type: ${this.getProgramTypeLabel()}`);
-        
-        await this.resolveLecturerId();
-        await this.loadAssignedUnits();
-        await this.loadReports();
-        this.setupEventListeners();
-        this.updateStats();
-        this.updateAnalytics();
-        this.updateGradingInfo();
-        console.log('✅ Lecturer Reports initialized');
-    },
-    
-    // ─── UPDATE GRADING INFO ───
-    updateGradingInfo() {
-        const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
-        const threshold = this.getPassingThreshold();
-        const gradingDisplay = this.getGradingDisplay();
-        
-        // Update grading reference in reports
-        const gradingEl = document.getElementById('reportGradingInfo');
-        if (gradingEl) {
-            gradingEl.innerHTML = `
-                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 10px 16px; background: ${this.isTVET ? '#f5f3ff' : '#f0fdf4'}; border-radius: 8px; border: 1px solid ${this.isTVET ? '#ddd6fe' : '#bbf7d0'}; margin: 12px 0;">
-                    <span style="font-weight: 600; font-size: 12px; color: ${this.isTVET ? '#7c3aed' : '#065f46'};">
-                        ${emoji} ${typeLabel} Grading:
-                    </span>
-                    <span style="font-size: 11px; color: #475569;">
-                        ${gradingDisplay}
-                    </span>
-                    <span style="font-size: 10px; color: #94a3b8; margin-left: auto;">
-                        Passing: ≥${threshold}%
-                    </span>
-                </div>
-            `;
-        }
-        
-        // Update report form subtitle
-        const formSubtitle = document.querySelector('#reportGenerationForm .form-subtitle');
-        if (formSubtitle) {
-            formSubtitle.textContent = `${emoji} ${typeLabel} - Generate reports for your assigned units`;
-        }
-    },
-    
-    // ─── RESOLVE LECTURER ID ───
-    async resolveLecturerId() {
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                return;
-            }
-            
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                return;
-            }
-            
-            const fullName = profile.full_name;
-            const authId = profile.user_id;
-            
-            console.log('🔍 Auth ID:', authId);
-            console.log('🔍 Lecturer name:', fullName);
-            
-            const { data: nameData, error: nameError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .ilike('lecturer_name', `%${fullName}%`);
-            
-            if (!nameError && nameData && nameData.length > 0) {
-                const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
-                if (nonStaff) {
-                    this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Found non-STAFF ID:', this.lecturerAssignmentId);
-                    return;
-                }
-                this.lecturerAssignmentId = nameData[0].lecturer_id;
-                console.log('⚠️ Found STAFF ID:', this.lecturerAssignmentId);
-                return;
-            }
-            
-            this.lecturerAssignmentId = authId;
-            console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
-            
-        } catch (error) {
-            console.error('Error resolving lecturer ID:', error);
-            this.lecturerAssignmentId = null;
-        }
-    },
-    
-    // ─── LOAD ASSIGNED UNITS ───
-    async loadAssignedUnits() {
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                return;
-            }
-            
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                this.assignedUnits = this.getMockUnits();
-                this.populateUnitSelectors();
-                return;
-            }
-            
-            const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            const program = this.currentProgram || profile.program || 'KRCHN';
-            console.log(`🔍 Using lecturer ID for reports: ${lecturerId} (${this.getProgramTypeLabel()})`);
-            
-            const { data: assignments, error: assignError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('id, subject_name, subject_code, block, program, academic_year')
-                .eq('lecturer_id', lecturerId)
-                .eq('program', program);
-            
-            if (assignError) {
-                console.error('Error loading assignments:', assignError);
-                this.assignedUnits = this.getMockUnits();
-                this.populateUnitSelectors();
-                return;
-            }
-            
-            console.log(`📚 Found ${assignments?.length || 0} assigned units (${this.getProgramTypeLabel()})`);
-            
-            if (!assignments || assignments.length === 0) {
-                console.warn('No assignments found');
-                this.assignedUnits = [];
-                this.populateUnitSelectors();
-                return;
-            }
-            
-            const unitNames = assignments.map(a => a.subject_name);
-            const blocks = [...new Set(assignments.map(a => a.block))];
-            
-            let studentCounts = {};
-            try {
-                const { data: registrations, error: regError } = await supabase
-                    .from('student_unit_registrations')
-                    .select('unit_name, student_id, block')
-                    .eq('program', program)
-                    .eq('status', 'approved')
-                    .in('block', blocks)
-                    .in('unit_name', unitNames);
-                
-                if (!regError && registrations) {
-                    const countMap = {};
-                    registrations.forEach(reg => {
-                        const key = `${reg.unit_name}|${reg.block}`;
-                        if (!countMap[key]) {
-                            countMap[key] = new Set();
-                        }
-                        countMap[key].add(reg.student_id);
-                    });
-                    
-                    assignments.forEach(a => {
-                        const key = `${a.subject_name}|${a.block}`;
-                        studentCounts[a.subject_name] = countMap[key]?.size || 0;
-                    });
-                }
-            } catch (e) {
-                console.warn('Error getting student counts:', e);
-            }
-            
-            const typeLabel = this.getProgramTypeLabel();
-            const emoji = this.getProgramEmoji();
-            
-            this.assignedUnits = assignments.map(a => ({
-                id: a.id || `unit-${Date.now()}-${Math.random()}`,
-                name: a.subject_name || 'Unnamed Unit',
-                code: a.subject_code || 'N/A',
-                program: a.program || 'N/A',
-                block: a.block || 'N/A',
-                academic_year: a.academic_year || 'N/A',
-                student_count: studentCounts[a.subject_name] || 0,
-                program_type: typeLabel,
-                is_tvet: this.isTVET,
-                block_display: this.isTVET ? this.getTVETBlockDisplay(a.block) : a.block
-            }));
-            
-            console.log(`📚 Processed ${this.assignedUnits.length} units (${typeLabel})`);
-            this.populateUnitSelectors();
-            this.updateGradingInfo();
-            
-        } catch (error) {
-            console.error('Failed to load assigned units:', error);
-            this.assignedUnits = this.getMockUnits();
-            this.populateUnitSelectors();
-        }
-    },
-    
-    getTVETBlockDisplay(block) {
-        if (!block) return 'N/A';
-        const match = block.match(/^Y(\d)T(\d)$/);
-        if (match) {
-            const year = parseInt(match[1]);
-            const term = parseInt(match[2]);
-            const termNames = ['', 'First', 'Second', 'Third'];
-            return `Year ${year} ${termNames[term] || term} Term`;
-        }
-        return block;
-    },
-    
-    getMockUnits() {
-        const isTVET = this.isTVETProgram();
-        const typeLabel = this.getProgramTypeLabel();
-        
-        if (isTVET) {
-            return [
-                { id: 'unit-1', name: 'Perioperative Theatre Technology', code: 'PTT101', program: 'DPOTT', block: 'Y1T1', block_display: 'Year 1 Term 1', student_count: 45, is_tvet: true, program_type: '🔧 TVET' },
-                { id: 'unit-2', name: 'Community Health Practice', code: 'CHP102', program: 'DCH', block: 'Y1T2', block_display: 'Year 1 Term 2', student_count: 42, is_tvet: true, program_type: '🔧 TVET' }
-            ];
-        } else {
-            return [
-                { id: 'unit-1', name: 'Maternal Health', code: 'MH101', program: 'KRCHN', block: 'Block 1', student_count: 45, is_tvet: false, program_type: '🎓 Nursing' },
-                { id: 'unit-2', name: 'Clinical Skills', code: 'CS102', program: 'KRCHN', block: 'Block 1', student_count: 42, is_tvet: false, program_type: '🎓 Nursing' },
-                { id: 'unit-3', name: 'Mental Health Nursing', code: 'MHN201', program: 'KRCHN', block: 'Block 2', student_count: 38, is_tvet: false, program_type: '🎓 Nursing' }
-            ];
-        }
-    },
-    
-    populateUnitSelectors() {
-        const selectors = ['reportUnit', 'reportUnitFilter'];
-        const units = this.assignedUnits;
-        const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
-        
-        selectors.forEach(selectorId => {
-            const select = document.getElementById(selectorId);
-            if (!select) return;
-            
-            const isFilter = selectorId === 'reportUnitFilter';
-            
-            if (isFilter) {
-                select.innerHTML = `<option value="all">${emoji} All Units (${typeLabel})</option>`;
-            } else {
-                select.innerHTML = `<option value="">-- ${emoji} Select Unit --</option>`;
-            }
-            
-            if (units && units.length > 0) {
-                units.forEach(unit => {
-                    const option = document.createElement('option');
-                    option.value = unit.id;
-                    const blockDisplay = unit.block_display || unit.block || 'N/A';
-                    const displayName = unit.code && unit.code !== 'N/A' ? `${unit.code} - ${unit.name}` : unit.name || 'Unnamed Unit';
-                    option.textContent = `${displayName} (${blockDisplay})`;
-                    if (unit.student_count > 0) {
-                        option.textContent += ` - ${unit.student_count} students`;
-                    }
-                    if (unit.is_tvet) {
-                        option.textContent += ' 🔧';
-                    }
-                    select.appendChild(option);
-                });
-            } else {
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = `No ${typeLabel} units assigned`;
-                option.disabled = true;
-                select.appendChild(option);
-            }
-        });
-    },
-    
-    // ─── LOAD REPORTS ───
-    async loadReports() {
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                return;
-            }
-            
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                this.reports = this.getMockReports();
-                this.renderReports(this.reports);
-                this.updateStats();
-                return;
-            }
-            
-            const { data: reports, error } = await supabase
-                .from('reports')
-                .select('*')
-                .eq('submitted_by', profile.user_id)
-                .order('created_at', { ascending: false });
-            
-            if (!error) {
-                this.reports = reports || [];
-            } else {
-                console.error('Error loading reports:', error);
-                this.reports = this.getMockReports();
-            }
-            
-            this.renderReports(this.reports);
-            this.updateStats();
-            this.updateAnalytics();
-            
-        } catch (error) {
-            console.error('Failed to load reports:', error);
-            this.reports = this.getMockReports();
-            this.renderReports(this.reports);
-        }
-    },
-    
-    getMockReports() {
-        // Reports must always reflect real institutional data.
-        // Do not create fake/demo reports when Supabase is unavailable.
-        return [];
-    },
+    }
 
-    // ─── RENDER REPORTS TABLE ───
-    renderReports(reports) {
-        const tbody = document.getElementById('reportsTable');
-        if (!tbody) return;
-        
-        const filteredReports = this.filterReports(reports || this.reports);
-        const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
-        
-        if (!filteredReports || filteredReports.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
-                        <i class="fas fa-chart-bar" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Reports Generated</h3>
-                        <p style="margin: 0; font-size: 14px;">Select a unit and report type above to generate your first report (${typeLabel})</p>
-                        <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                            <span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">📋 Attendance</span>
-                            <span style="background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">📊 Grades</span>
-                            <span style="background: #fef3c7; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #92400e;">👥 Enrollment</span>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            document.getElementById('reportCountDisplay').textContent = '0';
-            const filterCount = document.getElementById('reportFilterCount');
-            if (filterCount) filterCount.textContent = `Showing 0 ${typeLabel} reports`;
-            return;
-        }
-        
-        const typeIcons = {
-            'AttendanceSummary': '📋',
-            'CourseGradeBook': '📊',
-            'EnrollmentList': '👥',
-            'PerformanceAnalysis': '📈',
-            'ClassRoster': '📝',
-            'UnitProgress': '🎯'
-        };
-        
-        const typeColors = {
-            'AttendanceSummary': '#10b981',
-            'CourseGradeBook': '#4C1D95',
-            'EnrollmentList': '#3b82f6',
-            'PerformanceAnalysis': '#f59e0b',
-            'ClassRoster': '#8b5cf6',
-            'UnitProgress': '#ec4899'
-        };
-        
-        const statusBadges = {
-            'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
-            'completed': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Completed</span>',
-            'failed': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Failed</span>'
-        };
-        
-        tbody.innerHTML = filteredReports.map(report => {
-            const unitName = this.getUnitName(report.unit_id) || report.unit_name || 'N/A';
-            const status = report.status || 'pending';
-            const isTVET = report.is_tvet || this.isTVET;
-            const progType = report.program_type || typeLabel;
-            
-            return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
-                    onmouseover="this.style.background='#f8fafc'" 
-                    onmouseout="this.style.background='transparent'">
-                    <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                        <i class="fas fa-file-pdf" style="color: #ef4444; margin-right: 8px;"></i>
-                        ${this.escapeHtml(report.title || 'Untitled Report')}
-                        ${isTVET ? ' <span style="font-size: 9px; background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 10px;">TVET</span>' : ''}
-                    </td>
-                    <td style="padding: 14px 18px;">
-                        <span style="background: ${isTVET ? '#ede9fe' : '#dbeafe'}; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: ${isTVET ? '#7c3aed' : '#1e40af'};">
-                            ${this.escapeHtml(unitName)}
-                        </span>
-                    </td>
-                    <td style="padding: 14px 18px;">
-                        <span style="background: ${typeColors[report.type] || '#6b7280'}20; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: ${typeColors[report.type] || '#6b7280'}; font-weight: 500;">
-                            ${typeIcons[report.type] || '📄'} ${this.formatType(report.type)}
-                        </span>
-                    </td>
-                    <td style="padding: 14px 18px; color: #475569;">
-                        ${this.escapeHtml(report.department || 'N/A')}
-                        <div style="font-size: 9px; color: #94a3b8;">${progType}</div>
-                    </td>
-                    <td style="padding: 14px 18px; color: #475569; font-size: 13px;">
-                        ${this.formatDate(report.created_at)}
-                    </td>
-                    <td style="padding: 14px 18px;">
-                        ${statusBadges[status] || statusBadges.pending}
-                    </td>
-                    <td style="padding: 14px 18px;">
-                        <span style="font-size: 12px; color: #475569;">
-                            <i class="fas fa-chart-bar"></i> ${report.metric_value != null ? this.escapeHtml(String(report.metric_value)) + '%' : '-'}
-                        </span>
-                    </td>
-                    <td style="padding: 14px 18px;">
-                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                            <button onclick="LecturerReports.viewReport('${report.id}')" 
-                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-                                <i class="fas fa-eye"></i> View
-                            </button>
-                            <button onclick="LecturerReports.exportSinglePDF('${report.id}')" 
-                                    style="background: #dc2626; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-                                <i class="fas fa-file-pdf"></i> PDF
-                            </button>
-                            <button onclick="LecturerReports.deleteReport('${report.id}')" 
-                                    style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-        
-        document.getElementById('reportCountDisplay').textContent = filteredReports.length;
-        const filterCount = document.getElementById('reportFilterCount');
-        if (filterCount) {
-            filterCount.textContent = `Showing ${filteredReports.length} ${typeLabel} reports`;
-        }
-    },
-    
-    filterReports(reports) {
-        const { search, type, unit, date } = this.currentFilters;
-        
-        let filtered = reports || this.reports;
-        
-        if (search) {
-            const searchLower = search.toLowerCase();
-            filtered = filtered.filter(report => {
-                const titleMatch = (report.title || '').toLowerCase().includes(searchLower);
-                const typeMatch = (report.type || '').toLowerCase().includes(searchLower);
-                const unitMatch = (report.unit_name || '').toLowerCase().includes(searchLower);
-                return titleMatch || typeMatch || unitMatch;
-            });
-        }
-        
-        if (type !== 'all') {
-            filtered = filtered.filter(report => report.type === type);
-        }
-        
-        if (unit !== 'all') {
-            filtered = filtered.filter(report => report.unit_id === unit);
-        }
-        
-        if (date !== 'all') {
-            const now = new Date();
-            filtered = filtered.filter(report => {
-                const d = new Date(report.created_at);
-                switch(date) {
-                    case 'today':
-                        return d.toDateString() === now.toDateString();
-                    case 'week':
-                        const weekAgo = new Date(now);
-                        weekAgo.setDate(weekAgo.getDate() - 7);
-                        return d >= weekAgo;
-                    case 'month':
-                        const monthAgo = new Date(now);
-                        monthAgo.setMonth(monthAgo.getMonth() - 1);
-                        return d >= monthAgo;
-                    default:
-                        return true;
-                }
-            });
-        }
-        
-        return filtered;
-    },
-    
-    // ─── GENERATE REPORT ───
-    async generateReport(e) {
-        e.preventDefault();
-        const form = e.target;
-        const btn = form.querySelector('button[type="submit"]');
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-        
-        const unitId = document.getElementById('reportUnit')?.value;
-        const reportType = document.getElementById('reportType')?.value;
-        const department = document.getElementById('reportScope')?.value || this.getProgramTypeLabel();
-        const format = document.getElementById('reportFormat')?.value || 'PDF';
-        
-        if (!unitId || !reportType) {
-            this.showNotification('Please select unit and report type.', 'error');
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-            return;
-        }
-        
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                throw new Error('Please login first.');
-            }
-            
-            const unit = this.assignedUnits.find(u => u.id === unitId);
-            const unitName = unit ? (unit.name || unit.code || 'Selected Unit') : 'Selected Unit';
-            const typeLabel = this.getProgramTypeLabel();
-            const emoji = this.getProgramEmoji();
-            
-            const typeNames = {
-                'AttendanceSummary': 'Attendance Summary',
-                'CourseGradeBook': 'Grade Book',
-                'EnrollmentList': 'Enrollment List',
-                'PerformanceAnalysis': 'Performance Analysis',
-                'ClassRoster': 'Class Roster',
-                'UnitProgress': 'Unit Progress'
-            };
-            
-            const reportTitle = `${unitName} - ${typeNames[reportType] || reportType} (${typeLabel})`;
-            
-            const newReport = {
-                id: `report-${Date.now()}`,
-                title: reportTitle,
-                type: reportType,
-                department: department,
-                status: 'pending',
-                unit_id: unitId,
-                unit_name: unitName,
-                submitted_by: profile.user_id,
-                file_url: '#',
-                file_name: `${reportTitle.replace(/[^a-zA-Z0-9]/g, '_')}.${format.toLowerCase()}`,
-                created_at: new Date().toISOString(),
-                format: format,
-                program_type: typeLabel,
-                is_tvet: this.isTVET,
-                report_data: reportData,
-                metric_value: reportType === 'PerformanceAnalysis' ? reportData.averageScore :
-                    reportType === 'AttendanceSummary' ? reportData.attendance :
-                    reportType === 'EnrollmentList' || reportType === 'ClassRoster' ? reportData.totalStudents :
-                    reportType === 'CourseGradeBook' ? reportData.passRate : null
-            };
-            
-            const supabase = window.lecturerDB?.supabase;
-            if (supabase) {
-                const { error: dbError } = await supabase
-                    .from('reports')
-                    .insert([newReport]);
-                
-                if (dbError) {
-                    console.error('Database insert error:', dbError);
-                }
-            }
-            
-            this.reports.unshift(newReport);
-            this.renderReports(this.reports);
-            this.updateStats();
-            this.updateAnalytics();
-            
-            this.showNotification(`✅ ${emoji} ${typeLabel} report generated successfully!`, 'success');
-            
-            if (format === 'PDF') {
-                setTimeout(() => this.exportSinglePDF(newReport.id), 1000);
-            }
-            
-            form.reset();
-            
-        } catch (error) {
-            console.error('Report generation error:', error);
-            this.showNotification('Failed to generate report: ' + error.message, 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
-    },
-    
-    // ─── PREVIEW REPORT ───
-    previewReport(report) {
-        const modal = document.getElementById('reportPreviewModal');
-        const content = document.getElementById('reportPreviewContent');
-        
-        if (!modal || !content) {
-            this.showNotification('Preview not available.', 'error');
-            return;
-        }
-        
-        if (!report) {
-            const unitId = document.getElementById('reportUnit')?.value;
-            const reportType = document.getElementById('reportType')?.value;
-            
-            if (!unitId || !reportType) {
-                this.showNotification('Please select unit and report type first.', 'warning');
-                return;
-            }
-            
-            const unit = this.assignedUnits.find(u => u.id === unitId);
-            const unitName = unit ? (unit.name || unit.code) : 'Selected Unit';
-            
-            report = {
-                id: `preview-${Date.now()}`,
-                title: `${unitName} - ${this.formatType(reportType)} (${this.getProgramTypeLabel()})`,
-                type: reportType,
-                unit_name: unitName,
-                created_at: new Date().toISOString(),
-                is_tvet: this.isTVET,
-                report_data: reportData,
-                metric_value: reportType === 'PerformanceAnalysis' ? reportData.averageScore :
-                    reportType === 'AttendanceSummary' ? reportData.attendance :
-                    reportType === 'EnrollmentList' || reportType === 'ClassRoster' ? reportData.totalStudents :
-                    reportType === 'CourseGradeBook' ? reportData.passRate : null
-            };
-        }
-        
-        const unitName = report.unit_name || this.getUnitName(report.unit_id) || 'N/A';
-        const previewHTML = this.generatePreviewHTML(unitName, report.type, report);
-        content.innerHTML = previewHTML;
-        modal.style.display = 'flex';
-        this.isPreviewOpen = true;
-    },
-    
-    // ─── GENERATE PREVIEW HTML WITH TVET GRADING ───
-    generatePreviewHTML(unitName, reportType, reportData) {
-        const typeNames = {
-            'AttendanceSummary': 'Attendance Summary',
-            'CourseGradeBook': 'Grade Book',
-            'EnrollmentList': 'Enrollment List',
-            'PerformanceAnalysis': 'Performance Analysis',
-            'ClassRoster': 'Class Roster',
-            'UnitProgress': 'Unit Progress'
-        };
-        
-        const typeIcons = {
-            'AttendanceSummary': '📋',
-            'CourseGradeBook': '📊',
-            'EnrollmentList': '👥',
-            'PerformanceAnalysis': '📈',
-            'ClassRoster': '📝',
-            'UnitProgress': '🎯'
-        };
-        
-        const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
-        const threshold = this.getPassingThreshold();
-        const gradingDisplay = this.getGradingDisplay();
-        const liveData = reportData?.report_data || reportData?.data || null;
-        const sampleData = liveData || { totalStudents: 0, averageScore: null, passRate: null, attendance: null, students: [] };
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        
-        return `
-            <div id="previewContent" style="padding: 10px 5px; font-family: 'Segoe UI', Arial, sans-serif;">
-                <div style="border-bottom: 2px solid ${this.isTVET ? '#8b5cf6' : '#4C1D95'}; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
-                    <div>
-                        <h2 style="margin: 0; color: #0A3D62; font-size: 22px;">${typeIcons[reportType] || '📄'} ${typeNames[reportType] || reportType}</h2>
-                        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">
-                            ${unitName} 
-                            <span style="background: ${this.isTVET ? '#ede9fe' : '#dbeafe'}; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: ${this.isTVET ? '#7c3aed' : '#1e40af'}; margin-left: 8px;">
-                                ${emoji} ${typeLabel}
-                            </span>
-                        </p>
-                    </div>
-                    <div style="text-align: right; color: #94a3b8; font-size: 13px;">
-                        <span style="display: block; margin: 2px 0;"><i class="fas fa-calendar"></i> Generated: ${new Date().toLocaleString()}</span>
-                        <span style="display: block; margin: 2px 0;"><i class="fas fa-user"></i> Lecturer: ${profile?.full_name || 'N/A'}</span>
-                        <span style="display: block; margin: 2px 0;"><i class="fas fa-tag"></i> Report ID: ${reportData?.id?.slice(-8) || 'N/A'}<br><span style="font-size:10px;">${reportData?.report_data?.source || 'Preview only'}</span></span>
-                    </div>
-                </div>
-                
-                <!-- Grading Reference -->
-                <div style="background: ${this.isTVET ? '#f5f3ff' : '#f0fdf4'}; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; border: 1px solid ${this.isTVET ? '#ddd6fe' : '#bbf7d0'};">
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <span style="font-weight: 700; font-size: 12px; color: ${this.isTVET ? '#7c3aed' : '#065f46'};">
-                            ${emoji} ${typeLabel} Grading:
-                        </span>
-                        <span style="font-size: 11px; color: #475569;">${gradingDisplay}</span>
-                        <span style="font-size: 10px; color: #94a3b8; margin-left: auto;">Passing: ≥${threshold}%</span>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin: 20px 0;">
-                    <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
-                        <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Total Students</span>
-                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${sampleData.totalStudents}</span>
-                    </div>
-                    <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
-                        <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Average Score</span>
-                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${this.formatMetric(sampleData.averageScore, '%')}</span>
-                    </div>
-                    <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
-                        <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Pass Rate</span>
-                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${this.formatMetric(sampleData.passRate, '%')}</span>
-                        <div style="font-size: 9px; color: #94a3b8;">Passing: ≥${threshold}%</div>
-                    </div>
-                    <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
-                        <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Attendance</span>
-                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${this.formatMetric(sampleData.attendance, '%')}</span>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 20px;">
-                    <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px;">Detailed Results</h4>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                        <thead>
-                            <tr>
-                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">#</th>
-                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Student Name</th>
-                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Registration</th>
-                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Grade</th>
-                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Points</th>
-                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${(sampleData.students.length ? sampleData.students : [{name:'No live student data available',reg:'',grade:null,attendance:null,status:'Pending'}]).map((student, index) => {
-                                const gradeInfo = Number.isFinite(Number(student.grade)) ? this.getGrade(Number(student.grade)) : { grade: '-', points: 0, remarks: 'Pending', color: '#64748b' };
-                                return `
-                                    <tr>
-                                        <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${index + 1}</td>
-                                        <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${student.name}</td>
-                                        <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${student.reg}</td>
-                                        <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
-                                            <span style="font-weight: 600; color: ${gradeInfo.color};">${gradeInfo.grade}</span>
-                                            <span style="font-size: 10px; color: #94a3b8;">(${student.grade}%)</span>
-                                        </td>
-                                        <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${gradeInfo.points.toFixed(1)}</td>
-                                        <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
-                                            <span style="padding: 3px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; display: inline-block; background: ${student.status === 'Pass' ? '#d1fae5' : '#fee2e2'}; color: ${student.status === 'Pass' ? '#065f46' : '#991b1b'};">
-                                                ${student.status === 'Pass' ? '✅ PASS' : '❌ FAIL'}
-                                            </span>
-                                            ${this.isTVET && student.status === 'Pass' ? ' <span style="font-size: 9px; color: #7c3aed;">(Competent)</span>' : ''}
-                                            ${!this.isTVET && student.status === 'Pass' ? ' <span style="font-size: 9px; color: #065f46;">(Pass)</span>' : ''}
-                                        </td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; flex-wrap: wrap; gap: 8px;">
-                    <p style="margin: 0;"><i class="fas fa-print"></i> Generated by NCHSM Academic System - ${typeLabel}</p>
-                    <p style="margin: 0;">Report ID: RPT-${Date.now().toString().slice(-6)}</p>
-                </div>
-            </div>
-        `;
-    },
-    
-    async getReportData(unitId, reportType) {
-        const supabase = window.lecturerDB?.supabase;
-        const unit = this.assignedUnits.find(u => String(u.id) === String(unitId));
-        if (!supabase || !unit) {
-            return { totalStudents: 0, averageScore: null, passRate: null, attendance: null, students: [], source: 'No live data source' };
+    function currentLecturerId() {
+        const u = window.currentUser || {};
+        const lecturer = window.me_currentLecturer || {};
+
+        return String(
+            u.id ||
+            lecturer?.staff?.id ||
+            lecturer?.profile?.id ||
+            ''
+        );
+    }
+
+    function currentLecturerEmail() {
+        const u = window.currentUser || {};
+        const lecturer = window.me_currentLecturer || {};
+
+        return (
+            u.email ||
+            lecturer?.staff?.email ||
+            lecturer?.profile?.email ||
+            ''
+        );
+    }
+
+    function currentAcademicYear() {
+        return (
+            document.getElementById('me_year_select')?.value ||
+            window.me_currentYear ||
+            new Date().getFullYear().toString()
+        );
+    }
+
+    /* ============================================================
+       GRADING — SAME RULES AS MARKS MODULE
+    ============================================================ */
+
+    function grading(score, programType) {
+        const n = Number(score) || 0;
+        const type = programType || currentProgramType();
+
+        if (type === 'TVET') {
+            if (n >= 80) return { grade: 'A', rating: 'MASTERY', points: 4.0 };
+            if (n >= 65) return { grade: 'B', rating: 'PROFICIENT', points: 3.0 };
+            if (n >= 50) return { grade: 'C', rating: 'COMPETENT', points: 2.0 };
+            return { grade: 'E', rating: 'NOT YET COMPETENT', points: 0.0 };
         }
 
-        const program = unit.program || this.currentProgram || 'KRCHN';
-        const block = unit.block;
-        const unitName = unit.name || unit.code || 'Selected Unit';
+        if (n >= 75) return { grade: 'A', rating: 'Distinction', points: 4.0 };
+        if (n >= 65) return { grade: 'B', rating: 'Credit', points: 3.0 };
+        if (n >= 60) return { grade: 'C', rating: 'Pass', points: 2.0 };
+        return { grade: 'D', rating: 'Fail', points: 0.0 };
+    }
 
-        // Resolve students registered for the selected unit.
-        let registrations = [];
-        try {
-            let q = supabase
-                .from('student_unit_registrations')
-                .select('student_id, unit_name, block, program, status')
-                .eq('program', program)
-                .eq('unit_name', unitName)
-                .eq('status', 'approved');
-            if (block) q = q.eq('block', block);
-            const res = await q;
-            if (!res.error && Array.isArray(res.data)) registrations = res.data;
-        } catch (err) {
-            console.warn('Registration data unavailable:', err);
+    function passingThreshold(programType) {
+        return (programType || currentProgramType()) === 'TVET' ? 50 : 60;
+    }
+
+    /*
+      IMPORTANT:
+      This is copied from the lecturer marks module so reports and
+      marks entry calculate the same final score.
+    */
+    function calculateTotal(cat1, cat2, exam, type) {
+        const c1 = Math.min(Number(cat1) || 0, 30);
+        const c2 = Math.min(Number(cat2) || 0, 30);
+        const ex = Math.min(Number(exam) || 0, 70);
+
+        let total = 0;
+
+        switch (type || 'full') {
+            case 'single_cat':
+                total = c1 + ex;
+                break;
+
+            case 'exam_only':
+                total = Math.min(Number(exam) || 0, 100);
+                break;
+
+            case 'cats_only':
+                total = ((c1 + c2) / 60) * 100;
+                break;
+
+            case 'cat_only':
+                total = (c1 / 30) * 100;
+                break;
+
+            case 'full':
+            default:
+                total = (((c1 + c2) / 60) * 30) + ex;
+                break;
         }
 
-        const studentIds = [...new Set(registrations.map(r => r.student_id).filter(Boolean))];
+        return Math.round(total * 10) / 10;
+    }
 
-        // Resolve profile data without assuming one exact profile schema.
-        const studentsById = {};
-        if (studentIds.length) {
-            try {
-                const res = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .in('id', studentIds);
-                if (!res.error && Array.isArray(res.data)) {
-                    res.data.forEach(st => {
-                        const id = st.id || st.user_id || st.student_id;
-                        if (id) studentsById[id] = st;
-                    });
-                }
-            } catch (err) {
-                console.warn('Student profile lookup unavailable:', err);
-            }
-        }
+    function normalizeMark(row) {
+        const assessmentType = row.assessment_type || 'full';
 
-        // Grade/attendance tables differ across portal versions. Read only when the
-        // table exists and gracefully continue if RLS/schema does not expose it.
-        let gradeRows = [];
-        let attendanceRows = [];
+        const cat1 = Number(row.cat1_score) || 0;
+        const cat2 = Number(row.cat2_score) || 0;
+        const exam = Number(row.exam_score) || 0;
 
-        const gradeTables = ['online_submissions', 'grades', 'student_grades'];
-        for (const table of gradeTables) {
-            if (!studentIds.length) break;
-            try {
-                let q = supabase.from(table).select('*').in('student_id', studentIds);
-                const res = await q;
-                if (!res.error && Array.isArray(res.data) && res.data.length) {
-                    gradeRows = res.data;
-                    break;
-                }
-            } catch (_) {}
-        }
+        /*
+          Prefer the stored final_score because that is the official
+          value already saved by the marks module.
 
-        const attendanceTables = ['attendance', 'student_attendance'];
-        for (const table of attendanceTables) {
-            if (!studentIds.length) break;
-            try {
-                let q = supabase.from(table).select('*').in('student_id', studentIds);
-                const res = await q;
-                if (!res.error && Array.isArray(res.data) && res.data.length) {
-                    attendanceRows = res.data;
-                    break;
-                }
-            } catch (_) {}
-        }
+          If missing, calculate it using the same marks formula.
+        */
+        const storedFinal = Number(row.final_score);
+        const total = Number.isFinite(storedFinal)
+            ? storedFinal
+            : calculateTotal(cat1, cat2, exam, assessmentType);
 
-        const findScore = (studentId) => {
-            const rows = gradeRows.filter(r => String(r.student_id || r.student_uuid || r.student) === String(studentId));
-            const vals = rows.map(r => Number(
-                r.marks_obtained ?? r.score ?? r.marks ?? r.grade ?? r.percentage
-            )).filter(Number.isFinite);
-            if (!vals.length) return null;
-            return Math.max(0, Math.min(100, vals[vals.length - 1]));
-        };
-
-        const findAttendance = (studentId) => {
-            const rows = attendanceRows.filter(r => String(r.student_id || r.student_uuid || r.student) === String(studentId));
-            if (!rows.length) return null;
-            const explicit = rows.map(r => Number(r.attendance_percentage ?? r.percentage ?? r.attendance_percent))
-                .find(Number.isFinite);
-            if (Number.isFinite(explicit)) return Math.max(0, Math.min(100, explicit));
-            const present = rows.filter(r => {
-                const v = String(r.status ?? r.attendance ?? '').toLowerCase();
-                return ['present', 'p', 'attended', 'true', '1'].includes(v) || r.present === true;
-            }).length;
-            return Math.round((present / rows.length) * 100);
-        };
-
-        const students = studentIds.map((id, index) => {
-            const st = studentsById[id] || {};
-            const score = findScore(id);
-            const attendance = findAttendance(id);
-            const name = st.full_name || st.name || st.student_name || st.display_name || `Student ${index + 1}`;
-            const reg = st.admission_number || st.student_id || st.registration_number || st.reg_no || id;
-            return {
-                name: this.escapeHtml(String(name)),
-                reg: this.escapeHtml(String(reg)),
-                grade: score,
-                attendance,
-                status: score == null ? 'Pending' : (score >= this.getPassingThreshold() ? 'Pass' : 'Fail')
-            };
-        });
-
-        const scoreValues = students.map(s => s.grade).filter(Number.isFinite);
-        const attendanceValues = students.map(s => s.attendance).filter(Number.isFinite);
-        const avgScore = scoreValues.length
-            ? Math.round((scoreValues.reduce((a,b) => a+b, 0) / scoreValues.length) * 10) / 10
-            : null;
-        const passRate = scoreValues.length
-            ? Math.round((scoreValues.filter(v => v >= this.getPassingThreshold()).length / scoreValues.length) * 1000) / 10
-            : null;
-        const avgAttendance = attendanceValues.length
-            ? Math.round((attendanceValues.reduce((a,b) => a+b, 0) / attendanceValues.length) * 10) / 10
-            : null;
+        const gradeInfo = grading(total, currentProgramType());
 
         return {
-            totalStudents: students.length,
-            averageScore: avgScore,
-            passRate,
-            attendance: avgAttendance,
-            students,
-            source: 'Live Supabase data',
-            program,
-            block,
-            unitName,
-            reportType
+            id: row.id,
+            admission: row.admission_number || '',
+            name: row.student_name || 'Unknown',
+            block: row.block || '',
+            unit: row.subject_name || '',
+            academicYear: row.academic_year || '',
+            assessmentType,
+
+            cat1,
+            cat2,
+            exam,
+            total,
+
+            grade: row.grade || gradeInfo.grade,
+            rating: gradeInfo.rating,
+            points: gradeInfo.points,
+
+            approvalStatus: row.approval_status || 'draft',
+
+            published: row.published === true,
+
+            retakeScore: row.retake_score != null
+                ? Number(row.retake_score)
+                : null,
+            retakeCount: Number(row.retake_count) || 0,
+            retakeStatus: row.retake_status || '',
+
+            createdAt: row.created_at || null,
+            updatedAt: row.updated_at || null
         };
-    },
+    }
 
-    formatMetric(value, suffix = '') {
-        return value == null || value === '' ? '-' : `${value}${suffix}`;
-    },
+    /* ============================================================
+       LOAD ASSIGNMENTS
+    ============================================================ */
 
-    // ─── UTILITY METHODS ───
-    getUnitName(unitId) {
-        if (!unitId) return null;
-        const unit = this.assignedUnits.find(u => u.id === unitId);
-        return unit ? (unit.name || unit.code) : null;
-    },
-    
-    showNotification(message, type = 'info') {
-        if (typeof window.showNotification === 'function') {
-            window.showNotification(message, type);
+    async function loadAssignedUnits() {
+        const supabase = db();
+        if (!supabase) return [];
+
+        const lecturerId = currentLecturerId();
+        if (!lecturerId) {
+            console.warn('LecturerReports: lecturer ID unavailable');
+            return [];
+        }
+
+        const key = `assignments:${lecturerId}`;
+        if (LecturerReports._cache[key]) {
+            return LecturerReports._cache[key];
+        }
+
+        let query = supabase
+            .from('lecturer_subject_assignments')
+            .select('subject_name, subject_code, block, program, academic_year')
+            .eq('lecturer_id', lecturerId);
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error('LecturerReports: assignment error', error);
+            return [];
+        }
+
+        const rows = data || [];
+
+        LecturerReports._cache[key] = rows;
+        return rows;
+    }
+
+    function assignmentMatches(mark, assignments) {
+        if (!assignments.length) return false;
+
+        return assignments.some(a => {
+            const unitMatch =
+                a.subject_name === mark.unit ||
+                a.subject_code === mark.unit;
+
+            if (!unitMatch) return false;
+
+            const blockMatch =
+                !a.block ||
+                !mark.block ||
+                a.block === mark.block;
+
+            const programMatch =
+                !a.program ||
+                a.program === currentProgram();
+
+            const yearMatch =
+                !a.academic_year ||
+                String(a.academic_year) === String(mark.academicYear);
+
+            return blockMatch && programMatch && yearMatch;
+        });
+    }
+
+    /* ============================================================
+       LOAD MARKS
+    ============================================================ */
+
+    async function loadMarks(options = {}) {
+        const supabase = db();
+        if (!supabase) throw new Error('Supabase/database connection unavailable.');
+
+        const assignments = await loadAssignedUnits();
+
+        if (!assignments.length) {
+            return {
+                marks: [],
+                assignments: [],
+                students: []
+            };
+        }
+
+        const year = options.year || currentAcademicYear();
+
+        /*
+          Fetch only the lecturer's assigned unit/block combinations.
+          This avoids exposing unrelated marks in the lecturer report.
+        */
+        const unitNames = [
+            ...new Set(
+                assignments
+                    .map(a => a.subject_name)
+                    .filter(Boolean)
+            )
+        ];
+
+        if (!unitNames.length) {
+            return { marks: [], assignments, students: [] };
+        }
+
+        const { data: markRows, error: markError } = await supabase
+            .from('student_marks')
+            .select(`
+                id,
+                admission_number,
+                student_name,
+                block,
+                subject_name,
+                academic_year,
+                assessment_type,
+                cat1_score,
+                cat2_score,
+                exam_score,
+                final_score,
+                grade,
+                approval_status,
+                published,
+                retake_score,
+                retake_count,
+                retake_status,
+                created_at,
+                updated_at
+            `)
+            .in('subject_name', unitNames)
+            .eq('academic_year', year);
+
+        if (markError) {
+            throw markError;
+        }
+
+        let marks = (markRows || []).map(normalizeMark);
+
+        /*
+          Enforce lecturer assignment again on the client side.
+          RLS remains the real security boundary.
+        */
+        marks = marks.filter(m => assignmentMatches(m, assignments));
+
+        if (options.unit) {
+            marks = marks.filter(m => m.unit === options.unit);
+        }
+
+        if (options.block && options.block !== 'all') {
+            marks = marks.filter(m => m.block === options.block);
+        }
+
+        const admissions = [...new Set(
+            marks.map(m => m.admission).filter(Boolean)
+        )];
+
+        let students = [];
+
+        if (admissions.length) {
+            const { data: studentRows, error: studentError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('student_id, full_name, block, intake_year, program')
+                .eq('role', 'student')
+                .in('student_id', admissions);
+
+            if (studentError) {
+                console.warn(
+                    'LecturerReports: student profile lookup failed',
+                    studentError
+                );
+            }
+
+            students = studentRows || [];
+        }
+
+        const studentMap = {};
+        students.forEach(s => {
+            studentMap[s.student_id] = s;
+        });
+
+        marks = marks.map(m => {
+            const s = studentMap[m.admission];
+
+            return {
+                ...m,
+                studentName: s?.full_name || m.name,
+                intakeYear: s?.intake_year || '',
+                studentProgram: s?.program || currentProgram()
+            };
+        });
+
+        return {
+            marks,
+            assignments,
+            students
+        };
+    }
+
+    /* ============================================================
+       STATISTICS
+    ============================================================ */
+
+    function average(values) {
+        const nums = values
+            .map(Number)
+            .filter(Number.isFinite);
+
+        if (!nums.length) return 0;
+
+        return nums.reduce((a, b) => a + b, 0) / nums.length;
+    }
+
+    function median(values) {
+        const nums = values
+            .map(Number)
+            .filter(Number.isFinite)
+            .sort((a, b) => a - b);
+
+        if (!nums.length) return 0;
+
+        const middle = Math.floor(nums.length / 2);
+
+        return nums.length % 2
+            ? nums[middle]
+            : (nums[middle - 1] + nums[middle]) / 2;
+    }
+
+    function distribution(marks) {
+        const out = {};
+
+        marks.forEach(m => {
+            const g = m.grade || grading(m.total).grade;
+            out[g] = (out[g] || 0) + 1;
+        });
+
+        return out;
+    }
+
+    function calculateStatistics(marks) {
+        const threshold = passingThreshold();
+
+        const scored = marks.filter(m =>
+            Number.isFinite(Number(m.total)) &&
+            Number(m.total) > 0
+        );
+
+        const totals = scored.map(m => Number(m.total));
+
+        const passed = scored.filter(m => m.total >= threshold);
+        const failed = scored.filter(m => m.total < threshold);
+
+        const attendanceLike = null;
+
+        return {
+            totalStudents: marks.length,
+            studentsWithMarks: scored.length,
+            studentsWithoutMarks: marks.length - scored.length,
+
+            mean: average(totals),
+            median: median(totals),
+            highest: totals.length ? Math.max(...totals) : 0,
+            lowest: totals.length ? Math.min(...totals) : 0,
+
+            passCount: passed.length,
+            failCount: failed.length,
+
+            passRate: scored.length
+                ? (passed.length / scored.length) * 100
+                : 0,
+
+            failRate: scored.length
+                ? (failed.length / scored.length) * 100
+                : 0,
+
+            gradeDistribution: distribution(scored),
+
+            approval: {
+                draft: marks.filter(m => m.approvalStatus === 'draft').length,
+                pending: marks.filter(m => m.approvalStatus === 'pending').length,
+                approved: marks.filter(m => m.approvalStatus === 'approved').length,
+                rejected: marks.filter(m => m.approvalStatus === 'rejected').length
+            },
+
+            retakes: marks.filter(m => m.retakeCount > 0).length,
+            published: marks.filter(m => m.published).length,
+
+            attendance: attendanceLike
+        };
+    }
+
+    /* ============================================================
+       REPORT BUILDERS
+    ============================================================ */
+
+    function reportTitle(type) {
+        const names = {
+            AttendanceSummary: 'Attendance Summary',
+            CourseGradeBook: 'Grade Book',
+            AssessmentSummary: 'Assessment Summary',
+            PerformanceAnalysis: 'Performance Analysis',
+            EnrollmentList: 'Class List',
+            UnitProgress: 'Unit Progress',
+            AtRiskStudents: 'Students Requiring Attention',
+            ExamPerformance: 'Exam Performance',
+            AssignmentPerformance: 'Assignment Performance',
+            ComprehensiveUnitReport: 'Comprehensive Unit Report',
+            WeeklyReport: 'Weekly Lecturer Report',
+            TeachingLearningReport: 'Teaching & Learning Report',
+            AssessmentReport: 'Assessment / Examination Report',
+            AttendanceReport: 'Attendance Report',
+            ClinicalPracticalReport: 'Clinical / Practical Report',
+            StudentPerformanceReport: 'Student Performance Report',
+            UnitProgressReport: 'Unit Progress Report',
+            EndOfSemesterReport: 'End-of-Semester Report',
+            OtherReport: 'Other Report'
+        };
+
+        return names[type] || type || 'Academic Report';
+    }
+
+    function selectedFormData() {
+        return {
+            unit: document.getElementById('reportUnit')?.value || '',
+            block: document.getElementById('reportClass')?.value || 'all',
+            type: document.getElementById('reportType')?.value || 'CourseGradeBook',
+            period: document.getElementById('reportPeriod')?.value || 'current',
+            format: document.getElementById('reportFormat')?.value || 'PDF',
+            startDate: document.getElementById('reportStartDate')?.value || '',
+            endDate: document.getElementById('reportEndDate')?.value || '',
+            includeAttendance: !!document.getElementById('includeAttendance')?.checked,
+            includeGrades: !!document.getElementById('includeGrades')?.checked,
+            includeAssessments: !!document.getElementById('includeAssessments')?.checked,
+            includeExams: !!document.getElementById('includeExams')?.checked,
+            includeAssignments: !!document.getElementById('includeAssignments')?.checked,
+            includeComments: !!document.getElementById('includeComments')?.checked,
+            includeCharts: !!document.getElementById('includeCharts')?.checked
+        };
+    }
+
+    function periodLabel(form) {
+        const map = {
+            current: 'Current Term / Semester',
+            month: 'Current Month',
+            week: 'Current Week',
+            all: 'All Available Data',
+            custom: `${form.startDate || '—'} to ${form.endDate || '—'}`
+        };
+
+        return map[form.period] || form.period;
+    }
+
+    function buildRows(marks, type) {
+        if (type === 'EnrollmentList') {
+            return marks.map((m, i) => ({
+                '#': i + 1,
+                Admission: m.admission,
+                Student: m.studentName || m.name,
+                Class: m.block,
+                Unit: m.unit
+            }));
+        }
+
+        if (type === 'ExamPerformance') {
+            return marks.map((m, i) => ({
+                '#': i + 1,
+                Admission: m.admission,
+                Student: m.studentName || m.name,
+                CAT1: m.cat1 || '',
+                CAT2: m.cat2 || '',
+                Exam: m.exam || '',
+                Total: m.total || '',
+                Grade: m.grade || '',
+                Status: m.total >= passingThreshold() ? 'PASS' : 'FAIL'
+            }));
+        }
+
+        if (type === 'AssignmentPerformance') {
+            return marks.map((m, i) => ({
+                '#': i + 1,
+                Admission: m.admission,
+                Student: m.studentName || m.name,
+                CAT1: m.cat1 || '',
+                CAT2: m.cat2 || '',
+                Total: m.total || '',
+                Grade: m.grade || ''
+            }));
+        }
+
+        return marks.map((m, i) => ({
+            '#': i + 1,
+            Admission: m.admission,
+            Student: m.studentName || m.name,
+            CAT1: m.cat1 || '',
+            CAT2: m.cat2 || '',
+            Exam: m.exam || '',
+            Total: m.total || '',
+            Grade: m.grade || '',
+            Points: m.points,
+            Rating: m.rating,
+            Status: m.total > 0
+                ? (m.total >= passingThreshold() ? 'PASS' : 'FAIL')
+                : 'N/A',
+            Approval: m.approvalStatus
+        }));
+    }
+
+    async function buildReport(form = selectedFormData()) {
+        const result = await loadMarks({
+            unit: form.unit || null,
+            block: form.block || 'all',
+            year: currentAcademicYear()
+        });
+
+        const marks = result.marks;
+        const stats = calculateStatistics(marks);
+
+        return {
+            id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+            title: reportTitle(form.type),
+            type: form.type,
+            unit: form.unit || 'All Assigned Units',
+            block: form.block === 'all' ? 'All Classes' : form.block,
+            program: currentProgram(),
+            programType: currentProgramType(),
+            academicYear: currentAcademicYear(),
+            period: periodLabel(form),
+            generatedAt: new Date().toISOString(),
+
+            lecturer: {
+                id: currentLecturerId(),
+                email: currentLecturerEmail(),
+                name:
+                    window.currentUser?.full_name ||
+                    window.currentUser?.name ||
+                    window.me_currentLecturer?.profile?.full_name ||
+                    window.me_currentLecturer?.staff?.full_name ||
+                    'Lecturer'
+            },
+
+            statistics: stats,
+            rows: buildRows(marks, form.type),
+            marks,
+
+            grading: {
+                passingThreshold: passingThreshold(),
+                system: currentProgramType() === 'TVET'
+                    ? 'TVET Competency-Based Grading'
+                    : 'Nursing Grading System'
+            },
+
+            options: form
+        };
+    }
+
+    /* ============================================================
+       FORM / SELECTS
+    ============================================================ */
+
+    async function populateReportSelectors() {
+        const assignments = await loadAssignedUnits();
+
+        const unitSelect = document.getElementById('reportUnit');
+        const unitFilter = document.getElementById('reportUnitFilter');
+        const classSelect = document.getElementById('reportClass');
+
+        const units = [
+            ...new Map(
+                assignments.map(a => [
+                    a.subject_name || a.subject_code,
+                    a
+                ])
+            ).values()
+        ];
+
+        if (unitSelect) {
+            const current = unitSelect.value;
+
+            unitSelect.innerHTML =
+                '<option value="">-- Select Assigned Unit --</option>';
+
+            units.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.subject_name || u.subject_code;
+                option.textContent =
+                    `${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name || u.subject_code}`;
+                unitSelect.appendChild(option);
+            });
+
+            if (current) unitSelect.value = current;
+        }
+
+        if (unitFilter) {
+            const current = unitFilter.value;
+
+            unitFilter.innerHTML = '<option value="all">All My Units</option>';
+
+            units.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.subject_name || u.subject_code;
+                option.textContent =
+                    u.subject_name || u.subject_code;
+                unitFilter.appendChild(option);
+            });
+
+            if (current) unitFilter.value = current;
+        }
+
+        if (classSelect) {
+            const current = classSelect.value;
+
+            const blocks = [
+                ...new Set(
+                    assignments
+                        .map(a => a.block)
+                        .filter(Boolean)
+                )
+            ];
+
+            classSelect.innerHTML =
+                '<option value="all">All My Classes</option>';
+
+            blocks.forEach(block => {
+                const option = document.createElement('option');
+                option.value = block;
+                option.textContent = block.replace(/_/g, ' ');
+                classSelect.appendChild(option);
+            });
+
+            if (current) classSelect.value = current;
+        }
+    }
+
+    /* ============================================================
+       GENERATE
+    ============================================================ */
+
+    LecturerReports.generateReport = async function () {
+        const form = selectedFormData();
+
+        if (!form.unit) {
+            showReportNotice('Select an assigned unit first.', 'warning');
             return;
         }
-        
-        const colors = {
-            success: '#10b981',
-            error: '#ef4444',
-            warning: '#f59e0b',
-            info: '#3b82f6'
-        };
-        
-        const icons = {
-            success: 'fa-check-circle',
-            error: 'fa-exclamation-circle',
-            warning: 'fa-exclamation-triangle',
-            info: 'fa-info-circle'
-        };
-        
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 25px;
-            background: ${colors[type] || '#3b82f6'};
-            color: white;
-            border-radius: 8px;
-            font-weight: 500;
-            z-index: 9999;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            animation: slideIn 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Segoe UI', Arial, sans-serif;
-        `;
-        notification.innerHTML = `<i class="fas ${icons[type] || 'fa-info-circle'}"></i> ${message}`;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateX(100px)';
-            notification.style.transition = 'all 0.3s ease';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    },
-    
-    setupEventListeners() {
-        const search = document.getElementById('reportSearch');
-        const type = document.getElementById('reportTypeFilter');
-        const unit = document.getElementById('reportUnitFilter');
-        const date = document.getElementById('reportDateFilter');
 
-        if (search && !search.dataset.reportsBound) {
-            search.dataset.reportsBound = '1';
-            search.addEventListener('input', e => {
-                this.currentFilters.search = e.target.value.trim();
-                this.renderReports(this.reports);
-            });
+        if (!form.type) {
+            showReportNotice('Select a report type.', 'warning');
+            return;
         }
-        if (type && !type.dataset.reportsBound) {
-            type.dataset.reportsBound = '1';
-            type.addEventListener('change', e => {
-                this.currentFilters.type = e.target.value || 'all';
-                this.renderReports(this.reports);
-            });
-        }
-        if (unit && !unit.dataset.reportsBound) {
-            unit.dataset.reportsBound = '1';
-            unit.addEventListener('change', e => {
-                this.currentFilters.unit = e.target.value || 'all';
-                this.renderReports(this.reports);
-            });
-        }
-        if (date && !date.dataset.reportsBound) {
-            date.dataset.reportsBound = '1';
-            date.addEventListener('change', e => {
-                this.currentFilters.date = e.target.value || 'all';
-                this.renderReports(this.reports);
-            });
-        }
-    },
-    
-    formatType(type) {
-        const types = {
-            'AttendanceSummary': 'Attendance',
-            'CourseGradeBook': 'Grade Book',
-            'EnrollmentList': 'Enrollment',
-            'PerformanceAnalysis': 'Performance',
-            'ClassRoster': 'Roster',
-            'UnitProgress': 'Progress'
-        };
-        return types[type] || type;
-    },
-    
-    formatDate(dateString) {
-        if (!dateString) return 'N/A';
+
         try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+            setReportBusy(true, 'Generating report from marks...');
+
+            const report = await buildReport(form);
+
+            LecturerReports.currentReport = report;
+
+            /*
+              Keep generated reports in memory and localStorage.
+              This does not create a new database table or duplicate marks.
+            */
+            LecturerReports.reports.unshift({
+                ...report,
+                generatedAt: report.generatedAt
             });
-        } catch {
-            return dateString;
+
+            saveLocalReports();
+
+            renderReports(LecturerReports.reports);
+            updateSummary(report.marks, report.statistics);
+            updateAnalytics(LecturerReports.reports);
+
+            if (form.format === 'PDF') {
+                await LecturerReports.exportToPDF();
+            } else if (form.format === 'Excel') {
+                LecturerReports.exportToExcel();
+            } else if (form.format === 'CSV') {
+                exportCurrentCSV(report);
+            } else {
+                await LecturerReports.previewReport();
+            }
+
+            showReportNotice(
+                `Report generated from ${report.marks.length} student mark records.`,
+                'success'
+            );
+        } catch (error) {
+            console.error('LecturerReports.generateReport:', error);
+            showReportNotice(
+                'Could not generate report: ' + error.message,
+                'error'
+            );
+        } finally {
+            setReportBusy(false);
         }
-    },
-    
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    },
-    
-    viewReport(reportId) {
-        const report = this.reports.find(r => r.id === reportId);
-        if (!report) {
-            this.showNotification('Report not found.', 'error');
-            return;
+    };
+
+    LecturerReports.quickReport = async function (type) {
+        const typeEl = document.getElementById('reportType');
+        if (typeEl) typeEl.value = type;
+
+        const unitEl = document.getElementById('reportUnit');
+
+        if (unitEl && !unitEl.value) {
+            const assignments = await loadAssignedUnits();
+            const first = assignments.find(a => a.subject_name);
+
+            if (first) {
+                unitEl.value = first.subject_name;
+            }
         }
-        this.previewReport(report);
-    },
-    
-    closePreview() {
-        document.getElementById('reportPreviewModal').style.display = 'none';
-        this.isPreviewOpen = false;
-    },
-    
-    // ─── PDF EXPORT FUNCTIONS ───
-    exportSinglePDF(reportId) {
-        const report = this.reports.find(r => r.id === reportId);
-        if (!report) {
-            this.showNotification('Report not found.', 'error');
-            return;
+
+        await LecturerReports.generateReport();
+    };
+
+    /* ============================================================
+       PREVIEW
+    ============================================================ */
+
+    LecturerReports.previewReport = async function () {
+        try {
+            let report = LecturerReports.currentReport;
+
+            if (!report) {
+                report = await buildReport(selectedFormData());
+                LecturerReports.currentReport = report;
+            }
+
+            const modal = document.getElementById('reportPreviewModal');
+            const content = document.getElementById('reportPreviewContent');
+
+            if (!modal || !content) return;
+
+            content.innerHTML = renderPreview(report);
+
+            modal.style.display = 'flex';
+        } catch (error) {
+            console.error(error);
+            showReportNotice(
+                'Unable to preview report: ' + error.message,
+                'error'
+            );
         }
-        
-        const unitName = report.unit_name || this.getUnitName(report.unit_id) || 'N/A';
-        const content = this.generatePreviewHTML(unitName, report.type, report);
-        
-        const container = document.createElement('div');
-        container.innerHTML = content;
-        container.style.padding = '40px';
-        container.style.maxWidth = '1100px';
-        container.style.margin = '0 auto';
-        container.style.fontFamily = 'Arial, sans-serif';
-        container.style.background = 'white';
-        document.body.appendChild(container);
-        
-        if (typeof html2pdf !== 'undefined') {
-            const opt = {
-                margin: 10,
-                filename: `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            
-            this.showNotification(`Generating ${this.getProgramTypeLabel()} PDF...`, 'info');
-            html2pdf().set(opt).from(container).save().then(() => {
-                this.showNotification('PDF downloaded successfully!', 'success');
-                document.body.removeChild(container);
-            }).catch(err => {
-                console.error('PDF export error:', err);
-                this.showNotification('PDF export failed. Please try again.', 'error');
-                document.body.removeChild(container);
-            });
-        } else {
-            this.showNotification('PDF library not loaded. Opening print dialog...', 'warning');
-            const win = window.open('', '_blank');
-            win.document.write(container.innerHTML);
-            win.document.close();
-            setTimeout(() => win.print(), 500);
-            document.body.removeChild(container);
-        }
-    },
-    
-    exportToPDF() {
-        if (!this.reports || this.reports.length === 0) {
-            this.showNotification('No reports to export.', 'warning');
-            return;
-        }
-        
-        const element = document.querySelector('.report-table-container');
-        if (!element) {
-            this.showNotification('No data to export.', 'warning');
-            return;
-        }
-        
-        if (typeof html2pdf !== 'undefined') {
-            const opt = {
-                margin: 10,
-                filename: `${this.getProgramTypeLabel()}_report_${new Date().toISOString().slice(0,10)}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-            };
-            
-            this.showNotification(`Generating ${this.getProgramTypeLabel()} PDF...`, 'info');
-            html2pdf().set(opt).from(element).save().then(() => {
-                this.showNotification('PDF downloaded successfully!', 'success');
-            }).catch(err => {
-                console.error('PDF export error:', err);
-                this.showNotification('PDF export failed. Please try again.', 'error');
-            });
-        } else {
-            this.showNotification('PDF library not loaded. Please include html2pdf.js', 'error');
-        }
-    },
-    
-    exportPreviewToPDF() {
-        const element = document.getElementById('previewContent');
-        if (!element) {
-            this.showNotification('No preview content to export.', 'warning');
-            return;
-        }
-        
-        if (typeof html2pdf !== 'undefined') {
-            const opt = {
-                margin: 10,
-                filename: `${this.getProgramTypeLabel()}_preview_${new Date().toISOString().slice(0,10)}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            
-            this.showNotification(`Generating ${this.getProgramTypeLabel()} preview PDF...`, 'info');
-            html2pdf().set(opt).from(element).save().then(() => {
-                this.showNotification('Preview PDF downloaded!', 'success');
-            }).catch(err => {
-                console.error('Preview PDF export error:', err);
-                this.showNotification('Export failed. Please try again.', 'error');
-            });
-        } else {
-            this.showNotification('PDF library not loaded. Please include html2pdf.js', 'error');
-        }
-    },
-    
-    exportAllToPDF() {
-        const element = document.querySelector('.report-table-container');
-        if (!element) {
-            this.showNotification('No data to export.', 'warning');
-            return;
-        }
-        
-        if (typeof html2pdf !== 'undefined') {
-            const opt = {
-                margin: 10,
-                filename: `all_${this.getProgramTypeLabel()}_reports_${new Date().toISOString().slice(0,10)}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-            };
-            
-            this.showNotification(`Generating all ${this.getProgramTypeLabel()} reports PDF...`, 'info');
-            html2pdf().set(opt).from(element).save().then(() => {
-                this.showNotification('All reports PDF downloaded!', 'success');
-            }).catch(err => {
-                console.error('Export all error:', err);
-                this.showNotification('Export failed. Please try again.', 'error');
-            });
-        } else {
-            this.showNotification('PDF library not loaded. Please include html2pdf.js', 'error');
-        }
-    },
-    
-    // ─── PRINT FUNCTIONS ───
-    printPreview() {
-        const content = document.getElementById('previewContent');
-        if (!content) {
-            this.showNotification('No preview content to print.', 'warning');
-            return;
-        }
-        
-        const win = window.open('', '_blank', 'width=1200,height=800');
-        win.document.write(`
-            <html>
-                <head>
-                    <title>${this.getProgramTypeLabel()} Report Preview</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 40px; }
-                        * { box-sizing: border-box; }
-                        table { width: 100%; border-collapse: collapse; }
-                        th { background: #f1f5f9; padding: 10px; text-align: left; }
-                        td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
-                        .status-pass { background: #d1fae5; color: #065f46; padding: 3px 12px; border-radius: 12px; }
-                        .status-fail { background: #fee2e2; color: #991b1b; padding: 3px 12px; border-radius: 12px; }
-                        .grading-ref { background: ${this.isTVET ? '#f5f3ff' : '#f0fdf4'}; padding: 10px; border-radius: 8px; border: 1px solid ${this.isTVET ? '#ddd6fe' : '#bbf7d0'}; margin-bottom: 20px; }
-                    </style>
-                </head>
-                <body>${content.innerHTML}</body>
-            </html>
-        `);
-        win.document.close();
-        setTimeout(() => win.print(), 500);
-    },
-    
-    printReportTable() {
-        window.print();
-    },
-    
-    // ─── EXPORT FUNCTIONS ───
-    exportAllReports() {
-        if (!this.reports || this.reports.length === 0) {
-            this.showNotification('No reports to export.', 'warning');
-            return;
-        }
-        
-        const typeLabel = this.getProgramTypeLabel();
-        const headers = ['Title', 'Unit', 'Type', 'Department', 'Status', 'Date', 'Program Type'];
-        const rows = this.reports.map(r => [
-            r.title || 'Untitled',
-            this.getUnitName(r.unit_id) || r.unit_name || 'N/A',
-            this.formatType(r.type),
-            r.department || 'N/A',
-            r.status || 'pending',
-            this.formatDate(r.created_at),
-            r.program_type || typeLabel
-        ]);
-        
-        const csvEscape = value => {
-            const v = String(value ?? '');
-            return /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-        };
-        const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\n');
-        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${typeLabel}_reports_export_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        this.showNotification(`${typeLabel} reports exported successfully!`, 'success');
-    },
-    
-    exportJSON() {
-        if (!this.reports || this.reports.length === 0) {
-            this.showNotification('No reports to export.', 'warning');
-            return;
-        }
-        
-        const typeLabel = this.getProgramTypeLabel();
-        const json = JSON.stringify(this.reports, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${typeLabel}_reports_${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        this.showNotification('JSON exported successfully!', 'success');
-    },
-    
-    downloadAllReports() {
-        if (!this.reports || this.reports.length === 0) {
-            this.showNotification('No reports to download.', 'warning');
-            return;
-        }
-        this.exportAllReports();
-    },
-    
-    // ─── SCHEDULE FUNCTIONS ───
-    scheduleReport() {
-        const unitId = document.getElementById('reportUnit')?.value;
-        const reportType = document.getElementById('reportType')?.value;
-        
-        if (!unitId || !reportType) {
-            this.showNotification('Please select unit and report type first.', 'warning');
-            return;
-        }
-        
-        const unit = this.assignedUnits.find(u => u.id === unitId);
-        const unitName = unit ? (unit.name || unit.code) : 'Selected Unit';
-        const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
-        
-        const existingModal = document.getElementById('scheduleModal');
-        if (existingModal) existingModal.remove();
-        
-        const modalHtml = `
-            <div id="scheduleModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;">
-                <div style="background: white; border-radius: 16px; max-width: 500px; width: 95%; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                    <div style="padding: 18px 24px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
-                        <h3 style="margin: 0; color: #0A3D62; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
-                            <i class="fas fa-clock" style="color: ${this.isTVET ? '#8b5cf6' : '#4C1D95'};"></i> Schedule ${typeLabel} Report
-                        </h3>
-                        <button onclick="document.getElementById('scheduleModal').remove()" style="background: none; border: none; font-size: 32px; cursor: pointer; color: #94a3b8; line-height: 1; padding: 0 8px;">&times;</button>
+    };
+
+    LecturerReports.closePreview = function () {
+        const modal = document.getElementById('reportPreviewModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    function renderPreview(report) {
+        const s = report.statistics;
+
+        const gradeHtml = Object.entries(s.gradeDistribution)
+            .map(([grade, count]) =>
+                `<span style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;padding:5px 9px;border-radius:15px;margin:3px;font-size:11px;">
+                    <strong>${esc(grade)}</strong> ${count}
+                </span>`
+            ).join('');
+
+        const rows = report.rows || [];
+
+        const headers = rows.length
+            ? Object.keys(rows[0])
+            : [];
+
+        const tableHead = headers.map(h =>
+            `<th style="padding:9px;text-align:left;border-bottom:1px solid #e2e8f0;white-space:nowrap;">${esc(h)}</th>`
+        ).join('');
+
+        const tableBody = rows.map(row =>
+            `<tr>${headers.map(h =>
+                `<td style="padding:8px;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${esc(row[h])}</td>`
+            ).join('')}</tr>`
+        ).join('');
+
+        return `
+            <div id="lecturerReportPrintable"
+                 style="font-family:Arial,sans-serif;color:#1e293b;background:#fff;">
+
+                <div style="border-bottom:3px solid #4C1D95;padding-bottom:14px;margin-bottom:16px;">
+                    <h2 style="margin:0;color:#0A3D62;font-size:21px;">
+                        ${esc(report.title)}
+                    </h2>
+
+                    <div style="margin-top:6px;font-size:12px;color:#64748b;">
+                        ${esc(report.program)}
+                        • ${esc(report.block)}
+                        • Academic Year ${esc(report.academicYear)}
                     </div>
-                    <div style="padding: 24px;">
-                        <p style="margin: 0 0 15px 0; color: #475569;">
-                            <strong>${unitName}</strong> - ${this.formatType(reportType)} 
-                            <span style="background: ${this.isTVET ? '#ede9fe' : '#dbeafe'}; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: ${this.isTVET ? '#7c3aed' : '#1e40af'}; margin-left: 8px;">
-                                ${emoji} ${typeLabel}
-                            </span>
-                        </p>
-                        <div style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #475569; font-size: 13px;">Frequency</label>
-                            <select id="scheduleFrequency" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
-                                <option value="daily">Daily</option>
-                                <option value="weekly" selected>Weekly</option>
-                                <option value="monthly">Monthly</option>
-                                <option value="quarterly">Quarterly</option>
-                            </select>
-                        </div>
-                        <div style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #475569; font-size: 13px;">Start Date</label>
-                            <input type="date" id="scheduleStartDate" value="${new Date().toISOString().split('T')[0]}" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        </div>
-                        <div style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #475569; font-size: 13px;">Recipients (Email)</label>
-                            <input type="text" id="scheduleRecipients" placeholder="Enter email addresses (comma separated)" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        </div>
+
+                    <div style="margin-top:4px;font-size:12px;color:#64748b;">
+                        Unit: <strong>${esc(report.unit)}</strong>
+                        • Period: ${esc(report.period)}
                     </div>
-                    <div style="padding: 14px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end; background: #f8fafc;">
-                        <button onclick="document.getElementById('scheduleModal').remove()" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500;">Cancel</button>
-                        <button onclick="LecturerReports.saveSchedule()" style="background: ${this.isTVET ? '#8b5cf6' : '#4C1D95'}; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-save"></i> Save Schedule
-                        </button>
+
+                    <div style="margin-top:4px;font-size:11px;color:#94a3b8;">
+                        Generated ${new Date(report.generatedAt).toLocaleString()}
                     </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+                    ${metricBox('Students', s.totalStudents)}
+                    ${metricBox('Mean', s.mean.toFixed(1) + '%')}
+                    ${metricBox('Pass Rate', s.passRate.toFixed(1) + '%')}
+                    ${metricBox('Highest', s.highest.toFixed(1) + '%')}
+                    ${metricBox('Lowest', s.lowest.toFixed(1) + '%')}
+                    ${metricBox('Pass', s.passCount)}
+                    ${metricBox('Fail', s.failCount)}
+                    ${metricBox('Retakes', s.retakes)}
+                </div>
+
+                <div style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:15px;">
+                    <strong style="font-size:12px;">Grade Distribution</strong>
+                    <div style="margin-top:6px;">${gradeHtml || '<span style="color:#94a3b8;">No graded records</span>'}</div>
+                </div>
+
+                <div style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:15px;font-size:11px;">
+                    <strong>Grading:</strong>
+                    ${esc(report.grading.system)}
+                    • Passing threshold:
+                    <strong>${report.grading.passingThreshold}%</strong>
+                </div>
+
+                <div style="overflow:auto;border:1px solid #e2e8f0;border-radius:8px;">
+                    <table style="width:100%;border-collapse:collapse;font-size:10px;">
+                        <thead style="background:#f8fafc;">
+                            <tr>${tableHead}</tr>
+                        </thead>
+                        <tbody>${tableBody ||
+                            `<tr><td colspan="${Math.max(headers.length,1)}" style="padding:25px;text-align:center;color:#94a3b8;">No marks found.</td></tr>`
+                        }</tbody>
+                    </table>
                 </div>
             </div>
         `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    },
-    
-    saveSchedule() {
-        const frequency = document.getElementById('scheduleFrequency')?.value || 'weekly';
-        const startDate = document.getElementById('scheduleStartDate')?.value || new Date().toISOString().split('T')[0];
-        const recipients = document.getElementById('scheduleRecipients')?.value || '';
-        const typeLabel = this.getProgramTypeLabel();
-        
-        const schedule = {
-            id: `schedule-${Date.now()}`,
-            unit_id: document.getElementById('reportUnit')?.value || null,
-            report_type: document.getElementById('reportType')?.value || null,
-            frequency,
-            start_date: startDate,
-            recipients: recipients.split(',').map(v => v.trim()).filter(Boolean),
-            program_type: this.currentProgram,
-            created_at: new Date().toISOString()
-        };
-        const existing = JSON.parse(localStorage.getItem('nchsm_report_schedules') || '[]');
-        existing.push(schedule);
-        localStorage.setItem('nchsm_report_schedules', JSON.stringify(existing));
-        this.showNotification(`✅ ${typeLabel} report schedule saved on this device.`, 'success');
-        
-        const modal = document.getElementById('scheduleModal');
-        if (modal) modal.remove();
-    },
-    
-    // ─── DELETE REPORT ───
-    async deleteReport(reportId) {
-        const report = this.reports.find(r => r.id === reportId);
-        if (!report) {
-            this.showNotification('Report not found.', 'error');
+    }
+
+    function metricBox(label, value) {
+        return `
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px;text-align:center;">
+                <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;font-weight:700;">${label}</div>
+                <strong style="display:block;font-size:16px;color:#0A3D62;margin-top:2px;">${value}</strong>
+            </div>
+        `;
+    }
+
+    /* ============================================================
+       CSV / EXCEL
+    ============================================================ */
+
+    function exportCurrentCSV(report) {
+        if (!report) return;
+
+        const rows = report.rows || [];
+
+        if (!rows.length) {
+            showReportNotice('No data available to export.', 'warning');
             return;
         }
-        
-        if (!confirm(`Delete report "${report.title}"?`)) return;
-        
+
+        const headers = Object.keys(rows[0]);
+
+        const csv = [
+            headers.map(csvCell).join(','),
+            ...rows.map(row =>
+                headers.map(h => csvCell(row[h])).join(',')
+            )
+        ].join('\n');
+
+        downloadBlob(
+            csv,
+            safeFilename(`${report.title}_${report.unit}`) + '.csv',
+            'text/csv;charset=utf-8;'
+        );
+
+        showReportNotice('CSV report downloaded.', 'success');
+    }
+
+    function csvCell(value) {
+        return `"${String(value ?? '').replace(/"/g, '""')}"`;
+    }
+
+    LecturerReports.exportToExcel = function () {
+        const report = LecturerReports.currentReport;
+
+        if (!report) {
+            showReportNotice('Generate or preview a report first.', 'warning');
+            return;
+        }
+
+        /*
+          If SheetJS is already installed in the portal, use it.
+          Otherwise export an Excel-compatible HTML workbook.
+        */
+        if (window.XLSX) {
+            const rows = report.rows || [];
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+
+            XLSX.utils.book_append_sheet(
+                wb,
+                ws,
+                'Report'
+            );
+
+            XLSX.writeFile(
+                wb,
+                safeFilename(`${report.title}_${report.unit}`) + '.xlsx'
+            );
+        } else {
+            const html = excelCompatibleHTML(report);
+            downloadBlob(
+                html,
+                safeFilename(`${report.title}_${report.unit}`) + '.xls',
+                'application/vnd.ms-excel'
+            );
+        }
+
+        showReportNotice('Excel report downloaded.', 'success');
+    };
+
+    function excelCompatibleHTML(report) {
+        const rows = report.rows || [];
+        const headers = rows.length ? Object.keys(rows[0]) : [];
+
+        return `
+            <html>
+            <head><meta charset="UTF-8"></head>
+            <body>
+                <h2>${esc(report.title)}</h2>
+                <p>${esc(report.unit)} — ${esc(report.block)}</p>
+                <table border="1">
+                    <tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr>
+                    ${rows.map(r =>
+                        `<tr>${headers.map(h => `<td>${esc(r[h])}</td>`).join('')}</tr>`
+                    ).join('')}
+                </table>
+            </body>
+            </html>
+        `;
+    }
+
+    /* ============================================================
+       PDF
+    ============================================================ */
+
+    LecturerReports.exportToPDF = async function () {
+        const report = LecturerReports.currentReport;
+
+        if (!report) {
+            LecturerReports.currentReport =
+                await buildReport(selectedFormData());
+        }
+
+        const activeReport = LecturerReports.currentReport;
+
+        /*
+          Prefer jsPDF if already loaded by the portal.
+        */
+        if (window.jspdf?.jsPDF) {
+            const doc = new window.jspdf.jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const s = activeReport.statistics;
+
+            doc.setFontSize(17);
+            doc.text(activeReport.title, 14, 15);
+
+            doc.setFontSize(9);
+            doc.text(
+                `${activeReport.program} | ${activeReport.unit} | ${activeReport.block}`,
+                14,
+                22
+            );
+
+            doc.text(
+                `Academic Year: ${activeReport.academicYear} | Period: ${activeReport.period}`,
+                14,
+                27
+            );
+
+            doc.text(
+                `Students: ${s.totalStudents} | Mean: ${s.mean.toFixed(1)}% | Pass Rate: ${s.passRate.toFixed(1)}% | Highest: ${s.highest.toFixed(1)}% | Lowest: ${s.lowest.toFixed(1)}%`,
+                14,
+                33
+            );
+
+            if (typeof doc.autoTable === 'function') {
+                const rows = activeReport.rows || [];
+                const headers = rows.length ? Object.keys(rows[0]) : [];
+
+                doc.autoTable({
+                    startY: 40,
+                    head: [headers],
+                    body: rows.map(r => headers.map(h => r[h] ?? '')),
+                    styles: {
+                        fontSize: 7
+                    },
+                    headStyles: {
+                        fillColor: [76, 29, 149]
+                    }
+                });
+            } else {
+                doc.setFontSize(8);
+                doc.text(
+                    'Install/load jsPDF AutoTable for a full tabular PDF export.',
+                    14,
+                    42
+                );
+            }
+
+            doc.save(
+                safeFilename(`${activeReport.title}_${activeReport.unit}`) + '.pdf'
+            );
+
+            showReportNotice('PDF report downloaded.', 'success');
+            return;
+        }
+
+        /*
+          If no PDF library exists, open a print-ready preview instead
+          of pretending a PDF was generated.
+        */
+        await LecturerReports.previewReport();
+
+        showReportNotice(
+            'PDF library is not loaded. Use Print → Save as PDF, or load jsPDF + AutoTable.',
+            'info'
+        );
+    };
+
+    LecturerReports.exportPreviewToPDF = LecturerReports.exportToPDF;
+
+    LecturerReports.printPreview = function () {
+        const report = LecturerReports.currentReport;
+        if (!report) return;
+
+        const printWindow = window.open('', '_blank');
+
+        if (!printWindow) {
+            showReportNotice(
+                'Please allow pop-ups to print the report.',
+                'warning'
+            );
+            return;
+        }
+
+        printWindow.document.write(`
+            <!doctype html>
+            <html>
+            <head>
+                <title>${esc(report.title)}</title>
+                <style>
+                    @page { size: landscape; margin: 10mm; }
+                    body { font-family: Arial, sans-serif; margin: 0; }
+                    table { page-break-inside: auto; }
+                    tr { page-break-inside: avoid; }
+                </style>
+            </head>
+            <body>
+                ${renderPreview(report)}
+                <script>
+                    window.onload = function(){
+                        setTimeout(function(){ window.print(); }, 300);
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+    };
+
+    /* ============================================================
+       REPORT LIST / LOCAL STORAGE
+    ============================================================ */
+
+    function storageKey() {
+        return `lecturer_reports_${currentLecturerId() || currentLecturerEmail() || 'unknown'}`;
+    }
+
+    function saveLocalReports() {
         try {
-            const supabase = window.lecturerDB?.supabase;
-            
-            if (supabase) {
-                const { error: dbError } = await supabase
-                    .from('reports')
-                    .delete()
-                    .eq('id', reportId);
-                
-                if (dbError) {
-                    console.error('Delete error:', dbError);
+            /*
+              Store metadata, not the entire marks dataset.
+              This prevents localStorage from becoming unnecessarily large.
+            */
+            const compact = LecturerReports.reports.slice(0, 50).map(r => ({
+                id: r.id,
+                title: r.title,
+                type: r.type,
+                unit: r.unit,
+                block: r.block,
+                program: r.program,
+                academicYear: r.academicYear,
+                period: r.period,
+                generatedAt: r.generatedAt,
+                statistics: r.statistics
+            }));
+
+            localStorage.setItem(storageKey(), JSON.stringify(compact));
+        } catch (e) {
+            console.warn('Could not save report history:', e);
+        }
+    }
+
+    function loadLocalReports() {
+        try {
+            const raw = localStorage.getItem(storageKey());
+            if (!raw) return [];
+
+            const data = JSON.parse(raw);
+            return Array.isArray(data) ? data : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function renderReports(reports) {
+        const tbody = document.getElementById('reportsTable');
+        const countEl = document.getElementById('reportCountDisplay');
+        const filterEl = document.getElementById('reportFilterCount');
+
+        if (!tbody) return;
+
+        const list = filterReports(reports || []);
+
+        if (countEl) countEl.textContent = list.length;
+
+        if (filterEl) {
+            filterEl.textContent =
+                `Showing ${list.length} of ${(reports || []).length} reports`;
+        }
+
+        if (!list.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="padding:45px;text-align:center;color:#94a3b8;">
+                        <i class="fas fa-file-circle-xmark" style="font-size:32px;margin-bottom:10px;"></i>
+                        <div style="font-weight:700;color:#64748b;">No reports found</div>
+                        <small>Generate a report from your assigned unit and marks.</small>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = list.map((r, index) => `
+            <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:11px 15px;">
+                    <strong style="color:#334155;">${esc(r.title)}</strong>
+                    <div style="font-size:10px;color:#94a3b8;">
+                        ${esc(r.program || '')}
+                    </div>
+                </td>
+
+                <td style="padding:11px 15px;color:#475569;">
+                    ${esc(r.unit)}
+                </td>
+
+                <td style="padding:11px 15px;color:#475569;">
+                    ${esc(r.block)}
+                </td>
+
+                <td style="padding:11px 15px;">
+                    <span style="background:#ede9fe;color:#5b21b6;padding:4px 7px;border-radius:10px;font-size:10px;">
+                        ${esc(reportTitle(r.type))}
+                    </span>
+                </td>
+
+                <td style="padding:11px 15px;color:#64748b;">
+                    ${esc(r.period || '')}
+                </td>
+
+                <td style="padding:11px 15px;color:#64748b;">
+                    ${r.generatedAt
+                        ? new Date(r.generatedAt).toLocaleString()
+                        : '—'}
+                </td>
+
+                <td style="padding:11px 15px;text-align:center;">
+                    <span style="font-weight:700;color:#475569;">
+                        ${esc(r.options?.format || 'Report')}
+                    </span>
+                </td>
+
+                <td style="padding:11px 15px;text-align:center;white-space:nowrap;">
+                    <button type="button"
+                        onclick="LecturerReports.openHistoryReport(${index})"
+                        title="Preview"
+                        style="border:0;background:#ede9fe;color:#5b21b6;padding:6px 8px;border-radius:6px;cursor:pointer;">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function filterReports(reports) {
+        const f = LecturerReports.currentFilters;
+
+        return (reports || []).filter(r => {
+            const search = String(f.search || '').trim().toLowerCase();
+
+            const searchMatch = !search ||
+                `${r.title} ${r.unit} ${r.block} ${r.type}`
+                    .toLowerCase()
+                    .includes(search);
+
+            const typeMatch =
+                !f.type ||
+                f.type === 'all' ||
+                r.type === f.type;
+
+            const unitMatch =
+                !f.unit ||
+                f.unit === 'all' ||
+                r.unit === f.unit;
+
+            let dateMatch = true;
+
+            if (f.date && f.date !== 'all' && r.generatedAt) {
+                const d = new Date(r.generatedAt);
+                const now = new Date();
+
+                if (f.date === 'today') {
+                    dateMatch =
+                        d.toDateString() === now.toDateString();
+                } else if (f.date === 'week') {
+                    const weekAgo = new Date(now);
+                    weekAgo.setDate(now.getDate() - 7);
+                    dateMatch = d >= weekAgo;
+                } else if (f.date === 'month') {
+                    dateMatch =
+                        d.getMonth() === now.getMonth() &&
+                        d.getFullYear() === now.getFullYear();
                 }
             }
-            
-            this.reports = this.reports.filter(r => r.id !== reportId);
-            this.renderReports(this.reports);
-            this.updateStats();
-            this.updateAnalytics();
-            
-            this.showNotification('✅ Report deleted successfully!', 'success');
-            
+
+            return searchMatch && typeMatch && unitMatch && dateMatch;
+        });
+    }
+
+    LecturerReports.openHistoryReport = async function (index) {
+        const list = filterReports(LecturerReports.reports);
+        const item = list[index];
+
+        if (!item) return;
+
+        /*
+          Rebuild the report from current marks rather than storing
+          stale student marks in localStorage.
+        */
+        try {
+            setReportBusy(true, 'Refreshing report from current marks...');
+
+            const report = await buildReport({
+                unit: item.unit !== 'All Assigned Units' ? item.unit : '',
+                block: item.block === 'All Classes' ? 'all' : item.block,
+                type: item.type,
+                period: 'all',
+                format: 'HTML',
+                includeAttendance: true,
+                includeGrades: true,
+                includeAssessments: true,
+                includeExams: true,
+                includeAssignments: true,
+                includeComments: false,
+                includeCharts: true
+            });
+
+            LecturerReports.currentReport = report;
+            await LecturerReports.previewReport();
         } catch (error) {
-            console.error('Delete error:', error);
-            this.showNotification('Delete failed: ' + error.message, 'error');
+            showReportNotice(
+                'Could not reopen report: ' + error.message,
+                'error'
+            );
+        } finally {
+            setReportBusy(false);
         }
-    },
-    
-    // ─── UPDATE STATS ───
-    updateStats() {
-        const total = this.reports?.length || 0;
-        const typeLabel = this.getProgramTypeLabel();
-        
-        const totalEl = document.getElementById('totalReportsCount');
-        if (totalEl) totalEl.textContent = total;
-        
-        const countDisplay = document.getElementById('reportCountDisplay');
-        if (countDisplay) countDisplay.textContent = total;
-        
-        const studentReports = this.reports?.filter(r => r.type === 'EnrollmentList' || r.type === 'ClassRoster')?.length || 0;
-        const performanceReports = this.reports?.filter(r => r.type === 'PerformanceAnalysis' || r.type === 'UnitProgress')?.length || 0;
-        const unitReports = this.reports?.filter(r => r.type === 'CourseGradeBook' || r.type === 'AttendanceSummary')?.length || 0;
-        
-        const studentEl = document.getElementById('studentReportsCount');
-        if (studentEl) studentEl.textContent = studentReports;
-        
-        const performanceEl = document.getElementById('performanceReportsCount');
-        if (performanceEl) performanceEl.textContent = performanceReports;
-        
-        const unitEl = document.getElementById('unitReportsCount');
-        if (unitEl) unitEl.textContent = unitReports;
-    },
-    
-    updateAnalytics() {
-        if (!this.reports || this.reports.length === 0) {
-            const mostType = document.getElementById('mostGeneratedType');
-            if (mostType) mostType.textContent = '-';
-            const mostUnit = document.getElementById('mostActiveUnit');
-            if (mostUnit) mostUnit.textContent = '-';
-            return;
-        }
-        
-        const typeCount = {};
-        this.reports.forEach(r => {
-            typeCount[r.type] = (typeCount[r.type] || 0) + 1;
-        });
-        let mostType = '';
-        let maxCount = 0;
-        for (const [type, count] of Object.entries(typeCount)) {
-            if (count > maxCount) {
-                maxCount = count;
-                mostType = this.formatType(type);
-            }
-        }
-        const mostTypeEl = document.getElementById('mostGeneratedType');
-        if (mostTypeEl) mostTypeEl.textContent = mostType || '-';
-        
-        const unitCount = {};
-        this.reports.forEach(r => {
-            const key = r.unit_name || r.unit_id || 'Unknown';
-            unitCount[key] = (unitCount[key] || 0) + 1;
-        });
-        let mostUnit = '';
-        maxCount = 0;
-        for (const [unit, count] of Object.entries(unitCount)) {
-            if (count > maxCount) {
-                maxCount = count;
-                mostUnit = unit;
-            }
-        }
-        const mostUnitEl = document.getElementById('mostActiveUnit');
-        if (mostUnitEl) mostUnitEl.textContent = mostUnit || '-';
-    },
-    
-    // ─── FILTER & REFRESH ───
-    clearFilters() {
-        this.currentFilters = {
+    };
+
+    LecturerReports.clearFilters = function () {
+        LecturerReports.currentFilters = {
             search: '',
             type: 'all',
             unit: 'all',
             date: 'all'
         };
-        
-        const searchInput = document.getElementById('reportSearch');
-        if (searchInput) searchInput.value = '';
-        
-        const typeFilter = document.getElementById('reportTypeFilter');
-        if (typeFilter) typeFilter.value = 'all';
-        
-        const unitFilter = document.getElementById('reportUnitFilter');
-        if (unitFilter) unitFilter.value = 'all';
-        
-        const dateFilter = document.getElementById('reportDateFilter');
-        if (dateFilter) dateFilter.value = 'all';
-        
-        this.renderReports(this.reports);
-        this.showNotification(`${this.getProgramTypeLabel()} filters cleared.`, 'info');
-    },
-    
-    async refresh() {
-        await this.resolveLecturerId();
-        await this.loadAssignedUnits();
-        await this.loadReports();
-        this.updateGradingInfo();
-        this.showNotification(`${this.getProgramTypeLabel()} reports refreshed!`, 'success');
+
+        const ids = {
+            reportSearch: '',
+            reportTypeFilter: 'all',
+            reportUnitFilter: 'all',
+            reportDateFilter: 'all'
+        };
+
+        Object.entries(ids).forEach(([id, value]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        });
+
+        renderReports(LecturerReports.reports);
+    };
+
+    LecturerReports.refresh = async function () {
+        try {
+            setReportBusy(true, 'Refreshing marks and reports...');
+
+            const assignments = await loadAssignedUnits();
+
+            const units = [
+                ...new Set(
+                    assignments.map(a => a.subject_name).filter(Boolean)
+                )
+            ];
+
+            /*
+              Refresh current report if one exists.
+            */
+            if (LecturerReports.currentReport) {
+                const old = LecturerReports.currentReport;
+
+                LecturerReports.currentReport = await buildReport({
+                    unit: old.unit !== 'All Assigned Units' ? old.unit : '',
+                    block: old.block === 'All Classes' ? 'all' : old.block,
+                    type: old.type,
+                    period: 'all',
+                    format: 'HTML',
+                    includeAttendance: true,
+                    includeGrades: true,
+                    includeAssessments: true,
+                    includeExams: true,
+                    includeAssignments: true,
+                    includeComments: false,
+                    includeCharts: true
+                });
+            }
+
+            await populateReportSelectors();
+
+            renderReports(LecturerReports.reports);
+            updateAnalytics(LecturerReports.reports);
+
+            showReportNotice(
+                `Reports refreshed. ${units.length} assigned unit(s) available.`,
+                'success'
+            );
+        } catch (error) {
+            console.error(error);
+            showReportNotice(
+                'Refresh failed: ' + error.message,
+                'error'
+            );
+        } finally {
+            setReportBusy(false);
+        }
+    };
+
+    /* ============================================================
+       EXPORT ALL / JSON / PRINT
+    ============================================================ */
+
+    LecturerReports.exportAllReports = function () {
+        if (!LecturerReports.reports.length) {
+            showReportNotice('No reports available.', 'warning');
+            return;
+        }
+
+        const rows = LecturerReports.reports.map(r => ({
+            Report: r.title,
+            Unit: r.unit,
+            Class: r.block,
+            Type: r.type,
+            Period: r.period,
+            Students: r.statistics?.totalStudents || 0,
+            Mean: r.statistics?.mean?.toFixed?.(1) || '',
+            PassRate: r.statistics?.passRate?.toFixed?.(1) || '',
+            Generated: r.generatedAt
+                ? new Date(r.generatedAt).toLocaleString()
+                : ''
+        }));
+
+        const headers = Object.keys(rows[0]);
+
+        const csv = [
+            headers.map(csvCell).join(','),
+            ...rows.map(row =>
+                headers.map(h => csvCell(row[h])).join(',')
+            )
+        ].join('\n');
+
+        downloadBlob(
+            csv,
+            `lecturer_reports_${currentAcademicYear()}.csv`,
+            'text/csv;charset=utf-8;'
+        );
+
+        showReportNotice('All reports exported.', 'success');
+    };
+
+    LecturerReports.exportAllToPDF = async function () {
+        if (!LecturerReports.reports.length) {
+            showReportNotice('No reports available.', 'warning');
+            return;
+        }
+
+        /*
+          Create a combined printable report. This avoids silently
+          claiming a multi-PDF library exists when it does not.
+        */
+        const printWindow = window.open('', '_blank');
+
+        if (!printWindow) {
+            showReportNotice(
+                'Please allow pop-ups to export all reports.',
+                'warning'
+            );
+            return;
+        }
+
+        const content = LecturerReports.reports.map(r =>
+            renderPreview(r)
+        ).join('<div style="page-break-after:always;"></div>');
+
+        printWindow.document.write(`
+            <!doctype html>
+            <html>
+            <head>
+                <title>Lecturer Academic Reports</title>
+                <style>
+                    @page { size: landscape; margin: 10mm; }
+                    body { font-family:Arial,sans-serif; }
+                </style>
+            </head>
+            <body>
+                ${content}
+                <script>
+                    window.onload = function(){
+                        setTimeout(function(){ window.print(); }, 300);
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+    };
+
+    LecturerReports.exportJSON = function () {
+        if (!LecturerReports.reports.length) {
+            showReportNotice('No reports available.', 'warning');
+            return;
+        }
+
+        const json = JSON.stringify(
+            LecturerReports.reports,
+            null,
+            2
+        );
+
+        downloadBlob(
+            json,
+            `lecturer_reports_${currentAcademicYear()}.json`,
+            'application/json;charset=utf-8;'
+        );
+
+        showReportNotice('JSON export downloaded.', 'success');
+    };
+
+    LecturerReports.printReportTable = function () {
+        const table = document.querySelector('#reportsTable');
+
+        if (!table) return;
+
+        const win = window.open('', '_blank');
+
+        if (!win) {
+            showReportNotice(
+                'Please allow pop-ups to print.',
+                'warning'
+            );
+            return;
+        }
+
+        win.document.write(`
+            <!doctype html>
+            <html>
+            <head>
+                <title>Lecturer Reports</title>
+                <style>
+                    body { font-family:Arial,sans-serif;padding:20px; }
+                    table { width:100%;border-collapse:collapse; }
+                    th,td { border:1px solid #ddd;padding:8px;font-size:11px; }
+                    th { background:#f3f4f6; }
+                </style>
+            </head>
+            <body>
+                <h2>Lecturer Reports</h2>
+                <table>
+                    ${table.closest('table')?.querySelector('thead')?.outerHTML || ''}
+                    <tbody>${table.innerHTML}</tbody>
+                </table>
+                <script>
+                    window.onload = function(){
+                        setTimeout(function(){ window.print(); }, 250);
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+
+        win.document.close();
+    };
+
+    LecturerReports.downloadAllReports = LecturerReports.exportAllReports;
+
+    /* ============================================================
+       ANALYTICS
+    ============================================================ */
+
+    function updateSummary(marks, stats) {
+        const set = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        set('totalReportsCount', LecturerReports.reports.length);
+        set('unitReportsCount', new Set(marks.map(m => m.unit)).size);
+        set('studentReportsCount', new Set(marks.map(m => m.admission)).size);
+        set(
+            'performanceReportsCount',
+            LecturerReports.reports.filter(
+                r => r.type === 'PerformanceAnalysis'
+            ).length
+        );
+        set(
+            'reportEngagementRate',
+            marks.length
+                ? `${((marks.filter(m => m.total > 0).length / marks.length) * 100).toFixed(1)}%`
+                : '—'
+        );
+        set(
+            'reportPassRate',
+            stats
+                ? `${stats.passRate.toFixed(1)}%`
+                : '—'
+        );
     }
-};
 
-// ─── INITIALIZE ───
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof html2pdf === 'undefined') {
-        console.warn('html2pdf.js not loaded. PDF export will not work.');
+    function updateAnalytics(reports) {
+        const set = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        if (!reports.length) {
+            set('mostGeneratedType', '—');
+            set('mostActiveUnit', '—');
+            set('reportPopularFormat', '—');
+            set('reportAvgGenerationTime', '—');
+            return;
+        }
+
+        const typeCounts = {};
+        const unitCounts = {};
+        const formatCounts = {};
+
+        reports.forEach(r => {
+            typeCounts[r.type] = (typeCounts[r.type] || 0) + 1;
+            unitCounts[r.unit] = (unitCounts[r.unit] || 0) + 1;
+
+            const format = r.options?.format || 'Report';
+            formatCounts[format] = (formatCounts[format] || 0) + 1;
+        });
+
+        set(
+            'mostGeneratedType',
+            reportTitle(
+                Object.keys(typeCounts)
+                    .sort((a, b) => typeCounts[b] - typeCounts[a])[0]
+            )
+        );
+
+        set(
+            'mostActiveUnit',
+            Object.keys(unitCounts)
+                .sort((a, b) => unitCounts[b] - unitCounts[a])[0] || '—'
+        );
+
+        const popularFormat =
+            Object.keys(formatCounts)
+                .sort((a, b) => formatCounts[b] - formatCounts[a])[0];
+
+        set('reportPopularFormat', popularFormat || '—');
+
+        const meta = document.getElementById('reportPopularFormatMeta');
+        if (meta) {
+            meta.textContent = popularFormat
+                ? `${formatCounts[popularFormat]} generated`
+                : 'Based on loaded reports';
+        }
+
+        /*
+          Generation timing is only shown if actual timing data exists.
+          We do not invent performance measurements.
+        */
+        set('reportAvgGenerationTime', '—');
     }
-    
-    setTimeout(() => LecturerReports.init(), 900);
-});
 
-// Make all functions globally available
-window.LecturerReports = LecturerReports;
-window.filterReports = () => LecturerReports.renderReports(LecturerReports.reports);
-window.clearReportFilters = () => LecturerReports.clearFilters();
-window.refreshReports = () => LecturerReports.refresh();
-window.exportAllReports = () => LecturerReports.exportAllReports();
-window.printReportTable = () => LecturerReports.printReportTable();
+    /* ============================================================
+       UI HELPERS
+    ============================================================ */
 
-console.log('✅ LecturerReports module loaded - All buttons working!');
-console.log('📊 TVET Support: Enabled');
-console.log(`📋 ${LecturerReports.getProgramTypeLabel()} grading supported`);
+    function setReportBusy(busy, message) {
+        const buttons = document.querySelectorAll(
+            '#reportGenerationForm button'
+        );
+
+        buttons.forEach(btn => {
+            if (btn.dataset.originalDisabled === undefined) {
+                btn.dataset.originalDisabled =
+                    btn.disabled ? '1' : '0';
+            }
+
+            btn.disabled = busy;
+            btn.style.opacity = busy ? '.65' : '1';
+        });
+
+        if (message) {
+            const title = document.querySelector(
+                '#reportGenerationForm h4'
+            );
+
+            if (title && busy) {
+                title.dataset.originalText ||= title.textContent;
+                title.textContent = message;
+            } else if (title && !busy && title.dataset.originalText) {
+                title.textContent = title.dataset.originalText;
+            }
+        }
+    }
+
+    function showReportNotice(message, type) {
+        if (typeof window.showNotification === 'function') {
+            try {
+                window.showNotification(message, type || 'info');
+                return;
+            } catch (_) {}
+        }
+
+        if (window.LecturerUI?.showNotification) {
+            try {
+                window.LecturerUI.showNotification(
+                    message,
+                    type || 'info'
+                );
+                return;
+            } catch (_) {}
+        }
+
+        console.log(`[LecturerReports:${type || 'info'}] ${message}`);
+    }
+
+    function downloadBlob(content, filename, type) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url), 500);
+    }
+
+    function safeFilename(value) {
+        return String(value || 'report')
+            .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+            .replace(/\s+/g, '_')
+            .slice(0, 150);
+    }
+
+
+    /* ============================================================
+       REPORT SUBMISSION / WEEKLY REPORT WORKFLOW
+       ------------------------------------------------------------
+       This layer works with the HTML IDs introduced in the updated
+       Academic Reports section.
+
+       Expected Supabase objects:
+         - lecturer_report_submissions
+         - Storage bucket: lecturer-reports
+
+       The JS does NOT alter student_marks.
+       It reads marks and stores report/submission metadata separately.
+    ============================================================ */
+
+    const REPORT_SUBMISSION_TABLE = 'lecturer_report_submissions';
+    const REPORT_STORAGE_BUCKET = 'lecturer-reports';
+
+    const TEACHING_DOCUMENTS = [
+        ['course_outline', 'Course Outline'],
+        ['scheme_of_work', 'Scheme of Work'],
+        ['course_objectives', 'Course Objectives'],
+        ['records_of_work', 'Records of Work'],
+        ['lesson_plan', 'Lesson Plan'],
+        ['teaching_schedule', 'Teaching Schedule'],
+        ['learning_resources', 'Learning Resources / Materials'],
+        ['other_teaching_document', 'Other Teaching Document']
+    ];
+
+    const SUBMISSION_DOCUMENTS = {
+        TeachingLearningReport: TEACHING_DOCUMENTS,
+        AssessmentReport: [
+            ['assessment_plan', 'Assessment Plan'],
+            ['cat_report', 'CAT Report'],
+            ['exam_report', 'Examination Report'],
+            ['mark_sheet', 'Mark Sheet'],
+            ['moderation_report', 'Moderation Report']
+        ],
+        AttendanceReport: [
+            ['weekly_attendance', 'Weekly Attendance'],
+            ['monthly_attendance', 'Monthly Attendance'],
+            ['attendance_exception', 'Attendance Exception Report']
+        ],
+        ClinicalPracticalReport: [
+            ['clinical_plan', 'Clinical Plan'],
+            ['rotation_report', 'Clinical Rotation Report'],
+            ['practical_assessment', 'Practical Assessment Report'],
+            ['clinical_attendance', 'Clinical Attendance Report']
+        ],
+        StudentPerformanceReport: [
+            ['performance_report', 'Student Performance Report'],
+            ['at_risk_report', 'At-Risk Student Report'],
+            ['progress_report', 'Student Progress Report']
+        ],
+        UnitProgressReport: [
+            ['unit_progress', 'Unit Progress Report'],
+            ['content_coverage', 'Content Coverage Report'],
+            ['pending_topics', 'Pending Topics / Coverage Report']
+        ],
+        WeeklyReport: [
+            ['weekly_teaching', 'Weekly Teaching Report'],
+            ['weekly_clinical', 'Weekly Clinical Report'],
+            ['weekly_activity', 'Weekly Activity Report']
+        ],
+        EndOfSemesterReport: [
+            ['course_completion', 'Course Completion Report'],
+            ['unit_report', 'End-of-Semester Unit Report'],
+            ['assessment_summary', 'Semester Assessment Summary'],
+            ['semester_report', 'End-of-Semester Report']
+        ],
+        OtherReport: [
+            ['other', 'Other Report / Document']
+        ]
+    };
+
+    function submissionEl(id) {
+        return document.getElementById(id);
+    }
+
+    function submissionValue(id) {
+        return submissionEl(id)?.value?.trim() || '';
+    }
+
+    function setSubmissionMessage(message, type = 'info') {
+        const el = submissionEl('reportSubmissionMessage');
+        if (!el) {
+            showReportNotice(message, type);
+            return;
+        }
+
+        const styles = {
+            success: ['#ecfdf5', '#047857', '#a7f3d0'],
+            error: ['#fef2f2', '#b91c1c', '#fecaca'],
+            warning: ['#fffbeb', '#b45309', '#fde68a'],
+            info: ['#eff6ff', '#1d4ed8', '#bfdbfe']
+        };
+        const s = styles[type] || styles.info;
+        el.style.display = 'block';
+        el.style.background = s[0];
+        el.style.color = s[1];
+        el.style.border = `1px solid ${s[2]}`;
+        el.textContent = message;
+    }
+
+    function submissionCategoryLabel(type) {
+        const map = {
+            WeeklyReport: 'Weekly Lecturer Report',
+            TeachingLearningReport: 'Teaching & Learning',
+            AssessmentReport: 'Assessment / Examination',
+            AttendanceReport: 'Attendance',
+            ClinicalPracticalReport: 'Clinical / Practical',
+            StudentPerformanceReport: 'Student Performance',
+            UnitProgressReport: 'Unit Progress',
+            EndOfSemesterReport: 'End-of-Semester',
+            OtherReport: 'Other'
+        };
+        return map[type] || type || 'Report';
+    }
+
+    function populateSubmissionSelect(select, rows, placeholder, valueKey, labelFn) {
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = `<option value="">${esc(placeholder)}</option>`;
+
+        rows.forEach(row => {
+            const value = typeof valueKey === 'function'
+                ? valueKey(row)
+                : row[valueKey];
+            if (!value) return;
+
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = labelFn ? labelFn(row) : value;
+            select.appendChild(option);
+        });
+
+        if (current && [...select.options].some(o => o.value === current)) {
+            select.value = current;
+        }
+    }
+
+    async function populateSubmissionSelectors() {
+        const assignments = await loadAssignedUnits();
+
+        const units = [
+            ...new Map(
+                assignments.map(a => [
+                    `${a.subject_code || ''}|${a.subject_name || ''}`,
+                    a
+                ])
+            ).values()
+        ];
+
+        const unitSelect = submissionEl('submissionReportUnit');
+        populateSubmissionSelect(
+            unitSelect,
+            units,
+            '-- Select Assigned Unit --',
+            a => a.subject_name || a.subject_code,
+            a => `${a.subject_code ? a.subject_code + ' - ' : ''}${a.subject_name || a.subject_code}`
+        );
+
+        const unitFilter = submissionEl('reportUnitFilter');
+        if (unitFilter) {
+            // Keep existing report filter intact; only populate when empty.
+            const existing = [...unitFilter.options].map(o => o.value);
+            units.forEach(u => {
+                const value = u.subject_name || u.subject_code;
+                if (!value || existing.includes(value)) return;
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = u.subject_name || u.subject_code;
+                unitFilter.appendChild(option);
+            });
+        }
+
+        const classSelect = submissionEl('submissionReportClass');
+        const blocks = [...new Set(assignments.map(a => a.block).filter(Boolean))];
+        populateSubmissionSelect(
+            classSelect,
+            blocks.map(block => ({ block })),
+            'All Assigned Classes',
+            'block',
+            row => String(row.block).replace(/_/g, ' ')
+        );
+
+        const weeklyUnit = submissionEl('weeklyReportUnit');
+        populateSubmissionSelect(
+            weeklyUnit,
+            units,
+            '-- Select Unit --',
+            a => a.subject_name || a.subject_code,
+            a => `${a.subject_code ? a.subject_code + ' - ' : ''}${a.subject_name || a.subject_code}`
+        );
+
+        const weeklyClass = submissionEl('weeklyReportClass');
+        populateSubmissionSelect(
+            weeklyClass,
+            blocks.map(block => ({ block })),
+            'All Assigned Classes',
+            'block',
+            row => String(row.block).replace(/_/g, ' ')
+        );
+    }
+
+    LecturerReports.handleSubmissionTypeChange = function(type) {
+        const documentField = submissionEl('submissionDocumentTypeField');
+        const documentSelect = submissionEl('submissionDocumentType');
+        const guide = submissionEl('submissionCategoryGuide');
+        const guideText = submissionEl('submissionCategoryGuideText');
+
+        const options = SUBMISSION_DOCUMENTS[type] || [];
+
+        if (documentField) {
+            documentField.style.display = options.length ? '' : 'none';
+        }
+
+        if (documentSelect) {
+            documentSelect.innerHTML =
+                '<option value="">-- Select Document --</option>';
+
+            options.forEach(([value, label]) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                documentSelect.appendChild(option);
+            });
+
+            documentSelect.required = type === 'TeachingLearningReport';
+        }
+
+        const guides = {
+            TeachingLearningReport:
+                'Select the exact teaching document being submitted. The assigned-unit list is loaded from lecturer_subject_assignments.',
+            WeeklyReport:
+                'Complete the week number, period, topics, activities, challenges and action points. You may include live attendance and marks in the generated report.',
+            AssessmentReport:
+                'Select the assessment document and attach the supporting report or mark sheet where applicable.',
+            ClinicalPracticalReport:
+                'Select the clinical/practical document and attach supporting evidence where applicable.',
+            AttendanceReport:
+                'Select the attendance report type and use the selected assigned unit/class.',
+            StudentPerformanceReport:
+                'Use the live marks data for the selected assigned unit/class where applicable.',
+            UnitProgressReport:
+                'Document content covered, pending topics and progress for the selected assigned unit.',
+            EndOfSemesterReport:
+                'Select the semester document and attach the completed report where applicable.'
+        };
+
+        if (guide && guideText && guides[type]) {
+            guide.style.display = 'block';
+            guideText.textContent = guides[type];
+        } else if (guide) {
+            guide.style.display = 'none';
+        }
+    };
+
+    function submissionPayloadFromForm(status = 'draft') {
+        const type = submissionValue('submissionReportType');
+        const unit = submissionValue('submissionReportUnit');
+        const block = submissionValue('submissionReportClass') || 'all';
+        const recipient = submissionValue('submissionRecipient');
+
+        return {
+            lecturer_id: currentLecturerId(),
+            lecturer_email: currentLecturerEmail(),
+            lecturer_name:
+                window.currentUser?.full_name ||
+                window.currentUser?.name ||
+                window.me_currentLecturer?.profile?.full_name ||
+                window.me_currentLecturer?.staff?.full_name ||
+                'Lecturer',
+            report_type: type,
+            report_category: submissionCategoryLabel(type),
+            document_type: submissionValue('submissionDocumentType') || null,
+            document_title: submissionValue('submissionTitle'),
+            unit_name: unit,
+            class_block: block,
+            academic_year: submissionValue('submissionAcademicYear') || currentAcademicYear(),
+            week_number: Number(submissionValue('submissionWeekNumber')) || null,
+            period_start: submissionValue('submissionPeriodStart') || null,
+            period_end: submissionValue('submissionPeriodEnd') || null,
+            recipient_role: recipient,
+            summary: submissionValue('submissionSummary'),
+            include_attendance: !!submissionEl('submissionIncludeAttendance')?.checked,
+            include_grades: !!submissionEl('submissionIncludeGrades')?.checked,
+            include_activities: !!submissionEl('submissionIncludeActivities')?.checked,
+            include_challenges: !!submissionEl('submissionIncludeChallenges')?.checked,
+            status,
+            updated_at: new Date().toISOString()
+        };
+    }
+
+    function validateSubmissionPayload(payload) {
+        if (!payload.lecturer_id) return 'Lecturer session is not ready.';
+        if (!payload.report_type) return 'Select a report category.';
+        if (!payload.unit_name) return 'Select an assigned unit.';
+        if (!payload.document_title) return 'Enter a report title.';
+        if (!payload.recipient_role) return 'Select who should review the report.';
+        if (!payload.period_start || !payload.period_end) {
+            return 'Select the reporting period.';
+        }
+
+        if (
+            payload.period_start &&
+            payload.period_end &&
+            payload.period_end < payload.period_start
+        ) {
+            return 'The reporting period end date cannot be before the start date.';
+        }
+
+        if (
+            payload.report_type === 'TeachingLearningReport' &&
+            !payload.document_type
+        ) {
+            return 'Select the teaching document you are submitting.';
+        }
+
+        return '';
+    }
+
+    async function uploadSubmissionAttachment(file, lecturerId, submissionId) {
+        if (!file) return null;
+
+        const supabase = db();
+        if (!supabase) throw new Error('Supabase/database connection unavailable.');
+
+        const safeName = String(file.name || 'document')
+            .replace(/[^\w.\-]+/g, '_')
+            .slice(-160);
+
+        const path =
+            `${lecturerId}/${new Date().getFullYear()}/${submissionId}/${Date.now()}_${safeName}`;
+
+        const { error } = await supabase.storage
+            .from(REPORT_STORAGE_BUCKET)
+            .upload(path, file, {
+                upsert: false,
+                contentType: file.type || 'application/octet-stream'
+            });
+
+        if (error) throw error;
+
+        return {
+            path,
+            name: file.name,
+            type: file.type || '',
+            size: file.size || 0
+        };
+    }
+
+    async function createOrUpdateSubmission(status = 'draft') {
+        const supabase = db();
+        if (!supabase) throw new Error('Supabase/database connection unavailable.');
+
+        const payload = submissionPayloadFromForm(status);
+        const validation = validateSubmissionPayload(payload);
+
+        if (validation) {
+            setSubmissionMessage(validation, 'warning');
+            return null;
+        }
+
+        const file = submissionEl('submissionAttachment')?.files?.[0] || null;
+
+        let submissionId =
+            submissionEl('lecturerReportSubmissionForm')?.dataset.submissionId || null;
+
+        let row;
+
+        if (submissionId) {
+            const { data, error } = await supabase
+                .from(REPORT_SUBMISSION_TABLE)
+                .update(payload)
+                .eq('id', submissionId)
+                .eq('lecturer_id', payload.lecturer_id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            row = data;
+        } else {
+            const { data, error } = await supabase
+                .from(REPORT_SUBMISSION_TABLE)
+                .insert(payload)
+                .select()
+                .single();
+
+            if (error) throw error;
+            row = data;
+            submissionId = row.id;
+
+            const form = submissionEl('lecturerReportSubmissionForm');
+            if (form) form.dataset.submissionId = submissionId;
+        }
+
+        if (file) {
+            const attachment = await uploadSubmissionAttachment(
+                file,
+                payload.lecturer_id,
+                submissionId
+            );
+
+            const { data: updated, error } = await supabase
+                .from(REPORT_SUBMISSION_TABLE)
+                .update({
+                    attachment_path: attachment.path,
+                    attachment_name: attachment.name,
+                    attachment_type: attachment.type,
+                    attachment_size: attachment.size,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', submissionId)
+                .eq('lecturer_id', payload.lecturer_id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            row = updated;
+        }
+
+        return row;
+    }
+
+    LecturerReports.saveReportDraft = async function() {
+        try {
+            setSubmissionMessage('Saving report draft...', 'info');
+            const row = await createOrUpdateSubmission('draft');
+
+            if (!row) return;
+
+            setSubmissionMessage(
+                'Draft saved successfully. You can continue editing before submitting.',
+                'success'
+            );
+
+            await LecturerReports.refreshSubmittedReports();
+        } catch (error) {
+            console.error('LecturerReports.saveReportDraft:', error);
+            setSubmissionMessage(
+                'Could not save draft: ' + (error.message || error),
+                'error'
+            );
+        }
+    };
+
+    LecturerReports.submitReportForReview = async function() {
+        try {
+            setSubmissionMessage('Submitting report for administrator review...', 'info');
+
+            const row = await createOrUpdateSubmission('submitted');
+            if (!row) return;
+
+            setSubmissionMessage(
+                'Report submitted successfully and is now awaiting administrator review.',
+                'success'
+            );
+
+            await LecturerReports.refreshSubmittedReports();
+        } catch (error) {
+            console.error('LecturerReports.submitReportForReview:', error);
+            setSubmissionMessage(
+                'Could not submit report: ' + (error.message || error),
+                'error'
+            );
+        }
+    };
+
+    LecturerReports.previewSubmission = function() {
+        const payload = submissionPayloadFromForm('draft');
+        const validation = validateSubmissionPayload(payload);
+
+        if (validation) {
+            setSubmissionMessage(validation, 'warning');
+            return;
+        }
+
+        const docLabel =
+            SUBMISSION_DOCUMENTS[payload.report_type]
+                ?.find(([value]) => value === payload.document_type)?.[1] ||
+            payload.document_type ||
+            'General Report';
+
+        const attachment =
+            submissionEl('submissionAttachment')?.files?.[0];
+
+        const html = `
+            <div style="font-family:Arial,sans-serif;color:#1e293b;">
+                <h2 style="margin-top:0;color:#0A3D62;">
+                    ${esc(payload.document_title)}
+                </h2>
+                <p>
+                    <strong>Category:</strong> ${esc(payload.report_category)}
+                    ${docLabel ? ` • <strong>Document:</strong> ${esc(docLabel)}` : ''}
+                </p>
+                <p><strong>Unit:</strong> ${esc(payload.unit_name)}
+                   • <strong>Class:</strong> ${esc(payload.class_block)}
+                   • <strong>Academic Year:</strong> ${esc(payload.academic_year)}</p>
+                <p><strong>Period:</strong> ${esc(payload.period_start)}
+                   to ${esc(payload.period_end)}</p>
+                <p><strong>Submit To:</strong> ${esc(payload.recipient_role)}</p>
+                ${payload.week_number ? `<p><strong>Week:</strong> ${payload.week_number}</p>` : ''}
+                <div style="margin-top:14px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;">
+                    ${esc(payload.summary || 'No summary/remarks entered.')}
+                </div>
+                ${attachment
+                    ? `<p style="margin-top:12px;"><strong>Attachment:</strong> ${esc(attachment.name)}</p>`
+                    : '<p style="margin-top:12px;color:#94a3b8;">No supporting document attached.</p>'}
+            </div>
+        `;
+
+        const modal = submissionPreviewModal();
+        if (modal) {
+            modal.querySelector('[data-preview-body]').innerHTML = html;
+            modal.style.display = 'flex';
+        } else {
+            setSubmissionMessage('Submission details are ready for review.', 'info');
+        }
+    };
+
+    function submissionPreviewModal() {
+        let modal = document.getElementById('lecturerReportSubmissionPreviewModal');
+        if (modal) return modal;
+
+        modal = document.createElement('div');
+        modal.id = 'lecturerReportSubmissionPreviewModal';
+        modal.style.cssText =
+            'display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:10050;align-items:center;justify-content:center;padding:15px;';
+
+        modal.innerHTML = `
+            <div style="width:min(850px,96vw);max-height:90vh;background:#fff;border-radius:15px;overflow:hidden;display:flex;flex-direction:column;">
+                <div style="padding:14px 18px;background:#f8fafc;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+                    <strong style="color:#0A3D62;">Review Report Submission</strong>
+                    <button type="button" data-close style="border:0;background:transparent;font-size:24px;cursor:pointer;">&times;</button>
+                </div>
+                <div data-preview-body style="padding:20px;overflow:auto;"></div>
+                <div style="padding:12px 18px;background:#f8fafc;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px;">
+                    <button type="button" data-close class="lr-btn lr-btn-light">Close</button>
+                    <button type="button" data-submit class="lr-btn lr-btn-green">
+                        <i class="fas fa-paper-plane"></i> Submit for Review
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        modal.querySelectorAll('[data-close]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+        });
+
+        modal.querySelector('[data-submit]')?.addEventListener('click', async () => {
+            modal.style.display = 'none';
+            await LecturerReports.submitReportForReview();
+        });
+
+        return modal;
+    }
+
+    LecturerReports.resetSubmissionForm = function() {
+        const form = submissionEl('lecturerReportSubmissionForm');
+        if (form) {
+            form.reset();
+            delete form.dataset.submissionId;
+        }
+
+        const documentField = submissionEl('submissionDocumentTypeField');
+        if (documentField) documentField.style.display = 'none';
+
+        const guide = submissionEl('submissionCategoryGuide');
+        if (guide) guide.style.display = 'none';
+
+        setSubmissionMessage('', 'info');
+        const message = submissionEl('reportSubmissionMessage');
+        if (message) message.style.display = 'none';
+    };
+
+    LecturerReports.prepareWeeklyReport = async function() {
+        const unit = submissionValue('weeklyReportUnit');
+        const block = submissionValue('weeklyReportClass') || 'all';
+        const week = submissionValue('weeklyReportWeek');
+        const topic = submissionValue('weeklyReportTopic');
+        const activities = submissionValue('weeklyReportActivities');
+        const challenges = submissionValue('weeklyReportChallenges');
+        const actions = submissionValue('weeklyReportActions');
+        const remarks = submissionValue('weeklyReportRemarks');
+
+        if (!unit) {
+            showReportNotice('Select an assigned unit for the weekly report.', 'warning');
+            return;
+        }
+
+        const title =
+            `Week ${week || '—'} ${unit} Lecturer Report`;
+
+        const summary = [
+            topic ? `Topics covered: ${topic}` : '',
+            activities ? `Activities completed: ${activities}` : '',
+            challenges ? `Challenges: ${challenges}` : '',
+            actions ? `Action points: ${actions}` : '',
+            remarks ? `Lecturer remarks: ${remarks}` : ''
+        ].filter(Boolean).join('\n\n');
+
+        const typeEl = submissionEl('submissionReportType');
+        const unitEl = submissionEl('submissionReportUnit');
+        const classEl = submissionEl('submissionReportClass');
+        const weekEl = submissionEl('submissionWeekNumber');
+        const titleEl = submissionEl('submissionTitle');
+        const summaryEl = submissionEl('submissionSummary');
+
+        if (typeEl) {
+            typeEl.value = 'WeeklyReport';
+            LecturerReports.handleSubmissionTypeChange('WeeklyReport');
+        }
+        if (unitEl) unitEl.value = unit;
+        if (classEl) classEl.value = block;
+        if (weekEl) weekEl.value = week;
+        if (titleEl) titleEl.value = title;
+        if (summaryEl) summaryEl.value = summary;
+
+        submissionEl('lecturerReportSubmissionSection')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+
+        setSubmissionMessage(
+            'Weekly report prepared. Complete the period and recipient, then save or submit it.',
+            'success'
+        );
+    };
+
+    LecturerReports.copyWeeklyToSubmission = LecturerReports.prepareWeeklyReport;
+
+    LecturerReports.refreshSubmittedReports = async function() {
+        const supabase = db();
+        const tbody = submissionEl('submittedReportsTable');
+
+        if (!tbody) return [];
+
+        if (!supabase) {
+            setSubmittedReportsEmpty('Supabase/database connection unavailable.');
+            return [];
+        }
+
+        const lecturerId = currentLecturerId();
+        if (!lecturerId) {
+            setSubmittedReportsEmpty('Lecturer session is not ready.');
+            return [];
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from(REPORT_SUBMISSION_TABLE)
+                .select('*')
+                .eq('lecturer_id', lecturerId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            renderSubmittedReports(data || []);
+            return data || [];
+        } catch (error) {
+            console.error('LecturerReports.refreshSubmittedReports:', error);
+            setSubmittedReportsEmpty(
+                'Submitted reports could not be loaded: ' + (error.message || error)
+            );
+            return [];
+        }
+    };
+
+    function setSubmittedReportsEmpty(message) {
+        const tbody = submissionEl('submittedReportsTable');
+        if (!tbody) return;
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="lr-empty">
+                    <i class="fas fa-inbox"></i>
+                    <strong>No report submissions loaded</strong>
+                    ${esc(message)}
+                </td>
+            </tr>
+        `;
+
+        ['submittedReportsCount','submittedUnderReviewCount',
+         'submittedReturnedCount','submittedApprovedCount']
+            .forEach(id => {
+                const el = submissionEl(id);
+                if (el) el.textContent = '0';
+            });
+    }
+
+    function statusBadge(status) {
+        const map = {
+            draft: ['Draft', '#f1f5f9', '#475569'],
+            submitted: ['Submitted', '#dbeafe', '#1d4ed8'],
+            under_review: ['Under Review', '#fef3c7', '#b45309'],
+            returned: ['Returned for Correction', '#fee2e2', '#b91c1c'],
+            resubmitted: ['Resubmitted', '#ede9fe', '#6d28d9'],
+            approved: ['Approved', '#d1fae5', '#047857'],
+            rejected: ['Rejected', '#fee2e2', '#b91c1c']
+        };
+
+        const [label, bg, color] = map[status] || [status || 'Unknown', '#f1f5f9', '#475569'];
+
+        return `<span style="display:inline-flex;padding:5px 8px;border-radius:999px;background:${bg};color:${color};font-size:10px;font-weight:800;">${esc(label)}</span>`;
+    }
+
+    function renderSubmittedReports(rows) {
+        const tbody = submissionEl('submittedReportsTable');
+        if (!tbody) return;
+
+        const list = Array.isArray(rows) ? rows : [];
+
+        const count = submissionEl('submittedReportsCount');
+        const under = submissionEl('submittedUnderReviewCount');
+        const returned = submissionEl('submittedReturnedCount');
+        const approved = submissionEl('submittedApprovedCount');
+
+        if (count) count.textContent = list.length;
+        if (under) under.textContent =
+            list.filter(r => ['submitted','under_review','resubmitted'].includes(r.status)).length;
+        if (returned) returned.textContent =
+            list.filter(r => r.status === 'returned').length;
+        if (approved) approved.textContent =
+            list.filter(r => r.status === 'approved').length;
+
+        if (!list.length) {
+            setSubmittedReportsEmpty('Submit a report to see its review status here.');
+            return;
+        }
+
+        tbody.innerHTML = list.map(r => `
+            <tr>
+                <td>
+                    <strong>${esc(r.document_title || 'Untitled Report')}</strong>
+                    <div style="font-size:10px;color:#94a3b8;">
+                        ${esc(r.report_category || r.report_type || '')}
+                        ${r.document_type ? ` • ${esc(r.document_type)}` : ''}
+                    </div>
+                </td>
+                <td>${esc(r.report_type || '—')}</td>
+                <td>
+                    ${esc(r.unit_name || '—')}
+                    <div style="font-size:10px;color:#94a3b8;">${esc(r.class_block || 'All Classes')}</div>
+                </td>
+                <td>${esc(r.period_start || '—')} → ${esc(r.period_end || '—')}</td>
+                <td>${esc(r.recipient_role || '—')}</td>
+                <td>${r.submitted_at ? new Date(r.submitted_at).toLocaleString() : '—'}</td>
+                <td>${statusBadge(r.status)}</td>
+                <td>${esc(r.reviewer_comments || r.review_comments || '—')}</td>
+                <td style="white-space:nowrap;">
+                    ${r.attachment_path
+                        ? `<button type="button" class="lr-btn lr-btn-ghost" style="padding:6px 8px;" onclick="LecturerReports.openSubmissionAttachment('${esc(r.attachment_path)}')"><i class="fas fa-paperclip"></i></button>`
+                        : ''}
+                    ${r.status === 'returned'
+                        ? `<button type="button" class="lr-btn lr-btn-light" style="padding:6px 8px;" onclick="LecturerReports.editReturnedReport('${esc(r.id)}')"><i class="fas fa-edit"></i> Correct</button>`
+                        : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    LecturerReports.openSubmissionAttachment = async function(path) {
+        const supabase = db();
+        if (!supabase || !path) return;
+
+        try {
+            const { data, error } = await supabase.storage
+                .from(REPORT_STORAGE_BUCKET)
+                .createSignedUrl(path, 900);
+
+            if (error) throw error;
+            if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener');
+        } catch (error) {
+            showReportNotice(
+                'Could not open attachment: ' + (error.message || error),
+                'error'
+            );
+        }
+    };
+
+    LecturerReports.editReturnedReport = async function(id) {
+        const supabase = db();
+        if (!supabase || !id) return;
+
+        try {
+            const { data, error } = await supabase
+                .from(REPORT_SUBMISSION_TABLE)
+                .select('*')
+                .eq('id', id)
+                .eq('lecturer_id', currentLecturerId())
+                .single();
+
+            if (error) throw error;
+            if (!data) return;
+
+            const form = submissionEl('lecturerReportSubmissionForm');
+            if (form) form.dataset.submissionId = data.id;
+
+            const set = (id2, value) => {
+                const el = submissionEl(id2);
+                if (el) el.value = value ?? '';
+            };
+
+            set('submissionReportType', data.report_type);
+            LecturerReports.handleSubmissionTypeChange(data.report_type);
+            set('submissionDocumentType', data.document_type);
+            set('submissionReportUnit', data.unit_name);
+            set('submissionReportClass', data.class_block === 'all' ? '' : data.class_block);
+            set('submissionAcademicYear', data.academic_year);
+            set('submissionWeekNumber', data.week_number);
+            set('submissionPeriodStart', data.period_start);
+            set('submissionPeriodEnd', data.period_end);
+            set('submissionRecipient', data.recipient_role);
+            set('submissionTitle', data.document_title);
+            set('submissionSummary', data.summary);
+
+            submissionEl('lecturerReportSubmissionSection')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+
+            setSubmissionMessage(
+                'Returned report loaded for correction. Save the correction, then submit it again.',
+                'warning'
+            );
+        } catch (error) {
+            showReportNotice(
+                'Could not load returned report: ' + (error.message || error),
+                'error'
+            );
+        }
+    };
+
+    /* ============================================================
+       SCHEDULE
+       ============================================================ */
+
+    LecturerReports.scheduleReport = function () {
+        /*
+          Keep compatibility with any existing scheduling system.
+          If an application-level scheduler exists, delegate to it.
+        */
+        if (typeof window.openReportScheduleModal === 'function') {
+            window.openReportScheduleModal();
+            return;
+        }
+
+        showReportNotice(
+            'Report scheduling UI is not connected yet. The report itself is ready for scheduled generation.',
+            'info'
+        );
+    };
+
+    /* ============================================================
+       INITIALIZATION
+    ============================================================ */
+
+    LecturerReports.init = async function () {
+        if (LecturerReports._initialized) {
+            await populateReportSelectors();
+            await populateSubmissionSelectors();
+            renderReports(LecturerReports.reports);
+            await LecturerReports.refreshSubmittedReports().catch(() => {});
+            return;
+        }
+
+        LecturerReports._initialized = true;
+
+        LecturerReports.reports = loadLocalReports();
+
+        await populateReportSelectors();
+        await populateSubmissionSelectors();
+
+        renderReports(LecturerReports.reports);
+        updateAnalytics(LecturerReports.reports);
+
+        if (submissionEl('submissionReportType')) {
+            LecturerReports.handleSubmissionTypeChange(
+                submissionEl('submissionReportType').value
+            );
+        }
+
+        LecturerReports.refreshSubmittedReports().catch(error => {
+            console.warn('LecturerReports: submitted reports load skipped:', error);
+        });
+
+        const period = document.getElementById('reportPeriod');
+
+        if (period) {
+            period.addEventListener('change', () => {
+                const box =
+                    document.getElementById('reportCustomDateRange');
+
+                if (box) {
+                    box.style.display =
+                        period.value === 'custom'
+                            ? 'grid'
+                            : 'none';
+                }
+            });
+        }
+
+        console.log(
+            '✅ LecturerReports initialized — marks-integrated'
+        );
+    };
+
+    /* ============================================================
+       GLOBAL EXPOSURE
+    ============================================================ */
+
+    window.LecturerReports = LecturerReports;
+
+    window.calculateLecturerReportTotal = calculateTotal;
+    window.getLecturerReportGrade = grading;
+    window.loadLecturerReportMarks = loadMarks;
+    window.buildLecturerReport = buildReport;
+
+    /*
+      Initialize when the Reports tab is first opened.
+      Also expose explicit initialization for the dashboard.
+    */
+    window.initLecturerReports = LecturerReports.init;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        /*
+          Do not force a database request immediately if the lecturer
+          dashboard loads every module at once. Delay slightly so the
+          authentication/session state can finish initializing.
+        */
+        setTimeout(() => {
+            LecturerReports.init().catch(error => {
+                console.error(
+                    'LecturerReports initialization failed:',
+                    error
+                );
+            });
+        }, 700);
+    });
+
+})();
