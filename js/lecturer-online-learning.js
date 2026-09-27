@@ -591,206 +591,6 @@ window.LecturerOnlineLearning = (() => {
         return {auto:autoClamped,final:finalClamped,max};
     }
 
-
-    // ============================================================
-    // DOCUMENT VIEWER COMPATIBILITY LAYER
-    // ============================================================
-    // Assignment uploads use the student portal's assignment-submissions
-    // storage bucket. The fallback list keeps older deployments compatible.
-    const ONLINE_ASSIGNMENT_BUCKETS = [
-        window.NCHSM_ONLINE_LEARNING_BUCKET,
-        window.ONLINE_LEARNING_STORAGE_BUCKET,
-        window.ASSIGNMENT_SUBMISSIONS_BUCKET,
-        'assignment-submissions',
-        'online-learning',
-        'online_submissions'
-    ].filter(Boolean);
-
-    function extOf(name=''){
-        const raw=String(name||'').toLowerCase().split('?')[0];
-        const ext=raw.includes('.')?raw.split('.').pop():'';
-        return ext==='jpeg'?'jpg':ext;
-    }
-
-    function loadScriptOnce(src,id){
-        return new Promise((resolve,reject)=>{
-            if(id && document.getElementById(id)) return resolve();
-            const script=document.createElement('script');
-            script.src=src;
-            if(id)script.id=id;
-            script.onload=()=>resolve();
-            script.onerror=()=>reject(new Error('Could not load '+src));
-            document.head.appendChild(script);
-        });
-    }
-
-    async function signedDocumentUrl(s){
-        const db=client();
-        if(!db) throw new Error('Supabase client is unavailable.');
-        if(!s?.file_path) throw new Error('No uploaded document is attached to this submission.');
-
-        let lastError=null;
-        for(const bucket of [...new Set(ONLINE_ASSIGNMENT_BUCKETS)]){
-            try{
-                const r=await db.storage.from(bucket).createSignedUrl(s.file_path,3600);
-                if(!r.error && r.data?.signedUrl) return r.data.signedUrl;
-                lastError=r.error||lastError;
-            }catch(e){
-                lastError=e;
-            }
-        }
-        throw new Error(lastError?.message || 'Could not create a secure document viewing link.');
-    }
-
-    function ensureDocumentViewer(){
-        let viewer=$('olDocumentViewer');
-        if(viewer)return viewer;
-
-        const styleId='nchsmOnlineDocumentViewerStyles';
-        if(!$(styleId)){
-            const st=document.createElement('style');
-            st.id=styleId;
-            st.textContent=`
-                #olDocumentViewer{
-                    position:fixed;inset:0;z-index:100050;
-                    display:none;align-items:center;justify-content:center;
-                    padding:12px;background:rgba(15,23,42,.78);
-                }
-                #olDocumentViewer .ol-document-card{
-                    width:min(1400px,98vw);height:min(94vh,980px);
-                    background:#fff;border-radius:14px;overflow:hidden;
-                    box-shadow:0 25px 80px rgba(0,0,0,.28);
-                    display:flex;flex-direction:column;
-                }
-                #olDocumentViewer .ol-document-head{
-                    display:flex;align-items:center;justify-content:space-between;
-                    gap:12px;padding:12px 16px;border-bottom:1px solid #e2e8f0;
-                    background:#f8fafc;flex:0 0 auto;
-                }
-                #olDocumentViewer .ol-document-body{
-                    flex:1;overflow:auto;background:#eef2f7;padding:10px;
-                }
-                #olDocumentViewer .ol-document-frame{
-                    width:100%;height:100%;min-height:680px;border:0;background:#fff;
-                }
-                #olDocumentViewer .ol-docx{
-                    max-width:900px;margin:0 auto;padding:42px 52px;
-                    background:#fff;min-height:100%;line-height:1.65;
-                }
-            `;
-            document.head.appendChild(st);
-        }
-
-        viewer=document.createElement('div');
-        viewer.id='olDocumentViewer';
-        viewer.innerHTML=`
-            <div class="ol-document-card">
-                <div class="ol-document-head">
-                    <div>
-                        <b id="olDocumentTitle">Uploaded Work</b>
-                        <div id="olDocumentMeta" style="font-size:11px;color:#64748b;margin-top:2px"></div>
-                    </div>
-                    <div style="display:flex;gap:6px">
-                        <button type="button" class="ol-btn ol-muted" id="olDocumentDownload">
-                            <i class="fas fa-download"></i> Download
-                        </button>
-                        <button type="button" class="ol-btn ol-danger" id="olDocumentClose">
-                            <i class="fas fa-xmark"></i> Close
-                        </button>
-                    </div>
-                </div>
-                <div class="ol-document-body" id="olDocumentBody">
-                    <div class="ol-empty">Loading document…</div>
-                </div>
-            </div>`;
-        document.body.appendChild(viewer);
-
-        $('olDocumentClose')?.addEventListener('click',closeDocumentViewer);
-        viewer.addEventListener('click',e=>{
-            if(e.target===viewer)closeDocumentViewer();
-        });
-        return viewer;
-    }
-
-    async function renderDocument(s){
-        const viewer=ensureDocumentViewer();
-        const body=$('olDocumentBody');
-        if(!s?.file_path){
-            if(body)body.innerHTML='<div class="ol-empty">No uploaded document was attached to this submission.</div>';
-            viewer.style.display='flex';
-            return;
-        }
-
-        const url=await signedDocumentUrl(s);
-        const ext=extOf(s.file_name||s.file_path||'');
-
-        if($('olDocumentTitle'))$('olDocumentTitle').textContent=s.file_name||'Uploaded Work';
-        if($('olDocumentMeta'))$('olDocumentMeta').textContent=
-            `${s.online_assignments?.title||'Submission'} · ${fmtDate(s.submitted_at)}`;
-
-        if($('olDocumentDownload')){
-            $('olDocumentDownload').onclick=()=>{
-                const a=document.createElement('a');
-                a.href=url;a.target='_blank';a.rel='noopener';a.download=s.file_name||'submission';
-                a.click();
-            };
-        }
-
-        if(body)body.innerHTML='<div class="ol-empty"><i class="fas fa-spinner fa-spin"></i> Opening document…</div>';
-
-        if(ext==='pdf'){
-            body.innerHTML=`<iframe class="ol-document-frame" title="${esc(s.file_name||'PDF')}" src="${esc(url)}"></iframe>`;
-        }else if(ext==='docx'||ext==='doc'){
-            const response=await fetch(url);
-            if(!response.ok)throw new Error(`Could not download the submitted document (${response.status}).`);
-            const blob=await response.blob();
-            await loadScriptOnce(
-                'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js',
-                'olMammoth'
-            );
-            const arrayBuffer=await blob.arrayBuffer();
-            const converted=await window.mammoth.convertToHtml({arrayBuffer});
-            body.innerHTML=
-                `<article class="ol-docx">${converted.value||'<p>No readable text found.</p>'}</article>`;
-        }else if(['txt','md','csv'].includes(ext)){
-            const response=await fetch(url);
-            if(!response.ok)throw new Error(`Could not download the submitted document (${response.status}).`);
-            const raw=await response.text();
-            body.innerHTML=
-                `<pre style="white-space:pre-wrap;background:#fff;padding:28px;max-width:1000px;margin:0 auto;min-height:100%;line-height:1.6">${esc(raw)}</pre>`;
-        }else if(['png','jpg','gif','webp'].includes(ext)){
-            body.innerHTML=
-                `<div style="height:100%;display:flex;align-items:center;justify-content:center;padding:20px">
-                    <img src="${esc(url)}" alt="${esc(s.file_name||'Uploaded work')}"
-                         style="max-width:100%;max-height:90%;object-fit:contain;background:#fff;border-radius:8px">
-                 </div>`;
-        }else{
-            body.innerHTML=
-                `<div class="ol-empty">
-                    Browser preview is unavailable for <b>${esc(ext||'this file type')}</b>.
-                    Use <b>Download</b> to open the original document.
-                 </div>`;
-        }
-
-        viewer.style.display='flex';
-    }
-
-    async function viewSubmissionDocument(id){
-        try{
-            const s=state.submissions.find(x=>String(x.id)===String(id));
-            if(!s)throw new Error('Submission not found.');
-            await renderDocument(s);
-        }catch(e){
-            console.error('View submission document:',e);
-            notify('Could not open the uploaded document: '+(e.message||e),'error');
-        }
-    }
-
-    function closeDocumentViewer(){
-        const viewer=$('olDocumentViewer');
-        if(viewer)viewer.style.display='none';
-    }
-
     async function loadSubmissionDocumentIntoWorkspace(s){
         const box=$('olDocumentPreview');
         if(!box || !s?.file_path){
@@ -1173,103 +973,124 @@ window.LecturerOnlineLearning = (() => {
         const section = $('online-learning-content');
         if (!section) return;
 
-        /*
-         * IMPORTANT:
-         * The HTML is now the permanent UI layer.
-         * Do NOT create the Online Learning / Research buttons, the research
-         * container, tables, or modals here. They are already present in
-         * lecturer.html. JavaScript only binds behaviour and loads data.
-         */
+        // Research is intentionally a SUB-TAB inside the existing Online Learning section.
+        // It must never become a separate sidebar/top-level dashboard section.
         let hubTabs = section.querySelector('.ol-hub-tabs');
         let learningView = section.querySelector('#ol-learning-view');
         let root = $('nchsmResearchModule');
 
-        // Backward compatibility for older HTML versions only.
-        // The new V14 HTML already supplies all three elements statically.
+        if (!hubTabs) {
+            hubTabs = document.createElement('div');
+            hubTabs.className = 'ol-hub-tabs';
+            hubTabs.innerHTML = `
+              <button type="button" class="ol-hub-tab active" data-ol-hub-view="learning"><i class="fas fa-laptop-code"></i> Online Learning</button>
+              <button type="button" class="ol-hub-tab" data-ol-hub-view="research"><i class="fas fa-file-signature"></i> Research Papers</button>
+            `;
+            section.insertBefore(hubTabs, section.firstChild);
+        }
+
         if (!learningView) {
-            learningView = section.querySelector('.ol-wrap');
-            if (learningView) learningView.id = 'ol-learning-view';
+            learningView = document.createElement('div');
+            learningView.id = 'ol-learning-view';
+            const children = Array.from(section.children).filter(el => el !== hubTabs);
+            children.forEach(el => learningView.appendChild(el));
+            section.appendChild(learningView);
         }
 
         if (!root) {
-            console.warn('[Research] Static research container #nchsmResearchModule is missing.');
-            return;
+            root = document.createElement('div');
+            root.id = 'nchsmResearchModule';
+            root.style.display = 'none';
+            section.appendChild(root);
         }
 
-        /*
-         * Bind BOTH the large hero cards and the smaller tab buttons.
-         * This means the visible HTML controls always work, while the HTML
-         * itself remains responsible for displaying them.
-         */
-        const controls = section.querySelectorAll('[data-ol-hub-view]');
-        controls.forEach(btn => {
+        hubTabs.querySelectorAll('[data-ol-hub-view]').forEach(btn => {
             if (btn.dataset.bound === '1') return;
             btn.dataset.bound = '1';
-
             btn.addEventListener('click', () => {
                 const view = btn.dataset.olHubView;
-
-                controls.forEach(x => {
-                    x.classList.toggle('active', x === btn);
-                    if (x.classList.contains('ol-hub-tab')) {
-                        x.setAttribute('aria-selected', x === btn ? 'true' : 'false');
-                    }
-                });
-
-                if (learningView) {
-                    learningView.style.display = view === 'learning' ? 'block' : 'none';
-                }
+                hubTabs.querySelectorAll('[data-ol-hub-view]').forEach(x => x.classList.toggle('active', x === btn));
+                learningView.style.display = view === 'learning' ? 'block' : 'none';
                 root.style.display = view === 'research' ? 'block' : 'none';
-
-                if (view === 'research') {
-                    loadResearch();
-                }
+                if (view === 'research') loadResearch();
             });
         });
 
-        // Keep the HTML-provided research workspace intact.
-        // Older JS versions generated this markup dynamically; V14 no longer does.
+        const rootWasRendered = root.dataset.rendered === '1';
+        if (rootWasRendered) return;
+        if (!root || root.dataset.rendered === '1') return;
         root.dataset.rendered = '1';
-
-        // Bind the controls that already exist in the HTML.
-        const bind = (id, event, handler) => {
-            const el = $(id);
-            if (!el || el.dataset.researchBound === '1') return;
-            el.dataset.researchBound = '1';
-            el.addEventListener(event, handler);
-        };
-
-        bind('rsSearch', 'input', e => {
-            researchState.search = e.target.value.toLowerCase().trim();
-            renderResearch();
-        });
-        bind('rsStatus', 'change', e => {
-            researchState.filterStatus = e.target.value;
-            renderResearch();
-        });
-        bind('rsRefresh', 'click', loadResearch);
-        bind('rsRefreshStatic', 'click', loadResearch);
-        bind('rsClose', 'click', closeResearchModal);
-        bind('rsReviewModal', 'click', e => {
-            if (e.target === $('rsReviewModal')) closeResearchModal();
-        });
-        bind('rsSaveReview', 'click', saveResearchReview);
-        bind('rsSendCorrection', 'click', saveLecturerCorrection);
-        bind('rsDownload', 'click', downloadCurrentResearch);
-
-        setTimeout(lecturerInstallResearchEditorEnhancements, 50);
-    }
-
-    /*
-     * Legacy dynamic research markup is intentionally disabled.
-     * The HTML now owns the complete Research Papers UI.
-     */
-    function researchEnsureLegacyMarkupDisabled() {
-        return true;
-    }
-
-    async function loadResearchStaticCompatible() {
-        return loadResearch();
+        root.innerHTML = `
+          <div class="rs-head">
+            <h2><i class="fas fa-file-signature"></i> Research Submissions</h2>
+            <p>Review student research proposals, final papers and corrected submissions. Open documents, provide feedback and update the review status.</p>
+          </div>
+          <div class="rs-stats">
+            <div class="rs-stat"><b id="rsTotal">0</b><span>Total Submissions</span></div>
+            <div class="rs-stat"><b id="rsReview">0</b><span>Under Review</span></div>
+            <div class="rs-stat"><b id="rsRevision">0</b><span>Revision Required</span></div>
+            <div class="rs-stat"><b id="rsApproved">0</b><span>Approved</span></div>
+          </div>
+          <div class="rs-toolbar">
+            <input id="rsSearch" placeholder="Search student, admission number or research title…">
+            <select id="rsStatus">
+              <option value="">All statuses</option>
+              <option value="submitted">Submitted</option>
+              <option value="under_review">Under Review</option>
+              <option value="revision_required">Revision Required</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <button class="rs-btn rs-secondary" type="button" id="rsRefresh"><i class="fas fa-sync"></i> Refresh</button>
+          </div>
+          <div class="rs-card">
+            <div id="rsLoading" class="rs-empty">Loading research submissions…</div>
+            <div style="overflow-x:auto">
+              <table class="rs-table" id="rsTable" style="display:none">
+                <thead><tr><th>Student</th><th>Research Title</th><th>Type</th><th>Version</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="rsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="rs-modal" id="rsReviewModal" aria-hidden="true">
+            <div class="rs-dialog">
+              <div class="rs-dialog-head">
+                <div><div class="rs-title" id="rsModalTitle">Research Submission</div><div class="rs-meta" id="rsModalMeta"></div></div>
+                <button class="rs-btn rs-secondary" type="button" id="rsClose">Close</button>
+              </div>
+              <div class="rs-dialog-body">
+                <div class="rs-preview" id="rsPreview"><div class="rs-empty">Select a submission.</div></div>
+                <div class="rs-side">
+                  <div id="rsStudentMeta" class="rs-meta"></div>
+                  <label>Review Status</label>
+                  <select id="rsReviewStatus">
+                    <option value="submitted">Submitted</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="revision_required">Revision Required</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                  <label>Supervisor / Lecturer Feedback</label>
+                  <textarea id="rsFeedback" placeholder="Enter feedback, required corrections, recommendations or approval comments…"></textarea>
+                  <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+                    <button class="rs-btn rs-success" type="button" id="rsSaveReview">Save Review</button>
+                    <button class="rs-btn rs-warning" type="button" id="rsSendCorrection">Send Correction to Student</button>
+                    <button class="rs-btn rs-secondary" type="button" id="rsDownload">Download</button>
+                  </div>
+                  <div id="rsFileInfo" class="rs-meta" style="margin-top:14px"></div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        $('rsSearch').addEventListener('input', e => { researchState.search = e.target.value.toLowerCase().trim(); renderResearch(); });
+        $('rsStatus').addEventListener('change', e => { researchState.filterStatus = e.target.value; renderResearch(); });
+        $('rsRefresh').addEventListener('click', loadResearch);
+        $('rsClose').addEventListener('click', closeResearchModal);
+        $('rsReviewModal').addEventListener('click', e => { if (e.target === $('rsReviewModal')) closeResearchModal(); });
+        $('rsSaveReview').addEventListener('click', saveResearchReview);
+        $('rsSendCorrection').addEventListener('click', saveLecturerCorrection);
+        $('rsDownload').addEventListener('click', downloadCurrentResearch);
+        setTimeout(lecturerInstallResearchEditorEnhancements,50);
     }
 
     async function loadResearch() {
@@ -2620,6 +2441,83 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         return {valid:!problems.length,problems,total,max};
     }
 
+
+    // ============================================================
+    // V15 GRADING UI COMPATIBILITY / ACTION LAYER
+    // Matches the pixel-matched V17 HTML without changing the
+    // deterministic grading engine or database model.
+    // ============================================================
+    function syncGradingUiFromState(){
+        try{
+            const s=gradingState.submission;
+            if(!s)return;
+
+            const set=(id,v)=>{const el=$(id);if(el)el.textContent=(v===null||v===undefined||v==='')?'—':String(v);};
+            const max=Number(gradingState.maxMarks||gradingState.assignment?.max_marks||s.max_marks||100)||100;
+            const report=gradingReportPayload ? gradingReportPayload() : null;
+            const automatic=Number(
+                gradingState.automaticReport?.total ??
+                gradingState.automaticReport?.marks_obtained ??
+                s.automatic_marks ??
+                s.auto_mark ??
+                s.marks_obtained ??
+                0
+            ) || 0;
+            const finalMark=Number(
+                report?.final ??
+                s.final_mark ??
+                s.lecturer_final_mark ??
+                s.marks_obtained ??
+                automatic
+            ) || 0;
+
+            set('olFinalGradeTotal',finalMark.toFixed(2));
+            set('olFinalGradeMax',max.toFixed(2));
+            set('olAutomaticGradeTotal',automatic.toFixed(2));
+            set('olAutomaticGradeMax',max.toFixed(2));
+            set('olFinalGradePercentage',(max?((finalMark/max)*100):0).toFixed(2)+'%');
+
+            const status=s.result_released?'RELEASED':(s.status||'DRAFT').replace(/_/g,' ').toUpperCase();
+            const badge=$('olGradingStatusBadge');
+            if(badge)badge.textContent=status;
+
+            const meta=$('olGradingStudentMeta');
+            if(meta){
+                const name=s.student_name||s.student?.full_name||s.student?.name||s.full_name||'Student';
+                const adm=s.admission_number||s.student_admission_number||s.student_id||'';
+                const title=s.assignment_title||gradingState.assignment?.title||'Assignment';
+                meta.textContent=[name,adm,title].filter(Boolean).join(' · ');
+            }
+        }catch(err){
+            console.warn('[Online Learning] grading UI sync failed',err);
+        }
+    }
+
+    function saveGrade(){
+        // "Save Grade" is a non-release save of the current lecturer marks.
+        return saveGradingDraft();
+    }
+
+    function saveDraftGrade(){
+        return saveGradingDraft();
+    }
+
+    function releaseGrade(){
+        return submitFinalGrade();
+    }
+
+    function refreshAfterGradeAction(){
+        syncGradingUiFromState();
+        try{renderSubmissions();}catch(_){}
+        try{renderAssignments();}catch(_){}
+    }
+
+    // Make HTML action names stable across versions.
+    window.__NCHSM_OnlineLearning_GradeActions={
+        saveGrade,saveDraftGrade,releaseGrade,refreshAfterGradeAction
+    };
+
+
     return {
         syncSubmissionMaximumMarks,
         resolveSubmissionMaxMarks,
@@ -2654,10 +2552,15 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         autoGradeUsingMarkingKey: runDeterministicGrade,
         saveCriterionMark,
         saveGradingDraft,
+        saveGrade,
+        saveDraftGrade,
+        releaseGrade,
         returnSubmission,
         submitFinalGrade,
         openSubmissionDocument,
+        openSubmissionDocument: openSubmissionDocument,
         downloadSubmissionDocument,
+        downloadSubmission: downloadSubmissionDocument,
         updateGradePercentage,
         closeModal,
         viewSubmissionDocument,
@@ -2671,3 +2574,47 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
 
 })();
 ;
+
+
+/* ============================================================
+   V15 STATIC HTML ACTION BRIDGE
+   ============================================================ */
+(function(){
+    'use strict';
+    function getMod(){return window.LecturerOnlineLearning||null;}
+    function invoke(name,el){
+        const mod=getMod();
+        if(!mod || typeof mod[name]!=='function'){
+            console.warn('[Online Learning] Action unavailable:',name);
+            return;
+        }
+        try{
+            const result=mod[name]();
+            if(result && typeof result.then==='function'){
+                result.catch(err=>{
+                    console.error('[Online Learning] Action failed:',name,err);
+                    if(typeof window.showNotification==='function')
+                        window.showNotification(err?.message||'Action failed.','error');
+                });
+            }
+        }catch(err){
+            console.error('[Online Learning] Action failed:',name,err);
+        }
+    }
+    document.addEventListener('click',function(e){
+        const b=e.target.closest('[data-ol-action]');
+        if(!b)return;
+        e.preventDefault();
+        invoke(b.dataset.olAction,b);
+    });
+    document.addEventListener('change',function(e){
+        const el=e.target;
+        if(el.id==='olCriterionFinalMark' && window.LecturerOnlineLearning){
+            try{
+                if(typeof window.LecturerOnlineLearning.updateGradePercentage==='function')
+                    window.LecturerOnlineLearning.updateGradePercentage();
+            }catch(_){}
+        }
+    });
+})();
+
