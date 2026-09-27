@@ -8863,108 +8863,148 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 </script>
 
 
+
 <!-- ============================================================
-     NCHSM TAB VISIBILITY / DISPLAY REPAIR V17
-     Prevents global CSS or late modules from hiding the active
-     dashboard/online-learning section.
+     NCHSM GLOBAL TAB MANAGER V18
+     One navigation controller for the entire lecturer portal.
      ============================================================ -->
-<style id="nchsm-tab-display-repair-v17">
-    /* The active section must always occupy the main content area. */
-    .main > .tab-content.active,
-    .main > section.tab-content.active,
-    #dashboard-content.tab-content.active,
-    #online-learning-content.tab-content.active,
-    #profile-content.tab-content.active,
-    #my-courses-content.tab-content.active,
-    #my-students-content.tab-content.active,
-    #academic-portfolio-content.tab-content.active,
-    #sessions-content.tab-content.active,
-    #attendance-content.tab-content.active,
-    #cats-content.tab-content.active,
-    #lecturer-questions-content.tab-content.active,
-    #marks-management-content.tab-content.active,
-    #resources-content.tab-content.active,
-    #reports-content.tab-content.active,
-    #nursing-system-content.tab-content.active,
-    #messages-content.tab-content.active,
-    #calendar-content.tab-content.active,
-    #settings-content.tab-content.active {
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        height: auto !important;
-        min-height: 1px !important;
-        overflow: visible;
+<style id="nchsm-global-tabs-v18">
+    .tab-content { display:none; }
+    .tab-content.active {
+        display:block !important;
+        visibility:visible !important;
+        opacity:1 !important;
+    }
+    .main-content .tab-content,
+    .main .tab-content {
+        width:100%;
+        box-sizing:border-box;
     }
 </style>
-<script>
+
+<script id="nchsm-global-tabs-script-v18">
 (function(){
     'use strict';
-    function forceActiveTab(){
-        var tabs=document.querySelectorAll('.main > .tab-content, .main > section.tab-content');
-        if(!tabs.length) return;
-        var active=document.querySelector('.main > .tab-content.active, .main > section.tab-content.active');
-        if(!active){
-            active=document.getElementById('dashboard-content');
-            if(active){ active.classList.add('active'); }
-        }
-        tabs.forEach(function(tab){
-            if(tab===active){
-                tab.style.setProperty('display','block','important');
-                tab.style.setProperty('visibility','visible','important');
-                tab.style.setProperty('opacity','1','important');
-                tab.style.setProperty('height','auto','important');
+
+    const TAB_IDS = ['dashboard', 'profile', 'my-courses', 'my-students', 'online-learning', 'sessions', 'attendance', 'academic-portfolio', 'cats', 'marks-management', 'lecturer-questions', 'nursing-system', 'resources', 'reports', 'messages', 'calendar', 'settings', '${tabId}', '${lastTab}'];
+
+    function getSection(tabId){
+        return document.getElementById(tabId + '-content') ||
+               document.getElementById(tabId);
+    }
+
+    function getNavLinks(){
+        return document.querySelectorAll('#mainNav a[data-tab], a[data-tab]');
+    }
+
+    function setActiveNav(tabId){
+        getNavLinks().forEach(function(link){
+            const active = link.getAttribute('data-tab') === tabId;
+            link.classList.toggle('active', active);
+            if(active){
+                link.style.background = 'rgba(255,255,255,0.15)';
+                link.style.borderLeft = '3px solid #FDB913';
             }else{
-                tab.style.setProperty('display','none','important');
+                link.style.background = '';
+                link.style.borderLeft = '';
             }
         });
     }
 
-    window.__NCHSMForceActiveTab=forceActiveTab;
+    function showTabClean(tabId, options){
+        options = options || {};
+        if(!TAB_IDS.includes(tabId)){
+            console.warn('[NCHSM Tabs] Unknown tab:', tabId);
+            tabId = 'dashboard';
+        }
 
-    function safeShowTab(tabId){
-        if(typeof window.showTab!=='function') return false;
-        try{
-            window.showTab(tabId);
-            setTimeout(forceActiveTab,20);
-            setTimeout(forceActiveTab,250);
-            setTimeout(forceActiveTab,800);
-            return true;
-        }catch(e){
-            console.error('[NCHSM] showTab failed:',e);
-            forceActiveTab();
+        // Keep the existing NCK protection.
+        if(tabId === 'nursing-system' && typeof window.checkNCKVisibility === 'function'){
+            if(!window.checkNCKVisibility()){
+                if(typeof window.showNotification === 'function'){
+                    window.showNotification('⚠️ This section is only available for KRCHN Nursing lecturers.','warning');
+                }
+                tabId = 'dashboard';
+            }
+        }
+
+        const sections = document.querySelectorAll('.tab-content');
+        sections.forEach(function(section){
+            const active = section === getSection(tabId);
+            section.classList.toggle('active', active);
+            section.style.display = active ? 'block' : 'none';
+            if(active){
+                section.style.visibility = 'visible';
+                section.style.opacity = '1';
+                section.style.animation = 'fadeIn 0.25s ease';
+            }
+        });
+
+        const target = getSection(tabId);
+        if(!target){
+            console.error('[NCHSM Tabs] Missing section:', tabId + '-content');
             return false;
         }
+
+        setActiveNav(tabId);
+
+        try{
+            localStorage.setItem('lecturerActiveTab', tabId);
+        }catch(_){}
+
+        // Trigger existing section loaders without replacing them.
+        try{
+            if(tabId === 'dashboard' && window.LecturerDashboard?.refresh)
+                window.LecturerDashboard.refresh();
+            if(tabId === 'my-students' && window.LecturerStudents?.loadStudents)
+                window.LecturerStudents.loadStudents();
+            if(tabId === 'online-learning' && window.LecturerOnlineLearning?.load)
+                window.LecturerOnlineLearning.load();
+            if(tabId === 'reports' && window.NCHSMReports?.refresh)
+                window.NCHSMReports.refresh();
+        }catch(err){
+            console.warn('[NCHSM Tabs] section loader warning:',err);
+        }
+
+        document.dispatchEvent(new CustomEvent('nchsm:tabchanged',{
+            detail:{tabId:tabId, element:target}
+        }));
+
+        return true;
     }
 
-    document.addEventListener('DOMContentLoaded',function(){
-        /* Give the existing application boot sequence time to authenticate,
-           then guarantee that the active section is visible. */
-        setTimeout(forceActiveTab,50);
-        setTimeout(forceActiveTab,350);
-        setTimeout(forceActiveTab,1000);
-        setTimeout(forceActiveTab,2500);
+    // Replace the old global function once. No polling.
+    window.showTab = showTabClean;
+    window.__NCHSMShowTabV18 = showTabClean;
 
-        document.querySelectorAll('#mainNav a[data-tab]').forEach(function(link){
-            link.addEventListener('click',function(){
-                var id=this.getAttribute('data-tab');
-                setTimeout(function(){safeShowTab(id);},0);
-            },true);
-        });
-    },{once:true});
+    function boot(){
+        let requested = null;
+        try{ requested = localStorage.getItem('lecturerActiveTab'); }catch(_){}
+        if(!requested || !TAB_IDS.includes(requested)) requested = 'dashboard';
 
-    /* If another module hides the active section after initialization,
-       repair it without touching the contents or grading logic. */
-    var lastActive='';
-    setInterval(function(){
-        var active=document.querySelector('.main > .tab-content.active, .main > section.tab-content.active');
-        if(active){
-            if(lastActive!==active.id || getComputedStyle(active).display==='none'){
-                lastActive=active.id;
-                forceActiveTab();
-            }
-        }
-    },500);
+        // Always show a valid section even if a previous module left the page blank.
+        showTabClean(requested, {boot:true});
+    }
+
+    // Delegated navigation avoids duplicate handlers from individual modules.
+    document.addEventListener('click',function(e){
+        const link = e.target.closest('a[data-tab]');
+        if(!link) return;
+
+        const tabId = link.getAttribute('data-tab');
+        if(!TAB_IDS.includes(tabId)) return;
+
+        // Let dropdown controls behave normally only if they are not actual tabs.
+        e.preventDefault();
+        e.stopPropagation();
+        showTabClean(tabId);
+    }, true);
+
+    if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded',boot,{once:true});
+    }else{
+        boot();
+    }
 })();
 </script>
 
