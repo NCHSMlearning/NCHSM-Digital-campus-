@@ -5759,7 +5759,7 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
             <div style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:13px 16px;min-width:180px;">
                 <div style="font-size:11px;opacity:.75;text-transform:uppercase;">Publishing mode</div>
                 <div style="font-weight:700;margin-top:4px;"><i class="fas fa-shield-alt"></i> Student Dashboard</div>
-                <div style="font-size:11px;opacity:.75;margin-top:3px;">Emails never expose file URLs</div>
+                <div style="font-size:11px;opacity:.75;margin-top:3px;">Resources are published securely to your assigned program</div>
             </div>
         </div>
     </div>
@@ -5767,7 +5767,7 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
     <!-- ===== DEPARTMENT INDICATOR - AUTO-LOADS FROM PROFILE ===== -->
     <div id="lecturer-program-indicator" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px 20px; background: #f1f5f9; border-radius: 12px; flex-wrap: wrap; border: 1px solid #e2e8f0;">
         <span style="font-weight: 600; color: #475569; font-size: 14px;">
-            <i class="fas fa-user-tie" style="color: #4C1D95;"></i> My Department:
+            <i class="fas fa-user-tie" style="color: #4C1D95;"></i> My Program:
         </span>
         <span id="lecturer-dept-badge" style="background: #4C1D95; color: white; padding: 6px 18px; border-radius: 20px; font-size: 14px; font-weight: 600;">
             <i class="fas fa-graduation-cap"></i> <span id="lecturer-dept-name">Loading...</span>
@@ -5806,7 +5806,7 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
             <i class="fas fa-check-circle" style="color: #10b981; font-size: 24px;"></i>
             <div>
                 <strong style="color: #065f46;" id="successMessage">Resource Uploaded Successfully!</strong>
-                <p style="margin: 4px 0 0 0; color: #065f46; font-size: 14px;" id="successSubMessage">Your resource is now available to students in your department immediately.</p>
+                <p style="margin: 4px 0 0 0; color: #065f46; font-size: 14px;" id="successSubMessage">Your resource is now available to students in your assigned program immediately.</p>
             </div>
             <button onclick="document.getElementById('lecturerResourceSuccess').style.display='none'" style="margin-left: auto; background: none; border: none; color: #065f46; cursor: pointer; font-size: 18px;">&times;</button>
         </div>
@@ -5837,11 +5837,13 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
                 <!-- Program - AUTO-FILLED from lecturer profile -->
                 <div>
-                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Program/Department *</label>
-                    <select id="lecturer_program" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
+                    <select id="lecturer_program" data-program-field="canonical" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc;">
                         <option value="">Loading programs...</option>
                     </select>
-                    <small style="color: #6b7280; font-size: 11px;">Auto-assigned from your department</small>
+                    <small style="color: #6b7280; font-size: 11px;">
+                        Your program is determined from your lecturer profile. Nursing resources use the KRCHN program code.
+                    </small>
                 </div>
                 
                 <!-- Intake Year - DYNAMIC -->
@@ -6008,10 +6010,12 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div>
                     <label style="font-weight: 600; font-size: 13px; color: #475569;">Program</label>
-                    <select id="edit_lecturer_program" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc;">
+                    <select id="edit_lecturer_program" data-program-field="canonical" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc;">
                         <option value="">Loading...</option>
                     </select>
-                    <small style="color: #6b7280; font-size: 11px;">Department assignment cannot be changed</small>
+                    <small style="color: #6b7280; font-size: 11px;">
+                        Program assignment is managed by your lecturer profile. Nursing is stored as KRCHN.
+                    </small>
                 </div>
                 <div>
                     <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year</label>
