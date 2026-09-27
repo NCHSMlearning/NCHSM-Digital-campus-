@@ -134,6 +134,51 @@ resolvedLecturerId: null,
 lecturerIdIsValid: false,
 
 // ==========================================
+// CANONICAL PROGRAM NORMALIZATION
+// ==========================================
+// Nursing is the department/display name, but KRCHN is the
+// canonical program code used by the resources table and storage.
+// This is applied at every entry point so Nursing cannot leak into
+// program_type, target_program, storage paths, podcasts, or emails.
+normalizeProgram(program) {
+    const raw = String(program ?? '').trim();
+    if (!raw) return '';
+
+    const key = raw
+        .replace(/\s+/g, ' ')
+        .toUpperCase();
+
+    const nursingAliases = new Set([
+        'NURSING',
+        'NURSING DEPARTMENT',
+        'SCHOOL OF NURSING',
+        'KRCHN',
+        'KRCHN NURSING',
+        'KENYA REGISTERED COMMUNITY HEALTH NURSING',
+        'KENYA REGISTERED COMMUNITY HEALTH NURSE'
+    ]);
+
+    if (nursingAliases.has(key)) return 'KRCHN';
+
+    // Preserve all other program codes in canonical uppercase form.
+    return key;
+},
+
+normalizePrograms(programs) {
+    const values = Array.isArray(programs) ? programs : [programs];
+    return [...new Set(
+        values
+            .map(program => this.normalizeProgram(program))
+            .filter(Boolean)
+    )];
+},
+
+getCanonicalSelectedProgram(elementId, fallback = 'KRCHN') {
+    const raw = document.getElementById(elementId)?.value || fallback;
+    return this.normalizeProgram(raw) || fallback;
+},
+
+// ==========================================
 
 // INITIALIZE
 
@@ -193,11 +238,15 @@ this.lecturerProfile = profile;
 
 if (profile.assigned_programs && profile.assigned_programs.length > 0) {
 
-this.assignedPrograms = profile.assigned_programs;
+this.assignedPrograms = this.normalizePrograms(profile.assigned_programs);
 
-} else if (profile.department || profile.program) {
+} else if (profile.program || profile.department) {
 
-this.assignedPrograms = [profile.department || profile.program];
+// Prefer the actual program field over department. A Nursing
+// department value is normalized to the canonical KRCHN code.
+this.assignedPrograms = this.normalizePrograms([
+    profile.program || profile.department
+]);
 
 } else {
 
@@ -337,7 +386,7 @@ const { data, error } = await supabase
 
 if (error) throw error;
 
-const programs = [...new Set((data || []).map(d => d.program).filter(Boolean))];
+const programs = this.normalizePrograms((data || []).map(d => d.program));
 
 this.assignedPrograms = programs.length > 0 ? programs : ['KRCHN'];
 
@@ -369,7 +418,9 @@ const data = JSON.parse(stored);
 
 this.lecturerProfile = data;
 
-this.assignedPrograms = data.assignedPrograms || [data.department || data.program || 'KRCHN'];
+this.assignedPrograms = this.normalizePrograms(
+    data.assignedPrograms || [data.program || data.department || 'KRCHN']
+);
 
 this.lecturerAssignmentId = data.lecturer_assignment_id || data.lecturer_id || data.user_id || data.id;
 this.resolvedLecturerId = this.lecturerAssignmentId;
@@ -533,7 +584,7 @@ return;
 
 }
 
-this.assignedPrograms.forEach(program => {
+this.normalizePrograms(this.assignedPrograms).forEach(program => {
 
 const option = document.createElement('option');
 
@@ -545,7 +596,7 @@ select.appendChild(option);
 
 });
 
-select.value = this.assignedPrograms[0];
+select.value = this.normalizeProgram(this.assignedPrograms[0]) || 'KRCHN';
 
 });
 
@@ -761,9 +812,11 @@ let query = supabase
 
 // If lecturer has specific programs, filter by them
 
-if (this.assignedPrograms && this.assignedPrograms.length > 0) {
+const canonicalAssignedPrograms = this.normalizePrograms(this.assignedPrograms);
 
-query = query.in('target_program', this.assignedPrograms);
+if (canonicalAssignedPrograms.length > 0) {
+
+query = query.in('target_program', canonicalAssignedPrograms);
 
 }
 
@@ -777,7 +830,9 @@ this.updateCounts();
 
 this.renderTable();
 
-console.log(`✅ Loaded ${this.resources.length} resources for ${this.assignedPrograms.join(', ')}`);
+console.log(
+    `✅ Loaded ${this.resources.length} resources for ${this.normalizePrograms(this.assignedPrograms).join(', ')}`
+);
 
 } catch (error) {
 
@@ -918,7 +973,11 @@ tbody.innerHTML = filtered.map(r => {
             </td>
 
             <td style="padding:12px 16px;font-size:13px;color:#475569;white-space:nowrap;">
-                ${this.escapeHtml(this.getProgramDisplayName(r.target_program || r.program_type || 'N/A'))}
+                ${this.escapeHtml(
+                    this.getProgramDisplayName(
+                        this.normalizeProgram(r.target_program || r.program_type || 'KRCHN') || 'KRCHN'
+                    )
+                )}
             </td>
 
             <td style="padding:12px 16px;font-size:13px;color:#475569;white-space:nowrap;">
@@ -1142,7 +1201,8 @@ if (!supabase) throw new Error('Database connection not available');
 
 // Get form values
 
-const program = document.getElementById('lecturer_program')?.value;
+const selectedProgram = document.getElementById('lecturer_program')?.value;
+const program = this.normalizeProgram(selectedProgram) || 'KRCHN';
 
 const intake = document.getElementById('lecturer_intake')?.value;
 
@@ -1307,6 +1367,16 @@ resourceData.unit_name = courseName;
 
 resourceData.course_name = courseName;
 
+}
+
+// Final canonical-program safety check.
+// Even if the UI/dropdown/session supplied "Nursing", only KRCHN
+// reaches the resources table and storage namespace.
+resourceData.program_type = this.normalizeProgram(resourceData.program_type) || 'KRCHN';
+resourceData.target_program = this.normalizeProgram(resourceData.target_program) || 'KRCHN';
+
+if (resourceData.program_type === 'NURSING' || resourceData.target_program === 'NURSING') {
+    throw new Error('Program normalization failed: Nursing cannot be stored as a resources program. Expected KRCHN.');
 }
 
 // Insert into database
@@ -1541,7 +1611,10 @@ editResource(resourceId) {
     };
 
     setValue('edit_resource_id', resource.id);
-    setValue('edit_lecturer_program', resource.target_program || resource.program_type || '');
+    setValue(
+        'edit_lecturer_program',
+        this.normalizeProgram(resource.target_program || resource.program_type || 'KRCHN')
+    );
     setValue('edit_lecturer_intake', resource.intake || '');
     setValue('edit_lecturer_block', resource.block || resource.block_term || '');
     setValue('edit_lecturer_title', resource.title || '');
@@ -1621,7 +1694,8 @@ async saveEdit() {
     let newPodcastPath = null;
 
     try {
-        const program = document.getElementById('edit_lecturer_program')?.value;
+        const selectedProgram = document.getElementById('edit_lecturer_program')?.value;
+        const program = this.normalizeProgram(selectedProgram) || 'KRCHN';
         const intake = document.getElementById('edit_lecturer_intake')?.value;
         const block = document.getElementById('edit_lecturer_block')?.value;
         const title = document.getElementById('edit_lecturer_title')?.value.trim();
@@ -1635,8 +1709,8 @@ async saveEdit() {
         const newPodcast = document.getElementById('edit_lecturer_podcast_file')?.files?.[0];
 
         const updates = {
-            target_program: program,
-            program_type: program,
+            target_program: this.normalizeProgram(program) || 'KRCHN',
+            program_type: this.normalizeProgram(program) || 'KRCHN',
             intake,
             block,
             block_term: block,
@@ -1794,7 +1868,9 @@ console.warn('📧 Student notification skipped: email sender or Supabase unavai
 return;
 }
 
-const program = resourceData.program_type || resourceData.target_program;
+const program = this.normalizeProgram(
+    resourceData.target_program || resourceData.program_type || 'KRCHN'
+) || 'KRCHN';
 const block = resourceData.block || resourceData.block_term;
 
 try {
@@ -1897,7 +1973,9 @@ r.description || '',
 
 this.getResourceTypeLabel(r.resource_type),
 
-this.getProgramDisplayName(r.target_program || r.program_type || ''),
+this.getProgramDisplayName(
+    this.normalizeProgram(r.target_program || r.program_type || 'KRCHN') || 'KRCHN'
+),
 
 r.block || r.block_term || '',
 
