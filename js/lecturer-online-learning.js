@@ -1,3 +1,4 @@
+/* V14 FIX — restores submission storage URL, file-type and script-loader helpers used by preview and deterministic grading. */
 /* NCHSM Lecturer Online Learning — integrated latest Research workflow + Assignment Targeting */
 // NCHSM Lecturer Dashboard — Online Learning module
 // Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
@@ -5,6 +6,8 @@
 // Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
 window.LecturerOnlineLearning = (() => {
     const state = { assignments: [], submissions: [], initialized:false, client:null, userId:null, profile:null, publishAfterSave:false };
+    // Submission storage bucket; portal can override with NCHSM_ASSIGNMENT_BUCKET.
+    const STORAGE_BUCKET = window.NCHSM_ASSIGNMENT_BUCKET || 'assignment-submissions';
     const $ = id => document.getElementById(id);
     const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     function client(){
@@ -345,6 +348,52 @@ window.LecturerOnlineLearning = (() => {
     // ============================================================
 
     const markingKeyState = { keys: [], loaded:false };
+
+    // ===== Submission document helpers =====
+    function extOf(name=''){
+        const clean=String(name||'').toLowerCase().split('?')[0].split('#')[0];
+        const x=clean.includes('.')?clean.split('.').pop():'';
+        return x==='jpeg'?'jpg':x;
+    }
+
+    function loadScriptOnce(src,id){
+        return new Promise((resolve,reject)=>{
+            if(id && document.getElementById(id)) return resolve();
+            const s=document.createElement('script');
+            s.src=src;
+            if(id)s.id=id;
+            s.onload=resolve;
+            s.onerror=()=>reject(new Error('Could not load '+src));
+            document.head.appendChild(s);
+        });
+    }
+
+    async function signedDocumentUrl(s){
+        const db=client();
+        if(!db) throw new Error('Supabase client is unavailable.');
+        if(!s?.file_path) throw new Error('No uploaded document is attached to this submission.');
+
+        const buckets=[...new Set([
+            window.NCHSM_ASSIGNMENT_BUCKET,
+            STORAGE_BUCKET,
+            'assignment-submissions',
+            'online-learning',
+            'online_submissions'
+        ].filter(Boolean))];
+
+        let lastError=null;
+        for(const bucket of buckets){
+            try{
+                const r=await db.storage.from(bucket).createSignedUrl(s.file_path,3600);
+                if(!r.error && r.data?.signedUrl) return r.data.signedUrl;
+                lastError=r.error||null;
+            }catch(e){
+                lastError=e;
+            }
+        }
+        throw new Error(lastError?.message || 'Unable to create a signed document URL. Check the storage bucket and file path.');
+    }
+
     const gradingState = {
         submission:null,
         assignment:null,
@@ -640,7 +689,9 @@ window.LecturerOnlineLearning = (() => {
                 const url=await signedDocumentUrl(s);
                 const ext=extOf(s.file_name||s.file_path||'');
                 if(ext==='docx'||ext==='doc'){
-                    const blob=await (await fetch(url)).blob();
+                    const response=await fetch(url);
+                    if(!response.ok) throw new Error(`Could not download the submitted document (${response.status}).`);
+                    const blob=await response.blob();
                     await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');
                     const r=await window.mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()});
                     gradingState.documentText=r.value||'';
