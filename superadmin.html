@@ -1,7 +1,3 @@
-
-
-
-
 <!DOCTYPE html> 
 <html lang="en"> 
 <head>  
@@ -1100,6 +1096,36 @@ textarea:focus-visible{
                         <span style="margin-left: auto; background: #ec4899; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
                     </a>
                 </li>
+<!-- ============================================================ -->
+<!-- LECTURER REPORTS REVIEW -->
+<!-- ============================================================ -->
+<li style="margin-bottom: 2px;">
+    <a
+        href="#"
+        data-tab="lecturer-reports-review"
+        style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            background: rgba(16,185,129,0.15);
+            border-left: 3px solid #10b981;
+        "
+        onmouseover="this.style.background='rgba(16,185,129,0.3)'; this.style.color='white'"
+        onmouseout="this.style.background='rgba(16,185,129,0.15)'; this.style.color='white'"
+    >
+        <i class="fas fa-file-signature" style="width: 20px; text-align: center; color: #10b981;"></i>
+        <span>📋 Lecturer Reports Review</span>
+        <span id="lecturerReportsReviewBadge" style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">0</span>
+    </a>
+</li>
+
 <!-- 👇 ADD THIS NEW CERTIFICATE MANAGEMENT LINK 👇 -->
 <li style="margin-bottom: 2px;">
     <a 
@@ -6316,6 +6342,130 @@ textarea:focus-visible{
     </div>
 
 </section>
+<!-- ============================================================ -->
+<!-- 📋 LECTURER REPORTS REVIEW & APPROVAL -->
+<!-- ============================================================ -->
+<section id="lecturer-reports-review" class="tab-content" style="padding: 0 4px;">
+    <div style="background: linear-gradient(135deg, #047857, #0f766e); border-radius: 20px; padding: 25px 30px; margin-bottom: 22px; box-shadow: 0 8px 35px rgba(4,120,87,0.22);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:18px; flex-wrap:wrap;">
+            <div>
+                <h2 style="color:white; margin:0; font-weight:700; display:flex; align-items:center; gap:12px;">
+                    <i class="fas fa-file-signature" style="color:#a7f3d0;"></i> Lecturer Reports Review
+                    <span style="background:rgba(255,255,255,0.18); color:white; font-size:10px; padding:4px 10px; border-radius:20px; font-weight:600;">ADMIN REVIEW</span>
+                </h2>
+                <p style="color:rgba(255,255,255,0.88); margin:6px 0 0; font-size:14px;">
+                    Review, return, approve and track lecturer-submitted academic reports and supporting documents.
+                </p>
+            </div>
+            <button type="button" onclick="window.refreshLecturerReportsReview && window.refreshLecturerReportsReview()" style="background:rgba(255,255,255,0.16); color:white; border:1px solid rgba(255,255,255,0.28); padding:10px 18px; border-radius:9px; cursor:pointer; font-weight:600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Status overview -->
+    <div id="lecturerReportsReviewStats" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:20px;">
+        <div class="sa-report-stat-card" data-status="submitted" style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:18px; box-shadow:0 2px 8px rgba(15,23,42,0.05);">
+            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Submitted</div>
+            <div id="lrStatSubmitted" style="font-size:28px; font-weight:800; color:#2563eb; margin-top:5px;">0</div>
+        </div>
+        <div class="sa-report-stat-card" data-status="under_review" style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:18px; box-shadow:0 2px 8px rgba(15,23,42,0.05);">
+            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Under Review</div>
+            <div id="lrStatUnderReview" style="font-size:28px; font-weight:800; color:#d97706; margin-top:5px;">0</div>
+        </div>
+        <div class="sa-report-stat-card" data-status="returned" style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:18px; box-shadow:0 2px 8px rgba(15,23,42,0.05);">
+            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Returned</div>
+            <div id="lrStatReturned" style="font-size:28px; font-weight:800; color:#dc2626; margin-top:5px;">0</div>
+        </div>
+        <div class="sa-report-stat-card" data-status="approved" style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:18px; box-shadow:0 2px 8px rgba(15,23,42,0.05);">
+            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase;">Approved</div>
+            <div id="lrStatApproved" style="font-size:28px; font-weight:800; color:#059669; margin-top:5px;">0</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:18px; margin-bottom:18px; box-shadow:0 2px 8px rgba(15,23,42,0.04);">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; align-items:end;">
+            <div>
+                <label for="lrFilterStatus" style="display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:6px;">STATUS</label>
+                <select id="lrFilterStatus" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white;">
+                    <option value="">All statuses</option>
+                    <option value="submitted">Submitted</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="returned">Returned</option>
+                    <option value="resubmitted">Resubmitted</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="draft">Draft</option>
+                </select>
+            </div>
+            <div>
+                <label for="lrFilterType" style="display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:6px;">REPORT TYPE</label>
+                <select id="lrFilterType" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white;">
+                    <option value="">All report types</option>
+                    <option value="WeeklyReport">Weekly Report</option>
+                    <option value="TeachingLearningReport">Teaching & Learning</option>
+                    <option value="AssessmentReport">Assessment</option>
+                    <option value="AttendanceReport">Attendance</option>
+                    <option value="ClinicalPracticalReport">Clinical / Practical</option>
+                    <option value="StudentPerformanceReport">Student Performance</option>
+                    <option value="UnitProgressReport">Unit Progress</option>
+                    <option value="EndOfSemesterReport">End of Semester</option>
+                    <option value="OtherReport">Other</option>
+                </select>
+            </div>
+            <div>
+                <label for="lrFilterProgram" style="display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:6px;">PROGRAM</label>
+                <input id="lrFilterProgram" type="search" placeholder="e.g. KRCHN" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;">
+            </div>
+            <div>
+                <label for="lrFilterBlock" style="display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:6px;">BLOCK / CLASS</label>
+                <input id="lrFilterBlock" type="search" placeholder="e.g. Block 5" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;">
+            </div>
+            <div>
+                <label for="lrFilterYear" style="display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:6px;">ACADEMIC YEAR</label>
+                <input id="lrFilterYear" type="search" placeholder="e.g. 2026" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;">
+            </div>
+            <div style="grid-column:span 2; min-width:220px;">
+                <label for="lrFilterSearch" style="display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:6px;">SEARCH</label>
+                <input id="lrFilterSearch" type="search" placeholder="Lecturer, report title, unit, subject code..." style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;">
+            </div>
+            <button type="button" onclick="window.refreshLecturerReportsReview && window.refreshLecturerReportsReview()" style="padding:10px 15px;border:0;border-radius:8px;background:#047857;color:white;font-weight:700;cursor:pointer;">
+                <i class="fas fa-filter"></i> Apply Filters
+            </button>
+        </div>
+    </div>
+
+    <!-- Reports table -->
+    <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden; box-shadow:0 2px 8px rgba(15,23,42,0.04);">
+        <div style="padding:16px 18px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div>
+                <h3 style="margin:0;color:#0f172a;font-size:16px;"><i class="fas fa-inbox" style="color:#047857;"></i> Lecturer Submissions</h3>
+                <p style="margin:4px 0 0;color:#64748b;font-size:12px;">Review submitted reports and supporting files without duplicating marks or academic records.</p>
+            </div>
+            <span id="lrReviewTableCount" style="font-size:12px;color:#64748b;font-weight:600;">0 submissions</span>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;min-width:1050px;">
+                <thead style="background:#f8fafc;">
+                    <tr>
+                        <th style="padding:11px 14px;text-align:left;font-size:11px;color:#64748b;">LECTURER</th>
+                        <th style="padding:11px 14px;text-align:left;font-size:11px;color:#64748b;">REPORT</th>
+                        <th style="padding:11px 14px;text-align:left;font-size:11px;color:#64748b;">UNIT / CODE</th>
+                        <th style="padding:11px 14px;text-align:left;font-size:11px;color:#64748b;">PROGRAM / BLOCK</th>
+                        <th style="padding:11px 14px;text-align:left;font-size:11px;color:#64748b;">PERIOD</th>
+                        <th style="padding:11px 14px;text-align:left;font-size:11px;color:#64748b;">STATUS</th>
+                        <th style="padding:11px 14px;text-align:right;font-size:11px;color:#64748b;">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody id="lecturerReportsReviewTableBody">
+                    <tr><td colspan="7" style="padding:40px;text-align:center;color:#94a3b8;">Select Lecturer Reports Review to load submissions.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
 <!-- ============================================================ -->
 <!-- 🎓 GRADUATION & CERTIFICATE MANAGEMENT WITH AUTO-GENERATION  -->
 <!-- ============================================================ -->
@@ -15355,6 +15505,9 @@ textarea:focus-visible{
 
 <!-- 1. SUPER ADMIN ANALYTICS MODULE -->
 <script src="./js/superadmin-analytics.js"></script>
+
+<!-- 1A. 📋 LECTURER REPORTS REVIEW MODULE -->
+<script src="./js/superadmin-lecturer-reports-review.js"></script>
 
 <!-- 2. SUPER ADMIN TRANSCRIPT GENERATOR MODULE -->
 <script src="./js/superadmin-transcript.js"></script>
