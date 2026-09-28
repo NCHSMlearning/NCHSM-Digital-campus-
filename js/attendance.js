@@ -18,6 +18,7 @@
 // ✅ Active Sessions panel filtered by student's block + intake year
 // ✅ One-click check-in from session card
 // ✅ Duplicate check-in prevention
+// ✅ 🔒 ONE DEVICE = ONE STUDENT PER SESSION (device fingerprint lock)
 // ============================================
 
 (function() {
@@ -67,6 +68,41 @@
     let isGettingLocation = false;
     let profileLoadAttempts = 0;
     const MAX_PROFILE_ATTEMPTS = 20;
+
+    // ============================================
+    // 🖥️ DEVICE FINGERPRINT — one device = one student per session
+    // ============================================
+    async function getDeviceFingerprint() {
+        try {
+            const parts = [
+                navigator.userAgent || '',
+                navigator.language || '',
+                screen.width + 'x' + screen.height,
+                screen.colorDepth || '',
+                new Date().getTimezoneOffset(),
+                navigator.hardwareConcurrency || '',
+                navigator.platform || ''
+            ];
+            const raw = parts.join('|');
+
+            if (window.crypto?.subtle) {
+                const buf = new TextEncoder().encode(raw);
+                const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+                const hashArr = Array.from(new Uint8Array(hashBuf));
+                return 'fp_' + hashArr.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+            }
+
+            let h = 0;
+            for (let i = 0; i < raw.length; i++) {
+                h = ((h << 5) - h) + raw.charCodeAt(i);
+                h |= 0;
+            }
+            return 'fp_' + Math.abs(h).toString(16);
+        } catch (e) {
+            console.warn('⚠️ Fingerprint error:', e);
+            return 'fp_unknown';
+        }
+    }
     
     // ============================================
     // ✅ GET SUPABASE CLIENT
@@ -815,153 +851,136 @@
     }
     
     // ============================================
-    // ⚡ QUICK CHECK-IN — DIRECT CHECK-IN FLOW
+    // ⚡ QUICK CHECK-IN — SESSION-BASED, NO DROPDOWN
     // ============================================
     
-   // ============================================
-// ⚡ QUICK CHECK-IN — SESSION-BASED, NO DROPDOWN
-// ============================================
-
-async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
-    console.log(`⚡ Quick check-in for session ${sessionId}`);
-    
-    const session = activeSessions.find(s => s.id === sessionId);
-    if (!session) {
-        showToast('Session not found — refreshing...', 'warning');
-        await renderActiveSessions();
-        return;
-    }
-    
-    currentSession = session;
-    
-    const sessionInfo = await getCurrentStudentInfo();
-    if (!sessionInfo?.user_id) {
-        showToast('Please log in first', 'error');
-        return;
-    }
-    
-    // ============================================================
-    // 🔒 DUPLICATE PREVENTION — ONE STUDENT, ONE RECORD PER SESSION
-    // IMPORTANT: Do NOT use opened_at here. Re-opening the same session
-    // must NOT create another attendance record. A second class of the
-    // same unit/day must be created as a NEW scheduled session with a
-    // different session_id.
-    // ============================================================
-    const supabase = getSupabase();
-    if (supabase) {
-        try {
-            const { data: sessionRow, error: sessionError } = await supabase
-                .from('scheduled_sessions')
-                .select('status, is_active')
-                .eq('id', sessionId)
-                .single();
-
-            if (sessionError) throw sessionError;
-
-            const isActiveNow = sessionRow?.is_active === true || sessionRow?.status === 'active';
-
-            if (!isActiveNow) {
-                showToast('This session is not currently open for check-in.', 'warning', 4000);
-                return;
-            }
-
-            const { data: existing, error: existingError } = await supabase
-                .from('geo_attendance_logs')
-                .select('id, check_in_time, attendance_status, verification_source, is_verified')
-                .eq('user_id', sessionInfo.user_id)
-                .eq('session_id', sessionId)
-                .order('check_in_time', { ascending: false })
-                .limit(1);
-
-            if (existingError) throw existingError;
-
-            if (existing && existing.length > 0) {
-                const row = existing[0];
-                const isAutomaticAbsent =
-                    String(row.verification_source || '').toLowerCase().includes('automatic session finalization') &&
-                    String(row.attendance_status || '').toLowerCase() === 'absent' &&
-                    row.is_verified !== true;
-
-                // Reopening the SAME session allows an automatic Absent placeholder
-                // to be replaced by a real GPS check-in, but never creates a second row.
-                if (!isAutomaticAbsent) {
-                    const time = row.check_in_time
-                        ? new Date(row.check_in_time).toLocaleTimeString('en-KE', {
-                            hour: '2-digit', minute: '2-digit'
-                        })
-                        : 'earlier';
-                    showToast(`✅ You already checked in for this class at ${time}.`, 'success', 4000);
-                    return;
-                }
-            }
-        } catch (e) {
-            console.error('❌ Could not verify session/duplicate status:', e);
-            showToast('Could not verify this attendance session. Please try again.', 'error', 5000);
+    async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
+        console.log(`⚡ Quick check-in for session ${sessionId}`);
+        
+        const session = activeSessions.find(s => s.id === sessionId);
+        if (!session) {
+            showToast('Session not found — refreshing...', 'warning');
+            await renderActiveSessions();
             return;
         }
-    }
-    // ✅ Build the target DIRECTLY from the session — no dropdown lookup
-    const targetType = (session.session_type || 'class').toLowerCase();
-    const targetType_normalized = 
-        targetType === 'clinical' ? 'clinical' :
-        targetType === 'lab' ? 'lab' :
-        targetType === 'tutorial' ? 'tutorial' :
-        'class';
-    
-    // Coordinate resolution:
-    //   1) session's own target_latitude/longitude if present
-    //   2) else the matched approvedUnit's coords (if we can find it)
-    //   3) else campus center
-    let lat = session.target_latitude ? parseFloat(session.target_latitude) : null;
-    let lon = session.target_longitude ? parseFloat(session.target_longitude) : null;
-    let radius = session.target_radius ? parseInt(session.target_radius) : null;
-    
-    // Try to find a matching approved unit by name (fallback for coords)
-    if (!lat || !lon) {
-        const matchedUnit = approvedUnits.find(u => 
-            (u.unit_name && unitName && 
-             u.unit_name.toLowerCase().includes(unitName.toLowerCase().substring(0, 20))) ||
-            (u.unit_name && session.unit_name && 
-             u.unit_name.toLowerCase() === session.unit_name.toLowerCase())
-        );
-        if (matchedUnit?.latitude && matchedUnit?.longitude) {
-            lat = matchedUnit.latitude;
-            lon = matchedUnit.longitude;
-            if (!radius) radius = matchedUnit.radius || ACCURACY_CONFIG.CLASSROOM_RADIUS;
-            console.log('📍 Using matched unit coords:', matchedUnit.unit_name);
+        
+        currentSession = session;
+        
+        const sessionInfo = await getCurrentStudentInfo();
+        if (!sessionInfo?.user_id) {
+            showToast('Please log in first', 'error');
+            return;
         }
+        
+        // ============================================================
+        // 🔒 DUPLICATE PREVENTION — ONE STUDENT, ONE RECORD PER SESSION
+        // ============================================================
+        const supabase = getSupabase();
+        if (supabase) {
+            try {
+                const { data: sessionRow, error: sessionError } = await supabase
+                    .from('scheduled_sessions')
+                    .select('status, is_active')
+                    .eq('id', sessionId)
+                    .single();
+
+                if (sessionError) throw sessionError;
+
+                const isActiveNow = sessionRow?.is_active === true || sessionRow?.status === 'active';
+
+                if (!isActiveNow) {
+                    showToast('This session is not currently open for check-in.', 'warning', 4000);
+                    return;
+                }
+
+                const { data: existing, error: existingError } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('id, check_in_time, attendance_status, verification_source, is_verified')
+                    .eq('user_id', sessionInfo.user_id)
+                    .eq('session_id', sessionId)
+                    .order('check_in_time', { ascending: false })
+                    .limit(1);
+
+                if (existingError) throw existingError;
+
+                if (existing && existing.length > 0) {
+                    const row = existing[0];
+                    const isAutomaticAbsent =
+                        String(row.verification_source || '').toLowerCase().includes('automatic session finalization') &&
+                        String(row.attendance_status || '').toLowerCase() === 'absent' &&
+                        row.is_verified !== true;
+
+                    if (!isAutomaticAbsent) {
+                        const time = row.check_in_time
+                            ? new Date(row.check_in_time).toLocaleTimeString('en-KE', {
+                                hour: '2-digit', minute: '2-digit'
+                            })
+                            : 'earlier';
+                        showToast(`✅ You already checked in for this class at ${time}.`, 'success', 4000);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error('❌ Could not verify session/duplicate status:', e);
+                showToast('Could not verify this attendance session. Please try again.', 'error', 5000);
+                return;
+            }
+        }
+        
+        const targetType = (session.session_type || 'class').toLowerCase();
+        const targetType_normalized = 
+            targetType === 'clinical' ? 'clinical' :
+            targetType === 'lab' ? 'lab' :
+            targetType === 'tutorial' ? 'tutorial' :
+            'class';
+        
+        let lat = session.target_latitude ? parseFloat(session.target_latitude) : null;
+        let lon = session.target_longitude ? parseFloat(session.target_longitude) : null;
+        let radius = session.target_radius ? parseInt(session.target_radius) : null;
+        
+        if (!lat || !lon) {
+            const matchedUnit = approvedUnits.find(u => 
+                (u.unit_name && unitName && 
+                 u.unit_name.toLowerCase().includes(unitName.toLowerCase().substring(0, 20))) ||
+                (u.unit_name && session.unit_name && 
+                 u.unit_name.toLowerCase() === session.unit_name.toLowerCase())
+            );
+            if (matchedUnit?.latitude && matchedUnit?.longitude) {
+                lat = matchedUnit.latitude;
+                lon = matchedUnit.longitude;
+                if (!radius) radius = matchedUnit.radius || ACCURACY_CONFIG.CLASSROOM_RADIUS;
+                console.log('📍 Using matched unit coords:', matchedUnit.unit_name);
+            }
+        }
+        
+        if (!lat || !lon) {
+            lat = CAMPUS_COORDINATES.latitude;
+            lon = CAMPUS_COORDINATES.longitude;
+            console.log('📍 Using campus center fallback');
+        }
+        
+        if (!radius) {
+            radius = targetType_normalized === 'clinical' 
+                ? ACCURACY_CONFIG.CLINICAL_RADIUS 
+                : ACCURACY_CONFIG.CLASSROOM_RADIUS;
+        }
+        
+        selectedTarget = {
+            id: `session_${session.id}`,
+            name: session.unit_name || session.session_title || session.title || unitName || 'Session',
+            type: targetType_normalized,
+            latitude: lat,
+            longitude: lon,
+            radius: radius
+        };
+        
+        console.log('✅ Built target from session:', selectedTarget);
+        showToast(`📍 Preparing check-in for ${selectedTarget.name}...`, 'info', 2000);
+        
+        setTimeout(() => {
+            doCheckIn(session);
+        }, 500);
     }
-    
-    // Final fallback
-    if (!lat || !lon) {
-        lat = CAMPUS_COORDINATES.latitude;
-        lon = CAMPUS_COORDINATES.longitude;
-        console.log('📍 Using campus center fallback');
-    }
-    
-    if (!radius) {
-        radius = targetType_normalized === 'clinical' 
-            ? ACCURACY_CONFIG.CLINICAL_RADIUS 
-            : ACCURACY_CONFIG.CLASSROOM_RADIUS;
-    }
-    
-    selectedTarget = {
-        id: `session_${session.id}`,
-        name: session.unit_name || session.session_title || session.title || unitName || 'Session',
-        type: targetType_normalized,
-        latitude: lat,
-        longitude: lon,
-        radius: radius
-    };
-    
-    console.log('✅ Built target from session:', selectedTarget);
-    showToast(`📍 Preparing check-in for ${selectedTarget.name}...`, 'info', 2000);
-    
-    // Skip the target dropdown entirely — go straight to GPS + confirm
-    setTimeout(() => {
-        doCheckIn(session);
-    }, 500);
-}
 
     // ============================================
     // 🎯 POPULATE TARGET OPTIONS
@@ -1793,59 +1812,48 @@ async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
     // 📍 GET ULTRA-ACCURATE LOCATION
     // ============================================
     
-    
-/**
- * Device-aware location profile.
- * Phones/tablets normally have better GNSS accuracy; laptops often rely on
- * browser/Wi-Fi positioning. Laptop support does NOT bypass distance checks.
- */
-function getDeviceLocationProfile() {
-    const ua = navigator.userAgent || '';
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    const isTablet = /Tablet|iPad/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua));
-    return {
-        isMobile: isMobile || isTablet,
-        isLaptop: !isMobile && !isTablet,
-        label: (isMobile || isTablet) ? 'mobile' : 'laptop'
-    };
-}
+    function getDeviceLocationProfile() {
+        const ua = navigator.userAgent || '';
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+        const isTablet = /Tablet|iPad/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua));
+        return {
+            isMobile: isMobile || isTablet,
+            isLaptop: !isMobile && !isTablet,
+            label: (isMobile || isTablet) ? 'mobile' : 'laptop'
+        };
+    }
 
-/**
- * Browser geolocation fallback for laptops.
- * The returned coordinate is still checked against the session target/radius
- * by doCheckIn(); this only improves compatibility where a laptop has no GNSS.
- */
-function getLaptopBrowserLocation(options = {}) {
-    return new Promise((resolve) => {
-        if (!navigator.geolocation) {
-            resolve(null);
-            return;
-        }
-
-        const timeout = Number(options.timeout || 12000);
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                resolve({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    accuracy: Number(position.coords.accuracy || 9999),
-                    timestamp: position.timestamp || Date.now(),
-                    source: 'browser-laptop',
-                    device_type: 'laptop'
-                });
-            },
-            () => resolve(null),
-            {
-                enableHighAccuracy: false,
-                maximumAge: 10000,
-                timeout
+    function getLaptopBrowserLocation(options = {}) {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                resolve(null);
+                return;
             }
-        );
-    });
-}
 
-async function getAccurateLocation() {
+            const timeout = Number(options.timeout || 12000);
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    resolve({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: Number(position.coords.accuracy || 9999),
+                        timestamp: position.timestamp || Date.now(),
+                        source: 'browser-laptop',
+                        device_type: 'laptop'
+                    });
+                },
+                () => resolve(null),
+                {
+                    enableHighAccuracy: false,
+                    maximumAge: 10000,
+                    timeout
+                }
+            );
+        });
+    }
+
+    async function getAccurateLocation() {
         console.log('📍 Acquiring student location...');
         showToast('📡 Acquiring your location...', 'info', 2500);
 
@@ -1883,7 +1891,6 @@ async function getAccurateLocation() {
             return null;
         }
 
-        // First try the existing 5-reading high-accuracy system.
         try {
             const location = await ultraGPS.getUltraAccurateLocation({
                 minReadings: ACCURACY_CONFIG.MIN_READINGS,
@@ -1901,8 +1908,6 @@ async function getAccurateLocation() {
             console.warn('⚠️ Multi-reading GPS error:', error);
         }
 
-        // Browser fallback: important for laptops/desktops and devices
-        // that cannot supply five high-accuracy readings.
         try {
             const fallback = await getLaptopBrowserLocation({ timeout: 15000 });
 
@@ -1943,7 +1948,6 @@ async function getAccurateLocation() {
             console.warn('⚠️ Browser location fallback failed:', error);
         }
 
-        // Final direct browser attempt with clearer permission/error handling.
         try {
             const position = await new Promise((resolve, reject) => {
                 navigator.geolocation.getCurrentPosition(
@@ -1984,6 +1988,7 @@ async function getAccurateLocation() {
 
         return null;
     }
+
     // ============================================
     // 🏆 AWARD ATTENDANCE POINTS
     // ============================================
@@ -2056,18 +2061,18 @@ async function getAccurateLocation() {
 
     // ============================================
     // ✅ DO CHECK-IN - ACCEPTS OPTIONAL SESSION
+    // 🔒 ENFORCES: one device = one student per session
     // ============================================
     
     async function doCheckIn(sessionArg) {
         const btn = document.getElementById('check-in-button');
         const targetSelect = document.getElementById('attendance-target');
         const sessionTypeSelect = document.getElementById('session-type');
-        
-        // ✅ If called with session argument (from quickCheckIn), use it
+
         if (sessionArg) {
             currentSession = sessionArg;
         }
-        
+
         if (!selectedTarget && targetSelect?.value) {
             const parts = targetSelect.value.split('|');
             if (parts.length >= 6) {
@@ -2081,19 +2086,19 @@ async function getAccurateLocation() {
                 };
             }
         }
-        
+
         if (!selectedTarget) {
             showToast('Please select a target first', 'warning');
             return;
         }
-        
+
         btn.disabled = true;
         btn.innerHTML = '📡 Acquiring GPS...';
         btn.style.opacity = '0.6';
-        
+
         try {
             const studentInfo = await getCurrentStudentInfo();
-            
+
             if (!studentInfo || !studentInfo.user_id) {
                 showToast('Please log in first', 'error');
                 btn.disabled = false;
@@ -2101,14 +2106,14 @@ async function getAccurateLocation() {
                 btn.style.opacity = '1';
                 return;
             }
-            
+
             const userId = studentInfo.user_id;
             const admissionNumber = studentInfo.admission_number || studentInfo.student_id || null;
             const studentFullName = studentInfo.full_name || 'Student';
             const studentBlock = studentInfo.block || 'Not Assigned';
             const studentProgram = studentInfo.program || 'KRCHN';
             const studentIntakeYear = studentInfo.intake_year || '2024';
-            
+
             console.log('👤 Student info:', {
                 user_id: userId,
                 admission_number: admissionNumber,
@@ -2117,9 +2122,9 @@ async function getAccurateLocation() {
                 intake_year: studentIntakeYear,
                 session_id: currentSession?.id || null
             });
-            
+
             updateStudentInfoBadge(studentBlock, studentIntakeYear, admissionNumber || 'N/A');
-            
+
             const supabase = getSupabase();
             if (!supabase) {
                 showToast('Database not available', 'error');
@@ -2140,48 +2145,86 @@ async function getAccurateLocation() {
                 return;
             }
 
+            // ============================================================
+            // 🖥️ GET DEVICE FINGERPRINT (one device = one student)
+            // ============================================================
+            const deviceFingerprint = await getDeviceFingerprint();
+            console.log('🖥️ Device fingerprint:', deviceFingerprint);
+
+            // ============================================================
+            // 🔒 DEVICE LOCK — block if another student already used this
+            // device for the SAME session
+            // ============================================================
+            const { data: deviceClash, error: deviceClashError } = await supabase
+                .from('geo_attendance_logs')
+                .select('id, user_id, student_name, check_in_time')
+                .eq('session_id', attendanceSessionId)
+                .eq('device_fingerprint', deviceFingerprint)
+                .neq('user_id', userId)
+                .limit(1);
+
+            if (deviceClashError) {
+                console.warn('⚠️ Device check failed:', deviceClashError);
+            }
+
+            if (deviceClash && deviceClash.length > 0) {
+                const other = deviceClash[0];
+                const otherName = other.student_name || 'another student';
+                showToast(
+                    `⚠️ This device already checked in ${otherName} for this session. ` +
+                    `Each student must use their own phone/device.`,
+                    'error',
+                    8000
+                );
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                btn.style.opacity = '1';
+                return;
+            }
+
+            // ============================================================
+            // 📡 ACQUIRE GPS
+            // ============================================================
             const location = await getAccurateLocation();
-        const deviceType = location?.device_type || getDeviceLocationProfile().label;
-            
+            const deviceType = location?.device_type || getDeviceLocationProfile().label;
+
             if (!location) {
                 btn.disabled = false;
                 btn.innerHTML = '📍 Check In Now';
                 btn.style.opacity = '1';
                 return;
             }
-            
+
             await updateLocationDisplay(location);
-            
+
             const distance = ultraGPS.calculateDistance(
                 location.lat, location.lon,
                 selectedTarget.latitude, selectedTarget.longitude
             );
-            
+
             let radius = selectedTarget.radius || 200;
-            
+
             if (selectedTarget.type === 'clinical') {
                 const lowerName = selectedTarget.name.toLowerCase();
-                if (lowerName.includes('nakuru county referral hospital')) {
-                    radius = 250;
-                } else {
-                    radius = 200;
-                }
+                radius = lowerName.includes('nakuru county referral hospital') ? 250 : 200;
             }
-            
-            if (selectedTarget.type === 'class' || selectedTarget.type === 'lab' || selectedTarget.type === 'tutorial') {
+
+            if (selectedTarget.type === 'class' ||
+                selectedTarget.type === 'lab' ||
+                selectedTarget.type === 'tutorial') {
                 radius = ACCURACY_CONFIG.CLASSROOM_RADIUS;
             }
-            
+
             const accuracy = location.accuracy || 0;
-            
+
             let status = 'Absent';
             let statusMessage = '';
-            
+
             if (accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) {
                 status = 'Pending';
                 statusMessage = 'GPS accuracy needs review';
             }
-            
+
             if (distance <= radius) {
                 if (status !== 'Pending') {
                     status = 'Present';
@@ -2196,17 +2239,17 @@ async function getAccurateLocation() {
                 status = 'Absent';
                 statusMessage = `Location needs verification`;
             }
-            
+
             if (location.confidence < 50) {
                 status = 'Pending';
                 statusMessage = 'GPS confidence needs review';
             }
-            
+
             if (location.readingsCount < 3) {
                 status = 'Pending';
                 statusMessage = 'GPS readings need review';
             }
-            
+
             const details = {
                 'Student': studentFullName,
                 'Reg No': admissionNumber || 'N/A',
@@ -2216,14 +2259,14 @@ async function getAccurateLocation() {
                 'Type': selectedTarget.type === 'clinical' ? '🏥 Clinical' : '📚 Classroom',
                 'Time': new Date().toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi' })
             };
-            
+
             const confirmed = await showConfirmModal({
                 icon: '📍',
                 title: '📍 Check-in Confirmation',
                 subtitle: `You are checking in to: ${selectedTarget.name}`,
                 details: details
             });
-            
+
             if (!confirmed) {
                 btn.disabled = false;
                 btn.innerHTML = '📍 Check In Now';
@@ -2231,12 +2274,12 @@ async function getAccurateLocation() {
                 showToast('Check-in cancelled', 'warning');
                 return;
             }
-            
+
             btn.innerHTML = '💾 Saving...';
 
-            // 🔒 FINAL CLIENT-SIDE DUPLICATE CHECK
-            // Re-check immediately before INSERT because GPS acquisition and
-            // the confirmation modal may take several seconds.
+            // ============================================================
+            // 🔒 FINAL DUPLICATE CHECK — same student, same session
+            // ============================================================
             const { data: finalExisting, error: finalExistingError } = await supabase
                 .from('geo_attendance_logs')
                 .select('id, check_in_time, attendance_status, verification_source, is_verified')
@@ -2266,12 +2309,43 @@ async function getAccurateLocation() {
                     showToast(`✅ Attendance already recorded for this session at ${time}.`, 'success', 5000);
                     await loadHistory();
                     await updateStats();
+                    btn.disabled = false;
+                    btn.innerHTML = '📍 Check In Now';
+                    btn.style.opacity = '1';
                     return;
                 }
             }
-            
+
+            // ============================================================
+            // 🔒 FINAL DEVICE CHECK — re-verify right before INSERT
+            // (covers slow GPS + long confirm modal)
+            // ============================================================
+            const { data: deviceClash2 } = await supabase
+                .from('geo_attendance_logs')
+                .select('id, user_id, student_name')
+                .eq('session_id', attendanceSessionId)
+                .eq('device_fingerprint', deviceFingerprint)
+                .neq('user_id', userId)
+                .limit(1);
+
+            if (deviceClash2 && deviceClash2.length > 0) {
+                const otherName = deviceClash2[0].student_name || 'another student';
+                showToast(
+                    `⚠️ This device was just used to check in ${otherName} for this session.`,
+                    'error',
+                    8000
+                );
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                btn.style.opacity = '1';
+                return;
+            }
+
             const sessionType = sessionTypeSelect?.value || currentSession?.session_type || 'class';
-            
+
+            // ============================================================
+            // 📝 BUILD RECORD (includes device_fingerprint)
+            // ============================================================
             const record = {
                 user_id: userId,
                 student_id: admissionNumber,
@@ -2302,22 +2376,29 @@ async function getAccurateLocation() {
                 verification_checks: JSON.stringify(location.verification?.checks || []),
                 location_type: selectedTarget.type,
                 clinical_radius: selectedTarget.type === 'clinical' ? radius : null,
+                device_fingerprint: deviceFingerprint,   // 🔒 one device = one student
                 created_at: new Date().toISOString()
             };
-            
+
             console.log('📝 Saving record:', {
                 user_id: record.user_id,
                 session_id: record.session_id,
+                device_fingerprint: record.device_fingerprint,
                 status: record.attendance_status,
                 distance: record.distance_meters
             });
-            
+
+            // ============================================================
+            // 💾 INSERT OR REPLACE
+            // ============================================================
             let saveError = null;
+
             if (replaceAttendanceId) {
                 const { error } = await supabase
                     .from('geo_attendance_logs')
                     .update({
                         ...record,
+                        device_fingerprint: deviceFingerprint,
                         verification_source: 'Student GPS Check-in (Reopened Session)',
                         finalized_at: null,
                         finalized_by: null,
@@ -2334,17 +2415,40 @@ async function getAccurateLocation() {
                 saveError = error;
             }
 
+            // ============================================================
+            // 🚨 HANDLE ERRORS (including DB-level device lock)
+            // ============================================================
             if (saveError) {
                 if (saveError.code === '23505') {
                     showToast('✅ You already have attendance recorded for this session.', 'success', 5000);
                     await loadHistory();
                     await updateStats();
+                    btn.disabled = false;
+                    btn.innerHTML = '📍 Check In Now';
+                    btn.style.opacity = '1';
                     return;
                 }
+
+                if (String(saveError.message || '').includes('DEVICE_ALREADY_USED_FOR_SESSION')) {
+                    showToast(
+                        '⚠️ This phone has already been used to check in another student for this session. ' +
+                        'Each student must use their own device.',
+                        'error',
+                        9000
+                    );
+                    btn.disabled = false;
+                    btn.innerHTML = '📍 Check In Now';
+                    btn.style.opacity = '1';
+                    return;
+                }
+
                 console.error('❌ Attendance save error:', saveError);
                 throw saveError;
             }
-            
+
+            // ============================================================
+            // 🎉 SUCCESS
+            // ============================================================
             let successMessage = 'Check-in recorded successfully!';
             if (status === 'Present') {
                 successMessage = '✅ Check-in verified! You are within the required range.';
@@ -2353,24 +2457,24 @@ async function getAccurateLocation() {
             } else {
                 successMessage = '📝 Check-in recorded. Your location will be verified by staff.';
             }
-            
+
             showToast('✅ Check-in recorded!', 'success', 3000);
-            
+
             showSimpleSuccessModal({
                 message: successMessage,
                 target: selectedTarget.name,
                 type: selectedTarget.type === 'clinical' ? '🏥 Clinical' : '📚 Classroom',
                 time: new Date().toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi' })
             });
-            
+
             awardAttendancePoints(userId, selectedTarget.name, distance).catch(() => {});
-            
+
             currentSession = null;
-            
+
             await loadHistory();
             await updateStats();
             await renderActiveSessions();
-            
+
         } catch (error) {
             console.error('❌ Check-in error:', error);
             showToast('Check-in failed: ' + error.message, 'error');
@@ -2503,8 +2607,6 @@ async function getAccurateLocation() {
             checkBtn.onclick = () => doCheckIn();
         }
         
-        // Initial GPS acquisition is helpful but must not block the attendance page.
-        // Check-in retries location again if the first acquisition fails.
         try {
             const location = await getAccurateLocation();
             currentLocation = location;
@@ -2571,6 +2673,7 @@ async function getAccurateLocation() {
     window.waitForProfile = waitForProfile;
     window.renderActiveSessions = renderActiveSessions;
     window.quickCheckIn = quickCheckIn;
+    window.getDeviceFingerprint = getDeviceFingerprint;
     
     // ============================================
     // 🏁 START
@@ -2584,6 +2687,7 @@ async function getAccurateLocation() {
     
     console.log('✅ ULTRA-ACCURATE attendance system module loaded!');
     console.log('🎓 Active Sessions panel enabled with one-click check-in!');
+    console.log('🔒 Device lock enforced: one device = one student per session');
     
 })();
 
@@ -2612,3 +2716,4 @@ async function getAccurateLocation() {
 })();
 
 console.log('✅ attendance.js fully loaded and ready');
+console.log('🔒 Device lock enforced: one device = one student per session');
