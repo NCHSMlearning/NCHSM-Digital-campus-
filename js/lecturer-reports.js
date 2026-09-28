@@ -1,43 +1,28 @@
 /* ================================================================
    LECTURER REPORTS — MARKS-INTEGRATED MODULE
-   Version: 2026-09-fix2
+   Version: 2026-09-fix3
    Source of marks: student_marks
    Student/class source: consolidated_user_profiles_table
    Assignment source: lecturer_subject_assignments
 
-   Designed to work with the Lecturer Marks module:
-   - full       = CAT1 + CAT2 + Exam
-   - single_cat = CAT + Exam
-   - exam_only  = Exam only
-   - cats_only  = CAT1 + CAT2
-   - cat_only   = CAT only
-
-   Nursing:
-     A 75-100 = Distinction
-     B 65-74  = Credit
-     C 60-64  = Pass
-     D 0-59   = Fail
-
-   TVET:
-     A 80-100 = MASTERY
-     B 65-79  = PROFICIENT
-     C 50-64  = COMPETENT
-     E 0-49   = NOT YET COMPETENT
-
-   IMPORTANT:
-   This module READS the existing marks. It does not create duplicate
-   marks or alter student_marks.
-
-   FIX NOTES (2026-09-fix2):
+   FIX NOTES (2026-09-fix3):
    - lecturer_subject_assignments.lecturer_id stores the STAFF RECORD id
-     (e.g. 09b84122-...), NOT the auth UUID (9f1452e8-...).
-   - Identity is resolved asynchronously with fallbacks:
-       me_currentLecturer → auth user → staff_records by email → name match
+     (09b84122-...), NOT the auth UUID (9f1452e8-...).
+   - Identity is resolved asynchronously with fallbacks.
+   - submissionPayloadFromForm is ASYNC and resolves the auth UUID
+     directly from supabase.auth.getUser() when window.currentUser is
+     empty — this satisfies the RLS policy
+     WITH CHECK (auth.uid() = lecturer_user_id).
+   - Payload sends BOTH column names:
+       title/document_title, block/class_block
+     so the DB works whether or not you ran the ALTER TABLE.
+   - attachment_* columns are NOT sent on update; only attachment_count.
+   - Reader functions (renderSubmittedReports, editReturnedReport) read
+     title/block with fallbacks to document_title/class_block.
+   - openSubmissionAttachment accepts a submission id and lists the
+     storage folder to find the file.
    - Bootstrap listens on DOCUMENT for 'lecturerMainReady'
-     (matches lecturer-main.js which uses document.dispatchEvent)
-   - Also checks window.__LECTURER_MAIN_READY as a secondary trigger.
-   - Identity + assignment caches are cleared on each boot so the
-     newly-resolved staff ID is used.
+     (matches lecturer-main.js which uses document.dispatchEvent).
 ================================================================ */
 
 (function () {
@@ -92,17 +77,7 @@
     }
 
     /* ============================================================
-       LECTURER IDENTITY RESOLUTION (FIX)
-       ------------------------------------------------------------
-       lecturer_subject_assignments.lecturer_id stores the STAFF
-       RECORD id (09b84122-...), NOT the auth UUID (9f1452e8-...).
-
-       We resolve identity lazily and asynchronously:
-         1. window.me_currentLecturer (set by the marks module)
-         2. window.currentUser (may already have staff_id)
-         3. auth.getUser() + lecturerSession email
-         4. staff_records lookup by email (authoritative)
-         5. profile table → staff_records by name (last resort)
+       LECTURER IDENTITY RESOLUTION
     ============================================================ */
 
     const _identityCache = {
@@ -142,8 +117,6 @@
         const u = window.currentUser || {};
         const lecturer = window.me_currentLecturer || {};
 
-        /* Prefer the STAFF record id — that's the FK used by
-           lecturer_subject_assignments.lecturer_id. */
         const staffId =
             lecturer?.staff?.id ||
             window.CORRECT_LECTURER_ID ||
@@ -152,10 +125,7 @@
 
         if (staffId) return String(staffId);
 
-        /* Sometimes the user object carries the staff id */
         if (u.staff_id) return String(u.staff_id);
-
-        /* Last resort: auth uuid (may not match assignments) */
         if (u.id) return String(u.id);
         if (lecturer?.profile?.id) return String(lecturer.profile.id);
 
@@ -229,7 +199,7 @@
             _identityCache.authUuid = authUuid;
             _identityCache.email = email;
 
-            /* 3. Look up staff record by email (authoritative) */
+            /* 3. Look up staff record by email */
             if (supabase && email) {
                 try {
                     const { data: staff, error: staffError } = await supabase
@@ -245,7 +215,6 @@
                                 .filter(Boolean).join(' ').trim() ||
                             _identityCache.name;
 
-                        /* Cache for other modules too */
                         window.CORRECT_LECTURER_ID = staff.id;
                     }
                 } catch (e) {
@@ -306,7 +275,6 @@
         return _identityCache.promise;
     }
 
-    /* Kept for backwards-compat with the rest of the file */
     function currentLecturerId() {
         return currentLecturerIdSync();
     }
@@ -324,7 +292,7 @@
     }
 
     /* ============================================================
-       GRADING — SAME RULES AS MARKS MODULE
+       GRADING
     ============================================================ */
 
     function grading(score, programType) {
@@ -424,7 +392,7 @@
     }
 
     /* ============================================================
-       LOAD ASSIGNMENTS  (FIX: async identity resolution)
+       LOAD ASSIGNMENTS
     ============================================================ */
 
     async function loadAssignedUnits() {
@@ -435,7 +403,7 @@
         const lecturerId = identity.staffId || currentLecturerIdSync();
 
         if (!lecturerId) {
-            console.warn('LecturerReports: lecturer ID unavailable (no staff record matched)');
+            console.warn('LecturerReports: lecturer ID unavailable');
             return [];
         }
 
@@ -869,6 +837,7 @@
             units.forEach(u => {
                 const option = document.createElement('option');
                 option.value = u.subject_name || u.subject_code;
+                option.dataset.code = u.subject_code || '';
                 option.textContent =
                     `${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name || u.subject_code}`;
                 unitSelect.appendChild(option);
@@ -1507,8 +1476,6 @@
         try {
             setReportBusy(true, 'Refreshing marks and reports...');
 
-            /* Clear identity + assignment cache so we re-resolve
-               the lecturer id and re-query assignments. */
             _identityCache.resolved = false;
             _identityCache.promise = null;
             LecturerReports._cache = {};
@@ -1967,6 +1934,7 @@
 
             const option = document.createElement('option');
             option.value = value;
+            option.dataset.code = row.subject_code || '';
             option.textContent = labelFn ? labelFn(row) : value;
             select.appendChild(option);
         });
@@ -2092,119 +2060,117 @@
         }
     };
 
-   async function submissionPayloadFromForm(status = 'draft') {
-    const type = submissionValue('submissionReportType');
-    const unit = submissionValue('submissionReportUnit');
-    const block = submissionValue('submissionReportClass') || 'all';
-    const recipient = submissionValue('submissionRecipient');
+    /* ============================================================
+       SUBMISSION PAYLOAD — ASYNC + RLS-SAFE
+    ============================================================ */
 
-    /* Pull subject_code from the selected unit <option data-code="..."> */
-    let subjectCode = null;
-    try {
-        const opt = document.querySelector(
-            `#submissionReportUnit option[value="${CSS.escape(unit)}"]`
-        );
-        subjectCode = opt?.dataset?.code || null;
-    } catch (_) {}
+    async function submissionPayloadFromForm(status = 'draft') {
+        const type = submissionValue('submissionReportType');
+        const unit = submissionValue('submissionReportUnit');
+        const block = submissionValue('submissionReportClass') || 'all';
+        const recipient = submissionValue('submissionRecipient');
 
-    /* Resolve the auth UUID — this is what the RLS policy checks */
-    let authUuid =
-        window.currentUser?.id ||
-        window.me_currentLecturer?.profile?.user_id ||
-        null;
+        /* Pull subject_code from the selected unit option */
+        let subjectCode = null;
+        try {
+            const opt = document.querySelector(
+                `#submissionReportUnit option[value="${CSS.escape(unit)}"]`
+            );
+            subjectCode = opt?.dataset?.code || null;
+        } catch (_) {}
 
-    if (!authUuid) {
-        const supabase = db();
-        if (supabase) {
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                authUuid = user?.id || null;
-            } catch (_) {}
+        /* Resolve the auth UUID — this is what the RLS policy checks */
+        let authUuid =
+            window.currentUser?.id ||
+            window.me_currentLecturer?.profile?.user_id ||
+            null;
+
+        if (!authUuid) {
+            const supabase = db();
+            if (supabase) {
+                try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    authUuid = user?.id || null;
+                } catch (_) {}
+            }
         }
+
+        if (!authUuid) {
+            console.error('[Reports] No auth UUID — insert will fail RLS');
+        }
+
+        console.log('[Reports] payload identity:',
+            { authUuid, staffId: currentLecturerIdSync() });
+
+        const title = submissionValue('submissionTitle');
+
+        return {
+            /* identity */
+            lecturer_user_id: authUuid,
+            lecturer_id: currentLecturerIdSync(),
+            lecturer_email: currentLecturerEmailSync(),
+            lecturer_name:
+                window.currentUser?.full_name ||
+                window.currentUser?.name ||
+                window.me_currentLecturer?.profile?.full_name ||
+                window.me_currentLecturer?.staff?.full_name ||
+                'Lecturer',
+
+            /* classification */
+            report_type: type,
+            report_category: submissionCategoryLabel(type),
+            document_type: submissionValue('submissionDocumentType') || null,
+
+            /* DB has "title" — also send document_title for admin views */
+            title: title,
+            document_title: title,
+
+            summary: submissionValue('submissionSummary'),
+
+            /* academic context */
+            unit_name: unit,
+            subject_code: subjectCode,
+            program: currentProgram(),
+
+            /* DB has "block" — also send class_block for admin views */
+            block: block,
+            class_block: block,
+
+            academic_year: submissionValue('submissionAcademicYear') || currentAcademicYear(),
+            week_number: Number(submissionValue('submissionWeekNumber')) || null,
+            period_start: submissionValue('submissionPeriodStart') || null,
+            period_end: submissionValue('submissionPeriodEnd') || null,
+
+            /* recipient + options */
+            recipient_role: recipient,
+            include_attendance: !!submissionEl('submissionIncludeAttendance')?.checked,
+            include_grades: !!submissionEl('submissionIncludeGrades')?.checked,
+            include_activities: !!submissionEl('submissionIncludeActivities')?.checked,
+            include_challenges: !!submissionEl('submissionIncludeChallenges')?.checked,
+
+            /* lifecycle */
+            status,
+            submitted_at: status === 'submitted' ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString()
+        };
     }
-
-    if (!authUuid) {
-        console.error('[Reports] No auth UUID — insert will fail RLS');
-    }
-
-    console.log('[Reports] payload identity:',
-        { authUuid, staffId: currentLecturerIdSync() });
-
-    const title = submissionValue('submissionTitle');
-
-    return {
-        /* identity — RLS needs lecturer_user_id = auth.uid() */
-        lecturer_user_id: authUuid,
-        lecturer_id: currentLecturerIdSync(),
-        lecturer_email: currentLecturerEmailSync(),
-        lecturer_name:
-            window.currentUser?.full_name ||
-            window.currentUser?.name ||
-            window.me_currentLecturer?.profile?.full_name ||
-            window.me_currentLecturer?.staff?.full_name ||
-            'Lecturer',
-
-        /* classification */
-        report_type: type,
-        report_category: submissionCategoryLabel(type),
-        document_type: submissionValue('submissionDocumentType') || null,
-
-        /* DB has "title" — send BOTH so the admin view also sees it */
-        title: title,
-        document_title: title,
-
-        summary: submissionValue('submissionSummary'),
-
-        /* academic context */
-        unit_name: unit,
-        subject_code: subjectCode,
-        program: currentProgram(),
-
-        /* DB has "block" — send BOTH */
-        block: block,
-        class_block: block,
-
-        academic_year: submissionValue('submissionAcademicYear') || currentAcademicYear(),
-        week_number: Number(submissionValue('submissionWeekNumber')) || null,
-        period_start: submissionValue('submissionPeriodStart') || null,
-        period_end: submissionValue('submissionPeriodEnd') || null,
-
-        /* recipient + options */
-        recipient_role: recipient,
-        include_attendance: !!submissionEl('submissionIncludeAttendance')?.checked,
-        include_grades: !!submissionEl('submissionIncludeGrades')?.checked,
-        include_activities: !!submissionEl('submissionIncludeActivities')?.checked,
-        include_challenges: !!submissionEl('submissionIncludeChallenges')?.checked,
-
-        /* lifecycle */
-        status,
-        submitted_at: status === 'submitted' ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString()
-    };
-}
 
     function validateSubmissionPayload(payload) {
-        if (!payload.lecturer_id) return 'Lecturer session is not ready.';
+        if (!payload.lecturer_user_id) return 'Lecturer session is not ready (no auth UUID).';
+        if (!payload.lecturer_id) return 'Lecturer session is not ready (no staff ID).';
         if (!payload.report_type) return 'Select a report category.';
         if (!payload.unit_name) return 'Select an assigned unit.';
-        if (!payload.document_title) return 'Enter a report title.';
+        if (!payload.title) return 'Enter a report title.';
         if (!payload.recipient_role) return 'Select who should review the report.';
         if (!payload.period_start || !payload.period_end) {
             return 'Select the reporting period.';
         }
 
-        if (
-            payload.period_start &&
-            payload.period_end &&
-            payload.period_end < payload.period_start
-        ) {
+        if (payload.period_end < payload.period_start) {
             return 'The reporting period end date cannot be before the start date.';
         }
 
-        if (
-            payload.report_type === 'TeachingLearningReport' &&
-            !payload.document_type
-        ) {
+        if (payload.report_type === 'TeachingLearningReport' && !payload.document_type) {
             return 'Select the teaching document you are submitting.';
         }
 
@@ -2245,7 +2211,8 @@
         const supabase = db();
         if (!supabase) throw new Error('Supabase/database connection unavailable.');
 
-        const payload = submissionPayloadFromForm(status);
+        /* async resolver — this is what ensures lecturer_user_id is set */
+        const payload = await submissionPayloadFromForm(status);
         const validation = validateSubmissionPayload(payload);
 
         if (validation) {
@@ -2287,19 +2254,13 @@
         }
 
         if (file) {
-            const attachment = await uploadSubmissionAttachment(
-                file,
-                payload.lecturer_id,
-                submissionId
-            );
+            await uploadSubmissionAttachment(file, payload.lecturer_id, submissionId);
 
+            /* Only attachment_count exists on the table */
             const { data: updated, error } = await supabase
                 .from(REPORT_SUBMISSION_TABLE)
                 .update({
-                    attachment_path: attachment.path,
-                    attachment_name: attachment.name,
-                    attachment_type: attachment.type,
-                    attachment_size: attachment.size,
+                    attachment_count: 1,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', submissionId)
@@ -2358,8 +2319,8 @@
         }
     };
 
-    LecturerReports.previewSubmission = function () {
-        const payload = submissionPayloadFromForm('draft');
+    LecturerReports.previewSubmission = async function () {
+        const payload = await submissionPayloadFromForm('draft');
         const validation = validateSubmissionPayload(payload);
 
         if (validation) {
@@ -2377,13 +2338,13 @@
 
         const html = `
             <div style="font-family:Arial,sans-serif;color:#1e293b;">
-                <h2 style="margin-top:0;color:#0A3D62;">${esc(payload.document_title)}</h2>
+                <h2 style="margin-top:0;color:#0A3D62;">${esc(payload.title)}</h2>
                 <p>
                     <strong>Category:</strong> ${esc(payload.report_category)}
                     ${docLabel ? ` • <strong>Document:</strong> ${esc(docLabel)}` : ''}
                 </p>
                 <p><strong>Unit:</strong> ${esc(payload.unit_name)}
-                   • <strong>Class:</strong> ${esc(payload.class_block)}
+                   • <strong>Class:</strong> ${esc(payload.block)}
                    • <strong>Academic Year:</strong> ${esc(payload.academic_year)}</p>
                 <p><strong>Period:</strong> ${esc(payload.period_start)} to ${esc(payload.period_end)}</p>
                 <p><strong>Submit To:</strong> ${esc(payload.recipient_role)}</p>
@@ -2619,54 +2580,86 @@
             return;
         }
 
-        tbody.innerHTML = list.map(r => `
-            <tr>
-                <td>
-                    <strong>${esc(r.document_title || 'Untitled Report')}</strong>
-                    <div style="font-size:10px;color:#94a3b8;">
-                        ${esc(r.report_category || r.report_type || '')}
-                        ${r.document_type ? ` • ${esc(r.document_type)}` : ''}
-                    </div>
-                </td>
-                <td>${esc(r.report_type || '—')}</td>
-                <td>
-                    ${esc(r.unit_name || '—')}
-                    <div style="font-size:10px;color:#94a3b8;">${esc(r.class_block || 'All Classes')}</div>
-                </td>
-                <td>${esc(r.period_start || '—')} → ${esc(r.period_end || '—')}</td>
-                <td>${esc(r.recipient_role || '—')}</td>
-                <td>${r.submitted_at ? new Date(r.submitted_at).toLocaleString() : '—'}</td>
-                <td>${statusBadge(r.status)}</td>
-                <td>${esc(r.reviewer_comments || r.review_comments || '—')}</td>
-                <td style="white-space:nowrap;">
-                    ${r.attachment_path
-                        ? `<button type="button" class="lr-btn lr-btn-ghost" style="padding:6px 8px;" onclick="LecturerReports.openSubmissionAttachment('${esc(r.attachment_path)}')"><i class="fas fa-paperclip"></i></button>`
-                        : ''}
-                    ${r.status === 'returned'
-                        ? `<button type="button" class="lr-btn lr-btn-light" style="padding:6px 8px;" onclick="LecturerReports.editReturnedReport('${esc(r.id)}')"><i class="fas fa-edit"></i> Correct</button>`
-                        : ''}
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = list.map(r => {
+            const title = r.title || r.document_title || 'Untitled Report';
+            const block = r.block || r.class_block || 'All Classes';
+            const hasAttachment = Number(r.attachment_count) > 0;
+
+            return `
+                <tr>
+                    <td>
+                        <strong>${esc(title)}</strong>
+                        <div style="font-size:10px;color:#94a3b8;">
+                            ${esc(r.report_category || r.report_type || '')}
+                            ${r.document_type ? ` • ${esc(r.document_type)}` : ''}
+                        </div>
+                    </td>
+                    <td>${esc(r.report_type || '—')}</td>
+                    <td>
+                        ${esc(r.unit_name || '—')}
+                        <div style="font-size:10px;color:#94a3b8;">${esc(block)}</div>
+                    </td>
+                    <td>${esc(r.period_start || '—')} → ${esc(r.period_end || '—')}</td>
+                    <td>${esc(r.recipient_role || '—')}</td>
+                    <td>${r.submitted_at ? new Date(r.submitted_at).toLocaleString() : '—'}</td>
+                    <td>${statusBadge(r.status)}</td>
+                    <td>${esc(r.reviewer_comments || r.review_comments || '—')}</td>
+                    <td style="white-space:nowrap;">
+                        ${hasAttachment
+                            ? `<button type="button" class="lr-btn lr-btn-ghost" style="padding:6px 8px;" onclick="LecturerReports.openSubmissionAttachment('${esc(r.id)}')"><i class="fas fa-paperclip"></i></button>`
+                            : ''}
+                        ${r.status === 'returned'
+                            ? `<button type="button" class="lr-btn lr-btn-light" style="padding:6px 8px;" onclick="LecturerReports.editReturnedReport('${esc(r.id)}')"><i class="fas fa-edit"></i> Correct</button>`
+                            : ''}
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
-    LecturerReports.openSubmissionAttachment = async function (path) {
+    LecturerReports.openSubmissionAttachment = async function (submissionIdOrPath) {
         const supabase = db();
-        if (!supabase || !path) return;
+        if (!supabase || !submissionIdOrPath) return;
 
-        try {
+        /* Case 1: full path passed (contains '/') — sign directly */
+        if (String(submissionIdOrPath).includes('/')) {
             const { data, error } = await supabase.storage
                 .from(REPORT_STORAGE_BUCKET)
-                .createSignedUrl(path, 900);
+                .createSignedUrl(submissionIdOrPath, 900);
 
-            if (error) throw error;
+            if (error) {
+                showReportNotice('Could not open attachment: ' + error.message, 'error');
+                return;
+            }
             if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener');
-        } catch (error) {
-            showReportNotice(
-                'Could not open attachment: ' + (error.message || error),
-                'error'
-            );
+            return;
         }
+
+        /* Case 2: submission id — list the folder and pick the first file */
+        const lecturerId = currentLecturerIdSync();
+        const year = new Date().getFullYear();
+        const prefix = `${lecturerId}/${year}/${submissionIdOrPath}`;
+
+        const { data: list, error: listErr } = await supabase.storage
+            .from(REPORT_STORAGE_BUCKET)
+            .list(prefix, { limit: 1 });
+
+        if (listErr || !list?.length) {
+            showReportNotice('No attachment found for this submission.', 'warning');
+            return;
+        }
+
+        const fullPath = `${prefix}/${list[0].name}`;
+        const { data, error } = await supabase.storage
+            .from(REPORT_STORAGE_BUCKET)
+            .createSignedUrl(fullPath, 900);
+
+        if (error || !data?.signedUrl) {
+            showReportNotice('Could not open attachment.', 'error');
+            return;
+        }
+
+        window.open(data.signedUrl, '_blank', 'noopener');
     };
 
     LecturerReports.editReturnedReport = async function (id) {
@@ -2692,17 +2685,20 @@
                 if (el) el.value = value ?? '';
             };
 
+            const blockValue = data.block || data.class_block;
+            const titleValue = data.title || data.document_title;
+
             set('submissionReportType', data.report_type);
             LecturerReports.handleSubmissionTypeChange(data.report_type);
             set('submissionDocumentType', data.document_type);
             set('submissionReportUnit', data.unit_name);
-            set('submissionReportClass', data.class_block === 'all' ? '' : data.class_block);
+            set('submissionReportClass', blockValue === 'all' ? '' : blockValue);
             set('submissionAcademicYear', data.academic_year);
             set('submissionWeekNumber', data.week_number);
             set('submissionPeriodStart', data.period_start);
             set('submissionPeriodEnd', data.period_end);
             set('submissionRecipient', data.recipient_role);
-            set('submissionTitle', data.document_title);
+            set('submissionTitle', titleValue);
             set('submissionSummary', data.summary);
 
             submissionEl('lecturerReportSubmissionSection')?.scrollIntoView({
@@ -2744,8 +2740,6 @@
 
     LecturerReports.init = async function () {
         if (LecturerReports._initialized) {
-            /* Still re-resolve identity + reload assignments in case
-               the marks module has only just populated it. */
             _identityCache.resolved = false;
             _identityCache.promise = null;
 
@@ -2803,24 +2797,10 @@
     window.buildLecturerReport = buildReport;
     window.initLecturerReports = LecturerReports.init;
 
-    /* Expose identity resolver in case other modules need it */
     window.resolveLecturerIdentity = resolveLecturerIdentity;
 
     /* ============================================================
        BOOTSTRAP
-       ------------------------------------------------------------
-       lecturer-main.js:
-         - dispatches 'lecturerMainReady' on DOCUMENT (no bubbles)
-         - sets window.__LECTURER_MAIN_READY = true
-         - sets window.CORRECT_LECTURER_ID (staff_records.id)
-         - populates window.me_currentLecturer from marks module
-
-       Strategy:
-         1. If main is already ready → boot now.
-         2. Else listen on DOCUMENT for lecturerMainReady → boot.
-         3. Safety timeout 2.5s so we never hang forever.
-       On each boot, clear identity + assignment caches so the
-       newly-resolved staff ID is used.
     ============================================================ */
 
     function startReports() {
@@ -2842,13 +2822,11 @@
         setTimeout(startReports, 200);
     }
 
-    /* Primary trigger: the main portal tells us it's ready */
     document.addEventListener('lecturerMainReady', () => {
         window.lecturerMainReady_fired = true;
         bootReports();
     }, { once: true });
 
-    /* Secondary trigger: main was ready before we loaded */
     if (window.__LECTURER_MAIN_READY) {
         window.lecturerMainReady_fired = true;
         if (document.readyState === 'loading') {
@@ -2857,7 +2835,6 @@
             bootReports();
         }
     } else {
-        /* Safety net */
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 if (!_booted) bootReports();
