@@ -92,7 +92,7 @@ window.LecturerOnlineLearning = (() => {
         let q=db.from('online_submissions').select('*, online_assignments(title,unit_code)').order('submitted_at',{ascending:false}); if(filter)q=q.eq('assignment_id',filter);
         const {data,error}=await q; if(error){console.warn('Submission load:',error.message);state.submissions=[];}else state.submissions=data||[];
         await syncSubmissionMaximumMarks();
-        const body=$('olSubmissionsTable');if(!body)return; if(!state.submissions.length){body.innerHTML='<tr><td colspan="7" class="ol-empty">No student submissions yet.</td></tr>';updateStats();return;}
+        const body=$('olSubmissionsTable');if(!body)return; if(!state.submissions.length){body.innerHTML='<tr><td colspan="8" class="ol-empty">No student submissions yet.</td></tr>';updateStats();return;}
         // Resolve profile names through consolidated_user_profiles_table. RLS should permit lecturers/admins.
         const ids=[...new Set(state.submissions.map(s=>s.student_id).filter(Boolean))]; let profiles=[];
         if(ids.length){const r=await db.from('consolidated_user_profiles_table').select('user_id,full_name,student_id,admission_number,email').in('user_id',ids);profiles=r.data||[];}
@@ -101,9 +101,28 @@ window.LecturerOnlineLearning = (() => {
             const p=map.get(s.student_id)||{};
             const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
             const maxMarks=resolveSubmissionMaxMarks(s,assignment);
-            const mark=s.marks_obtained==null?'—':`${s.marks_obtained}/${maxMarks||'?'}`;
-            const pct=s.marks_obtained==null?'—':formatPercentage(s.marks_obtained,maxMarks);
-            return `<tr><td><b>${esc(p.full_name||'Student')}</b><div style="font-size:11px;color:#64748b">${esc(p.admission_number||p.student_id||s.student_id||'')}</div></td><td>${esc(s.online_assignments?.title||assignment.title||s.assignment_id)}</td><td>${fmtDate(s.submitted_at)}</td><td>${esc(s.attempt_number||1)}</td><td><b>${mark}</b><div style="font-size:11px;color:#64748b;margin-top:2px">${pct}</div></td><td><span class="ol-badge ${s.result_released?'ol-returned':s.review_required?'ol-review':'ol-draft'}">${s.result_released?'RELEASED':s.review_required?'REVIEW':'SUBMITTED'}</span></td><td><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.reviewSubmission('${s.id}')">Review</button></td></tr>`;
+            const report=(s.grading_report && typeof s.grading_report==='object') ? s.grading_report : {};
+            const automaticMark=Number(
+                report.total ??
+                report.marks_obtained ??
+                s.automatic_marks ??
+                s.auto_mark ??
+                s.marks_obtained
+            );
+            const finalMark=Number(
+                report.final ??
+                s.final_mark ??
+                s.lecturer_final_mark ??
+                s.marks_obtained ??
+                automaticMark
+            );
+            const hasAutomatic=Number.isFinite(automaticMark);
+            const hasFinal=Number.isFinite(finalMark);
+            const automaticDisplay=hasAutomatic?`${automaticMark}/${maxMarks||'?'}`:'—';
+            const automaticPct=hasAutomatic?formatPercentage(automaticMark,maxMarks):'—';
+            const finalDisplay=hasFinal?`${finalMark}/${maxMarks||'?'}`:'—';
+            const finalPct=hasFinal?formatPercentage(finalMark,maxMarks):'—';
+            return `<tr><td><b>${esc(p.full_name||'Student')}</b><div style="font-size:11px;color:#64748b">${esc(p.admission_number||p.student_id||s.student_id||'')}</div></td><td>${esc(s.online_assignments?.title||assignment.title||s.assignment_id)}</td><td>${fmtDate(s.submitted_at)}</td><td>${esc(s.attempt_number||1)}</td><td><b>${automaticDisplay}</b><div style="font-size:11px;color:#64748b;margin-top:2px">${automaticPct}</div></td><td><b>${finalDisplay}</b><div style="font-size:11px;color:#64748b;margin-top:2px">${finalPct}</div></td><td><span class="ol-badge ${s.result_released?'ol-returned':s.review_required?'ol-review':'ol-draft'}">${s.result_released?'RELEASED':s.review_required?'REVIEW':'SUBMITTED'}</span></td><td><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.reviewSubmission('${s.id}')">Review</button></td></tr>`;
         }).join('');updateStats();
     }
     function resetQuestionEditors(questions=[]){const c=$('olQuestions');if(!c)return;c.innerHTML='';(questions.length?questions:[{}]).forEach(q=>addQuestionEditor(q));}
