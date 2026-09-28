@@ -28,6 +28,76 @@
         crossorigin="anonymous"
         referrerpolicy="no-referrer">
     </script>
+
+<style id="nchsm-grading-workspace-final-fix">
+#olSubmissionModal .ol-grading-reference{
+    grid-template-columns:minmax(235px,.78fr) minmax(430px,1.25fr) minmax(390px,1fr)!important;
+    align-items:stretch!important;
+}
+#olSubmissionModal .ol-rubric-reference,
+#olSubmissionModal .ol-document-reference,
+#olSubmissionModal .ol-criterion-reference{
+    min-width:0!important;
+    height:560px!important;
+    display:flex!important;
+    flex-direction:column!important;
+}
+#olSubmissionModal #olRubricPanel{
+    flex:1 1 auto!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+}
+#olSubmissionModal #olDocumentPreview{
+    flex:1 1 auto!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:auto!important;
+}
+#olSubmissionModal .ol-criterion-body{
+    flex:1 1 auto!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+}
+#olSubmissionModal #olCriterionAutomaticMark{
+    display:block!important;
+    width:100%!important;
+    min-height:40px!important;
+    box-sizing:border-box!important;
+    border:0!important;
+    background:transparent!important;
+    color:#0f172a!important;
+    outline:none!important;
+}
+#olSubmissionModal #olCriterionFinalMark{
+    max-width:100%!important;
+}
+#olSubmissionModal #olEvidencePanel{
+    max-height:150px!important;
+    overflow:auto!important;
+}
+#olSubmissionModal .ol-final-actions{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    align-items:stretch!important;
+}
+#olSubmissionModal .ol-final-actions .ol-btn{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    min-width:0!important;
+}
+@media(max-width:1050px){
+    #olSubmissionModal .ol-rubric-reference,
+    #olSubmissionModal .ol-document-reference,
+    #olSubmissionModal .ol-criterion-reference{
+        height:auto!important;
+        min-height:360px!important;
+    }
+}
+</style>
+
 </head>
 <body>
     <!-- Mobile Navigation Toggle -->
@@ -5479,12 +5549,12 @@
       </div>
 
       <div class="ol-grading-reference">
-        <div class="ol-rubric-reference"><div class="ol-reference-head"><i class="fas fa-list-check"></i> Assessment Rubric <span id="olRubricTotal" style="float:right">Total Marks: 100</span></div><div id="olRubricList" class="ol-rubric-list"></div></div>
-        <div class="ol-document-reference"><div class="ol-reference-head" style="display:flex;justify-content:space-between;align-items:center"><span><i class="fas fa-file-lines"></i> Student Submission</span><span><button class="ol-icon-action" type="button" onclick="if(window.LecturerOnlineLearning.openSubmissionDocument) window.LecturerOnlineLearning.openSubmissionDocument()"><i class="fas fa-up-right-from-square"></i></button><button class="ol-icon-action" type="button" onclick="if(window.LecturerOnlineLearning.downloadSubmission) window.LecturerOnlineLearning.downloadSubmission(); else if(window.LecturerOnlineLearning.downloadSubmissionDocument) window.LecturerOnlineLearning.downloadSubmissionDocument()"><i class="fas fa-download"></i></button></span></div><div id="olSubmissionPreview" class="ol-document-body"><div style="text-align:center;color:#94a3b8;padding:30px"><i class="fas fa-file-pdf" style="font-size:42px"></i><div>Student submission preview</div></div></div></div>
+        <div class="ol-rubric-reference"><div class="ol-reference-head"><i class="fas fa-list-check"></i> Assessment Rubric <span id="olRubricTotal" style="float:right">Total Marks: 100</span></div><div id="olRubricPanel" class="ol-rubric-list"></div></div>
+        <div class="ol-document-reference"><div class="ol-reference-head" style="display:flex;justify-content:space-between;align-items:center"><span><i class="fas fa-file-lines"></i> Student Submission</span><span><button class="ol-icon-action" id="olOpenDocumentBtn" type="button" onclick="if(window.LecturerOnlineLearning.openSubmissionDocument) window.LecturerOnlineLearning.openSubmissionDocument()"><i class="fas fa-up-right-from-square"></i></button><button class="ol-icon-action" id="olDownloadDocumentBtn" type="button" onclick="if(window.LecturerOnlineLearning.downloadSubmissionDocument) window.LecturerOnlineLearning.downloadSubmissionDocument(); else if(window.LecturerOnlineLearning.downloadSubmission) window.LecturerOnlineLearning.downloadSubmission(); else if(window.LecturerOnlineLearning.downloadSubmissionDocument) window.LecturerOnlineLearning.downloadSubmissionDocument()"><i class="fas fa-download"></i></button></span></div><div id="olDocumentPreview" class="ol-document-body"><div style="text-align:center;color:#94a3b8;padding:30px"><i class="fas fa-file-pdf" style="font-size:42px"></i><div>Student submission preview</div></div></div></div>
         <div class="ol-criterion-reference"><div class="ol-reference-head"><i class="fas fa-clipboard-check"></i> Criterion Marking</div><div class="ol-criterion-body">
-          <div id="olSelectedCriterionName" style="font-size:18px;font-weight:950;margin-bottom:12px">Select a criterion</div>
-          <div class="ol-mark-box-grid"><div class="ol-mark-box"><div style="font-size:10px;text-transform:uppercase;color:#64748b;font-weight:900">Automatic Mark</div><div style="font-size:24px;font-weight:950"><span id="olCriterionAutomaticMark">0.00</span> <small>/ <span id="olCriterionMaxMark">0</span></small></div></div><div class="ol-mark-box"><div style="font-size:10px;text-transform:uppercase;color:#64748b;font-weight:900">Lecturer Final Mark</div><input id="olCriterionFinalMark" type="number" min="0" step="0.01" style="width:100%;font-size:22px;font-weight:950;border:1px solid #8b5cf6;border-radius:8px;padding:6px"></div></div>
-          <div style="margin-top:14px"><div style="font-weight:900;margin-bottom:6px">Evidence Found</div><div id="olCriterionEvidence" style="padding:10px;background:#f8fafc;border-radius:9px;color:#475569;min-height:55px">Run Auto Grade to extract rubric evidence.</div></div>
+          <div id="olSelectedCriterionTitle" style="font-size:18px;font-weight:950;margin-bottom:12px">Select a criterion</div>
+          <div class="ol-mark-box-grid"><div class="ol-mark-box"><div style="font-size:10px;text-transform:uppercase;color:#64748b;font-weight:900">Automatic Mark</div><div style="font-size:24px;font-weight:950"><input id="olCriterionAutomaticMark" type="number" min="0" step="0.01" readonly style="width:100%;font-size:24px;font-weight:950;border:0;background:transparent;color:#0f172a;padding:0"></div></div><div class="ol-mark-box"><div style="font-size:10px;text-transform:uppercase;color:#64748b;font-weight:900">Lecturer Final Mark</div><input id="olCriterionFinalMark" type="number" min="0" step="0.01" style="width:100%;font-size:22px;font-weight:950;border:1px solid #8b5cf6;border-radius:8px;padding:6px"></div></div>
+          <div style="margin-top:14px"><div style="font-weight:900;margin-bottom:6px">Evidence Found</div><div id="olEvidencePanel" style="padding:10px;background:#f8fafc;border-radius:9px;color:#475569;min-height:55px">Run Auto Grade to extract rubric evidence.</div></div>
           <div style="margin-top:14px"><label for="olCriterionComment" style="font-weight:900">Lecturer Comment</label><textarea id="olCriterionComment" rows="5" placeholder="Add your feedback for this criterion..." style="width:100%;margin-top:6px"></textarea></div>
           <button class="ol-btn ol-primary" type="button" style="margin-top:12px;width:100%" onclick="if(window.LecturerOnlineLearning.saveCriterionMark) window.LecturerOnlineLearning.saveCriterionMark()"><i class="fas fa-floppy-disk"></i> Save Criterion Mark</button>
         </div></div>
@@ -8847,7 +8917,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <!-- ============================================================ -->
 <!-- ONLINE LEARNING LECTURER MODULE                              -->
 <!-- ============================================================ -->
-<script src="js/lecturer-online-learning.js"></script>
+<script src="js/lecturer-online-learning.js?v=20260927-v15"></script>
 <script>
 // ONLINE LEARNING BOOTSTRAP — external JS is the single source of truth.
 // Cache-busting prevents an older cached lecturer-online-learning.js from being used.
@@ -8857,7 +8927,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
       window.LecturerOnlineLearning.init();
       return;
     }
-    console.error('NCHSM Online Learning: js/lecturer-online-learning.js loaded but LecturerOnlineLearning was not exposed. Check the deployed JS file/path.');
+    console.error('NCHSM Online Learning: LecturerOnlineLearning was not exposed. Check js/lecturer-online-learning.js deployment.');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(boot, 50); }, {once:true});
   else setTimeout(boot, 50);
@@ -8866,6 +8936,338 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 
 <!-- Main Entry Point -->
 <script src="js/lecturer-main.js"></script>
+
+<!-- ============================================================ -->
+<!-- NCHSM REPORTS RELIABILITY BRIDGE — FINAL HTML FIX             -->
+<!-- ============================================================ -->
+<script>
+(function () {
+    'use strict';
+
+    const WAIT_LIMIT = 30;
+    let attempts = 0;
+    let bootTimer = null;
+
+    function notify(message, type) {
+        try {
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(message, type || 'info');
+                return;
+            }
+        } catch (_) {}
+        console.log('[NCHSM Reports]', message);
+    }
+
+    function setText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value == null || value === '' ? '—' : String(value);
+    }
+
+    function getReports() {
+        const mod = window.LecturerReports;
+        if (!mod) return [];
+        const rows = Array.isArray(mod.reports) ? mod.reports : [];
+        return rows.filter(Boolean);
+    }
+
+    function reportDate(row) {
+        return row?.generated_at || row?.created_at || row?.generatedAt || row?.createdAt || row?.date || null;
+    }
+
+    function labelType(value) {
+        const map = {
+            AttendanceSummary: 'Attendance',
+            CourseGradeBook: 'Grade Book',
+            EnrollmentList: 'Enrollment',
+            PerformanceAnalysis: 'Performance',
+            ClassRoster: 'Roster',
+            UnitProgress: 'Progress'
+        };
+        return map[value] || value || 'Other';
+    }
+
+    function syncReportAnalytics() {
+        const rows = getReports();
+        setText('totalReportsCount', rows.length);
+        setText('reportCountDisplay', rows.length);
+
+        const studentTypes = new Set(['EnrollmentList', 'ClassRoster']);
+        const performanceTypes = new Set(['PerformanceAnalysis', 'CourseGradeBook', 'UnitProgress']);
+        const studentCount = rows.filter(r => studentTypes.has(r.report_type || r.type)).length;
+        const performanceCount = rows.filter(r => performanceTypes.has(r.report_type || r.type)).length;
+        const units = new Set(rows.map(r => r.unit_name || r.unit || r.course_name || r.course || r.unit_id).filter(Boolean));
+
+        setText('studentReportsCount', studentCount);
+        setText('performanceReportsCount', performanceCount);
+        setText('unitReportsCount', units.size);
+
+        const typeCounts = {};
+        const unitCounts = {};
+        const formatCounts = {};
+        rows.forEach(r => {
+            const type = r.report_type || r.type;
+            const unit = r.unit_name || r.unit || r.course_name || r.course;
+            const format = r.format || r.output_format;
+            if (type) typeCounts[type] = (typeCounts[type] || 0) + 1;
+            if (unit) unitCounts[unit] = (unitCounts[unit] || 0) + 1;
+            if (format) formatCounts[String(format).toUpperCase()] = (formatCounts[String(format).toUpperCase()] || 0) + 1;
+        });
+
+        const top = obj => Object.entries(obj).sort((a,b) => b[1]-a[1])[0];
+        const topType = top(typeCounts);
+        const topUnit = top(unitCounts);
+        const topFormat = top(formatCounts);
+
+        setText('mostGeneratedType', topType ? labelType(topType[0]) : '—');
+        setText('mostActiveUnit', topUnit ? topUnit[0] : '—');
+        setText('reportPopularFormat', topFormat ? topFormat[0] : '—');
+        setText('reportPopularFormatMeta', topFormat ? `${topFormat[1]} of ${rows.length} loaded report${rows.length === 1 ? '' : 's'}` : 'Based on loaded reports');
+
+        // These must never be fabricated. If the reports module exposes aggregate values,
+        // use them; otherwise leave them as an em dash rather than showing fake 87%/92% values.
+        const mod = window.LecturerReports || {};
+        const engagement = mod.engagementRate ?? mod.analytics?.engagementRate ?? mod.stats?.engagementRate;
+        const passRate = mod.passRate ?? mod.analytics?.passRate ?? mod.stats?.passRate;
+        setText('reportEngagementRate', engagement != null ? `${Number(engagement).toFixed(0)}%` : '—');
+        setText('reportPassRate', passRate != null ? `${Number(passRate).toFixed(0)}%` : '—');
+
+        const times = rows.map(r => Number(r.generation_time_ms ?? r.generationTimeMs ?? r.generation_time)).filter(Number.isFinite).filter(v => v >= 0);
+        if (times.length) {
+            const avg = times.reduce((a,b) => a+b, 0) / times.length;
+            setText('reportAvgGenerationTime', avg >= 1000 ? `${(avg/1000).toFixed(1)}s` : `${Math.round(avg)}ms`);
+        } else {
+            setText('reportAvgGenerationTime', '—');
+        }
+    }
+
+    function safeCall(name, ...args) {
+        const mod = window.LecturerReports;
+        if (!mod || typeof mod[name] !== 'function') {
+            notify(`Reports service is still loading. Please try again in a moment.`, 'warning');
+            return false;
+        }
+        try {
+            const result = mod[name](...args);
+            Promise.resolve(result).finally(syncReportAnalytics);
+            return true;
+        } catch (err) {
+            console.error(`[NCHSM Reports] ${name} failed`, err);
+            notify(`Could not complete the report action: ${err.message || 'Unknown error'}`, 'error');
+            return false;
+        }
+    }
+
+    function bootReports() {
+        const mod = window.LecturerReports;
+        const dbReady = !!(window.lecturerDB?.supabase || window.supabaseClient || window._supabase || window.supabase);
+
+        if (!mod || !dbReady) {
+            attempts++;
+            if (attempts < WAIT_LIMIT) bootTimer = setTimeout(bootReports, 500);
+            else console.warn('[NCHSM Reports] Timed out waiting for lecturer reports/database module.');
+            return;
+        }
+
+        // The legacy reports module can initialize before lecturer-main finishes
+        // resolving the authenticated lecturer. Re-run it after the database is ready.
+        try {
+            if (typeof mod.init === 'function') {
+                Promise.resolve(mod.init()).then(function () {
+                    syncReportAnalytics();
+                }).catch(function (err) {
+                    console.warn('[NCHSM Reports] Late init warning:', err);
+                });
+            }
+        } catch (err) {
+            console.warn('[NCHSM Reports] Late init failed:', err);
+        }
+
+        syncReportAnalytics();
+        clearTimeout(bootTimer);
+    }
+
+    // Keep existing module functionality but add safe late initialization.
+    window.NCHSMReports = {
+        refresh: () => safeCall('refresh'),
+        generate: () => safeCall('generateReport', window.event),
+        preview: () => safeCall('previewReport'),
+        pdf: () => safeCall('exportToPDF')
+    };
+
+    // Re-sync whenever the Reports tab is opened.
+    const oldShowTab = window.showTab;
+    if (typeof oldShowTab === 'function' && !oldShowTab.__nchsmReportsWrapped) {
+        window.showTab = function (tabId) {
+            const result = oldShowTab.apply(this, arguments);
+            if (tabId === 'reports') {
+                setTimeout(bootReports, 50);
+                setTimeout(syncReportAnalytics, 400);
+            }
+            return result;
+        };
+        window.showTab.__nchsmReportsWrapped = true;
+    }
+
+    // Catch direct changes from the reports module without replacing its renderer.
+    setInterval(function () {
+        if (document.getElementById('reports-content')?.style.display !== 'none') {
+            syncReportAnalytics();
+        }
+    }, 1500);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(bootReports, 800); }, { once: true });
+    } else {
+        setTimeout(bootReports, 800);
+    }
+})();
+</script>
+
+
+
+<!-- ============================================================
+     NCHSM GLOBAL TAB MANAGER V18
+     One navigation controller for the entire lecturer portal.
+     ============================================================ -->
+<style id="nchsm-global-tabs-v18">
+    .tab-content { display:none; }
+    .tab-content.active {
+        display:block !important;
+        visibility:visible !important;
+        opacity:1 !important;
+    }
+    .main-content .tab-content,
+    .main .tab-content {
+        width:100%;
+        box-sizing:border-box;
+    }
+</style>
+
+<script id="nchsm-global-tabs-script-v18">
+(function(){
+    'use strict';
+
+    const TAB_IDS = ['dashboard', 'profile', 'my-courses', 'my-students', 'online-learning', 'sessions', 'attendance', 'academic-portfolio', 'cats', 'marks-management', 'lecturer-questions', 'nursing-system', 'resources', 'reports', 'messages', 'calendar', 'settings'];
+
+    function getSection(tabId){
+        return document.getElementById(tabId + '-content') ||
+               document.getElementById(tabId);
+    }
+
+    function getNavLinks(){
+        return document.querySelectorAll('#mainNav a[data-tab], a[data-tab]');
+    }
+
+    function setActiveNav(tabId){
+        getNavLinks().forEach(function(link){
+            const active = link.getAttribute('data-tab') === tabId;
+            link.classList.toggle('active', active);
+            if(active){
+                link.style.background = 'rgba(255,255,255,0.15)';
+                link.style.borderLeft = '3px solid #FDB913';
+            }else{
+                link.style.background = '';
+                link.style.borderLeft = '';
+            }
+        });
+    }
+
+    function showTabClean(tabId, options){
+        options = options || {};
+        if(!TAB_IDS.includes(tabId)){
+            console.warn('[NCHSM Tabs] Unknown tab:', tabId);
+            tabId = 'dashboard';
+        }
+
+        // Keep the existing NCK protection.
+        if(tabId === 'nursing-system' && typeof window.checkNCKVisibility === 'function'){
+            if(!window.checkNCKVisibility()){
+                if(typeof window.showNotification === 'function'){
+                    window.showNotification('⚠️ This section is only available for KRCHN Nursing lecturers.','warning');
+                }
+                tabId = 'dashboard';
+            }
+        }
+
+        const sections = document.querySelectorAll('.tab-content');
+        sections.forEach(function(section){
+            const active = section === getSection(tabId);
+            section.classList.toggle('active', active);
+            section.style.display = active ? 'block' : 'none';
+            if(active){
+                section.style.visibility = 'visible';
+                section.style.opacity = '1';
+                section.style.animation = 'fadeIn 0.25s ease';
+            }
+        });
+
+        const target = getSection(tabId);
+        if(!target){
+            console.error('[NCHSM Tabs] Missing section:', tabId + '-content');
+            return false;
+        }
+
+        setActiveNav(tabId);
+
+        try{
+            localStorage.setItem('lecturerActiveTab', tabId);
+        }catch(_){}
+
+        // Trigger existing section loaders without replacing them.
+        try{
+            if(tabId === 'dashboard' && window.LecturerDashboard?.refresh)
+                window.LecturerDashboard.refresh();
+            if(tabId === 'my-students' && window.LecturerStudents?.loadStudents)
+                window.LecturerStudents.loadStudents();
+            if(tabId === 'online-learning' && window.LecturerOnlineLearning?.load)
+                window.LecturerOnlineLearning.load();
+            if(tabId === 'reports' && window.NCHSMReports?.refresh)
+                window.NCHSMReports.refresh();
+        }catch(err){
+            console.warn('[NCHSM Tabs] section loader warning:',err);
+        }
+
+        document.dispatchEvent(new CustomEvent('nchsm:tabchanged',{
+            detail:{tabId:tabId, element:target}
+        }));
+
+        return true;
+    }
+
+    // Replace the old global function once. No polling.
+    window.showTab = showTabClean;
+    window.__NCHSMShowTabV18 = showTabClean;
+
+    function boot(){
+        let requested = null;
+        try{ requested = localStorage.getItem('lecturerActiveTab'); }catch(_){}
+        if(!requested || !TAB_IDS.includes(requested)) requested = 'dashboard';
+
+        // Always show a valid section even if a previous module left the page blank.
+        showTabClean(requested, {boot:true});
+    }
+
+    // Delegated navigation avoids duplicate handlers from individual modules.
+    document.addEventListener('click',function(e){
+        const link = e.target.closest('a[data-tab]');
+        if(!link) return;
+
+        const tabId = link.getAttribute('data-tab');
+        if(!TAB_IDS.includes(tabId)) return;
+
+        // Let dropdown controls behave normally only if they are not actual tabs.
+        e.preventDefault();
+        e.stopPropagation();
+        showTabClean(tabId);
+    }, true);
+
+    if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded',boot,{once:true});
+    }else{
+        boot();
+    }
+})();
+</script>
 
 </body>
 </html>
