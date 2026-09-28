@@ -8778,114 +8778,105 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <script src="js/lecturer-main.js"></script>
 
 <!-- ============================================================ -->
-<!-- ⭐ INITIALIZATION ORCHESTRATOR — FIXES ATTENDANCE DASHBOARD  -->
-<!-- Waits for the user profile to be loaded before initializing  -->
-<!-- attendance, so cards reflect real data instead of 0s.        -->
+<!-- ⭐ INITIALIZATION ORCHESTRATOR — V2                          -->
+<!-- Waits for lecturer-main.js to finish, then (re)initializes   -->
+<!-- attendance with the correct lecturer UUID.                   -->
 <!-- ============================================================ -->
 <script>
 (function() {
     'use strict';
-    
-    let attempts = 0;
-    const MAX_ATTEMPTS = 40;      // 40 * 250ms = 10 seconds max
+
+    const MAX_ATTEMPTS = 60;    // ~15 seconds max
     const POLL_INTERVAL = 250;
+    let attempts = 0;
     let hasInitialized = false;
-    
-    function isProfileReady() {
+
+    // Module is "ready" when lecturer-main.js has resolved the lecturer UUID
+    // (it sets lecturerAssignmentId on each module after authenticating).
+    function isMainReady() {
         try {
+            const attendance = window.LecturerAttendance;
+            if (attendance && attendance.lecturerUuid) return true;
+
+            // Fallback: check the database module
             const profile = window.lecturerDB?.getCurrentUserProfile?.();
             if (profile && (profile.user_id || profile.id)) return true;
-            const stored = localStorage.getItem('userProfile');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (parsed && (parsed.user_id || parsed.id)) return true;
-            }
         } catch (_) {}
         return false;
     }
-    
-    function initModules() {
-        if (hasInitialized) return;
-        hasInitialized = true;
-        
-        console.log('✅ Profile ready — initializing dashboard modules...');
-        
-        // 1. ATTENDANCE MODULE (the fix for the 0-records bug)
-        if (window.LecturerAttendance && typeof window.LecturerAttendance.init === 'function') {
-            try {
-                window.LecturerAttendance.init();
-                console.log('✅ LecturerAttendance initialized');
-            } catch (err) {
-                console.error('❌ LecturerAttendance init failed:', err);
-            }
-        } else {
-            console.warn('⚠️ LecturerAttendance module not found');
+
+    function initAttendance() {
+        const attendance = window.LecturerAttendance;
+        if (!attendance || typeof attendance.init !== 'function') {
+            console.warn('⚠️ LecturerAttendance not available');
+            return false;
         }
-        
-        // 2. ONLINE LEARNING MODULE
-        if (window.LecturerOnlineLearning && typeof window.LecturerOnlineLearning.init === 'function') {
-            try {
-                if (!window.LecturerOnlineLearning._initialized) {
-                    window.LecturerOnlineLearning.init();
-                    window.LecturerOnlineLearning._initialized = true;
-                }
-            } catch (err) {
-                console.warn('Online Learning init warning:', err);
-            }
+
+        try {
+            console.log('🔄 Re-initializing LecturerAttendance with resolved profile...');
+            attendance.init();
+            console.log('✅ LecturerAttendance initialized (with UUID)');
+            return true;
+        } catch (err) {
+            console.error('❌ LecturerAttendance init failed:', err);
+            return false;
         }
-        
-        // 3. Refresh dashboard so attendance cards reflect real data
-        setTimeout(function() {
-            if (window.LecturerDashboard && typeof window.LecturerDashboard.refresh === 'function') {
-                try { window.LecturerDashboard.refresh(); } catch (_) {}
-            }
-        }, 300);
-        
-        // 4. Diagnostics: warn if cards are still empty after 3s
-        setTimeout(function() {
-            const present = document.getElementById('todayPresent');
-            const filtered = document.getElementById('filteredCount');
-            const rate = document.getElementById('attendanceRate');
-            if (present && present.textContent === '0' && 
-                filtered && filtered.textContent === '0' &&
-                rate && rate.textContent === '0%') {
-                console.warn('⚠️ Attendance dashboard still shows 0s. Possible causes:');
-                console.warn('   1. No scheduled sessions for today (check lecturer-sessions.js)');
-                console.warn('   2. No attendance records in Supabase for your assigned units');
-                console.warn('   3. RLS policy blocking reads on geo_attendance_logs');
-                console.warn('   4. lecturerUuid is null (check resolveLecturerId)');
-            } else {
-                console.log('✅ Attendance cards populated successfully.');
-            }
-        }, 3000);
     }
-    
-    function waitForProfileAndInit() {
-        if (isProfileReady()) {
-            initModules();
+
+    function waitAndInit() {
+        if (hasInitialized) return;
+
+        if (isMainReady()) {
+            hasInitialized = true;
+            console.log('✅ lecturer-main.js finished — re-initializing attendance with UUID');
+
+            initAttendance();
+
+            // Also give the dashboard a gentle refresh
+            setTimeout(function() {
+                if (window.LecturerDashboard?.refresh) {
+                    try { window.LecturerDashboard.refresh(); } catch (_) {}
+                }
+            }, 500);
+
+            // Diagnostics
+            setTimeout(function() {
+                const present = document.getElementById('todayPresent');
+                const filtered = document.getElementById('filteredCount');
+                const rate = document.getElementById('attendanceRate');
+                if (present && present.textContent === '0' &&
+                    filtered && filtered.textContent === '0') {
+                    console.warn('⚠️ Attendance cards still show 0s.');
+                    console.warn('   → lecturerUuid:', window.LecturerAttendance?.lecturerUuid);
+                    console.warn('   → lecturerAssignmentId:', window.LecturerAttendance?.lecturerAssignmentId);
+                    console.warn('   → todayLogs:', window.LecturerAttendance?.todayLogs?.length);
+                    console.warn('   → pastLogs:', window.LecturerAttendance?.pastLogs?.length);
+                    console.warn('   → selectedSession:', window.LecturerAttendance?.selectedSessionId);
+                } else {
+                    console.log('✅ Attendance cards populated.');
+                }
+            }, 3000);
             return;
         }
+
         attempts++;
         if (attempts < MAX_ATTEMPTS) {
-            if (attempts % 4 === 0) {
-                console.log(`⏳ Waiting for user profile... (attempt ${attempts}/${MAX_ATTEMPTS})`);
+            if (attempts % 8 === 0) {
+                console.log(`⏳ Waiting for lecturer-main.js to finish... (${attempts}/${MAX_ATTEMPTS})`);
             }
-            setTimeout(waitForProfileAndInit, POLL_INTERVAL);
+            setTimeout(waitAndInit, POLL_INTERVAL);
         } else {
-            console.error('❌ Timed out waiting for user profile after 10s.');
-            console.error('   Check that lecturer-main.js and lecturer-database.js loaded correctly.');
-            // Fallback: try to initialize anyway so the user isn't stuck
-            initModules();
+            console.warn('⚠️ Timed out waiting for lecturer-main.js. Attempting init anyway...');
+            initAttendance();
         }
     }
-    
-    // Start polling after DOM is ready
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(waitForProfileAndInit, 400);
+            setTimeout(waitAndInit, 500);
         }, { once: true });
     } else {
-        setTimeout(waitForProfileAndInit, 400);
+        setTimeout(waitAndInit, 500);
     }
 })();
 </script>
