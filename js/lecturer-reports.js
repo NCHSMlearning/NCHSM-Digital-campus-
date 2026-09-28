@@ -1,6 +1,6 @@
 /* ================================================================
    LECTURER REPORTS — MARKS-INTEGRATED MODULE
-   Version: 2026-09-fix
+   Version: 2026-09-fix2
    Source of marks: student_marks
    Student/class source: consolidated_user_profiles_table
    Assignment source: lecturer_subject_assignments
@@ -27,6 +27,17 @@
    IMPORTANT:
    This module READS the existing marks. It does not create duplicate
    marks or alter student_marks.
+
+   FIX NOTES (2026-09-fix2):
+   - lecturer_subject_assignments.lecturer_id stores the STAFF RECORD id
+     (e.g. 09b84122-...), NOT the auth UUID (9f1452e8-...).
+   - Identity is resolved asynchronously with fallbacks:
+       me_currentLecturer → auth user → staff_records by email → name match
+   - Bootstrap listens on DOCUMENT for 'lecturerMainReady'
+     (matches lecturer-main.js which uses document.dispatchEvent)
+   - Also checks window.__LECTURER_MAIN_READY as a secondary trigger.
+   - Identity + assignment caches are cleared on each boot so the
+     newly-resolved staff ID is used.
 ================================================================ */
 
 (function () {
@@ -83,17 +94,16 @@
     /* ============================================================
        LECTURER IDENTITY RESOLUTION (FIX)
        ------------------------------------------------------------
-       Problem: lecturer_subject_assignments.lecturer_id stores the
-       STAFF RECORD id (e.g. 09b84122-...), NOT the auth UUID
-       (9f1452e8-...). The old code only looked at window.currentUser.id
-       which is the auth UUID, so loadAssignedUnits() always bailed
-       with "lecturer ID unavailable".
+       lecturer_subject_assignments.lecturer_id stores the STAFF
+       RECORD id (09b84122-...), NOT the auth UUID (9f1452e8-...).
 
-       Solution: resolve identity lazily and asynchronously by:
-         1. checking window.me_currentLecturer (populated by marks module)
-         2. checking window.currentUser (may already have staff id)
-         3. falling back to staff_records lookup by email
-       ============================================================ */
+       We resolve identity lazily and asynchronously:
+         1. window.me_currentLecturer (set by the marks module)
+         2. window.currentUser (may already have staff_id)
+         3. auth.getUser() + lecturerSession email
+         4. staff_records lookup by email (authoritative)
+         5. profile table → staff_records by name (last resort)
+    ============================================================ */
 
     const _identityCache = {
         authUuid: null,
@@ -132,21 +142,21 @@
         const u = window.currentUser || {};
         const lecturer = window.me_currentLecturer || {};
 
-        /* Prefer the STAFF record id because that is what
-           lecturer_subject_assignments.lecturer_id references. */
+        /* Prefer the STAFF record id — that's the FK used by
+           lecturer_subject_assignments.lecturer_id. */
         const staffId =
             lecturer?.staff?.id ||
+            window.CORRECT_LECTURER_ID ||
             _identityCache.staffId ||
             '';
 
         if (staffId) return String(staffId);
 
-        /* If the user object happens to carry the staff id, use it */
+        /* Sometimes the user object carries the staff id */
         if (u.staff_id) return String(u.staff_id);
 
-        /* Last-resort: auth uuid (may or may not match) */
+        /* Last resort: auth uuid (may not match assignments) */
         if (u.id) return String(u.id);
-
         if (lecturer?.profile?.id) return String(lecturer.profile.id);
 
         return '';
@@ -168,6 +178,7 @@
                     null;
                 _identityCache.staffId =
                     lecturer?.staff?.id ||
+                    window.CORRECT_LECTURER_ID ||
                     lecturer?.profile?.id ||
                     null;
                 _identityCache.email =
@@ -180,6 +191,19 @@
                     null;
                 _identityCache.resolved = true;
                 console.log('📋 [Reports] identity from me_currentLecturer:', {
+                    staffId: _identityCache.staffId,
+                    authUuid: _identityCache.authUuid
+                });
+                return _identityCache;
+            }
+
+            /* 1b. lecturer-main.js already resolved it globally */
+            if (window.CORRECT_LECTURER_ID) {
+                _identityCache.staffId = String(window.CORRECT_LECTURER_ID);
+                _identityCache.authUuid = window.currentUser?.id || null;
+                _identityCache.email = currentLecturerEmailSync();
+                _identityCache.resolved = true;
+                console.log('📋 [Reports] identity from CORRECT_LECTURER_ID:', {
                     staffId: _identityCache.staffId,
                     authUuid: _identityCache.authUuid
                 });
@@ -220,6 +244,9 @@
                             [staff.first_name, staff.other_names]
                                 .filter(Boolean).join(' ').trim() ||
                             _identityCache.name;
+
+                        /* Cache for other modules too */
+                        window.CORRECT_LECTURER_ID = staff.id;
                     }
                 } catch (e) {
                     console.warn('[Reports] staff lookup failed:', e?.message);
@@ -256,6 +283,7 @@
                                     return candidate === full;
                                 });
                                 _identityCache.staffId = (exact || matches[0]).id;
+                                window.CORRECT_LECTURER_ID = _identityCache.staffId;
                             }
                         }
                     }
@@ -403,7 +431,6 @@
         const supabase = db();
         if (!supabase) return [];
 
-        /* Ensure identity is resolved before we try to query */
         const identity = await resolveLecturerIdentity();
         const lecturerId = identity.staffId || currentLecturerIdSync();
 
@@ -2662,8 +2689,8 @@
 
     LecturerReports.init = async function () {
         if (LecturerReports._initialized) {
-            /* Still make sure we re-resolve identity + reload assignments
-               in case the marks module has only just populated it. */
+            /* Still re-resolve identity + reload assignments in case
+               the marks module has only just populated it. */
             _identityCache.resolved = false;
             _identityCache.promise = null;
 
@@ -2727,14 +2754,26 @@
     /* ============================================================
        BOOTSTRAP
        ------------------------------------------------------------
-       Two triggers:
-       1. If lecturer-main.js has already fired lecturerMainReady,
-          start immediately (after a small tick).
-       2. Otherwise wait for the event, plus a safety timeout.
-       Also re-init when the event fires (so identity is refreshed).
+       lecturer-main.js:
+         - dispatches 'lecturerMainReady' on DOCUMENT (no bubbles)
+         - sets window.__LECTURER_MAIN_READY = true
+         - sets window.CORRECT_LECTURER_ID (staff_records.id)
+         - populates window.me_currentLecturer from marks module
+
+       Strategy:
+         1. If main is already ready → boot now.
+         2. Else listen on DOCUMENT for lecturerMainReady → boot.
+         3. Safety timeout 2.5s so we never hang forever.
+       On each boot, clear identity + assignment caches so the
+       newly-resolved staff ID is used.
     ============================================================ */
 
     function startReports() {
+        LecturerReports._initialized = false;
+        _identityCache.resolved = false;
+        _identityCache.promise = null;
+        LecturerReports._cache = {};
+
         LecturerReports.init().catch(error => {
             console.error('LecturerReports initialization failed:', error);
         });
@@ -2748,19 +2787,23 @@
         setTimeout(startReports, 200);
     }
 
-    if (window.lecturerMainReady_fired || window.me_currentLecturer) {
-        document.addEventListener('DOMContentLoaded', bootReports, { once: true });
-        if (document.readyState !== 'loading') bootReports();
-    } else {
-        window.addEventListener('lecturerMainReady', () => {
-            window.lecturerMainReady_fired = true;
-            /* Re-init so identity + assignments are re-resolved */
-            LecturerReports._initialized = false;
-            bootReports();
-        }, { once: true });
+    /* Primary trigger: the main portal tells us it's ready */
+    document.addEventListener('lecturerMainReady', () => {
+        window.lecturerMainReady_fired = true;
+        bootReports();
+    }, { once: true });
 
+    /* Secondary trigger: main was ready before we loaded */
+    if (window.__LECTURER_MAIN_READY) {
+        window.lecturerMainReady_fired = true;
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bootReports, { once: true });
+        } else {
+            bootReports();
+        }
+    } else {
+        /* Safety net */
         document.addEventListener('DOMContentLoaded', () => {
-            /* Safety fallback if the event never fires */
             setTimeout(() => {
                 if (!_booted) bootReports();
             }, 2500);
