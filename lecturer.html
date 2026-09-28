@@ -8778,106 +8778,100 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <script src="js/lecturer-main.js"></script>
 
 <!-- ============================================================ -->
-<!-- ⭐ INITIALIZATION ORCHESTRATOR — V2                          -->
-<!-- Waits for lecturer-main.js to finish, then (re)initializes   -->
-<!-- attendance with the correct lecturer UUID.                   -->
+<!-- ⭐ INITIALIZATION ORCHESTRATOR — V3                          -->
+<!-- Listens for the lecturerMainReady event from lecturer-main.js, -->
+<!-- then initializes attendance with the correct lecturer UUID.   -->
 <!-- ============================================================ -->
 <script>
 (function() {
     'use strict';
 
-    const MAX_ATTEMPTS = 60;    // ~15 seconds max
-    const POLL_INTERVAL = 250;
-    let attempts = 0;
     let hasInitialized = false;
 
-    // Module is "ready" when lecturer-main.js has resolved the lecturer UUID
-    // (it sets lecturerAssignmentId on each module after authenticating).
-    function isMainReady() {
-        try {
-            const attendance = window.LecturerAttendance;
-            if (attendance && attendance.lecturerUuid) return true;
-
-            // Fallback: check the database module
-            const profile = window.lecturerDB?.getCurrentUserProfile?.();
-            if (profile && (profile.user_id || profile.id)) return true;
-        } catch (_) {}
-        return false;
-    }
-
     function initAttendance() {
+        if (hasInitialized) return;
+        hasInitialized = true;
+
         const attendance = window.LecturerAttendance;
         if (!attendance || typeof attendance.init !== 'function') {
             console.warn('⚠️ LecturerAttendance not available');
-            return false;
-        }
-
-        try {
-            console.log('🔄 Re-initializing LecturerAttendance with resolved profile...');
-            attendance.init();
-            console.log('✅ LecturerAttendance initialized (with UUID)');
-            return true;
-        } catch (err) {
-            console.error('❌ LecturerAttendance init failed:', err);
-            return false;
-        }
-    }
-
-    function waitAndInit() {
-        if (hasInitialized) return;
-
-        if (isMainReady()) {
-            hasInitialized = true;
-            console.log('✅ lecturer-main.js finished — re-initializing attendance with UUID');
-
-            initAttendance();
-
-            // Also give the dashboard a gentle refresh
-            setTimeout(function() {
-                if (window.LecturerDashboard?.refresh) {
-                    try { window.LecturerDashboard.refresh(); } catch (_) {}
-                }
-            }, 500);
-
-            // Diagnostics
-            setTimeout(function() {
-                const present = document.getElementById('todayPresent');
-                const filtered = document.getElementById('filteredCount');
-                const rate = document.getElementById('attendanceRate');
-                if (present && present.textContent === '0' &&
-                    filtered && filtered.textContent === '0') {
-                    console.warn('⚠️ Attendance cards still show 0s.');
-                    console.warn('   → lecturerUuid:', window.LecturerAttendance?.lecturerUuid);
-                    console.warn('   → lecturerAssignmentId:', window.LecturerAttendance?.lecturerAssignmentId);
-                    console.warn('   → todayLogs:', window.LecturerAttendance?.todayLogs?.length);
-                    console.warn('   → pastLogs:', window.LecturerAttendance?.pastLogs?.length);
-                    console.warn('   → selectedSession:', window.LecturerAttendance?.selectedSessionId);
-                } else {
-                    console.log('✅ Attendance cards populated.');
-                }
-            }, 3000);
             return;
         }
 
-        attempts++;
-        if (attempts < MAX_ATTEMPTS) {
-            if (attempts % 8 === 0) {
-                console.log(`⏳ Waiting for lecturer-main.js to finish... (${attempts}/${MAX_ATTEMPTS})`);
+        console.log('🔄 Initializing LecturerAttendance with resolved UUID...');
+        console.log('   → lecturerUuid:', attendance.lecturerUuid);
+        console.log('   → lecturerAssignmentId:', attendance.lecturerAssignmentId);
+
+        try {
+            attendance.init();
+
+            // Force a data refresh now that UUID is guaranteed
+            if (typeof attendance.refresh === 'function') {
+                setTimeout(function() {
+                    console.log('🔄 Calling LecturerAttendance.refresh()...');
+                    try { attendance.refresh(); } catch (e) { console.warn(e); }
+                }, 800);
             }
-            setTimeout(waitAndInit, POLL_INTERVAL);
+        } catch (err) {
+            console.error('❌ LecturerAttendance init failed:', err);
+        }
+
+        // Diagnostics after 3s
+        setTimeout(function() {
+            const present = document.getElementById('todayPresent');
+            const filtered = document.getElementById('filteredCount');
+            if (present && present.textContent === '0' &&
+                filtered && filtered.textContent === '0') {
+                console.warn('⚠️ Attendance cards still show 0s.');
+                console.warn('   → lecturerUuid:', window.LecturerAttendance?.lecturerUuid);
+                console.warn('   → todayLogs:', window.LecturerAttendance?.todayLogs?.length);
+                console.warn('   → pastLogs:', window.LecturerAttendance?.pastLogs?.length);
+                console.warn('   → selectedSessionId:', window.LecturerAttendance?.selectedSessionId);
+            } else {
+                console.log('✅ Attendance cards populated.');
+            }
+        }, 3000);
+    }
+
+    // Primary path: listen for the readiness event
+    document.addEventListener('lecturerMainReady', function(ev) {
+        console.log('📢 lecturerMainReady received:', ev.detail);
+        // Small delay to let any last-second module writes land
+        setTimeout(initAttendance, 200);
+    });
+
+    // Fallback: poll for the readiness flag if the event was missed
+    // (e.g., if lecturer-main.js completed before this listener attached)
+    let fallbackAttempts = 0;
+    const maxFallbackAttempts = 60; // ~15s
+    function fallbackPoll() {
+        if (hasInitialized) return;
+
+        if (window.__LECTURER_MAIN_READY === true) {
+            console.log('✅ Fallback detected lecturer-main readiness');
+            setTimeout(initAttendance, 200);
+            return;
+        }
+
+        // Also accept if attendance module already has a UUID
+        const attendance = window.LecturerAttendance;
+        if (attendance && attendance.lecturerUuid) {
+            console.log('✅ Fallback detected lecturerUuid on attendance module');
+            setTimeout(initAttendance, 200);
+            return;
+        }
+
+        fallbackAttempts++;
+        if (fallbackAttempts < maxFallbackAttempts) {
+            setTimeout(fallbackPoll, 250);
         } else {
-            console.warn('⚠️ Timed out waiting for lecturer-main.js. Attempting init anyway...');
+            console.warn('⚠️ Timed out waiting for lecturer-main. Initializing anyway...');
             initAttendance();
         }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(waitAndInit, 500);
-        }, { once: true });
-    } else {
-        setTimeout(waitAndInit, 500);
-    }
+    // Start the fallback poller after a short delay
+    setTimeout(fallbackPoll, 500);
 })();
 </script>
 
