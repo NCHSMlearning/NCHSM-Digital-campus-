@@ -4,6 +4,12 @@
  * Uses dedicated lecturer database
  * Handles both UUID and text ID formats
  * Supports both Nursing (KRCHN) and TVET programs
+ *
+ * ✅ FIX: Propagates resolved lecturer UUID to every module that needs it
+ *    (previously only lecturerAssignmentId was set, which broke
+ *     LecturerAttendance and other UUID-dependent modules)
+ * ✅ FIX: Emits a global readiness signal after all modules have been
+ *    wired up so the HTML orchestrator can initialize safely.
  */
 
 console.log('🚀 Lecturer Main loading...');
@@ -12,62 +18,49 @@ console.log('🚀 Lecturer Main loading...');
 // PROGRAM TYPE DETECTION & HELPERS
 // ============================================================
 
-// Determine program type from code
 function getProgramType(programCode) {
     if (!programCode) return 'KRCHN';
     const upper = programCode.toUpperCase();
-    
-    // Nursing programs
+
     if (upper === 'KRCHN') return 'KRCHN';
-    
-    // TVET Programs (Diploma, Certificate, Artisan)
+
     const tvetPrograms = [
-        // Diplomas
         'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-        // Certificates
         'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-        // Artisan
         'ACH', 'AAG', 'ASW',
-        // Other TVET
         'CCA', 'PTE'
     ];
-    
+
     if (tvetPrograms.includes(upper)) return 'TVET';
-    
-    return 'KRCHN'; // Default
+    return 'KRCHN';
 }
 
-// Get program level (DIPLOMA, CERTIFICATE, ARTISAN)
 function getProgramLevel(programCode) {
     if (!programCode) return 'DIPLOMA';
     const upper = programCode.toUpperCase();
-    
+
     if (upper.startsWith('D')) return 'DIPLOMA';
     if (upper.startsWith('C')) return 'CERTIFICATE';
     if (upper.startsWith('A')) return 'ARTISAN';
-    
+
     return 'DIPLOMA';
 }
 
-// Check if program is TVET
 function isTVETProgram(programCode) {
     return getProgramType(programCode) === 'TVET';
 }
 
-// Check if program is Nursing
 function isNursingProgram(programCode) {
     return getProgramType(programCode) === 'KRCHN';
 }
 
-// Get academic blocks/terms for a program
 function getAcademicBlocks(programCode) {
     const programType = getProgramType(programCode);
     const programLevel = getProgramLevel(programCode);
-    
+
     let options = [];
-    
+
     if (programType === 'KRCHN') {
-        // KRCHN Nursing Blocks
         options = [
             { value: 'Introductory', text: '🌟 Introductory Block' },
             { value: 'Block 1', text: '📘 Block 1' },
@@ -112,50 +105,33 @@ function getAcademicBlocks(programCode) {
             ];
         }
     }
-    
+
     return options;
 }
 
-// Calculate grade based on program type
 function calculateGrade(score, programType = 'KRCHN') {
     if (score === null || score === undefined || isNaN(score)) {
         return { grade: '-', gradePoint: 0, status: 'N/A' };
     }
-    
+
     const numScore = parseFloat(score);
-    
+
     if (programType === 'TVET') {
-        // TVET Grading: A(80-100%)=4, B(65-79%)=3, C(50-64%)=2, E(0-49%)=0
-        if (numScore >= 80) {
-            return { grade: 'A', gradePoint: 4.0, status: 'PASS' };
-        } else if (numScore >= 65) {
-            return { grade: 'B', gradePoint: 3.0, status: 'PASS' };
-        } else if (numScore >= 50) {
-            return { grade: 'C', gradePoint: 2.0, status: 'PASS' };
-        } else {
-            return { grade: 'E', gradePoint: 0.0, status: 'FAIL' };
-        }
+        if (numScore >= 80) return { grade: 'A', gradePoint: 4.0, status: 'PASS' };
+        if (numScore >= 65) return { grade: 'B', gradePoint: 3.0, status: 'PASS' };
+        if (numScore >= 50) return { grade: 'C', gradePoint: 2.0, status: 'PASS' };
+        return { grade: 'E', gradePoint: 0.0, status: 'FAIL' };
     } else {
-        // Nursing Grading: A(75-100%)=4, B(65-74%)=3, C(60-64%)=2, D(0-59%)=0
-        if (numScore >= 75) {
-            return { grade: 'A', gradePoint: 4.0, status: 'PASS' };
-        } else if (numScore >= 65) {
-            return { grade: 'B', gradePoint: 3.0, status: 'PASS' };
-        } else if (numScore >= 60) {
-            return { grade: 'C', gradePoint: 2.0, status: 'PASS' };
-        } else {
-            return { grade: 'D', gradePoint: 0.0, status: 'FAIL' };
-        }
+        if (numScore >= 75) return { grade: 'A', gradePoint: 4.0, status: 'PASS' };
+        if (numScore >= 65) return { grade: 'B', gradePoint: 3.0, status: 'PASS' };
+        if (numScore >= 60) return { grade: 'C', gradePoint: 2.0, status: 'PASS' };
+        return { grade: 'D', gradePoint: 0.0, status: 'FAIL' };
     }
 }
 
-// Get program display name
 function getProgramDisplayName(programCode) {
     const names = {
-        // Nursing
         'KRCHN': 'KRCHN Nursing',
-        
-        // Diploma Programs
         'DPOTT': 'Diploma in Perioperative Theatre Technology',
         'DCH': 'Diploma in Community Health',
         'DHRIT': 'Diploma in Health Records and IT',
@@ -165,8 +141,6 @@ function getProgramDisplayName(programCode) {
         'DHSS': 'Diploma in Health Support Services',
         'DICT': 'Diploma in ICT',
         'DME': 'Diploma in Medical Engineering',
-        
-        // Certificate Programs
         'CPOTT': 'Certificate in Perioperative Theatre Technology',
         'CCH': 'Certificate in Community Health',
         'CHRIT': 'Certificate in Health Records and IT',
@@ -177,20 +151,15 @@ function getProgramDisplayName(programCode) {
         'CAG': 'Certificate in Agriculture',
         'CHSS': 'Certificate in Health Support Services',
         'CICT': 'Certificate in ICT',
-        
-        // Artisan Programs
         'ACH': 'Artisan in Community Health',
         'AAG': 'Artisan in Agriculture',
         'ASW': 'Artisan in Social Work',
-        
-        // Other
         'CCA': 'Certificate in Computer Applications',
         'PTE': 'TVET/CDACC'
     };
     return names[programCode] || programCode;
 }
 
-// Get program type label
 function getProgramTypeLabel(programCode) {
     const type = getProgramType(programCode);
     if (type === 'KRCHN') return '🎓 Nursing';
@@ -221,11 +190,10 @@ window.getProgramTypeLabel = getProgramTypeLabel;
 // MAIN APPLICATION
 // ============================================================
 
-// Wait for DOM to load
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 Starting Lecturer Portal...');
-    
-    // Check if Utils is available
+
+    // Fallback Utils if missing
     if (typeof window.Utils === 'undefined') {
         console.warn('⚠️ Utils not found, creating fallback...');
         window.Utils = {
@@ -277,8 +245,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         };
         console.log('✅ Utils fallback created in main');
     }
-    
-    // Check configuration first
+
+    // Config sanity check
     if (typeof window.APP_CONFIG === 'undefined' || !window.APP_CONFIG.SUPABASE_URL) {
         console.error('❌ Configuration not loaded properly');
         const errorDiv = document.createElement('div');
@@ -301,56 +269,62 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.body.prepend(errorDiv);
         return;
     }
-    
+
     try {
         // ==========================================
-        // USE LECTURER DB - NOT THE STUDENT DB
+        // 1. Wait for lecturerDB
         // ==========================================
-        
-        // 1. Wait for lecturerDB to be available
         let retries = 0;
         const maxRetries = 20;
-        
+
         console.log('⏳ Waiting for lecturerDB...');
         while (typeof window.lecturerDB === 'undefined' && retries < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, 200));
             retries++;
         }
-        
+
         if (typeof window.lecturerDB === 'undefined') {
             throw new Error('lecturerDB not loaded after ' + maxRetries + ' retries');
         }
         console.log('✅ lecturerDB found');
-        
+
+        // ==========================================
         // 2. Initialize lecturer database
+        // ==========================================
         if (!window.lecturerDB.isInitialized) {
             console.log('📦 Initializing lecturer database...');
             await window.lecturerDB.initialize();
         }
         console.log('✅ lecturerDB initialized:', window.lecturerDB.isInitialized);
-        
-        // 3. Check authentication using lecturerDB
+
+        // ==========================================
+        // 3. Check authentication
+        // ==========================================
         console.log('🔐 Checking authentication...');
         const isAuthenticated = await window.lecturerDB.checkAuth();
-        
+
         if (!isAuthenticated) {
             console.warn('⚠️ Not authenticated, redirecting to login...');
             window.location.href = 'login.html';
             return;
         }
         console.log('✅ Authenticated');
-        
-        // 4. Get profile from lecturerDB
+
+        // ==========================================
+        // 4. Get profile
+        // ==========================================
         const profile = window.lecturerDB.getCurrentUserProfile();
         console.log('👤 Profile:', profile?.full_name || 'No profile');
-        
+
         if (!profile) {
             console.warn('⚠️ No lecturer profile found');
             window.location.href = 'login.html';
             return;
         }
-        
+
+        // ==========================================
         // 5. Verify lecturer role
+        // ==========================================
         const allowedRoles = ['lecturer', 'admin', 'superadmin'];
         if (!allowedRoles.includes(profile.role)) {
             console.warn('❌ User is not a lecturer. Role:', profile.role);
@@ -361,61 +335,53 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
             return;
         }
-        
+
         console.log('✅ Lecturer authenticated:', profile.full_name);
-        
+
         // ==========================================
-        // DETECT PROGRAM TYPE
+        // 6. Detect program type
         // ==========================================
-        
         const program = profile.program || profile.department || 'KRCHN';
         const programType = getProgramType(program);
         const programLevel = getProgramLevel(program);
         const isTVET = programType === 'TVET';
         const programDisplay = getProgramDisplayName(program);
         const typeLabel = getProgramTypeLabel(program);
-        
+
         console.log('📚 Program:', program);
         console.log('📚 Program Type:', programType);
         console.log('📚 Program Level:', programLevel);
         console.log('📚 Is TVET:', isTVET);
-        
+
         // ==========================================
-        // UPDATE UI WITH PROGRAM INFO
+        // 7. Update UI with program info
         // ==========================================
-        
-        // Update welcome header
         const welcomeHeader = document.getElementById('welcomeHeader');
         if (welcomeHeader) welcomeHeader.textContent = profile.full_name || 'Lecturer';
-        
-        // Update program subtitle with type
+
         const programSubtitle = document.getElementById('programSubtitle');
         if (programSubtitle) {
             const typeEmoji = isTVET ? '🔧' : '🎓';
             programSubtitle.textContent = `${typeEmoji} Dashboard filtered for ${programDisplay} (${typeLabel})`;
         }
-        
-        // Update program badge
+
         const programBadge = document.getElementById('userProgramBadge');
         if (programBadge) {
             const shortName = isTVET ? program : 'KRCHN';
             const badgeText = isTVET ? `${shortName} (TVET)` : `${shortName} Nursing`;
             programBadge.textContent = badgeText;
-            // Add TVET badge styling
             if (isTVET) {
                 programBadge.style.background = 'rgba(139,92,246,0.3)';
                 programBadge.style.border = '1px solid #8b5cf6';
             }
         }
-        
-        // Update welcome banner
+
         const welcomeBanner = document.getElementById('welcomeBannerText');
         if (welcomeBanner) {
             const typeEmoji = isTVET ? '🔧' : '🎓';
             welcomeBanner.textContent = `${typeEmoji} Welcome to your Lecturer Dashboard for ${programDisplay} (${typeLabel})`;
         }
-        
-        // Show grading system info on dashboard
+
         const gradingInfo = document.getElementById('gradingSystemInfo');
         if (gradingInfo) {
             if (isTVET) {
@@ -432,44 +398,40 @@ document.addEventListener('DOMContentLoaded', async function() {
                 `;
             }
         }
-        
+
         // ==========================================
-        // STORE PROGRAM TYPE FOR OTHER MODULES
+        // 8. Store program type globally
         // ==========================================
-        
         window.CURRENT_PROGRAM = program;
         window.CURRENT_PROGRAM_TYPE = programType;
         window.CURRENT_PROGRAM_LEVEL = programLevel;
         window.IS_TVET = isTVET;
-        
-        // Store in localStorage for other modules
+
         localStorage.setItem('currentProgram', program);
         localStorage.setItem('currentProgramType', programType);
         localStorage.setItem('isTVET', JSON.stringify(isTVET));
-        
+
         // ==========================================
-        // 7. Dispatch app ready event
+        // 9. Dispatch appReady event
         // ==========================================
-        
         document.dispatchEvent(new CustomEvent('appReady'));
-        
+
         // ==========================================
-        // 8. Resolve lecturer ID for all modules
+        // 10. Resolve lecturer ID for all modules
         // ==========================================
-        
         const userId = profile.user_id;
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(userId));
-        
+
         if (!isUUID) {
             console.log('🔍 Non-UUID user ID detected:', userId);
-            
+
             try {
                 const { data: staff } = await window.lecturerDB.supabase
                     .from('staff_records')
                     .select('id, first_name, other_names')
                     .eq('id', userId)
                     .maybeSingle();
-                
+
                 if (staff) {
                     console.log('✅ Found staff record with ID:', staff.id);
                     window.CORRECT_LECTURER_ID = staff.id;
@@ -479,7 +441,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         .select('id, first_name, other_names')
                         .eq('email', profile.email)
                         .maybeSingle();
-                    
+
                     if (staffByEmail) {
                         console.log('✅ Found staff record by email:', staffByEmail.id);
                         window.CORRECT_LECTURER_ID = staffByEmail.id;
@@ -491,16 +453,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         } else {
             window.CORRECT_LECTURER_ID = userId;
         }
-        
+
         console.log('🔑 Lecturer ID for modules:', window.CORRECT_LECTURER_ID);
-        
+
         // ==========================================
-        // 9. Initialize modules with correct ID
+        // 11. Initialize modules with correct ID
+        //     ✅ FIX: also set lecturerUuid where supported
         // ==========================================
-        
         const modules = [
             'LecturerCourses',
-            'LecturerMarks', 
+            'LecturerMarks',
             'LecturerExams',
             'LecturerSessions',
             'LecturerAttendance',
@@ -508,22 +470,34 @@ document.addEventListener('DOMContentLoaded', async function() {
             'LecturerMessages',
             'LecturerReports'
         ];
-        
+
         modules.forEach(moduleName => {
-            if (window[moduleName] && window[moduleName].lecturerAssignmentId !== undefined) {
-                window[moduleName].lecturerAssignmentId = window.CORRECT_LECTURER_ID;
+            const mod = window[moduleName];
+            if (!mod) return;
+
+            // Module expects a text ID / assignment ID
+            if ('lecturerAssignmentId' in mod) {
+                mod.lecturerAssignmentId = window.CORRECT_LECTURER_ID;
                 console.log(`✅ Set ${moduleName}.lecturerAssignmentId to:`, window.CORRECT_LECTURER_ID);
             }
+
+            // Module expects the actual auth UUID (Attendance, Sessions, etc.)
+            if ('lecturerUuid' in mod) {
+                mod.lecturerUuid = userId;
+                console.log(`✅ Set ${moduleName}.lecturerUuid to:`, userId);
+            }
         });
-        
+
         // ==========================================
-        // 10. Initialize Academic Portfolio
+        // 12. Initialize Academic Portfolio
         // ==========================================
-        
         console.log('📁 Initializing Academic Portfolio...');
         if (window.AcademicPortfolio && typeof window.AcademicPortfolio.init === 'function') {
             if (window.AcademicPortfolio.lecturerId !== undefined) {
                 window.AcademicPortfolio.lecturerId = window.CORRECT_LECTURER_ID;
+            }
+            if ('lecturerUuid' in window.AcademicPortfolio) {
+                window.AcademicPortfolio.lecturerUuid = userId;
             }
             window.AcademicPortfolio.init();
             console.log('✅ Academic Portfolio initialized');
@@ -560,21 +534,44 @@ document.addEventListener('DOMContentLoaded', async function() {
                 console.log('✅ AcademicPortfolio fallback created');
             }
         }
-        
+
         // ==========================================
-        // 11. Load initial tab
+        // 13. Load initial tab
         // ==========================================
-        
         const savedTab = localStorage.getItem('nchsm_current_tab') || 'dashboard';
         if (window.LecturerUI) {
             console.log('📂 Loading tab:', savedTab);
             window.LecturerUI.showTab(savedTab);
         }
-        
+
         // ==========================================
-        // 12. SHOW SUCCESS NOTIFICATION
+        // 14. ✅ SIGNAL READINESS to the HTML orchestrator
+        //     This must fire AFTER every module has been wired up
+        //     with the resolved lecturer ID.
         // ==========================================
-        
+        window.__LECTURER_MAIN_READY = true;
+
+        try {
+            document.dispatchEvent(new CustomEvent('lecturerMainReady', {
+                detail: {
+                    userId: userId,
+                    lecturerAssignmentId: window.CORRECT_LECTURER_ID,
+                    program: program,
+                    programType: programType,
+                    isTVET: isTVET
+                }
+            }));
+        } catch (e) {
+            console.warn('Could not dispatch lecturerMainReady:', e);
+        }
+
+        console.log('✅ lecturer-main.js signaled readiness (lecturerMainReady)');
+        console.log('   → userId:', userId);
+        console.log('   → lecturerAssignmentId:', window.CORRECT_LECTURER_ID);
+
+        // ==========================================
+        // 15. Welcome notification
+        // ==========================================
         setTimeout(function() {
             let name = 'Lecturer';
             try {
@@ -585,27 +582,25 @@ document.addEventListener('DOMContentLoaded', async function() {
                 } else if (profile) {
                     name = profile.full_name || profile.name || 'Lecturer';
                 }
-            } catch(e) {
+            } catch (e) {
                 name = 'Lecturer';
             }
-            
+
             const typeEmoji = isTVET ? '🔧' : '🎓';
             const programName = isTVET ? `${program} (TVET)` : `${program} Nursing`;
-            
+
             const message = `👋 Welcome back, ${name}! ${typeEmoji} ${programName} Dashboard loaded ✅`;
-            
-            // Use the UI notification system
+
             if (window.LecturerUI && typeof window.LecturerUI.showNotification === 'function') {
                 window.LecturerUI.showNotification(message, 'success');
             } else if (typeof window.showNotification === 'function') {
                 window.showNotification(message, 'success');
             } else {
                 console.log(`✅ Dashboard loaded for ${name} (${programName})`);
-                
-                // Simple toast fallback
+
                 try {
                     document.querySelectorAll('.dashboard-success-toast').forEach(el => el.remove());
-                    
+
                     const toast = document.createElement('div');
                     toast.className = 'dashboard-success-toast';
                     toast.style.cssText = `
@@ -645,14 +640,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                         </button>
                     `;
                     document.body.appendChild(toast);
-                    
+
                     setTimeout(() => {
                         if (toast.parentNode) {
                             toast.style.animation = 'slideOut 0.3s ease forwards';
                             setTimeout(() => toast.remove(), 300);
                         }
                     }, 5000);
-                    
+
                     if (!document.getElementById('toastAnimations')) {
                         const style = document.createElement('style');
                         style.id = 'toastAnimations';
@@ -668,19 +663,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                         `;
                         document.head.appendChild(style);
                     }
-                } catch(e) {
+                } catch (e) {
                     console.log('Could not create toast notification:', e);
                 }
             }
         }, 1500);
-        
+
         console.log('✅ Lecturer Portal started successfully!');
         console.log(`📚 Program: ${program} (${programType})`);
         console.log(`📚 Level: ${programLevel}`);
-        
+
     } catch (error) {
         console.error('❌ Failed to start Lecturer Portal:', error);
-        
+
+        // Even on failure, unblock the orchestrator so it can still try to init
+        window.__LECTURER_MAIN_READY = true;
+        try { document.dispatchEvent(new CustomEvent('lecturerMainReady', { detail: { error: error.message } })); } catch (_) {}
+
         const errorDiv = document.createElement('div');
         errorDiv.style.cssText = `
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -722,7 +721,6 @@ window.LecturerModules = {
     Reports: window.LecturerReports,
     Calendar: window.LecturerCalendar,
     AcademicPortfolio: window.AcademicPortfolio,
-    // TVET/Nursing helpers
     getProgramType: getProgramType,
     getProgramLevel: getProgramLevel,
     isTVETProgram: isTVETProgram,
@@ -735,3 +733,5 @@ window.LecturerModules = {
 
 console.log('✅ Lecturer main entry point loaded');
 console.log('✅ TVET/Nursing support enabled');
+console.log('✅ FIX: lecturerUuid now propagated to modules');
+console.log('✅ FIX: lecturerMainReady event now dispatched');
