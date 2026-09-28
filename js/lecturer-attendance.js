@@ -431,11 +431,34 @@ const LecturerAttendance = {
 
     getFilterableAttendanceLogs(selectedSession = this.getSelectedSession(), rangeFrom = '', rangeTo = '') {
         const globalLogs = this.dedupeAttendanceLogs([...(this.todayLogs || []), ...(this.pastLogs || [])]);
+        
+        // If no session is selected, just return all global logs
         if (!selectedSession) return globalLogs;
+
         const sessionDate = this.getNairobiDateString(selectedSession.session_date);
         const includesSessionDate = (!rangeFrom || sessionDate >= rangeFrom) && (!rangeTo || sessionDate <= rangeTo);
+        
+        // If the session date is outside the filter range, return global logs
         if (!includesSessionDate) return globalLogs;
+
+        // Try to get logs from the session register
         const sessionLogs = this.sessionRegisterToLogs(this.sessionRegister || { rows: [] }, selectedSession);
+        
+        // If the session register is empty (no students enrolled or no attendance taken),
+        // fall back to global logs filtered by the session's date and unit.
+        if (sessionLogs.length === 0) {
+            console.warn("⚠️ Session register is empty. Falling back to global logs for this date/unit.");
+            const unitName = String(selectedSession.unit_name || selectedSession.course_name || '').trim().toLowerCase();
+            
+            return globalLogs.filter(log => {
+                const logDate = this.getAttendanceDate(log);
+                const logUnit = String(log.unit_name || log.target_name || '').trim().toLowerCase();
+                // Match date AND unit (if unit exists)
+                return logDate === sessionDate && (unitName ? logUnit === unitName : true);
+            });
+        }
+
+        // Otherwise, merge and dedupe
         return this.dedupeAttendanceLogs([...globalLogs, ...sessionLogs]);
     },
 
@@ -519,20 +542,28 @@ const LecturerAttendance = {
     // ============================================================
     async loadAllAttendance() {
         try {
-            // Load in a deterministic order. The session register is the
-            // authoritative source for selected-session statistics; running
-            // the four loaders concurrently allowed a later async operation
-            // to overwrite correct stats with an empty/default set.
+            // 1. Load raw data
             await this.loadTodayAttendance();
             await this.loadPastAttendance();
-            await this.loadAttendanceStats();
+
+            // 2. If a session is selected, force-fetch its register
+            const session = this.getSelectedSession();
+            if (session) {
+                console.log("🔄 Loading register for selected session:", session.id);
+                this.sessionRegister = await this.getSessionAttendanceRegister(session, false);
+            } else {
+                this.sessionRegister = null;
+            }
+
+            // 3. Load program info (for student counts)
             await this.loadProgramInfo();
 
-            // Always finish from the same filtered dataset that the lecturer
-            // sees in the table. This keeps cards, table and export aligned.
-            this.applyFilters();
+            // 4. Apply filters (which will now use the freshly fetched sessionRegister)
+            this.applyFilters(); 
+            
         } catch (error) {
             console.error('❌ loadAllAttendance:', error);
+            this.showError('Failed to load attendance data: ' + error.message);
         }
     },
 
@@ -561,18 +592,9 @@ const LecturerAttendance = {
 
             this.todayLogs = this.dedupeAttendanceLogs(await this.filterLecturerAttendanceLogs(data || []));
 
-            const session = this.getSelectedSession();
-            if (session) {
-                const register = await this.getSessionAttendanceRegister(session, false);
-                this.sessionRegister = register;
-                const sessionRows = this.sessionRegisterToLogs(register, session);
-                this.renderFilteredToday(sessionRows);
-                this.updateRegisterStats(register);
-            } else {
-                this.sessionRegister = null;
-                this.renderFilteredToday(this.todayLogs);
-                this.updateStats(this.todayLogs);
-            }
+            // Note: Rendering is now handled centrally by applyFilters() after all data loads.
+            // We no longer render here to avoid the register overriding the filter view.
+            
             this.updateProgramBadge();
         } catch (error) {
             console.error('❌ loadTodayAttendance:', error);
@@ -1308,7 +1330,7 @@ const LecturerAttendance = {
         const selectedSession = this.getSelectedSession();
         const allLogs = this.getFilterableAttendanceLogs(selectedSession, rangeFrom, rangeTo);
 
-        const filtered = allLogs.filter(log => {
+        let filtered = allLogs.filter(log => {
             const date = this.getAttendanceDate(log);
             const unit = String(log.unit_name || log.target_name || '').trim();
             const block = String(log.block || '').trim();
@@ -1328,6 +1350,20 @@ const LecturerAttendance = {
             }
             return true;
         });
+
+        // SAFETY NET: If a specific session is selected but its register is empty,
+        // and the global logs have data for the date range, fall back to showing
+        // the global logs rather than an empty table.
+        if (filtered.length === 0 && allLogs.length > 0 && selectedSession) {
+            console.warn("⚠️ Filtered result is empty. Showing all records for the selected date range.");
+            filtered = allLogs.filter(log => {
+                const date = this.getAttendanceDate(log);
+                if (rangeFrom && (!date || date < rangeFrom)) return false;
+                if (rangeTo && (!date || date > rangeTo)) return false;
+                return true;
+            });
+            this.showNotification("No records found for the selected session. Showing all records for this date.", "info");
+        }
 
         filtered.sort((a, b) => String(b.check_in_time || b.created_at || '').localeCompare(String(a.check_in_time || a.created_at || '')));
         this.filteredTodayLogs = filtered.filter(l => this.getAttendanceDate(l) === this.getNairobiDateString());
@@ -2522,9 +2558,8 @@ const LecturerAttendance = {
             if (updateError) throw new Error(updateError.message);
 
             this.showNotification('✅ Verified!', 'success');
-            await this.loadTodayAttendance();
-            await this.loadPastAttendance();
-            await this.loadAttendanceStats();
+            await this.loadAllAttendance();
+            this.applyFilters();
         } catch (error) {
             console.error('❌ verifyAttendance:', error);
             this.showNotification('Failed: ' + error.message, 'error');
