@@ -790,6 +790,95 @@ function copySerial(serial) {
 }
 
 // ============================================================
+// 🆕 DOWNLOAD CERTIFICATE AS PDF (via print dialog)
+// Added to fix: Uncaught ReferenceError: downloadCertificatePDF is not defined
+// ============================================================
+
+function downloadCertificatePDF(studentId) {
+    try {
+        // Find the certificate for this student
+        const cert = certificates.find(c => c.studentId === studentId);
+        if (!cert) {
+            if (typeof showNotification === 'function') {
+                showNotification('❌ No certificate found for this student', 'error');
+            } else {
+                alert('No certificate found for this student');
+            }
+            return;
+        }
+
+        // Build a printable HTML document
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Certificate - ${cert.studentName}</title>
+    <style>
+        body { font-family: Georgia, 'Times New Roman', serif; padding: 60px; text-align: center; background: #fff; margin: 0; }
+        .cert { border: 8px double #4C1D95; padding: 40px 30px; max-width: 800px; margin: 0 auto; box-sizing: border-box; }
+        h1 { color: #4C1D95; font-size: 36px; margin: 0 0 8px; letter-spacing: 2px; }
+        h2 { color: #1e293b; font-size: 28px; margin: 20px 0 8px; }
+        .meta { color: #475569; font-size: 15px; margin: 4px 0; }
+        .serial { font-family: monospace; color: #4C1D95; font-weight: 700; margin-top: 20px; }
+        .footer { margin-top: 40px; font-size: 13px; color: #94a3b8; }
+        @media print { body { padding: 0; } .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="cert">
+        <h1>NCHSM</h1>
+        <p class="meta">Nakuru College of Health Sciences and Management</p>
+        <h2>Certificate of Completion</h2>
+        <p class="meta">This is to certify that</p>
+        <h2 style="color:#1e293b;">${cert.studentName}</h2>
+        <p class="meta">has successfully completed the programme</p>
+        <h2 style="font-size:22px;">${cert.program}</h2>
+        <p class="meta">Average Score: <strong>${cert.avgScore}%</strong> &nbsp;•&nbsp; Grade: <strong>${cert.grade}</strong> (${cert.rating})</p>
+        <p class="meta">Issued: ${cert.issueDate} &nbsp;•&nbsp; Expires: ${cert.expiryDate}</p>
+        <p class="serial">Serial No: ${cert.serialNumber}</p>
+        <p class="serial" style="font-size:11px;">Verify online: ${cert.verificationUrl}</p>
+        <div class="footer">
+            <p>This certificate is issued by NCHSM. Verification is available online.</p>
+        </div>
+    </div>
+    <script>
+        window.onload = function() { setTimeout(function(){ window.print(); }, 300); };
+    <\/script>
+</body>
+</html>`;
+
+        const win = window.open('', '_blank');
+        if (!win) {
+            if (typeof showNotification === 'function') {
+                showNotification('❌ Pop-up blocked. Please allow pop-ups.', 'error');
+            } else {
+                alert('Pop-up blocked. Please allow pop-ups to download the certificate.');
+            }
+            return;
+        }
+        win.document.write(html);
+        win.document.close();
+
+        // Mark printed
+        cert.printed = true;
+        cert.printedAt = new Date().toISOString();
+        try {
+            localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
+        } catch (e) {}
+
+        if (typeof showNotification === 'function') {
+            showNotification('📄 Certificate ready — save as PDF from the print dialog', 'success');
+        }
+    } catch (err) {
+        console.error('downloadCertificatePDF error:', err);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Failed: ' + err.message, 'error');
+        }
+    }
+}
+
+// ============================================================
 // NOTIFICATION FALLBACKS
 // ============================================================
 
