@@ -2315,10 +2315,10 @@ function exportTableToCSV(tableId, filename) {
 // ============================================
 
 if (typeof window.SETTINGS_TABLE === 'undefined') {
-    window.SETTINGS_TABLE = 'settings';
+    window.SETTINGS_TABLE = 'app_settings';              // ✅ correct
 }
 if (typeof window.MESSAGE_KEY === 'undefined') {
-    window.MESSAGE_KEY = 'student_welcome_message';
+    window.MESSAGE_KEY = 'student_welcome';              // ✅ correct
 }
 if (typeof window.CACHE_DURATION === 'undefined') {
     window.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
