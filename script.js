@@ -4148,21 +4148,36 @@ if (typeof window.updateCharts === 'undefined') {
                 return;
             }
             
-            // Destroy existing chart instances
+            // ===== DESTROY EXISTING CHART INSTANCES (SAFE) =====
+            // 1. Variable-based cleanup (fast path)
             if (window.blockChartInstance) {
-                window.blockChartInstance.destroy();
+                try { window.blockChartInstance.destroy(); } catch (e) {}
                 window.blockChartInstance = null;
             }
             if (window.genderChartInstance) {
-                window.genderChartInstance.destroy();
+                try { window.genderChartInstance.destroy(); } catch (e) {}
                 window.genderChartInstance = null;
             }
             if (window.programChartInstance) {
-                window.programChartInstance.destroy();
+                try { window.programChartInstance.destroy(); } catch (e) {}
                 window.programChartInstance = null;
             }
             
-            // Enrolment by Block Chart
+            // 2. Registry sweep — catches any Chart still bound to our canvases
+            //    (e.g. created by an earlier script/version, or a canvas reuse).
+            if (typeof Chart !== 'undefined' && typeof Chart.getChart === 'function') {
+                ['enrolmentBlockChart', 'genderDistributionChart', 'programBreakdownChart']
+                    .forEach(id => {
+                        const canvas = document.getElementById(id);
+                        if (!canvas) return;
+                        const existing = Chart.getChart(canvas);
+                        if (existing) {
+                            try { existing.destroy(); } catch (e) {}
+                        }
+                    });
+            }
+            
+            // ===== ENROLMENT BY BLOCK CHART =====
             const blockData = {};
             students.forEach(s => {
                 const block = s.block || 'Unknown';
@@ -4199,7 +4214,7 @@ if (typeof window.updateCharts === 'undefined') {
                 });
             }
             
-            // Gender Distribution Chart
+            // ===== GENDER DISTRIBUTION CHART =====
             const maleCount = students.filter(s => s.gender === 'M' || s.gender === 'Male').length;
             const femaleCount = students.filter(s => s.gender === 'F' || s.gender === 'Female').length;
             
@@ -4234,7 +4249,7 @@ if (typeof window.updateCharts === 'undefined') {
                 });
             }
             
-            // Program Breakdown Chart
+            // ===== PROGRAM BREAKDOWN CHART =====
             const krchnCount = students.filter(s => s.program === 'KRCHN').length;
             const tvetCount = students.filter(s => window.isTVETProgram(s.program)).length;
             
