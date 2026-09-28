@@ -2843,20 +2843,20 @@ if (typeof window.loadDashboardFast === 'undefined') {
                         .eq('status', 'pending');
                     return count || 0;
                 }),
-                getCachedOrFetch('pendingMarks', async () => {
-                    const { count } = await client
-                        .from('exam_grades')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('status', 'pending');
-                    return count || 0;
-                }),
-                getCachedOrFetch('publishedMarks', async () => {
-                    const { count } = await client
-                        .from('exam_grades')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('status', 'published');
-                    return count || 0;
-                })
+               getCachedOrFetch('pendingMarks', async () => {
+    const { count } = await client
+        .from('exam_grades')
+        .select('*', { count: 'exact', head: true })
+        .eq('result_status', 'PENDING_REVIEW');
+    return count || 0;
+}),
+getCachedOrFetch('publishedMarks', async () => {
+    const { count } = await client
+        .from('exam_grades')
+        .select('*', { count: 'exact', head: true })
+        .eq('published', true);
+    return count || 0;
+})
             ]);
             
             window.safeSetText('dashboardTotalUnits', totalUnits);
@@ -19316,47 +19316,49 @@ async function loadWelcomeMessage() {
             .from('app_settings')
             .select('*')
             .eq('key', 'student_welcome')
-            .single();
-        
-        if (error && error.code !== 'PGRST116') {
+            .maybeSingle();
+
+        if (error) {
             console.error('Error loading welcome message:', error);
             return;
         }
-        
+
         const editor = document.getElementById('welcome-message-editor');
         const preview = document.getElementById('live-preview');
         const wordCount = document.getElementById('welcome_word_count');
         const lastUpdated = document.getElementById('welcome_last_updated');
         const version = document.getElementById('welcome_version');
-        
+
         if (data) {
             const content = data.value || '';
+
             if (editor) editor.value = content;
+
             if (preview) {
                 preview.innerHTML = content || '<p style="color: #94a3b8; text-align: center;">No welcome message set. Use the editor above to create one.</p>';
             }
-            
+
             if (wordCount) {
                 const words = content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(w => w.length > 0).length;
                 wordCount.textContent = words;
             }
-            
-            if (lastUpdated) {
+
+            if (lastUpdated && data.updated_at) {
                 const updated = new Date(data.updated_at);
                 lastUpdated.textContent = updated.toLocaleString();
             }
-            
+
             if (version) {
-                const v = data.version || 1;
-                version.textContent = `v${v}.0`;
+                // app_settings has no `version` column — show v1.0 as default
+                version.textContent = 'v1.0';
             }
-            
+
             const status = document.getElementById('welcome_status');
             if (status) {
                 status.innerHTML = '<i class="fas fa-check-circle"></i> Published';
                 status.style.color = '#059669';
             }
-            
+
             const target = document.getElementById('selectedWelcomeTarget');
             if (target) target.textContent = 'All Students';
         }
