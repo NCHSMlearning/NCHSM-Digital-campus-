@@ -2092,41 +2092,96 @@
         }
     };
 
-    function submissionPayloadFromForm(status = 'draft') {
-        const type = submissionValue('submissionReportType');
-        const unit = submissionValue('submissionReportUnit');
-        const block = submissionValue('submissionReportClass') || 'all';
-        const recipient = submissionValue('submissionRecipient');
+   async function submissionPayloadFromForm(status = 'draft') {
+    const type = submissionValue('submissionReportType');
+    const unit = submissionValue('submissionReportUnit');
+    const block = submissionValue('submissionReportClass') || 'all';
+    const recipient = submissionValue('submissionRecipient');
 
-        return {
-            lecturer_id: currentLecturerIdSync(),
-            lecturer_email: currentLecturerEmailSync(),
-            lecturer_name:
-                window.currentUser?.full_name ||
-                window.currentUser?.name ||
-                window.me_currentLecturer?.profile?.full_name ||
-                window.me_currentLecturer?.staff?.full_name ||
-                'Lecturer',
-            report_type: type,
-            report_category: submissionCategoryLabel(type),
-            document_type: submissionValue('submissionDocumentType') || null,
-            document_title: submissionValue('submissionTitle'),
-            unit_name: unit,
-            class_block: block,
-            academic_year: submissionValue('submissionAcademicYear') || currentAcademicYear(),
-            week_number: Number(submissionValue('submissionWeekNumber')) || null,
-            period_start: submissionValue('submissionPeriodStart') || null,
-            period_end: submissionValue('submissionPeriodEnd') || null,
-            recipient_role: recipient,
-            summary: submissionValue('submissionSummary'),
-            include_attendance: !!submissionEl('submissionIncludeAttendance')?.checked,
-            include_grades: !!submissionEl('submissionIncludeGrades')?.checked,
-            include_activities: !!submissionEl('submissionIncludeActivities')?.checked,
-            include_challenges: !!submissionEl('submissionIncludeChallenges')?.checked,
-            status,
-            updated_at: new Date().toISOString()
-        };
+    /* Pull subject_code from the selected unit <option data-code="..."> */
+    let subjectCode = null;
+    try {
+        const opt = document.querySelector(
+            `#submissionReportUnit option[value="${CSS.escape(unit)}"]`
+        );
+        subjectCode = opt?.dataset?.code || null;
+    } catch (_) {}
+
+    /* Resolve the auth UUID — this is what the RLS policy checks */
+    let authUuid =
+        window.currentUser?.id ||
+        window.me_currentLecturer?.profile?.user_id ||
+        null;
+
+    if (!authUuid) {
+        const supabase = db();
+        if (supabase) {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                authUuid = user?.id || null;
+            } catch (_) {}
+        }
     }
+
+    if (!authUuid) {
+        console.error('[Reports] No auth UUID — insert will fail RLS');
+    }
+
+    console.log('[Reports] payload identity:',
+        { authUuid, staffId: currentLecturerIdSync() });
+
+    const title = submissionValue('submissionTitle');
+
+    return {
+        /* identity — RLS needs lecturer_user_id = auth.uid() */
+        lecturer_user_id: authUuid,
+        lecturer_id: currentLecturerIdSync(),
+        lecturer_email: currentLecturerEmailSync(),
+        lecturer_name:
+            window.currentUser?.full_name ||
+            window.currentUser?.name ||
+            window.me_currentLecturer?.profile?.full_name ||
+            window.me_currentLecturer?.staff?.full_name ||
+            'Lecturer',
+
+        /* classification */
+        report_type: type,
+        report_category: submissionCategoryLabel(type),
+        document_type: submissionValue('submissionDocumentType') || null,
+
+        /* DB has "title" — send BOTH so the admin view also sees it */
+        title: title,
+        document_title: title,
+
+        summary: submissionValue('submissionSummary'),
+
+        /* academic context */
+        unit_name: unit,
+        subject_code: subjectCode,
+        program: currentProgram(),
+
+        /* DB has "block" — send BOTH */
+        block: block,
+        class_block: block,
+
+        academic_year: submissionValue('submissionAcademicYear') || currentAcademicYear(),
+        week_number: Number(submissionValue('submissionWeekNumber')) || null,
+        period_start: submissionValue('submissionPeriodStart') || null,
+        period_end: submissionValue('submissionPeriodEnd') || null,
+
+        /* recipient + options */
+        recipient_role: recipient,
+        include_attendance: !!submissionEl('submissionIncludeAttendance')?.checked,
+        include_grades: !!submissionEl('submissionIncludeGrades')?.checked,
+        include_activities: !!submissionEl('submissionIncludeActivities')?.checked,
+        include_challenges: !!submissionEl('submissionIncludeChallenges')?.checked,
+
+        /* lifecycle */
+        status,
+        submitted_at: status === 'submitted' ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString()
+    };
+}
 
     function validateSubmissionPayload(payload) {
         if (!payload.lecturer_id) return 'Lecturer session is not ready.';
