@@ -659,6 +659,186 @@ window.LecturerOnlineLearning = (() => {
         return {auto:autoClamped,final:finalClamped,max};
     }
 
+    // ============================================================
+    // LAST GRADING STATE — shows the most recently saved marks/state
+    // when a lecturer opens Review. This does not change grading data.
+    // ============================================================
+    function renderLastGradingSummary(s, assignment){
+        const host=$('olLastGradingSummary');
+        if(!host || !s)return;
+
+        const report=(s.grading_report && typeof s.grading_report==='object') ? s.grading_report : {};
+        const max=Number(
+            report.max ??
+            report.max_marks ??
+            s.max_marks ??
+            assignment?.max_marks ??
+            100
+        ) || 100;
+
+        const finalRaw=report.final ?? report.marks_awarded ?? s.final_mark ?? s.lecturer_final_mark ?? s.marks_obtained;
+        const autoRaw=report.automatic ?? report.automatic_marks ?? report.marks_obtained ?? s.automatic_marks ?? s.auto_mark;
+        const final=Number(finalRaw);
+        const automatic=Number(autoRaw);
+
+        const stage=s.result_released
+            ? 'Released'
+            : s.review_required
+                ? 'Returned for Revision'
+                : (Number.isFinite(final) || report.rubric_grades?.length)
+                    ? 'Grading Saved'
+                    : 'Not Yet Graded';
+
+        const stageIcon=s.result_released?'fa-circle-check':s.review_required?'fa-rotate-left':(stage==='Grading Saved'?'fa-floppy-disk':'fa-hourglass-start');
+        const timestamp=s.graded_at || s.last_graded_at || s.updated_at || s.created_at || s.submitted_at;
+        const criteria=Array.isArray(report.rubric_grades)?report.rubric_grades:[];
+        const savedCriteria=criteria.filter(g=>g && (g.final_mark!==undefined || g.automatic_mark!==undefined)).length;
+
+        const markText=Number.isFinite(final) ? `${final}/${max}` : '—';
+        const autoText=Number.isFinite(automatic) ? `${automatic}/${max}` : '—';
+
+        host.innerHTML=`
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.04em">
+                <i class="fas ${stageIcon}"></i> Last grading state
+              </div>
+              <div style="font-size:14px;font-weight:800;color:#17324d;margin-top:3px">${esc(stage)}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span style="background:#f1f5f9;border-radius:10px;padding:7px 10px;font-size:11px">
+                <b>Final:</b> ${esc(markText)}
+              </span>
+              <span style="background:#f1f5f9;border-radius:10px;padding:7px 10px;font-size:11px">
+                <b>Automatic:</b> ${esc(autoText)}
+              </span>
+              ${savedCriteria?`<span style="background:#f1f5f9;border-radius:10px;padding:7px 10px;font-size:11px"><b>Criteria saved:</b> ${savedCriteria}/${criteria.length}</span>`:''}
+            </div>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:7px">
+            ${timestamp?`Last grading update: <b>${esc(fmtDate(timestamp))}</b>`:'Last grading update: <b>Not recorded</b>'}
+          </div>`;
+    }
+
+    // ============================================================
+    // ASSIGNMENT DOCUMENT COMMENTS — same interaction pattern as
+    // Research Papers: select text, add a comment, highlight it,
+    // review comments and resolve them. Stored locally per submission
+    // just like the current Research commenting workflow.
+    // ============================================================
+    function assignmentCommentKey(s){return 'nchsm_lecturer_assignment_'+String(s?.id||'')+':comments'}
+    function assignmentStoredComments(s){
+        try{
+            const x=JSON.parse(localStorage.getItem(assignmentCommentKey(s))||'[]');
+            return Array.isArray(x)?x:[];
+        }catch(e){return []}
+    }
+    function assignmentSaveComments(s,list){
+        try{localStorage.setItem(assignmentCommentKey(s),JSON.stringify(list||[]))}catch(e){}
+    }
+    function assignmentCommentId(){
+        return 'ac_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+    }
+    function assignmentGetEditor(){
+        return document.querySelector('#olDocumentPreview .ol-assignment-editor[contenteditable="true"]');
+    }
+    function assignmentSaveSelection(){
+        const editor=assignmentGetEditor(),sel=window.getSelection();
+        if(!editor||!sel||!sel.rangeCount)return null;
+        const range=sel.getRangeAt(0);
+        if(!editor.contains(range.commonAncestorContainer))return null;
+        return range.cloneRange();
+    }
+    function assignmentSelectionText(){
+        const editor=assignmentGetEditor(),sel=window.getSelection();
+        if(!editor||!sel||!sel.rangeCount)return '';
+        const range=sel.getRangeAt(0);
+        return editor.contains(range.commonAncestorContainer)?String(sel.toString()||'').trim():'';
+    }
+    function assignmentRefreshCommentMarks(s){
+        const editor=assignmentGetEditor();
+        if(!editor)return;
+        editor.querySelectorAll('[data-ol-assignment-comment]').forEach(n=>{
+            const parent=n.parentNode;
+            while(n.firstChild)parent.insertBefore(n.firstChild,n);
+            parent.removeChild(n);
+        });
+        assignmentStoredComments(s).forEach(c=>{
+            if(!c.text)return;
+            const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);
+            let node,found=null;
+            while(node=walker.nextNode()){
+                const at=String(node.nodeValue||'').indexOf(c.text);
+                if(at>=0){found={node,at};break;}
+            }
+            if(!found)return;
+            const range=document.createRange();
+            range.setStart(found.node,found.at);
+            range.setEnd(found.node,found.at+c.text.length);
+            const mark=document.createElement('mark');
+            mark.dataset.olAssignmentComment=c.id;
+            mark.style.background='#fff1a8';
+            mark.style.borderBottom='2px solid #e3ad00';
+            mark.title=(c.author_name||'Lecturer')+': '+c.comment;
+            try{range.surroundContents(mark)}catch(e){}
+        });
+    }
+    function assignmentRenderComments(s){
+        const panel=$('olAssignmentCommentsList');
+        if(!panel)return;
+        const comments=assignmentStoredComments(s);
+        panel.innerHTML=comments.length ? comments.map(c=>`
+          <div style="border:1px solid #dbe6ef;border-radius:9px;padding:9px;margin-bottom:7px;background:#fbfdff;font-size:11px">
+            <strong style="display:block;color:#18304d">${esc(c.author_name||'Lecturer')}</strong>
+            <small style="display:block;color:#94a3b8;margin:2px 0 6px">${esc(c.created_at?new Date(c.created_at).toLocaleString():'')}</small>
+            <div style="background:#fffaf0;border-left:3px solid #f5c542;padding:6px;margin-bottom:6px">“${esc(c.text||'')}”</div>
+            <div style="color:#475569;line-height:1.5">${esc(c.comment||'')}</div>
+            <button type="button" class="ol-btn ol-muted" style="margin-top:7px;font-size:10px" data-ol-resolve-comment="${esc(c.id)}">Resolve</button>
+          </div>`).join('') :
+          '<div class="ol-empty" style="padding:15px 8px;font-size:11px">No comments yet. Select text in the document and click <b>Comment</b>.</div>';
+
+        panel.querySelectorAll('[data-ol-resolve-comment]').forEach(btn=>{
+            btn.onclick=()=>{
+                const list=assignmentStoredComments(s).filter(c=>String(c.id)!==String(btn.dataset.olResolveComment));
+                assignmentSaveComments(s,list);
+                assignmentRefreshCommentMarks(s);
+                assignmentRenderComments(s);
+            };
+        });
+    }
+    function assignmentAddComment(s){
+        const editor=assignmentGetEditor();
+        const range=assignmentSaveSelection();
+        const text=assignmentSelectionText();
+        if(!editor||!range||!text)return notify('Select text in the student document first.','warning');
+        const comment=prompt('Add a comment for the selected text:');
+        if(!comment||!comment.trim())return;
+        const profile=state.profile||{};
+        const item={
+            id:assignmentCommentId(),
+            text,
+            comment:comment.trim(),
+            author_name:profile.full_name||profile.name||state.userEmail||'Lecturer',
+            created_at:new Date().toISOString()
+        };
+        const list=assignmentStoredComments(s);
+        list.push(item);
+        assignmentSaveComments(s,list);
+        assignmentRefreshCommentMarks(s);
+        assignmentRenderComments(s);
+    }
+    function assignmentInstallCommentTools(s){
+        const editor=assignmentGetEditor();
+        if(!editor)return;
+        if(editor.dataset.commentToolsInstalled!=='1'){
+            editor.dataset.commentToolsInstalled='1';
+            editor.addEventListener('mouseup',()=>{});
+            editor.addEventListener('keyup',()=>{});
+        }
+        assignmentRefreshCommentMarks(s);
+        assignmentRenderComments(s);
+    }
+
     async function loadSubmissionDocumentIntoWorkspace(s){
         const box=$('olDocumentPreview');
         if(!box || !s?.file_path){
@@ -674,17 +854,50 @@ window.LecturerOnlineLearning = (() => {
                 $('olDownloadDocumentBtn').onclick=()=>{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click();};
             }
             if(ext==='pdf'){
-                box.innerHTML=`<iframe class="ol-document-frame" style="width:100%;height:620px;border:0" src="${esc(url)}" title="Student submission"></iframe>`;
+                box.innerHTML=`<div style="border-bottom:1px solid #e2e8f0;padding:8px;background:#fff">
+                    <span style="font-size:11px;color:#64748b"><i class="fas fa-info-circle"></i> PDF preview is available here. Text comments are currently enabled for DOC/DOCX and text-based submissions.</span>
+                  </div>
+                  <iframe class="ol-document-frame" style="width:100%;height:620px;border:0" src="${esc(url)}" title="Student submission"></iframe>`;
             }else if(ext==='docx'||ext==='doc'){
                 const blob=await (await fetch(url)).blob();
                 await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');
                 const out=await window.mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});
-                box.innerHTML=`<article class="ol-docx" style="max-width:850px;margin:0 auto;padding:38px 48px;line-height:1.65;background:#fff;min-height:100%">${out.value||'<p>No readable text found.</p>'}</article>`;
+                box.innerHTML=`<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+                    <div style="flex:1 1 680px;min-width:0">
+                      <div style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e2e8f0;padding:8px;display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+                        <button type="button" class="ol-btn ol-warning" id="olAssignmentCommentBtn"><i class="fas fa-comment-dots"></i> Comment</button>
+                        <span style="font-size:11px;color:#64748b">Select text in the document, then click Comment.</span>
+                      </div>
+                      <article class="ol-docx ol-assignment-editor" contenteditable="true" spellcheck="false" style="max-width:850px;margin:0 auto;padding:38px 48px;line-height:1.65;background:#fff;min-height:100%">${out.value||'<p>No readable text found.</p>'}</article>
+                    </div>
+                    <aside style="flex:0 0 300px;max-width:100%;border:1px solid #e2e8f0;border-radius:12px;background:#fff;padding:10px;position:sticky;top:10px;max-height:620px;overflow:auto">
+                      <div style="font-weight:800;color:#18304d;margin-bottom:8px"><i class="fas fa-comments"></i> Document Comments</div>
+                      <div id="olAssignmentCommentsList"></div>
+                    </aside>
+                  </div>`;
+                const commentBtn=$('olAssignmentCommentBtn');
+                if(commentBtn) commentBtn.onclick=()=>assignmentAddComment(s);
                 gradingState.documentText=await window.mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()}).then(r=>r.value||'');
+                assignmentInstallCommentTools(s);
             }else if(['txt','md','csv'].includes(ext)){
                 const text=await (await fetch(url)).text();
                 gradingState.documentText=text;
-                box.innerHTML=`<pre style="white-space:pre-wrap;background:#fff;padding:25px;max-width:900px;margin:0 auto;min-height:100%;line-height:1.6">${esc(text)}</pre>`;
+                box.innerHTML=`<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+                  <div style="flex:1 1 680px;min-width:0">
+                    <div style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e2e8f0;padding:8px">
+                      <button type="button" class="ol-btn ol-warning" id="olAssignmentCommentBtn"><i class="fas fa-comment-dots"></i> Comment</button>
+                      <span style="font-size:11px;color:#64748b;margin-left:6px">Select text, then comment.</span>
+                    </div>
+                    <article class="ol-assignment-editor" contenteditable="true" style="white-space:pre-wrap;background:#fff;padding:25px;max-width:900px;margin:0 auto;min-height:100%;line-height:1.6">${esc(text)}</article>
+                  </div>
+                  <aside style="flex:0 0 300px;max-width:100%;border:1px solid #e2e8f0;border-radius:12px;background:#fff;padding:10px;position:sticky;top:10px;max-height:620px;overflow:auto">
+                    <div style="font-weight:800;color:#18304d;margin-bottom:8px"><i class="fas fa-comments"></i> Document Comments</div>
+                    <div id="olAssignmentCommentsList"></div>
+                  </aside>
+                </div>`;
+                const commentBtn=$('olAssignmentCommentBtn');
+                if(commentBtn) commentBtn.onclick=()=>assignmentAddComment(s);
+                assignmentInstallCommentTools(s);
             }else if(['png','jpg','jpeg','gif','webp'].includes(ext)){
                 box.innerHTML=`<div style="padding:20px;text-align:center"><img src="${esc(url)}" style="max-width:100%;max-height:700px;object-fit:contain"></div>`;
             }else{
@@ -1034,6 +1247,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
                 gradingState.automaticReport=s.grading_report;
             }
             renderRubricNavigation();renderSelectedCriterion();renderGradingTotals();
+            renderLastGradingSummary(s,assignment);
             $('olSubmissionModal').dataset.submissionId=id;
             $('olSubmissionModal').style.display='flex';
             await loadSubmissionDocumentIntoWorkspace(s);
