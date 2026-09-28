@@ -45,8 +45,8 @@ window.LecturerOnlineLearning = (() => {
         const body=$('olAssignmentsTable'); if(!body)return;
         const q=($('olSearch')?.value||'').toLowerCase(), f=$('olStatusFilter')?.value||'';
         const rows=state.assignments.filter(a=>(!f||(f==='published'?a.published:!a.published)) && (!q||`${a.title} ${a.unit_code} ${a.unit_name}`.toLowerCase().includes(q)));
-        if(!rows.length){body.innerHTML='<tr><td colspan="7" class="ol-empty">No assignments found. Click <b>Create Assignment</b> to create the first one.</td></tr>';return;}
-        body.innerHTML=rows.map(a=>`<tr><td><b>${esc(a.title)}</b><div style="font-size:11px;color:#94a3b8">${esc(a.assignment_type||'assignment')}</div></td><td>${esc(a.unit_code)}<div style="font-size:11px;color:#64748b">${esc(a.unit_name||'')}</div></td><td>${esc(a.program||'Any')}<div style="font-size:11px;color:#64748b">Intake ${esc(a.intake||a.intake_year||'Any')} · ${esc(a.block||'Any block')}</div></td><td>${fmtDate(a.due_at)}</td><td><span id="olqcount-${a.id}">—</span></td><td>${statusBadge(a)}</td><td><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="ol-btn ol-muted" onclick="LecturerOnlineLearning.editAssignment('${a.id}')">Edit</button>${a.published?`<button class="ol-btn ol-warning" onclick="LecturerOnlineLearning.togglePublish('${a.id}',false)">Unpublish</button>`:`<button class="ol-btn ol-success" onclick="LecturerOnlineLearning.togglePublish('${a.id}',true)">Publish</button>`}<button class="ol-btn ol-danger" onclick="LecturerOnlineLearning.deleteAssignment('${a.id}')">Delete</button></div></td></tr>`).join('');
+        if(!rows.length){body.innerHTML='<tr><td colspan="8" class="ol-empty">No assignments found. Click <b>Create Assignment</b> to create the first one.</td></tr>';return;}
+        body.innerHTML=rows.map(a=>`<tr><td><b>${esc(a.title)}</b><div style="font-size:11px;color:#94a3b8">${esc(a.assignment_type||'assignment')}</div></td><td>${esc(a.unit_code)}<div style="font-size:11px;color:#64748b">${esc(a.unit_name||'')}</div></td><td>${esc(a.program||'Any')}<div style="font-size:11px;color:#64748b">Intake ${esc(a.intake||a.intake_year||'Any')} · ${esc(a.block||'Any block')}</div></td><td>${fmtDate(a.due_at)}</td><td><span id="olqcount-${a.id}">—</span></td><td>${esc(a.grading_mode==='marking_key'?'Marking Key':'Manual')}</td><td>${statusBadge(a)}</td><td><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="ol-btn ol-muted" onclick="LecturerOnlineLearning.editAssignment('${a.id}')">Edit</button>${a.published?`<button class="ol-btn ol-warning" onclick="LecturerOnlineLearning.togglePublish('${a.id}',false)">Unpublish</button>`:`<button class="ol-btn ol-success" onclick="LecturerOnlineLearning.togglePublish('${a.id}',true)">Publish</button>`}<button class="ol-btn ol-danger" onclick="LecturerOnlineLearning.deleteAssignment('${a.id}')">Delete</button></div></td></tr>`).join('');
         rows.forEach(a=>loadQuestionCount(a.id));
     }
     async function loadQuestionCount(id){ const db=client(); const {count}=await db.from('online_assignment_questions').select('*',{count:'exact',head:true}).eq('assignment_id',id); const el=$(`olqcount-${id}`); if(el)el.textContent=count??0; }
@@ -819,8 +819,114 @@ window.LecturerOnlineLearning = (() => {
         });
         if(r.error)throw r.error;
         await db.from('online_submissions').update({review_required:true,status:'submitted',feedback:reason}).eq('id',s.id);
-        notify('Submission returned for revision.','success');
+        const emailSent=await sendAssignmentCorrectionNotification(s,gradingState.assignment,reason);
+        if(emailSent) notify('Submission returned for revision. Student correction notification sent.','success');
+        else notify('Submission returned for revision, but the student notification could not be sent.','warning');
         closeModal('olSubmissionModal');await loadSubmissions();
+    }
+
+    // ============================================================
+    // 📧 ASSIGNMENT RESULT NOTIFICATION
+    // Notification only — no marks, percentages or grades are sent.
+    // Uses the same Supabase send-email service as Research.
+    // ============================================================
+    async function sendAssignmentResultNotification(submission, assignment){
+        try{
+            const db=client();
+            if(!db) return false;
+
+            let student=null;
+            if(submission?.student_id){
+                const lookup=await db.from('consolidated_user_profiles_table')
+                    .select('user_id,full_name,student_id,admission_number,email,program,intake_year,current_block,block')
+                    .eq('user_id',submission.student_id)
+                    .maybeSingle();
+                if(!lookup.error && lookup.data) student=lookup.data;
+            }
+
+            if(!student?.email){
+                console.warn('⚠️ No email found for assignment student:',submission?.student_id);
+                return false;
+            }
+
+            const name=esc(student.full_name||student.admission_number||student.student_id||'Student');
+            const title=esc(assignment?.title||submission?.online_assignments?.title||'Online Assignment');
+            const unit=esc(assignment?.unit_code||submission?.online_assignments?.unit_code||'');
+
+            const html=`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Assignment Graded</title>
+<style>
+body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8;color:#243447}.container{max-width:580px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.1)}
+.header{background:linear-gradient(135deg,#0A3D62,#1a5276);padding:30px 35px;text-align:center;color:#fff}.header h1{margin:0;font-size:24px}.header p{margin:4px 0 0;opacity:.82}.body{padding:30px 35px}.notice{background:#ECFDF5;border:2px solid #10B981;border-radius:16px;padding:22px;text-align:center;margin:18px 0}.notice .icon{font-size:2.6rem;display:block;margin-bottom:8px}.notice .message{font-size:1.08rem;color:#065F46;font-weight:700}.info{background:#f8fafc;border-radius:14px;padding:20px 24px;margin:18px 0;border-left:4px solid #0A3D62}.info p{margin:7px 0;font-size:14px}.label{color:#64748b;font-weight:500}.value{color:#0A3D62;font-weight:650}.btn{display:inline-block;background:linear-gradient(135deg,#0A3D62,#1a5276);color:#fff!important;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;margin:8px 0}.footer{background:#f8fafc;padding:22px 35px;text-align:center;border-top:1px solid #eef2f7}.footer p{font-size:12px;color:#8a9aa8;margin:4px 0}@media(max-width:480px){.header{padding:22px 18px}.body{padding:22px 18px}.footer{padding:18px}}
+</style></head><body><div class="container"><div class="card">
+<div class="header"><h1>📝 Assignment Graded</h1><p>Nakuru College of Health Sciences and Management</p></div>
+<div class="body"><p>Dear <strong>${name}</strong>,</p>
+<div class="notice"><span class="icon">✅</span><div class="message">Your assignment has been graded</div><div style="color:#065F46;font-size:.94rem;margin-top:6px">Your lecturer has completed the assessment and the result is now available in your student portal.</div></div>
+<div class="info"><p><span class="label">📚 Assignment</span><br><span class="value">${title}</span></p>${unit?`<p><span class="label">📖 Unit</span><br><span class="value">${unit}</span></p>`:''}</div>
+<div style="text-align:center;margin:25px 0 10px"><a class="btn" href="https://nchsm.co.ke">🔑 Open Student Portal</a></div>
+<p style="font-size:12px;color:#64748b;text-align:center">Please log in to your student portal to view the released result and any lecturer feedback.</p>
+</div><div class="footer"><p><strong>Nakuru College of Health Sciences and Management</strong></p><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p>This is an automated notification. Please do not reply to this email.</p></div>
+</div></div></body></html>`;
+
+            const result=await db.functions.invoke('send-email',{body:{
+                to:student.email,
+                subject:`📝 Assignment Graded - ${assignment?.title||submission?.online_assignments?.title||'Online Assignment'}`,
+                html,
+                from:'NCHSM Online Learning <admin@nchsm.co.ke>'
+            }});
+            if(result.error){
+                console.error('❌ Assignment result email failed:',result.error);
+                return false;
+            }
+            if(result.data && result.data.success===false){
+                console.error('❌ Assignment result email failed:',result.data.error||result.data);
+                return false;
+            }
+            console.log(`✅ Assignment graded notification sent to ${student.email}`);
+            return true;
+        }catch(error){
+            console.error('❌ Assignment result email error:',error);
+            return false;
+        }
+    }
+
+    async function sendAssignmentCorrectionNotification(submission, assignment, feedback){
+        try{
+            const db=client();
+            if(!db) return false;
+            let student=null;
+            if(submission?.student_id){
+                const lookup=await db.from('consolidated_user_profiles_table')
+                    .select('user_id,full_name,student_id,admission_number,email')
+                    .eq('user_id',submission.student_id)
+                    .maybeSingle();
+                if(!lookup.error && lookup.data) student=lookup.data;
+            }
+            if(!student?.email) return false;
+
+            const name=esc(student.full_name||student.admission_number||student.student_id||'Student');
+            const title=esc(assignment?.title||submission?.online_assignments?.title||'Online Assignment');
+            const safeFeedback=feedback?esc(feedback):'';
+
+            const html=`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Assignment Corrections Required</title>
+<style>body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8;color:#243447}.container{max-width:580px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.1)}.header{background:linear-gradient(135deg,#0A3D62,#1a5276);padding:30px 35px;text-align:center;color:#fff}.header h1{margin:0;font-size:24px}.body{padding:30px 35px}.notice{background:#FFF7ED;border:2px solid #F59E0B;border-radius:16px;padding:22px;text-align:center;margin:18px 0}.notice .icon{font-size:2.6rem;display:block}.notice .message{font-size:1.08rem;color:#92400E;font-weight:700}.info{background:#f8fafc;border-radius:14px;padding:20px 24px;margin:18px 0;border-left:4px solid #0A3D62}.info p{margin:7px 0;font-size:14px}.value{color:#0A3D62;font-weight:650}.feedback{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px;margin:18px 0}.feedback h3{margin:0 0 8px;color:#1E40AF;font-size:14px}.feedback p{margin:0;white-space:pre-wrap;line-height:1.6;font-size:14px}.btn{display:inline-block;background:linear-gradient(135deg,#0A3D62,#1a5276);color:#fff!important;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600}.footer{background:#f8fafc;padding:22px 35px;text-align:center;border-top:1px solid #eef2f7}.footer p{font-size:12px;color:#8a9aa8;margin:4px 0}</style></head><body><div class="container"><div class="card">
+<div class="header"><h1>📝 Assignment Corrections Required</h1><p>Nakuru College of Health Sciences and Management</p></div><div class="body"><p>Dear <strong>${name}</strong>,</p>
+<div class="notice"><span class="icon">📝</span><div class="message">Corrections are required</div><div style="color:#7C5A2B;font-size:.94rem;margin-top:6px">Your lecturer has reviewed your assignment and returned it for correction. Please log in to your student portal to review the feedback and make the required changes.</div></div>
+<div class="info"><p>📚 <strong>Assignment</strong><br><span class="value">${title}</span></p></div>
+${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFeedback}</p></div>`:''}
+<div style="text-align:center;margin:25px 0"><a class="btn" href="https://nchsm.co.ke">🔑 Open Student Portal</a></div>
+</div><div class="footer"><p><strong>Nakuru College of Health Sciences and Management</strong></p><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p>This is an automated notification. Please do not reply to this email.</p></div></div></div></body></html>`;
+
+            const result=await db.functions.invoke('send-email',{body:{
+                to:student.email,
+                subject:`📝 Assignment Corrections Required - ${assignment?.title||submission?.online_assignments?.title||'Online Assignment'}`,
+                html,
+                from:'NCHSM Online Learning <admin@nchsm.co.ke>'
+            }});
+            if(result.error || (result.data && result.data.success===false)) return false;
+            return true;
+        }catch(e){ console.error('Assignment correction email error:',e); return false; }
     }
 
     async function submitFinalGrade(){
@@ -847,7 +953,9 @@ window.LecturerOnlineLearning = (() => {
             p_report:report,p_model:null,p_grader_version:'SUPABASE_DETERMINISTIC_RUBRIC_ENGINE_V10',p_release:true
         });
         if(r.error)throw r.error;
-        notify('Final grade submitted and released.','success');
+        const emailSent=await sendAssignmentResultNotification(s,gradingState.assignment);
+        if(emailSent) notify('Final grade submitted and released. Student notification sent.','success');
+        else notify('Final grade submitted and released, but the student notification could not be sent.','warning');
         closeModal('olSubmissionModal');await loadSubmissions();
     }
 
