@@ -6467,28 +6467,28 @@ textarea:focus-visible{
 </section>
 
 <!-- ============================================================ -->
-<!-- 🎓 GRADUATION & CERTIFICATE MANAGEMENT WITH AUTO-GENERATION  -->
+<!-- 🎓 GRADUATION & CERTIFICATE MANAGEMENT - COMPLETE            -->
 <!-- ============================================================ -->
 <section id="certificate-management" class="tab-content" style="padding: 0 4px;">
-    
+
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 20px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 8px 40px rgba(10,61,98,0.25);">
         <div>
             <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
                 <i class="fas fa-graduation-cap" style="color: #FDB913;"></i> Graduation & Certificate Management
-                <span style="background: #10b981; font-size: 10px; padding: 2px 12px; border-radius: 20px; font-weight: 400; animation: pulse-live 2s infinite;">
+                <span style="background: #10b981; font-size: 10px; padding: 2px 12px; border-radius: 20px; font-weight: 400;">
                     <i class="fas fa-circle" style="font-size: 6px; color: #10b981; margin-right: 4px;"></i> AUTO
                 </span>
             </h2>
             <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-                <i class="fas fa-print"></i> Auto-generate transcripts & certificates for graduates — ready for printing
+                <i class="fas fa-print"></i> Auto-generate transcripts & certificates for graduates
             </p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
             <button onclick="refreshGraduationData()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
-            <button onclick="autoGenerateAllGraduationDocuments()" class="btn-action" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; box-shadow: 0 4px 16px rgba(253,185,19,0.3);">
+            <button onclick="autoGenerateAllGraduationDocuments()" class="btn-action" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
                 <i class="fas fa-robot"></i> Auto-Generate All
             </button>
             <button onclick="printAllCertificates()" class="btn-action" style="background: #059669; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
@@ -6502,36 +6502,30 @@ textarea:focus-visible{
         <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #0A3D62; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Total Students</div>
             <div style="font-size: 26px; font-weight: 700; color: #0A3D62; margin-top: 2px;" id="gradTotalStudents">0</div>
-            <div style="font-size: 11px; color: #94a3b8;">All enrolled</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Graduates</div>
             <div style="font-size: 26px; font-weight: 700; color: #10b981; margin-top: 2px;" id="gradGraduatesCount">0</div>
-            <div style="font-size: 11px; color: #94a3b8;">Ready for printing</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Pending</div>
             <div style="font-size: 26px; font-weight: 700; color: #f59e0b; margin-top: 2px;" id="gradPendingCount">0</div>
-            <div style="font-size: 11px; color: #94a3b8;">Awaiting processing</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Printed</div>
             <div style="font-size: 26px; font-weight: 700; color: #3b82f6; margin-top: 2px;" id="gradPrintedCount">0</div>
-            <div style="font-size: 11px; color: #94a3b8;">Certificates printed</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">QR Scans</div>
             <div style="font-size: 26px; font-weight: 700; color: #8b5cf6; margin-top: 2px;" id="gradScanCount">0</div>
-            <div style="font-size: 11px; color: #94a3b8;">Verifications</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #dc2626; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Not Eligible</div>
             <div style="font-size: 26px; font-weight: 700; color: #dc2626; margin-top: 2px;" id="gradNotEligibleCount">0</div>
-            <div style="font-size: 11px; color: #94a3b8;">Need to complete</div>
         </div>
     </div>
 
-    <!-- ====== MAIN CONTENT: GRADUATES LIST WITH AUTO-GENERATION ====== -->
+    <!-- ====== GRADUATION CANDIDATES ====== -->
     <div style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
             <h3 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
@@ -6539,6 +6533,8 @@ textarea:focus-visible{
                 <span style="font-size: 11px; font-weight: 400; color: #94a3b8;">Auto-generated from marks</span>
             </h3>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="gradSearchInput" placeholder="Search name or ID..." oninput="filterGradStudents()" 
+                       style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; min-width: 200px;">
                 <select id="gradProgramFilter" onchange="filterGradStudents()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
                     <option value="all">All Programs</option>
                     <option value="KRCHN">🎓 KRCHN Nursing</option>
@@ -6547,6 +6543,12 @@ textarea:focus-visible{
                     <option value="DHRIT">🔧 DHRIT</option>
                     <option value="DSL">🔧 DSL</option>
                     <option value="DSW">🔧 DSW</option>
+                </select>
+                <select id="gradIntakeFilter" onchange="filterGradStudents()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                    <option value="all">All Intakes</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
                 </select>
                 <select id="gradStatusFilter" onchange="filterGradStudents()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
                     <option value="all">All Status</option>
@@ -6560,7 +6562,6 @@ textarea:focus-visible{
             </div>
         </div>
         
-        <!-- Graduates Table -->
         <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead style="position: sticky; top: 0; z-index: 10; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
@@ -6589,7 +6590,6 @@ textarea:focus-visible{
             </table>
         </div>
         
-        <!-- Bulk Actions -->
         <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid #e5e7eb;">
             <button onclick="generateSelectedTranscripts()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-file-pdf"></i> Generate Transcripts
@@ -6605,7 +6605,6 @@ textarea:focus-visible{
             </button>
         </div>
         
-        <!-- Progress Bar -->
         <div id="gradProgress" style="display: none; margin-top: 12px;">
             <div style="display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-bottom: 4px;">
                 <span id="gradProgressLabel">Processing...</span>
@@ -6618,9 +6617,66 @@ textarea:focus-visible{
         </div>
     </div>
 
-    <!-- ====== QR SCANNER ====== -->
+    <!-- ====== RECENT CERTIFICATES ====== -->
+    <div style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-certificate" style="color: #10b981;"></i> Recently Issued Certificates
+                <span style="font-size: 11px; font-weight: 400; color: #94a3b8;">Last 20 issued</span>
+            </h3>
+            <button onclick="exportCertificateCSV()" class="btn-action" style="background: #f59e0b; color: #0A3D62; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-file-csv"></i> Export Certificates
+            </button>
+        </div>
+        <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="position: sticky; top: 0; z-index: 10; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                    <tr>
+                        <th style="padding: 10px 12px; text-align: left; width: 40px;">#</th>
+                        <th style="padding: 10px 12px; text-align: left;">Student</th>
+                        <th style="padding: 10px 12px; text-align: left;">Program</th>
+                        <th style="padding: 10px 12px; text-align: left;">Serial Number</th>
+                        <th style="padding: 10px 12px; text-align: center;">Issued</th>
+                        <th style="padding: 10px 12px; text-align: center;">Score</th>
+                        <th style="padding: 10px 12px; text-align: center;">Grade</th>
+                        <th style="padding: 10px 12px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="gradRecentList">
+                    <tr>
+                        <td colspan="8" style="padding: 30px; text-align: center; color: #94a3b8;">
+                            <i class="fas fa-certificate" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                            No certificates issued yet.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ====== MANUAL VERIFICATION + QR SCANNER ====== -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-        <!-- QR Scanner -->
+        
+        <div style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <h3 style="margin: 0 0 16px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-search" style="color: #4C1D95;"></i> Manual Certificate Verification
+            </h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="verifySerialInput" placeholder="Enter serial number..." 
+                       style="flex: 1; min-width: 200px; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; font-family: monospace;">
+                <button onclick="verifyCertificate(document.getElementById('verifySerialInput').value)" 
+                        class="btn-action" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-shield-alt"></i> Verify
+                </button>
+            </div>
+            <div id="verifyResult" style="display: none; margin-top: 16px;"></div>
+            
+            <div id="qrPreviewBox" style="display: none; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center;">
+                <canvas id="qrPreviewCanvas" style="max-width: 180px;"></canvas>
+                <div style="margin-top: 8px; font-size: 11px; color: #64748b;">Scan to verify</div>
+            </div>
+        </div>
+        
         <div style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
             <h3 style="margin: 0 0 16px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-qrcode" style="color: #4C1D95;"></i> QR Certificate Scanner
@@ -6629,23 +6685,15 @@ textarea:focus-visible{
                 </span>
             </h3>
             
-            <div style="position: relative; background: #0A3D62; border-radius: 12px; overflow: hidden; min-height: 250px; display: flex; align-items: center; justify-content: center;">
-                <video id="qrVideo" style="width: 100%; height: 100%; object-fit: cover; min-height: 250px; background: #0A3D62; display: none;"></video>
+            <div style="position: relative; background: #0A3D62; border-radius: 12px; overflow: hidden; min-height: 220px; display: flex; align-items: center; justify-content: center;">
+                <video id="qrVideo" style="width: 100%; height: 100%; object-fit: cover; min-height: 220px; background: #0A3D62; display: none;"></video>
                 
                 <div id="qrPlaceholder" style="text-align: center; color: rgba(255,255,255,0.7); padding: 20px;">
                     <i class="fas fa-qrcode" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
                     <p style="margin: 0; font-size: 16px; font-weight: 500;">Click "Start Scanner"</p>
-                    <p style="margin: 8px 0 0 0; font-size: 13px; opacity: 0.7;">Position QR code in frame</p>
                 </div>
                 
-                <div id="qrOverlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; align-items: center; justify-content: center; pointer-events: none;">
-                    <div style="width: 180px; height: 180px; border: 3px solid rgba(253,185,19,0.6); border-radius: 12px; box-shadow: 0 0 0 4000px rgba(0,0,0,0.3); position: relative;">
-                        <div style="position: absolute; top: -2px; left: -2px; width: 25px; height: 25px; border-top: 4px solid #FDB913; border-left: 4px solid #FDB913; border-radius: 4px 0 0 0;"></div>
-                        <div style="position: absolute; top: -2px; right: -2px; width: 25px; height: 25px; border-top: 4px solid #FDB913; border-right: 4px solid #FDB913; border-radius: 0 4px 0 0;"></div>
-                        <div style="position: absolute; bottom: -2px; left: -2px; width: 25px; height: 25px; border-bottom: 4px solid #FDB913; border-left: 4px solid #FDB913; border-radius: 0 0 0 4px;"></div>
-                        <div style="position: absolute; bottom: -2px; right: -2px; width: 25px; height: 25px; border-bottom: 4px solid #FDB913; border-right: 4px solid #FDB913; border-radius: 0 0 4px 0;"></div>
-                    </div>
-                </div>
+                <canvas id="qrCanvas" style="display: none;"></canvas>
             </div>
             
             <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;">
@@ -6671,66 +6719,178 @@ textarea:focus-visible{
                 </div>
                 <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #86efac; display: flex; gap: 10px; flex-wrap: wrap;">
                     <button onclick="viewCertificateFromQR()" class="btn-action" style="background: #4C1D95; color: white; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                        <i class="fas fa-eye"></i> View Certificate
+                        <i class="fas fa-eye"></i> View
                     </button>
                     <button onclick="downloadCertificateFromQR()" class="btn-action" style="background: #059669; color: white; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
                         <i class="fas fa-download"></i> Download PDF
                     </button>
-                    <span id="qrVerificationStatus" style="font-size: 12px; display: flex; align-items: center; color: #065f46;">
-                        <i class="fas fa-shield-alt"></i> Verified
-                    </span>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Settings -->
-        <div style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-            <h3 style="margin: 0 0 16px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-cog" style="color: #4C1D95;"></i> Graduation Settings
-            </h3>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div>
-                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
-                        <i class="fas fa-percent"></i> Pass Mark (%)
-                    </label>
-                    <input type="number" id="gradPassMark" value="50" min="0" max="100" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
-                </div>
-                <div>
-                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
-                        <i class="fas fa-money-bill"></i> Graduation Fee (KES)
-                    </label>
-                    <input type="number" id="gradFeeAmount" value="2500" min="0" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
-                </div>
-                <div>
-                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
-                        <i class="fas fa-calendar"></i> Graduation Date
-                    </label>
-                    <input type="date" id="gradDate" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
-                </div>
-                <div>
-                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
-                        <i class="fas fa-certificate"></i> Certificate Template
-                    </label>
-                    <select id="gradTemplate" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
-                        <option value="standard">Standard (NCHSM)</option>
-                        <option value="premium">Premium</option>
-                        <option value="minimal">Minimal</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div style="margin-top: 16px; display: flex; gap: 10px;">
-                <button onclick="saveGradSettings()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; flex: 1;">
-                    <i class="fas fa-save"></i> Save Settings
-                </button>
-                <button onclick="resetGradSettings()" class="btn-action" style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-undo"></i> Reset
-                </button>
             </div>
         </div>
     </div>
+
+    <!-- ====== SETTINGS ====== -->
+    <div style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <h3 style="margin: 0 0 16px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-cog" style="color: #4C1D95;"></i> Graduation Settings
+        </h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div>
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-percent"></i> Pass Mark (%)
+                </label>
+                <input type="number" id="gradPassMark" value="50" min="0" max="100" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-money-bill"></i> Graduation Fee (KES)
+                </label>
+                <input type="number" id="gradFeeAmount" value="2500" min="0" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-calendar"></i> Graduation Date
+                </label>
+                <input type="date" id="gradDate" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-certificate"></i> Certificate Template
+                </label>
+                <select id="gradTemplate" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                    <option value="standard">Standard (NCHSM)</option>
+                    <option value="premium">Premium</option>
+                    <option value="minimal">Minimal</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Email Options -->
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <h4 style="margin: 0 0 12px 0; color: #0A3D62; font-size: 14px;">
+                <i class="fas fa-envelope"></i> Email Settings
+            </h4>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #475569;">
+                <input type="checkbox" id="gradEmailOnGenerate" checked>
+                <span>Send certificate to student's email when generated</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #475569; margin-top: 8px;">
+                <input type="checkbox" id="gradEmailOnPrint">
+                <span>Send email when marked as printed</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #475569; margin-top: 8px;">
+                <input type="checkbox" id="gradNotifyAdmin" checked>
+                <span>Notify admin on generation</span>
+            </label>
+        </div>
+        
+        <div style="margin-top: 16px; display: flex; gap: 10px;">
+            <button onclick="saveGradSettings()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; flex: 1;">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+            <button onclick="resetGradSettings()" class="btn-action" style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- ====== BULK IMPORT MARKS ====== -->
+    <div style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-top: 24px;">
+        <h3 style="margin: 0 0 16px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-file-upload" style="color: #4C1D95;"></i> Bulk Import Marks
+            <span style="font-size: 11px; font-weight: 400; color: #94a3b8;">Excel/CSV for missing marks</span>
+        </h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <input type="file" id="gradBulkMarksFile" accept=".csv,.xlsx,.xls" 
+                   style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; flex: 1; min-width: 200px;">
+            <button onclick="downloadMarksTemplate()" class="btn-action" 
+                    style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-download"></i> Template
+            </button>
+            <button onclick="importBulkMarks()" class="btn-action" 
+                    style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-upload"></i> Import
+            </button>
+        </div>
+        <p style="margin: 12px 0 0 0; font-size: 12px; color: #94a3b8;">
+            <i class="fas fa-info-circle"></i> CSV columns: <code>student_id, unit_code, cat1, cat2, exam_score</code>
+        </p>
+        <div id="bulkImportResult" style="display: none; margin-top: 12px;"></div>
+    </div>
+
+    <!-- ====== AUDIT LOG ====== -->
+    <div style="background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-top: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-history" style="color: #4C1D95;"></i> Certificate Audit Log
+                <span style="font-size: 11px; font-weight: 400; color: #94a3b8;">Last 50 actions</span>
+            </h3>
+            <button onclick="clearAuditLog()" class="btn-action" 
+                    style="background: #dc2626; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-trash"></i> Clear
+            </button>
+        </div>
+        <div style="overflow-x: auto; max-height: 300px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="position: sticky; top: 0; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                    <tr>
+                        <th style="padding: 10px 12px; text-align: left;">Timestamp</th>
+                        <th style="padding: 10px 12px; text-align: left;">Action</th>
+                        <th style="padding: 10px 12px; text-align: left;">Student</th>
+                        <th style="padding: 10px 12px; text-align: left;">Serial</th>
+                        <th style="padding: 10px 12px; text-align: left;">By</th>
+                    </tr>
+                </thead>
+                <tbody id="gradAuditLogBody">
+                    <tr><td colspan="5" style="padding: 30px; text-align: center; color: #94a3b8;">No audit log entries yet.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </section>
+
+<!-- ====== CERTIFICATE PREVIEW MODAL ====== -->
+<div id="certificatePreviewModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: white; border-radius: 16px; max-width: 900px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 16px 24px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; color: #0A3D62;">Certificate Preview</h3>
+            <button onclick="document.getElementById('certificatePreviewModal').style.display='none'" 
+                    style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
+        </div>
+        <div id="certificatePreviewContent" style="padding: 24px; overflow-y: auto;"></div>
+        <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="downloadCertificateFromQR()" style="background: #10b981; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-download"></i> Download PDF
+            </button>
+            <button onclick="document.getElementById('certificatePreviewModal').style.display='none'" 
+                    style="background: #e5e7eb; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ====== BULK ACTION PROGRESS MODAL ====== -->
+<div id="gradBulkProgressModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: white; border-radius: 16px; max-width: 500px; width: 100%; padding: 32px;">
+        <h3 style="margin: 0 0 16px 0; color: #0A3D62;">
+            <i class="fas fa-cog fa-spin"></i> Processing...
+        </h3>
+        <div style="margin-bottom: 8px; font-size: 13px; color: #64748b;" id="bulkProgressLabel">Starting...</div>
+        <div style="height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-bottom: 12px;">
+            <div id="bulkProgressBar" style="height: 100%; background: linear-gradient(90deg, #4C1D95, #7c3aed); width: 0%; transition: width 0.3s ease;"></div>
+        </div>
+        <div style="text-align: right; font-size: 13px; color: #0A3D62; font-weight: 600;" id="bulkProgressPercent">0%</div>
+        <div style="margin-top: 16px; text-align: right;">
+            <button onclick="closeBulkProgressModal()" id="bulkProgressCloseBtn" 
+                    style="display: none; background: #4C1D95; color: white; padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
 <!-- ============================================ -->
 <!-- ANALYTICS MODULE - TVET & KRCHN (FULLY MERGED) -->
 <!-- ============================================ -->
