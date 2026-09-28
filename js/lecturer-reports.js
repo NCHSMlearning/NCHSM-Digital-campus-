@@ -1,6 +1,6 @@
 /* ================================================================
    LECTURER REPORTS — MARKS-INTEGRATED MODULE
-   Version: 2026-09
+   Version: 2026-09-fix
    Source of marks: student_marks
    Student/class source: consolidated_user_profiles_table
    Assignment source: lecturer_subject_assignments
@@ -80,28 +80,211 @@
         return window.CURRENT_PROGRAM_TYPE || 'KRCHN';
     }
 
-    function currentLecturerId() {
+    /* ============================================================
+       LECTURER IDENTITY RESOLUTION (FIX)
+       ------------------------------------------------------------
+       Problem: lecturer_subject_assignments.lecturer_id stores the
+       STAFF RECORD id (e.g. 09b84122-...), NOT the auth UUID
+       (9f1452e8-...). The old code only looked at window.currentUser.id
+       which is the auth UUID, so loadAssignedUnits() always bailed
+       with "lecturer ID unavailable".
+
+       Solution: resolve identity lazily and asynchronously by:
+         1. checking window.me_currentLecturer (populated by marks module)
+         2. checking window.currentUser (may already have staff id)
+         3. falling back to staff_records lookup by email
+       ============================================================ */
+
+    const _identityCache = {
+        authUuid: null,
+        staffId: null,
+        email: null,
+        name: null,
+        resolved: false,
+        promise: null
+    };
+
+    function currentLecturerEmailSync() {
         const u = window.currentUser || {};
         const lecturer = window.me_currentLecturer || {};
 
-        return String(
-            u.id ||
-            lecturer?.staff?.id ||
-            lecturer?.profile?.id ||
-            ''
-        );
-    }
-
-    function currentLecturerEmail() {
-        const u = window.currentUser || {};
-        const lecturer = window.me_currentLecturer || {};
-
-        return (
+        const direct = (
             u.email ||
             lecturer?.staff?.email ||
             lecturer?.profile?.email ||
             ''
         );
+        if (direct) return direct;
+
+        try {
+            const s = JSON.parse(
+                localStorage.getItem('lecturerSession') ||
+                sessionStorage.getItem('lecturerSession') ||
+                '{}'
+            );
+            return s.email || '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function currentLecturerIdSync() {
+        const u = window.currentUser || {};
+        const lecturer = window.me_currentLecturer || {};
+
+        /* Prefer the STAFF record id because that is what
+           lecturer_subject_assignments.lecturer_id references. */
+        const staffId =
+            lecturer?.staff?.id ||
+            _identityCache.staffId ||
+            '';
+
+        if (staffId) return String(staffId);
+
+        /* If the user object happens to carry the staff id, use it */
+        if (u.staff_id) return String(u.staff_id);
+
+        /* Last-resort: auth uuid (may or may not match) */
+        if (u.id) return String(u.id);
+
+        if (lecturer?.profile?.id) return String(lecturer.profile.id);
+
+        return '';
+    }
+
+    async function resolveLecturerIdentity() {
+        if (_identityCache.resolved) return _identityCache;
+        if (_identityCache.promise) return _identityCache.promise;
+
+        _identityCache.promise = (async () => {
+            const supabase = db();
+
+            /* 1. Already populated by the marks module */
+            const lecturer = window.me_currentLecturer || {};
+            if (lecturer?.staff?.id || lecturer?.profile?.id) {
+                _identityCache.authUuid =
+                    window.currentUser?.id ||
+                    lecturer?.profile?.user_id ||
+                    null;
+                _identityCache.staffId =
+                    lecturer?.staff?.id ||
+                    lecturer?.profile?.id ||
+                    null;
+                _identityCache.email =
+                    lecturer?.staff?.email ||
+                    lecturer?.profile?.email ||
+                    currentLecturerEmailSync();
+                _identityCache.name =
+                    lecturer?.staff?.full_name ||
+                    lecturer?.profile?.full_name ||
+                    null;
+                _identityCache.resolved = true;
+                console.log('📋 [Reports] identity from me_currentLecturer:', {
+                    staffId: _identityCache.staffId,
+                    authUuid: _identityCache.authUuid
+                });
+                return _identityCache;
+            }
+
+            /* 2. Auth user + email */
+            let authUuid = window.currentUser?.id || null;
+            let email = currentLecturerEmailSync();
+
+            if (supabase) {
+                try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        authUuid = authUuid || user.id || null;
+                        email = email || user.email || null;
+                    }
+                } catch (e) {
+                    console.warn('[Reports] auth.getUser failed:', e?.message);
+                }
+            }
+
+            _identityCache.authUuid = authUuid;
+            _identityCache.email = email;
+
+            /* 3. Look up staff record by email (authoritative) */
+            if (supabase && email) {
+                try {
+                    const { data: staff, error: staffError } = await supabase
+                        .from('staff_records')
+                        .select('id, first_name, other_names, email, program, department')
+                        .eq('email', email)
+                        .maybeSingle();
+
+                    if (!staffError && staff?.id) {
+                        _identityCache.staffId = staff.id;
+                        _identityCache.name =
+                            [staff.first_name, staff.other_names]
+                                .filter(Boolean).join(' ').trim() ||
+                            _identityCache.name;
+                    }
+                } catch (e) {
+                    console.warn('[Reports] staff lookup failed:', e?.message);
+                }
+            }
+
+            /* 4. Fallback: profile table → then by name */
+            if (!_identityCache.staffId && supabase && authUuid) {
+                try {
+                    const { data: profile } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('full_name, program, department')
+                        .eq('user_id', authUuid)
+                        .maybeSingle();
+
+                    if (profile?.full_name) {
+                        _identityCache.name =
+                            _identityCache.name || profile.full_name;
+
+                        const parts = String(profile.full_name).trim().split(/\s+/);
+                        const first = parts[0];
+                        if (first) {
+                            const { data: matches } = await supabase
+                                .from('staff_records')
+                                .select('id, first_name, other_names')
+                                .ilike('first_name', `%${first}%`)
+                                .limit(5);
+
+                            if (matches?.length) {
+                                const full = String(profile.full_name).toLowerCase();
+                                const exact = matches.find(m => {
+                                    const candidate = [m.first_name, m.other_names]
+                                        .filter(Boolean).join(' ').toLowerCase();
+                                    return candidate === full;
+                                });
+                                _identityCache.staffId = (exact || matches[0]).id;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[Reports] profile fallback failed:', e?.message);
+                }
+            }
+
+            _identityCache.resolved = true;
+
+            console.log('📋 [Reports] identity resolved:', {
+                staffId: _identityCache.staffId,
+                authUuid: _identityCache.authUuid,
+                email: _identityCache.email
+            });
+
+            return _identityCache;
+        })();
+
+        return _identityCache.promise;
+    }
+
+    /* Kept for backwards-compat with the rest of the file */
+    function currentLecturerId() {
+        return currentLecturerIdSync();
+    }
+
+    function currentLecturerEmail() {
+        return currentLecturerEmailSync();
     }
 
     function currentAcademicYear() {
@@ -137,11 +320,6 @@
         return (programType || currentProgramType()) === 'TVET' ? 50 : 60;
     }
 
-    /*
-      IMPORTANT:
-      This is copied from the lecturer marks module so reports and
-      marks entry calculate the same final score.
-    */
     function calculateTotal(cat1, cat2, exam, type) {
         const c1 = Math.min(Number(cat1) || 0, 30);
         const c2 = Math.min(Number(cat2) || 0, 30);
@@ -153,19 +331,15 @@
             case 'single_cat':
                 total = c1 + ex;
                 break;
-
             case 'exam_only':
                 total = Math.min(Number(exam) || 0, 100);
                 break;
-
             case 'cats_only':
                 total = ((c1 + c2) / 60) * 100;
                 break;
-
             case 'cat_only':
                 total = (c1 / 30) * 100;
                 break;
-
             case 'full':
             default:
                 total = (((c1 + c2) / 60) * 30) + ex;
@@ -182,12 +356,6 @@
         const cat2 = Number(row.cat2_score) || 0;
         const exam = Number(row.exam_score) || 0;
 
-        /*
-          Prefer the stored final_score because that is the official
-          value already saved by the marks module.
-
-          If missing, calculate it using the same marks formula.
-        */
         const storedFinal = Number(row.final_score);
         const total = Number.isFinite(storedFinal)
             ? storedFinal
@@ -214,7 +382,6 @@
             points: gradeInfo.points,
 
             approvalStatus: row.approval_status || 'draft',
-
             published: row.published === true,
 
             retakeScore: row.retake_score != null
@@ -229,16 +396,19 @@
     }
 
     /* ============================================================
-       LOAD ASSIGNMENTS
+       LOAD ASSIGNMENTS  (FIX: async identity resolution)
     ============================================================ */
 
     async function loadAssignedUnits() {
         const supabase = db();
         if (!supabase) return [];
 
-        const lecturerId = currentLecturerId();
+        /* Ensure identity is resolved before we try to query */
+        const identity = await resolveLecturerIdentity();
+        const lecturerId = identity.staffId || currentLecturerIdSync();
+
         if (!lecturerId) {
-            console.warn('LecturerReports: lecturer ID unavailable');
+            console.warn('LecturerReports: lecturer ID unavailable (no staff record matched)');
             return [];
         }
 
@@ -247,12 +417,10 @@
             return LecturerReports._cache[key];
         }
 
-        let query = supabase
+        const { data, error } = await supabase
             .from('lecturer_subject_assignments')
             .select('subject_name, subject_code, block, program, academic_year')
-            .eq('lecturer_id', lecturerId);
-
-        const { data, error } = await query;
+            .eq('lecturer_id', String(lecturerId));
 
         if (error) {
             console.error('LecturerReports: assignment error', error);
@@ -260,8 +428,12 @@
         }
 
         const rows = data || [];
-
         LecturerReports._cache[key] = rows;
+
+        console.log(
+            `📚 [Reports] loaded ${rows.length} assigned unit(s) for lecturer ${lecturerId}`
+        );
+
         return rows;
     }
 
@@ -303,19 +475,11 @@
         const assignments = await loadAssignedUnits();
 
         if (!assignments.length) {
-            return {
-                marks: [],
-                assignments: [],
-                students: []
-            };
+            return { marks: [], assignments: [], students: [] };
         }
 
         const year = options.year || currentAcademicYear();
 
-        /*
-          Fetch only the lecturer's assigned unit/block combinations.
-          This avoids exposing unrelated marks in the lecturer report.
-        */
         const unitNames = [
             ...new Set(
                 assignments
@@ -354,16 +518,10 @@
             .in('subject_name', unitNames)
             .eq('academic_year', year);
 
-        if (markError) {
-            throw markError;
-        }
+        if (markError) throw markError;
 
         let marks = (markRows || []).map(normalizeMark);
 
-        /*
-          Enforce lecturer assignment again on the client side.
-          RLS remains the real security boundary.
-        */
         marks = marks.filter(m => assignmentMatches(m, assignments));
 
         if (options.unit) {
@@ -404,7 +562,6 @@
 
         marks = marks.map(m => {
             const s = studentMap[m.admission];
-
             return {
                 ...m,
                 studentName: s?.full_name || m.name,
@@ -413,11 +570,7 @@
             };
         });
 
-        return {
-            marks,
-            assignments,
-            students
-        };
+        return { marks, assignments, students };
     }
 
     /* ============================================================
@@ -425,12 +578,8 @@
     ============================================================ */
 
     function average(values) {
-        const nums = values
-            .map(Number)
-            .filter(Number.isFinite);
-
+        const nums = values.map(Number).filter(Number.isFinite);
         if (!nums.length) return 0;
-
         return nums.reduce((a, b) => a + b, 0) / nums.length;
     }
 
@@ -451,12 +600,10 @@
 
     function distribution(marks) {
         const out = {};
-
         marks.forEach(m => {
             const g = m.grade || grading(m.total).grade;
             out[g] = (out[g] || 0) + 1;
         });
-
         return out;
     }
 
@@ -473,8 +620,6 @@
         const passed = scored.filter(m => m.total >= threshold);
         const failed = scored.filter(m => m.total < threshold);
 
-        const attendanceLike = null;
-
         return {
             totalStudents: marks.length,
             studentsWithMarks: scored.length,
@@ -488,13 +633,8 @@
             passCount: passed.length,
             failCount: failed.length,
 
-            passRate: scored.length
-                ? (passed.length / scored.length) * 100
-                : 0,
-
-            failRate: scored.length
-                ? (failed.length / scored.length) * 100
-                : 0,
+            passRate: scored.length ? (passed.length / scored.length) * 100 : 0,
+            failRate: scored.length ? (failed.length / scored.length) * 100 : 0,
 
             gradeDistribution: distribution(scored),
 
@@ -508,7 +648,7 @@
             retakes: marks.filter(m => m.retakeCount > 0).length,
             published: marks.filter(m => m.published).length,
 
-            attendance: attendanceLike
+            attendance: null
         };
     }
 
@@ -538,7 +678,6 @@
             EndOfSemesterReport: 'End-of-Semester Report',
             OtherReport: 'Other Report'
         };
-
         return names[type] || type || 'Academic Report';
     }
 
@@ -569,7 +708,6 @@
             all: 'All Available Data',
             custom: `${form.startDate || '—'} to ${form.endDate || '—'}`
         };
-
         return map[form.period] || form.period;
     }
 
@@ -651,8 +789,8 @@
             generatedAt: new Date().toISOString(),
 
             lecturer: {
-                id: currentLecturerId(),
-                email: currentLecturerEmail(),
+                id: currentLecturerIdSync(),
+                email: currentLecturerEmailSync(),
                 name:
                     window.currentUser?.full_name ||
                     window.currentUser?.name ||
@@ -698,7 +836,6 @@
 
         if (unitSelect) {
             const current = unitSelect.value;
-
             unitSelect.innerHTML =
                 '<option value="">-- Select Assigned Unit --</option>';
 
@@ -715,14 +852,12 @@
 
         if (unitFilter) {
             const current = unitFilter.value;
-
             unitFilter.innerHTML = '<option value="all">All My Units</option>';
 
             units.forEach(u => {
                 const option = document.createElement('option');
                 option.value = u.subject_name || u.subject_code;
-                option.textContent =
-                    u.subject_name || u.subject_code;
+                option.textContent = u.subject_name || u.subject_code;
                 unitFilter.appendChild(option);
             });
 
@@ -731,17 +866,13 @@
 
         if (classSelect) {
             const current = classSelect.value;
-
             const blocks = [
                 ...new Set(
-                    assignments
-                        .map(a => a.block)
-                        .filter(Boolean)
+                    assignments.map(a => a.block).filter(Boolean)
                 )
             ];
 
-            classSelect.innerHTML =
-                '<option value="all">All My Classes</option>';
+            classSelect.innerHTML = '<option value="all">All My Classes</option>';
 
             blocks.forEach(block => {
                 const option = document.createElement('option');
@@ -773,22 +904,15 @@
 
         try {
             setReportBusy(true, 'Generating report from marks...');
-
             const report = await buildReport(form);
-
             LecturerReports.currentReport = report;
 
-            /*
-              Keep generated reports in memory and localStorage.
-              This does not create a new database table or duplicate marks.
-            */
             LecturerReports.reports.unshift({
                 ...report,
                 generatedAt: report.generatedAt
             });
 
             saveLocalReports();
-
             renderReports(LecturerReports.reports);
             updateSummary(report.marks, report.statistics);
             updateAnalytics(LecturerReports.reports);
@@ -827,10 +951,7 @@
         if (unitEl && !unitEl.value) {
             const assignments = await loadAssignedUnits();
             const first = assignments.find(a => a.subject_name);
-
-            if (first) {
-                unitEl.value = first.subject_name;
-            }
+            if (first) unitEl.value = first.subject_name;
         }
 
         await LecturerReports.generateReport();
@@ -843,7 +964,6 @@
     LecturerReports.previewReport = async function () {
         try {
             let report = LecturerReports.currentReport;
-
             if (!report) {
                 report = await buildReport(selectedFormData());
                 LecturerReports.currentReport = report;
@@ -851,11 +971,9 @@
 
             const modal = document.getElementById('reportPreviewModal');
             const content = document.getElementById('reportPreviewContent');
-
             if (!modal || !content) return;
 
             content.innerHTML = renderPreview(report);
-
             modal.style.display = 'flex';
         } catch (error) {
             console.error(error);
@@ -882,10 +1000,7 @@
             ).join('');
 
         const rows = report.rows || [];
-
-        const headers = rows.length
-            ? Object.keys(rows[0])
-            : [];
+        const headers = rows.length ? Object.keys(rows[0]) : [];
 
         const tableHead = headers.map(h =>
             `<th style="padding:9px;text-align:left;border-bottom:1px solid #e2e8f0;white-space:nowrap;">${esc(h)}</th>`
@@ -900,23 +1015,19 @@
         return `
             <div id="lecturerReportPrintable"
                  style="font-family:Arial,sans-serif;color:#1e293b;background:#fff;">
-
                 <div style="border-bottom:3px solid #4C1D95;padding-bottom:14px;margin-bottom:16px;">
                     <h2 style="margin:0;color:#0A3D62;font-size:21px;">
                         ${esc(report.title)}
                     </h2>
-
                     <div style="margin-top:6px;font-size:12px;color:#64748b;">
                         ${esc(report.program)}
                         • ${esc(report.block)}
                         • Academic Year ${esc(report.academicYear)}
                     </div>
-
                     <div style="margin-top:4px;font-size:12px;color:#64748b;">
                         Unit: <strong>${esc(report.unit)}</strong>
                         • Period: ${esc(report.period)}
                     </div>
-
                     <div style="margin-top:4px;font-size:11px;color:#94a3b8;">
                         Generated ${new Date(report.generatedAt).toLocaleString()}
                     </div>
@@ -974,7 +1085,6 @@
 
     function exportCurrentCSV(report) {
         if (!report) return;
-
         const rows = report.rows || [];
 
         if (!rows.length) {
@@ -983,12 +1093,9 @@
         }
 
         const headers = Object.keys(rows[0]);
-
         const csv = [
             headers.map(csvCell).join(','),
-            ...rows.map(row =>
-                headers.map(h => csvCell(row[h])).join(',')
-            )
+            ...rows.map(row => headers.map(h => csvCell(row[h])).join(','))
         ].join('\n');
 
         downloadBlob(
@@ -1012,21 +1119,11 @@
             return;
         }
 
-        /*
-          If SheetJS is already installed in the portal, use it.
-          Otherwise export an Excel-compatible HTML workbook.
-        */
         if (window.XLSX) {
             const rows = report.rows || [];
             const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-
-            XLSX.utils.book_append_sheet(
-                wb,
-                ws,
-                'Report'
-            );
-
+            XLSX.utils.book_append_sheet(wb, ws, 'Report');
             XLSX.writeFile(
                 wb,
                 safeFilename(`${report.title}_${report.unit}`) + '.xlsx'
@@ -1069,18 +1166,13 @@
     ============================================================ */
 
     LecturerReports.exportToPDF = async function () {
-        const report = LecturerReports.currentReport;
+        let report = LecturerReports.currentReport;
 
         if (!report) {
-            LecturerReports.currentReport =
-                await buildReport(selectedFormData());
+            report = await buildReport(selectedFormData());
+            LecturerReports.currentReport = report;
         }
 
-        const activeReport = LecturerReports.currentReport;
-
-        /*
-          Prefer jsPDF if already loaded by the portal.
-        */
         if (window.jspdf?.jsPDF) {
             const doc = new window.jspdf.jsPDF({
                 orientation: 'landscape',
@@ -1088,66 +1180,54 @@
                 format: 'a4'
             });
 
-            const s = activeReport.statistics;
+            const s = report.statistics;
 
             doc.setFontSize(17);
-            doc.text(activeReport.title, 14, 15);
+            doc.text(report.title, 14, 15);
 
             doc.setFontSize(9);
             doc.text(
-                `${activeReport.program} | ${activeReport.unit} | ${activeReport.block}`,
-                14,
-                22
+                `${report.program} | ${report.unit} | ${report.block}`,
+                14, 22
             );
 
             doc.text(
-                `Academic Year: ${activeReport.academicYear} | Period: ${activeReport.period}`,
-                14,
-                27
+                `Academic Year: ${report.academicYear} | Period: ${report.period}`,
+                14, 27
             );
 
             doc.text(
                 `Students: ${s.totalStudents} | Mean: ${s.mean.toFixed(1)}% | Pass Rate: ${s.passRate.toFixed(1)}% | Highest: ${s.highest.toFixed(1)}% | Lowest: ${s.lowest.toFixed(1)}%`,
-                14,
-                33
+                14, 33
             );
 
             if (typeof doc.autoTable === 'function') {
-                const rows = activeReport.rows || [];
+                const rows = report.rows || [];
                 const headers = rows.length ? Object.keys(rows[0]) : [];
 
                 doc.autoTable({
                     startY: 40,
                     head: [headers],
                     body: rows.map(r => headers.map(h => r[h] ?? '')),
-                    styles: {
-                        fontSize: 7
-                    },
-                    headStyles: {
-                        fillColor: [76, 29, 149]
-                    }
+                    styles: { fontSize: 7 },
+                    headStyles: { fillColor: [76, 29, 149] }
                 });
             } else {
                 doc.setFontSize(8);
                 doc.text(
                     'Install/load jsPDF AutoTable for a full tabular PDF export.',
-                    14,
-                    42
+                    14, 42
                 );
             }
 
             doc.save(
-                safeFilename(`${activeReport.title}_${activeReport.unit}`) + '.pdf'
+                safeFilename(`${report.title}_${report.unit}`) + '.pdf'
             );
 
             showReportNotice('PDF report downloaded.', 'success');
             return;
         }
 
-        /*
-          If no PDF library exists, open a print-ready preview instead
-          of pretending a PDF was generated.
-        */
         await LecturerReports.previewReport();
 
         showReportNotice(
@@ -1163,12 +1243,8 @@
         if (!report) return;
 
         const printWindow = window.open('', '_blank');
-
         if (!printWindow) {
-            showReportNotice(
-                'Please allow pop-ups to print the report.',
-                'warning'
-            );
+            showReportNotice('Please allow pop-ups to print the report.', 'warning');
             return;
         }
 
@@ -1203,15 +1279,11 @@
     ============================================================ */
 
     function storageKey() {
-        return `lecturer_reports_${currentLecturerId() || currentLecturerEmail() || 'unknown'}`;
+        return `lecturer_reports_${currentLecturerIdSync() || currentLecturerEmailSync() || 'unknown'}`;
     }
 
     function saveLocalReports() {
         try {
-            /*
-              Store metadata, not the entire marks dataset.
-              This prevents localStorage from becoming unnecessarily large.
-            */
             const compact = LecturerReports.reports.slice(0, 50).map(r => ({
                 id: r.id,
                 title: r.title,
@@ -1235,7 +1307,6 @@
         try {
             const raw = localStorage.getItem(storageKey());
             if (!raw) return [];
-
             const data = JSON.parse(raw);
             return Array.isArray(data) ? data : [];
         } catch (_) {
@@ -1253,7 +1324,6 @@
         const list = filterReports(reports || []);
 
         if (countEl) countEl.textContent = list.length;
-
         if (filterEl) {
             filterEl.textContent =
                 `Showing ${list.length} of ${(reports || []).length} reports`;
@@ -1280,37 +1350,22 @@
                         ${esc(r.program || '')}
                     </div>
                 </td>
-
-                <td style="padding:11px 15px;color:#475569;">
-                    ${esc(r.unit)}
-                </td>
-
-                <td style="padding:11px 15px;color:#475569;">
-                    ${esc(r.block)}
-                </td>
-
+                <td style="padding:11px 15px;color:#475569;">${esc(r.unit)}</td>
+                <td style="padding:11px 15px;color:#475569;">${esc(r.block)}</td>
                 <td style="padding:11px 15px;">
                     <span style="background:#ede9fe;color:#5b21b6;padding:4px 7px;border-radius:10px;font-size:10px;">
                         ${esc(reportTitle(r.type))}
                     </span>
                 </td>
-
+                <td style="padding:11px 15px;color:#64748b;">${esc(r.period || '')}</td>
                 <td style="padding:11px 15px;color:#64748b;">
-                    ${esc(r.period || '')}
+                    ${r.generatedAt ? new Date(r.generatedAt).toLocaleString() : '—'}
                 </td>
-
-                <td style="padding:11px 15px;color:#64748b;">
-                    ${r.generatedAt
-                        ? new Date(r.generatedAt).toLocaleString()
-                        : '—'}
-                </td>
-
                 <td style="padding:11px 15px;text-align:center;">
                     <span style="font-weight:700;color:#475569;">
                         ${esc(r.options?.format || 'Report')}
                     </span>
                 </td>
-
                 <td style="padding:11px 15px;text-align:center;white-space:nowrap;">
                     <button type="button"
                         onclick="LecturerReports.openHistoryReport(${index})"
@@ -1335,14 +1390,10 @@
                     .includes(search);
 
             const typeMatch =
-                !f.type ||
-                f.type === 'all' ||
-                r.type === f.type;
+                !f.type || f.type === 'all' || r.type === f.type;
 
             const unitMatch =
-                !f.unit ||
-                f.unit === 'all' ||
-                r.unit === f.unit;
+                !f.unit || f.unit === 'all' || r.unit === f.unit;
 
             let dateMatch = true;
 
@@ -1351,8 +1402,7 @@
                 const now = new Date();
 
                 if (f.date === 'today') {
-                    dateMatch =
-                        d.toDateString() === now.toDateString();
+                    dateMatch = d.toDateString() === now.toDateString();
                 } else if (f.date === 'week') {
                     const weekAgo = new Date(now);
                     weekAgo.setDate(now.getDate() - 7);
@@ -1371,13 +1421,8 @@
     LecturerReports.openHistoryReport = async function (index) {
         const list = filterReports(LecturerReports.reports);
         const item = list[index];
-
         if (!item) return;
 
-        /*
-          Rebuild the report from current marks rather than storing
-          stale student marks in localStorage.
-        */
         try {
             setReportBusy(true, 'Refreshing report from current marks...');
 
@@ -1435,6 +1480,12 @@
         try {
             setReportBusy(true, 'Refreshing marks and reports...');
 
+            /* Clear identity + assignment cache so we re-resolve
+               the lecturer id and re-query assignments. */
+            _identityCache.resolved = false;
+            _identityCache.promise = null;
+            LecturerReports._cache = {};
+
             const assignments = await loadAssignedUnits();
 
             const units = [
@@ -1443,9 +1494,6 @@
                 )
             ];
 
-            /*
-              Refresh current report if one exists.
-            */
             if (LecturerReports.currentReport) {
                 const old = LecturerReports.currentReport;
 
@@ -1476,10 +1524,7 @@
             );
         } catch (error) {
             console.error(error);
-            showReportNotice(
-                'Refresh failed: ' + error.message,
-                'error'
-            );
+            showReportNotice('Refresh failed: ' + error.message, 'error');
         } finally {
             setReportBusy(false);
         }
@@ -1504,18 +1549,13 @@
             Students: r.statistics?.totalStudents || 0,
             Mean: r.statistics?.mean?.toFixed?.(1) || '',
             PassRate: r.statistics?.passRate?.toFixed?.(1) || '',
-            Generated: r.generatedAt
-                ? new Date(r.generatedAt).toLocaleString()
-                : ''
+            Generated: r.generatedAt ? new Date(r.generatedAt).toLocaleString() : ''
         }));
 
         const headers = Object.keys(rows[0]);
-
         const csv = [
             headers.map(csvCell).join(','),
-            ...rows.map(row =>
-                headers.map(h => csvCell(row[h])).join(',')
-            )
+            ...rows.map(row => headers.map(h => csvCell(row[h])).join(','))
         ].join('\n');
 
         downloadBlob(
@@ -1533,17 +1573,9 @@
             return;
         }
 
-        /*
-          Create a combined printable report. This avoids silently
-          claiming a multi-PDF library exists when it does not.
-        */
         const printWindow = window.open('', '_blank');
-
         if (!printWindow) {
-            showReportNotice(
-                'Please allow pop-ups to export all reports.',
-                'warning'
-            );
+            showReportNotice('Please allow pop-ups to export all reports.', 'warning');
             return;
         }
 
@@ -1581,12 +1613,7 @@
             return;
         }
 
-        const json = JSON.stringify(
-            LecturerReports.reports,
-            null,
-            2
-        );
-
+        const json = JSON.stringify(LecturerReports.reports, null, 2);
         downloadBlob(
             json,
             `lecturer_reports_${currentAcademicYear()}.json`,
@@ -1598,16 +1625,11 @@
 
     LecturerReports.printReportTable = function () {
         const table = document.querySelector('#reportsTable');
-
         if (!table) return;
 
         const win = window.open('', '_blank');
-
         if (!win) {
-            showReportNotice(
-                'Please allow pop-ups to print.',
-                'warning'
-            );
+            showReportNotice('Please allow pop-ups to print.', 'warning');
             return;
         }
 
@@ -1670,9 +1692,7 @@
         );
         set(
             'reportPassRate',
-            stats
-                ? `${stats.passRate.toFixed(1)}%`
-                : '—'
+            stats ? `${stats.passRate.toFixed(1)}%` : '—'
         );
     }
 
@@ -1697,7 +1717,6 @@
         reports.forEach(r => {
             typeCounts[r.type] = (typeCounts[r.type] || 0) + 1;
             unitCounts[r.unit] = (unitCounts[r.unit] || 0) + 1;
-
             const format = r.options?.format || 'Report';
             formatCounts[format] = (formatCounts[format] || 0) + 1;
         });
@@ -1729,10 +1748,6 @@
                 : 'Based on loaded reports';
         }
 
-        /*
-          Generation timing is only shown if actual timing data exists.
-          We do not invent performance measurements.
-        */
         set('reportAvgGenerationTime', '—');
     }
 
@@ -1750,16 +1765,12 @@
                 btn.dataset.originalDisabled =
                     btn.disabled ? '1' : '0';
             }
-
             btn.disabled = busy;
             btn.style.opacity = busy ? '.65' : '1';
         });
 
         if (message) {
-            const title = document.querySelector(
-                '#reportGenerationForm h4'
-            );
-
+            const title = document.querySelector('#reportGenerationForm h4');
             if (title && busy) {
                 title.dataset.originalText ||= title.textContent;
                 title.textContent = message;
@@ -1779,10 +1790,7 @@
 
         if (window.LecturerUI?.showNotification) {
             try {
-                window.LecturerUI.showNotification(
-                    message,
-                    type || 'info'
-                );
+                window.LecturerUI.showNotification(message, type || 'info');
                 return;
             } catch (_) {}
         }
@@ -1811,19 +1819,8 @@
             .slice(0, 150);
     }
 
-
     /* ============================================================
        REPORT SUBMISSION / WEEKLY REPORT WORKFLOW
-       ------------------------------------------------------------
-       This layer works with the HTML IDs introduced in the updated
-       Academic Reports section.
-
-       Expected Supabase objects:
-         - lecturer_report_submissions
-         - Storage bucket: lecturer-reports
-
-       The JS does NOT alter student_marks.
-       It reads marks and stores report/submission metadata separately.
     ============================================================ */
 
     const REPORT_SUBMISSION_TABLE = 'lecturer_report_submissions';
@@ -1975,7 +1972,6 @@
 
         const unitFilter = submissionEl('reportUnitFilter');
         if (unitFilter) {
-            // Keep existing report filter intact; only populate when empty.
             const existing = [...unitFilter.options].map(o => o.value);
             units.forEach(u => {
                 const value = u.subject_name || u.subject_code;
@@ -2016,7 +2012,7 @@
         );
     }
 
-    LecturerReports.handleSubmissionTypeChange = function(type) {
+    LecturerReports.handleSubmissionTypeChange = function (type) {
         const documentField = submissionEl('submissionDocumentTypeField');
         const documentSelect = submissionEl('submissionDocumentType');
         const guide = submissionEl('submissionCategoryGuide');
@@ -2076,8 +2072,8 @@
         const recipient = submissionValue('submissionRecipient');
 
         return {
-            lecturer_id: currentLecturerId(),
-            lecturer_email: currentLecturerEmail(),
+            lecturer_id: currentLecturerIdSync(),
+            lecturer_email: currentLecturerEmailSync(),
             lecturer_name:
                 window.currentUser?.full_name ||
                 window.currentUser?.name ||
@@ -2236,7 +2232,7 @@
         return row;
     }
 
-    LecturerReports.saveReportDraft = async function() {
+    LecturerReports.saveReportDraft = async function () {
         try {
             setSubmissionMessage('Saving report draft...', 'info');
             const row = await createOrUpdateSubmission('draft');
@@ -2258,7 +2254,7 @@
         }
     };
 
-    LecturerReports.submitReportForReview = async function() {
+    LecturerReports.submitReportForReview = async function () {
         try {
             setSubmissionMessage('Submitting report for administrator review...', 'info');
 
@@ -2280,7 +2276,7 @@
         }
     };
 
-    LecturerReports.previewSubmission = function() {
+    LecturerReports.previewSubmission = function () {
         const payload = submissionPayloadFromForm('draft');
         const validation = validateSubmissionPayload(payload);
 
@@ -2295,14 +2291,11 @@
             payload.document_type ||
             'General Report';
 
-        const attachment =
-            submissionEl('submissionAttachment')?.files?.[0];
+        const attachment = submissionEl('submissionAttachment')?.files?.[0];
 
         const html = `
             <div style="font-family:Arial,sans-serif;color:#1e293b;">
-                <h2 style="margin-top:0;color:#0A3D62;">
-                    ${esc(payload.document_title)}
-                </h2>
+                <h2 style="margin-top:0;color:#0A3D62;">${esc(payload.document_title)}</h2>
                 <p>
                     <strong>Category:</strong> ${esc(payload.report_category)}
                     ${docLabel ? ` • <strong>Document:</strong> ${esc(docLabel)}` : ''}
@@ -2310,8 +2303,7 @@
                 <p><strong>Unit:</strong> ${esc(payload.unit_name)}
                    • <strong>Class:</strong> ${esc(payload.class_block)}
                    • <strong>Academic Year:</strong> ${esc(payload.academic_year)}</p>
-                <p><strong>Period:</strong> ${esc(payload.period_start)}
-                   to ${esc(payload.period_end)}</p>
+                <p><strong>Period:</strong> ${esc(payload.period_start)} to ${esc(payload.period_end)}</p>
                 <p><strong>Submit To:</strong> ${esc(payload.recipient_role)}</p>
                 ${payload.week_number ? `<p><strong>Week:</strong> ${payload.week_number}</p>` : ''}
                 <div style="margin-top:14px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;">
@@ -2373,7 +2365,7 @@
         return modal;
     }
 
-    LecturerReports.resetSubmissionForm = function() {
+    LecturerReports.resetSubmissionForm = function () {
         const form = submissionEl('lecturerReportSubmissionForm');
         if (form) {
             form.reset();
@@ -2391,7 +2383,7 @@
         if (message) message.style.display = 'none';
     };
 
-    LecturerReports.prepareWeeklyReport = async function() {
+    LecturerReports.prepareWeeklyReport = async function () {
         const unit = submissionValue('weeklyReportUnit');
         const block = submissionValue('weeklyReportClass') || 'all';
         const week = submissionValue('weeklyReportWeek');
@@ -2406,8 +2398,7 @@
             return;
         }
 
-        const title =
-            `Week ${week || '—'} ${unit} Lecturer Report`;
+        const title = `Week ${week || '—'} ${unit} Lecturer Report`;
 
         const summary = [
             topic ? `Topics covered: ${topic}` : '',
@@ -2447,7 +2438,7 @@
 
     LecturerReports.copyWeeklyToSubmission = LecturerReports.prepareWeeklyReport;
 
-    LecturerReports.refreshSubmittedReports = async function() {
+    LecturerReports.refreshSubmittedReports = async function () {
         const supabase = db();
         const tbody = submissionEl('submittedReportsTable');
 
@@ -2458,7 +2449,7 @@
             return [];
         }
 
-        const lecturerId = currentLecturerId();
+        const lecturerId = currentLecturerIdSync();
         if (!lecturerId) {
             setSubmittedReportsEmpty('Lecturer session is not ready.');
             return [];
@@ -2498,8 +2489,8 @@
             </tr>
         `;
 
-        ['submittedReportsCount','submittedUnderReviewCount',
-         'submittedReturnedCount','submittedApprovedCount']
+        ['submittedReportsCount', 'submittedUnderReviewCount',
+         'submittedReturnedCount', 'submittedApprovedCount']
             .forEach(id => {
                 const el = submissionEl(id);
                 if (el) el.textContent = '0';
@@ -2535,7 +2526,7 @@
 
         if (count) count.textContent = list.length;
         if (under) under.textContent =
-            list.filter(r => ['submitted','under_review','resubmitted'].includes(r.status)).length;
+            list.filter(r => ['submitted', 'under_review', 'resubmitted'].includes(r.status)).length;
         if (returned) returned.textContent =
             list.filter(r => r.status === 'returned').length;
         if (approved) approved.textContent =
@@ -2577,7 +2568,7 @@
         `).join('');
     }
 
-    LecturerReports.openSubmissionAttachment = async function(path) {
+    LecturerReports.openSubmissionAttachment = async function (path) {
         const supabase = db();
         if (!supabase || !path) return;
 
@@ -2596,7 +2587,7 @@
         }
     };
 
-    LecturerReports.editReturnedReport = async function(id) {
+    LecturerReports.editReturnedReport = async function (id) {
         const supabase = db();
         if (!supabase || !id) return;
 
@@ -2605,7 +2596,7 @@
                 .from(REPORT_SUBMISSION_TABLE)
                 .select('*')
                 .eq('id', id)
-                .eq('lecturer_id', currentLecturerId())
+                .eq('lecturer_id', currentLecturerIdSync())
                 .single();
 
             if (error) throw error;
@@ -2651,13 +2642,9 @@
 
     /* ============================================================
        SCHEDULE
-       ============================================================ */
+    ============================================================ */
 
     LecturerReports.scheduleReport = function () {
-        /*
-          Keep compatibility with any existing scheduling system.
-          If an application-level scheduler exists, delegate to it.
-        */
         if (typeof window.openReportScheduleModal === 'function') {
             window.openReportScheduleModal();
             return;
@@ -2675,6 +2662,11 @@
 
     LecturerReports.init = async function () {
         if (LecturerReports._initialized) {
+            /* Still make sure we re-resolve identity + reload assignments
+               in case the marks module has only just populated it. */
+            _identityCache.resolved = false;
+            _identityCache.promise = null;
+
             await populateReportSelectors();
             await populateSubmissionSelectors();
             renderReports(LecturerReports.reports);
@@ -2706,21 +2698,15 @@
 
         if (period) {
             period.addEventListener('change', () => {
-                const box =
-                    document.getElementById('reportCustomDateRange');
-
+                const box = document.getElementById('reportCustomDateRange');
                 if (box) {
                     box.style.display =
-                        period.value === 'custom'
-                            ? 'grid'
-                            : 'none';
+                        period.value === 'custom' ? 'grid' : 'none';
                 }
             });
         }
 
-        console.log(
-            '✅ LecturerReports initialized — marks-integrated'
-        );
+        console.log('✅ LecturerReports initialized — marks-integrated');
     };
 
     /* ============================================================
@@ -2733,27 +2719,52 @@
     window.getLecturerReportGrade = grading;
     window.loadLecturerReportMarks = loadMarks;
     window.buildLecturerReport = buildReport;
-
-    /*
-      Initialize when the Reports tab is first opened.
-      Also expose explicit initialization for the dashboard.
-    */
     window.initLecturerReports = LecturerReports.init;
 
-    document.addEventListener('DOMContentLoaded', () => {
-        /*
-          Do not force a database request immediately if the lecturer
-          dashboard loads every module at once. Delay slightly so the
-          authentication/session state can finish initializing.
-        */
-        setTimeout(() => {
-            LecturerReports.init().catch(error => {
-                console.error(
-                    'LecturerReports initialization failed:',
-                    error
-                );
-            });
-        }, 700);
-    });
+    /* Expose identity resolver in case other modules need it */
+    window.resolveLecturerIdentity = resolveLecturerIdentity;
+
+    /* ============================================================
+       BOOTSTRAP
+       ------------------------------------------------------------
+       Two triggers:
+       1. If lecturer-main.js has already fired lecturerMainReady,
+          start immediately (after a small tick).
+       2. Otherwise wait for the event, plus a safety timeout.
+       Also re-init when the event fires (so identity is refreshed).
+    ============================================================ */
+
+    function startReports() {
+        LecturerReports.init().catch(error => {
+            console.error('LecturerReports initialization failed:', error);
+        });
+    }
+
+    let _booted = false;
+
+    function bootReports() {
+        if (_booted) return;
+        _booted = true;
+        setTimeout(startReports, 200);
+    }
+
+    if (window.lecturerMainReady_fired || window.me_currentLecturer) {
+        document.addEventListener('DOMContentLoaded', bootReports, { once: true });
+        if (document.readyState !== 'loading') bootReports();
+    } else {
+        window.addEventListener('lecturerMainReady', () => {
+            window.lecturerMainReady_fired = true;
+            /* Re-init so identity + assignments are re-resolved */
+            LecturerReports._initialized = false;
+            bootReports();
+        }, { once: true });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            /* Safety fallback if the event never fires */
+            setTimeout(() => {
+                if (!_booted) bootReports();
+            }, 2500);
+        }, { once: true });
+    }
 
 })();
