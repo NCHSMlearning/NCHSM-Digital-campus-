@@ -8209,16 +8209,13 @@ if (window.location.pathname.endsWith('.html')) {
 }
 
 // ============================================================
-// GLOBAL DROPDOWN TOGGLE FUNCTION - UPDATED (WORKS)
+// GLOBAL DROPDOWN TOGGLE FUNCTION
 // ============================================================
-
 function closeAllDropdowns() {
     document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
         dropdown.classList.remove('open');
         const menu = dropdown.querySelector('.dropdown-menu');
-        if (menu) {
-            menu.style.display = 'none';
-        }
+        if (menu) menu.style.display = 'none';
     });
 }
 
@@ -8252,15 +8249,11 @@ function handleDropdownClick(e) {
     e.preventDefault();
     e.stopPropagation();
     const parentLi = this.closest('.nav-dropdown');
-    if (parentLi) {
-        toggleDropdown(parentLi);
-    }
+    if (parentLi) toggleDropdown(parentLi);
 }
 
 function handleOutsideClick(e) {
-    if (!e.target.closest('.nav-dropdown')) {
-        closeAllDropdowns();
-    }
+    if (!e.target.closest('.nav-dropdown')) closeAllDropdowns();
 }
 
 function initDropdowns() {
@@ -8268,29 +8261,21 @@ function initDropdowns() {
         const newToggle = toggle.cloneNode(true);
         toggle.parentNode.replaceChild(newToggle, toggle);
     });
-    
     document.querySelectorAll('.nav-dropdown > a').forEach(toggle => {
         toggle.addEventListener('click', handleDropdownClick);
     });
-    
     document.removeEventListener('click', handleOutsideClick);
     document.addEventListener('click', handleOutsideClick);
-    
     console.log('✅ Dropdowns initialized');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    initDropdowns();
-});
-
+document.addEventListener('DOMContentLoaded', function() { initDropdowns(); });
 setTimeout(initDropdowns, 500);
-
 console.log('✅ toggleDropdown function updated');
 
 // ============================================================
 // NCK SYSTEM VISIBILITY - ONLY FOR KRCHN DEPARTMENT
 // ============================================================
-
 function getProgramDisplayName(code) {
     const programs = {
         'KRCHN': 'KRCHN Nursing',
@@ -8326,14 +8311,8 @@ function checkNCKVisibility() {
     try {
         let department = null;
         let isKRCHN = false;
-        
-        // Try from lecturerDB
         const profile = window.lecturerDB?.getCurrentUserProfile?.();
-        if (profile) {
-            department = profile.department || profile.program || profile.assigned_program;
-        }
-        
-        // Try from session
+        if (profile) department = profile.department || profile.program || profile.assigned_program;
         if (!department) {
             const stored = sessionStorage.getItem('lecturerData');
             if (stored) {
@@ -8341,8 +8320,6 @@ function checkNCKVisibility() {
                 department = data.department || data.program || data.assigned_program;
             }
         }
-        
-        // Try from staffSession
         if (!department) {
             const staffSession = localStorage.getItem('staffSession');
             if (staffSession) {
@@ -8350,46 +8327,33 @@ function checkNCKVisibility() {
                 department = data.department || data.program;
             }
         }
-        
-        // Default fallback - check all sources
         if (!department) {
             const allData = {
                 ...JSON.parse(localStorage.getItem('staffSession') || '{}'),
                 ...JSON.parse(sessionStorage.getItem('lecturerData') || '{}'),
                 ...(window.lecturerDB?.getCurrentUserProfile?.() || {})
             };
-            
             if (allData.department) department = allData.department;
             else if (allData.program) department = allData.program;
             else if (allData.assigned_program) department = allData.assigned_program;
         }
-        
-        // Check if department is KRCHN (case insensitive)
         if (department) {
             const deptUpper = department.toUpperCase();
-            isKRCHN = deptUpper === 'KRCHN' || 
-                     deptUpper === 'NURSING' || 
-                     deptUpper === 'KRCHN NURSING' ||
-                     deptUpper.includes('KRCHN') ||
+            isKRCHN = deptUpper === 'KRCHN' || deptUpper === 'NURSING' || 
+                     deptUpper === 'KRCHN NURSING' || deptUpper.includes('KRCHN') || 
                      deptUpper.includes('NURSING');
         }
-        
-        // Show/Hide NCK menu item
         const nckMenuItem = document.getElementById('nav-nursing-system');
         if (nckMenuItem) {
             nckMenuItem.style.display = isKRCHN ? 'block' : 'none';
             console.log(`📍 NCK System menu: ${isKRCHN ? '✅ SHOWN' : '❌ HIDDEN'} (Department: ${department || 'unknown'})`);
         }
-        
-        // Update department badge
         const deptBadge = document.getElementById('userProgramBadge');
         if (deptBadge && department) {
             const displayName = getProgramDisplayName(department);
             if (displayName) deptBadge.textContent = displayName;
         }
-        
         return isKRCHN;
-        
     } catch (error) {
         console.error('Error checking NCK visibility:', error);
         return false;
@@ -8399,15 +8363,9 @@ function checkNCKVisibility() {
 // ============================================================
 // GLOBAL SHOWTAB FUNCTION - WITH NCK PROTECTION & QUESTIONS
 // ============================================================
-
-/**
- * Global showTab function for lecturer dashboard
- * Handles tab switching with NCK visibility protection
- */
 function showTab(tabId) {
     console.log('🔄 Switching to tab:', tabId);
     
-    // ===== NCK TAB VISIBILITY CHECK =====
     if (tabId === 'nursing-system') {
         const isKRCHN = checkNCKVisibility();
         if (!isKRCHN) {
@@ -8416,24 +8374,20 @@ function showTab(tabId) {
         }
     }
     
-    // Get all tab content sections and navigation links
     const tabContents = document.querySelectorAll('.tab-content');
     const navLinks = document.querySelectorAll('#mainNav a[data-tab], #mainNav .dropdown-menu a[data-tab]');
     
-    // Hide all tab contents
     tabContents.forEach(tab => {
         tab.style.display = 'none';
         tab.classList.remove('active');
     });
     
-    // Remove active class from all nav links
     navLinks.forEach(link => {
         link.classList.remove('active');
         link.style.background = 'transparent';
         link.style.borderLeft = 'none';
     });
     
-    // Show the selected tab content
     const targetTab = document.getElementById(tabId + '-content');
     if (targetTab) {
         targetTab.style.display = 'block';
@@ -8448,7 +8402,6 @@ function showTab(tabId) {
         }
     }
     
-    // Highlight the active nav link
     const activeLink = document.querySelector(`#mainNav a[data-tab="${tabId}"]`);
     if (activeLink) {
         activeLink.classList.add('active');
@@ -8464,19 +8417,13 @@ function showTab(tabId) {
             if (parentDropdown) {
                 parentDropdown.classList.add('open');
                 const menu = parentDropdown.querySelector('.dropdown-menu');
-                if (menu) {
-                    menu.style.display = 'block';
-                }
+                if (menu) menu.style.display = 'block';
             }
         }
     }
     
-    // Save the active tab to localStorage for persistence
-    try {
-        localStorage.setItem('lecturerActiveTab', tabId);
-    } catch (e) {}
+    try { localStorage.setItem('lecturerActiveTab', tabId); } catch (e) {}
     
-    // Trigger any tab-specific loading
     if (tabId === 'dashboard') {
         if (window.LecturerDashboard?.refresh) window.LecturerDashboard.refresh();
     } else if (tabId === 'my-students') {
@@ -8484,7 +8431,7 @@ function showTab(tabId) {
     } else if (tabId === 'my-courses') {
         if (window.LecturerCourses?.loadCourses) window.LecturerCourses.loadCourses();
     } else if (tabId === 'attendance') {
-        if (window.LecturerAttendance?.loadAttendance) window.LecturerAttendance.loadAttendance();
+        if (window.LecturerAttendance?.refresh) window.LecturerAttendance.refresh();
     } else if (tabId === 'cats') {
         if (window.LecturerExams?.loadExams) window.LecturerExams.loadExams();
     } else if (tabId === 'marks-management') {
@@ -8504,24 +8451,16 @@ function showTab(tabId) {
     } else if (tabId === 'calendar') {
         if (window.LecturerCalendar?.loadCalendar) window.LecturerCalendar.loadCalendar();
     } else if (tabId === 'nursing-system') {
-        if (window.lecturerNCKLoadData) {
-            setTimeout(window.lecturerNCKLoadData, 300);
-        }
-    // ✅ ADDED: Lecturer Questions tab
+        if (window.lecturerNCKLoadData) setTimeout(window.lecturerNCKLoadData, 300);
     } else if (tabId === 'online-learning') {
         // Online Learning initializes after its dedicated JS module is loaded.
     } else if (tabId === 'lecturer-questions') {
         if (window.LecturerQuestions?.init) {
             setTimeout(window.LecturerQuestions.init, 300);
         } else {
-            console.log('⏳ Waiting for LecturerQuestions to load...');
-            // Try again after a delay if not loaded
             setTimeout(function() {
-                if (window.LecturerQuestions?.init) {
-                    window.LecturerQuestions.init();
-                } else {
-                    console.warn('⚠️ LecturerQuestions still not loaded');
-                }
+                if (window.LecturerQuestions?.init) window.LecturerQuestions.init();
+                else console.warn('⚠️ LecturerQuestions still not loaded');
             }, 1000);
         }
     }
@@ -8538,19 +8477,12 @@ window.closeModal = function(modalId) {
 };
 
 // ============================================================
-// GLOBAL NOTIFICATION FUNCTIONS (Fallback)
+// GLOBAL NOTIFICATION FUNCTIONS
 // ============================================================
 window.showNotification = function(message, type) {
     type = type || 'info';
-    const colors = {
-        success: '#059669',
-        error: '#dc2626',
-        warning: '#f59e0b',
-        info: '#3b82f6'
-    };
-    
+    const colors = { success: '#059669', error: '#dc2626', warning: '#f59e0b', info: '#3b82f6' };
     document.querySelectorAll('.custom-notification').forEach(el => el.remove());
-    
     const notification = document.createElement('div');
     notification.className = 'custom-notification';
     notification.style.cssText = `
@@ -8564,7 +8496,6 @@ window.showNotification = function(message, type) {
     `;
     notification.textContent = message;
     document.body.appendChild(notification);
-    
     setTimeout(() => {
         notification.style.opacity = '0';
         notification.style.transform = 'translateX(20px)';
@@ -8605,7 +8536,7 @@ window.hideLoading = function() {
 };
 
 // ============================================================
-// ADD STYLES FOR NOTIFICATIONS AND DROPDOWNS - PERMANENT FIX
+// GLOBAL STYLES
 // ============================================================
 (function addStyles() {
     if (document.getElementById('lecturerGlobalStyles')) return;
@@ -8620,31 +8551,23 @@ window.hideLoading = function() {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         @keyframes dropdownSlide {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
         #sidebar, .sidebar {
             overflow: visible !important;
             overflow-y: visible !important;
             height: 100vh !important;
             position: fixed !important;
         }
-        
-        #mainNav {
-            overflow: visible !important;
-        }
-        
-        .container {
-            overflow: visible !important;
-        }
-        
-        .nav-dropdown {
-            position: relative !important;
-            overflow: visible !important;
-        }
-        
+        #mainNav { overflow: visible !important; }
+        .container { overflow: visible !important; }
+        .nav-dropdown { position: relative !important; overflow: visible !important; }
         .nav-dropdown .dropdown-menu {
             display: none !important;
             position: relative !important;
@@ -8661,11 +8584,7 @@ window.hideLoading = function() {
             box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
             z-index: 999 !important;
         }
-        
-        .nav-dropdown.open .dropdown-menu {
-            display: block !important;
-        }
-        
+        .nav-dropdown.open .dropdown-menu { display: block !important; }
         .nav-dropdown .dropdown-menu li a {
             display: flex !important;
             align-items: center !important;
@@ -8676,103 +8595,43 @@ window.hideLoading = function() {
             font-size: 13px !important;
             transition: all 0.2s !important;
         }
-        
         .nav-dropdown .dropdown-menu li a:hover {
             background: rgba(255,255,255,0.1) !important;
             color: #FDB913 !important;
         }
-        
         .nav-dropdown .dropdown-menu li a i {
             width: 18px !important;
             text-align: center !important;
             font-size: 12px !important;
         }
-        
         .nav-dropdown.open > a {
             background: rgba(255,255,255,0.1) !important;
             border-left: 3px solid #FDB913 !important;
         }
-        
-        .nav-dropdown.open > a i.fa-chevron-down {
-            transform: rotate(180deg);
-        }
-        
-        .nav-dropdown > a i.fa-chevron-down {
-            transition: transform 0.3s ease;
-        }
-        
+        .nav-dropdown.open > a i.fa-chevron-down { transform: rotate(180deg); }
+        .nav-dropdown > a i.fa-chevron-down { transition: transform 0.3s ease; }
         .nav a.active {
             background: rgba(255,255,255,0.15) !important;
             border-left: 3px solid #FDB913 !important;
         }
-        
-        .nav a:hover {
-            background: rgba(255,255,255,0.1) !important;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .tab-content {
-            animation: fadeIn 0.3s ease;
-        }
-        
-        /* Question Bank specific styles */
-        .badge-mcq {
-            background: #DBEAFE;
-            color: #1E40AF;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-        .badge-essay {
-            background: #FEF3C7;
-            color: #92400E;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-        .status-pending {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        .status-approved {
-            background: #d1fae5;
-            color: #065f46;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        .status-rejected {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-        }
+        .nav a:hover { background: rgba(255,255,255,0.1) !important; }
+        .tab-content { animation: fadeIn 0.3s ease; }
+        .badge-mcq { background: #DBEAFE; color: #1E40AF; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+        .badge-essay { background: #FEF3C7; color: #92400E; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+        .status-pending { background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .status-approved { background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .status-rejected { background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
     `;
     document.head.appendChild(style);
     console.log('✅ Styles added with dropdown support');
 })();
 
 // ============================================================
-// SIDEBAR SCROLL FIX - ON PAGE LOAD
+// SIDEBAR SCROLL FIX
 // ============================================================
-
 function fixSidebarOnLoad() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
-    
     sidebar.style.height = '100vh';
     sidebar.style.maxHeight = '100vh';
     sidebar.style.overflow = 'auto';
@@ -8788,7 +8647,6 @@ function fixSidebarOnLoad() {
     sidebar.style.zIndex = '999';
     sidebar.style.padding = '24px 16px';
     sidebar.style.boxShadow = '4px 0 20px rgba(0,0,0,0.1)';
-    
     const nav = sidebar.querySelector('ul');
     if (nav) {
         nav.style.flex = '1';
@@ -8800,9 +8658,7 @@ function fixSidebarOnLoad() {
         nav.style.webkitOverflowScrolling = 'touch';
         nav.style.maxHeight = 'calc(100vh - 180px)';
     }
-    
-    let logoutSection = sidebar.querySelector('.logout-section') || 
-                       sidebar.querySelector('div:last-child');
+    let logoutSection = sidebar.querySelector('.logout-section') || sidebar.querySelector('div:last-child');
     if (logoutSection) {
         logoutSection.style.flexShrink = '0';
         logoutSection.style.marginTop = 'auto';
@@ -8819,22 +8675,15 @@ function fixSidebarOnLoad() {
 document.addEventListener('DOMContentLoaded', function() {
     fixSidebarOnLoad();
     initDropdowns();
-    
-    // Check NCK visibility after profile loads
     setTimeout(checkNCKVisibility, 500);
     setTimeout(checkNCKVisibility, 1000);
     setTimeout(checkNCKVisibility, 2000);
-    
-    // Restore last active tab
     try {
         const lastTab = localStorage.getItem('lecturerActiveTab');
         if (lastTab) {
             const tabExists = document.querySelector(`#mainNav a[data-tab="${lastTab}"]`);
-            if (tabExists) {
-                setTimeout(() => showTab(lastTab), 300);
-            } else {
-                setTimeout(() => showTab('dashboard'), 300);
-            }
+            if (tabExists) setTimeout(() => showTab(lastTab), 300);
+            else setTimeout(() => showTab('dashboard'), 300);
         } else {
             setTimeout(() => showTab('dashboard'), 300);
         }
@@ -8843,35 +8692,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Also handle tab clicks from navigation links
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('#mainNav a[data-tab]').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
-            const tabId = this.dataset.tab;
-            showTab(tabId);
+            showTab(this.dataset.tab);
         });
     });
-    
     document.querySelectorAll('.dropdown-menu a[data-tab]').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
-            const tabId = this.dataset.tab;
-            showTab(tabId);
+            showTab(this.dataset.tab);
         });
     });
 });
 
-// Also run after a slight delay to catch dynamic changes
 setTimeout(function() {
     fixSidebarOnLoad();
     initDropdowns();
     checkNCKVisibility();
 }, 500);
 
-// ============================================================
-// EXPOSE FUNCTIONS GLOBALLY
-// ============================================================
 window.checkNCKVisibility = checkNCKVisibility;
 window.getProgramDisplayName = getProgramDisplayName;
 
@@ -8908,10 +8749,10 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <script src="js/lecturer-calendar.js"></script>
 <script src="js/lecturer-nck.js"></script>
 
-<!-- ===== ✅ NEW: LECTURER QUESTIONS MODULE ===== -->
+<!-- ===== ✅ LECTURER QUESTIONS MODULE ===== -->
 <script src="js/lecturer-questions.js"></script>
 
-<!-- ===== NEW: ACADEMIC PORTFOLIO MODULE ===== -->
+<!-- ===== ACADEMIC PORTFOLIO MODULE ===== -->
 <script src="js/lecturer-academic-portfolio.js"></script>
 
 <!-- ============================================================ -->
@@ -8920,7 +8761,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <script src="js/lecturer-online-learning.js?v=20260927-v15"></script>
 <script>
 // ONLINE LEARNING BOOTSTRAP — external JS is the single source of truth.
-// Cache-busting prevents an older cached lecturer-online-learning.js from being used.
 (function(){
   function boot(){
     if (window.LecturerOnlineLearning && typeof window.LecturerOnlineLearning.init === 'function') {
@@ -8934,11 +8774,124 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 })();
 </script>
 
-<!-- Main Entry Point -->
+<!-- Main Entry Point - MUST load last so the user profile is resolved -->
 <script src="js/lecturer-main.js"></script>
 
 <!-- ============================================================ -->
-<!-- NCHSM REPORTS RELIABILITY BRIDGE — FINAL HTML FIX             -->
+<!-- ⭐ INITIALIZATION ORCHESTRATOR — FIXES ATTENDANCE DASHBOARD  -->
+<!-- Waits for the user profile to be loaded before initializing  -->
+<!-- attendance, so cards reflect real data instead of 0s.        -->
+<!-- ============================================================ -->
+<script>
+(function() {
+    'use strict';
+    
+    let attempts = 0;
+    const MAX_ATTEMPTS = 40;      // 40 * 250ms = 10 seconds max
+    const POLL_INTERVAL = 250;
+    let hasInitialized = false;
+    
+    function isProfileReady() {
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile?.();
+            if (profile && (profile.user_id || profile.id)) return true;
+            const stored = localStorage.getItem('userProfile');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed && (parsed.user_id || parsed.id)) return true;
+            }
+        } catch (_) {}
+        return false;
+    }
+    
+    function initModules() {
+        if (hasInitialized) return;
+        hasInitialized = true;
+        
+        console.log('✅ Profile ready — initializing dashboard modules...');
+        
+        // 1. ATTENDANCE MODULE (the fix for the 0-records bug)
+        if (window.LecturerAttendance && typeof window.LecturerAttendance.init === 'function') {
+            try {
+                window.LecturerAttendance.init();
+                console.log('✅ LecturerAttendance initialized');
+            } catch (err) {
+                console.error('❌ LecturerAttendance init failed:', err);
+            }
+        } else {
+            console.warn('⚠️ LecturerAttendance module not found');
+        }
+        
+        // 2. ONLINE LEARNING MODULE
+        if (window.LecturerOnlineLearning && typeof window.LecturerOnlineLearning.init === 'function') {
+            try {
+                if (!window.LecturerOnlineLearning._initialized) {
+                    window.LecturerOnlineLearning.init();
+                    window.LecturerOnlineLearning._initialized = true;
+                }
+            } catch (err) {
+                console.warn('Online Learning init warning:', err);
+            }
+        }
+        
+        // 3. Refresh dashboard so attendance cards reflect real data
+        setTimeout(function() {
+            if (window.LecturerDashboard && typeof window.LecturerDashboard.refresh === 'function') {
+                try { window.LecturerDashboard.refresh(); } catch (_) {}
+            }
+        }, 300);
+        
+        // 4. Diagnostics: warn if cards are still empty after 3s
+        setTimeout(function() {
+            const present = document.getElementById('todayPresent');
+            const filtered = document.getElementById('filteredCount');
+            const rate = document.getElementById('attendanceRate');
+            if (present && present.textContent === '0' && 
+                filtered && filtered.textContent === '0' &&
+                rate && rate.textContent === '0%') {
+                console.warn('⚠️ Attendance dashboard still shows 0s. Possible causes:');
+                console.warn('   1. No scheduled sessions for today (check lecturer-sessions.js)');
+                console.warn('   2. No attendance records in Supabase for your assigned units');
+                console.warn('   3. RLS policy blocking reads on geo_attendance_logs');
+                console.warn('   4. lecturerUuid is null (check resolveLecturerId)');
+            } else {
+                console.log('✅ Attendance cards populated successfully.');
+            }
+        }, 3000);
+    }
+    
+    function waitForProfileAndInit() {
+        if (isProfileReady()) {
+            initModules();
+            return;
+        }
+        attempts++;
+        if (attempts < MAX_ATTEMPTS) {
+            if (attempts % 4 === 0) {
+                console.log(`⏳ Waiting for user profile... (attempt ${attempts}/${MAX_ATTEMPTS})`);
+            }
+            setTimeout(waitForProfileAndInit, POLL_INTERVAL);
+        } else {
+            console.error('❌ Timed out waiting for user profile after 10s.');
+            console.error('   Check that lecturer-main.js and lecturer-database.js loaded correctly.');
+            // Fallback: try to initialize anyway so the user isn't stuck
+            initModules();
+        }
+    }
+    
+    // Start polling after DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(waitForProfileAndInit, 400);
+        }, { once: true });
+    } else {
+        setTimeout(waitForProfileAndInit, 400);
+    }
+})();
+</script>
+
+<!-- ============================================================ -->
+<!-- NCHSM REPORTS RELIABILITY BRIDGE                             -->
 <!-- ============================================================ -->
 <script>
 (function () {
@@ -8968,10 +8921,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
         if (!mod) return [];
         const rows = Array.isArray(mod.reports) ? mod.reports : [];
         return rows.filter(Boolean);
-    }
-
-    function reportDate(row) {
-        return row?.generated_at || row?.created_at || row?.generatedAt || row?.createdAt || row?.date || null;
     }
 
     function labelType(value) {
@@ -9023,8 +8972,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
         setText('reportPopularFormat', topFormat ? topFormat[0] : '—');
         setText('reportPopularFormatMeta', topFormat ? `${topFormat[1]} of ${rows.length} loaded report${rows.length === 1 ? '' : 's'}` : 'Based on loaded reports');
 
-        // These must never be fabricated. If the reports module exposes aggregate values,
-        // use them; otherwise leave them as an em dash rather than showing fake 87%/92% values.
         const mod = window.LecturerReports || {};
         const engagement = mod.engagementRate ?? mod.analytics?.engagementRate ?? mod.stats?.engagementRate;
         const passRate = mod.passRate ?? mod.analytics?.passRate ?? mod.stats?.passRate;
@@ -9068,8 +9015,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
             return;
         }
 
-        // The legacy reports module can initialize before lecturer-main finishes
-        // resolving the authenticated lecturer. Re-run it after the database is ready.
         try {
             if (typeof mod.init === 'function') {
                 Promise.resolve(mod.init()).then(function () {
@@ -9086,7 +9031,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
         clearTimeout(bootTimer);
     }
 
-    // Keep existing module functionality but add safe late initialization.
     window.NCHSMReports = {
         refresh: () => safeCall('refresh'),
         generate: () => safeCall('generateReport', window.event),
@@ -9094,7 +9038,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
         pdf: () => safeCall('exportToPDF')
     };
 
-    // Re-sync whenever the Reports tab is opened.
     const oldShowTab = window.showTab;
     if (typeof oldShowTab === 'function' && !oldShowTab.__nchsmReportsWrapped) {
         window.showTab = function (tabId) {
@@ -9108,7 +9051,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
         window.showTab.__nchsmReportsWrapped = true;
     }
 
-    // Catch direct changes from the reports module without replacing its renderer.
     setInterval(function () {
         if (document.getElementById('reports-content')?.style.display !== 'none') {
             syncReportAnalytics();
@@ -9122,8 +9064,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
     }
 })();
 </script>
-
-
 
 <!-- ============================================================
      NCHSM GLOBAL TAB MANAGER V18
@@ -9150,8 +9090,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
     const TAB_IDS = ['dashboard', 'profile', 'my-courses', 'my-students', 'online-learning', 'sessions', 'attendance', 'academic-portfolio', 'cats', 'marks-management', 'lecturer-questions', 'nursing-system', 'resources', 'reports', 'messages', 'calendar', 'settings'];
 
     function getSection(tabId){
-        return document.getElementById(tabId + '-content') ||
-               document.getElementById(tabId);
+        return document.getElementById(tabId + '-content') || document.getElementById(tabId);
     }
 
     function getNavLinks(){
@@ -9179,7 +9118,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
             tabId = 'dashboard';
         }
 
-        // Keep the existing NCK protection.
         if(tabId === 'nursing-system' && typeof window.checkNCKVisibility === 'function'){
             if(!window.checkNCKVisibility()){
                 if(typeof window.showNotification === 'function'){
@@ -9209,14 +9147,13 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 
         setActiveNav(tabId);
 
-        try{
-            localStorage.setItem('lecturerActiveTab', tabId);
-        }catch(_){}
+        try{ localStorage.setItem('lecturerActiveTab', tabId); }catch(_){}
 
-        // Trigger existing section loaders without replacing them.
         try{
             if(tabId === 'dashboard' && window.LecturerDashboard?.refresh)
                 window.LecturerDashboard.refresh();
+            if(tabId === 'attendance' && window.LecturerAttendance?.refresh)
+                window.LecturerAttendance.refresh();
             if(tabId === 'my-students' && window.LecturerStudents?.loadStudents)
                 window.LecturerStudents.loadStudents();
             if(tabId === 'online-learning' && window.LecturerOnlineLearning?.load)
@@ -9234,7 +9171,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
         return true;
     }
 
-    // Replace the old global function once. No polling.
     window.showTab = showTabClean;
     window.__NCHSMShowTabV18 = showTabClean;
 
@@ -9242,20 +9178,14 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
         let requested = null;
         try{ requested = localStorage.getItem('lecturerActiveTab'); }catch(_){}
         if(!requested || !TAB_IDS.includes(requested)) requested = 'dashboard';
-
-        // Always show a valid section even if a previous module left the page blank.
         showTabClean(requested, {boot:true});
     }
 
-    // Delegated navigation avoids duplicate handlers from individual modules.
     document.addEventListener('click',function(e){
         const link = e.target.closest('a[data-tab]');
         if(!link) return;
-
         const tabId = link.getAttribute('data-tab');
         if(!TAB_IDS.includes(tabId)) return;
-
-        // Let dropdown controls behave normally only if they are not actual tabs.
         e.preventDefault();
         e.stopPropagation();
         showTabClean(tabId);
