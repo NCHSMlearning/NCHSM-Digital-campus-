@@ -281,6 +281,15 @@
         </a>
     </li>
 
+    <!-- RESEARCH PAPERS — SEPARATE TOP-LEVEL MODULE -->
+    <li style="margin-bottom: 2px;">
+        <a href="#" data-tab="research-papers" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;cursor:pointer;">
+            <i class="fas fa-file-signature" style="width:20px;text-align:center;"></i>
+            <span>Research Papers</span>
+            <span id="researchAssignmentBadge" style="margin-left:auto;background:#10b981;padding:0 8px;border-radius:20px;font-size:10px;color:white;">0</span>
+        </a>
+    </li>
+
     <!-- SCHEDULING DROPDOWN -->
     <li class="nav-dropdown" style="margin-bottom: 2px;">
         <a 
@@ -5445,8 +5454,15 @@
 </style>
 
 
-<!-- STATIC RESEARCH PAPERS FALLBACK / LIVE JS ENHANCEMENT TARGET -->
-<div id="nchsmResearchModule" class="ol-hub-fallback-research" style="display:none;">
+<!-- ============================================================
+     RESEARCH PAPERS — SEPARATE TOP-LEVEL MODULE
+     This is intentionally NOT inside Online Learning.
+     ============================================================ -->
+<section id="research-papers-content"
+         class="tab-content"
+         style="display:none;animation:fadeIn .3s ease;">
+<div class="ol-hub-fallback-research" id="nchsmResearchModule" style="display:block;">
+
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
         <div>
             <h2 style="margin:0;color:#047857;"><i class="fas fa-file-signature"></i> Research Papers</h2>
@@ -5528,7 +5544,6 @@
         </div>
     </div>
 </div>
-
 </section>
 
 <div id="olSubmissionModal" class="ol-modal" onclick="if(event.target===this)LecturerOnlineLearning.closeModal('olSubmissionModal')">
@@ -8756,9 +8771,10 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <script src="js/lecturer-academic-portfolio.js"></script>
 
 <!-- ============================================================ -->
-<!-- ONLINE LEARNING LECTURER MODULE                              -->
+<!-- ONLINE LEARNING — OWN JAVASCRIPT MODULE                     -->
 <!-- ============================================================ -->
-<script src="js/lecturer-online-learning.js?v=20260927-v15"></script>
+<script src="js/lecturer-online-learning.js?v=20260929-separated-v1" id="nchsmLecturerOnlineLearningScript"></script>
+<script src="js/lecturer-research.js?v=20260929-separated-v1" id="nchsmLecturerResearchScript"></script>
 <script>
 // ONLINE LEARNING BOOTSTRAP — external JS is the single source of truth.
 (function(){
@@ -8771,6 +8787,51 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(boot, 50); }, {once:true});
   else setTimeout(boot, 50);
+})();
+</script>
+
+<script>
+/* ============================================================
+   NCHSM — SEPARATED RESEARCH PAPERS MODULE BRIDGE
+   Online Learning and Research Papers are independent top-level
+   dashboard modules. No Research sub-tab is created here.
+   ============================================================ */
+(function () {
+    'use strict';
+
+    function initResearchModule() {
+        if (window.LecturerResearch &&
+            typeof window.LecturerResearch.init === 'function') {
+            try {
+                window.LecturerResearch.init();
+            } catch (err) {
+                console.error('NCHSM Research Papers initialization failed:', err);
+            }
+        } else {
+            console.warn(
+                'NCHSM Research Papers: js/lecturer-research.js is not available yet.'
+            );
+        }
+    }
+
+    function handleResearchClick(event) {
+        const link = event.target.closest('[data-tab="research-papers"]');
+        if (!link) return;
+        setTimeout(initResearchModule, 80);
+    }
+
+    document.addEventListener('click', handleResearchClick);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                const section = document.getElementById('research-papers-content');
+                if (section && section.style.display !== 'none') {
+                    initResearchModule();
+                }
+            }, 300);
+        }, { once: true });
+    }
 })();
 </script>
 
