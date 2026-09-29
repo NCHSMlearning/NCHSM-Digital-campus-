@@ -8,7 +8,6 @@
 <!-- Fonts & Icons -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <style>
 /* ============================================================
@@ -47,7 +46,6 @@ body input, body textarea {
     --nchsm-muted: #64748b;
     --nchsm-text: #0f172a;
     --nchsm-bg: #f4f7fb;
-    --nchsm-shadow: 0 2px 8px rgba(15,23,42,.05);
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -84,11 +82,6 @@ body input, body textarea {
     font-size: 64px;
     color: #FDB913;
     margin-bottom: 20px;
-    animation: dwPulse 1.5s ease-in-out infinite;
-}
-@keyframes dwPulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.85; }
 }
 #devtools-warning h1 {
     font-size: 26px;
@@ -138,11 +131,6 @@ body input, body textarea {
     border: 1px solid rgba(255,255,255,0.1);
     backdrop-filter: blur(20px);
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-    animation: pinFadeIn 0.6s ease;
-}
-@keyframes pinFadeIn {
-    from { opacity: 0; transform: translateY(30px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .pin-lock-icon {
     font-size: 40px;
@@ -355,7 +343,6 @@ body input, body textarea {
 #app-content { display: none; min-height: 100vh; }
 #app-content.visible { display: block; }
 
-/* Header */
 .main-header {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -424,7 +411,6 @@ body input, body textarea {
     font-size: 9px; color: #66809e; display: block; margin-top: 3px;
 }
 
-/* Sidebar */
 .sidebar-premium {
     position: fixed;
     top: 60px; left: 0; bottom: 0;
@@ -486,7 +472,6 @@ body input, body textarea {
     width: 65%;
 }
 
-/* Sidebar nav */
 .sidebar-nav-premium {
     flex: 1 1 auto;
     min-height: 0;
@@ -563,7 +548,6 @@ body input, body textarea {
     background: rgba(255,255,255,0.05);
 }
 
-/* Sidebar footer */
 .sidebar-footer-premium {
     padding: 10px 14px 12px;
     border-top: 1px solid rgba(255,255,255,0.08);
@@ -602,7 +586,6 @@ body input, body textarea {
     color: rgba(255,255,255,0.6);
 }
 
-/* Main content */
 .main {
     margin-left: 260px;
     padding-top: 60px;
@@ -614,16 +597,13 @@ body input, body textarea {
 }
 .tab-content.active { display: block; }
 
-/* ============================================================
-   DASHBOARD
-   ============================================================ */
+/* Dashboard */
 .dash-hero {
     position: relative;
     min-height: 155px;
     overflow: hidden;
     border-radius: 16px;
-    background: linear-gradient(90deg, #042343 0%, #073963 43%, rgba(7,57,99,.48) 73%, rgba(7,57,99,.78) 100%),
-                url('/images/campus-header.jpg') center 55% / cover no-repeat;
+    background: linear-gradient(90deg, #042343 0%, #073963 43%, rgba(7,57,99,.48) 73%, rgba(7,57,99,.78) 100%);
     padding: 25px 30px;
     display: flex;
     align-items: center;
@@ -666,7 +646,6 @@ body input, body textarea {
 .dash-hero-right .hero-nav { font-weight: 800; letter-spacing: .5px; }
 .dash-hero-right .hero-nav span { opacity: .55; padding: 0 7px; }
 
-/* Metrics grid */
 .metrics-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -715,7 +694,6 @@ body input, body textarea {
 .metric.teal { background: linear-gradient(135deg, #0eb5ad, #08a7c4); border-color: #13b8b0; color: white; }
 .metric.teal .m-label, .metric.teal .m-value, .metric.teal .m-sub { color: white; }
 
-/* Announcement */
 .announcement {
     background: linear-gradient(90deg, #fff5d8, #fffdf4);
     border: 1px solid #f0c03a;
@@ -731,7 +709,6 @@ body input, body textarea {
 .announcement strong { font-size: 13px; color: #713d0b; display: block; }
 .announcement p { font-size: 11px; color: #7c4a14; margin: 3px 0 0; }
 
-/* Next class + exam row */
 .class-exam-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -812,7 +789,6 @@ body input, body textarea {
     box-shadow: 0 10px 26px rgba(45,88,220,.22);
 }
 
-/* Quick actions */
 .quick-actions {
     background: white;
     border: 1px solid #e2e8f0;
@@ -863,7 +839,6 @@ body input, body textarea {
 .qa-report { background: #0f766e; }
 .qa-pink { background: #fa4771; }
 
-/* Snapshot + Progress */
 .snapshot-progress-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -969,7 +944,6 @@ body input, body textarea {
     display: block; font-size: 8px; color: #6b8198;
 }
 
-/* Bottom row */
 .bottom-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -978,7 +952,6 @@ body input, body textarea {
 }
 .bottom-row .card { min-height: 175px; }
 
-/* Streak */
 .streak-body { padding: 12px 16px; }
 .milestones {
     display: flex;
@@ -1018,7 +991,6 @@ body input, body textarea {
     margin-top: 6px;
 }
 
-/* Events */
 .events-list { padding: 8px 14px; }
 .event-row {
     display: flex; align-items: center;
@@ -1054,7 +1026,6 @@ body input, body textarea {
 .event-info strong { display: block; font-size: 11px; color: #162b47; }
 .event-info span { display: block; font-size: 9px; color: #71859c; margin-top: 3px; }
 
-/* Courses full width */
 .courses-full {
     background: white;
     border: 1px solid #e2e8f0;
@@ -1093,7 +1064,6 @@ body input, body textarea {
     margin-top: 6px;
 }
 
-/* Leaderboard */
 .leaderboard-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -1139,7 +1109,6 @@ body input, body textarea {
     font-size: 10px; color: #0875dc;
 }
 
-/* Brand strip */
 .brand-strip {
     background: linear-gradient(90deg, #063e70, #075894);
     color: white;
@@ -1168,9 +1137,6 @@ body input, body textarea {
     text-align: right;
 }
 
-/* ============================================================
-   FOOTER
-   ============================================================ */
 .app-footer {
     background: #062f55;
     color: rgba(255,255,255,0.9);
@@ -1215,9 +1181,6 @@ body input, body textarea {
     font-weight: 700;
 }
 
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
 .mobile-menu-toggle {
     display: none;
     width: 40px; height: 40px;
@@ -1271,7 +1234,6 @@ body input, body textarea {
     .card-head { padding: 10px 12px; }
 }
 
-/* Dark mode */
 body.dark-mode {
     background: #07111f;
     color: #e8eef7;
@@ -1310,24 +1272,20 @@ body.dark-mode .app-footer { background: #0a1727; }
 </head>
 <body>
 
-<!-- ============================================================ 
-     DEVTOOLS WARNING OVERLAY 
-     ============================================================ -->
+<!-- DEVTOOLS WARNING OVERLAY (passive - only shows if user actually opens DevTools) -->
 <div id="devtools-warning">
     <div class="dw-content">
         <div class="dw-icon"><i class="fas fa-shield-alt"></i></div>
         <h1>Access Restricted</h1>
-        <p>Developer tools have been detected. This NCHSM demo portal is protected content. Please close the developer tools to continue using the portal.</p>
-        <p style="font-size:12px;opacity:.6;">If you believe this is a mistake, refresh the page after closing the tools.</p>
+        <p>This NCHSM demo portal is protected content. Please close the developer tools to continue.</p>
+        <p style="font-size:12px;opacity:.6;">Refresh the page after closing the tools.</p>
         <div class="dw-footer">
-            <i class="fas fa-lock"></i> NCHSM Secure Portal · Protected Session
+            <i class="fas fa-lock"></i> NCHSM Secure Portal
         </div>
     </div>
 </div>
 
-<!-- ============================================================ 
-     PIN LOCK SCREEN 
-     ============================================================ -->
+<!-- PIN LOCK SCREEN -->
 <div id="pin-lock-screen">
     <div class="pin-container" id="pinContainer">
         <i class="fas fa-lock pin-lock-icon"></i>
@@ -1362,9 +1320,7 @@ body.dark-mode .app-footer { background: #0a1727; }
     </div>
 </div>
 
-<!-- ============================================================ 
-     LOADING SCREEN 
-     ============================================================ -->
+<!-- LOADING SCREEN -->
 <div id="loading-screen">
     <div class="loading-container">
         <div class="logo-animation">
@@ -1380,19 +1336,16 @@ body.dark-mode .app-footer { background: #0a1727; }
     </div>
 </div>
 
-<!-- ============================================================ 
-     APP CONTENT 
-     ============================================================ -->
+<!-- APP CONTENT -->
 <div id="app-content">
 
-    <!-- ===== HEADER ===== -->
     <header class="main-header">
         <div class="header-left">
             <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
                 <i class="fas fa-bars"></i>
             </button>
             <div class="logo-container">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM" class="header-logo" onerror="this.style.background='#0A3D62';this.style.color='#FDB913';this.alt='N';">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM" class="header-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%230A3D62%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 fill=%22%23FDB913%22 text-anchor=%22middle%22 font-weight=%22bold%22>N</text></svg>';">
                 <div class="header-titles">
                     <div class="main-title">NCHSM</div>
                     <div class="subtitle">Digital Student Portal</div>
@@ -1411,28 +1364,26 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <i class="fas fa-sun"></i>
             </button>
             <div class="profile-trigger">
-                <img src="https://ui-avatars.com/api/?name=Demo+Student&background=4C1D95&color=fff&size=100" alt="Profile" class="profile-avatar" id="headerAvatar">
+                <img src="https://ui-avatars.com/api/?name=Demo+Student&background=4C1D95&color=fff&size=100" alt="Profile" class="profile-avatar">
                 <div class="profile-info">
-                    <span class="profile-name" id="headerName">Demo Student</span>
+                    <span class="profile-name">Demo Student</span>
                     <span class="profile-role">Student · KRCHN</span>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- ===== OVERLAY ===== -->
     <div class="overlay" id="overlay"></div>
 
-    <!-- ===== SIDEBAR ===== -->
     <aside class="sidebar-premium" id="sidebar">
         <div class="sidebar-header-premium">
             <div class="user-profile-mini">
                 <div class="user-avatar-wrapper">
-                    <img src="https://ui-avatars.com/api/?name=Demo+Student&background=0A3D62&color=fff&size=100&bold=true" alt="Profile" class="user-avatar" id="sidebarAvatar">
+                    <img src="https://ui-avatars.com/api/?name=Demo+Student&background=0A3D62&color=fff&size=100&bold=true" alt="Profile" class="user-avatar">
                     <span class="online-status-dot"></span>
                 </div>
                 <div class="user-info-mini">
-                    <span class="user-name" id="sidebarName">Demo Student</span>
+                    <span class="user-name">Demo Student</span>
                     <span class="user-program">KRCHN · Block 4</span>
                 </div>
             </div>
@@ -1507,17 +1458,12 @@ body.dark-mode .app-footer { background: #0a1727; }
         </div>
     </aside>
 
-    <!-- ===== MAIN ===== -->
     <main class="main">
 
-        <!-- ==========================================================
-        DASHBOARD
-        ========================================================== -->
         <section id="dashboard" class="tab-content active">
-
             <div class="dash-hero">
                 <div>
-                    <h1><span id="greetingText">Good Morning</span>, <span id="studentName">Demo Student</span>! <span id="greetingEmoji">👋</span></h1>
+                    <h1><span id="greetingText">Good Morning</span>, <span>Demo Student</span>! <span id="greetingEmoji">👋</span></h1>
                     <p>Stay focused, keep learning, and achieve your goals.</p>
                     <div class="dash-hero-tag">"Better Healthcare Through Competence" 🎓</div>
                 </div>
@@ -1528,36 +1474,12 @@ body.dark-mode .app-footer { background: #0a1727; }
             </div>
 
             <div class="metrics-grid">
-                <div class="metric purple">
-                    <div class="m-label">Level</div>
-                    <div class="m-value">4</div>
-                    <div class="m-sub">230 / 500 XP</div>
-                </div>
-                <div class="metric blue">
-                    <div class="m-label">NurseIQ</div>
-                    <div class="m-value">45 pts</div>
-                    <div class="m-sub">Keep participating!</div>
-                </div>
-                <div class="metric green">
-                    <div class="m-label">Attendance</div>
-                    <div class="m-value">180 pts</div>
-                    <div class="m-sub">This semester</div>
-                </div>
-                <div class="metric purple">
-                    <div class="m-label">Login</div>
-                    <div class="m-value">110 pts</div>
-                    <div class="m-sub">(11 logins)</div>
-                </div>
-                <div class="metric gold">
-                    <div class="m-label">Total</div>
-                    <div class="m-value">335 pts</div>
-                    <div class="m-sub">All activities</div>
-                </div>
-                <div class="metric teal">
-                    <div class="m-label">Finance</div>
-                    <div class="m-value" style="font-size:15px;">KES 45,000</div>
-                    <div class="m-sub">Outstanding</div>
-                </div>
+                <div class="metric purple"><div class="m-label">Level</div><div class="m-value">4</div><div class="m-sub">230 / 500 XP</div></div>
+                <div class="metric blue"><div class="m-label">NurseIQ</div><div class="m-value">45 pts</div><div class="m-sub">Keep participating!</div></div>
+                <div class="metric green"><div class="m-label">Attendance</div><div class="m-value">180 pts</div><div class="m-sub">This semester</div></div>
+                <div class="metric purple"><div class="m-label">Login</div><div class="m-value">110 pts</div><div class="m-sub">(11 logins)</div></div>
+                <div class="metric gold"><div class="m-label">Total</div><div class="m-value">335 pts</div><div class="m-sub">All activities</div></div>
+                <div class="metric teal"><div class="m-label">Finance</div><div class="m-value" style="font-size:15px;">KES 45,000</div><div class="m-sub">Outstanding</div></div>
             </div>
 
             <div class="announcement">
@@ -1579,10 +1501,7 @@ body.dark-mode .app-footer { background: #0a1727; }
                     </div>
                     <div class="fc-body">
                         <div class="fc-time">08:00</div>
-                        <div class="fc-main">
-                            <strong>Medical-Surgical Nursing IV</strong>
-                            <span>NUR 401</span>
-                        </div>
+                        <div class="fc-main"><strong>Medical-Surgical Nursing IV</strong><span>NUR 401</span></div>
                         <div class="fc-details">
                             <span><i class="fas fa-user-tie"></i> Dr. Mwangi</span>
                             <span><i class="fas fa-map-marker-alt"></i> Lecture Hall A</span>
@@ -1601,10 +1520,7 @@ body.dark-mode .app-footer { background: #0a1727; }
                     </div>
                     <div class="fc-body">
                         <div class="fc-time">10:00</div>
-                        <div class="fc-main">
-                            <strong>Pharmacology II CAT</strong>
-                            <span>NUR 403</span>
-                        </div>
+                        <div class="fc-main"><strong>Pharmacology II CAT</strong><span>NUR 403</span></div>
                         <div class="fc-details">
                             <span><i class="fas fa-calendar-day"></i> Tue, Aug 18</span>
                             <span><i class="fas fa-clock"></i> 2 hours</span>
@@ -1616,10 +1532,7 @@ body.dark-mode .app-footer { background: #0a1727; }
 
             <div class="quick-actions">
                 <div class="qa-head">
-                    <div>
-                        <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
-                        <p>Access the most used portal features</p>
-                    </div>
+                    <div><h3><i class="fas fa-bolt"></i> Quick Actions</h3><p>Access the most used portal features</p></div>
                     <button class="card-view" data-tab="online-learning">View All →</button>
                 </div>
                 <div class="qa-grid">
@@ -1635,44 +1548,22 @@ body.dark-mode .app-footer { background: #0a1727; }
             <div class="snapshot-progress-grid">
                 <div class="card">
                     <div class="card-head">
-                        <div>
-                            <h3><i class="fas fa-bolt"></i> Quick Snapshot</h3>
-                            <small>Your portal activity at a glance</small>
-                        </div>
+                        <div><h3><i class="fas fa-bolt"></i> Quick Snapshot</h3><small>Your portal activity at a glance</small></div>
                         <button class="card-view" data-tab="dashboard">Overview →</button>
                     </div>
                     <div class="card-body">
                         <div class="snapshot-grid">
-                            <div class="snap-item snap-blue">
-                                <i class="fas fa-book-open"></i>
-                                <span class="sn-label">Active Courses</span>
-                                <strong>6</strong>
-                            </div>
-                            <div class="snap-item snap-green">
-                                <i class="fas fa-layer-group"></i>
-                                <span class="sn-label">Approved Units</span>
-                                <strong>6</strong>
-                            </div>
-                            <div class="snap-item snap-purple">
-                                <i class="fas fa-download"></i>
-                                <span class="sn-label">New Resources</span>
-                                <strong>24</strong>
-                            </div>
-                            <div class="snap-item snap-gold">
-                                <i class="fas fa-graduation-cap"></i>
-                                <span class="sn-label">Cumulative GPA</span>
-                                <strong>3.28</strong>
-                            </div>
+                            <div class="snap-item snap-blue"><i class="fas fa-book-open"></i><span class="sn-label">Active Courses</span><strong>6</strong></div>
+                            <div class="snap-item snap-green"><i class="fas fa-layer-group"></i><span class="sn-label">Approved Units</span><strong>6</strong></div>
+                            <div class="snap-item snap-purple"><i class="fas fa-download"></i><span class="sn-label">New Resources</span><strong>24</strong></div>
+                            <div class="snap-item snap-gold"><i class="fas fa-graduation-cap"></i><span class="sn-label">Cumulative GPA</span><strong>3.28</strong></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="card">
                     <div class="card-head">
-                        <div>
-                            <h3><i class="fas fa-chart-bar"></i> My Progress</h3>
-                            <small>Your academic journey at a glance</small>
-                        </div>
+                        <div><h3><i class="fas fa-chart-bar"></i> My Progress</h3><small>Your academic journey at a glance</small></div>
                         <button class="card-view" data-tab="academic-reports">View Details →</button>
                     </div>
                     <div class="progress-grid">
@@ -1711,10 +1602,7 @@ body.dark-mode .app-footer { background: #0a1727; }
             <div class="bottom-row">
                 <div class="card">
                     <div class="card-head">
-                        <div>
-                            <h3><i class="fas fa-fire" style="color:#ff6800;"></i> Daily Streak</h3>
-                            <small>Keep logging in to build your streak!</small>
-                        </div>
+                        <div><h3><i class="fas fa-fire" style="color:#ff6800;"></i> Daily Streak</h3><small>Keep logging in to build your streak!</small></div>
                         <span style="background:#fff2cf;color:#8a5a00;padding:5px 10px;border-radius:16px;font-size:10px;font-weight:900;">🔥 3 days</span>
                     </div>
                     <div class="streak-body">
@@ -1732,10 +1620,7 @@ body.dark-mode .app-footer { background: #0a1727; }
 
                 <div class="card">
                     <div class="card-head">
-                        <div>
-                            <h3><i class="fas fa-calendar-alt" style="color:#087bf0;"></i> Upcoming Events</h3>
-                            <small>Your schedule and important dates</small>
-                        </div>
+                        <div><h3><i class="fas fa-calendar-alt" style="color:#087bf0;"></i> Upcoming Events</h3><small>Your schedule and important dates</small></div>
                         <button class="card-view" data-tab="calendar">View All →</button>
                     </div>
                     <div class="events-list">
@@ -1756,10 +1641,7 @@ body.dark-mode .app-footer { background: #0a1727; }
 
                 <div class="card">
                     <div class="card-head">
-                        <div>
-                            <h3><i class="fas fa-layer-group"></i> My Courses</h3>
-                            <small>Currently enrolled units</small>
-                        </div>
+                        <div><h3><i class="fas fa-layer-group"></i> My Courses</h3><small>Currently enrolled units</small></div>
                         <button class="card-view" data-tab="hub-courses">View All →</button>
                     </div>
                     <div class="card-body" style="padding:10px;">
@@ -1774,38 +1656,15 @@ body.dark-mode .app-footer { background: #0a1727; }
 
             <div class="card" style="margin-bottom:16px;">
                 <div class="card-head">
-                    <div>
-                        <h3><i class="fas fa-trophy" style="color:#FDB913;"></i> Leaderboard</h3>
-                        <small>Top performing students this term</small>
-                    </div>
+                    <div><h3><i class="fas fa-trophy" style="color:#FDB913;"></i> Leaderboard</h3><small>Top performing students this term</small></div>
                     <button class="card-view" data-tab="leaderboard">View Full →</button>
                 </div>
                 <div class="leaderboard-grid">
-                    <div class="leader-card">
-                        <div class="leader-rank gold">1</div>
-                        <strong>Sarah Wanjiku</strong>
-                        <b>1,850 pts</b>
-                    </div>
-                    <div class="leader-card">
-                        <div class="leader-rank silver">2</div>
-                        <strong>Brian Otieno</strong>
-                        <b>1,720 pts</b>
-                    </div>
-                    <div class="leader-card">
-                        <div class="leader-rank bronze">3</div>
-                        <strong>Grace Mwangi</strong>
-                        <b>1,650 pts</b>
-                    </div>
-                    <div class="leader-card">
-                        <div class="leader-rank">4</div>
-                        <strong>David Kipchoge</strong>
-                        <b>1,580 pts</b>
-                    </div>
-                    <div class="leader-card current">
-                        <div class="leader-rank">5</div>
-                        <strong>You (Demo Student)</strong>
-                        <b>1,520 pts</b>
-                    </div>
+                    <div class="leader-card"><div class="leader-rank gold">1</div><strong>Sarah Wanjiku</strong><b>1,850 pts</b></div>
+                    <div class="leader-card"><div class="leader-rank silver">2</div><strong>Brian Otieno</strong><b>1,720 pts</b></div>
+                    <div class="leader-card"><div class="leader-rank bronze">3</div><strong>Grace Mwangi</strong><b>1,650 pts</b></div>
+                    <div class="leader-card"><div class="leader-rank">4</div><strong>David Kipchoge</strong><b>1,580 pts</b></div>
+                    <div class="leader-card current"><div class="leader-rank">5</div><strong>You (Demo Student)</strong><b>1,520 pts</b></div>
                 </div>
             </div>
 
@@ -1819,12 +1678,8 @@ body.dark-mode .app-footer { background: #0a1727; }
                 </div>
                 <div class="quote">Future Nurses<br/><strong>Brighter Communities</strong> ♡</div>
             </div>
-
         </section>
 
-        <!-- ==========================================================
-        OTHER TABS
-        ========================================================== -->
         <section id="profile" class="tab-content">
             <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);border-radius:16px;padding:25px 30px;margin-bottom:22px;color:white;">
                 <h2 style="margin:0;font-size:22px;"><i class="fas fa-user"></i> My Profile</h2>
@@ -1840,12 +1695,6 @@ body.dark-mode .app-footer { background: #0a1727; }
                         <p style="color:#64748b;margin:4px 0;font-size:13px;"><i class="fas fa-phone"></i> +254 700 123 456</p>
                     </div>
                 </div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0;">
-                    <div><label style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;">Program</label><div style="font-size:14px;font-weight:600;color:#0A3D62;margin-top:4px;">KRCHN Nursing</div></div>
-                    <div><label style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;">Intake Year</label><div style="font-size:14px;font-weight:600;color:#0A3D62;margin-top:4px;">2024</div></div>
-                    <div><label style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;">Current Block</label><div style="font-size:14px;font-weight:600;color:#0A3D62;margin-top:4px;">Block 4</div></div>
-                    <div><label style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;">Gender</label><div style="font-size:14px;font-weight:600;color:#0A3D62;margin-top:4px;">Female</div></div>
-                </div>
             </div>
         </section>
 
@@ -1854,14 +1703,12 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <h2 style="margin:0;font-size:22px;"><i class="fas fa-calendar-alt"></i> Academic Calendar</h2>
                 <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Your schedule and important dates</p>
             </div>
-            <div class="card" style="overflow:hidden;">
+            <div class="card">
                 <div class="card-head"><h3><i class="fas fa-list"></i> Upcoming Events</h3></div>
                 <div style="padding:16px;">
-                    <div class="event-row"><div class="event-date"><span class="d-month">AUG</span><span class="d-day">10</span></div><div class="event-info"><strong>Medical-Surgical Nursing IV Lecture</strong><span><i class="fas fa-clock"></i> 08:00 · Lecture Hall A · Dr. Mwangi</span></div></div>
+                    <div class="event-row"><div class="event-date"><span class="d-month">AUG</span><span class="d-day">10</span></div><div class="event-info"><strong>Medical-Surgical Nursing IV Lecture</strong><span><i class="fas fa-clock"></i> 08:00 · Lecture Hall A</span></div></div>
                     <div class="event-row"><div class="event-date"><span class="d-month">AUG</span><span class="d-day">12</span></div><div class="event-info"><strong>Clinical Rotation - Ward 3</strong><span><i class="fas fa-clock"></i> 14:00 · Nakuru Hospital</span></div></div>
-                    <div class="event-row"><div class="event-date"><span class="d-month">AUG</span><span class="d-day">15</span></div><div class="event-info"><strong>Community Health Nursing Seminar</strong><span><i class="fas fa-clock"></i> 09:00 · Room 12</span></div></div>
                     <div class="event-row"><div class="event-date"><span class="d-month">AUG</span><span class="d-day">18</span></div><div class="event-info"><strong>Pharmacology II CAT</strong><span><i class="fas fa-clock"></i> 10:00 · Exam Hall</span></div></div>
-                    <div class="event-row"><div class="event-date"><span class="d-month">AUG</span><span class="d-day">22</span></div><div class="event-info"><strong>Clinical Rotation - Emergency</strong><span><i class="fas fa-clock"></i> 08:00 · Nakuru Hospital</span></div></div>
                 </div>
             </div>
         </section>
@@ -1869,7 +1716,7 @@ body.dark-mode .app-footer { background: #0a1727; }
         <section id="timetable" class="tab-content">
             <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);border-radius:16px;padding:25px 30px;margin-bottom:22px;color:white;">
                 <h2 style="margin:0;font-size:22px;"><i class="fas fa-table-cells"></i> Weekly Timetable</h2>
-                <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Your class schedule organized by teaching week</p>
+                <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Your class schedule</p>
             </div>
             <div class="card" style="padding:20px;">
                 <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;font-size:11px;">
@@ -1889,19 +1736,17 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <h2 style="margin:0;font-size:22px;"><i class="fas fa-plus-circle"></i> Unit Registration</h2>
                 <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Select your units for the current trimester</p>
             </div>
-            <div class="card" style="overflow:hidden;">
+            <div class="card">
                 <div class="card-head"><h3><i class="fas fa-book"></i> Available Units</h3><span style="background:#4C1D95;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;">6 units</span></div>
                 <div style="padding:16px;">
                     <div style="display:grid;gap:10px;">
                         <label style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#4C1D95;"><div style="flex:1;"><div style="font-weight:700;color:#0A3D62;">NUR 401 · Medical-Surgical Nursing IV</div><div style="font-size:11px;color:#94a3b8;margin-top:3px;">Core · 6 credits · Block 4</div></div></label>
                         <label style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#4C1D95;"><div style="flex:1;"><div style="font-weight:700;color:#0A3D62;">NUR 402 · Community Health Nursing</div><div style="font-size:11px;color:#94a3b8;margin-top:3px;">Core · 4 credits · Block 4</div></div></label>
                         <label style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#4C1D95;"><div style="flex:1;"><div style="font-weight:700;color:#0A3D62;">NUR 403 · Pharmacology II</div><div style="font-size:11px;color:#94a3b8;margin-top:3px;">Core · 4 credits · Block 4</div></div></label>
-                        <label style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#4C1D95;"><div style="flex:1;"><div style="font-weight:700;color:#0A3D62;">NUR 404 · Leadership & Management</div><div style="font-size:11px;color:#94a3b8;margin-top:3px;">Elective · 3 credits · Block 4</div></div></label>
-                        <label style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;"><input type="checkbox" style="width:18px;height:18px;accent-color:#4C1D95;"><div style="flex:1;"><div style="font-weight:700;color:#0A3D62;">NUR 405 · Research Methods</div><div style="font-size:11px;color:#94a3b8;margin-top:3px;">Elective · 3 credits · Block 4</div></div></label>
-                        <label style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;"><input type="checkbox" style="width:18px;height:18px;accent-color:#4C1D95;"><div style="flex:1;"><div style="font-weight:700;color:#0A3D62;">NUR 406 · Clinical Practicum IV</div><div style="font-size:11px;color:#94a3b8;margin-top:3px;">Core · 8 credits · Block 4</div></div></label>
+                        <label style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;"><input type="checkbox" style="width:18px;height:18px;accent-color:#4C1D95;"><div style="flex:1;"><div style="font-weight:700;color:#0A3D62;">NUR 405 · Research Methods</div><div style="font-size:11px;color:#94a3b8;margin-top:3px;">Elective · 3 credits</div></div></label>
                     </div>
                     <div style="margin-top:18px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-                        <span style="font-size:13px;color:#64748b;">Selected: <strong style="color:#0A3D62;">4 units</strong> · Total Credits: <strong style="color:#0A3D62;">17</strong></span>
+                        <span style="font-size:13px;color:#64748b;">Selected: <strong style="color:#0A3D62;">3 units</strong></span>
                         <button style="padding:10px 24px;background:linear-gradient(135deg,#059669,#10b981);color:white;border:0;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="fas fa-check"></i> Submit Registration</button>
                     </div>
                 </div>
@@ -1920,8 +1765,6 @@ body.dark-mode .app-footer { background: #0a1727; }
                     <div class="course-card"><div class="cc-code">NUR 402</div><div class="cc-name">Community Health Nursing</div><div class="cc-meta">4 cr · Prof. Ochieng</div></div>
                     <div class="course-card"><div class="cc-code">NUR 403</div><div class="cc-name">Pharmacology II</div><div class="cc-meta">4 cr · Dr. Wanjiru</div></div>
                     <div class="course-card"><div class="cc-code">NUR 404</div><div class="cc-name">Leadership & Management</div><div class="cc-meta">3 cr · Ms. Akinyi</div></div>
-                    <div class="course-card"><div class="cc-code">NUR 405</div><div class="cc-name">Research Methods</div><div class="cc-meta">3 cr · Dr. Kamau</div></div>
-                    <div class="course-card"><div class="cc-code">NUR 406</div><div class="cc-name">Clinical Practicum IV</div><div class="cc-meta">8 cr · Ms. Moraa</div></div>
                 </div>
             </div>
         </section>
@@ -1940,17 +1783,6 @@ body.dark-mode .app-footer { background: #0a1727; }
                         <div><span style="color:#94a3b8;">Program:</span> <b>KRCHN Nursing</b></div>
                         <div><span style="color:#94a3b8;">Block:</span> <b>Block 4</b></div>
                     </div>
-                    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0;">
-                        <b style="color:#0A3D62;">Registered Units:</b>
-                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
-                            <span style="background:#eff6ff;color:#1e40af;padding:4px 12px;border-radius:20px;font-size:12px;">NUR 401 ✓</span>
-                            <span style="background:#eff6ff;color:#1e40af;padding:4px 12px;border-radius:20px;font-size:12px;">NUR 402 ✓</span>
-                            <span style="background:#eff6ff;color:#1e40af;padding:4px 12px;border-radius:20px;font-size:12px;">NUR 403 ✓</span>
-                            <span style="background:#eff6ff;color:#1e40af;padding:4px 12px;border-radius:20px;font-size:12px;">NUR 404 ✓</span>
-                            <span style="background:#eff6ff;color:#1e40af;padding:4px 12px;border-radius:20px;font-size:12px;">NUR 405 ✓</span>
-                            <span style="background:#eff6ff;color:#1e40af;padding:4px 12px;border-radius:20px;font-size:12px;">NUR 406 ✓</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </section>
@@ -1962,13 +1794,8 @@ body.dark-mode .app-footer { background: #0a1727; }
             </div>
             <div class="card" style="padding:24px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-bottom:16px;border-bottom:1px solid #e2e8f0;">
-                    <div><div style="font-size:18px;font-weight:800;color:#0A3D62;">📝 Exam Card - Semester 2, 2026</div><div style="font-size:12px;color:#94a3b8;margin-top:4px;">Approved units: 6 · Total credits: 28</div></div>
+                    <div><div style="font-size:18px;font-weight:800;color:#0A3D62;">📝 Exam Card - Semester 2, 2026</div></div>
                     <span style="background:#d1fae5;color:#065f46;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:700;"><i class="fas fa-check-circle"></i> ELIGIBLE</span>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:16px;font-size:13px;">
-                    <div><span style="color:#94a3b8;">Student:</span> <b style="color:#0A3D62;">Demo Student</b></div>
-                    <div><span style="color:#94a3b8;">ID:</span> <b style="color:#0A3D62;">NCHSM-2024-001</b></div>
-                    <div><span style="color:#94a3b8;">Program:</span> <b style="color:#0A3D62;">KRCHN Nursing</b></div>
                 </div>
             </div>
         </section>
@@ -2018,21 +1845,9 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Access learning materials and past papers</p>
             </div>
             <div class="courses-grid" style="grid-template-columns:repeat(3,1fr);">
-                <div class="course-card" style="min-height:120px;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:#ef444420;color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:8px;"><i class="fas fa-file-pdf"></i></div>
-                    <div style="font-weight:700;color:#0A3D62;font-size:12px;">Medical-Surgical Nursing Notes</div>
-                    <div style="font-size:10px;color:#94a3b8;margin-top:4px;">Block 4 · 2.4 MB</div>
-                </div>
-                <div class="course-card" style="min-height:120px;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:#ef444420;color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:8px;"><i class="fas fa-file-pdf"></i></div>
-                    <div style="font-weight:700;color:#0A3D62;font-size:12px;">Past Paper: Pharmacology 2025</div>
-                    <div style="font-size:10px;color:#94a3b8;margin-top:4px;">Past Paper · 1.8 MB</div>
-                </div>
-                <div class="course-card" style="min-height:120px;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:#ec489920;color:#ec4899;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:8px;"><i class="fas fa-file-video"></i></div>
-                    <div style="font-weight:700;color:#0A3D62;font-size:12px;">Community Health Lecture Series</div>
-                    <div style="font-size:10px;color:#94a3b8;margin-top:4px;">Video · 45.2 MB</div>
-                </div>
+                <div class="course-card" style="min-height:120px;"><div style="width:36px;height:36px;border-radius:10px;background:#ef444420;color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:8px;"><i class="fas fa-file-pdf"></i></div><div style="font-weight:700;color:#0A3D62;font-size:12px;">Medical-Surgical Notes</div><div style="font-size:10px;color:#94a3b8;margin-top:4px;">Block 4 · 2.4 MB</div></div>
+                <div class="course-card" style="min-height:120px;"><div style="width:36px;height:36px;border-radius:10px;background:#ef444420;color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:8px;"><i class="fas fa-file-pdf"></i></div><div style="font-weight:700;color:#0A3D62;font-size:12px;">Past Paper: Pharmacology 2025</div><div style="font-size:10px;color:#94a3b8;margin-top:4px;">Past Paper · 1.8 MB</div></div>
+                <div class="course-card" style="min-height:120px;"><div style="width:36px;height:36px;border-radius:10px;background:#ec489920;color:#ec4899;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:8px;"><i class="fas fa-file-video"></i></div><div style="font-weight:700;color:#0A3D62;font-size:12px;">Community Health Lecture</div><div style="font-size:10px;color:#94a3b8;margin-top:4px;">Video · 45.2 MB</div></div>
             </div>
         </section>
 
@@ -2045,11 +1860,6 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <i class="fas fa-video" style="font-size:56px;color:#4C1D95;margin-bottom:16px;"></i>
                 <h3 style="color:#0A3D62;margin:0 0 8px;">Online Learning Hub</h3>
                 <p style="color:#64748b;margin:0 0 20px;font-size:13px;">Video lessons, quizzes, and study materials</p>
-                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-                    <span style="background:#d1fae5;color:#065f46;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;">📹 12 Videos</span>
-                    <span style="background:#dbeafe;color:#1e40af;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;">📝 8 Quizzes</span>
-                    <span style="background:#fef3c7;color:#92400e;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;">📚 15 Resources</span>
-                </div>
             </div>
         </section>
 
@@ -2061,16 +1871,8 @@ body.dark-mode .app-footer { background: #0a1727; }
             <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);">
                 <div class="metric blue"><div class="m-label">Present</div><div class="m-value">12</div><div class="m-sub">Today</div></div>
                 <div class="metric amber"><div class="m-label">Pending</div><div class="m-value">3</div><div class="m-sub">Review</div></div>
-                <div class="metric" style="background:linear-gradient(135deg,#fff,#fef2f2);border-color:#fca5a5;"><div class="m-label" style="color:#dc2626;">Absent</div><div class="m-value" style="color:#dc2626;">3</div><div class="m-sub">Today</div></div>
+                <div class="metric"><div class="m-label" style="color:#dc2626;">Absent</div><div class="m-value" style="color:#dc2626;">3</div><div class="m-sub">Today</div></div>
                 <div class="metric purple"><div class="m-label">Total</div><div class="m-value">18</div><div class="m-sub">This month</div></div>
-            </div>
-            <div class="card" style="margin-top:16px;padding:24px;text-align:center;">
-                <i class="fas fa-map-marker-alt" style="font-size:40px;color:#4C1D95;margin-bottom:12px;"></i>
-                <h3 style="color:#0A3D62;margin:0 0 6px;">Check-in Now</h3>
-                <p style="color:#64748b;margin:0 0 16px;font-size:13px;">GPS verification required · 200-250m radius</p>
-                <button style="padding:14px 32px;background:#4C1D95;color:white;border:0;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;">
-                    <i class="fas fa-fingerprint"></i> Check In Now
-                </button>
             </div>
         </section>
 
@@ -2080,11 +1882,11 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Manage program changes and readmission</p>
             </div>
             <div class="metrics-grid" style="grid-template-columns:repeat(5,1fr);">
-                <div class="metric purple"><div class="m-label">My Requests</div><div class="m-value">0</div><div class="m-sub">Total submitted</div></div>
-                <div class="metric amber"><div class="m-label">Pending</div><div class="m-value">0</div><div class="m-sub">Awaiting review</div></div>
-                <div class="metric green"><div class="m-label">Approved</div><div class="m-value">0</div><div class="m-sub">Successful</div></div>
-                <div class="metric" style="background:linear-gradient(135deg,#fff,#fef2f2);border-color:#fca5a5;"><div class="m-label" style="color:#dc2626;">Rejected</div><div class="m-value" style="color:#dc2626;">0</div><div class="m-sub">Needs attention</div></div>
-                <div class="metric blue"><div class="m-label">Pending Reports</div><div class="m-value">0</div><div class="m-sub">Session reports</div></div>
+                <div class="metric purple"><div class="m-label">My Requests</div><div class="m-value">0</div><div class="m-sub">Total</div></div>
+                <div class="metric amber"><div class="m-label">Pending</div><div class="m-value">0</div><div class="m-sub">Awaiting</div></div>
+                <div class="metric green"><div class="m-label">Approved</div><div class="m-value">0</div><div class="m-sub">Success</div></div>
+                <div class="metric"><div class="m-label" style="color:#dc2626;">Rejected</div><div class="m-value" style="color:#dc2626;">0</div><div class="m-sub">Failed</div></div>
+                <div class="metric blue"><div class="m-label">Reports</div><div class="m-value">0</div><div class="m-sub">Pending</div></div>
             </div>
         </section>
 
@@ -2096,8 +1898,8 @@ body.dark-mode .app-footer { background: #0a1727; }
             <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);">
                 <div class="metric purple"><div class="m-label">Current Fee</div><div class="m-value" style="font-size:16px;">KES 85,000</div><div class="m-sub">Period fee</div></div>
                 <div class="metric green"><div class="m-label">Paid</div><div class="m-value" style="font-size:16px;">KES 40,000</div><div class="m-sub">This period</div></div>
-                <div class="metric" style="background:linear-gradient(135deg,#fff,#fef2f2);border-color:#fca5a5;"><div class="m-label" style="color:#dc2626;">Outstanding</div><div class="m-value" style="color:#dc2626;font-size:16px;">KES 45,000</div><div class="m-sub">Balance</div></div>
-                <div class="metric amber"><div class="m-label">Progress</div><div class="m-value">47%</div><div class="m-sub">Payment progress</div></div>
+                <div class="metric"><div class="m-label" style="color:#dc2626;">Outstanding</div><div class="m-value" style="color:#dc2626;font-size:16px;">KES 45,000</div><div class="m-sub">Balance</div></div>
+                <div class="metric amber"><div class="m-label">Progress</div><div class="m-value">47%</div><div class="m-sub">Paid</div></div>
             </div>
         </section>
 
@@ -2107,23 +1909,23 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Get help from our support team</p>
             </div>
             <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);">
-                <div class="metric blue"><div class="m-label">Open</div><div class="m-value">2</div><div class="m-sub">Awaiting response</div></div>
+                <div class="metric blue"><div class="m-label">Open</div><div class="m-value">2</div><div class="m-sub">Awaiting</div></div>
                 <div class="metric amber"><div class="m-label">In Progress</div><div class="m-value">1</div><div class="m-sub">Being handled</div></div>
                 <div class="metric green"><div class="m-label">Resolved</div><div class="m-value">5</div><div class="m-sub">Completed</div></div>
-                <div class="metric" style="background:linear-gradient(135deg,#fff,#fef2f2);border-color:#fca5a5;"><div class="m-label" style="color:#dc2626;">Urgent</div><div class="m-value" style="color:#dc2626;">0</div><div class="m-sub">High priority</div></div>
+                <div class="metric"><div class="m-label" style="color:#dc2626;">Urgent</div><div class="m-value" style="color:#dc2626;">0</div><div class="m-sub">High priority</div></div>
             </div>
         </section>
 
         <section id="reviews" class="tab-content">
             <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);border-radius:16px;padding:25px 30px;margin-bottom:22px;color:white;">
                 <h2 style="margin:0;font-size:22px;"><i class="fas fa-star"></i> Student Reviews</h2>
-                <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Share your feedback about courses and facilities</p>
+                <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Share your feedback</p>
             </div>
             <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);">
                 <div class="metric amber"><div class="m-label">Average Rating</div><div class="m-value">4.2</div><div class="m-sub">Overall</div></div>
                 <div class="metric blue"><div class="m-label">Total Reviews</div><div class="m-value">8</div><div class="m-sub">All time</div></div>
-                <div class="metric green"><div class="m-label">Helpful Votes</div><div class="m-value">24</div><div class="m-sub">Total votes</div></div>
-                <div class="metric purple"><div class="m-label">Pending</div><div class="m-value">2</div><div class="m-sub">Awaiting approval</div></div>
+                <div class="metric green"><div class="m-label">Helpful</div><div class="m-value">24</div><div class="m-sub">Votes</div></div>
+                <div class="metric purple"><div class="m-label">Pending</div><div class="m-value">2</div><div class="m-sub">Awaiting</div></div>
             </div>
         </section>
 
@@ -2134,26 +1936,23 @@ body.dark-mode .app-footer { background: #0a1727; }
             </div>
             <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);">
                 <div class="metric blue"><div class="m-label">Total</div><div class="m-value">8</div><div class="m-sub">Messages</div></div>
-                <div class="metric amber"><div class="m-label">Unread</div><div class="m-value">3</div><div class="m-sub">Needs attention</div></div>
-                <div class="metric purple"><div class="m-label">Announcements</div><div class="m-value">5</div><div class="m-sub">Official notices</div></div>
-                <div class="metric green"><div class="m-label">Read</div><div class="m-value">5</div><div class="m-sub">Already viewed</div></div>
+                <div class="metric amber"><div class="m-label">Unread</div><div class="m-value">3</div><div class="m-sub">New</div></div>
+                <div class="metric purple"><div class="m-label">Announcements</div><div class="m-value">5</div><div class="m-sub">Official</div></div>
+                <div class="metric green"><div class="m-label">Read</div><div class="m-value">5</div><div class="m-sub">Viewed</div></div>
             </div>
         </section>
 
         <section id="newsletter" class="tab-content">
             <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);border-radius:16px;padding:25px 30px;margin-bottom:22px;color:white;">
-                <h2 style="margin:0;font-size:22px;"><i class="fas fa-bullhorn"></i> Newsletter Center</h2>
+                <h2 style="margin:0;font-size:22px;"><i class="fas fa-bullhorn"></i> Newsletter</h2>
                 <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Stay updated with college news</p>
             </div>
-            <div class="card" style="overflow:hidden;">
-                <div style="padding:14px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
-                    <h3 style="margin:0;color:#0A3D62;font-size:15px;"><i class="fas fa-list"></i> Newsletter Archive</h3>
-                    <span style="background:#4C1D95;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;">12 issues</span>
-                </div>
+            <div class="card">
+                <div class="card-head"><h3><i class="fas fa-list"></i> Newsletter Archive</h3><span style="background:#4C1D95;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;">12 issues</span></div>
                 <div style="padding:16px;">
-                    <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;"><div style="font-weight:700;color:#0A3D62;">📰 NCHSM Newsletter - August 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Updates on academic events, exam schedules, and student achievements.</div></div>
-                    <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;"><div style="font-weight:700;color:#0A3D62;">📰 NCHSM Newsletter - July 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Clinical placement updates, new course offerings.</div></div>
-                    <div style="padding:12px 0;"><div style="font-weight:700;color:#0A3D62;">📰 NCHSM Newsletter - June 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Exam results, graduation updates, semester calendar.</div></div>
+                    <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;"><div style="font-weight:700;color:#0A3D62;">📰 NCHSM Newsletter - August 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Updates on academic events and student achievements.</div></div>
+                    <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;"><div style="font-weight:700;color:#0A3D62;">📰 NCHSM Newsletter - July 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Clinical placement updates.</div></div>
+                    <div style="padding:12px 0;"><div style="font-weight:700;color:#0A3D62;">📰 NCHSM Newsletter - June 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Exam results and graduation updates.</div></div>
                 </div>
             </div>
         </section>
@@ -2161,7 +1960,7 @@ body.dark-mode .app-footer { background: #0a1727; }
         <section id="clinical" class="tab-content">
             <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);border-radius:16px;padding:25px 30px;margin-bottom:22px;color:white;">
                 <h2 style="margin:0;font-size:22px;"><i class="fas fa-notes-medical"></i> Clinical Portfolio</h2>
-                <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Record rotations, procedures, evidence and supervisor remarks</p>
+                <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Record rotations, procedures, and supervisor remarks</p>
             </div>
             <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);">
                 <div class="metric blue"><div class="m-label">Rotations</div><div class="m-value">4</div><div class="m-sub">Completed</div></div>
@@ -2178,10 +1977,10 @@ body.dark-mode .app-footer { background: #0a1727; }
             </div>
             <div class="card" style="padding:24px;">
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
-                    <div style="padding:16px;background:#f8fbff;border:1px solid #e1eaf3;border-radius:10px;"><div style="font-weight:700;color:#0A3D62;margin-bottom:6px;">How do I register units?</div><div style="font-size:12px;color:#64748b;line-height:1.5;">Open My Learning Hub → Register Units and submit the applicable registration.</div></div>
-                    <div style="padding:16px;background:#f8fbff;border:1px solid #e1eaf3;border-radius:10px;"><div style="font-weight:700;color:#0A3D62;margin-bottom:6px;">How do I pay fees?</div><div style="font-size:12px;color:#64748b;line-height:1.5;">Open My Finance, review the current period balance, and use the payment option.</div></div>
-                    <div style="padding:16px;background:#f8fbff;border:1px solid #e1eaf3;border-radius:10px;"><div style="font-weight:700;color:#0A3D62;margin-bottom:6px;">How do I get my exam card?</div><div style="font-size:12px;color:#64748b;line-height:1.5;">Open My Learning Hub → Exam Card and review eligibility.</div></div>
-                    <div style="padding:16px;background:#f8fbff;border:1px solid #e1eaf3;border-radius:10px;"><div style="font-weight:700;color:#0A3D62;margin-bottom:6px;">Where are my results?</div><div style="font-size:12px;color:#64748b;line-height:1.5;">Open Academic Reports or Exams & Results. Published marks appear when released.</div></div>
+                    <div style="padding:16px;background:#f8fbff;border:1px solid #e1eaf3;border-radius:10px;"><div style="font-weight:700;color:#0A3D62;margin-bottom:6px;">How do I register units?</div><div style="font-size:12px;color:#64748b;line-height:1.5;">Open My Learning Hub → Register Units.</div></div>
+                    <div style="padding:16px;background:#f8fbff;border:1px solid #e1eaf3;border-radius:10px;"><div style="font-weight:700;color:#0A3D62;margin-bottom:6px;">How do I pay fees?</div><div style="font-size:12px;color:#64748b;line-height:1.5;">Open My Finance and use the payment option.</div></div>
+                    <div style="padding:16px;background:#f8fbff;border:1px solid #e1eaf3;border-radius:10px;"><div style="font-weight:700;color:#0A3D62;margin-bottom:6px;">How do I get my exam card?</div><div style="font-size:12px;color:#64748b;line-height:1.5;">Open My Learning Hub → Exam Card.</div></div>
+                    <div style="padding:16px;background:#f8fbff;border:1px solid #e1eaf3;border-radius:10px;"><div style="font-weight:700;color:#0A3D62;margin-bottom:6px;">Where are my results?</div><div style="font-size:12px;color:#64748b;line-height:1.5;">Open Academic Reports or Exams & Results.</div></div>
                 </div>
             </div>
         </section>
@@ -2207,13 +2006,11 @@ body.dark-mode .app-footer { background: #0a1727; }
 
     </main>
 
-    <!-- ===== FOOTER ===== -->
     <footer class="app-footer">
         <div class="footer-grid">
             <div>
                 <h4>NCHSM</h4>
-                <p>Nakuru College of Health Sciences and Management<br>
-                Kiamunyi Off Nakuru - Kabarak Rd, Nakuru</p>
+                <p>Nakuru College of Health Sciences and Management<br>Kiamunyi Off Nakuru - Kabarak Rd, Nakuru</p>
                 <p style="margin-top:8px;">📧 portal.nchsm@gmail.com<br>📞 0790969743</p>
             </div>
             <div>
@@ -2238,23 +2035,22 @@ body.dark-mode .app-footer { background: #0a1727; }
 
 </div>
 
-<!-- ============================================================ 
-     JAVASCRIPT
-     ============================================================ -->
 <script>
 /* ============================================================
-   DEVTOOLS / CONSOLE PROTECTION
+   DEVTOOLS PROTECTION - SIMPLIFIED & SAFE
+   Blocks F12, right-click, and keyboard shortcuts.
+   NO false positives. NO page freezing.
    ============================================================ */
 (function() {
     'use strict';
 
-    // ===== 1. DISABLE RIGHT-CLICK CONTEXT MENU =====
+    // Block right-click
     document.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         return false;
     });
 
-    // ===== 2. DISABLE ALL DEVTOOLS KEYBOARD SHORTCUTS =====
+    // Block DevTools keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         // F12
         if (e.key === 'F12' || e.keyCode === 123) {
@@ -2262,188 +2058,52 @@ body.dark-mode .app-footer { background: #0a1727; }
             e.stopPropagation();
             return false;
         }
-        // Ctrl+Shift+I / Cmd+Opt+I (Inspect)
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
+        // Ctrl+Shift+I/J/C (Inspect/Console/Element picker)
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I','i','J','j','C','c'].includes(e.key)) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
-        // Ctrl+Shift+J / Cmd+Opt+J (Console)
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
+        // Ctrl+U (View Source)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
-        // Ctrl+Shift+C / Cmd+Opt+C (Element Inspector)
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
+        // Ctrl+S (Save)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's')) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
-        // Ctrl+U / Cmd+U (View Source)
-        if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-        // Ctrl+S / Cmd+S (Save Page)
-        if ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's' || e.keyCode === 83)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-        // Ctrl+P / Cmd+P (Print)
-        if ((e.ctrlKey || e.metaKey) && (e.key === 'P' || e.key === 'p' || e.keyCode === 80)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-        // F7 (Caret Browsing)
-        if (e.key === 'F7' || e.keyCode === 118) {
-            e.preventDefault();
-            return false;
-        }
-        // Ctrl+Shift+K (Firefox Console)
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'K' || e.key === 'k' || e.keyCode === 75)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-        // Ctrl+Shift+E (Firefox Network)
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'E' || e.key === 'e' || e.keyCode === 69)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-        // Ctrl+Shift+M (Firefox Responsive)
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'M' || e.key === 'm' || e.keyCode === 77)) {
+        // Ctrl+P (Print)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'P' || e.key === 'p')) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
     }, true);
 
-    // ===== 3. DISABLE DRAG & TEXT SELECTION =====
+    // Block drag
     document.addEventListener('dragstart', function(e) {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
         }
     });
+
+    // Block text selection outside inputs
     document.addEventListener('selectstart', function(e) {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
         }
     });
 
-    // ===== 4. DISABLE COPY / CUT =====
+    // Block copy outside inputs
     document.addEventListener('copy', function(e) {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
-            e.clipboardData.setData('text/plain', '© NCHSM Portal - Content Protected');
         }
     });
-
-    // ===== 5. BLANK THE CONSOLE =====
-    // Override console methods so nothing shows up in DevTools console
-    (function() {
-        const noop = function() {};
-        const methods = ['log', 'info', 'warn', 'error', 'debug', 'table', 'trace', 'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd', 'time', 'timeEnd', 'profile', 'profileEnd', 'count', 'assert', 'clear', 'countReset', 'timeLog', 'timeStamp'];
-        try {
-            methods.forEach(function(m) {
-                if (window.console && window.console[m]) {
-                    window.console[m] = noop;
-                }
-            });
-        } catch (e) {}
-    })();
-
-    // ===== 6. DEVTOOLS DETECTION & BLOCKER =====
-    const warningOverlay = document.getElementById('devtools-warning');
-    let devtoolsOpen = false;
-
-    // Method A: Window size detection (side-docked DevTools)
-    const threshold = 160;
-    function checkWindowSize() {
-        const widthDiff = window.outerWidth - window.innerWidth;
-        const heightDiff = window.outerHeight - window.innerHeight;
-        if (widthDiff > threshold || heightDiff > threshold) {
-            if (!devtoolsOpen) {
-                devtoolsOpen = true;
-                showWarning();
-            }
-        } else {
-            if (devtoolsOpen) {
-                devtoolsOpen = false;
-                hideWarning();
-            }
-        }
-    }
-    setInterval(checkWindowSize, 1000);
-
-    // Method B: Debugger timing detection
-    function checkDebugger() {
-        const start = performance.now();
-        (function() {
-            // debugger statement - if DevTools is open, this pauses execution
-        })();
-        const end = performance.now();
-        // If a debugger is attached, the pause will be significant
-        if (end - start > 100) {
-            if (!devtoolsOpen) {
-                devtoolsOpen = true;
-                showWarning();
-            }
-        }
-    }
-    setInterval(checkDebugger, 2000);
-
-    // Method C: console.log getter detection (Firefox / some browsers)
-    const element = document.createElement('div');
-    let id = 'devtools-detector';
-    Object.defineProperty(element, 'id', {
-        get: function() {
-            if (!devtoolsOpen) {
-                devtoolsOpen = true;
-                showWarning();
-            }
-            return id;
-        }
-    });
-    // Repeatedly check if the getter is triggered
-    setInterval(function() {
-        try {
-            // DevTools reads this element's id property when open
-            const test = element.id;
-        } catch (e) {}
-    }, 1000);
-
-    function showWarning() {
-        if (warningOverlay) {
-            warningOverlay.classList.add('visible');
-        }
-        // Also blur the app content
-        document.body.style.filter = 'blur(6px)';
-    }
-    function hideWarning() {
-        if (warningOverlay) {
-            warningOverlay.classList.remove('visible');
-        }
-        document.body.style.filter = '';
-    }
-
-    // ===== 7. DISABLE VIEW SOURCE VIA URL =====
-    // Prevent "view-source:" prefix in address bar (partial support)
-    try {
-        Object.defineProperty(window, 'location', {
-            get: function() { return window._location || {}; },
-            set: function() { return false; }
-        });
-    } catch (e) {}
-
-    // ===== 8. PREVENT IFRAME EMBEDDING =====
-    if (window.self !== window.top) {
-        document.body.innerHTML = '<div style="text-align:center;padding:60px;font-family:Inter,sans-serif;"><h1 style="color:#0A3D62;">⚠️ Access Denied</h1><p>This portal cannot be embedded in an iframe.</p></div>';
-    }
 
 })();
 
@@ -2534,7 +2194,7 @@ body.dark-mode .app-footer { background: #0a1727; }
             setTimeout(() => {
                 pinScreen.classList.add('hidden');
                 startLoadingSequence();
-                sessionStorage.setItem('nchsm_demo_unlocked', 'true');
+                try { sessionStorage.setItem('nchsm_demo_unlocked', 'true'); } catch(e){}
             }, 500);
         } else {
             failedAttempts++;
@@ -2591,11 +2251,14 @@ body.dark-mode .app-footer { background: #0a1727; }
         else if (e.key === 'Enter') handlePinKey('enter');
     });
     
-    if (sessionStorage.getItem('nchsm_demo_unlocked') === 'true') {
-        unlocked = true;
-        pinScreen.classList.add('hidden');
-        startLoadingSequence();
-    }
+    // Auto-unlock if already unlocked in this session
+    try {
+        if (sessionStorage.getItem('nchsm_demo_unlocked') === 'true') {
+            unlocked = true;
+            pinScreen.classList.add('hidden');
+            setTimeout(() => startLoadingSequence(), 100);
+        }
+    } catch(e) {}
     
     window.lockDemo = function() {
         unlocked = false;
@@ -2609,7 +2272,7 @@ body.dark-mode .app-footer { background: #0a1727; }
         updatePinDots();
         showPinError('');
         updateAttemptsDisplay();
-        sessionStorage.removeItem('nchsm_demo_unlocked');
+        try { sessionStorage.removeItem('nchsm_demo_unlocked'); } catch(e){}
         pinScreen.classList.remove('hidden');
         appContent.classList.remove('visible');
         document.getElementById('loading-screen').classList.remove('visible');
@@ -2652,7 +2315,7 @@ function startLoadingSequence() {
                 loadingScreen.classList.add('hidden');
                 appContent.classList.add('visible');
                 updateGreeting();
-                showToast('✅ Welcome to NCHSM Student Portal!', 'success');
+                showToast('✅ Welcome to NCHSM Student Portal!');
             }, 400);
         }
     }, 400);
@@ -2677,7 +2340,7 @@ function updateGreeting() {
 /* ============================================================
    TOAST
    ============================================================ */
-function showToast(message, type) {
+function showToast(message) {
     let toast = document.getElementById('demo-toast');
     if (!toast) {
         toast = document.createElement('div');
@@ -2764,12 +2427,12 @@ document.getElementById('refreshBtn')?.addEventListener('click', function() {
     this.querySelector('i').classList.add('fa-spin');
     setTimeout(() => {
         this.querySelector('i').classList.remove('fa-spin');
-        showToast('🔄 Dashboard refreshed!', 'info');
+        showToast('🔄 Dashboard refreshed!');
     }, 600);
 });
 
 document.getElementById('notificationBtn')?.addEventListener('click', () => {
-    showToast('🔔 You have 3 new notifications', 'info');
+    showToast('🔔 You have 3 new notifications');
 });
 
 document.getElementById('headerThemeToggle')?.addEventListener('click', function() {
@@ -2784,7 +2447,7 @@ document.getElementById('sidebarRefreshBtn')?.addEventListener('click', function
     this.querySelector('i').classList.add('fa-spin');
     setTimeout(() => {
         this.querySelector('i').classList.remove('fa-spin');
-        showToast('🔄 Dashboard refreshed!', 'info');
+        showToast('🔄 Dashboard refreshed!');
     }, 600);
 });
 
