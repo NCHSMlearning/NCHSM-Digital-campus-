@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-<title>NCHSM Digital Student Dashboard | Demo Portal</title>
+<title>Campus Nexus Demo Students Portal</title>
 
 <!-- Fonts & Icons -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
@@ -11,7 +11,7 @@
 
 <style>
 /* ============================================================
-   NCHSM DEMO PORTAL - COMPLETE STYLESHEET
+   CAMPUS NEXUS DEMO PORTAL - COMPLETE STYLESHEET
    ============================================================ */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -33,74 +33,25 @@ body input, body textarea {
 }
 
 :root {
-    --nchsm-navy: #062f55;
-    --nchsm-blue: #0A3D62;
-    --nchsm-blue-2: #1a5a7a;
-    --nchsm-purple: #4C1D95;
-    --nchsm-purple-2: #6D28D9;
-    --nchsm-gold: #FDB913;
-    --nchsm-green: #10b981;
-    --nchsm-red: #dc2626;
-    --nchsm-amber: #f59e0b;
-    --nchsm-border: #e5e7eb;
-    --nchsm-muted: #64748b;
-    --nchsm-text: #0f172a;
-    --nchsm-bg: #f4f7fb;
+    --cn-navy: #062f55;
+    --cn-blue: #0A3D62;
+    --cn-blue-2: #1a5a7a;
+    --cn-purple: #4C1D95;
+    --cn-purple-2: #6D28D9;
+    --cn-gold: #FDB913;
+    --cn-green: #10b981;
+    --cn-red: #dc2626;
+    --cn-amber: #f59e0b;
+    --cn-border: #e5e7eb;
+    --cn-muted: #64748b;
+    --cn-text: #0f172a;
+    --cn-bg: #f4f7fb;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #f1f5f9; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-/* ============================================================
-   DEVTOOLS WARNING OVERLAY
-   ============================================================ */
-#devtools-warning {
-    position: fixed;
-    inset: 0;
-    background: linear-gradient(135deg, #0A3D62, #0f2847);
-    color: white;
-    z-index: 99999999;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    text-align: center;
-}
-#devtools-warning.visible { display: flex; }
-#devtools-warning .dw-content {
-    max-width: 520px;
-    padding: 40px 32px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
-    backdrop-filter: blur(20px);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-}
-#devtools-warning .dw-icon {
-    font-size: 64px;
-    color: #FDB913;
-    margin-bottom: 20px;
-}
-#devtools-warning h1 {
-    font-size: 26px;
-    font-weight: 800;
-    margin: 0 0 12px 0;
-    color: white;
-}
-#devtools-warning p {
-    font-size: 14px;
-    line-height: 1.6;
-    color: rgba(255,255,255,0.75);
-    margin: 0 0 20px 0;
-}
-#devtools-warning .dw-footer {
-    padding-top: 20px;
-    border-top: 1px solid rgba(255,255,255,0.12);
-    font-size: 12px;
-    color: rgba(255,255,255,0.4);
-}
 
 /* ============================================================
    PIN LOCK SCREEN
@@ -348,7 +299,7 @@ body input, body textarea {
     top: 0; left: 0; right: 0;
     height: 60px;
     background: white;
-    border-bottom: 1px solid var(--nchsm-border);
+    border-bottom: 1px solid var(--cn-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -362,8 +313,14 @@ body input, body textarea {
 .header-logo {
     width: 38px; height: 38px;
     border-radius: 8px;
-    object-fit: contain;
-    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0A3D62, #4C1D95);
+    color: #FDB913;
+    font-size: 20px;
+    font-weight: 900;
+    font-family: 'Inter', sans-serif;
 }
 .header-titles .main-title {
     font-size: 17px; font-weight: 800; color: #15243c; line-height: 1; margin: 0;
@@ -1272,25 +1229,12 @@ body.dark-mode .app-footer { background: #0a1727; }
 </head>
 <body>
 
-<!-- DEVTOOLS WARNING OVERLAY (passive - only shows if user actually opens DevTools) -->
-<div id="devtools-warning">
-    <div class="dw-content">
-        <div class="dw-icon"><i class="fas fa-shield-alt"></i></div>
-        <h1>Access Restricted</h1>
-        <p>This NCHSM demo portal is protected content. Please close the developer tools to continue.</p>
-        <p style="font-size:12px;opacity:.6;">Refresh the page after closing the tools.</p>
-        <div class="dw-footer">
-            <i class="fas fa-lock"></i> NCHSM Secure Portal
-        </div>
-    </div>
-</div>
-
 <!-- PIN LOCK SCREEN -->
 <div id="pin-lock-screen">
     <div class="pin-container" id="pinContainer">
         <i class="fas fa-lock pin-lock-icon"></i>
-        <h2 class="pin-title">NCHSM Portal Locked</h2>
-        <p class="pin-subtitle">Enter the 4-digit PIN to access the student portal</p>
+        <h2 class="pin-title">Campus Nexus Portal Locked</h2>
+        <p class="pin-subtitle">Enter the 4-digit PIN to access the demo portal</p>
         
         <div class="pin-display" id="pinDisplay">
             <div class="pin-dot" data-index="0"></div>
@@ -1328,8 +1272,8 @@ body.dark-mode .app-footer { background: #0a1727; }
             <div class="logo-ring"></div>
             <div class="logo-pulse"></div>
         </div>
-        <h1 style="font-size:20px;font-weight:800;margin:0 0 6px;">Welcome to NCHSM Student Portal</h1>
-        <p style="font-size:13px;opacity:.85;margin:0 0 20px;">Your gateway to academic excellence</p>
+        <h1 style="font-size:20px;font-weight:800;margin:0 0 6px;">Welcome to Campus Nexus</h1>
+        <p style="font-size:13px;opacity:.85;margin:0 0 20px;">Demo Students Portal</p>
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
         <div class="progress-text" id="progressText">Preparing your portal...</div>
         <div class="loading-dots" style="margin-top:14px;"><span></span><span></span><span></span></div>
@@ -1345,10 +1289,10 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <i class="fas fa-bars"></i>
             </button>
             <div class="logo-container">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM" class="header-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%230A3D62%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 fill=%22%23FDB913%22 text-anchor=%22middle%22 font-weight=%22bold%22>N</text></svg>';">
+                <div class="header-logo">CN</div>
                 <div class="header-titles">
-                    <div class="main-title">NCHSM</div>
-                    <div class="subtitle">Digital Student Portal</div>
+                    <div class="main-title">Campus Nexus</div>
+                    <div class="subtitle">Demo Students Portal</div>
                 </div>
             </div>
         </div>
@@ -1453,7 +1397,7 @@ body.dark-mode .app-footer { background: #0a1727; }
                 </button>
             </div>
             <div class="footer-version">
-                <span>Portal v3.0</span> · <span>Demo</span>
+                <span>Campus Nexus v1.0</span> · <span>Demo</span>
             </div>
         </div>
     </aside>
@@ -1465,11 +1409,11 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <div>
                     <h1><span id="greetingText">Good Morning</span>, <span>Demo Student</span>! <span id="greetingEmoji">👋</span></h1>
                     <p>Stay focused, keep learning, and achieve your goals.</p>
-                    <div class="dash-hero-tag">"Better Healthcare Through Competence" 🎓</div>
+                    <div class="dash-hero-tag">"Empowering Education Through Innovation" 🎓</div>
                 </div>
                 <div class="dash-hero-right">
                     <div class="hero-nav">LEARN <span>|</span> PRACTICE <span>|</span> EXCEL</div>
-                    <div style="margin-top:10px;font-size:11px;line-height:1.5;">NCHSM – Shaping Future<br/>Healthcare Professionals</div>
+                    <div style="margin-top:10px;font-size:11px;line-height:1.5;">Campus Nexus – Shaping Future<br/>Leaders Through Technology</div>
                 </div>
             </div>
 
@@ -1486,7 +1430,7 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <i class="fas fa-bullhorn"></i>
                 <div>
                     <strong>Official Announcement</strong>
-                    <p>Welcome to your dashboard! Keep an eye on announcements for important updates.</p>
+                    <p>Welcome to your Campus Nexus dashboard! Keep an eye on announcements for important updates.</p>
                 </div>
             </div>
 
@@ -1672,11 +1616,11 @@ body.dark-mode .app-footer { background: #0a1727; }
                 <div style="display:flex;align-items:center;gap:14px;">
                     <i class="fas fa-graduation-cap"></i>
                     <div>
-                        <strong>"A Healthier Community Begins With A Well-Trained Nurse"</strong>
-                        <span>NCHSM – Committed to Excellence in Health Training</span>
+                        <strong>"Empowering Education Through Innovation"</strong>
+                        <span>Campus Nexus – Building Tomorrow's Leaders Today</span>
                     </div>
                 </div>
-                <div class="quote">Future Nurses<br/><strong>Brighter Communities</strong> ♡</div>
+                <div class="quote">Smart Campus<br/><strong>Brighter Futures</strong> ♡</div>
             </div>
         </section>
 
@@ -1690,8 +1634,8 @@ body.dark-mode .app-footer { background: #0a1727; }
                     <img src="https://ui-avatars.com/api/?name=Demo+Student&background=4C1D95&color=fff&size=120" alt="Profile" style="width:100px;height:100px;border-radius:50%;border:4px solid #4C1D95;">
                     <div>
                         <h3 style="margin:0;color:#0A3D62;font-size:20px;">Demo Student</h3>
-                        <p style="color:#64748b;margin:4px 0;font-size:13px;"><i class="fas fa-id-card"></i> NCHSM-2024-001 · KRCHN Nursing</p>
-                        <p style="color:#64748b;margin:4px 0;font-size:13px;"><i class="fas fa-envelope"></i> demo@nchsm.ac.ke</p>
+                        <p style="color:#64748b;margin:4px 0;font-size:13px;"><i class="fas fa-id-card"></i> CNX-2024-001 · KRCHN Nursing</p>
+                        <p style="color:#64748b;margin:4px 0;font-size:13px;"><i class="fas fa-envelope"></i> demo@campusnexus.ac.ke</p>
                         <p style="color:#64748b;margin:4px 0;font-size:13px;"><i class="fas fa-phone"></i> +254 700 123 456</p>
                     </div>
                 </div>
@@ -1779,7 +1723,7 @@ body.dark-mode .app-footer { background: #0a1727; }
                     <h3 style="color:#0A3D62;margin:0 0 16px;">📋 Lecture Card - Semester 2, 2026</h3>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px;">
                         <div><span style="color:#94a3b8;">Student:</span> <b>Demo Student</b></div>
-                        <div><span style="color:#94a3b8;">ID:</span> <b>NCHSM-2024-001</b></div>
+                        <div><span style="color:#94a3b8;">ID:</span> <b>CNX-2024-001</b></div>
                         <div><span style="color:#94a3b8;">Program:</span> <b>KRCHN Nursing</b></div>
                         <div><span style="color:#94a3b8;">Block:</span> <b>Block 4</b></div>
                     </div>
@@ -1945,14 +1889,14 @@ body.dark-mode .app-footer { background: #0a1727; }
         <section id="newsletter" class="tab-content">
             <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);border-radius:16px;padding:25px 30px;margin-bottom:22px;color:white;">
                 <h2 style="margin:0;font-size:22px;"><i class="fas fa-bullhorn"></i> Newsletter</h2>
-                <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Stay updated with college news</p>
+                <p style="margin:6px 0 0;opacity:.9;font-size:13px;">Stay updated with campus news</p>
             </div>
             <div class="card">
                 <div class="card-head"><h3><i class="fas fa-list"></i> Newsletter Archive</h3><span style="background:#4C1D95;color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;">12 issues</span></div>
                 <div style="padding:16px;">
-                    <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;"><div style="font-weight:700;color:#0A3D62;">📰 NCHSM Newsletter - August 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Updates on academic events and student achievements.</div></div>
-                    <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;"><div style="font-weight:700;color:#0A3D62;">📰 NCHSM Newsletter - July 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Clinical placement updates.</div></div>
-                    <div style="padding:12px 0;"><div style="font-weight:700;color:#0A3D62;">📰 NCHSM Newsletter - June 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Exam results and graduation updates.</div></div>
+                    <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;"><div style="font-weight:700;color:#0A3D62;">📰 Campus Nexus Newsletter - August 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Updates on academic events and student achievements.</div></div>
+                    <div style="padding:12px 0;border-bottom:1px solid #f1f5f9;"><div style="font-weight:700;color:#0A3D62;">📰 Campus Nexus Newsletter - July 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Clinical placement updates.</div></div>
+                    <div style="padding:12px 0;"><div style="font-weight:700;color:#0A3D62;">📰 Campus Nexus Newsletter - June 2026</div><div style="font-size:11px;color:#94a3b8;margin-top:4px;">Exam results and graduation updates.</div></div>
                 </div>
             </div>
         </section>
@@ -2009,9 +1953,9 @@ body.dark-mode .app-footer { background: #0a1727; }
     <footer class="app-footer">
         <div class="footer-grid">
             <div>
-                <h4>NCHSM</h4>
-                <p>Nakuru College of Health Sciences and Management<br>Kiamunyi Off Nakuru - Kabarak Rd, Nakuru</p>
-                <p style="margin-top:8px;">📧 portal.nchsm@gmail.com<br>📞 0790969743</p>
+                <h4>Campus Nexus</h4>
+                <p>Demo Students Portal<br>Powered by CampusNexus</p>
+                <p style="margin-top:8px;">📧 hello@campusnexus.co.ke<br>📞 +254 700 000 000</p>
             </div>
             <div>
                 <h4>Quick Links</h4>
@@ -2028,7 +1972,7 @@ body.dark-mode .app-footer { background: #0a1727; }
             </div>
         </div>
         <div class="footer-bottom">
-            <span>© 2026 NCHSM. All rights reserved.</span>
+            <span>© 2026 Campus Nexus. All rights reserved.</span>
             <span>🔒 Locked Demo · Powered by <span class="powered">CampusNexus</span></span>
         </div>
     </footer>
@@ -2044,39 +1988,32 @@ body.dark-mode .app-footer { background: #0a1727; }
 (function() {
     'use strict';
 
-    // Block right-click
     document.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         return false;
     });
 
-    // Block DevTools keyboard shortcuts
     document.addEventListener('keydown', function(e) {
-        // F12
         if (e.key === 'F12' || e.keyCode === 123) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
-        // Ctrl+Shift+I/J/C (Inspect/Console/Element picker)
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I','i','J','j','C','c'].includes(e.key)) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
-        // Ctrl+U (View Source)
         if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
-        // Ctrl+S (Save)
         if ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's')) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
-        // Ctrl+P (Print)
         if ((e.ctrlKey || e.metaKey) && (e.key === 'P' || e.key === 'p')) {
             e.preventDefault();
             e.stopPropagation();
@@ -2084,21 +2021,18 @@ body.dark-mode .app-footer { background: #0a1727; }
         }
     }, true);
 
-    // Block drag
     document.addEventListener('dragstart', function(e) {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
         }
     });
 
-    // Block text selection outside inputs
     document.addEventListener('selectstart', function(e) {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
         }
     });
 
-    // Block copy outside inputs
     document.addEventListener('copy', function(e) {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
@@ -2194,7 +2128,7 @@ body.dark-mode .app-footer { background: #0a1727; }
             setTimeout(() => {
                 pinScreen.classList.add('hidden');
                 startLoadingSequence();
-                try { sessionStorage.setItem('nchsm_demo_unlocked', 'true'); } catch(e){}
+                try { sessionStorage.setItem('cnx_demo_unlocked', 'true'); } catch(e){}
             }, 500);
         } else {
             failedAttempts++;
@@ -2251,9 +2185,8 @@ body.dark-mode .app-footer { background: #0a1727; }
         else if (e.key === 'Enter') handlePinKey('enter');
     });
     
-    // Auto-unlock if already unlocked in this session
     try {
-        if (sessionStorage.getItem('nchsm_demo_unlocked') === 'true') {
+        if (sessionStorage.getItem('cnx_demo_unlocked') === 'true') {
             unlocked = true;
             pinScreen.classList.add('hidden');
             setTimeout(() => startLoadingSequence(), 100);
@@ -2272,7 +2205,7 @@ body.dark-mode .app-footer { background: #0a1727; }
         updatePinDots();
         showPinError('');
         updateAttemptsDisplay();
-        try { sessionStorage.removeItem('nchsm_demo_unlocked'); } catch(e){}
+        try { sessionStorage.removeItem('cnx_demo_unlocked'); } catch(e){}
         pinScreen.classList.remove('hidden');
         appContent.classList.remove('visible');
         document.getElementById('loading-screen').classList.remove('visible');
@@ -2315,7 +2248,7 @@ function startLoadingSequence() {
                 loadingScreen.classList.add('hidden');
                 appContent.classList.add('visible');
                 updateGreeting();
-                showToast('✅ Welcome to NCHSM Student Portal!');
+                showToast('✅ Welcome to Campus Nexus Demo Portal!');
             }, 400);
         }
     }, 400);
