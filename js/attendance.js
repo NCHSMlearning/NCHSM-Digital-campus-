@@ -49,7 +49,7 @@
         CLASSROOM_RADIUS: 150,
         LAB_RADIUS: 150,
         TUTORIAL_RADIUS: 150,
-        MAX_STUDENTS_PER_DEVICE: 2
+        MAX_STUDENTS_PER_DEVICE: 1
     };
 
     let approvedUnits = [];
