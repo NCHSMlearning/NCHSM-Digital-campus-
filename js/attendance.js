@@ -5,8 +5,8 @@
 // ✅ Multi-reading GPS averaging (5+ readings)
 // ✅ Confidence scoring & verification
 // ✅ Anti-spoofing protection
-// ✅ Clinical radius: Nakuru = 250m, Others = 200m
-// ✅ 50m radius for classroom/lab
+// ✅ Clinical radius: Nakuru = 280m, Others = 200m
+// ✅ 150m radius for classroom/lab/tutorial
 // ✅ Beautiful modals - NO "This site says" popups!
 // ✅ Working navigation and filters
 // ✅ FULLY SELF-CONTAINED
@@ -18,7 +18,8 @@
 // ✅ Active Sessions panel filtered by student's block + intake year
 // ✅ One-click check-in from session card
 // ✅ Duplicate check-in prevention
-// ✅ 🔒 ONE DEVICE = ONE STUDENT PER SESSION (device fingerprint lock)
+// ✅ 🔒 DEVICE LOCK: max 2 students per device per session
+// ✅ 🔑 PERSISTENT DEVICE ID (no more fingerprint collisions)
 // ✅ 🔀 TWO INDEPENDENT PATHS: session-card (Path A) + dropdown (Path B)
 // ============================================
 
@@ -47,7 +48,8 @@
         CLINICAL_RADIUS: 300,
         CLASSROOM_RADIUS: 150,
         LAB_RADIUS: 150,
-        TUTORIAL_RADIUS: 150
+        TUTORIAL_RADIUS: 150,
+        MAX_STUDENTS_PER_DEVICE: 2
     };
 
     let approvedUnits = [];
@@ -71,17 +73,51 @@
     const MAX_PROFILE_ATTEMPTS = 20;
 
     // ============================================
-    // 🖥️ DEVICE FINGERPRINT — one device = one student per session
+    // 🖥️ DEVICE FINGERPRINT — persistent per-browser
+    // Uses a random UUID stored in localStorage so two identical phones
+    // (same model, same browser) get DIFFERENT fingerprints.
     // ============================================
     async function getDeviceFingerprint() {
         try {
+            const STORAGE_KEY = 'nchsm_device_id_v2';
+            let deviceId = null;
+
+            try {
+                deviceId = localStorage.getItem(STORAGE_KEY);
+            } catch (_) { /* incognito may block */ }
+
+            if (!deviceId) {
+                const bytes = new Uint8Array(16);
+                if (window.crypto?.getRandomValues) {
+                    crypto.getRandomValues(bytes);
+                } else {
+                    for (let i = 0; i < bytes.length; i++) {
+                        bytes[i] = Math.floor(Math.random() * 256);
+                    }
+                }
+                deviceId = 'dev_' + Array.from(bytes)
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+
+                try {
+                    localStorage.setItem(STORAGE_KEY, deviceId);
+                    console.log('🆕 Generated new device ID:', deviceId);
+                } catch (_) {
+                    console.warn('⚠️ Could not persist device ID');
+                }
+            } else {
+                console.log('♻️ Using existing device ID:', deviceId);
+            }
+
             const parts = [
+                deviceId,
                 navigator.userAgent || '',
                 navigator.language || '',
                 screen.width + 'x' + screen.height,
                 screen.colorDepth || '',
+                (window.devicePixelRatio || 1).toFixed(2),
                 new Date().getTimezoneOffset(),
                 navigator.hardwareConcurrency || '',
+                navigator.maxTouchPoints || 0,
                 navigator.platform || ''
             ];
             const raw = parts.join('|');
@@ -101,7 +137,7 @@
             return 'fp_' + Math.abs(h).toString(16);
         } catch (e) {
             console.warn('⚠️ Fingerprint error:', e);
-            return 'fp_unknown';
+            return 'fp_unknown_' + Date.now();
         }
     }
 
@@ -698,8 +734,8 @@
                 .from('clinical_names')
                 .select('id, clinical_area_name, latitude, longitude, radius_meters, block_term, intake_year')
                 .eq('program', 'KRCHN')
-                .eq('intake_year', intakeYear)
-                .eq('block_term', blockTerm);
+                .eq('intake_year', String(intakeYear).trim())
+                .eq('block_term', blockTerm.trim());
 
             if (error) throw error;
 
@@ -707,7 +743,7 @@
                 let radius = loc.radius_meters || 200;
                 const lowerName = loc.clinical_area_name.toLowerCase();
                 if (lowerName.includes('nakuru county referral hospital')) {
-                    radius = 250;
+                    radius = 280;
                 }
                 return {
                     id: `clinical_${loc.id}`,
@@ -1455,7 +1491,60 @@
     }
 
     // ============================================
-    // ✅ SUCCESS MODAL
+    // ✅ SUCCESS MODAL (Full version)
+    // ============================================
+
+    function showSuccessModal(data) {
+        const existing = document.getElementById('successModal');
+        if (existing) existing.remove();
+
+        const statusMap = {
+            'Present': { emoji: '🎉', color: '#10b981', bg: '#d1fae5', title: '✨ Verified Check-in!', message: `✅ Verified within ${data.distance}m • ${data.confidence || 95}% confidence` },
+            'Absent': { emoji: '📍', color: '#f59e0b', bg: '#fef3c7', title: '📍 Not at Location', message: `You are ${data.distance}m from the target area.` },
+            'Pending': { emoji: '⏳', color: '#3b82f6', bg: '#dbeafe', title: '⏳ Pending Review', message: `GPS accuracy: ±${data.accuracy}m • ${data.confidence || 50}% confidence` }
+        };
+        const status = statusMap[data.status] || statusMap['Pending'];
+
+        const modal = document.createElement('div');
+        modal.id = 'successModal';
+        modal.innerHTML = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 999999; display: flex; align-items: center; justify-content: center; animation: fadeInBackdrop 0.3s ease;">
+                <div style="background: white; border-radius: 24px; max-width: 420px; width: 92%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                    <div style="background: ${status.color}; padding: 20px 24px 16px; text-align: center; color: white;">
+                        <div style="font-size: 48px; margin-bottom: 4px;">${status.emoji}</div>
+                        <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: white;">${status.title}</h2>
+                        <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">${status.message}</p>
+                    </div>
+                    <div style="padding: 24px 24px 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px 4px;">
+                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.distance}m</div>
+                                <div style="font-size: 10px; color: #94a3b8;">Distance</div>
+                            </div>
+                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px 4px;">
+                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">±${data.accuracy}m</div>
+                                <div style="font-size: 10px; color: #94a3b8;">Accuracy</div>
+                            </div>
+                            <div style="text-align: center; background: ${status.bg}; border-radius: 10px; padding: 10px 4px;">
+                                <div style="font-size: 18px; font-weight: 700; color: ${status.color};">${data.confidence || 95}%</div>
+                                <div style="font-size: 10px; color: ${status.color};">Confidence</div>
+                            </div>
+                        </div>
+                        <button onclick="window._closeSuccessModal()" style="width: 100%; padding: 14px; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; background: ${status.color}; color: white;">👍 Done</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        window._closeSuccessModal = function() {
+            const modal = document.getElementById('successModal');
+            if (modal) modal.remove();
+        };
+    }
+
+    // ============================================
+    // ✅ SUCCESS MODAL (Simple version)
     // ============================================
 
     function showSimpleSuccessModal(data) {
@@ -1490,10 +1579,7 @@
 
         window._closeSuccessModal = function() {
             const modal = document.getElementById('successModal');
-            if (modal) {
-                modal.style.display = 'none';
-                setTimeout(() => modal.remove(), 300);
-            }
+            if (modal) modal.remove();
         };
     }
 
@@ -1652,7 +1738,6 @@
 
         if (gpsStatus) {
             const icon = location.accuracy < 20 ? '✅' : location.accuracy < 50 ? '📍' : '⚠️';
-            const color = location.accuracy < 20 ? '#10b981' : location.accuracy < 50 ? '#f59e0b' : '#ef4444';
             const bg = location.accuracy < 20 ? '#d1fae5' : location.accuracy < 50 ? '#fef3c7' : '#fee2e2';
             const textColor = location.accuracy < 20 ? '#065f46' : location.accuracy < 50 ? '#92400e' : '#991b1b';
 
@@ -1991,7 +2076,7 @@
     // 🔀 Handles BOTH paths:
     //    PATH A — Session card (currentSession.id is a real UUID)
     //    PATH B — Dropdown    (no session → session_id = NULL)
-    // 🔒 Device lock: one device = one student
+    // 🔒 Device lock: max 2 distinct students per device per session
     // ============================================
 
     async function doCheckIn(sessionArg) {
@@ -2085,24 +2170,27 @@
             console.log('🖥️ Device fingerprint:', deviceFingerprint);
 
             // ============================================================
-            // 🔒 DEVICE LOCK
-            //  Path A → one device per session
-            //  Path B → one device per (target, day)
+            // 🔒 DEVICE LOCK — max 2 distinct students per device per session
+            //  Path A → per session
+            //  Path B → per (target, day)
             // ============================================================
+            const MAX_STUDENTS_PER_DEVICE = ACCURACY_CONFIG.MAX_STUDENTS_PER_DEVICE || 2;
+
             if (isPathA) {
-                const { data: deviceClash } = await supabase
+                const { data: deviceCheckins } = await supabase
                     .from('geo_attendance_logs')
-                    .select('id, user_id, student_name')
+                    .select('user_id, student_name')
                     .eq('session_id', attendanceSessionId)
                     .eq('device_fingerprint', deviceFingerprint)
-                    .neq('user_id', userId)
-                    .limit(1);
+                    .neq('user_id', userId);
 
-                if (deviceClash && deviceClash.length > 0) {
-                    const otherName = deviceClash[0].student_name || 'another student';
+                const distinctUsers = new Set((deviceCheckins || []).map(r => r.user_id));
+
+                if (distinctUsers.size >= MAX_STUDENTS_PER_DEVICE) {
+                    const names = [...new Set((deviceCheckins || []).map(r => r.student_name))].filter(Boolean);
                     showToast(
-                        `⚠️ This device already checked in ${otherName} for this session. ` +
-                        `Each student must use their own phone/device.`,
+                        `⚠️ This device has already been used by ${names.join(', ')} for this session. ` +
+                        `Maximum ${MAX_STUDENTS_PER_DEVICE} students per device.`,
                         'error', 8000
                     );
                     btn.disabled = false;
@@ -2112,20 +2200,21 @@
                 }
             } else {
                 const today = new Date().toISOString().split('T')[0];
-                const { data: deviceClashToday } = await supabase
+                const { data: deviceCheckins } = await supabase
                     .from('geo_attendance_logs')
-                    .select('id, user_id, student_name')
+                    .select('user_id, student_name')
                     .eq('device_fingerprint', deviceFingerprint)
                     .eq('target_name', selectedTarget.name)
                     .gte('check_in_time', `${today}T00:00:00.000Z`)
                     .lte('check_in_time', `${today}T23:59:59.999Z`)
-                    .neq('user_id', userId)
-                    .limit(1);
+                    .neq('user_id', userId);
 
-                if (deviceClashToday && deviceClashToday.length > 0) {
-                    const otherName = deviceClashToday[0].student_name || 'another student';
+                const distinctUsers = new Set((deviceCheckins || []).map(r => r.user_id));
+
+                if (distinctUsers.size >= MAX_STUDENTS_PER_DEVICE) {
+                    const names = [...new Set((deviceCheckins || []).map(r => r.student_name))].filter(Boolean);
                     showToast(
-                        `⚠️ This device already checked in ${otherName} to ${selectedTarget.name} today.`,
+                        `⚠️ This device has already been used by ${names.join(', ')} for ${selectedTarget.name} today.`,
                         'error', 8000
                     );
                     btn.disabled = false;
@@ -2139,7 +2228,6 @@
             // 📡 ACQUIRE GPS
             // ============================================================
             const location = await getAccurateLocation();
-            const deviceType = location?.device_type || getDeviceLocationProfile().label;
 
             if (!location) {
                 btn.disabled = false;
@@ -2171,37 +2259,12 @@
             const accuracy = location.accuracy || 0;
 
             let status = 'Absent';
-            let statusMessage = '';
-
-            if (accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) {
-                status = 'Pending';
-                statusMessage = 'GPS accuracy needs review';
-            }
-
-            if (distance <= radius) {
-                if (status !== 'Pending') {
-                    status = 'Present';
-                    statusMessage = `✅ Verified within ${radius}m`;
-                }
-            } else if (distance <= radius * 2) {
-                if (status !== 'Pending') {
-                    status = 'Pending';
-                    statusMessage = `Distance needs review`;
-                }
-            } else {
-                status = 'Absent';
-                statusMessage = `Location needs verification`;
-            }
-
-            if (location.confidence < 50) {
-                status = 'Pending';
-                statusMessage = 'GPS confidence needs review';
-            }
-
-            if (location.readingsCount < 3) {
-                status = 'Pending';
-                statusMessage = 'GPS readings need review';
-            }
+            if (accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) status = 'Pending';
+            else if (distance <= radius) status = 'Present';
+            else if (distance <= radius * 2) status = 'Pending';
+            else status = 'Absent';
+            if (location.confidence < 50) status = 'Pending';
+            if (location.readingsCount < 3) status = 'Pending';
 
             const details = {
                 'Student': studentFullName,
@@ -2233,8 +2296,6 @@
 
             // ============================================================
             // 🔒 FINAL DUPLICATE CHECK
-            //  Path A → same student, same session
-            //  Path B → same student, same target, same day
             // ============================================================
             let replaceAttendanceId = null;
 
@@ -2307,15 +2368,12 @@
                     .select('id, user_id, student_name')
                     .eq('session_id', attendanceSessionId)
                     .eq('device_fingerprint', deviceFingerprint)
-                    .neq('user_id', userId)
-                    .limit(1);
+                    .neq('user_id', userId);
 
-                if (deviceClash2 && deviceClash2.length > 0) {
-                    const otherName = deviceClash2[0].student_name || 'another student';
-                    showToast(
-                        `⚠️ This device was just used to check in ${otherName} for this session.`,
-                        'error', 8000
-                    );
+                const distinctUsers = new Set((deviceClash2 || []).map(r => r.user_id));
+                if (distinctUsers.size >= MAX_STUDENTS_PER_DEVICE) {
+                    const names = [...new Set((deviceClash2 || []).map(r => r.student_name))].filter(Boolean);
+                    showToast(`⚠️ This device has been used by ${names.join(', ')} for this session.`, 'error', 8000);
                     btn.disabled = false;
                     btn.innerHTML = '📍 Check In Now';
                     btn.style.opacity = '1';
@@ -2325,9 +2383,6 @@
 
             const sessionType = sessionTypeSelect?.value || currentSession?.session_type || selectedTarget.type || 'class';
 
-            // ============================================================
-            // 📝 BUILD RECORD
-            // ============================================================
             const record = {
                 user_id: userId,
                 student_id: admissionNumber,
@@ -2362,18 +2417,6 @@
                 created_at: new Date().toISOString()
             };
 
-            console.log('📝 Saving record:', {
-                user_id: record.user_id,
-                session_id: record.session_id,
-                device_fingerprint: record.device_fingerprint,
-                status: record.attendance_status,
-                distance: record.distance_meters,
-                path: isPathA ? 'A (session)' : 'B (dropdown)'
-            });
-
-            // ============================================================
-            // 💾 INSERT OR REPLACE
-            // ============================================================
             let saveError = null;
 
             if (replaceAttendanceId) {
@@ -2398,9 +2441,6 @@
                 saveError = error;
             }
 
-            // ============================================================
-            // 🚨 HANDLE ERRORS
-            // ============================================================
             if (saveError) {
                 if (saveError.code === '23505') {
                     showToast('✅ You already have attendance recorded for this session.', 'success', 5000);
@@ -2413,11 +2453,7 @@
                 }
 
                 if (String(saveError.message || '').includes('DEVICE_ALREADY_USED_FOR_SESSION')) {
-                    showToast(
-                        '⚠️ This phone has already been used to check in another student for this session. ' +
-                        'Each student must use their own device.',
-                        'error', 9000
-                    );
+                    showToast('⚠️ This phone has been used by too many students for this session.', 'error', 9000);
                     btn.disabled = false;
                     btn.innerHTML = '📍 Check In Now';
                     btn.style.opacity = '1';
@@ -2428,17 +2464,10 @@
                 throw saveError;
             }
 
-            // ============================================================
-            // 🎉 SUCCESS
-            // ============================================================
             let successMessage = 'Check-in recorded successfully!';
-            if (status === 'Present') {
-                successMessage = '✅ Check-in verified! You are within the required range.';
-            } else if (status === 'Pending') {
-                successMessage = '⏳ Check-in recorded for review. You will be notified once verified.';
-            } else {
-                successMessage = '📝 Check-in recorded. Your location will be verified by staff.';
-            }
+            if (status === 'Present') successMessage = '✅ Check-in verified! You are within the required range.';
+            else if (status === 'Pending') successMessage = '⏳ Check-in recorded for review. You will be notified once verified.';
+            else successMessage = '📝 Check-in recorded. Your location will be verified by staff.';
 
             showToast('✅ Check-in recorded!', 'success', 3000);
 
@@ -2673,7 +2702,8 @@
 
     console.log('✅ ULTRA-ACCURATE attendance system module loaded!');
     console.log('🎓 Active Sessions panel enabled with one-click check-in!');
-    console.log('🔒 Device lock enforced: one device = one student per session');
+    console.log('🔒 Device lock enforced: max 2 students per device per session');
+    console.log('🔑 Persistent device ID (no more fingerprint collisions)');
     console.log('🔀 Two independent paths: session card + dropdown');
 
 })();
@@ -2703,5 +2733,6 @@
 })();
 
 console.log('✅ attendance.js fully loaded and ready');
-console.log('🔒 Device lock enforced: one device = one student per session');
+console.log('🔒 Device lock: max 2 students per device per session');
+console.log('🔑 Persistent device ID (no collisions)');
 console.log('🔀 Two independent paths: Path A (session card) + Path B (dropdown)');
