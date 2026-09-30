@@ -1,6 +1,10 @@
 // ============================================================
 // NCHSM LECTURER ATTENDANCE MODULE — WITH TVET + STYLED XLSX
 // ============================================================
+// ✅ Clinical attendance now filterable
+// ✅ Clinical areas appear in Unit filter dropdown
+// ✅ Clinical check-ins flow through all filter stages
+// ============================================================
 
 const LecturerAttendance = {
     todayLogs: [],
@@ -8,6 +12,7 @@ const LecturerAttendance = {
     filteredTodayLogs: [],
     filteredPastLogs: [],
     assignedUnits: [],
+    clinicalLocations: [],   // ← NEW: storage for clinical areas
     lecturerAssignmentId: null,
     lecturerUuid: null,
     mapInstance: null,
@@ -67,6 +72,7 @@ const LecturerAttendance = {
         try {
             await this.resolveLecturerId();
             await this.loadAssignedUnits();
+            await this.loadClinicalLocationsForFilter();   // ← NEW: load clinical areas
             await this.loadAttendanceSessions();
             await this.loadAllAttendance();
             this.setupEventListeners();
@@ -187,6 +193,42 @@ const LecturerAttendance = {
             console.log('📚 Assigned blocks:', this.assignedBlocks);
         } catch (error) {
             console.error('❌ loadAssignedUnits fail:', error);
+        }
+    },
+
+    // ============================================================
+    // LOAD CLINICAL LOCATIONS FOR FILTER   ← NEW METHOD
+    // ============================================================
+    async loadClinicalLocationsForFilter() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase || this.isTVET) {
+                this.clinicalLocations = [];
+                return [];
+            }
+
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const program = this.currentProgram || profile?.program || 'KRCHN';
+
+            const { data, error } = await supabase
+                .from('clinical_names')
+                .select('id, clinical_area_name, block_term, intake_year, program')
+                .eq('program', program)
+                .order('clinical_area_name');
+
+            if (error) {
+                console.warn('⚠️ Could not load clinical locations for filter:', error.message);
+                this.clinicalLocations = [];
+                return [];
+            }
+
+            this.clinicalLocations = data || [];
+            console.log(`🏥 Loaded ${this.clinicalLocations.length} clinical locations for filter`);
+            return this.clinicalLocations;
+        } catch (e) {
+            console.warn('⚠️ loadClinicalLocationsForFilter failed:', e);
+            this.clinicalLocations = [];
+            return [];
         }
     },
 
@@ -408,48 +450,73 @@ const LecturerAttendance = {
         }
     },
 
+    // ============================================================
+    // FILTER LECTURER ATTENDANCE LOGS   ← PATCHED
+    // Now allows clinical check-ins through
+    // ============================================================
     async filterLecturerAttendanceLogs(logs) {
         const rows = Array.isArray(logs) ? logs : [];
         const program = this.currentProgram || 'KRCHN';
         const assignedUnits = new Set((this.assignedUnits || []).map(u => this.normalizeFilterValue(u?.subject_name)).filter(Boolean));
+
+        // NEW: build a set of known clinical area names
+        const clinicalAreas = new Set(
+            (this.clinicalLocations || []).map(c =>
+                this.normalizeFilterValue(c.clinical_area_name || c.name)
+            ).filter(Boolean)
+        );
+
         const supabase = window.lecturerDB?.supabase;
         let ownedSessionIds = new Set();
         if (supabase && this.lecturerUuid) {
             try {
-                const { data } = await supabase.from('scheduled_sessions').select('id,unit_name,target_program').eq('created_by', this.lecturerUuid);
+                const { data } = await supabase
+                    .from('scheduled_sessions')
+                    .select('id,unit_name,target_program')
+                    .eq('created_by', this.lecturerUuid);
                 ownedSessionIds = new Set((data || []).map(s => String(s.id)));
-            } catch (e) { console.warn('⚠️ Could not load owned attendance sessions:', e); }
+            } catch (e) {
+                console.warn('⚠️ Could not load owned attendance sessions:', e);
+            }
         }
+
         return rows.filter(log => {
             if (String(log?.role || '').toLowerCase() === 'lecturer') return true;
             if (log?.session_id && ownedSessionIds.has(String(log.session_id))) return true;
-            if (this.normalizeFilterValue(log?.program) !== this.normalizeFilterValue(program)) return false;
+
+            // NEW: allow clinical check-ins (session_id null + location_type clinical)
+            if (log?.session_id === null && String(log?.location_type || '').toLowerCase() === 'clinical') return true;
+
+            // NEW: allow if target/unit name matches a known clinical area
             const unit = this.normalizeFilterValue(log?.unit_name || log?.target_name);
+            if (clinicalAreas.has(unit)) return true;
+
+            if (this.normalizeFilterValue(log?.program) !== this.normalizeFilterValue(program)) return false;
             return assignedUnits.size === 0 || assignedUnits.has(unit);
         });
     },
 
     getFilterableAttendanceLogs(selectedSession = this.getSelectedSession(), rangeFrom = '', rangeTo = '') {
         const globalLogs = this.dedupeAttendanceLogs([...(this.todayLogs || []), ...(this.pastLogs || [])]);
-        
+
         // If no session is selected, just return all global logs
         if (!selectedSession) return globalLogs;
 
         const sessionDate = this.getNairobiDateString(selectedSession.session_date);
         const includesSessionDate = (!rangeFrom || sessionDate >= rangeFrom) && (!rangeTo || sessionDate <= rangeTo);
-        
+
         // If the session date is outside the filter range, return global logs
         if (!includesSessionDate) return globalLogs;
 
         // Try to get logs from the session register
         const sessionLogs = this.sessionRegisterToLogs(this.sessionRegister || { rows: [] }, selectedSession);
-        
+
         // If the session register is empty (no students enrolled or no attendance taken),
         // fall back to global logs filtered by the session's date and unit.
         if (sessionLogs.length === 0) {
             console.warn("⚠️ Session register is empty. Falling back to global logs for this date/unit.");
             const unitName = String(selectedSession.unit_name || selectedSession.course_name || '').trim().toLowerCase();
-            
+
             return globalLogs.filter(log => {
                 const logDate = this.getAttendanceDate(log);
                 const logUnit = String(log.unit_name || log.target_name || '').trim().toLowerCase();
@@ -559,8 +626,8 @@ const LecturerAttendance = {
             await this.loadProgramInfo();
 
             // 4. Apply filters (which will now use the freshly fetched sessionRegister)
-            this.applyFilters(); 
-            
+            this.applyFilters();
+
         } catch (error) {
             console.error('❌ loadAllAttendance:', error);
             this.showError('Failed to load attendance data: ' + error.message);
@@ -594,7 +661,7 @@ const LecturerAttendance = {
 
             // Note: Rendering is now handled centrally by applyFilters() after all data loads.
             // We no longer render here to avoid the register overriding the filter view.
-            
+
             this.updateProgramBadge();
         } catch (error) {
             console.error('❌ loadTodayAttendance:', error);
@@ -1210,25 +1277,45 @@ const LecturerAttendance = {
         this.updateFilterLabels();
     },
 
+    // ============================================================
+    // POPULATE UNIT FILTER   ← PATCHED
+    // Now includes clinical areas
+    // ============================================================
     populateUnitFilter() {
         const select = document.getElementById('filterUnit');
         if (!select) return;
 
-        // The lecturer should only be able to filter/select units that are
-        // actually assigned to them. Do NOT add arbitrary units from
-        // historical attendance records.
+        // Assigned units (from lecturer_subject_assignments)
         const values = new Map();
         (Array.isArray(this.assignedUnits) ? this.assignedUnits : []).forEach(u => {
             const name = String(u?.subject_name || '').trim();
             if (!name) return;
-            values.set(this.normalizeFilterValue(name), name);
+            values.set(this.normalizeFilterValue(name), { name, type: 'unit' });
+        });
+
+        // Clinical areas (from clinical_names) — only for KRCHN
+        if (!this.isTVET) {
+            (Array.isArray(this.clinicalLocations) ? this.clinicalLocations : []).forEach(c => {
+                const name = String(c?.clinical_area_name || c?.name || '').trim();
+                if (!name) return;
+                values.set(this.normalizeFilterValue(name), { name, type: 'clinical' });
+            });
+        }
+
+        // Also collect unit/target names from loaded logs
+        [...(this.todayLogs || []), ...(this.pastLogs || [])].forEach(log => {
+            const name = String(log?.unit_name || log?.target_name || '').trim();
+            if (!name) return;
+            if (!values.has(this.normalizeFilterValue(name))) {
+                values.set(this.normalizeFilterValue(name), { name, type: 'log' });
+            }
         });
 
         const current = select.value || 'All';
-        select.innerHTML = '<option value="All">All Assigned Units</option>' +
+        select.innerHTML = '<option value="All">All Assigned Units &amp; Clinical Areas</option>' +
             [...values.values()]
-                .sort((a, b) => a.localeCompare(b))
-                .map(v => `<option value="${this.escapeHtml(v)}">${this.escapeHtml(v)}</option>`)
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(v => `<option value="${this.escapeHtml(v.name)}">${v.type === 'clinical' ? '🏥 ' : ''}${this.escapeHtml(v.name)}</option>`)
                 .join('');
 
         if ([...select.options].some(o => o.value === current)) {
@@ -1987,7 +2074,7 @@ const LecturerAttendance = {
             ws.getRow(r).height = 22;
             r++;
 
-                      const sigRow = (label) => {
+            const sigRow = (label) => {
                 // Column A (merged A:B) → the label
                 if (totalCols >= 2) {
                     ws.mergeCells(r, 1, r, 2);
@@ -2757,3 +2844,4 @@ console.log('✅ LecturerAttendance module loaded');
 console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify');
 console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
 console.log('🎨 Export: Modern styled .xlsx with colored cells, merged headers, frozen panes');
+console.log('🏥 Clinical attendance filter: ENABLED');
