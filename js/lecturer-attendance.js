@@ -2,7 +2,7 @@
 // NCHSM LECTURER ATTENDANCE MODULE — WITH TVET + STYLED XLSX
 // ============================================================
 // ✅ Clinical attendance now filterable
-// ✅ Clinical areas appear in Unit filter dropdown
+// ✅ "All Clinical Areas (Clinical Only)" filter option
 // ✅ Clinical check-ins flow through all filter stages
 // ============================================================
 
@@ -12,7 +12,7 @@ const LecturerAttendance = {
     filteredTodayLogs: [],
     filteredPastLogs: [],
     assignedUnits: [],
-    clinicalLocations: [],   // ← NEW: storage for clinical areas
+    clinicalLocations: [],   // storage for clinical areas
     lecturerAssignmentId: null,
     lecturerUuid: null,
     mapInstance: null,
@@ -72,7 +72,7 @@ const LecturerAttendance = {
         try {
             await this.resolveLecturerId();
             await this.loadAssignedUnits();
-            await this.loadClinicalLocationsForFilter();   // ← NEW: load clinical areas
+            await this.loadClinicalLocationsForFilter();
             await this.loadAttendanceSessions();
             await this.loadAllAttendance();
             this.setupEventListeners();
@@ -197,7 +197,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // LOAD CLINICAL LOCATIONS FOR FILTER   ← NEW METHOD
+    // LOAD CLINICAL LOCATIONS FOR FILTER
     // ============================================================
     async loadClinicalLocationsForFilter() {
         try {
@@ -239,9 +239,6 @@ const LecturerAttendance = {
         const unitSelect = document.getElementById('attUnit');
         if (!unitSelect) return;
 
-        // IMPORTANT: this dropdown must contain ONLY units explicitly
-        // assigned to the currently logged-in lecturer. Attendance history
-        // is never used to add unassigned units here.
         const seen = new Map();
         (Array.isArray(this.assignedUnits) ? this.assignedUnits : []).forEach(u => {
             const name = String(u?.subject_name || '').trim();
@@ -283,7 +280,6 @@ const LecturerAttendance = {
 
     getNairobiDayBounds(dateString) {
         const date = String(dateString || this.getNairobiDateString()).trim();
-        // Kenya is UTC+3 and has no DST. Convert the selected local day to UTC.
         const start = new Date(`${date}T00:00:00+03:00`);
         const end = new Date(`${date}T23:59:59.999+03:00`);
         return { start: start.toISOString(), end: end.toISOString() };
@@ -370,9 +366,6 @@ const LecturerAttendance = {
             if (error) throw error;
             this.sessions = data || [];
 
-            // Keep an externally selected session when the lecturer sessions
-            // module has already selected one. Otherwise use the active/opened
-            // occurrence, then the most recently scheduled occurrence.
             const externalId = window.LecturerSessions?.selectedSessionId ||
                 window.LecturerSessions?.currentSessionId || null;
             const preferredId = externalId || this.selectedSessionId;
@@ -451,15 +444,13 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // FILTER LECTURER ATTENDANCE LOGS   ← PATCHED
-    // Now allows clinical check-ins through
+    // FILTER LECTURER ATTENDANCE LOGS
     // ============================================================
     async filterLecturerAttendanceLogs(logs) {
         const rows = Array.isArray(logs) ? logs : [];
         const program = this.currentProgram || 'KRCHN';
         const assignedUnits = new Set((this.assignedUnits || []).map(u => this.normalizeFilterValue(u?.subject_name)).filter(Boolean));
 
-        // NEW: build a set of known clinical area names
         const clinicalAreas = new Set(
             (this.clinicalLocations || []).map(c =>
                 this.normalizeFilterValue(c.clinical_area_name || c.name)
@@ -484,10 +475,8 @@ const LecturerAttendance = {
             if (String(log?.role || '').toLowerCase() === 'lecturer') return true;
             if (log?.session_id && ownedSessionIds.has(String(log.session_id))) return true;
 
-            // NEW: allow clinical check-ins (session_id null + location_type clinical)
             if (log?.session_id === null && String(log?.location_type || '').toLowerCase() === 'clinical') return true;
 
-            // NEW: allow if target/unit name matches a known clinical area
             const unit = this.normalizeFilterValue(log?.unit_name || log?.target_name);
             if (clinicalAreas.has(unit)) return true;
 
@@ -499,20 +488,15 @@ const LecturerAttendance = {
     getFilterableAttendanceLogs(selectedSession = this.getSelectedSession(), rangeFrom = '', rangeTo = '') {
         const globalLogs = this.dedupeAttendanceLogs([...(this.todayLogs || []), ...(this.pastLogs || [])]);
 
-        // If no session is selected, just return all global logs
         if (!selectedSession) return globalLogs;
 
         const sessionDate = this.getNairobiDateString(selectedSession.session_date);
         const includesSessionDate = (!rangeFrom || sessionDate >= rangeFrom) && (!rangeTo || sessionDate <= rangeTo);
 
-        // If the session date is outside the filter range, return global logs
         if (!includesSessionDate) return globalLogs;
 
-        // Try to get logs from the session register
         const sessionLogs = this.sessionRegisterToLogs(this.sessionRegister || { rows: [] }, selectedSession);
 
-        // If the session register is empty (no students enrolled or no attendance taken),
-        // fall back to global logs filtered by the session's date and unit.
         if (sessionLogs.length === 0) {
             console.warn("⚠️ Session register is empty. Falling back to global logs for this date/unit.");
             const unitName = String(selectedSession.unit_name || selectedSession.course_name || '').trim().toLowerCase();
@@ -520,12 +504,10 @@ const LecturerAttendance = {
             return globalLogs.filter(log => {
                 const logDate = this.getAttendanceDate(log);
                 const logUnit = String(log.unit_name || log.target_name || '').trim().toLowerCase();
-                // Match date AND unit (if unit exists)
                 return logDate === sessionDate && (unitName ? logUnit === unitName : true);
             });
         }
 
-        // Otherwise, merge and dedupe
         return this.dedupeAttendanceLogs([...globalLogs, ...sessionLogs]);
     },
 
@@ -609,11 +591,9 @@ const LecturerAttendance = {
     // ============================================================
     async loadAllAttendance() {
         try {
-            // 1. Load raw data
             await this.loadTodayAttendance();
             await this.loadPastAttendance();
 
-            // 2. If a session is selected, force-fetch its register
             const session = this.getSelectedSession();
             if (session) {
                 console.log("🔄 Loading register for selected session:", session.id);
@@ -622,10 +602,8 @@ const LecturerAttendance = {
                 this.sessionRegister = null;
             }
 
-            // 3. Load program info (for student counts)
             await this.loadProgramInfo();
 
-            // 4. Apply filters (which will now use the freshly fetched sessionRegister)
             this.applyFilters();
 
         } catch (error) {
@@ -658,9 +636,6 @@ const LecturerAttendance = {
             if (error) throw error;
 
             this.todayLogs = this.dedupeAttendanceLogs(await this.filterLecturerAttendanceLogs(data || []));
-
-            // Note: Rendering is now handled centrally by applyFilters() after all data loads.
-            // We no longer render here to avoid the register overriding the filter view.
 
             this.updateProgramBadge();
         } catch (error) {
@@ -782,10 +757,6 @@ const LecturerAttendance = {
     // LOAD PAST
     // ============================================================
     async loadPastAttendance() {
-        // IMPORTANT: the current lecturer page uses the main #attendanceTable
-        // for the filtered date-range view and may not contain a separate
-        // #pastAttendanceTable element. Do NOT abort historical loading just
-        // because that optional table is absent.
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
@@ -794,8 +765,6 @@ const LecturerAttendance = {
             const all = [];
             let from = 0;
 
-            // Load historical records in pages so a busy class cannot hide older
-            // attendance (the previous hard limit of 100 caused this problem).
             while (true) {
                 const { data: page, error } = await supabase
                     .from('geo_attendance_logs')
@@ -816,9 +785,6 @@ const LecturerAttendance = {
 
             console.info(`📚 Historical attendance loaded: ${this.pastLogs.length} records`);
 
-            // Render only when the optional historical table exists. The main
-            // date-range table is rendered by applyFilters() after both today
-            // and historical data have loaded.
             if (document.getElementById('pastAttendanceTable')) {
                 this.renderPastAttendance();
             }
@@ -908,8 +874,6 @@ const LecturerAttendance = {
             console.warn('⚠️ Session-based attendance register unavailable:', error);
         }
 
-        // applyFilters() is the single source of truth for the visible table
-        // and statistics. Do not reset stats to zero here.
         return this.stats;
     },
 
@@ -960,7 +924,6 @@ const LecturerAttendance = {
             const currentBlockRaw = blocks.length > 0 ? blocks[0] : null;
             const currentBlock = currentBlockRaw ? this.getBlockDisplay(currentBlockRaw) : 'N/A';
 
-            // Count the actual class assigned to this lecturer, not the whole program.
             let classCount = 0;
             if (currentBlockRaw) {
                 const result = await supabase
@@ -1161,9 +1124,6 @@ const LecturerAttendance = {
 
             const checkInTime = time ? new Date(`${date}T${time}:00+03:00`).toISOString() : new Date(`${date}T12:00:00+03:00`).toISOString();
 
-            // Manual attendance must belong to ONE exact scheduled occurrence.
-            // Never silently attach it to an arbitrary session when several
-            // occurrences exist on the same date/unit/block.
             let matchedSession = this.getSelectedSession();
             if (matchedSession) {
                 const selectedDate = this.getNairobiDateString(matchedSession.session_date);
@@ -1197,8 +1157,6 @@ const LecturerAttendance = {
                 throw new Error('No scheduled attendance session found for this date, unit and block. Schedule/open the session first.');
             }
 
-            // Strict duplicate protection: one student can have only one
-            // effective attendance record for this exact session UUID.
             const { data: existingSessionLogs, error: duplicateLookupError } = await supabase
                 .from('geo_attendance_logs')
                 .select('id,user_id,student_id,registration_number,attendance_status,is_verified')
@@ -1278,8 +1236,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // POPULATE UNIT FILTER   ← PATCHED
-    // Now includes clinical areas
+    // POPULATE UNIT FILTER — WITH "ALL CLINICAL AREAS" OPTION
     // ============================================================
     populateUnitFilter() {
         const select = document.getElementById('filterUnit');
@@ -1312,11 +1269,26 @@ const LecturerAttendance = {
         });
 
         const current = select.value || 'All';
-        select.innerHTML = '<option value="All">All Assigned Units &amp; Clinical Areas</option>' +
-            [...values.values()]
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map(v => `<option value="${this.escapeHtml(v.name)}">${v.type === 'clinical' ? '🏥 ' : ''}${this.escapeHtml(v.name)}</option>`)
-                .join('');
+        const optionsHtml = [];
+
+        // Default "All" option
+        optionsHtml.push('<option value="All">All Assigned Units &amp; Clinical Areas</option>');
+
+        // "Clinical Only" option — only for KRCHN
+        if (!this.isTVET) {
+            optionsHtml.push('<option value="__CLINICAL_ONLY__">🏥 All Clinical Areas (Clinical Only)</option>');
+        }
+
+        // Individual units + individual clinical areas
+        [...values.values()]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .forEach(v => {
+                optionsHtml.push(
+                    `<option value="${this.escapeHtml(v.name)}">${v.type === 'clinical' ? '🏥 ' : ''}${this.escapeHtml(v.name)}</option>`
+                );
+            });
+
+        select.innerHTML = optionsHtml.join('');
 
         if ([...select.options].some(o => o.value === current)) {
             select.value = current;
@@ -1395,6 +1367,7 @@ const LecturerAttendance = {
 
     // ============================================================
     // APPLY / RESET FILTERS — DATE RANGE COMPATIBLE
+    // Handles __CLINICAL_ONLY__ special case
     // ============================================================
     applyFilters() {
         const from = String(document.getElementById('filterDateFrom')?.value ?? '').trim();
@@ -1411,9 +1384,6 @@ const LecturerAttendance = {
         this.populateUnitFilter();
         this.populateYearFilter();
 
-        // Date-range reporting must always include historical records. A selected
-        // session contributes its complete roster only when that session date is
-        // inside the requested range; it must never hide older attendance.
         const selectedSession = this.getSelectedSession();
         const allLogs = this.getFilterableAttendanceLogs(selectedSession, rangeFrom, rangeTo);
 
@@ -1427,7 +1397,19 @@ const LecturerAttendance = {
             if (rangeFrom && (!date || date < rangeFrom)) return false;
             if (rangeTo && (!date || date > rangeTo)) return false;
             if (filterBlock !== 'All' && this.normalizeFilterValue(block) !== this.normalizeFilterValue(filterBlock)) return false;
-            if (filterUnit !== 'All' && this.normalizeFilterValue(unit) !== this.normalizeFilterValue(filterUnit)) return false;
+
+            // ---- Unit filter (with clinical-only special case) ----
+            if (filterUnit === '__CLINICAL_ONLY__') {
+                // Show ONLY clinical check-ins (either location_type='clinical' or session_type='clinical')
+                const isClinical =
+                    String(log.location_type || '').toLowerCase() === 'clinical' ||
+                    String(log.session_type || '').toLowerCase() === 'clinical';
+                if (!isClinical) return false;
+            } else if (filterUnit !== 'All') {
+                // Show only records matching the specific unit/target name
+                if (this.normalizeFilterValue(unit) !== this.normalizeFilterValue(filterUnit)) return false;
+            }
+
             if (filterYear !== 'All' && this.normalizeFilterValue(year) !== this.normalizeFilterValue(filterYear)) return false;
             if (filterSessionType !== 'All' && this.normalizeFilterValue(type) !== this.normalizeFilterValue(filterSessionType)) return false;
             if (searchText) {
@@ -1462,8 +1444,12 @@ const LecturerAttendance = {
         if (countEl) countEl.textContent = String(filtered.length);
         const logCount = document.getElementById('todayLogCount');
         if (logCount) logCount.textContent = `${filtered.length} records`;
+
+        // Update filter count label with clinical-only indicator
         const filterCount = document.getElementById('attendanceFilterCount');
-        if (filterCount) filterCount.textContent = `Showing ${filtered.length} records · ${rangeFrom ? (rangeTo && rangeTo !== rangeFrom ? `${rangeFrom} → ${rangeTo}` : rangeFrom) : 'all dates'}`;
+        const unitLabel = filterUnit === '__CLINICAL_ONLY__' ? ' · 🏥 Clinical only' : (filterUnit !== 'All' ? ` · ${filterUnit}` : '');
+        if (filterCount) filterCount.textContent = `Showing ${filtered.length} records · ${rangeFrom ? (rangeTo && rangeTo !== rangeFrom ? `${rangeFrom} → ${rangeTo}` : rangeFrom) : 'all dates'}${unitLabel}`;
+
         return filtered;
     },
 
@@ -1488,8 +1474,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // DATE RANGE PRESETS — matches current lecturer dashboard HTML
-    // today / 7d / 30d / month / all
+    // DATE RANGE PRESETS
     // ============================================================
     setRangePreset(preset) {
         const fromEl = document.getElementById('filterDateFrom');
@@ -1529,7 +1514,6 @@ const LecturerAttendance = {
     },
 
     resetFilters() {
-        const now = new Date();
         const today = this.getNairobiDateString();
         const fromEl = document.getElementById('filterDateFrom'); if (fromEl) fromEl.value = today;
         const toEl = document.getElementById('filterDateTo'); if (toEl) toEl.value = today;
@@ -1571,13 +1555,7 @@ const LecturerAttendance = {
             (document.getElementById('filterYear')?.value || 'All') !== 'All' ||
             (document.getElementById('filterSessionType')?.value || 'All') !== 'All' || searchText);
 
-        // ---- 1. USE THE EXACT ACTIVE FILTER RESULT ----
-        // Export must match what the lecturer sees on screen. This includes
-        // date range, block, unit, year, session type and search.
         const filteredLogs = this.applyFilters();
-        // Export exactly what is currently filtered/displayed. Never replace it
-        // with the selected-session register because that would silently ignore
-        // historical date ranges.
         const source = this.dedupeAttendanceLogs((filteredLogs || []).filter(l => l.session_type !== 'Lecturer Check-in'));
         const selectedSession = this.getSelectedSession();
 
@@ -1588,7 +1566,6 @@ const LecturerAttendance = {
 
         const typeLabel = this.getProgramTypeLabel();
 
-        // ---- 3. GROUP ----
         const groups = {};
         source.forEach(log => {
             const block = (log.block || 'N/A').trim();
@@ -1611,7 +1588,6 @@ const LecturerAttendance = {
             return a.unit.localeCompare(b.unit);
         });
 
-        // ---- 4. COLORS ----
         const PURPLE = 'FF4F46E5';
         const PURPLE_LIGHT = 'FFEEF2FF';
         const GREEN = 'FF10B981';
@@ -1703,7 +1679,6 @@ const LecturerAttendance = {
 
         const summaryRows = [];
 
-        // Summary is based on the same class/unit groups that are exported.
         classList.forEach((cls, index) => {
             const studentMap = {};
             cls.logs.forEach(log => {
@@ -1845,9 +1820,7 @@ const LecturerAttendance = {
 
         const usedNames = new Set();
 
-        // ---- 5. BUILD EACH SHEET ----
         for (const cls of classList) {
-            // Unique dates
             const dateSet = new Set();
             cls.logs.forEach(log => {
                 const date = log.check_in_time || selectedSession?.session_date || log.created_at;
@@ -1861,7 +1834,6 @@ const LecturerAttendance = {
                 dateDisplayMap[iso] = `${d}/${m}`;
             });
 
-            // Student map
             const studentMap = {};
             cls.logs.forEach(log => {
                 const reg = (log.registration_number || log.student_id || 'N/A').trim();
@@ -1886,7 +1858,6 @@ const LecturerAttendance = {
                 a.reg.localeCompare(b.reg, undefined, { numeric: true })
             );
 
-            // Unique sheet name
             let sheetName = `${cls.blockDisplay} ${cls.unit}`.slice(0, 28).replace(/[\\\/\?\*\[\]:]/g, '-');
             if (usedNames.has(sheetName)) {
                 let n = 2;
@@ -1899,9 +1870,8 @@ const LecturerAttendance = {
                 pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 } }
             });
 
-            const totalCols = 3 + sortedDates.length + 1; // S/NO + REG + NAME + dates + TOTAL
+            const totalCols = 3 + sortedDates.length + 1;
 
-            // ---- Header rows ----
             const mergeRow = (rowNumber, text, opts = {}) => {
                 ws.mergeCells(rowNumber, 1, rowNumber, totalCols);
                 const cell = ws.getCell(rowNumber, 1);
@@ -1942,9 +1912,8 @@ const LecturerAttendance = {
                 fill: PURPLE_LIGHT, font: { bold: true, color: { argb: PURPLE }, size: 13 }, height: 26
             });
 
-            r++; // spacer
+            r++;
 
-            // ---- Column header row ----
             const headerRowIdx = r;
             const header = ['S/NO', 'REG NO', 'FULL NAME', ...sortedDates.map(d => dateDisplayMap[d]), 'TOTAL'];
             header.forEach((v, i) => {
@@ -1958,7 +1927,6 @@ const LecturerAttendance = {
             ws.getRow(r).height = 24;
             r++;
 
-            // ---- Student rows ----
             students.forEach((student, idx) => {
                 const row = ws.getRow(r);
                 row.getCell(1).value = idx + 1;
@@ -1988,7 +1956,6 @@ const LecturerAttendance = {
                 totalCell.font = { bold: true, color: { argb: DARK }, size: 11 };
                 totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE_LIGHT } };
 
-                // borders across the row
                 for (let c = 1; c <= totalCols; c++) {
                     row.getCell(c).border = {
                         top: { style: 'thin', color: { argb: BORDER } },
@@ -2003,7 +1970,6 @@ const LecturerAttendance = {
                 r++;
             });
 
-            // ---- Summary row ----
             r++;
             const totalStudents = students.length;
             const totalSessions = sortedDates.length;
@@ -2021,7 +1987,6 @@ const LecturerAttendance = {
             ws.getRow(r).height = 24;
             r += 2;
 
-            // ---- Detailed attendance summary ----
             const totalAbsent = students.reduce((s, x) => s + Object.values(x.byDate).filter(v => v === 'A' || v === 'A*').length, 0);
             const totalAutoAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source === 'Automatic Session Finalization').length;
             const totalAttemptedAbsent = cls.logs.filter(l => l.attendance_status === 'Absent' && l.verification_source !== 'Automatic Session Finalization').length;
@@ -2056,7 +2021,6 @@ const LecturerAttendance = {
             });
             r += summaryRows.length + 1;
 
-            // ---- Legend / audit notes ----
             ws.mergeCells(r, 1, r, totalCols);
             ws.getCell(r, 1).value = 'LEGEND: ✓ Present   |   A Absent after an invalid/unsuccessful check-in   |   A* Absent — no check-in recorded   |   P Pending';
             ws.getCell(r, 1).font = { italic: true, color: { argb: 'FF475569' }, size: 9 };
@@ -2064,7 +2028,6 @@ const LecturerAttendance = {
             ws.getRow(r).height = 24;
             r += 2;
 
-            // ---- Signature footer ----
             ws.mergeCells(r, 1, r, totalCols);
             const sigHeader = ws.getCell(r, 1);
             sigHeader.value = 'AUTHORIZATION & VERIFICATION';
@@ -2075,34 +2038,24 @@ const LecturerAttendance = {
             r++;
 
             const sigRow = (label) => {
-                // Column A (merged A:B) → the label
-                if (totalCols >= 2) {
-                    ws.mergeCells(r, 1, r, 2);
-                }
+                if (totalCols >= 2) ws.mergeCells(r, 1, r, 2);
                 const labelCell = ws.getCell(r, 1);
                 labelCell.value = label;
                 labelCell.font = { bold: true, size: 11, color: { argb: DARK } };
                 labelCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
-                // Column C → underscore line
                 const lineCell = ws.getCell(r, 3);
                 lineCell.value = '_______________________';
                 lineCell.alignment = { horizontal: 'center', vertical: 'middle' };
                 lineCell.font = { size: 11 };
 
-                // Columns D:E (merged) → Signature line
-                if (totalCols >= 5) {
-                    ws.mergeCells(r, 4, r, 5);
-                }
+                if (totalCols >= 5) ws.mergeCells(r, 4, r, 5);
                 const sigCell = ws.getCell(r, 4);
                 sigCell.value = 'Signature: ______________';
                 sigCell.font = { size: 11 };
                 sigCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
-                // Columns F:end (merged, only if it spans MORE than one col) → Date line
-                if (totalCols > 6) {
-                    ws.mergeCells(r, 6, r, totalCols);
-                }
+                if (totalCols > 6) ws.mergeCells(r, 6, r, totalCols);
                 const dateCell = ws.getCell(r, 6);
                 dateCell.value = 'Date: ______________';
                 dateCell.font = { size: 11 };
@@ -2118,27 +2071,24 @@ const LecturerAttendance = {
             r++;
             sigRow('Checked By:');
 
-            // ---- Column widths ----
             const widths = [];
-            widths.push({ width: 7 });  // S/NO
-            widths.push({ width: 22 }); // REG NO
-            widths.push({ width: 30 }); // NAME
+            widths.push({ width: 7 });
+            widths.push({ width: 22 });
+            widths.push({ width: 30 });
             sortedDates.forEach(() => widths.push({ width: 8 }));
-            widths.push({ width: 10 }); // TOTAL
+            widths.push({ width: 10 });
             ws.columns = widths;
 
-            // ---- Freeze header + first 3 cols ----
             ws.views = [{ state: 'frozen', xSplit: 3, ySplit: headerRowIdx }];
         }
 
-        // Open the workbook on the administrative summary sheet.
         wb.views = [{ activeTab: 0, firstSheet: 0 }];
 
-        // ---- 6. WRITE ----
         const suffixBits = [];
         if (filterBlock !== 'All') suffixBits.push(String(filterBlock).replace(/\s+/g, ''));
         if (filterYear !== 'All') suffixBits.push(`Intake${String(filterYear)}`);
         if (filterSessionType !== 'All') suffixBits.push(String(filterSessionType));
+        if (filterUnit === '__CLINICAL_ONLY__') suffixBits.push('ClinicalOnly');
         const suffix = suffixBits.length ? '_' + suffixBits.join('_') : '';
         const filename = `AttendanceSheet${suffix}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
@@ -2259,9 +2209,6 @@ const LecturerAttendance = {
 
     // ============================================================
     // FULL CLASS SESSION RECONCILIATION
-    // Builds the expected class from student profiles, compares it
-    // against geo check-ins for THIS session, and can finalize
-    // missing/invalid students as Absent when the session closes.
     // ============================================================
     getAssignedBlockForUnit(unitName, preferredBlock = null) {
         const preferred = String(preferredBlock || '').trim();
@@ -2289,8 +2236,6 @@ const LecturerAttendance = {
         if (!supabase || !session?.id) return [];
 
         const program = session.target_program || session.program || this.currentProgram || 'KRCHN';
-        // New sessions may use target_block; older sessions use block_term.
-        // If both are missing, recover the block from the lecturer's assignment.
         const block = this.getAssignedBlockForUnit(
             session.unit_name || session.course_name || session.session_title || session.title,
             session.target_block || session.block_term || session.block
@@ -2339,8 +2284,6 @@ const LecturerAttendance = {
 
         if (error) throw error;
 
-        // Index every identifier on every log. This prevents user_id/student_id
-        // mismatches from hiding a valid check-in from the class register.
         const byStudent = new Map();
         const choose = (old, log) => {
             if (!old) return log;
@@ -2483,11 +2426,6 @@ const LecturerAttendance = {
         if (!supabase) throw new Error('Database connection not available');
         if (!sessionId) throw new Error('Session ID is required');
 
-        // IMPORTANT:
-        // LecturerSessions and LecturerAttendance are separate modules.
-        // LecturerAttendance does not necessarily have the session in
-        // this.sessions, so closing a session must load it directly from
-        // scheduled_sessions instead of relying on a local array.
         let session = this.sessions?.find(s => String(s.id) === String(sessionId));
 
         if (!session) {
@@ -2503,7 +2441,6 @@ const LecturerAttendance = {
 
         if (!session) throw new Error('Session not found in scheduled_sessions');
 
-        // Confirm the current lecturer owns the session when an identity is available.
         const profile = window.lecturerDB?.getCurrentUserProfile?.();
         const lecturerId = this.lecturerUuid || profile?.user_id;
 
@@ -2517,9 +2454,6 @@ const LecturerAttendance = {
 
         const sessionType = String(session.session_type || 'Class').toLowerCase();
 
-        // The automatic full-class finalization requested applies to classroom/
-        // lab/tutorial sessions. Clinical and exam attendance retain their
-        // existing workflow.
         if (sessionType === 'clinical' || sessionType === 'exam') {
             return await this.getSessionAttendanceRegister(session, false);
         }
@@ -2803,7 +2737,7 @@ window.LecturerAttendance = LecturerAttendance;
 window.viewAttendanceMap = (lat, lng, name) => LecturerAttendance.viewAttendanceMap(lat, lng, name);
 window.applyAttendanceFilters = () => LecturerAttendance.applyFilters();
 window.resetAttendanceFilters = () => LecturerAttendance.resetFilters();
-window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();  // still named CSV for HTML compatibility
+window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();
 window.printAttendanceReport = () => LecturerAttendance.printReport();
 window.lecturerCheckin = () => LecturerAttendance.lecturerCheckIn();
 window.markAttendance = (e) => LecturerAttendance.markStudentAttendance(e);
@@ -2844,4 +2778,4 @@ console.log('✅ LecturerAttendance module loaded');
 console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Styled XLSX Export, Print, Verify, Bulk Verify');
 console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
 console.log('🎨 Export: Modern styled .xlsx with colored cells, merged headers, frozen panes');
-console.log('🏥 Clinical attendance filter: ENABLED');
+console.log('🏥 Clinical-only filter: ENABLED');
