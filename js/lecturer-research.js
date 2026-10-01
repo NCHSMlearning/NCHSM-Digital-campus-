@@ -27,15 +27,21 @@ window.LecturerResearch = (() => {
         return candidates.find(x => x && typeof x.from === 'function');
     }
 
+    function safeJson(key,fallback=null){
+        try{return JSON.parse(localStorage.getItem(key)||'null') ?? fallback;}catch(_){return fallback;}
+    }
     async function resolveUser(){
-        const p = window.lecturerDB?.getCurrentUserProfile?.()
-            || JSON.parse(localStorage.getItem('userProfile') || 'null')
-            || JSON.parse(localStorage.getItem('lecturerData') || 'null')
-            || {};
-        state.profile = p;
-        state.userId = p.user_id || p.auth_user_id || p.id
-            || JSON.parse(localStorage.getItem('staffSession') || 'null')?.user_id;
-        state.userEmail = p.email || '';
+        let p={};
+        try{
+            const candidate=window.lecturerDB?.getCurrentUserProfile?.();
+            p=candidate && typeof candidate.then==='function' ? (await candidate) : (candidate || {});
+        }catch(_){}
+        if(!p || typeof p!=='object' || Array.isArray(p)) p={};
+        p=Object.keys(p).length?p:(safeJson('userProfile',null)||safeJson('lecturerData',null)||{});
+        state.profile=p;
+        const session=safeJson('staffSession',{})||{};
+        state.userId=p.user_id || p.auth_user_id || p.id || session.user_id || null;
+        state.userEmail=p.email || '';
         return state.userId;
     }
 
@@ -150,6 +156,14 @@ window.LecturerResearch = (() => {
             .rs-dialog{height:100vh;max-height:none;border-radius:0}.rs-modal{padding:0}
             .rs-side{max-height:42vh}
           }
+          .rs-head{position:relative;overflow:hidden}
+          .rs-head:after{content:'';position:absolute;right:-70px;top:-80px;width:190px;height:190px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none}
+          .rs-stat{transition:.18s ease}.rs-stat:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,23,42,.08)}
+          .rs-toolbar input:focus,.rs-toolbar select:focus,.rs-side select:focus,.rs-side textarea:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.10)}
+          .rs-btn{transition:.16s ease}.rs-btn:hover{transform:translateY(-1px);filter:brightness(.98)}
+          .rs-table tbody tr:hover{background:#fafcff}
+          .rs-table td:last-child{white-space:nowrap}
+          .rs-empty{min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center}
         `;
         document.head.appendChild(st);
     }
@@ -200,7 +214,7 @@ window.LecturerResearch = (() => {
             <button class="rs-btn rs-secondary" type="button" id="rsRefresh"><i class="fas fa-sync"></i> Refresh</button>
           </div>
           <div class="rs-card">
-            <div id="rsLoading" class="rs-empty">Loading research submissions…</div>
+            <div id="rsLoading" class="rs-empty"><i class="fas fa-spinner fa-spin" style="font-size:24px;margin-bottom:8px;color:#0A3D62"></i><span>Loading research submissions…</span></div>
             <div style="overflow-x:auto">
               <table class="rs-table" id="rsTable" style="display:none">
                 <thead><tr><th>Student</th><th>Research Title</th><th>Type</th><th>Version</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
@@ -1459,4 +1473,21 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         downloadCurrentResearch,
         saveLecturerCorrection
     };
+})();
+/* ============================================================
+   RESEARCH PAPERS — SAFE AUTO BOOT
+   The module remains a separate top-level dashboard section.
+   ============================================================ */
+(function(){
+    function boot(){
+        const section=document.getElementById('research-papers-content');
+        if(!section || !window.LecturerResearch) return;
+        if(section.dataset.rsAutoBoot==='1') return;
+        section.dataset.rsAutoBoot='1';
+        window.LecturerResearch.init().catch(err=>{
+            console.error('[Research] initialization failed:',err);
+        });
+    }
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,100),{once:true});
+    else setTimeout(boot,100);
 })();
