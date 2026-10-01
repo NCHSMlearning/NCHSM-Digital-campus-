@@ -256,6 +256,70 @@
 }
 </style>
 
+
+<style id="nchsm-online-learning-dropdown-pixel-v1">
+/* Pixel-match Online Learning navigation dropdown */
+.online-learning-dropdown > a.dropdown-toggle{
+    background:transparent !important;
+    border-left:0 !important;
+    position:relative;
+}
+.online-learning-dropdown.open > a.dropdown-toggle,
+.online-learning-dropdown > a.dropdown-toggle:hover{
+    background:linear-gradient(90deg,rgba(99,44,220,.95),rgba(76,29,149,.92)) !important;
+    border-left:3px solid #a78bfa !important;
+    box-shadow:0 5px 18px rgba(0,0,0,.12);
+}
+.online-learning-dropdown.open .ol-dropdown-chevron{transform:rotate(180deg);}
+.online-learning-dropdown .online-learning-menu{
+    display:none;
+    position:relative !important;
+    margin:6px 0 8px 12px !important;
+    width:calc(100% - 12px) !important;
+    padding:5px !important;
+    background:#ffffff !important;
+    border:1px solid #d9d7f2 !important;
+    border-left:3px solid #6d28d9 !important;
+    border-radius:9px !important;
+    box-shadow:0 8px 22px rgba(15,23,42,.20) !important;
+    overflow:hidden !important;
+}
+.online-learning-dropdown.open .online-learning-menu{display:block !important;}
+.online-learning-dropdown .online-learning-menu li{margin:0 !important;padding:0 !important;}
+.online-learning-dropdown .online-learning-menu .online-learning-subitem{
+    display:flex !important;
+    align-items:center !important;
+    gap:10px !important;
+    min-height:42px !important;
+    padding:9px 11px !important;
+    margin:1px 0 !important;
+    border-radius:7px !important;
+    color:#172033 !important;
+    background:transparent !important;
+    border-left:0 !important;
+    text-decoration:none !important;
+    font-size:13px !important;
+    font-weight:600 !important;
+    transition:all .18s ease !important;
+}
+.online-learning-dropdown .online-learning-menu .online-learning-subitem i{
+    width:20px !important;text-align:center !important;font-size:13px !important;color:#475569 !important;
+}
+.online-learning-dropdown .online-learning-menu .online-learning-subitem:hover{
+    background:#f1edff !important;color:#4c1d95 !important;
+}
+.online-learning-dropdown .online-learning-menu .online-learning-subitem:hover i{color:#6d28d9 !important;}
+.online-learning-dropdown .online-learning-menu .online-learning-subitem.active-subitem,
+.online-learning-dropdown .online-learning-menu .online-learning-subitem.active{
+    background:#ede9fe !important;color:#4c1d95 !important;font-weight:800 !important;
+}
+.online-learning-dropdown .online-learning-menu .online-learning-subitem.active-subitem i,
+.online-learning-dropdown .online-learning-menu .online-learning-subitem.active i{color:#5b21b6 !important;}
+@media(max-width:700px){
+    .online-learning-dropdown .online-learning-menu{margin-left:8px !important;width:calc(100% - 8px) !important;}
+}
+</style>
+
 </head>
 <body>
     <!-- Mobile Navigation Toggle -->
@@ -430,22 +494,28 @@
         </a>
     </li>
     
-    <!-- ONLINE LEARNING -->
-    <li style="margin-bottom: 2px;">
-        <a href="#" data-tab="online-learning" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;cursor:pointer;">
+    <!-- ONLINE LEARNING DROPDOWN -->
+    <li class="nav-dropdown online-learning-dropdown" id="onlineLearningNav" style="margin-bottom: 2px;">
+        <a href="#" class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;cursor:pointer;">
             <i class="fas fa-laptop-code" style="width:20px;text-align:center;"></i>
             <span>Online Learning</span>
             <span id="olAssignmentBadge" style="margin-left:auto;background:#10b981;padding:0 8px;border-radius:20px;font-size:10px;color:white;">0</span>
+            <i class="fas fa-chevron-down ol-dropdown-chevron" style="font-size:11px;margin-left:2px;transition:transform .25s ease;"></i>
         </a>
-    </li>
-
-    <!-- RESEARCH PAPERS — SEPARATE TOP-LEVEL MODULE -->
-    <li style="margin-bottom: 2px;">
-        <a href="#" data-tab="research-papers" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;cursor:pointer;">
-            <i class="fas fa-file-signature" style="width:20px;text-align:center;"></i>
-            <span>Research Papers</span>
-            <span id="researchAssignmentBadge" style="margin-left:auto;background:#10b981;padding:0 8px;border-radius:20px;font-size:10px;color:white;">0</span>
-        </a>
+        <ul class="dropdown-menu online-learning-menu" aria-label="Online Learning menu">
+            <li>
+                <a href="#" data-tab="online-learning" class="online-learning-subitem active-subitem">
+                    <i class="fas fa-book-open"></i>
+                    <span>Online Learning</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" data-tab="research-papers" class="online-learning-subitem">
+                    <i class="fas fa-file-signature"></i>
+                    <span>Research Papers</span>
+                </a>
+            </li>
+        </ul>
     </li>
 
     <!-- SCHEDULING DROPDOWN -->
@@ -8481,6 +8551,8 @@ if (window.location.pathname.endsWith('.html')) {
 function closeAllDropdowns() {
     document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
         dropdown.classList.remove('open');
+        const toggle = dropdown.querySelector(':scope > a.dropdown-toggle');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
         const menu = dropdown.querySelector('.dropdown-menu');
         if (menu) menu.style.display = 'none';
     });
@@ -8492,6 +8564,8 @@ function toggleDropdown(dropdown) {
     closeAllDropdowns();
     if (!isOpen) {
         dropdown.classList.add('open');
+        const toggle = dropdown.querySelector(':scope > a.dropdown-toggle');
+        if (toggle) toggle.setAttribute('aria-expanded', 'true');
         const menu = dropdown.querySelector('.dropdown-menu');
         if (menu) {
             menu.style.display = 'block';
