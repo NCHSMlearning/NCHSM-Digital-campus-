@@ -98,6 +98,164 @@
 }
 </style>
 
+<style id="nchsm-online-research-polish-v4">
+/* ============================================================
+   NCHSM LECTURER PORTAL — ONLINE LEARNING + RESEARCH POLISH V4
+   Presentation layer only. Existing IDs, JS hooks and workflows
+   are preserved.
+   ============================================================ */
+:root{--nchsm-purple:#4c1d95;--nchsm-purple2:#6d28d9;--nchsm-green:#059669;--nchsm-green2:#047857;--nchsm-ink:#0f172a;--nchsm-muted:#64748b;--nchsm-border:#e2e8f0;--nchsm-soft:#f8fafc;--nchsm-shadow:0 8px 28px rgba(15,23,42,.07)}
+
+/* ---------- Shared section shell ---------- */
+#online-learning-content,#research-papers-content{box-sizing:border-box;padding:22px 24px 34px!important;color:var(--nchsm-ink)}
+#online-learning-content * ,#research-papers-content *{box-sizing:border-box}
+#online-learning-content .ol-wrap{max-width:1500px;margin:0 auto}
+#research-papers-content .ol-hub-fallback-research{max-width:1500px;margin:0 auto}
+
+/* ---------- Online Learning hero ---------- */
+#online-learning-content .ol-wrap>div:first-child{
+ position:relative;overflow:hidden;padding:22px 24px!important;margin:0 0 18px!important;
+ border:1px solid #ddd6fe;border-radius:18px!important;
+ background:linear-gradient(135deg,#faf7ff 0%,#fff 62%,#f5f3ff 100%);
+ box-shadow:var(--nchsm-shadow)
+}
+#online-learning-content .ol-wrap>div:first-child:after{
+ content:"";position:absolute;width:210px;height:210px;right:-85px;top:-105px;border-radius:50%;
+ background:rgba(109,40,217,.055);pointer-events:none
+}
+#online-learning-content .ol-wrap>div:first-child h2{font-size:24px!important;font-weight:850;letter-spacing:-.35px;color:#172033}
+#online-learning-content .ol-wrap>div:first-child p{font-size:13px!important;line-height:1.55}
+#online-learning-content .ol-wrap>div:first-child .ol-btn{position:relative;z-index:1}
+
+/* ---------- Online Learning stats ---------- */
+#online-learning-content .ol-grid{gap:13px!important;margin-bottom:18px!important}
+#online-learning-content .ol-stat{
+ position:relative;overflow:hidden;min-height:108px;padding:17px 18px!important;border:1px solid var(--nchsm-border)!important;
+ border-radius:15px!important;box-shadow:var(--nchsm-shadow)!important;transition:transform .18s ease,box-shadow .18s ease
+}
+#online-learning-content .ol-stat:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(15,23,42,.09)!important}
+#online-learning-content .ol-stat:after{content:"";position:absolute;right:-28px;bottom:-34px;width:90px;height:90px;border-radius:50%;background:rgba(76,29,149,.045)}
+#online-learning-content .ol-stat b{font-size:27px!important;color:var(--nchsm-purple);margin:5px 0 2px}
+
+/* ---------- Cards / toolbars ---------- */
+#online-learning-content .ol-card{
+ border:1px solid var(--nchsm-border)!important;border-radius:16px!important;padding:18px!important;
+ margin-bottom:16px!important;background:#fff;box-shadow:var(--nchsm-shadow)!important
+}
+#online-learning-content .ol-card>div:first-child h3{font-size:15px;color:#172033;font-weight:800}
+#online-learning-content .ol-toolbar{padding:2px}
+#online-learning-content .ol-toolbar input,#online-learning-content .ol-toolbar select,
+#research-papers-content input,#research-papers-content select,#research-papers-content textarea{
+ min-height:40px;border:1px solid #d7dee8!important;border-radius:10px!important;background:#fff!important;color:#172033!important;
+ box-shadow:0 1px 2px rgba(15,23,42,.02)!important
+}
+#online-learning-content .ol-toolbar input:focus,#online-learning-content .ol-toolbar select:focus,
+#research-papers-content input:focus,#research-papers-content select:focus,#research-papers-content textarea:focus{
+ outline:none!important;border-color:#8b5cf6!important;box-shadow:0 0 0 3px rgba(124,58,237,.10)!important
+}
+
+/* ---------- Buttons ---------- */
+#online-learning-content .ol-btn,#research-papers-content .ol-btn,.rs-btn{
+ border-radius:9px!important;min-height:38px;padding:9px 13px!important;font-size:12px;font-weight:800!important;
+ transition:transform .16s ease,box-shadow .16s ease,filter .16s ease!important
+}
+#online-learning-content .ol-btn:hover,#research-papers-content .ol-btn:hover,.rs-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,23,42,.10)}
+
+/* ---------- Online table ---------- */
+#online-learning-content .ol-table{border-collapse:separate!important;border-spacing:0;overflow:hidden;border:1px solid var(--nchsm-border);border-radius:12px;background:#fff}
+#online-learning-content .ol-table th{background:#f7f8fb!important;color:#475569!important;font-size:11px!important;text-transform:uppercase;letter-spacing:.55px;padding:13px 12px!important;border-bottom:1px solid #dfe5ec!important;white-space:nowrap}
+#online-learning-content .ol-table td{padding:13px 12px!important;font-size:12px!important;border-bottom:1px solid #eef2f7!important;color:#334155}
+#online-learning-content .ol-table tbody tr:last-child td{border-bottom:0}
+#online-learning-content .ol-table tbody tr:hover td{background:#faf8ff}
+
+/* ---------- Online grading modal ---------- */
+#olSubmissionModal{backdrop-filter:blur(3px)}
+#olSubmissionModal .ol-modal-box{border:1px solid #dfe5ec!important;border-radius:18px!important;box-shadow:0 30px 90px rgba(15,23,42,.28)!important}
+#olSubmissionModal .ol-modal-head{padding:17px 20px!important;background:linear-gradient(180deg,#fff,#fafbfc)!important}
+#olSubmissionModal .ol-modal-body{background:#f8fafc!important}
+#olSubmissionModal .ol-grade-header{border:1px solid #ddd6fe!important;border-radius:14px!important;box-shadow:0 4px 15px rgba(76,29,149,.06)!important}
+#olSubmissionModal .ol-panel{box-shadow:0 3px 14px rgba(15,23,42,.05)!important}
+#olSubmissionModal .ol-panel-head{background:#f8fafc!important}
+#olSubmissionModal .ol-final-reference{box-shadow:0 4px 14px rgba(76,29,149,.06)}
+
+/* ---------- Research top-level section ---------- */
+#research-papers-content{background:transparent}
+#research-papers-content .ol-hub-fallback-research{
+ padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important
+}
+#research-papers-content .ol-hub-fallback-research>div:first-child{
+ position:relative;overflow:hidden;padding:22px 24px!important;margin:0 0 16px!important;
+ border:1px solid #cfe9df!important;border-radius:18px!important;
+ background:linear-gradient(135deg,#f2fbf7 0%,#fff 65%,#f0fdf8 100%)!important;
+ box-shadow:var(--nchsm-shadow)!important
+}
+#research-papers-content .ol-hub-fallback-research>div:first-child:after{
+ content:"";position:absolute;width:190px;height:190px;right:-75px;top:-95px;border-radius:50%;background:rgba(5,150,105,.055);pointer-events:none
+}
+#research-papers-content h2{font-size:24px!important;font-weight:850!important;letter-spacing:-.35px;color:#065f46!important;position:relative;z-index:1}
+#research-papers-content h2 i{margin-right:7px}
+#research-papers-content .ol-hub-fallback-research>div:first-child p{font-size:13px!important;line-height:1.55}
+#research-papers-content #rsRefreshStatic{position:relative;z-index:2}
+
+/* ---------- Research statistics ---------- */
+#research-papers-content .rs-static-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px!important;margin:0 0 16px!important}
+#research-papers-content .ol-rs-static-stat{
+ position:relative;overflow:hidden;min-height:105px;padding:16px 17px!important;background:#fff!important;
+ border:1px solid var(--nchsm-border)!important;border-radius:15px!important;box-shadow:var(--nchsm-shadow)!important
+}
+#research-papers-content .ol-rs-static-stat:after{content:"";position:absolute;right:-28px;bottom:-32px;width:85px;height:85px;border-radius:50%;background:rgba(5,150,105,.045)}
+#research-papers-content .ol-rs-static-stat b{display:block;font-size:27px!important;color:#047857!important;margin-bottom:5px}
+#research-papers-content .ol-rs-static-stat span{font-size:11px!important;color:#64748b!important;font-weight:700;letter-spacing:.15px}
+
+/* ---------- Research filters ---------- */
+#research-papers-content .ol-rs-static-toolbar{
+ display:grid!important;grid-template-columns:minmax(260px,1fr) 190px auto;gap:10px!important;align-items:center;
+ padding:13px!important;margin-bottom:14px!important;background:#fff;border:1px solid var(--nchsm-border);border-radius:14px;box-shadow:0 3px 12px rgba(15,23,42,.04)
+}
+#research-papers-content .ol-rs-static-toolbar input,#research-papers-content .ol-rs-static-toolbar select{width:100%!important}
+
+/* ---------- Research table ---------- */
+#research-papers-content .ol-rs-static-table{width:100%;border-collapse:separate!important;border-spacing:0;background:#fff;border:1px solid var(--nchsm-border);border-radius:14px;overflow:hidden;box-shadow:var(--nchsm-shadow)}
+#research-papers-content .ol-rs-static-table th{background:#f1f5f4!important;color:#334155!important;padding:13px 12px!important;font-size:11px!important;text-transform:uppercase;letter-spacing:.55px;text-align:left;border-bottom:1px solid #dbe5e0!important;white-space:nowrap}
+#research-papers-content .ol-rs-static-table td{padding:13px 12px!important;border-bottom:1px solid #edf2ef!important;font-size:12px!important;color:#334155;vertical-align:middle}
+#research-papers-content .ol-rs-static-table tbody tr:hover td{background:#f8fcfa}
+#research-papers-content .ol-rs-static-table tbody tr:last-child td{border-bottom:0}
+
+/* ---------- Research modal ---------- */
+#research-papers-content .rs-modal{background:rgba(15,23,42,.68)!important;backdrop-filter:blur(3px);padding:18px!important}
+#research-papers-content .rs-dialog{width:min(1450px,100%)!important;max-width:none!important;border-radius:18px!important;border:1px solid #dfe5ec!important;box-shadow:0 30px 90px rgba(15,23,42,.28)!important;overflow:hidden;background:#fff!important}
+#research-papers-content .rs-dialog-head{padding:17px 20px!important;background:linear-gradient(180deg,#fff,#fafbfc)!important;border-bottom:1px solid #e5e7eb!important}
+#research-papers-content .rs-title{font-size:18px!important;font-weight:850!important;color:#0f172a!important}
+#research-papers-content .rs-dialog-body{background:#f8fafc!important;gap:14px!important;padding:14px!important}
+#research-papers-content .rs-preview,#research-papers-content .rs-side{border:1px solid #e2e8f0!important;border-radius:14px!important;background:#fff!important;box-shadow:0 3px 14px rgba(15,23,42,.05)!important}
+#research-papers-content .rs-side{padding:16px!important}
+#research-papers-content .rs-side label{display:block;font-size:11px!important;font-weight:800!important;text-transform:uppercase;color:#64748b;margin:12px 0 6px}
+#research-papers-content #rsFeedback{min-height:150px!important;resize:vertical}
+#research-papers-content .rs-btn{border:0!important}
+
+/* ---------- Loading / empty states ---------- */
+#research-papers-content #rsBody td[colspan]{padding:48px 20px!important;color:#64748b!important;font-size:13px!important}
+#online-learning-content .ol-empty{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px}
+
+/* ---------- Mobile ---------- */
+@media(max-width:900px){
+ #research-papers-content .rs-static-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #research-papers-content .ol-rs-static-toolbar{grid-template-columns:1fr 1fr!important}
+ #research-papers-content .ol-rs-static-toolbar input{grid-column:1/-1}
+}
+@media(max-width:680px){
+ #online-learning-content,#research-papers-content{padding:14px 12px 24px!important}
+ #online-learning-content .ol-wrap>div:first-child,#research-papers-content .ol-hub-fallback-research>div:first-child{padding:18px!important;border-radius:14px!important}
+ #online-learning-content .ol-wrap>div:first-child h2,#research-papers-content h2{font-size:20px!important}
+ #research-papers-content .rs-static-grid{grid-template-columns:1fr 1fr!important}
+ #research-papers-content .ol-rs-static-toolbar{grid-template-columns:1fr!important}
+ #research-papers-content .ol-rs-static-toolbar input{grid-column:auto}
+ #research-papers-content .ol-rs-static-table{min-width:920px}
+ #research-papers-content .rs-modal{padding:6px!important}
+ #research-papers-content .rs-dialog{height:98vh!important;border-radius:12px!important}
+}
+</style>
+
 </head>
 <body>
     <!-- Mobile Navigation Toggle -->
