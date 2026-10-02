@@ -67,6 +67,14 @@ let attendanceAutoRefresh = true;
 let attendanceRefreshInterval = null;
 let liveVideoStreams = {};
 let isVideoAutoRefresh = true;
+
+// ============================================
+// 🎥 INLINE LIVE PREVIEW STATE
+// ============================================
+let nchsmLivePreviewEnabled = true;
+let nchsmLivePreviewCount = 0;
+const nchsmLivePreviewMax = 4;
+const nchsmLivePreviews = new Map();
     
     // Timer Variables
     let timerModalData = {
@@ -1960,7 +1968,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ============================================
     window.clearAllAlerts = async function() {
         if (confirm('Clear all alerts?')) { 
-            await sb.from('exam_proctoring_logs').delete().neq('id', 0);
+            await sb.from('exam_proctoring_logs').delete().not('id', 'is', null);
             loadProctoringLogs();
             loadNotifications();
             alert('Cleared'); 
@@ -3582,7 +3590,7 @@ window.viewStudentProfile = async function(pid) {
                 .select('*')
                 .eq('student_id', sid)
                 .eq('exam_id', parseInt(eid))
-                .not('snapshot_url', 'is', null)
+                .or('snapshot_url.not.is.null,screenshot_data.not.is.null')
                 .order('timestamp', { ascending: false })
                 .limit(1);
             
@@ -3746,7 +3754,7 @@ window.loadSnapshots = async function(studentId, examId) {
             .select('id, snapshot_url, screenshot_data, timestamp, event_type, details')
             .eq('student_id', sid)
             .eq('exam_id', parseInt(eid))
-            .not('snapshot_url', 'is', null)
+            .or('snapshot_url.not.is.null,screenshot_data.not.is.null')
             .order('timestamp', { ascending: false })
             .limit(50);
         
@@ -4899,138 +4907,15 @@ window.loadLiveFeed = async function() {
 window.displayLiveFeed = function() {
     const grid = document.getElementById('liveFeedGrid');
     if (!grid) return;
-    
+
     const start = (liveFeedPage - 1) * LIVE_FEED_PER_PAGE;
     const pageData = liveFeedData.slice(start, start + LIVE_FEED_PER_PAGE);
-    
-    if (pageData.length === 0) {
-        grid.innerHTML = `
-            <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
-                <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
-                <p>No active students to display</p>
-            </div>
-        `;
-        renderLiveFeedPagination();
-        return;
+
+    if (typeof renderLiveFeedCards === 'function') {
+        renderLiveFeedCards(grid, pageData);
     }
-    
-    grid.innerHTML = pageData.map(item => {
-        const log = item.log || {};
-        const hasCamera = item.hasCamera;
-        
-        // Get image URL
-        let imageUrl = null;
-        if (log.snapshot_url) {
-            imageUrl = log.snapshot_url;
-        } else if (log.screenshot_data) {
-            imageUrl = log.screenshot_data.startsWith('data:') ? 
-                log.screenshot_data : 
-                'data:image/jpeg;base64,' + log.screenshot_data;
-        }
-        
-        // Use the data from the item object
-        const studentName = item.studentName || 'Unknown Student';
-        const studentId = item.studentRegNumber || 'N/A';
-        const examName = item.examName || 'Exam';
-        const program = item.program || '';
-        
-        // Status color for progress bar
-        let progressColor = '#38A169';
-        if (item.progress < 30) progressColor = '#DC2626';
-        else if (item.progress < 60) progressColor = '#F59E0B';
-        
-        // Card class
-        let cardClass = 'live-feed-card';
-        if (item.status === 'violation') cardClass += ' violation';
-        else if (item.status === 'warning') cardClass += ' warning';
-        
-        // Camera status badge
-        let cameraBadge = '';
-        if (imageUrl) {
-            cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
-        } else {
-            cameraBadge = `<span class="overlay-badge camera-off">📷 No Camera</span>`;
-        }
-        
-        // Violation badge
-        let violationBadge = '';
-        if (item.hasViolations) {
-            const critical = log.event_type === 'multiple_faces_detected';
-            violationBadge = `<span class="overlay-badge violation">${critical ? '🚨 CRITICAL' : '⚠️ Alert'}</span>`;
-        }
-        
-        // Camera image or placeholder
-        let cameraContent = '';
-        if (imageUrl) {
-            cameraContent = `
-                <img src="${imageUrl}" 
-                     alt="Camera feed for ${studentName}" 
-                     style="width:100%; height:250px; object-fit:cover;"
-                     onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\' style=\\'display:flex; align-items:center; justify-content:center; height:250px; color:white; flex-direction:column; gap:12px; background:#1a1a2e;\\'><i class=\\'fas fa-camera-slash\\' style=\\'font-size:3rem; opacity:0.5;\\'></i><p>Image failed to load</p><p style=\\'font-size:0.8rem; opacity:0.6;\\'>Please check the URL</p></div>'">
-            `;
-        } else {
-            cameraContent = `
-                <div class="no-camera">
-                    <i class="fas fa-user-slash"></i>
-                    <p>No camera feed</p>
-                    <p style="font-size:0.8rem; opacity:0.6;">Student hasn't shared camera</p>
-                </div>
-            `;
-        }
-        
-        // Actions
-        const safeName = studentName.replace(/'/g, "\\'");
-        const safeExam = examName.replace(/'/g, "\\'");
-        const userId = log.student_id || '';
-        const examId = log.exam_id || 0;
-        
-        return `
-            <div class="${cardClass}">
-                <div class="card-header">
-                    <div class="student-info">
-                        <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
-                        <div>
-                            <div class="name">${studentName}</div>
-                            <div class="details">${studentId} • ${program}</div>
-                        </div>
-                    </div>
-                    <span class="status-badge ${item.statusClass}">${item.statusLabel}</span>
-                </div>
-                
-                <div class="card-body">
-                    ${cameraContent}
-                    ${cameraBadge}
-                    ${violationBadge}
-                </div>
-                
-                <div class="progress-bar-container">
-                    <div class="progress-track">
-                        <div class="progress-fill" style="width:${item.progress}%; background:${progressColor};"></div>
-                    </div>
-                    <div class="progress-label">
-                        <span>Progress: ${item.progress}%</span>
-                        <span>${item.answered}/${item.total} answered</span>
-                    </div>
-                </div>
-                
-                <div class="card-footer">
-                    <div>
-                        <span class="info-item"><i class="fas fa-clock"></i> ${item.timeDisplay}</span>
-                        <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${examName}</span>
-                    </div>
-                    <div class="actions">
-                        <button class="btn-view-cam" onclick="openCameraView('${userId}', ${examId}, '${safeName}', '${safeExam}')">
-                            <i class="fas fa-expand"></i> View
-                        </button>
-                        ${item.hasViolations ? `<button class="btn-alert" onclick="viewViolations('${userId}', ${examId})">🚨</button>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    renderLiveFeedPagination();
 };
+
     window.toggleLiveFeedAutoRefresh = function() {
         liveFeedAutoRefresh = !liveFeedAutoRefresh;
         const icon = document.getElementById('liveFeedAutoIcon');
@@ -5097,7 +4982,7 @@ function startLiveFeedAutoRefresh() {
                 }).catch(err => console.warn('Auto-refresh past students error:', err));
             }
         }
-    }, 10000);
+    }, 60000);
 }
 // ============================================
 // 🔄 RESTORE FILTERS - FIXED
@@ -5448,31 +5333,26 @@ function displayFilteredLiveFeed() {
 
 // ========== RENDER LIVE FEED CARDS ==========
 function renderLiveFeedCards(grid, pageData) {
+    // ⚠️ Kill any live previews from the previous render before rebuilding.
+    if (typeof nchsmStopAllPreviews === 'function') {
+        nchsmStopAllPreviews();
+    }
+
     grid.innerHTML = pageData.map(item => {
         const log = item.log || {};
         const hasCamera = item.hasCamera;
-        
-        // Get image URL
-        let imageUrl = null;
-        const snapshot = item.snapshot || log;
-        
-        if (snapshot.snapshot_url) {
-            imageUrl = snapshot.snapshot_url + '?t=' + Date.now();
-        } else if (snapshot.screenshot_data) {
-            imageUrl = snapshot.screenshot_data.startsWith('data:') ? 
-                snapshot.screenshot_data : 
-                'data:image/jpeg;base64,' + snapshot.screenshot_data;
-        }
-        
+
         const studentName = item.studentName || 'Unknown';
         const studentId = item.studentRegNumber || 'N/A';
         const examName = item.examName || 'Exam';
         const program = item.program || '';
-        
+        const safeId = String(log.student_id || '').replace(/[^a-zA-Z0-9-]/g, '');
+        const videoId = `livePreview_${safeId}_${log.exam_id || 0}`;
+
         // Status
         let statusClass = 'status-active';
         let statusLabel = '🟢 Active';
-        
+
         if (item.isPast) {
             statusClass = 'status-completed';
             statusLabel = '✅ Completed';
@@ -5486,49 +5366,92 @@ function renderLiveFeedCards(grid, pageData) {
             statusClass = 'status-pending';
             statusLabel = '📷 No Camera';
         }
-        
+
         // Card class
         let cardClass = 'live-feed-card';
         if (item.status === 'violation') cardClass += ' violation';
         else if (item.status === 'warning') cardClass += ' warning';
         if (item.isPast) cardClass += ' past-record';
-        
-        // Camera badge
-        let cameraBadge = '';
-        if (imageUrl) {
-            cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
-        } else {
-            cameraBadge = `<span class="overlay-badge camera-off">📷 No Camera</span>`;
-        }
-        
+
         // Progress
         const progress = item.progress || 0;
         const progressColor = progress < 30 ? '#DC2626' : progress < 60 ? '#F59E0B' : '#38A169';
-        
-        // Camera content
+
+        // ----- Card body content -----
         let cameraContent = '';
-        if (imageUrl) {
-            cameraContent = `
-                <img src="${imageUrl}" 
-                     alt="Camera feed for ${studentName}" 
-                     style="width:100%; height:250px; object-fit:cover;"
-                     onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\' style=\\'display:flex; align-items:center; justify-content:center; height:250px; color:white; flex-direction:column; gap:12px; background:#1a1a2e;\\'><i class=\\'fas fa-camera-slash\\' style=\\'font-size:3rem; opacity:0.5;\\'></i><p>Image failed to load</p></div>'">
-            `;
+        let cameraBadge = '';
+
+        if (item.isPast) {
+            // ============================================================
+            // PAST RECORDS → keep the snapshot image
+            // ============================================================
+            let imageUrl = null;
+            const snapshot = item.snapshot || log;
+
+            if (snapshot.snapshot_url) {
+                imageUrl = snapshot.snapshot_url + '?t=' + Date.now();
+            } else if (snapshot.screenshot_data) {
+                imageUrl = snapshot.screenshot_data.startsWith('data:')
+                    ? snapshot.screenshot_data
+                    : 'data:image/jpeg;base64,' + snapshot.screenshot_data;
+            }
+
+            if (imageUrl) {
+                cameraContent = `
+                    <img src="${imageUrl}"
+                         alt="Snapshot for ${studentName}"
+                         style="width:100%; height:250px; object-fit:cover;"
+                         onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\' style=\\'display:flex; align-items:center; justify-content:center; height:250px; color:white; flex-direction:column; gap:12px; background:#1a1a2e;\\'><i class=\\'fas fa-camera-slash\\' style=\\'font-size:3rem; opacity:0.5;\\'></i><p>Image failed to load</p></div>'">`;
+                cameraBadge = `<span class="overlay-badge camera-on">✅ Completed</span>`;
+            } else {
+                cameraContent = `
+                    <div class="no-camera">
+                        <i class="fas fa-history"></i>
+                        <p>No snapshot available</p>
+                    </div>`;
+                cameraBadge = `<span class="overlay-badge camera-off">📷 No Snapshot</span>`;
+            }
         } else {
-            cameraContent = `
-                <div class="no-camera">
-                    <i class="fas fa-user-slash"></i>
-                    <p>${item.isPast ? 'No snapshot available' : 'No camera feed'}</p>
-                </div>
-            `;
+            // ============================================================
+            // LIVE STUDENTS → inline WebRTC preview, capped and toggleable
+            // ============================================================
+            const withinCap = nchsmLivePreviewEnabled &&
+                              nchsmLivePreviewCount < nchsmLivePreviewMax;
+
+            if (withinCap) {
+                nchsmLivePreviewCount++;
+
+                cameraContent = `
+                    <video id="${videoId}"
+                           autoplay muted playsinline
+                           style="width:100%; height:250px; object-fit:cover; background:#0b0b15; display:block;">
+                    </video>
+                    <div id="${videoId}_loader"
+                         style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#1a1a2e; color:white; flex-direction:column; gap:10px; z-index:2;">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                        <span style="font-size:0.7rem;">Connecting to student camera…</span>
+                    </div>
+                `;
+                cameraBadge = `<span class="overlay-badge camera-off" id="${videoId}_badge">🟡 Connecting…</span>`;
+            } else {
+                const reason = !nchsmLivePreviewEnabled
+                    ? 'Live Preview OFF — click the toolbar button to enable'
+                    : 'Preview limit reached — click "View" for live feed';
+
+                cameraContent = `
+                    <div class="no-camera" style="height:250px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; background:#0b0b15; color:#94A3B8;">
+                        <i class="fas ${!nchsmLivePreviewEnabled ? 'fa-pause-circle' : 'fa-video-slash'}" style="font-size:2.5rem; opacity:0.65;"></i>
+                        <p style="margin:0; font-size:0.8rem; text-align:center; padding:0 18px;">${reason}</p>
+                    </div>
+                `;
+                cameraBadge = `<span class="overlay-badge camera-off">${!nchsmLivePreviewEnabled ? '⏸ Preview OFF' : '📺 View Only'}</span>`;
+            }
         }
-        
+
         // Time display
         let timeDisplay = item.timeDisplay || '--';
-        if (item.isPast) {
-            timeDisplay = '✅ Completed';
-        }
-        
+        if (item.isPast) timeDisplay = '✅ Completed';
+
         // Result badge for past students
         let resultBadge = '';
         if (item.isPast && item.result) {
@@ -5541,13 +5464,13 @@ function renderLiveFeedCards(grid, pageData) {
                 </div>
             `;
         }
-        
+
         // Actions
         const safeName = studentName.replace(/'/g, "\\'");
         const safeExam = examName.replace(/'/g, "\\'");
         const userId = log.student_id || '';
         const examId = log.exam_id || 0;
-        
+
         return `
             <div class="${cardClass}">
                 <div class="card-header">
@@ -5560,13 +5483,13 @@ function renderLiveFeedCards(grid, pageData) {
                     </div>
                     <span class="status-badge ${statusClass}">${statusLabel}</span>
                 </div>
-                
-                <div class="card-body">
+
+                <div class="card-body" style="position:relative;">
                     ${cameraContent}
                     ${cameraBadge}
                     ${item.isPast ? `<span class="overlay-badge" style="background:rgba(56,161,105,0.9); color:white;">✅ Done</span>` : ''}
                 </div>
-                
+
                 <div class="progress-bar-container">
                     <div class="progress-track">
                         <div class="progress-fill" style="width:${progress}%; background:${progressColor};"></div>
@@ -5576,7 +5499,7 @@ function renderLiveFeedCards(grid, pageData) {
                         <span>${item.answered || 0}/${item.total || 0} answered</span>
                     </div>
                 </div>
-                
+
                 <div class="card-footer">
                     <div>
                         <span class="info-item"><i class="fas fa-clock"></i> ${timeDisplay}</span>
@@ -5599,8 +5522,29 @@ function renderLiveFeedCards(grid, pageData) {
             </div>
         `;
     }).join('');
-    
+
     renderLiveFeedPagination();
+
+    // ============================================================
+    // After the DOM is ready, start a WebRTC preview for each live card.
+    // Past cards are skipped — they only need the snapshot.
+    // ============================================================
+    pageData.forEach(item => {
+        if (item.isPast || !nchsmLivePreviewEnabled) return;
+
+        const log = item.log || {};
+        if (!log.student_id || !log.exam_id) return;
+
+        const safeId = String(log.student_id).replace(/[^a-zA-Z0-9-]/g, '');
+        const videoId = `livePreview_${safeId}_${log.exam_id}`;
+
+        // Only start if this card was within the preview cap and has a video element.
+        if (!document.getElementById(videoId)) return;
+
+        if (typeof nchsmStartPreviewForCard === 'function') {
+            nchsmStartPreviewForCard(String(log.student_id), log.exam_id, videoId);
+        }
+    });
 }
 
 // ========== VIEW PAST RESULT ==========
@@ -5663,18 +5607,7 @@ window.clearLiveFeedFilters = function() {
     showToast('Filters cleared', 'info');
 };
 
-// ========== OVERRIDE DISPLAY LIVE FEED ==========
-// Replace the existing displayLiveFeed with this updated version
-window.displayLiveFeed = function() {
-    // Store original data for filtering
-    filteredLiveFeedData = liveFeedData;
-    
-    // Populate exam filter
-    populateExamFilter();
-    
-    // Apply current filters
-    filterLiveFeed();
-};
+
     function renderLiveFeedPagination() {
         const totalPages = Math.ceil(liveFeedData.length / LIVE_FEED_PER_PAGE);
         const container = document.getElementById('liveFeedPagination');
@@ -9760,23 +9693,11 @@ window.openCameraView = async function(studentId, examId, studentName, examName)
     // Tiny tick so the browser has time to layout the modal
     await new Promise(r => setTimeout(r, 30));
 
-    // ---- Info-grid spans (below the title — these have DUPLICATE IDs,
-    //      so we target them via their parent label text) ----
-    document.querySelectorAll('#cameraModal div').forEach(div => {
-        const label = div.querySelector(':scope > strong');
-        if (!label) return;
-        const labelText = label.textContent.trim();
-
-        // Find the first span directly inside this labelled div
-        const valueSpan = div.querySelector(':scope > span');
-        if (!valueSpan) return;
-
-        if (labelText.includes('Student')) {
-            valueSpan.textContent = currentCameraStudentName;
-        } else if (labelText.includes('Exam')) {
-            valueSpan.textContent = currentCameraExamName;
-        }
-    });
+    // ---- Info-grid spans (unique IDs) ----
+    const infoStudent = document.getElementById('cameraStudentNameInfo');
+    const infoExam = document.getElementById('cameraExamNameInfo');
+    if (infoStudent) infoStudent.textContent = currentCameraStudentName;
+    if (infoExam) infoExam.textContent = currentCameraExamName;
 
     // ---- Loading indicator ----
     const loading = document.getElementById('cameraLoading');
@@ -9814,4 +9735,282 @@ window.openCameraView = async function(studentId, examId, studentName, examName)
         }
     }
 };
-window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
+
+// ============================================================
+// 🎥 INLINE CARD WEBRTC PREVIEWS
+// ============================================================
+function nchsmCardViewerId() {
+    return `preview-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function nchsmStopPreviewForCard(key, notifyStudent = true) {
+    const entry = nchsmLivePreviews.get(key);
+    if (!entry) return;
+
+    if (notifyStudent && entry.channel) {
+        try {
+            entry.channel.send({
+                type: 'broadcast',
+                event: 'viewer-stop',
+                payload: {
+                    studentId: String(entry.studentId),
+                    examId: String(entry.examId),
+                    viewerId: entry.viewerId
+                }
+            });
+        } catch (_) {}
+    }
+
+    try { if (entry.peer) entry.peer.close(); } catch (_) {}
+    try { if (entry.channel) sb.removeChannel(entry.channel); } catch (_) {}
+
+    const video = document.getElementById(entry.videoId);
+    if (video) {
+        try { video.pause(); } catch (_) {}
+        video.srcObject = null;
+    }
+
+    nchsmLivePreviews.delete(key);
+}
+
+function nchsmStopAllPreviews(notifyStudent = true) {
+    for (const key of Array.from(nchsmLivePreviews.keys())) {
+        nchsmStopPreviewForCard(key, notifyStudent);
+    }
+    nchsmLivePreviews.clear();
+    nchsmLivePreviewCount = 0;
+}
+
+async function nchsmStartPreviewForCard(studentId, examId, videoId) {
+    if (!nchsmLivePreviewEnabled) return;
+    if (!studentId || !examId || !videoId) return;
+    if (nchsmLivePreviews.size >= nchsmLivePreviewMax) return;
+
+    const key = `${studentId}:${examId}:${videoId}`;
+    if (nchsmLivePreviews.has(key)) return;
+
+    const video = document.getElementById(videoId);
+    if (!video) return;
+
+    const viewerId = nchsmCardViewerId();
+    const channelName = nchsmAdminChannelName(studentId, examId);
+
+    const channel = sb.channel(channelName, {
+        config: {
+            broadcast: { self: false, ack: false },
+            presence: { key: viewerId }
+        }
+    });
+
+    const entry = {
+        key,
+        studentId,
+        examId,
+        videoId,
+        viewerId,
+        channel,
+        peer: null
+    };
+
+    nchsmLivePreviews.set(key, entry);
+
+    const setCardState = (state, message) => {
+        const loader = document.getElementById(`${videoId}_loader`);
+        const badge = document.getElementById(`${videoId}_badge`);
+
+        if (state === 'live') {
+            if (loader) loader.style.display = 'none';
+            if (badge) {
+                badge.textContent = '🟢 LIVE';
+                badge.className = 'overlay-badge camera-on';
+            }
+        } else if (state === 'error') {
+            if (loader) {
+                loader.style.display = 'flex';
+                loader.innerHTML = `<i class="fas fa-video-slash fa-2x"></i><span style="font-size:0.7rem;">${message || 'Camera unavailable'}</span>`;
+            }
+            if (badge) {
+                badge.textContent = '📷 Unavailable';
+                badge.className = 'overlay-badge camera-off';
+            }
+        } else {
+            if (loader) loader.style.display = 'flex';
+            if (badge) {
+                badge.textContent = '🟡 Connecting…';
+                badge.className = 'overlay-badge camera-off';
+            }
+        }
+    };
+
+    const createPeerFromOffer = async (payload) => {
+        if (!nchsmLivePreviews.has(key)) return;
+
+        try {
+            if (entry.peer) {
+                try { entry.peer.close(); } catch (_) {}
+            }
+
+            const pc = new RTCPeerConnection({
+                iceServers: NCHSM_ADMIN_WEBRTC_CONFIG.stunServers
+            });
+            entry.peer = pc;
+
+            pc.ontrack = async event => {
+                if (!nchsmLivePreviews.has(key)) return;
+                const stream = event.streams?.[0];
+                if (!stream) return;
+
+                video.srcObject = stream;
+                video.muted = true;
+                video.autoplay = true;
+                video.playsInline = true;
+
+                try { await video.play(); } catch (_) {}
+                setCardState('live');
+                console.log(`🎥 Preview ${studentId}:${examId}: connected`);
+            };
+
+            pc.onicecandidate = async event => {
+                if (!event.candidate || !nchsmLivePreviews.has(key)) return;
+                try {
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'ice-candidate',
+                        payload: {
+                            studentId: String(studentId),
+                            examId: String(examId),
+                            viewerId,
+                            candidate: event.candidate.toJSON()
+                        }
+                    });
+                } catch (_) {}
+            };
+
+            pc.onconnectionstatechange = () => {
+                console.log(`🎥 Preview ${studentId}:${examId}: ${pc.connectionState}`);
+                if (pc.connectionState === 'connected') {
+                    setCardState('live');
+                } else if (['failed', 'disconnected'].includes(pc.connectionState)) {
+                    setCardState('error', 'Live connection lost');
+                }
+            };
+
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            await channel.send({
+                type: 'broadcast',
+                event: 'answer',
+                payload: {
+                    studentId: String(studentId),
+                    examId: String(examId),
+                    viewerId,
+                    answer: pc.localDescription
+                }
+            });
+
+            console.log(`🎥 Preview answer sent for ${studentId}:${examId}`);
+        } catch (error) {
+            console.error('🎥 Card WebRTC offer handling failed:', error);
+            setCardState('error', 'Preview unavailable');
+        }
+    };
+
+    channel
+        .on('broadcast', { event: 'offer' }, async ({ payload }) => {
+            if (!payload) return;
+            if (String(payload.studentId) !== String(studentId)) return;
+            if (String(payload.examId) !== String(examId)) return;
+            if (payload.viewerId !== viewerId || !payload.offer) return;
+            await createPeerFromOffer(payload);
+        })
+        .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+            if (!payload || payload.viewerId !== viewerId || !payload.candidate) return;
+            if (!entry.peer) return;
+            try {
+                await entry.peer.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            } catch (error) {
+                console.warn('🎥 Card ICE error:', error);
+            }
+        })
+        .subscribe(async status => {
+            if (status !== 'SUBSCRIBED') return;
+
+            try {
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'viewer-request',
+                    payload: {
+                        studentId: String(studentId),
+                        examId: String(examId),
+                        viewerId,
+                        requestedAt: new Date().toISOString()
+                    }
+                });
+
+                console.log(`🎥 Preview viewer-request sent for ${studentId}:${examId}`);
+
+                // Brief retries help when the student is still subscribing.
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    setTimeout(() => {
+                        const current = nchsmLivePreviews.get(key);
+                        if (!current || !current.channel) return;
+
+                        const state = current.peer?.connectionState;
+                        if (!['connected', 'completed'].includes(state)) {
+                            current.channel.send({
+                                type: 'broadcast',
+                                event: 'viewer-request',
+                                payload: {
+                                    studentId: String(studentId),
+                                    examId: String(examId),
+                                    viewerId,
+                                    requestedAt: new Date().toISOString()
+                                }
+                            }).catch(() => {});
+                        }
+                    }, attempt * 2000);
+                }
+            } catch (error) {
+                console.warn('🎥 Card preview request failed:', error);
+                setCardState('error', 'Signaling unavailable');
+            }
+        });
+}
+
+window.nchsmStartPreviewForCard = nchsmStartPreviewForCard;
+window.nchsmStopPreviewForCard = nchsmStopPreviewForCard;
+window.nchsmStopAllPreviews = nchsmStopAllPreviews;
+
+window.nchsmToggleLivePreviewMode = function() {
+    nchsmLivePreviewEnabled = !nchsmLivePreviewEnabled;
+
+    const button = document.getElementById('livePreviewToggle');
+    if (button) {
+        button.innerHTML = nchsmLivePreviewEnabled
+            ? '<i class="fas fa-play-circle"></i> Live Preview: ON'
+            : '<i class="fas fa-pause-circle"></i> Live Preview: OFF';
+
+        button.style.background = nchsmLivePreviewEnabled
+            ? 'rgba(255,255,255,0.15)'
+            : 'rgba(220,38,38,0.75)';
+    }
+
+    if (!nchsmLivePreviewEnabled) {
+        nchsmStopAllPreviews(true);
+    }
+
+    const liveFeedTab = document.getElementById('livefeed');
+    if (liveFeedTab && liveFeedTab.style.display !== 'none') {
+        displayLiveFeed();
+    }
+
+    showToast(
+        nchsmLivePreviewEnabled ? 'Live previews enabled' : 'Live previews disabled',
+        nchsmLivePreviewEnabled ? 'success' : 'info'
+    );
+};
+
+window.addEventListener('beforeunload', () => nchsmStopAllPreviews(false));
+
