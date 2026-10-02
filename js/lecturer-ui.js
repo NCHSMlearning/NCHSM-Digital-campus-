@@ -292,6 +292,34 @@ if (typeof window.hideLoading === 'undefined') {
 console.log('✅ Global functions registered for lecturer');
 
 // ============================================================
+// GLOBAL SEARCH KEYBOARD BRIDGE
+// Uses the search input already rendered by the updated HTML.
+// ============================================================
+(function initLecturerSearchKeyboardBridge() {
+    function bind() {
+        if (window.__NCHSM_LECTURER_SEARCH_KEYBOARD_BOUND) return;
+        window.__NCHSM_LECTURER_SEARCH_KEYBOARD_BOUND = true;
+
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                const input = document.getElementById('lecturerGlobalSearch');
+                if (input) {
+                    e.preventDefault();
+                    input.focus();
+                    input.select();
+                }
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bind, { once: true });
+    } else {
+        bind();
+    }
+})();
+
+// ============================================================
 // DROPDOWN TOGGLE - SAME AS SUPER ADMIN (NO toggleDropdown function)
 // ============================================================
 (function() {
@@ -369,6 +397,8 @@ const LecturerUI = {
         'nursing-system': 'nursing-system-content',
         // ===== ONLINE LEARNING =====
         'online-learning': 'online-learning-content',
+        // ===== RESEARCH PAPERS — TOP-LEVEL MODULE =====
+        'research-papers': 'research-papers-content',
         // ===== ✅ QUESTION BANK (LECTURER) =====
         'lecturer-questions': 'lecturer-questions-content'
     },
@@ -593,7 +623,8 @@ const LecturerUI = {
         
         sidebar.classList.toggle('active', this.sidebarOpen);
         sidebar.classList.toggle('open', this.sidebarOpen);
-        
+        sidebar.classList.toggle('mobile-open', this.sidebarOpen);
+
         if (toggle) {
             toggle.setAttribute('aria-expanded', this.sidebarOpen);
         }
@@ -634,6 +665,25 @@ const LecturerUI = {
         return isDark;
     },
     
+    // ==========================================
+    // GLOBAL SEARCH COMPATIBILITY
+    // The updated HTML provides the search UI/rendering. This bridge makes
+    // every search result use the same central tab controller as the sidebar.
+    // ==========================================
+    openSearchResult(tabId) {
+        if (!tabId) return;
+        this.showTab(tabId);
+
+        const searchInput = document.getElementById('lecturerGlobalSearch');
+        const searchResults = document.getElementById('lecturerSearchResults');
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.blur();
+            searchInput.setAttribute('aria-expanded', 'false');
+        }
+        if (searchResults) searchResults.classList.remove('show');
+    },
+
     // ==========================================
     // TAB MANAGEMENT - UPDATED WITH NCK & QUESTION BANK
     // ==========================================
@@ -684,9 +734,14 @@ const LecturerUI = {
         
         // Update nav links - using #mainNav
         document.querySelectorAll('#mainNav a[data-tab]').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabId) {
-                link.classList.add('active');
+            const matches = link.getAttribute('data-tab') === tabId;
+            link.classList.toggle('active', matches);
+            if (matches) {
+                link.setAttribute('aria-current', 'page');
+                const parentDropdown = link.closest('.nav-dropdown');
+                if (parentDropdown) parentDropdown.classList.add('open');
+            } else {
+                link.removeAttribute('aria-current');
             }
         });
         
@@ -909,6 +964,23 @@ const LecturerUI = {
                     }, 150);
                 } else {
                     console.warn('⚠️ LecturerOnlineLearning not found. Make sure js/lecturer-online-learning.js is loaded.');
+                }
+                break;
+
+            // ===== RESEARCH PAPERS =====
+            // Independent top-level module. Do not merge it into Online Learning.
+            case 'research-papers':
+                console.log('📚 Loading Research Papers...');
+                if (window.LecturerResearch && typeof window.LecturerResearch.init === 'function') {
+                    setTimeout(function() {
+                        try {
+                            window.LecturerResearch.init();
+                        } catch (error) {
+                            console.error('❌ Research Papers initialization error:', error);
+                        }
+                    }, 80);
+                } else {
+                    console.warn('⚠️ LecturerResearch not found. Make sure js/lecturer-research.js is loaded.');
                 }
                 break;
 
