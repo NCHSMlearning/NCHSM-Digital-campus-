@@ -258,6 +258,18 @@
 
 
 <style id="nchsm-online-learning-dropdown-pixel-v1">
+/* Academic navigation dropdown: Online Learning + Research Papers */
+#sidebar.sidebar .academics-dropdown > a.dropdown-toggle{position:relative;}
+#sidebar.sidebar .academics-dropdown > a.dropdown-toggle:hover,
+#sidebar.sidebar .academics-dropdown.open > a.dropdown-toggle{
+    background:linear-gradient(90deg,rgba(99,44,220,.95),rgba(76,29,149,.92)) !important;
+    border-left:3px solid #a78bfa !important;
+    box-shadow:0 5px 18px rgba(0,0,0,.12);
+}
+#sidebar.sidebar .academics-menu{padding-left:12px !important;}
+#sidebar.sidebar .academics-menu .online-learning-subitem{display:flex !important;align-items:center;gap:10px;}
+#sidebar.sidebar .academics-menu .online-learning-subitem i{width:18px;text-align:center;}
+
 /* Pixel-match Online Learning navigation dropdown */
 .online-learning-dropdown > a.dropdown-toggle{
     background:transparent !important;
@@ -424,7 +436,6 @@
   color:#fff!important;
   background:rgba(255,255,255,.08)!important;
 }
-#sidebar.sidebar .online-learning-menu .online-learning-subitem[data-tab="research-papers"]{display:none!important}
 #sidebar.sidebar #logoutBtn{border:1px solid rgba(255,255,255,.12)!important;background:rgba(255,255,255,.03)!important}
 #sidebar.sidebar #logoutBtn:hover{background:rgba(255,255,255,.09)!important}
 
@@ -706,30 +717,6 @@
         </a>
     </li>
     
-    <!-- ONLINE LEARNING DROPDOWN -->
-    <li class="nav-dropdown online-learning-dropdown" id="onlineLearningNav" style="margin-bottom: 2px;">
-        <a href="#" class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;cursor:pointer;">
-            <i class="fas fa-laptop-code" style="width:20px;text-align:center;"></i>
-            <span>Learning &amp; Research</span>
-            <span id="olAssignmentBadge" style="margin-left:auto;background:#10b981;padding:0 8px;border-radius:20px;font-size:10px;color:white;">0</span>
-            <i class="fas fa-chevron-down ol-dropdown-chevron" style="font-size:11px;margin-left:2px;transition:transform .25s ease;"></i>
-        </a>
-        <ul class="dropdown-menu online-learning-menu" aria-label="Online Learning menu">
-            <li>
-                <a href="#" data-tab="online-learning" class="online-learning-subitem active-subitem">
-                    <i class="fas fa-book-open"></i>
-                    <span>Online Learning</span>
-                </a>
-            </li>
-            <li>
-                <a href="#" data-tab="research-papers" class="online-learning-subitem">
-                    <i class="fas fa-file-signature"></i>
-                    <span>Research Papers</span>
-                </a>
-            </li>
-        </ul>
-    </li>
-
         <!-- SCHEDULING DROPDOWN -->
     <li class="nav-dropdown" style="margin-bottom: 2px;">
         <a 
@@ -812,10 +799,10 @@
         </ul>
     </li>
    <!-- ACADEMIC DROPDOWN -->
-<li class="nav-dropdown" style="margin-bottom: 2px;">
+<li class="nav-dropdown online-learning-dropdown academics-dropdown" id="academicsNav" style="margin-bottom: 2px;">
     <a 
         href="#" 
-        class="dropdown-toggle"
+        class="dropdown-toggle" aria-haspopup="true" aria-expanded="false"
         style="
             display: flex;
             align-items: center;
@@ -977,6 +964,36 @@
         <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NUR</span>
     </a>
 </li>
+        <!-- ONLINE LEARNING -->
+        <li>
+            <a
+                href="#"
+                data-tab="online-learning"
+                class="online-learning-subitem"
+                style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:13px;transition:all 0.2s;"
+                onmouseover="this.style.background='rgba(99,44,220,0.18)'; this.style.color='white'"
+                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-laptop-code" style="width:18px;text-align:center;font-size:12px;color:#a78bfa;"></i>
+                <span>Online Learning</span>
+            </a>
+        </li>
+
+        <!-- RESEARCH PAPERS -->
+        <li>
+            <a
+                href="#"
+                data-tab="research-papers"
+                class="online-learning-subitem"
+                style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:13px;transition:all 0.2s;"
+                onmouseover="this.style.background='rgba(99,44,220,0.18)'; this.style.color='white'"
+                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-file-signature" style="width:18px;text-align:center;font-size:12px;color:#a78bfa;"></i>
+                <span>Research Papers</span>
+            </a>
+        </li>
+
         <!-- Resources -->
         <li>
             <a 
@@ -1205,6 +1222,112 @@
             <div id="feedbackMessage" class="feedback-info" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px;"></div>
 
          <!-- ===== DASHBOARD SECTION - MODERN LIGHT (FIXED VISIBILITY) ===== -->
+<style>
+/* ============================================================
+   LECTURER DASHBOARD — STUDENT-DASHBOARD-INSPIRED UX POLISH
+   ============================================================ */
+.nchsm-reference-dashboard .nrd-hero-time {
+    min-width: 235px;
+}
+.nchsm-reference-dashboard .nrd-live-row {
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+}
+.nrd-live-status {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    background:rgba(16,185,129,.14);
+    color:#047857;
+    border:1px solid rgba(16,185,129,.22);
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.3px;
+}
+.nrd-live-status i { font-size:7px; }
+.nrd-live-status.refreshing {
+    background:rgba(245,158,11,.14);
+    color:#b45309;
+    border-color:rgba(245,158,11,.25);
+}
+.nrd-refresh-btn {
+    border:1px solid rgba(255,255,255,.5);
+    background:rgba(255,255,255,.16);
+    color:#fff;
+    border-radius:999px;
+    padding:7px 12px;
+    font-size:11px;
+    font-weight:800;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    transition:transform .2s ease, background .2s ease;
+    backdrop-filter:blur(8px);
+}
+.nrd-refresh-btn:hover { transform:translateY(-1px); background:rgba(255,255,255,.25); }
+.nrd-refresh-btn:active { transform:translateY(0); }
+.nrd-refresh-btn i { transition:transform .45s ease; }
+.nrd-refresh-btn:hover i { transform:rotate(180deg); }
+
+.nchsm-reference-dashboard .nrd-metric {
+    transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.nchsm-reference-dashboard .nrd-metric:hover {
+    transform:translateY(-3px);
+    box-shadow:0 14px 28px rgba(15,23,42,.10);
+}
+.nchsm-reference-dashboard .nrd-card {
+    transition:box-shadow .2s ease, transform .2s ease;
+}
+.nchsm-reference-dashboard .nrd-card:hover {
+    box-shadow:0 12px 30px rgba(15,23,42,.07);
+}
+.nchsm-reference-dashboard .nrd-quick-actions .nrd-actions button {
+    min-height:52px;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.nchsm-reference-dashboard .nrd-quick-actions .nrd-actions button:hover {
+    transform:translateY(-2px);
+    box-shadow:0 8px 18px rgba(76,29,149,.10);
+}
+.nchsm-reference-dashboard .nrd-footer {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:7px;
+}
+@media (max-width: 760px) {
+    .nchsm-reference-dashboard .nrd-hero-content {
+        flex-direction:column;
+        align-items:flex-start;
+    }
+    .nchsm-reference-dashboard .nrd-hero-time {
+        width:100%;
+        min-width:0;
+        text-align:left;
+    }
+    .nchsm-reference-dashboard .nrd-live-row {
+        justify-content:flex-start;
+    }
+    .nchsm-reference-dashboard .nrd-metrics {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+}
+@media (max-width: 480px) {
+    .nchsm-reference-dashboard .nrd-metrics {
+        grid-template-columns:1fr;
+    }
+    .nrd-refresh-btn span { display:none; }
+    .nrd-refresh-btn { padding:8px 10px; }
+}
+</style>
 <section id="dashboard-content" class="tab-content active" style="display:block;animation:fadeIn .35s ease;">
 <div class="nchsm-reference-dashboard">
 
@@ -1227,6 +1350,12 @@
                 </div>
             </div>
             <div class="nrd-hero-time">
+                <div class="nrd-live-row">
+                    <span class="nrd-live-status" id="nrdLiveStatus"><i class="fas fa-circle"></i> Live</span>
+                    <button class="nrd-refresh-btn" type="button" onclick="LecturerDashboard.refresh()" title="Refresh dashboard">
+                        <i class="fas fa-sync-alt"></i><span>Refresh</span>
+                    </button>
+                </div>
                 <div id="currentDateTime">Loading date...</div>
                 <strong id="nrdClock">--:--</strong>
                 <span id="nrdDaypart">☀️</span>
@@ -1321,7 +1450,7 @@
         <span id="todayAttendanceTotal">0</span><span id="todayAttendanceTotal2">0</span><span id="weeklyAttendanceTotal">0</span><span id="monthlyAttendanceRate">0%</span><span id="overallAttendanceTotal">0</span><span id="locationBreakdown">🏫 0 · 🏥 0</span><span id="todayDateDisplay"></span><span id="courseProgressList"></span><span id="attendanceAlerts"></span><span id="quickStatsContainer"></span>
     </div>
 
-    <footer class="nrd-footer"><i class="fas fa-sync-alt"></i> Auto-refresh every 30s <span>•</span> <span id="lastUpdatedTime">Last updated: Just now</span></footer>
+    <footer class="nrd-footer"><i class="fas fa-sync-alt"></i> Auto-refresh every 2 min <span>•</span> <span id="lastUpdatedTime">Last updated: Just now</span></footer>
 </div>
 </section>
 <!-- ===== PROFILE SECTION - ENHANCED WITH EDITABLE FIELDS ===== -->
@@ -8396,7 +8525,6 @@ function showTab(tabId) {
         }
     }
     
-    try { localStorage.setItem('lecturerActiveTab', tabId); } catch (e) {}
     
     if (tabId === 'dashboard') {
         if (window.LecturerDashboard?.refresh) window.LecturerDashboard.refresh();
@@ -8652,18 +8780,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(checkNCKVisibility, 500);
     setTimeout(checkNCKVisibility, 1000);
     setTimeout(checkNCKVisibility, 2000);
-    try {
-        const lastTab = localStorage.getItem('lecturerActiveTab');
-        if (lastTab) {
-            const tabExists = document.querySelector(`#mainNav a[data-tab="${lastTab}"]`);
-            if (tabExists) setTimeout(() => showTab(lastTab), 300);
-            else setTimeout(() => showTab('dashboard'), 300);
-        } else {
-            setTimeout(() => showTab('dashboard'), 300);
-        }
-    } catch (e) {
-        setTimeout(() => showTab('dashboard'), 300);
-    }
+    // Full-page refresh always opens Dashboard.
+    // Module selection remains clickable during the current session,
+    // but Research Papers/Online Learning are never restored automatically.
+    try { localStorage.removeItem('lecturerActiveTab'); } catch (e) {}
+    setTimeout(() => showTab('dashboard'), 300);
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -8752,8 +8873,8 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <script>
 /* ============================================================
    NCHSM — SEPARATED RESEARCH PAPERS MODULE BRIDGE
-   Online Learning and Research Papers are independent top-level
-   dashboard modules. No Research sub-tab is created here.
+   Online Learning and Research Papers are independent dashboard modules
+   grouped under the existing Academic navigation. No Research sub-tab is created here.
    ============================================================ */
 (function () {
     'use strict';
@@ -9152,7 +9273,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 
         setActiveNav(tabId);
 
-        try{ localStorage.setItem('lecturerActiveTab', tabId); }catch(_){}
 
         try{
             if(tabId === 'dashboard' && window.LecturerDashboard?.refresh)
@@ -9180,10 +9300,9 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
     window.__NCHSMShowTabV18 = showTabClean;
 
     function boot(){
-        let requested = null;
-        try{ requested = localStorage.getItem('lecturerActiveTab'); }catch(_){}
-        if(!requested || !TAB_IDS.includes(requested)) requested = 'dashboard';
-        showTabClean(requested, {boot:true});
+        // Always start on Dashboard after a full page refresh.
+        try{ localStorage.removeItem('lecturerActiveTab'); }catch(_){}
+        showTabClean('dashboard', {boot:true});
     }
 
     document.addEventListener('click',function(e){
