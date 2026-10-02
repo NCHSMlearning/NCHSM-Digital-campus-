@@ -1945,206 +1945,23 @@ applyDataFilter() {
         // 📊 VIEW DETAILED RESULTS
         // ============================================
         async viewDetailedResults(examId) {
-            console.log('🔍 viewDetailedResults called with examId:', examId);
-            
+            console.log('🔍 Opening NurseIQ exam review for examId:', examId);
             try {
-                const supabase = window.db?.supabase;
-                if (!supabase) {
-                    this.showToast('Database connection not available', 'warning');
+                if (typeof window.openNurseIQExamReview === 'function') {
+                    await window.openNurseIQExamReview(examId);
                     return;
                 }
-                
-                const userId = this.userId || window.db?.currentUserId;
-                if (!userId) {
-                    this.showToast('Please log in to view results', 'warning');
-                    return;
-                }
-                
-                const { data: exam, error: examError } = await supabase
-                    .from('exams')
-                    .select('*')
-                    .eq('id', parseInt(examId))
-                    .single();
-                
-                if (examError) throw examError;
-                
-                const { data: questions, error: questionsError } = await supabase
-                    .from('exam_questions')
-                    .select('*')
-                    .eq('exam_id', parseInt(examId))
-                    .order('question_number', { ascending: true });
-                
-                if (questionsError) throw questionsError;
-                
-                const { data: answers, error: answersError } = await supabase
-                    .from('exam_grades')
-                    .select('*')
-                    .eq('student_id', userId)
-                    .eq('exam_id', parseInt(examId))
-                    .neq('question_id', '00000000-0000-0000-0000-000000000000');
-                
-                if (answersError) throw answersError;
-                
-                const { data: grade, error: gradeError } = await supabase
-                    .from('exam_grades')
-                    .select('*')
-                    .eq('student_id', userId)
-                    .eq('exam_id', parseInt(examId))
-                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
-                    .single();
-                
-                if (gradeError && gradeError.code !== 'PGRST116') throw gradeError;
-                
-                const questionReview = (questions || []).map(q => {
-                    const answer = answers?.find(a => a.question_id === q.id);
-                    const options = [];
-                    if (q.option_a) options.push({ label: 'A', value: q.option_a });
-                    if (q.option_b) options.push({ label: 'B', value: q.option_b });
-                    if (q.option_c) options.push({ label: 'C', value: q.option_c });
-                    if (q.option_d) options.push({ label: 'D', value: q.option_d });
-                    
-                    return {
-                        question_text: q.question_text || 'Question ' + q.id,
-                        options: options,
-                        student_answer: answer?.selected_answer || 'Not answered',
-                        correct_answer: q.correct_answer || 'N/A',
-                        is_correct: answer?.selected_answer === q.correct_answer,
-                        explanation: q.explanation || null,
-                        marks_obtained: answer?.marks || 0,
-                        total_marks: q.marks || 1
-                    };
-                });
-                
-                const totalCorrect = questionReview.filter(q => q.is_correct).length;
-                const totalQuestions = questionReview.length;
-                const score = grade?.marks || 0;
-                const totalMarks = exam?.total_marks || 100;
-                const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-                const passed = parseFloat(percentage) >= (exam?.pass_mark || 60);
-                
-                let questionsHtml = '';
-                if (questionReview.length === 0) {
-                    questionsHtml = `
-                        <div style="text-align: center; padding: 30px; color: #94A3B8;">
-                            <i class="fas fa-question-circle" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
-                            <p>No question data available for this exam.</p>
-                        </div>
-                    `;
-                } else {
-                    questionReview.forEach((q, index) => {
-                        const isCorrect = q.is_correct;
-                        const icon = isCorrect ? '✅' : '❌';
-                        const bgColor = isCorrect ? '#F0FDF4' : '#FEF2F2';
-                        const borderColor = isCorrect ? '#D1FAE5' : '#FEE2E2';
-                        
-                        let optionsHtml = '';
-                        if (q.options && q.options.length > 0) {
-                            optionsHtml = '<div style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem;">';
-                            q.options.forEach(opt => {
-                                const isStudentAnswer = opt.label === q.student_answer;
-                                const isCorrectAnswer = opt.label === q.correct_answer;
-                                let style = 'padding: 6px 12px; border-radius: 6px; border: 1px solid #E2E8F0;';
-                                let indicator = '';
-                                
-                                if (isStudentAnswer && isCorrectAnswer) {
-                                    style += ' background: #D1FAE5; border-color: #38A169; font-weight: 600;';
-                                    indicator = ' ✅ Your answer (Correct!)';
-                                } else if (isStudentAnswer && !isCorrectAnswer) {
-                                    style += ' background: #FEE2E2; border-color: #DC2626; font-weight: 600;';
-                                    indicator = ' ❌ Your answer (Wrong)';
-                                } else if (isCorrectAnswer) {
-                                    style += ' background: #D1FAE5; border-color: #38A169;';
-                                    indicator = ' ✅ Correct answer';
-                                } else {
-                                    style += ' background: #F8FAFC; border-color: #E2E8F0;';
-                                }
-                                
-                                optionsHtml += `
-                                    <div style="${style}">
-                                        <strong>${opt.label}.</strong> ${this.escapeHtml(opt.value)}
-                                        ${indicator}
-                                    </div>
-                                `;
-                            });
-                            optionsHtml += '</div>';
-                        }
-                        
-                        questionsHtml += `
-                            <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;">
-                                <div style="font-weight: 600; color: #0A3D62; margin-bottom: 4px;">
-                                    ${icon} Q${index + 1}: ${this.escapeHtml(q.question_text)}
-                                </div>
-                                <div style="display: flex; gap: 16px; font-size: 0.85rem; color: #64748B; margin-bottom: 6px; flex-wrap: wrap;">
-                                    <span>Marks: ${q.marks_obtained}/${q.total_marks}</span>
-                                    <span style="color: ${isCorrect ? '#38A169' : '#DC2626'}; font-weight: 600;">
-                                        ${isCorrect ? '✓ Correct' : '✗ Wrong'}
-                                    </span>
-                                    <span>Your answer: <strong style="color: ${isCorrect ? '#38A169' : '#DC2626'};">${q.student_answer}</strong></span>
-                                    <span>Correct answer: <strong style="color: #38A169;">${q.correct_answer}</strong></span>
-                                </div>
-                                ${optionsHtml}
-                                ${q.explanation ? `<div style="margin-top: 8px; font-size: 0.85rem; color: #64748B; background: white; padding: 8px; border-radius: 4px; border-left: 3px solid #3B82F6;">💡 ${this.escapeHtml(q.explanation)}</div>` : ''}
-                            </div>
-                        `;
-                    });
-                }
-                
-                const modalHtml = `
-                    <div id="detailedResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
-                        <div style="background: white; border-radius: 16px; max-width: 750px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                <h2 style="margin: 0; color: #0A3D62;">
-                                    <i class="fas fa-clipboard-list"></i> Detailed Exam Review
-                                </h2>
-                                <button onclick="document.getElementById('detailedResultsModal').remove()" 
-                                        style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #94A3B8; padding: 0 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"
-                                        onmouseover="this.style.background='#F1F5F9'" onmouseout="this.style.background='transparent'">
-                                    &times;
-                                </button>
-                            </div>
-                            
-                            <div style="text-align: center; padding: 16px; background: #F8FAFC; border-radius: 12px; margin-bottom: 20px;">
-                                <h3 style="margin: 0; color: #0A3D62;">${this.escapeHtml(exam?.exam_name || 'Exam')}</h3>
-                                <div style="font-size: 2.5rem; font-weight: 700; color: ${passed ? '#38A169' : '#DC2626'};">
-                                    ${percentage}%
-                                </div>
-                                <div style="font-weight: 600; color: ${passed ? '#38A169' : '#DC2626'};">
-                                    ${passed ? '✅ PASS' : '❌ FAIL'}
-                                </div>
-                                <div style="display: flex; justify-content: center; gap: 24px; margin-top: 12px; flex-wrap: wrap;">
-                                    <div><span style="color: #64748B;">Score:</span> <strong>${score}/${totalMarks}</strong></div>
-                                    <div><span style="color: #64748B;">Correct:</span> <strong style="color: #38A169;">${totalCorrect}/${totalQuestions}</strong></div>
-                                    <div><span style="color: #64748B;">Wrong:</span> <strong style="color: #DC2626;">${totalQuestions - totalCorrect}</strong></div>
-                                </div>
-                            </div>
-                            
-                            <h4 style="color: #0A3D62; margin-bottom: 12px;">📝 Question-by-Question Review</h4>
-                            ${questionsHtml}
-                            
-                            <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #E2E8F0; padding-top: 16px;">
-                                <button onclick="document.getElementById('detailedResultsModal').remove()" 
-                                        style="padding: 10px 24px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                const existing = document.getElementById('detailedResultsModal');
-                if (existing) existing.remove();
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
-                document.getElementById('detailedResultsModal').addEventListener('click', function(e) {
-                    if (e.target === this) this.remove();
-                });
-                
+
+                // NurseIQ is the only supported review surface.
+                this.showToast('NurseIQ exam review is still loading. Please try again.', 'warning');
             } catch (error) {
-                console.error('❌ Error loading detailed results:', error);
-                this.showToast('Error loading exam details: ' + error.message, 'error');
+                console.error('❌ Error opening NurseIQ exam review:', error);
+                this.showToast('Unable to open the exam review. Please try again.', 'error');
             }
         }
         
-        // ============================================
+        
+// ============================================
         // 📊 PERFORMANCE SUMMARY
         // ============================================
         updateCounts() {
