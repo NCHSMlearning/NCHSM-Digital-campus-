@@ -4130,41 +4130,102 @@ window.captureSnapshot = async function() {
 };
 
 /**
- * Open camera modal - UPDATED
+ * Open camera modal - FULLY FIXED
  */
 window.openCameraView = async function(studentId, examId, studentName, examName) {
     currentCameraStudent = studentId;
     currentCameraExam = examId;
-    currentCameraStudentName = studentName;
-    currentCameraExamName = examName;
-    
+    currentCameraStudentName = studentName || 'Student';
+    currentCameraExamName = examName || 'Exam';
+
     // Reset snapshot cache
     snapshotCache = [];
-    
-    // Set modal title
-    document.getElementById('cameraModalTitle').innerHTML = `<i class="fas fa-video"></i> Live Camera - ${studentName}`;
-    document.getElementById('cameraStudentName').textContent = studentName;
-    document.getElementById('cameraExamName').textContent = examName;
-    document.getElementById('cameraStatus').textContent = '🟢 Connecting...';
-    document.getElementById('cameraStatus').className = 'status-active';
-    
-    // Show modal
-    document.getElementById('cameraModal').style.display = 'flex';
-    
-    // Load data
+
+    // ---- Title (may not exist, safe check) ----
+    const title = document.getElementById('cameraModalTitle');
+    if (title) {
+        title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${currentCameraStudentName}`;
+    }
+
+    // ---- Show modal FIRST so its children are in the DOM ----
+    const modal = document.getElementById('cameraModal');
+    if (modal) modal.style.display = 'flex';
+
+    // Small tick to ensure layout is ready
+    await new Promise(r => setTimeout(r, 30));
+
+    // ---- Update BOTH the header spans AND the info-grid spans ----
+    // Header (top of modal): two spans inside the <p> tag
+    const headerStudent = document.getElementById('cameraStudentName');
+    const headerExam    = document.getElementById('cameraExamName');
+    if (headerStudent) headerStudent.textContent = currentCameraStudentName;
+    if (headerExam)    headerExam.textContent    = currentCameraExamName;
+
+    // Info grid (below): we'll target by their parent text content since
+    // their IDs are duplicated in the HTML. This is a safe runtime workaround.
+    document.querySelectorAll('#cameraModal span').forEach(span => {
+        const parent = span.closest('div');
+        if (!parent) return;
+        const label = parent.querySelector('strong');
+        if (!label) return;
+        const labelText = label.textContent.trim();
+
+        if (labelText.includes('Student') && span !== headerStudent) {
+            span.textContent = currentCameraStudentName;
+        } else if (labelText.includes('Exam') && span !== headerExam) {
+            span.textContent = currentCameraExamName;
+        }
+    });
+
+    // ---- Status ----
+    const statusEl = document.getElementById('cameraStatus');
+    if (statusEl) {
+        statusEl.textContent = '🟢 Connecting...';
+        statusEl.className = 'status-active';
+        statusEl.style.color = '#059669';
+        statusEl.style.fontWeight = '600';
+    }
+
+    // ---- Loading indicator ----
+    const loading = document.getElementById('cameraLoading');
+    if (loading) {
+        loading.style.display = 'flex';
+        loading.innerHTML = '<div style="text-align:center;"><i class="fas fa-spinner fa-spin fa-3x"></i><p style="margin-top:12px;">Connecting to student camera...</p></div>';
+    }
+
+    // ---- Hide other panels until ready ----
+    const overlay = document.getElementById('cameraOverlay');
+    if (overlay) overlay.style.display = 'none';
+    const gallery = document.getElementById('snapshotGallery');
+    if (gallery) gallery.style.display = 'none';
+    const alerts = document.getElementById('cameraAlertsList');
+    if (alerts) alerts.innerHTML = '<p style="color:#94A3B8;">Loading alerts...</p>';
+
+    // ---- Kick off WebRTC (this is what actually starts the live feed) ----
+    try {
+        if (typeof startNchsmAdminWebRTC === 'function') {
+            await startNchsmAdminWebRTC(studentId, examId);
+        }
+    } catch (e) {
+        console.error('🎥 Live WebRTC startup failed:', e);
+    }
+
+    // ---- Load auxiliary panels ----
     try {
         await Promise.all([
-            refreshCameraFeed(studentId, examId),
-            loadCameraAlerts(studentId, examId),
-            loadSnapshots(studentId, examId)
+            (typeof loadCameraAlerts === 'function' ? loadCameraAlerts(studentId, examId) : Promise.resolve()),
+            (typeof loadSnapshots === 'function' ? loadSnapshots(studentId, examId) : Promise.resolve())
         ]);
-        startCameraAutoRefresh(studentId, examId);
+        if (typeof startCameraAutoRefresh === 'function') {
+            startCameraAutoRefresh(studentId, examId);
+        }
     } catch (error) {
         console.error('Error opening camera:', error);
-        showToast('Error loading camera: ' + error.message, 'error');
+        if (typeof showToast === 'function') {
+            showToast('Error loading camera: ' + error.message, 'error');
+        }
     }
 };
-
 /**
  * Close camera modal - UPDATED
  */
@@ -9679,33 +9740,61 @@ async function nchsmHandleStudentOffer(payload) {
 window.openCameraView = async function(studentId, examId, studentName, examName) {
     currentCameraStudent = studentId;
     currentCameraExam = examId;
-    currentCameraStudentName = studentName;
-    currentCameraExamName = examName;
+    currentCameraStudentName = studentName || 'Student';
+    currentCameraExamName = examName || 'Exam';
 
+    // ---- Title (optional element) ----
     const title = document.getElementById('cameraModalTitle');
-    if (title) title.innerHTML = `<i class=\"fas fa-video\"></i> Live Camera - ${studentName}`;
+    if (title) title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${currentCameraStudentName}`;
+
+    // ---- Header spans (top of modal, inside the <p> tag) ----
     const studentEl = document.getElementById('cameraStudentName');
-    if (studentEl) studentEl.textContent = studentName || 'Student';
+    if (studentEl) studentEl.textContent = currentCameraStudentName;
     const examEl = document.getElementById('cameraExamName');
-    if (examEl) examEl.textContent = examName || 'Exam';
+    if (examEl) examEl.textContent = currentCameraExamName;
+
+    // ---- Show modal FIRST so children are in the DOM ----
     const modal = document.getElementById('cameraModal');
     if (modal) modal.style.display = 'flex';
 
+    // Tiny tick so the browser has time to layout the modal
+    await new Promise(r => setTimeout(r, 30));
+
+    // ---- Info-grid spans (below the title — these have DUPLICATE IDs,
+    //      so we target them via their parent label text) ----
+    document.querySelectorAll('#cameraModal div').forEach(div => {
+        const label = div.querySelector(':scope > strong');
+        if (!label) return;
+        const labelText = label.textContent.trim();
+
+        // Find the first span directly inside this labelled div
+        const valueSpan = div.querySelector(':scope > span');
+        if (!valueSpan) return;
+
+        if (labelText.includes('Student')) {
+            valueSpan.textContent = currentCameraStudentName;
+        } else if (labelText.includes('Exam')) {
+            valueSpan.textContent = currentCameraExamName;
+        }
+    });
+
+    // ---- Loading indicator ----
     const loading = document.getElementById('cameraLoading');
     if (loading) {
         loading.style.display = 'flex';
-        loading.innerHTML = '<div style=\"text-align:center;\"><i class=\"fas fa-spinner fa-spin fa-3x\"></i><p style=\"margin-top:12px;\">Connecting to student camera...</p></div>';
+        loading.innerHTML = '<div style="text-align:center;"><i class="fas fa-spinner fa-spin fa-3x"></i><p style="margin-top:12px;">Connecting to student camera...</p></div>';
     }
     const overlay = document.getElementById('cameraOverlay');
     if (overlay) overlay.style.display = 'none';
     const gallery = document.getElementById('snapshotGallery');
     if (gallery) gallery.style.display = 'none';
     const alerts = document.getElementById('cameraAlertsList');
-    if (alerts) alerts.innerHTML = '<p style=\"color:#94A3B8;\">Loading alerts...</p>';
+    if (alerts) alerts.innerHTML = '<p style="color:#94A3B8;">Loading alerts...</p>';
+
     nchsmSetLiveStatus('🟡 Connecting...', 'status-active');
 
+    // ---- Audit panels (parallel; non-blocking for WebRTC) ----
     try {
-        // Keep the audit panels working while the Live Feed connects.
         await Promise.all([
             (typeof loadCameraAlerts === 'function' ? loadCameraAlerts(studentId, examId) : Promise.resolve()),
             (typeof loadSnapshots === 'function' ? loadSnapshots(studentId, examId) : Promise.resolve())
@@ -9714,6 +9803,7 @@ window.openCameraView = async function(studentId, examId, studentName, examName)
         console.warn('🎥 Could not load camera audit panels:', e);
     }
 
+    // ---- Start WebRTC live feed ----
     try {
         await startNchsmAdminWebRTC(studentId, examId);
     } catch (e) {
@@ -9724,19 +9814,4 @@ window.openCameraView = async function(studentId, examId, studentName, examName)
         }
     }
 };
-
-const nchsmOriginalCloseCameraModal = window.closeCameraModal;
-window.closeCameraModal = function(...args) {
-    nchsmCloseAdminWebRTC(true);
-    const video = document.getElementById('cameraLiveVideo');
-    if (video) {
-        try { video.pause(); } catch (e) {}
-        video.srcObject = null;
-        video.style.display = 'none';
-    }
-    if (typeof nchsmOriginalCloseCameraModal === 'function') {
-        return nchsmOriginalCloseCameraModal.apply(this, args);
-    }
-};
-
 window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
