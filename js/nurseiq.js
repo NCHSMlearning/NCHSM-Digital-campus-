@@ -1982,7 +1982,7 @@ async saveProgressToDatabase() {
 
         const q = review.questions[this.currentExamReviewIndex];
         if (!q) {
-            bodyEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748B;"><i class="fas fa-question-circle" style="font-size:40px;color:#94A3B8;"></i><h3 style="color:#0A3D62;">No question data available</h3><button onclick="window.closeNurseIQExamReview?.()" style="padding:9px 18px;background:#0A3D62;color:white;border:0;border-radius:8px;cursor:pointer;">Back to Exams</button></div>`;
+            bodyEl.innerHTML = `<div class="nurseiq-review-empty"><i class="fas fa-question-circle"></i><h3>No question data available</h3><button type="button" onclick="window.closeNurseIQExamReview?.()"><i class="fas fa-arrow-left"></i> Back to Exams</button></div>`;
             return;
         }
 
@@ -1995,45 +1995,152 @@ async saveProgressToDatabase() {
         const optionsHtml = q.options.length ? q.options.map(opt => {
             const student = String(opt.label) === String(q.student_answer);
             const correct = String(opt.label) === String(q.correct_answer);
-            let bg = '#F8FAFC', border = '#E2E8F0', indicator = '';
-            if (student && correct) { bg='#D1FAE5'; border='#34D399'; indicator='✓ Your answer · Correct'; }
-            else if (student) { bg='#FEE2E2'; border='#F87171'; indicator='✗ Your answer'; }
-            else if (correct) { bg='#ECFDF5'; border='#6EE7B7'; indicator='✓ Correct answer'; }
-            return `<div style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border:1px solid ${border};background:${bg};border-radius:9px;color:#334155;margin-bottom:8px;"><span style="font-weight:800;color:#0A3D62;">${this.escapeHtml(opt.label)}.</span><span style="flex:1;">${this.escapeHtml(String(opt.value))}</span><strong style="font-size:11px;color:${correct || student ? (student && !correct ? '#B91C1C' : '#047857') : '#94A3B8'};">${indicator}</strong></div>`;
-        }).join('') : '<div style="padding:12px;background:#F8FAFC;border-radius:8px;color:#64748B;">No answer options available.</div>';
+            let cls = 'nurseiq-answer-option';
+            let indicator = '';
+            if (student && correct) { cls += ' nurseiq-answer-correct'; indicator = '✓ Your answer · Correct'; }
+            else if (student) { cls += ' nurseiq-answer-wrong'; indicator = '✗ Your answer'; }
+            else if (correct) { cls += ' nurseiq-answer-correct'; indicator = '✓ Correct answer'; }
+            return `<div class="${cls}">
+                <span class="nurseiq-option-label">${this.escapeHtml(opt.label)}.</span>
+                <span class="nurseiq-option-text">${this.escapeHtml(String(opt.value))}</span>
+                ${indicator ? `<strong class="nurseiq-option-indicator">${indicator}</strong>` : ''}
+            </div>`;
+        }).join('') : '<div class="nurseiq-no-options">No answer options available.</div>';
 
-        const explanation = q.explanation ? `<div style="margin-top:16px;padding:14px 16px;background:#EFF6FF;border-left:4px solid #3B82F6;border-radius:8px;"><div style="font-weight:800;color:#1D4ED8;margin-bottom:5px;"><i class="fas fa-lightbulb"></i> Explanation</div><div style="font-size:13px;color:#475569;line-height:1.55;">${this.escapeHtml(String(q.explanation))}</div></div>` : '';
+        const explanation = q.explanation ? `<div class="nurseiq-review-explanation"><div class="nurseiq-explanation-title"><i class="fas fa-lightbulb"></i> Explanation</div><div>${this.escapeHtml(String(q.explanation))}</div></div>` : '';
+        const viewedCount = this.getExamReviewPointsForExam(review.examId);
+        const progress = review.totalQuestions ? Math.round(((this.currentExamReviewIndex + 1) / review.totalQuestions) * 100) : 0;
 
         bodyEl.innerHTML = `
-            <div style="padding:18px 20px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-                <div><strong style="color:#0A3D62;">Question ${this.currentExamReviewIndex + 1} of ${review.totalQuestions}</strong><span style="color:#64748B;font-size:12px;margin-left:12px;">Marks: ${q.marks_obtained}/${q.total_marks}</span></div>
-                <div style="padding:5px 10px;border-radius:20px;background:${statusBg};border:1px solid ${statusBorder};color:${statusColor};font-size:11px;font-weight:800;">${isCorrect ? '✓ Correct' : '✗ Incorrect'}</div>
+            <div class="nurseiq-review-question-head">
+                <div class="nurseiq-question-heading">
+                    <span class="nurseiq-question-number">Question ${this.currentExamReviewIndex + 1} of ${review.totalQuestions}</span>
+                    <span class="nurseiq-question-marks">${q.marks_obtained}/${q.total_marks} marks</span>
+                </div>
+                <div class="nurseiq-question-status" style="color:${statusColor};background:${statusBg};border-color:${statusBorder};">${isCorrect ? '✓ Correct' : '✗ Incorrect'}</div>
             </div>
-            <div style="display:grid;grid-template-columns:180px 1fr;min-height:420px;">
-                <div style="padding:16px;border-right:1px solid #E2E8F0;background:#FBFDFF;max-height:500px;overflow:auto;">
-                    <div style="font-size:10px;text-transform:uppercase;color:#64748B;font-weight:800;margin-bottom:10px;">Questions</div>
-                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
+
+            <div class="nurseiq-review-progress"><span style="width:${progress}%;"></span></div>
+
+            <div class="nurseiq-review-layout">
+                <aside class="nurseiq-review-sidebar">
+                    <div class="nurseiq-review-sidebar-title">Questions</div>
+                    <div class="nurseiq-question-grid">
                         ${review.questions.map((item,i)=>{
                             const viewed=!!this.examReviewState?.viewed?.[String(review.examId)]?.[String(item.id || item.question_number)];
                             const active=i===this.currentExamReviewIndex;
                             const c=item.is_correct?'#059669':'#DC2626';
-                            return `<button type="button" onclick="window.nurseiqModule?.goToExamReviewQuestion(${i})" style="width:100%;aspect-ratio:1;border-radius:7px;border:1px solid ${active?'#4C1D95':'#E2E8F0'};background:${active?'#4C1D95':'white'};color:${active?'white':c};font-weight:800;cursor:pointer;font-size:11px;position:relative;">${i+1}${viewed&&!active?'<span style="position:absolute;right:2px;top:1px;font-size:7px;">✓</span>':''}</button>`;
+                            return `<button type="button" aria-label="Question ${i+1}" onclick="window.nurseiqModule?.goToExamReviewQuestion(${i})" class="nurseiq-question-jump ${active?'active':''}" style="${!active?`color:${c};`:''}">${i+1}${viewed&&!active?'<span class="nurseiq-viewed-check">✓</span>':''}</button>`;
                         }).join('')}
                     </div>
-                    <div style="margin-top:14px;padding:10px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;font-size:11px;color:#9A3412;"><strong>Review points:</strong> +${this.getExamReviewPointsForExam(review.examId)} / ${review.totalQuestions}</div>
-                </div>
-                <div style="padding:22px;">
-                    <div style="font-size:16px;line-height:1.55;color:#0F172A;font-weight:700;margin-bottom:18px;">${this.escapeHtml(String(q.question_text))}</div>
-                    <div>${optionsHtml}</div>
-                    ${explanation}
-                    <div style="margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;gap:10px;align-items:center;">
-                        <button type="button" onclick="window.nurseiqModule?.goToExamReviewQuestion(${this.currentExamReviewIndex - 1})" ${this.currentExamReviewIndex===0?'disabled':''} style="padding:9px 15px;border:1px solid #CBD5E1;background:white;color:#475569;border-radius:8px;cursor:pointer;font-weight:700;opacity:${this.currentExamReviewIndex===0?.5:1};"><i class="fas fa-chevron-left"></i> Previous</button>
-                        <span style="font-size:11px;color:#64748B;">Viewing this question earns 1 NurseIQ point once.</span>
-                        <button type="button" onclick="window.nurseiqModule?.goToExamReviewQuestion(${this.currentExamReviewIndex + 1})" ${this.currentExamReviewIndex===review.totalQuestions-1?'disabled':''} style="padding:9px 15px;border:0;background:#2563EB;color:white;border-radius:8px;cursor:pointer;font-weight:700;opacity:${this.currentExamReviewIndex===review.totalQuestions-1?.5:1};">Next <i class="fas fa-chevron-right"></i></button>
+                    <div class="nurseiq-review-points-card">
+                        <span><i class="fas fa-star"></i> Review points</span>
+                        <strong>+${viewedCount} <small>/ ${review.totalQuestions}</small></strong>
+                        <em>1 point per question viewed</em>
                     </div>
-                </div>
+                </aside>
+
+                <main class="nurseiq-review-question-content">
+                    <div class="nurseiq-review-question-text">${this.escapeHtml(String(q.question_text))}</div>
+                    <div class="nurseiq-answer-list">${optionsHtml}</div>
+                    ${explanation}
+
+                    <div class="nurseiq-review-nav">
+                        <button type="button" class="nurseiq-review-nav-btn secondary" onclick="window.nurseiqModule?.goToExamReviewQuestion(${this.currentExamReviewIndex - 1})" ${this.currentExamReviewIndex===0?'disabled':''}>
+                            <i class="fas fa-chevron-left"></i><span>Previous</span>
+                        </button>
+                        <span class="nurseiq-review-nav-hint">Question ${this.currentExamReviewIndex + 1} of ${review.totalQuestions}</span>
+                        <button type="button" class="nurseiq-review-nav-btn primary" onclick="window.nurseiqModule?.goToExamReviewQuestion(${this.currentExamReviewIndex + 1})" ${this.currentExamReviewIndex===review.totalQuestions-1?'disabled':''}>
+                            <span>Next</span><i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </main>
             </div>
         `;
+
+        this.injectExamReviewResponsiveStyles();
+    }
+
+    injectExamReviewResponsiveStyles() {
+        if (document.getElementById('nurseiqExamReviewResponsiveStyles')) return;
+        const style = document.createElement('style');
+        style.id = 'nurseiqExamReviewResponsiveStyles';
+        style.textContent = `
+            .nurseiq-review-question-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;}
+            .nurseiq-question-heading{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap;}
+            .nurseiq-question-number{font-weight:800;color:#0A3D62;font-size:14px;}
+            .nurseiq-question-marks{font-size:11px;color:#64748B;background:#fff;border:1px solid #E2E8F0;padding:4px 8px;border-radius:999px;}
+            .nurseiq-question-status{font-size:11px;font-weight:800;border:1px solid;border-radius:999px;padding:5px 10px;white-space:nowrap;}
+            .nurseiq-review-progress{height:3px;background:#E2E8F0;overflow:hidden;}
+            .nurseiq-review-progress span{display:block;height:100%;background:linear-gradient(90deg,#4C1D95,#2563EB);transition:width .2s ease;}
+            .nurseiq-review-layout{display:grid;grid-template-columns:190px minmax(0,1fr);min-height:430px;}
+            .nurseiq-review-sidebar{padding:16px;border-right:1px solid #E2E8F0;background:#FBFDFF;min-width:0;}
+            .nurseiq-review-sidebar-title{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#64748B;font-weight:800;margin-bottom:10px;}
+            .nurseiq-question-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
+            .nurseiq-question-jump{position:relative;min-width:0;aspect-ratio:1;border-radius:8px;border:1px solid #E2E8F0;background:#fff;cursor:pointer;font-size:11px;font-weight:800;transition:.15s ease;}
+            .nurseiq-question-jump:hover{transform:translateY(-1px);border-color:#94A3B8;}
+            .nurseiq-question-jump.active{background:#4C1D95;border-color:#4C1D95;color:#fff!important;box-shadow:0 3px 8px rgba(76,29,149,.2);}
+            .nurseiq-viewed-check{position:absolute;right:2px;top:1px;font-size:7px;color:#059669;}
+            .nurseiq-review-points-card{margin-top:14px;padding:11px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:9px;color:#9A3412;}
+            .nurseiq-review-points-card span{display:block;font-size:10px;font-weight:800;}
+            .nurseiq-review-points-card strong{display:block;margin-top:3px;font-size:20px;line-height:1.1;}
+            .nurseiq-review-points-card small{font-size:11px;font-weight:600;}
+            .nurseiq-review-points-card em{display:block;margin-top:4px;font-style:normal;font-size:9px;color:#A16207;line-height:1.3;}
+            .nurseiq-review-question-content{padding:24px;min-width:0;}
+            .nurseiq-review-question-text{font-size:17px;line-height:1.55;color:#0F172A;font-weight:750;margin-bottom:18px;overflow-wrap:anywhere;}
+            .nurseiq-answer-list{display:flex;flex-direction:column;gap:8px;}
+            .nurseiq-answer-option{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border:1px solid #E2E8F0;background:#F8FAFC;border-radius:9px;color:#334155;line-height:1.45;}
+            .nurseiq-answer-correct{background:#ECFDF5;border-color:#6EE7B7;}
+            .nurseiq-answer-wrong{background:#FEF2F2;border-color:#F87171;}
+            .nurseiq-option-label{font-weight:800;color:#0A3D62;flex:0 0 auto;}
+            .nurseiq-option-text{flex:1;min-width:0;overflow-wrap:anywhere;}
+            .nurseiq-option-indicator{font-size:10px;white-space:nowrap;color:#047857;}
+            .nurseiq-answer-wrong .nurseiq-option-indicator{color:#B91C1C;}
+            .nurseiq-no-options{padding:12px;background:#F8FAFC;border-radius:8px;color:#64748B;font-size:13px;}
+            .nurseiq-review-explanation{margin-top:16px;padding:13px 15px;background:#EFF6FF;border-left:4px solid #3B82F6;border-radius:8px;color:#475569;font-size:13px;line-height:1.55;overflow-wrap:anywhere;}
+            .nurseiq-explanation-title{font-weight:800;color:#1D4ED8;margin-bottom:5px;}
+            .nurseiq-review-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;}
+            .nurseiq-review-nav-btn{min-height:40px;padding:0 14px;border-radius:9px;cursor:pointer;font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:.15s ease;}
+            .nurseiq-review-nav-btn.secondary{border:1px solid #CBD5E1;background:#fff;color:#475569;}
+            .nurseiq-review-nav-btn.primary{border:0;background:#2563EB;color:#fff;}
+            .nurseiq-review-nav-btn:hover:not(:disabled){transform:translateY(-1px);}
+            .nurseiq-review-nav-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+            .nurseiq-review-nav-hint{font-size:10px;color:#64748B;text-align:center;}
+            .nurseiq-review-empty{padding:55px 20px;text-align:center;color:#64748B;}
+            .nurseiq-review-empty i{font-size:40px;color:#94A3B8;display:block;margin-bottom:10px;}
+            .nurseiq-review-empty h3{color:#0A3D62;margin:0 0 14px;}
+            .nurseiq-review-empty button{min-height:40px;padding:0 16px;background:#0A3D62;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:700;}
+            @media(max-width:800px){
+                .nurseiq-review-layout{grid-template-columns:1fr;min-height:0;}
+                .nurseiq-review-sidebar{border-right:0;border-bottom:1px solid #E2E8F0;padding:12px 14px;}
+                .nurseiq-question-grid{grid-template-columns:repeat(10,minmax(0,1fr));}
+                .nurseiq-review-points-card{margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+                .nurseiq-review-points-card strong{margin:0;}
+                .nurseiq-review-points-card em{margin:0 0 0 auto;}
+                .nurseiq-review-question-content{padding:18px;}
+            }
+            @media(max-width:520px){
+                .nurseiq-review-question-head{padding:12px 13px;align-items:flex-start;}
+                .nurseiq-question-heading{gap:7px;}
+                .nurseiq-question-number{font-size:13px;}
+                .nurseiq-question-marks{font-size:10px;}
+                .nurseiq-question-status{font-size:10px;padding:4px 8px;}
+                .nurseiq-review-sidebar{padding:10px;}
+                .nurseiq-question-grid{grid-template-columns:repeat(8,minmax(0,1fr));gap:5px;}
+                .nurseiq-question-jump{border-radius:7px;font-size:10px;}
+                .nurseiq-review-question-content{padding:15px 13px;}
+                .nurseiq-review-question-text{font-size:15px;line-height:1.5;}
+                .nurseiq-answer-option{padding:10px;gap:8px;font-size:13px;}
+                .nurseiq-option-indicator{font-size:9px;}
+                .nurseiq-review-explanation{font-size:12px;padding:11px 12px;}
+                .nurseiq-review-nav{gap:6px;}
+                .nurseiq-review-nav-btn{padding:0 10px;min-height:42px;}
+                .nurseiq-review-nav-btn span{display:none;}
+                .nurseiq-review-nav-btn.primary span{display:inline;}
+                .nurseiq-review-nav-hint{font-size:9px;flex:1;}
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     async goToExamReviewQuestion(index) {
