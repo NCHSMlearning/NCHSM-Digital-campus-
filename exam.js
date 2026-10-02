@@ -4869,9 +4869,10 @@ async function startNchsmWebRTCSignaling() {
     const channelName = getNchsmWebRTCChannelName();
     if (!channelName) return false;
 
-    nchsmWebRTCChannel = sb.channel(channelName, {
-        config: { private: true }
-    });
+    // ✅ Both public — handshake will complete
+nchsmWebRTCChannel = sb.channel(channelName, {
+    config: { broadcast: { self: false, ack: false } }
+});
 
     nchsmWebRTCChannel
         .on('broadcast', { event: 'viewer-request' }, async ({ payload }) => {
