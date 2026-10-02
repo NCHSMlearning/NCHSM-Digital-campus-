@@ -62,6 +62,198 @@ const LecturerDashboard = {
     _chartsLoading: false,
     _initialized: false,
 
+    // Student-dashboard-inspired reliability layer
+    CACHE_DURATION: 120000,
+    cacheKey: null,
+    _refreshInProgress: false,
+    liveClockInterval: null,
+
+    // ─── SHARED DASHBOARD RELIABILITY HELPERS ───
+    getSupabaseClient() {
+        const candidates = [
+            window.lecturerDB?.supabase,
+            window.sb,
+            window.supabaseClient,
+            window.db?.supabase,
+            window.NCHSMLogin?.supabase,
+            window.supabase
+        ];
+
+        return candidates.find(client =>
+            client &&
+            typeof client.from === 'function' &&
+            client.auth &&
+            typeof client.auth.getSession === 'function'
+        ) || null;
+    },
+
+    async ensureSupabaseSession() {
+        const client = this.getSupabaseClient();
+        if (!client) throw new Error('Lecturer dashboard Supabase client is unavailable.');
+
+        let lastError = null;
+        for (let attempt = 0; attempt < 6; attempt++) {
+            try {
+                const result = await client.auth.getSession();
+                if (result?.error) throw result.error;
+                if (result?.data?.session?.user?.id) {
+                    return { client, session: result.data.session };
+                }
+            } catch (error) {
+                lastError = error;
+            }
+            await new Promise(resolve => setTimeout(resolve, 250));
+        }
+
+        throw lastError || new Error('No authenticated lecturer session is available.');
+    },
+
+    getKenyaNow() {
+        return new Date(new Date().toLocaleString('en-US', {
+            timeZone: 'Africa/Nairobi'
+        }));
+    },
+
+    formatKenyaDate(date) {
+        if (!date) return 'N/A';
+        return new Date(date).toLocaleDateString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+    },
+
+    formatKenyaTime(date, seconds = true) {
+        return new Date(date || this.getKenyaNow()).toLocaleTimeString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            hour: '2-digit',
+            minute: '2-digit',
+            ...(seconds ? { second: '2-digit' } : {}),
+            hour12: true
+        });
+    },
+
+    updateTimeGreeting() {
+        const now = this.getKenyaNow();
+        const hour = now.getHours();
+
+        let greeting = 'Good Morning';
+        let emoji = '☀️';
+
+        if (hour >= 12 && hour < 17) {
+            greeting = 'Good Afternoon';
+            emoji = '🌤️';
+        } else if (hour >= 17 && hour < 21) {
+            greeting = 'Good Evening';
+            emoji = '🌅';
+        } else if (hour >= 21 || hour < 5) {
+            greeting = 'Good Night';
+            emoji = '🌙';
+        }
+
+        const greetingEl = document.getElementById('lecturerGreetingText');
+        const emojiEl = document.getElementById('lecturerGreetingEmoji');
+        const daypartEl = document.getElementById('nrdDaypart');
+        const clockEl = document.getElementById('nrdClock');
+        const dateEl = document.getElementById('currentDateTime');
+        const nameEl = document.getElementById('lecturerHeroName');
+
+        if (greetingEl) greetingEl.textContent = greeting;
+        if (emojiEl) emojiEl.textContent = '👋';
+        if (daypartEl) daypartEl.textContent = emoji;
+        if (clockEl) clockEl.textContent = this.formatKenyaTime(now, false);
+        if (dateEl) {
+            dateEl.textContent = now.toLocaleDateString('en-KE', {
+                timeZone: 'Africa/Nairobi',
+                weekday: 'long',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        const profile = window.lecturerDB?.getCurrentUserProfile?.();
+        if (nameEl && profile?.full_name) nameEl.textContent = profile.full_name;
+
+        return { greeting, emoji, now };
+    },
+
+    setCacheKey() {
+        const profile = window.lecturerDB?.getCurrentUserProfile?.();
+        const userId = profile?.user_id || this.lecturerUuid || this.lecturerAssignmentId;
+        if (userId) this.cacheKey = `lecturer_dashboard_${userId}`;
+        return this.cacheKey;
+    },
+
+    loadCachedSnapshot() {
+        this.setCacheKey();
+        if (!this.cacheKey) return false;
+
+        try {
+            const cached = localStorage.getItem(this.cacheKey);
+            if (!cached) return false;
+
+            const parsed = JSON.parse(cached);
+            if (!parsed?.data || Date.now() - parsed.timestamp >= this.CACHE_DURATION) {
+                return false;
+            }
+
+            if (parsed.data.metrics) this.metrics = { ...this.metrics, ...parsed.data.metrics };
+            if (parsed.data.attendanceMetrics) this.attendanceMetrics = { ...this.attendanceMetrics, ...parsed.data.attendanceMetrics };
+            if (parsed.data.clinicalMetrics) this.clinicalMetrics = { ...this.clinicalMetrics, ...parsed.data.clinicalMetrics };
+            if (parsed.data.riskMetrics) this.riskMetrics = { ...this.riskMetrics, ...parsed.data.riskMetrics };
+            if (Array.isArray(parsed.data.assignedUnits)) this.assignedUnits = parsed.data.assignedUnits;
+            if (Array.isArray(parsed.data.assignedStudents)) this.assignedStudents = parsed.data.assignedStudents;
+
+            this.updateMetricCards();
+            this.updateAttendanceMetricsUI();
+            this.updateClinicalUI(
+                this.clinicalMetrics.percent,
+                this.clinicalMetrics.completed,
+                this.clinicalMetrics.onTrack,
+                this.clinicalMetrics.atRisk,
+                this.clinicalMetrics.critical
+            );
+            this.updateRiskUI();
+            this.updateWelcomeBanner();
+            this.loadQuickStats();
+
+            console.log('ℹ️ Showing cached lecturer dashboard values while fresh data loads...');
+            return true;
+        } catch (error) {
+            console.warn('⚠️ Ignoring invalid lecturer dashboard cache:', error);
+            return false;
+        }
+    },
+
+    saveToCache() {
+        this.setCacheKey();
+        if (!this.cacheKey) return;
+
+        try {
+            localStorage.setItem(this.cacheKey, JSON.stringify({
+                timestamp: Date.now(),
+                data: {
+                    metrics: this.metrics,
+                    attendanceMetrics: this.attendanceMetrics,
+                    clinicalMetrics: this.clinicalMetrics,
+                    riskMetrics: this.riskMetrics,
+                    assignedUnits: this.assignedUnits,
+                    assignedStudents: this.assignedStudents
+                }
+            }));
+        } catch (error) {
+            console.debug('Lecturer dashboard cache save skipped:', error.message);
+        }
+    },
+
+    clearCache() {
+        this.setCacheKey();
+        if (this.cacheKey) localStorage.removeItem(this.cacheKey);
+    },
+
     // ─── GET CURRENT PROGRAM ───
     getCurrentProgram() {
         try {
@@ -169,6 +361,13 @@ const LecturerDashboard = {
         console.log(`📚 Current Program: ${program} (${typeLabel})`);
 
         try {
+            this.setCacheKey();
+            this.loadCachedSnapshot();
+            this.updateTimeGreeting();
+
+            // Wait for the same authenticated session layer used by the
+            // student dashboard before making lecturer data requests.
+            await this.ensureSupabaseSession();
             await this.resolveLecturerId();
             await this.loadAssignedUnits();
             await this.loadAssignedStudents();
@@ -185,10 +384,28 @@ const LecturerDashboard = {
             await this.loadRecentActivity();
             await this.loadCharts();
             this.setupEventListeners();
+        setInterval(() => {
+            const now = new Date();
+            const hour = now.getHours();
+            let greeting = 'Good Morning', icon = '🌅';
+            if (hour >= 12 && hour < 17) { greeting = 'Good Afternoon'; icon = '☀️'; }
+            else if (hour >= 17 && hour < 21) { greeting = 'Good Evening'; icon = '🌆'; }
+            else if (hour >= 21 || hour < 5) { greeting = 'Good Night'; icon = '🌙'; }
+            const g = document.getElementById('lecturerGreetingText');
+            const e = document.getElementById('lecturerGreetingEmoji');
+            const c = document.getElementById('nrdClock');
+            const d = document.getElementById('nrdDaypart');
+            if (g) g.textContent = greeting;
+            if (e) e.textContent = icon;
+            if (d) d.textContent = icon;
+            if (c) c.textContent = now.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+        }, 30000);
             this.startAutoRefresh();
             this.updateLastUpdated();
             this.updateProgramBadge();
             this.updateDashboardGradingInfo();
+            this.updateTimeGreeting();
+            this.saveToCache();
             this._initialized = true;
             console.log('✅ Lecturer Dashboard initialized');
             console.log(`📚 ${this.assignedUnits.length} assigned units`);
@@ -273,7 +490,7 @@ const LecturerDashboard = {
     // ─── RESOLVE LECTURER ID ───
     async resolveLecturerId() {
         try {
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -316,7 +533,7 @@ const LecturerDashboard = {
     // ─── LOAD ASSIGNED UNITS ───
     async loadAssignedUnits() {
         try {
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -351,7 +568,7 @@ const LecturerDashboard = {
     // ─── LOAD ASSIGNED STUDENTS ───
     async loadAssignedStudents() {
         try {
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
@@ -420,7 +637,7 @@ const LecturerDashboard = {
     // ─── LOAD METRICS ───
     async loadMetrics() {
         try {
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
@@ -556,7 +773,7 @@ const LecturerDashboard = {
     // ─── LOAD ATTENDANCE METRICS ───
     async loadAttendanceMetrics() {
         try {
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
@@ -668,7 +885,7 @@ const LecturerDashboard = {
     // ─── LOAD CLINICAL HOURS ───
     async loadClinicalHours() {
         try {
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
@@ -750,7 +967,7 @@ const LecturerDashboard = {
     // ─── LOAD RISK DATA ───
     async loadRiskData() {
         try {
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
@@ -885,6 +1102,27 @@ const LecturerDashboard = {
         const emoji = this.isTVET ? '🔧' : '🎓';
         const threshold = this.getPassingThreshold();
 
+        // Dynamic lecturer greeting used by the reference dashboard.
+        const now = new Date();
+        const hour = now.getHours();
+        let greeting = 'Good Morning';
+        let greetingEmoji = '🌅';
+        if (hour >= 12 && hour < 17) { greeting = 'Good Afternoon'; greetingEmoji = '☀️'; }
+        else if (hour >= 17 && hour < 21) { greeting = 'Good Evening'; greetingEmoji = '🌆'; }
+        else if (hour >= 21 || hour < 5) { greeting = 'Good Night'; greetingEmoji = '🌙'; }
+
+        const lecturerName = profile?.full_name || 'Lecturer';
+        const greetingEl = document.getElementById('lecturerGreetingText');
+        const greetingEmojiEl = document.getElementById('lecturerGreetingEmoji');
+        const heroNameEl = document.getElementById('lecturerHeroName');
+        const clockEl = document.getElementById('nrdClock');
+        const daypartEl = document.getElementById('nrdDaypart');
+        if (greetingEl) greetingEl.textContent = greeting;
+        if (greetingEmojiEl) greetingEmojiEl.textContent = greetingEmoji;
+        if (heroNameEl) heroNameEl.textContent = lecturerName;
+        if (clockEl) clockEl.textContent = now.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+        if (daypartEl) daypartEl.textContent = greetingEmoji;
+
         const welcomeHeader = document.getElementById('welcomeHeader');
         const welcomeBannerText = document.getElementById('welcomeBannerText');
         const studentCountDisplay = document.getElementById('studentCountDisplay');
@@ -912,21 +1150,25 @@ const LecturerDashboard = {
 
         const currentDateTime = document.getElementById('currentDateTime');
         if (currentDateTime) {
-            const now = new Date();
-            currentDateTime.textContent = now.toLocaleDateString('en-GB', {
+            const now = this.getKenyaNow();
+            currentDateTime.textContent = now.toLocaleDateString('en-KE', {
+                timeZone: 'Africa/Nairobi',
                 weekday: 'short',
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric'
-            }) + ' · ' + now.toLocaleTimeString('en-GB', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            }) + ' · ' + this.formatKenyaTime(now, false);
         }
 
         const subtitle = document.getElementById('programSubtitle');
         if (subtitle) {
             subtitle.textContent = `${emoji} Program: ${program} (${typeLabel}) · Passing: ≥${threshold}%`;
+        }
+
+        const programDisplay = document.getElementById('programDisplayName');
+        if (programDisplay) {
+            const friendly = this.isTVET ? `${program} TVET Program` : `${program} Nursing Program`;
+            programDisplay.textContent = friendly;
         }
     },
 
@@ -936,7 +1178,7 @@ const LecturerDashboard = {
             const container = document.getElementById('courseProgressList');
             if (!container) return;
 
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
@@ -1008,7 +1250,7 @@ const LecturerDashboard = {
             const container = document.getElementById('topStudentsList');
             if (!container) return;
 
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
@@ -1074,7 +1316,7 @@ const LecturerDashboard = {
             const container = document.getElementById('attendanceAlerts');
             if (!container) return;
 
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
@@ -1226,7 +1468,7 @@ const LecturerDashboard = {
             const container = document.getElementById('recentActivityList');
             if (!container) return;
 
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
@@ -1344,20 +1586,46 @@ const LecturerDashboard = {
     updateLastUpdated() {
         const el = document.getElementById('lastUpdatedTime');
         if (el) {
-            const now = new Date();
-            el.textContent = `Last updated: ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+            el.textContent = `Last updated: ${this.formatKenyaTime(this.getKenyaNow(), true)}`;
         }
+
+        const status = document.getElementById('nrdLiveStatus');
+        if (status) {
+            status.innerHTML = '<i class="fas fa-circle"></i> Live';
+            status.classList.remove('refreshing');
+        }
+    },
+
+    // ─── LIVE CLOCK ───
+    startLiveClock() {
+        if (this.liveClockInterval) clearInterval(this.liveClockInterval);
+        this.updateTimeGreeting();
+
+        this.liveClockInterval = setInterval(() => {
+            this.updateTimeGreeting();
+        }, 30000);
     },
 
     // ─── START AUTO REFRESH ───
     startAutoRefresh() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-        }
-        this.refreshInterval = setInterval(() => {
-            this.refresh();
-        }, 30000);
-        console.log('🔄 Auto-refresh started (30s interval)');
+        if (this.refreshInterval) clearInterval(this.refreshInterval);
+
+        this.refreshInterval = setInterval(async () => {
+            // Same protection pattern used by the student dashboard:
+            // don't refresh hidden tabs and never overlap requests.
+            if (document.hidden || this._refreshInProgress || this.isRefreshing) return;
+
+            this._refreshInProgress = true;
+            try {
+                await this.refresh({ silent: true });
+            } catch (error) {
+                console.warn('Automatic lecturer dashboard refresh skipped:', error);
+            } finally {
+                this._refreshInProgress = false;
+            }
+        }, this.CACHE_DURATION);
+
+        console.log('🔄 Auto-refresh started (2-minute interval)');
     },
 
     // ─── CHARTS ───
@@ -1373,18 +1641,16 @@ const LecturerDashboard = {
         this.getCurrentProgram();
 
         try {
-            const supabase = window.lecturerDB?.supabase;
+            const supabase = this.getSupabaseClient();
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
             const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
             const emoji = this.isTVET ? '🔧' : '🎓';
 
-            const { data: students } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('role', 'student')
-                .eq('program', program);
+            // Lecturer analytics must be scoped to students assigned to this lecturer,
+            // just as the main student metrics are scoped through approved unit registrations.
+            const students = this.assignedStudents || [];
 
             // ─── 1. GENDER DISTRIBUTION CHART ───
             const maleCount = students?.filter(s => s.gender === 'Male' || s.gender === 'M').length || 0;
@@ -1602,53 +1868,96 @@ const LecturerDashboard = {
             }
         });
 
+        // Refresh immediately when the lecturer returns to the dashboard
+        // after the browser tab has been hidden for a while.
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && this._initialized) {
+                this.updateTimeGreeting();
+            }
+        });
+
         console.log('✅ Event listeners setup complete');
     },
 
     // ─── REFRESH ───
-    async refresh() {
-        if (this.isRefreshing) return;
-        if (!this._initialized) {
+    async refresh(options = {}) {
+        const silent = options.silent === true;
+
+        if (this.isRefreshing || this._refreshInProgress) {
+            console.log('⏭️ Dashboard refresh already in progress');
+            return;
+        }
+
+        if (!this._initialized && !silent) {
             console.log('⏭️ Dashboard still initializing, skipping refresh');
             return;
         }
-        this.isRefreshing = true;
 
-        console.log('🔄 Refreshing dashboard...');
+        this.isRefreshing = true;
+        this._refreshInProgress = true;
+
+        const status = document.getElementById('nrdLiveStatus');
+        if (status) {
+            status.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Updating';
+            status.classList.add('refreshing');
+        }
+
+        if (!silent) this.clearCache();
+
+        console.log(`🔄 ${silent ? 'Automatic' : 'Manual'} lecturer dashboard refresh...`);
 
         try {
+            const freshClient = this.getSupabaseClient();
+            if (!freshClient) throw new Error('No valid Supabase client available.');
+            await this.ensureSupabaseSession();
+
             this.getCurrentProgram();
 
             await this.resolveLecturerId();
+            this.setCacheKey();
             await this.loadAssignedUnits();
             await this.loadAssignedStudents();
             await this.loadMetrics();
             await this.loadAttendanceMetrics();
             await this.loadClinicalHours();
             await this.loadRiskData();
+
             this.updateWelcomeBanner();
             this.loadQuickStats();
+
             await this.loadCourseProgress();
             await this.loadTopStudents();
             await this.loadAttendanceAlerts();
             await this.loadIntelligentAlerts();
             await this.loadRecentActivity();
             await this.loadCharts();
+
+            this.updateTimeGreeting();
             this.updateLastUpdated();
             this.updateProgramBadge();
             this.updateDashboardGradingInfo();
+            this.saveToCache();
 
-            if (window.LecturerUI) {
+            if (!silent && window.LecturerUI) {
                 window.LecturerUI.showNotification('Dashboard refreshed successfully!', 'success');
             }
-            console.log('✅ Dashboard refreshed');
+
+            console.log('✅ Lecturer dashboard refreshed');
         } catch (error) {
             console.error('❌ Refresh error:', error);
-            if (window.LecturerUI) {
+
+            const failedStatus = document.getElementById('nrdLiveStatus');
+            if (failedStatus) {
+                failedStatus.innerHTML = '<i class="fas fa-circle"></i> Update failed';
+                failedStatus.classList.remove('refreshing');
+            }
+
+            if (!silent && window.LecturerUI) {
                 window.LecturerUI.showNotification('Error refreshing dashboard', 'error');
             }
         } finally {
             this.isRefreshing = false;
+            this._refreshInProgress = false;
         }
     },
 
