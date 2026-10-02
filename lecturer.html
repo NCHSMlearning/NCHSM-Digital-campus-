@@ -350,174 +350,6 @@
 #research-papers-content #nchsmResearchModule .rs-table tbody tr:hover td{background:#f8fcfa!important}
 #research-papers-content #nchsmResearchModule #rsLoading{padding:55px 20px!important;font-size:14px!important}
 </style>
-
-<style id="nchsm-lecturer-modern-shell-v1">
-/* ============================================================
-   NCHSM LECTURER PORTAL — MODERN SHELL
-   Presentation/search layer only. Existing module IDs and JS
-   hooks are preserved.
-   ============================================================ */
-:root{
-  --nchsm-shell:#071a2e;
-  --nchsm-shell-2:#0b2945;
-  --nchsm-blue:#2563eb;
-  --nchsm-blue-2:#0ea5e9;
-  --nchsm-border:#e2e8f0;
-  --nchsm-text:#0f172a;
-  --nchsm-muted:#64748b;
-}
-
-/* Sidebar: preserve existing markup/hooks, modernize appearance. */
-#sidebar.sidebar{
-  width:250px!important;
-  background:linear-gradient(180deg,var(--nchsm-shell) 0%,#0a2340 55%,#071827 100%)!important;
-  padding:0 10px 12px!important;
-  box-shadow:8px 0 28px rgba(2,8,23,.18)!important;
-  border-right:1px solid rgba(255,255,255,.06)!important;
-}
-#sidebar.sidebar > div:first-child{
-  padding:18px 10px 16px!important;
-  margin-bottom:10px!important;
-  border-bottom:1px solid rgba(255,255,255,.10)!important;
-}
-#sidebar.sidebar > div:first-child img{
-  width:56px!important;height:56px!important;border-radius:14px!important;padding:7px!important;margin-bottom:8px!important;
-}
-#sidebar.sidebar > div:first-child h2{font-size:17px!important;letter-spacing:-.2px}
-#sidebar.sidebar #mainNav{overflow-y:auto!important;scrollbar-width:thin}
-#sidebar.sidebar #mainNav > li{margin-bottom:3px!important}
-#sidebar.sidebar #mainNav > li > a,
-#sidebar.sidebar .dropdown-toggle{
-  min-height:42px!important;
-  padding:10px 12px!important;
-  border-radius:9px!important;
-  color:#e7eef7!important;
-  background:transparent!important;
-  border-left:3px solid transparent!important;
-  font-size:13px!important;
-}
-#sidebar.sidebar #mainNav > li > a:hover,
-#sidebar.sidebar .dropdown-toggle:hover{
-  background:rgba(255,255,255,.08)!important;
-  color:#fff!important;
-}
-#sidebar.sidebar #mainNav > li > a.active,
-#sidebar.sidebar #mainNav > li > a[aria-current="page"]{
-  background:linear-gradient(90deg,rgba(37,99,235,.95),rgba(14,165,233,.82))!important;
-  border-left-color:#60a5fa!important;
-  color:#fff!important;
-  box-shadow:0 7px 18px rgba(37,99,235,.20)!important;
-}
-#sidebar.sidebar #mainNav i{color:inherit!important}
-#sidebar.sidebar .dropdown-menu{
-  background:rgba(2,13,28,.34)!important;
-  border-radius:9px!important;
-  margin:2px 0 5px!important;
-  padding:4px 0 4px 12px!important;
-}
-#sidebar.sidebar .dropdown-menu a{
-  color:#b9c8d9!important;
-  border-radius:8px!important;
-}
-#sidebar.sidebar .dropdown-menu a:hover,
-#sidebar.sidebar .dropdown-menu a.active-subitem{
-  color:#fff!important;
-  background:rgba(255,255,255,.08)!important;
-}
-#sidebar.sidebar .online-learning-menu .online-learning-subitem[data-tab="research-papers"]{display:none!important}
-#sidebar.sidebar #logoutBtn{border:1px solid rgba(255,255,255,.12)!important;background:rgba(255,255,255,.03)!important}
-#sidebar.sidebar #logoutBtn:hover{background:rgba(255,255,255,.09)!important}
-
-/* Main shell */
-#mainContent.main{
-  margin-left:250px!important;
-  padding:20px 26px 42px!important;
-  background:#f7f9fc!important;
-}
-
-/* Top header search */
-.nchsm-topbar{
-  position:sticky;
-  top:0;
-  z-index:900;
-  display:grid;
-  grid-template-columns:minmax(280px,1fr) auto;
-  gap:18px;
-  align-items:center;
-  width:100%;
-  margin:0 0 16px;
-  padding:0 0 4px;
-  background:#f7f9fc;
-}
-.nchsm-global-search{position:relative;min-width:0}
-.nchsm-search-box{
-  height:46px;width:100%;display:flex;align-items:center;gap:10px;
-  background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:0 12px;
-  box-shadow:0 3px 12px rgba(15,23,42,.05);transition:.18s ease;
-}
-.nchsm-search-box:focus-within{border-color:#60a5fa;box-shadow:0 0 0 4px rgba(37,99,235,.10),0 6px 18px rgba(15,23,42,.06)}
-.nchsm-search-box i{color:#2563eb;font-size:16px}
-#lecturerGlobalSearch{
-  flex:1;min-width:0;border:0;outline:0;background:transparent;color:#0f172a;font-size:14px;
-}
-#lecturerGlobalSearch::placeholder{color:#94a3b8}
-.nchsm-search-shortcut{font-size:11px;color:#64748b;border:1px solid #e2e8f0;background:#f8fafc;padding:4px 7px;border-radius:6px;white-space:nowrap}
-.nchsm-search-results{
-  position:absolute;left:0;right:0;top:52px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;
-  box-shadow:0 20px 45px rgba(15,23,42,.16);overflow:hidden;display:none;max-height:420px;overflow-y:auto;
-}
-.nchsm-search-results.show{display:block}
-.nchsm-search-result{
-  width:100%;border:0;background:#fff;text-align:left;padding:11px 13px;display:flex;align-items:center;gap:10px;cursor:pointer;color:#0f172a;
-}
-.nchsm-search-result:hover,.nchsm-search-result:focus{background:#eff6ff;outline:0}
-.nchsm-search-result i{width:22px;text-align:center;color:#2563eb}
-.nchsm-search-result strong{display:block;font-size:13px}
-.nchsm-search-result small{display:block;color:#64748b;font-size:11px;margin-top:2px}
-.nchsm-search-empty{padding:18px;color:#64748b;font-size:13px;text-align:center}
-.nchsm-search-hint{padding:8px 12px;border-top:1px solid #eef2f7;color:#94a3b8;font-size:11px;background:#fbfdff}
-.nchsm-topbar-actions{display:flex;align-items:center;gap:8px}
-.nchsm-topbar-actions .shell-icon-btn{
-  width:40px;height:40px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;color:#334155;cursor:pointer;position:relative;
-}
-.nchsm-topbar-actions .shell-icon-btn:hover{background:#eff6ff;color:#2563eb}
-
-/* Existing header becomes secondary identity row */
-#mainContent > header{margin-bottom:18px!important;padding:0 2px}
-#mainContent > header h1{font-size:24px!important}
-
-/* Dashboard hero */
-.nchsm-lecturer-hero{
-  position:relative;overflow:hidden;min-height:205px;margin:0 0 22px;border-radius:16px;
-  box-shadow:0 12px 34px rgba(15,23,42,.14);background:#12365b;
-}
-.nchsm-lecturer-hero-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.nchsm-lecturer-hero-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(18,33,94,.96) 0%,rgba(30,64,175,.76) 45%,rgba(8,47,73,.18) 100%)}
-.nchsm-lecturer-hero-content{position:relative;z-index:1;min-height:205px;padding:25px 30px;color:#fff;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
-.nchsm-lecturer-hero-copy h2{margin:0 0 5px;font-size:29px;line-height:1.15;letter-spacing:-.6px;color:#fff}
-.nchsm-lecturer-hero-copy p{margin:0;color:rgba(255,255,255,.90);font-size:14px}
-.nchsm-lecturer-hero-tagline{margin-top:15px;font-size:13px;font-style:italic;color:#e0ecff}
-.nchsm-lecturer-hero-right{text-align:right;align-self:stretch;display:flex;flex-direction:column;justify-content:flex-end}
-.nchsm-lecturer-hero-nav{font-size:11px;font-weight:800;letter-spacing:1px;margin-bottom:12px;color:#dbeafe}
-.nchsm-lecturer-hero-nav span{opacity:.55;margin:0 7px}
-.nchsm-lecturer-hero-script{font-size:15px;line-height:1.35;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.25)}
-.nchsm-lecturer-hero-script span{font-size:12px;color:#dbeafe;font-weight:500}
-
-@media(max-width:900px){
-  #sidebar.sidebar{transform:translateX(-100%);transition:transform .25s ease}
-  #sidebar.sidebar.mobile-open{transform:translateX(0)}
-  #mainContent.main{margin-left:0!important;padding:16px!important}
-  .nchsm-topbar{grid-template-columns:1fr}
-  .nchsm-topbar-actions{justify-content:flex-end}
-  .nchsm-lecturer-hero-right{display:none}
-}
-@media(max-width:640px){
-  .nchsm-search-shortcut{display:none}
-  .nchsm-lecturer-hero-content{padding:22px}
-  .nchsm-lecturer-hero-copy h2{font-size:23px}
-}
-</style>
-
 </head>
 <body>
     <!-- Mobile Navigation Toggle -->
@@ -695,12 +527,12 @@
     <!-- ONLINE LEARNING DROPDOWN -->
     <li class="nav-dropdown online-learning-dropdown" id="onlineLearningNav" style="margin-bottom: 2px;">
         <a href="#" class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;cursor:pointer;">
-            <i class="fas fa-laptop-code" style="width:20px;text-align:center;"></i>
-            <span>Online Learning</span>
+            <i class="fas fa-book-reader" style="width:20px;text-align:center;"></i>
+            <span>Learning &amp; Research</span>
             <span id="olAssignmentBadge" style="margin-left:auto;background:#10b981;padding:0 8px;border-radius:20px;font-size:10px;color:white;">0</span>
             <i class="fas fa-chevron-down ol-dropdown-chevron" style="font-size:11px;margin-left:2px;transition:transform .25s ease;"></i>
         </a>
-        <ul class="dropdown-menu online-learning-menu" aria-label="Online Learning menu">
+        <ul class="dropdown-menu online-learning-menu" aria-label="Learning &amp; Research menu">
             <li>
                 <a href="#" data-tab="online-learning" class="online-learning-subitem active-subitem">
                     <i class="fas fa-book-open"></i>
@@ -714,15 +546,6 @@
                 </a>
             </li>
         </ul>
-    </li>
-
-        <!-- RESEARCH PAPERS — TOP LEVEL -->
-    <li style="margin-bottom:3px;">
-        <a href="#" data-tab="research-papers" aria-label="Research Papers" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;color:#e7eef7;text-decoration:none;font-size:13px;font-weight:500;transition:all .2s;cursor:pointer;">
-            <i class="fas fa-file-signature" style="width:20px;text-align:center;"></i>
-            <span>Research Papers</span>
-            <span style="margin-left:auto;background:#10b981;padding:0 7px;border-radius:20px;font-size:9px;color:white;font-weight:700;">RESEARCH</span>
-        </a>
     </li>
 
     <!-- SCHEDULING DROPDOWN -->
@@ -1146,24 +969,6 @@
             min-height: 100vh;
             background: #f0f4ff;
         ">
-            <!-- ===== GLOBAL SEARCH BAR ===== -->
-            <div class="nchsm-topbar" id="nchsmTopbar">
-                <div class="nchsm-global-search">
-                    <div class="nchsm-search-box">
-                        <i class="fas fa-search" aria-hidden="true"></i>
-                        <input id="lecturerGlobalSearch" type="search" autocomplete="off"
-                               placeholder="Search students, units, assignments, exams, research papers..."
-                               aria-label="Search Lecturer Portal" aria-expanded="false">
-                        <span class="nchsm-search-shortcut">Ctrl + K</span>
-                    </div>
-                    <div class="nchsm-search-results" id="lecturerSearchResults" role="listbox" aria-label="Search results"></div>
-                </div>
-                <div class="nchsm-topbar-actions">
-                    <button class="shell-icon-btn" type="button" title="Notifications" onclick="document.getElementById('notificationBtn')?.click()"><i class="fas fa-bell"></i></button>
-                    <button class="shell-icon-btn" type="button" title="Help" onclick="document.getElementById('helpBtn')?.click()"><i class="fas fa-question-circle"></i></button>
-                </div>
-            </div>
-
             <!-- Header -->
             <header style="
                 display: flex;
@@ -1201,23 +1006,6 @@
 
          <!-- ===== DASHBOARD SECTION - MODERN LIGHT (FIXED VISIBILITY) ===== -->
 <section id="dashboard-content" class="tab-content active" style="display: block; animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);">
-    <!-- ===== LECTURER HERO ===== -->
-    <div class="nchsm-lecturer-hero" id="lecturerHero">
-        <img class="nchsm-lecturer-hero-image" src="/images/campus-header.jpg" alt="NCHSM campus">
-        <div class="nchsm-lecturer-hero-overlay"></div>
-        <div class="nchsm-lecturer-hero-content">
-            <div class="nchsm-lecturer-hero-copy">
-                <h2><span id="lecturerGreetingText">Good Morning</span>, <span id="lecturerHeroName">Lecturer</span>! <span id="lecturerGreetingEmoji" aria-hidden="true">👋</span></h2>
-                <p>Lecturer &nbsp; | &nbsp; School of Nursing &nbsp; | &nbsp; NCHSM</p>
-                <div class="nchsm-lecturer-hero-tagline">“Educating Compassionate, Competent Nurses for a Healthier Society”</div>
-            </div>
-            <div class="nchsm-lecturer-hero-right">
-                <div class="nchsm-lecturer-hero-nav">LEARN <span>|</span> TEACH <span>|</span> EXCEL</div>
-                <div class="nchsm-lecturer-hero-script">Knowledge<br>Skills<br>Competence<br><span>And A Healthier Tomorrow ♡</span></div>
-            </div>
-        </div>
-    </div>
-
     <style>
         /* ─── Modern Light Styles - FIXED VISIBILITY ─── */
         .modern-dashboard {
@@ -9810,147 +9598,6 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
     }else{
         boot();
     }
-})();
-</script>
-
-
-<script id="nchsm-lecturer-shell-js">
-/* ============================================================
-   NCHSM LECTURER PORTAL — GLOBAL SEARCH + HERO GREETING
-   Does not replace existing module logic.
-   ============================================================ */
-(function(){
-  'use strict';
-
-  function textOf(el){ return (el?.textContent || '').replace(/\s+/g,' ').trim(); }
-
-  function updateLecturerHero(){
-    const hour = new Date().getHours();
-    let greeting='Good Morning', emoji='🌅';
-    if(hour>=12 && hour<17){ greeting='Good Afternoon'; emoji='☀️'; }
-    else if(hour>=17 && hour<21){ greeting='Good Evening'; emoji='🌆'; }
-    else if(hour>=21 || hour<5){ greeting='Good Night'; emoji='🌙'; }
-
-    const sourceName = document.getElementById('welcomeHeader');
-    const name = textOf(sourceName) || 'Lecturer';
-    const g=document.getElementById('lecturerGreetingText');
-    const e=document.getElementById('lecturerGreetingEmoji');
-    const n=document.getElementById('lecturerHeroName');
-    if(g) g.textContent=greeting;
-    if(e) e.textContent=emoji;
-    if(n) n.textContent=name;
-  }
-
-  function getSearchIndex(){
-    const results=[];
-    const seen=new Set();
-    document.querySelectorAll('#sidebar [data-tab]').forEach(link=>{
-      const tab=link.getAttribute('data-tab');
-      const label=textOf(link).replace(/\b(NEW|NUR|RESEARCH)\b/g,'').trim();
-      if(!tab || !label || seen.has(tab)) return;
-      seen.add(tab);
-      results.push({type:'module',label,tab,detail:'Open module'});
-    });
-
-    document.querySelectorAll('.tab-content').forEach(section=>{
-      const id=section.id;
-      if(!id || id==='dashboard-content') return;
-      const heading=section.querySelector('h1,h2,h3,[class*="title"]');
-      const label=textOf(heading) || id.replace(/-content$/,'').replace(/-/g,' ');
-      if(!seen.has(id)) results.push({type:'module',label,tab:id.replace(/-content$/,''),detail:'Portal section'});
-    });
-
-    return results;
-  }
-
-  function showTabFromSearch(tab){
-    if(!tab) return;
-    const link=document.querySelector('#sidebar [data-tab="'+CSS.escape(tab)+'"]');
-    if(link){ link.click(); return; }
-    if(typeof window.showTab==='function'){ window.showTab(tab); return; }
-    const section=document.getElementById(tab+'-content');
-    if(section){
-      document.querySelectorAll('.tab-content').forEach(x=>x.style.display='none');
-      section.style.display='block';
-    }
-  }
-
-  function initSearch(){
-    const input=document.getElementById('lecturerGlobalSearch');
-    const box=document.getElementById('lecturerSearchResults');
-    if(!input || !box) return;
-
-    const render=(query)=>{
-      const q=(query||'').trim().toLowerCase();
-      if(!q){ box.innerHTML=''; box.classList.remove('show'); input.setAttribute('aria-expanded','false'); return; }
-      const matches=getSearchIndex().filter(item=>
-        item.label.toLowerCase().includes(q) || item.detail.toLowerCase().includes(q)
-      ).slice(0,10);
-
-      if(!matches.length){
-        box.innerHTML='<div class="nchsm-search-empty">No portal section found for <strong>'+escapeHtml(query)+'</strong>.</div><div class="nchsm-search-hint">Try students, research, exams, marks, attendance, resources or reports.</div>';
-      }else{
-        box.innerHTML=matches.map((item,i)=>
-          '<button type="button" class="nchsm-search-result" data-result-tab="'+escapeAttr(item.tab)+'" role="option">'+
-          '<i class="fas '+(item.label.toLowerCase().includes('research')?'fa-file-signature':'fa-layer-group')+'"></i>'+
-          '<span><strong>'+escapeHtml(item.label)+'</strong><small>'+escapeHtml(item.detail)+'</small></span></button>'
-        ).join('')+'<div class="nchsm-search-hint">Use ↑ ↓ to move and Enter to open.</div>';
-      }
-      box.classList.add('show'); input.setAttribute('aria-expanded','true');
-    };
-
-    input.addEventListener('input',()=>render(input.value));
-    input.addEventListener('focus',()=>{ if(input.value.trim()) render(input.value); });
-    input.addEventListener('keydown',(e)=>{
-      if(e.key==='Escape'){ input.value=''; box.classList.remove('show'); input.setAttribute('aria-expanded','false'); input.blur(); return; }
-      if(e.key==='Enter'){
-        const first=box.querySelector('[data-result-tab]');
-        if(first){ showTabFromSearch(first.getAttribute('data-result-tab')); box.classList.remove('show'); input.setAttribute('aria-expanded','false'); input.blur(); }
-      }
-    });
-    box.addEventListener('click',(e)=>{
-      const btn=e.target.closest('[data-result-tab]');
-      if(!btn) return;
-      showTabFromSearch(btn.getAttribute('data-result-tab'));
-      box.classList.remove('show'); input.setAttribute('aria-expanded','false'); input.value=''; input.blur();
-    });
-    document.addEventListener('click',(e)=>{
-      if(!e.target.closest('.nchsm-global-search')){ box.classList.remove('show'); input.setAttribute('aria-expanded','false'); }
-    });
-    document.addEventListener('keydown',(e)=>{
-      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){
-        e.preventDefault(); input.focus(); input.select();
-      }
-    });
-  }
-
-  function escapeHtml(value){
-    return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  }
-  function escapeAttr(value){ return escapeHtml(value).replace(/`/g,'&#96;'); }
-
-  function initMobileNav(){
-    const toggle=document.getElementById('mobileNavToggle');
-    const sidebar=document.getElementById('sidebar');
-    if(!toggle||!sidebar) return;
-    toggle.addEventListener('click',()=>{
-      const open=sidebar.classList.toggle('mobile-open');
-      toggle.setAttribute('aria-expanded',String(open));
-    });
-  }
-
-  function boot(){
-    initSearch();
-    initMobileNav();
-    updateLecturerHero();
-    setTimeout(updateLecturerHero,500);
-    setTimeout(updateLecturerHero,1500);
-    document.addEventListener('appReady',updateLecturerHero);
-    window.addEventListener('appReady',updateLecturerHero);
-  }
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
-  else boot();
 })();
 </script>
 
