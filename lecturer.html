@@ -350,6 +350,188 @@
 #research-papers-content #nchsmResearchModule .rs-table tbody tr:hover td{background:#f8fcfa!important}
 #research-papers-content #nchsmResearchModule #rsLoading{padding:55px 20px!important;font-size:14px!important}
 </style>
+
+<style id="nchsm-lecturer-modern-shell-v1">
+/* ============================================================
+   NCHSM LECTURER PORTAL — MODERN SHELL
+   Presentation/search layer only. Existing module IDs and JS
+   hooks are preserved.
+   ============================================================ */
+:root{
+  --nchsm-shell:#071a2e;
+  --nchsm-shell-2:#0b2945;
+  --nchsm-blue:#2563eb;
+  --nchsm-blue-2:#0ea5e9;
+  --nchsm-border:#e2e8f0;
+  --nchsm-text:#0f172a;
+  --nchsm-muted:#64748b;
+}
+
+/* Sidebar: preserve existing markup/hooks, modernize appearance. */
+#sidebar.sidebar{
+  width:250px!important;
+  background:linear-gradient(180deg,var(--nchsm-shell) 0%,#0a2340 55%,#071827 100%)!important;
+  padding:0 10px 12px!important;
+  box-shadow:8px 0 28px rgba(2,8,23,.18)!important;
+  border-right:1px solid rgba(255,255,255,.06)!important;
+}
+#sidebar.sidebar > div:first-child{
+  padding:18px 10px 16px!important;
+  margin-bottom:10px!important;
+  border-bottom:1px solid rgba(255,255,255,.10)!important;
+}
+#sidebar.sidebar > div:first-child img{
+  width:56px!important;height:56px!important;border-radius:14px!important;padding:7px!important;margin-bottom:8px!important;
+}
+#sidebar.sidebar > div:first-child h2{font-size:17px!important;letter-spacing:-.2px}
+#sidebar.sidebar #mainNav{overflow-y:auto!important;scrollbar-width:thin}
+#sidebar.sidebar #mainNav > li{margin-bottom:3px!important}
+#sidebar.sidebar #mainNav > li > a,
+#sidebar.sidebar .dropdown-toggle{
+  min-height:42px!important;
+  padding:10px 12px!important;
+  border-radius:9px!important;
+  color:#e7eef7!important;
+  background:transparent!important;
+  border-left:3px solid transparent!important;
+  font-size:13px!important;
+}
+#sidebar.sidebar #mainNav > li > a:hover,
+#sidebar.sidebar .dropdown-toggle:hover{
+  background:rgba(255,255,255,.08)!important;
+  color:#fff!important;
+}
+#sidebar.sidebar #mainNav > li > a.active,
+#sidebar.sidebar #mainNav > li > a[aria-current="page"]{
+  background:linear-gradient(90deg,rgba(37,99,235,.95),rgba(14,165,233,.82))!important;
+  border-left-color:#60a5fa!important;
+  color:#fff!important;
+  box-shadow:0 7px 18px rgba(37,99,235,.20)!important;
+}
+#sidebar.sidebar #mainNav i{color:inherit!important}
+#sidebar.sidebar .dropdown-menu{
+  background:rgba(2,13,28,.34)!important;
+  border-radius:9px!important;
+  margin:2px 0 5px!important;
+  padding:4px 0 4px 12px!important;
+}
+#sidebar.sidebar .dropdown-menu a{
+  color:#b9c8d9!important;
+  border-radius:8px!important;
+}
+#sidebar.sidebar .dropdown-menu a:hover,
+#sidebar.sidebar .dropdown-menu a.active-subitem{
+  color:#fff!important;
+  background:rgba(255,255,255,.08)!important;
+}
+#sidebar.sidebar .online-learning-menu .online-learning-subitem[data-tab="research-papers"]{display:none!important}
+#sidebar.sidebar #logoutBtn{border:1px solid rgba(255,255,255,.12)!important;background:rgba(255,255,255,.03)!important}
+#sidebar.sidebar #logoutBtn:hover{background:rgba(255,255,255,.09)!important}
+
+/* Main shell */
+#mainContent.main{
+  margin-left:250px!important;
+  padding:20px 26px 42px!important;
+  background:#f7f9fc!important;
+}
+
+/* Top header search */
+.nchsm-topbar{
+  position:sticky;
+  top:0;
+  z-index:900;
+  display:grid;
+  grid-template-columns:minmax(280px,1fr) auto;
+  gap:18px;
+  align-items:center;
+  width:100%;
+  margin:0 0 16px;
+  padding:0 0 4px;
+  background:#f7f9fc;
+}
+.nchsm-global-search{position:relative;min-width:0}
+.nchsm-search-box{
+  height:46px;width:100%;display:flex;align-items:center;gap:10px;
+  background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:0 12px;
+  box-shadow:0 3px 12px rgba(15,23,42,.05);transition:.18s ease;
+}
+.nchsm-search-box:focus-within{border-color:#60a5fa;box-shadow:0 0 0 4px rgba(37,99,235,.10),0 6px 18px rgba(15,23,42,.06)}
+.nchsm-search-box i{color:#2563eb;font-size:16px}
+#lecturerGlobalSearch{
+  flex:1;min-width:0;border:0;outline:0;background:transparent;color:#0f172a;font-size:14px;
+}
+#lecturerGlobalSearch::placeholder{color:#94a3b8}
+.nchsm-search-shortcut{font-size:11px;color:#64748b;border:1px solid #e2e8f0;background:#f8fafc;padding:4px 7px;border-radius:6px;white-space:nowrap}
+.nchsm-search-results{
+  position:absolute;left:0;right:0;top:52px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+  box-shadow:0 20px 45px rgba(15,23,42,.16);overflow:hidden;display:none;max-height:420px;overflow-y:auto;
+}
+.nchsm-search-results.show{display:block}
+.nchsm-search-result{
+  width:100%;border:0;background:#fff;text-align:left;padding:11px 13px;display:flex;align-items:center;gap:10px;cursor:pointer;color:#0f172a;
+}
+.nchsm-search-result:hover,.nchsm-search-result:focus{background:#eff6ff;outline:0}
+.nchsm-search-result i{width:22px;text-align:center;color:#2563eb}
+.nchsm-search-result strong{display:block;font-size:13px}
+.nchsm-search-result small{display:block;color:#64748b;font-size:11px;margin-top:2px}
+.nchsm-search-empty{padding:18px;color:#64748b;font-size:13px;text-align:center}
+.nchsm-search-hint{padding:8px 12px;border-top:1px solid #eef2f7;color:#94a3b8;font-size:11px;background:#fbfdff}
+.nchsm-topbar-actions{display:flex;align-items:center;gap:8px}
+.nchsm-topbar-actions .shell-icon-btn{
+  width:40px;height:40px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;color:#334155;cursor:pointer;position:relative;
+}
+.nchsm-topbar-actions .shell-icon-btn:hover{background:#eff6ff;color:#2563eb}
+
+/* Existing header becomes secondary identity row */
+#mainContent > header{margin-bottom:18px!important;padding:0 2px}
+#mainContent > header h1{font-size:24px!important}
+
+/* Dashboard hero */
+.nchsm-lecturer-hero{
+  position:relative;overflow:hidden;min-height:205px;margin:0 0 22px;border-radius:16px;
+  box-shadow:0 12px 34px rgba(15,23,42,.14);background:#12365b;
+}
+.nchsm-lecturer-hero-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.nchsm-lecturer-hero-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(18,33,94,.96) 0%,rgba(30,64,175,.76) 45%,rgba(8,47,73,.18) 100%)}
+.nchsm-lecturer-hero-content{position:relative;z-index:1;min-height:205px;padding:25px 30px;color:#fff;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.nchsm-lecturer-hero-copy h2{margin:0 0 5px;font-size:29px;line-height:1.15;letter-spacing:-.6px;color:#fff}
+.nchsm-lecturer-hero-copy p{margin:0;color:rgba(255,255,255,.90);font-size:14px}
+.nchsm-lecturer-hero-tagline{margin-top:15px;font-size:13px;font-style:italic;color:#e0ecff}
+.nchsm-lecturer-hero-right{text-align:right;align-self:stretch;display:flex;flex-direction:column;justify-content:flex-end}
+.nchsm-lecturer-hero-nav{font-size:11px;font-weight:800;letter-spacing:1px;margin-bottom:12px;color:#dbeafe}
+.nchsm-lecturer-hero-nav span{opacity:.55;margin:0 7px}
+.nchsm-lecturer-hero-script{font-size:15px;line-height:1.35;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.25)}
+.nchsm-lecturer-hero-script span{font-size:12px;color:#dbeafe;font-weight:500}
+
+@media(max-width:900px){
+  #sidebar.sidebar{transform:translateX(-100%);transition:transform .25s ease}
+  #sidebar.sidebar.mobile-open{transform:translateX(0)}
+  #mainContent.main{margin-left:0!important;padding:16px!important}
+  .nchsm-topbar{grid-template-columns:1fr}
+  .nchsm-topbar-actions{justify-content:flex-end}
+  .nchsm-lecturer-hero-right{display:none}
+}
+@media(max-width:640px){
+  .nchsm-search-shortcut{display:none}
+  .nchsm-lecturer-hero-content{padding:22px}
+  .nchsm-lecturer-hero-copy h2{font-size:23px}
+}
+</style>
+
+
+<style id="nchsm-reference-dashboard-pixel-v1">
+.nchsm-reference-dashboard{max-width:1500px;margin:0 auto;padding:0 0 28px;color:#0f172a}
+.nrd-hero{position:relative;min-height:185px;border:2px solid #8b5cf6;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,.10);margin-bottom:10px;background:#17365d}
+.nrd-hero-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.nrd-hero-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(9,28,70,.96),rgba(38,72,150,.82) 52%,rgba(8,47,73,.24))}
+.nrd-hero-content{position:relative;z-index:1;min-height:185px;padding:22px 24px;display:flex;justify-content:space-between;align-items:center;color:#fff;gap:20px}.nrd-hero-identity{display:flex;align-items:center;gap:18px;min-width:0}.nrd-avatar{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.92);color:#2563eb;font-size:30px;box-shadow:0 6px 20px rgba(0,0,0,.15);flex:0 0 76px}.nrd-kicker{font-size:9px;font-weight:900;letter-spacing:1.5px;color:#bfdbfe;margin-bottom:5px}.nrd-hero-copy h1{margin:0;font-size:27px;line-height:1.15;letter-spacing:-.5px;color:#fff}.nrd-hero-copy p{margin:7px 0 10px;color:rgba(255,255,255,.88);font-size:12px}.nrd-meta{display:flex;gap:8px;flex-wrap:wrap}.nrd-meta span{font-size:9px;padding:5px 9px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);border-radius:20px}.nrd-meta i{margin-right:4px;color:#bfdbfe}.nrd-hero-time{text-align:right;min-width:180px}.nrd-hero-time div{font-size:10px;color:#dbeafe}.nrd-hero-time strong{display:inline-block;font-size:24px;margin:6px 4px 4px}.nrd-hero-time>span{font-size:18px}.nrd-hero-time em{display:block;font-size:9px;color:#dbeafe;margin-top:7px}
+.nrd-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:10px}.nrd-metric{border:1px solid #e2e8f0;background:#fff;border-radius:11px;min-height:82px;padding:10px;display:flex;align-items:center;gap:9px;text-align:left;cursor:pointer;box-shadow:0 3px 12px rgba(15,23,42,.05);transition:.18s ease}.nrd-metric:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(15,23,42,.09)}.nrd-metric-icon{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:15px;flex:0 0 38px}.nrd-metric small{display:block;font-size:8px;font-weight:900;color:#64748b;letter-spacing:.4px}.nrd-metric b{display:block;font-size:21px;line-height:1.1;margin:2px 0}.nrd-metric em{display:block;font-size:8px;color:#94a3b8;font-style:normal;white-space:nowrap}.metric-blue .nrd-metric-icon{background:#dbeafe;color:#2563eb}.metric-purple .nrd-metric-icon{background:#ede9fe;color:#7c3aed}.metric-red .nrd-metric-icon{background:#fee2e2;color:#dc2626}.metric-amber .nrd-metric-icon{background:#fef3c7;color:#d97706}.metric-green .nrd-metric-icon{background:#d1fae5;color:#059669}.metric-sky .nrd-metric-icon{background:#e0f2fe;color:#0284c7}
+.nrd-three-column{display:grid;grid-template-columns:1.15fr 1.15fr .9fr;gap:10px;margin-bottom:10px}.nrd-card{background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 3px 12px rgba(15,23,42,.055);overflow:hidden;min-width:0}.nrd-card header{min-height:48px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #edf2f7}.nrd-card header>div{display:flex;align-items:center;gap:7px;min-width:0}.nrd-card header>div>i{font-size:17px;color:#2563eb}.nrd-card header h2{font-size:11px;margin:0;font-weight:850;white-space:nowrap}.nrd-card header small{display:block;color:#94a3b8;font-size:8px;margin-top:2px}.nrd-card header button{border:0;background:transparent;color:#2563eb;font-size:8px;font-weight:800;cursor:pointer;white-space:nowrap}.nrd-card-body{padding:12px}.nrd-next-body{display:grid;grid-template-columns:95px 1fr;gap:12px;align-items:center;min-height:93px}.nrd-time-block strong{display:block;font-size:22px;color:#2563eb}.nrd-time-block span{font-size:8px;color:#94a3b8}.nrd-next-body>div:last-child>strong{display:block;font-size:12px}.nrd-next-body>div:last-child>span{display:block;font-size:9px;color:#64748b;margin-top:4px}.nrd-count-badge{background:#fee2e2;color:#dc2626;padding:4px 8px;border-radius:20px;font-size:9px;font-weight:900}.nrd-task-list{padding:8px 11px;min-height:93px}.nrd-task-list .alert-modern{margin:0 0 5px!important;padding:6px 8px!important;font-size:9px!important}.nrd-exam-body{min-height:93px;padding:14px;display:grid;grid-template-columns:42px 1fr;column-gap:9px;align-content:center}.nrd-exam-icon{width:42px;height:42px;border-radius:10px;background:#ede9fe;color:#7c3aed;display:grid;place-items:center;font-size:18px;grid-row:span 2}.nrd-exam-body strong{font-size:11px}.nrd-exam-body span:last-child{font-size:8px;color:#64748b;line-height:1.5}.nrd-quick-actions{margin-bottom:10px}.nrd-actions{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:9px 10px}.nrd-actions button{border:0;border-radius:8px;color:#fff;min-height:47px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:9px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(15,23,42,.08);transition:.16s ease}.nrd-actions button:hover{transform:translateY(-2px)}.nrd-actions button:nth-child(1){background:#16a34a}.nrd-actions button:nth-child(2){background:#2563eb}.nrd-actions button:nth-child(3){background:#7c3aed}.nrd-actions button:nth-child(4){background:#f97316}.nrd-actions button:nth-child(5){background:#0891b2}.nrd-actions button:nth-child(6){background:#db2777}.nrd-actions i{font-size:13px}.nrd-analytics,.nrd-insights{grid-template-columns:1.2fr 1.1fr 1fr}.nrd-chart-card .nrd-chart{height:190px;padding:7px 10px 10px}.nrd-attendance-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:14px 10px 8px}.nrd-attendance-summary div{text-align:center;border-radius:8px;padding:10px 4px;background:#f8fafc}.nrd-attendance-summary div:first-child{background:#f0fdf4}.nrd-attendance-summary div:nth-child(2){background:#fef2f2}.nrd-attendance-summary div:nth-child(3){background:#fffbeb}.nrd-attendance-summary b{display:block;font-size:20px}.nrd-attendance-summary div:first-child b{color:#059669}.nrd-attendance-summary div:nth-child(2) b{color:#dc2626}.nrd-attendance-summary div:nth-child(3) b{color:#d97706}.nrd-attendance-summary span{font-size:8px;color:#64748b}.nrd-attendance-foot{display:flex;gap:10px;padding:7px 11px 11px;font-size:8px;color:#64748b}.nrd-attendance-foot b{color:#0f172a}.nrd-risk-bars{padding:12px}.nrd-risk-bars>div{display:grid;grid-template-columns:72px 28px 1fr;align-items:center;gap:7px;margin-bottom:13px}.nrd-risk-bars span{font-size:8px;color:#64748b}.nrd-risk-bars b{text-align:right;font-size:10px}.nrd-risk-bars i{height:9px;background:#eef2f7;border-radius:20px;overflow:hidden}.nrd-risk-bars em{display:block;height:100%;width:0;border-radius:20px;transition:width .4s}.nrd-risk-bars>div:nth-child(1) em{background:#ef4444}.nrd-risk-bars>div:nth-child(2) em{background:#f59e0b}.nrd-risk-bars>div:nth-child(3) em{background:#10b981}.nrd-insights .nrd-card>div:last-child{padding:8px 11px;min-height:150px}.nrd-insights .alert-modern{font-size:9px!important;padding:6px 8px!important}.nrd-secondary-grid{display:grid;grid-template-columns:1.1fr 1.1fr .9fr;gap:10px;margin-bottom:10px}.nrd-small-chart{height:175px;padding:8px}.nrd-clinical{padding:12px;display:flex;gap:15px;align-items:center}.nrd-ring{position:relative;width:90px;height:90px;flex:0 0 90px}.nrd-ring svg{width:90px;height:90px;transform:rotate(-90deg)}.nrd-ring circle{fill:none;stroke:#e2e8f0;stroke-width:9}.nrd-ring circle:last-child{stroke:#7c3aed;stroke-linecap:round;stroke-dasharray:251;stroke-dashoffset:251;transition:stroke-dashoffset .8s}.nrd-ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:18px}.nrd-clinical>div:last-child strong,.nrd-clinical>div:last-child span{display:block;font-size:9px;margin-bottom:5px}.nrd-clinical>div:last-child span{color:#64748b}.nrd-clinical-bar{height:6px;margin:0 12px 12px;background:#eef2f7;border-radius:10px;overflow:hidden}.nrd-clinical-bar>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#7c3aed,#10b981);border-radius:10px;transition:width .7s}.nrd-footer{text-align:center;padding:10px;color:#94a3b8;font-size:9px}.nrd-footer span{margin:0 7px}
+.nrd-empty{padding:28px 10px;text-align:center;color:#94a3b8;font-size:9px}.nrd-hidden-data{display:none!important}
+@media(max-width:1200px){.nrd-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.nrd-actions{grid-template-columns:repeat(3,minmax(0,1fr))}.nrd-three-column,.nrd-secondary-grid{grid-template-columns:1fr 1fr}.nrd-next-exam{grid-column:1/-1}}
+@media(max-width:760px){.nrd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.nrd-three-column,.nrd-secondary-grid{grid-template-columns:1fr}.nrd-next-exam{grid-column:auto}.nrd-hero-content{min-height:155px;padding:18px}.nrd-hero{min-height:155px}.nrd-avatar{display:none}.nrd-hero-copy h1{font-size:21px}.nrd-hero-time{display:none}.nrd-actions{grid-template-columns:1fr 1fr}.nrd-metric b{font-size:18px}.nrd-metric em{white-space:normal}.nrd-next-body{grid-template-columns:80px 1fr}}
+@media(max-width:430px){.nrd-metrics{gap:6px}.nrd-metric{min-height:76px;padding:8px}.nrd-metric-icon{width:32px;height:32px;flex-basis:32px;font-size:13px}.nrd-metric small{font-size:7px}.nrd-metric b{font-size:16px}.nrd-actions{grid-template-columns:1fr 1fr}.nrd-actions button{font-size:8px;min-height:52px;flex-direction:column;gap:3px}}
+</style>
+
 </head>
 <body>
     <!-- Mobile Navigation Toggle -->
@@ -527,12 +709,12 @@
     <!-- ONLINE LEARNING DROPDOWN -->
     <li class="nav-dropdown online-learning-dropdown" id="onlineLearningNav" style="margin-bottom: 2px;">
         <a href="#" class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;cursor:pointer;">
-            <i class="fas fa-book-reader" style="width:20px;text-align:center;"></i>
+            <i class="fas fa-laptop-code" style="width:20px;text-align:center;"></i>
             <span>Learning &amp; Research</span>
             <span id="olAssignmentBadge" style="margin-left:auto;background:#10b981;padding:0 8px;border-radius:20px;font-size:10px;color:white;">0</span>
             <i class="fas fa-chevron-down ol-dropdown-chevron" style="font-size:11px;margin-left:2px;transition:transform .25s ease;"></i>
         </a>
-        <ul class="dropdown-menu online-learning-menu" aria-label="Learning &amp; Research menu">
+        <ul class="dropdown-menu online-learning-menu" aria-label="Online Learning menu">
             <li>
                 <a href="#" data-tab="online-learning" class="online-learning-subitem active-subitem">
                     <i class="fas fa-book-open"></i>
@@ -548,7 +730,7 @@
         </ul>
     </li>
 
-    <!-- SCHEDULING DROPDOWN -->
+        <!-- SCHEDULING DROPDOWN -->
     <li class="nav-dropdown" style="margin-bottom: 2px;">
         <a 
             href="#" 
@@ -969,6 +1151,24 @@
             min-height: 100vh;
             background: #f0f4ff;
         ">
+            <!-- ===== GLOBAL SEARCH BAR ===== -->
+            <div class="nchsm-topbar" id="nchsmTopbar">
+                <div class="nchsm-global-search">
+                    <div class="nchsm-search-box">
+                        <i class="fas fa-search" aria-hidden="true"></i>
+                        <input id="lecturerGlobalSearch" type="search" autocomplete="off"
+                               placeholder="Search students, units, assignments, exams, research papers..."
+                               aria-label="Search Lecturer Portal" aria-expanded="false">
+                        <span class="nchsm-search-shortcut">Ctrl + K</span>
+                    </div>
+                    <div class="nchsm-search-results" id="lecturerSearchResults" role="listbox" aria-label="Search results"></div>
+                </div>
+                <div class="nchsm-topbar-actions">
+                    <button class="shell-icon-btn" type="button" title="Notifications" onclick="document.getElementById('notificationBtn')?.click()"><i class="fas fa-bell"></i></button>
+                    <button class="shell-icon-btn" type="button" title="Help" onclick="document.getElementById('helpBtn')?.click()"><i class="fas fa-question-circle"></i></button>
+                </div>
+            </div>
+
             <!-- Header -->
             <header style="
                 display: flex;
@@ -1004,150 +1204,126 @@
             <!-- Feedback Message -->
             <div id="feedbackMessage" class="feedback-info" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px;"></div>
 
-         <!-- ===== DASHBOARD SECTION - PIXEL REFERENCE REDESIGN ===== -->
-<section id="dashboard-content" class="tab-content active" style="display:block;animation:fadeIn .3s ease;">
-<style id="nchsm-lecturer-dashboard-reference-v1">
-/* ============================================================
-   NCHSM LECTURER DASHBOARD — REFERENCE UI
-   Designed to match the supplied dashboard reference while
-   preserving the existing LecturerDashboard JS element IDs.
-   ============================================================ */
-#dashboard-content{padding:0!important;background:#f8fafc;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#0f172a}
-#dashboard-content *{box-sizing:border-box}
-.nref-shell{max-width:1500px;margin:0 auto;padding:0 2px 28px}
-.nref-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
-.nref-title{display:none}
-.nref-search{flex:1;max-width:520px;margin:0 auto;height:42px;border:1px solid #e2e8f0;background:#fff;border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 15px;color:#64748b;box-shadow:0 2px 8px rgba(15,23,42,.04)}
-.nref-search i{color:#0f172a;font-size:14px}.nref-search span{font-size:12px}
-.nref-user{display:flex;align-items:center;gap:10px;min-width:190px;justify-content:flex-end}
-.nref-bell{width:36px;height:36px;border:0;background:transparent;position:relative;color:#334155;font-size:17px}.nref-bell:after{content:"";position:absolute;right:7px;top:6px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:2px solid #fff}
-.nref-avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#dbeafe,#ede9fe);color:#4338ca;border:2px solid #fff;box-shadow:0 2px 8px rgba(15,23,42,.08);font-size:15px}
-.nref-user-name{font-size:11px;font-weight:800;color:#0f172a}.nref-user-role{font-size:9px;color:#64748b;margin-top:2px}
-.nref-hero{position:relative;overflow:hidden;border:2px solid #7c3aed;border-radius:14px;min-height:142px;padding:22px 24px;margin-bottom:10px;background:radial-gradient(circle at 78% 20%,rgba(124,58,237,.10),transparent 33%),linear-gradient(135deg,#fff 0%,#f8f5ff 100%);box-shadow:0 5px 18px rgba(76,29,149,.08)}
-.nref-hero:after{content:"";position:absolute;width:220px;height:220px;right:-100px;top:-130px;border-radius:50%;background:rgba(124,58,237,.07)}
-.nref-hero-main{position:relative;z-index:1;display:flex;align-items:center;gap:16px}
-.nref-hero-avatar{width:76px;height:76px;flex:0 0 76px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#dbeafe,#e9d5ff);color:#4f46e5;border:5px solid rgba(255,255,255,.9);box-shadow:0 5px 18px rgba(79,70,229,.14);font-size:30px}
-.nref-hero-copy h1{margin:0;font-size:25px;line-height:1.1;letter-spacing:-.5px;color:#111827}.nref-hero-copy h1 .greet{color:#7c3aed}.nref-hero-copy p{margin:6px 0 10px;color:#64748b;font-size:12px}
-.nref-meta{display:flex;gap:8px;flex-wrap:wrap}.nref-pill{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e2e8f0;border-radius:999px;padding:5px 10px;font-size:9px;font-weight:700;color:#334155}.nref-pill i{color:#4f46e5}.nref-hero-side{position:absolute;right:24px;top:22px;text-align:right;z-index:1}.nref-date{font-size:9px;color:#64748b}.nref-time{font-size:22px;font-weight:850;color:#0f172a;margin-top:4px}.nref-motto{font-size:9px;color:#64748b;font-style:italic;margin-top:4px}
-.nref-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:10px}.nref-metric{background:#fff;border:1px solid #e2e8f0;border-radius:11px;min-height:82px;padding:10px 11px;display:flex;align-items:center;gap:9px;box-shadow:0 2px 8px rgba(15,23,42,.04);cursor:pointer;transition:.18s}.nref-metric:hover{transform:translateY(-2px);box-shadow:0 7px 18px rgba(15,23,42,.08)}
-.nref-metric-icon{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:16px;flex:0 0 38px}.nref-metric:nth-child(1) .nref-metric-icon{background:#dbeafe;color:#2563eb}.nref-metric:nth-child(2) .nref-metric-icon{background:#ede9fe;color:#7c3aed}.nref-metric:nth-child(3) .nref-metric-icon{background:#fee2e2;color:#dc2626}.nref-metric:nth-child(4) .nref-metric-icon{background:#fef3c7;color:#d97706}.nref-metric:nth-child(5) .nref-metric-icon{background:#d1fae5;color:#059669}.nref-metric:nth-child(6) .nref-metric-icon{background:#dbeafe;color:#2563eb}
-.nref-label{font-size:9px;color:#64748b;font-weight:700}.nref-value{font-size:20px;font-weight:850;color:#0f172a;line-height:1.1;margin:3px 0}.nref-sub{font-size:8px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nref-main-grid{display:grid;grid-template-columns:1.12fr 1fr .82fr;gap:10px;margin-bottom:10px}.nref-panel{background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 3px 11px rgba(15,23,42,.05);overflow:hidden}.nref-panel-head{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 13px;border-bottom:1px solid #edf2f7}.nref-panel-title{display:flex;align-items:center;gap:8px}.nref-panel-title i{font-size:15px;color:#2563eb}.nref-panel-title strong{font-size:11px}.nref-panel-head a,.nref-panel-head button{border:0;background:transparent;color:#2563eb;font-size:9px;font-weight:700;cursor:pointer}.nref-panel-body{padding:12px}
-.nref-class{min-height:145px;background:linear-gradient(135deg,#f8fbff,#f1f5ff);border:1px solid #e0e7ff;border-radius:10px;padding:12px}.nref-kicker{font-size:9px;font-weight:800;color:#2563eb;text-transform:uppercase;letter-spacing:.5px}.nref-class h3{font-size:16px;margin:8px 0 5px;color:#0f172a}.nref-class p{margin:4px 0;font-size:9px;color:#64748b}.nref-class button{margin-top:9px;background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 13px;font-size:9px;font-weight:800;cursor:pointer}
-.nref-task{display:flex;align-items:center;gap:9px;padding:8px 2px;border-bottom:1px solid #f1f5f9;font-size:9px;color:#334155}.nref-task:last-child{border-bottom:0}.nref-task i{width:18px;color:#94a3b8}.nref-task .task-count{margin-left:auto;font-weight:800;color:#ef4444}.nref-exam{background:#f7f5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;min-height:120px}.nref-exam strong{font-size:13px}.nref-exam p{font-size:9px;color:#64748b;margin:6px 0}.nref-badge{display:inline-block;padding:5px 8px;border-radius:7px;background:#7c3aed;color:#fff;font-size:8px;font-weight:800}
-.nref-actions{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:10px 12px}.nref-action{height:58px;border:0;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:9px;font-weight:800;cursor:pointer;transition:.18s}.nref-action:hover{transform:translateY(-2px);filter:brightness(1.03)}.nref-action i{font-size:15px}.nref-action.a1{background:#16a34a}.nref-action.a2{background:#2563eb}.nref-action.a3{background:#7c3aed}.nref-action.a4{background:#f97316}.nref-action.a5{background:#0891b2}.nref-action.a6{background:#db2777}
-.nref-charts{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:10px;margin:10px 0}.nref-chart-body{padding:10px 12px;height:150px}.nref-chart-body canvas{width:100%!important;height:125px!important}
-.nref-insights{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.nref-list{padding:8px 12px 10px}.nref-row{display:grid;grid-template-columns:24px 1fr auto;align-items:center;gap:7px;min-height:28px;border-bottom:1px solid #f1f5f9;font-size:9px}.nref-row:last-child{border-bottom:0}.nref-rank{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#fef3c7;color:#a16207;font-size:8px;font-weight:900}.nref-risk{padding:3px 7px;border-radius:999px;font-size:7px;font-weight:900;background:#fee2e2;color:#dc2626}.nref-risk.medium{background:#fef3c7;color:#a16207}.nref-risk.low{background:#d1fae5;color:#047857}.nref-dot{width:7px;height:7px;border-radius:50%;background:#2563eb;display:inline-block}.nref-dot.green{background:#16a34a}.nref-dot.red{background:#ef4444}.nref-dot.orange{background:#f59e0b}
-.nref-ops{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px}.nref-mini{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px}.nref-mini h4{margin:0 0 8px;font-size:10px}.nref-mini-body{font-size:9px;color:#64748b;line-height:1.6}.nref-footer-meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px;color:#94a3b8;font-size:8px}
-.nref-hidden-compat{display:none!important}
-@media(max-width:1200px){.nref-metrics{grid-template-columns:repeat(3,1fr)}.nref-main-grid{grid-template-columns:1fr 1fr}.nref-main-grid>.nref-panel:last-child{grid-column:1/-1}.nref-charts{grid-template-columns:1fr 1fr}.nref-charts>.nref-panel:first-child{grid-column:1/-1}.nref-actions{grid-template-columns:repeat(3,1fr)}.nref-insights{grid-template-columns:1fr 1fr}.nref-insights>.nref-panel:last-child{grid-column:1/-1}}
-@media(max-width:760px){.nref-shell{padding:0 0 20px}.nref-topbar{display:none}.nref-hero{min-height:145px;padding:18px}.nref-hero-avatar{width:58px;height:58px;flex-basis:58px;font-size:23px}.nref-hero-copy h1{font-size:19px}.nref-hero-side{display:none}.nref-metrics{grid-template-columns:1fr 1fr}.nref-main-grid,.nref-charts,.nref-insights,.nref-ops{grid-template-columns:1fr}.nref-main-grid>.nref-panel:last-child,.nref-charts>.nref-panel:first-child,.nref-insights>.nref-panel:last-child{grid-column:auto}.nref-actions{grid-template-columns:1fr 1fr}.nref-action{height:62px}.nref-meta{gap:5px}.nref-pill{font-size:8px;padding:4px 7px}}
-@media(max-width:430px){.nref-metrics{gap:6px}.nref-metric{min-height:74px;padding:8px}.nref-metric-icon{width:32px;height:32px;flex-basis:32px;font-size:13px}.nref-value{font-size:16px}.nref-sub{font-size:7px}.nref-actions{gap:6px}.nref-action{font-size:8px}}
-</style>
+         <!-- ===== DASHBOARD SECTION - MODERN LIGHT (FIXED VISIBILITY) ===== -->
+<section id="dashboard-content" class="tab-content active" style="display:block;animation:fadeIn .35s ease;">
+<div class="nchsm-reference-dashboard">
 
-<div class="nref-shell">
-    <div class="nref-topbar">
-        <div class="nref-title">NCHSM Lecturer Portal</div>
-        <div class="nref-search"><i class="fas fa-search"></i><span>Search students, courses, units, resources... (Ctrl + K)</span></div>
-        <div class="nref-user">
-            <button class="nref-bell" type="button" aria-label="Notifications"><i class="fas fa-bell"></i></button>
-            <div class="nref-avatar"><i class="fas fa-user-tie"></i></div>
-            <div><div class="nref-user-name" id="dashboardUserName">Lecturer</div><div class="nref-user-role">Lecturer | <span id="dashboardProgramRole">KRCHN</span></div></div>
-        </div>
-    </div>
-
-    <section class="nref-hero">
-        <div class="nref-hero-main">
-            <div class="nref-hero-avatar"><i class="fas fa-user-tie"></i></div>
-            <div class="nref-hero-copy">
-                <h1><span class="greet" id="dashboardGreeting">Good Morning</span>, <span id="dashboardWelcomeName">Lecturer</span>! <span id="dashboardGreetingEmoji">👋</span></h1>
-                <p id="welcomeBannerText">Here's what's happening with your classes today.</p>
-                <div class="nref-meta">
-                    <span class="nref-pill"><i class="fas fa-user"></i> Lecturer</span>
-                    <span class="nref-pill"><i class="fas fa-book-open"></i> Nursing Program (<span id="programDisplayName">KRCHN</span>)</span>
-                    <span class="nref-pill"><i class="fas fa-sitemap"></i> School of Nursing &amp; Midwifery</span>
+    <!-- REFERENCE HERO -->
+    <section class="nrd-hero">
+        <img class="nrd-hero-image" src="/images/campus-header.jpg" alt="NCHSM campus">
+        <div class="nrd-hero-overlay"></div>
+        <div class="nrd-hero-content">
+            <div class="nrd-hero-identity">
+                <div class="nrd-avatar"><i class="fas fa-user-tie"></i></div>
+                <div class="nrd-hero-copy">
+                    <div class="nrd-kicker">NCHSM LECTURER PORTAL</div>
+                    <h1><span id="lecturerGreetingText">Good Morning</span>, <span id="lecturerHeroName">Lecturer</span>! <span id="lecturerGreetingEmoji">👋</span></h1>
+                    <p>Here’s what’s happening with your classes today.</p>
+                    <div class="nrd-meta">
+                        <span><i class="fas fa-user-tie"></i> Lecturer</span>
+                        <span><i class="fas fa-graduation-cap"></i> <span id="programDisplayName">Nursing Program</span></span>
+                        <span><i class="fas fa-building-columns"></i> School of Nursing</span>
+                    </div>
                 </div>
             </div>
+            <div class="nrd-hero-time">
+                <div id="currentDateTime">Loading date...</div>
+                <strong id="nrdClock">--:--</strong>
+                <span id="nrdDaypart">☀️</span>
+                <em>“Educating today for a healthier tomorrow.”</em>
+            </div>
         </div>
-        <div class="nref-hero-side"><div class="nref-date" id="currentDateTime"></div><div class="nref-time" id="dashboardClock">--:--</div><div class="nref-motto">Educating today for a healthier tomorrow.</div></div>
     </section>
 
-    <section class="nref-metrics">
-        <div class="nref-metric" onclick="showTab('my-students')"><div class="nref-metric-icon"><i class="fas fa-users"></i></div><div><div class="nref-label">My Students</div><div class="nref-value" id="totalStudentsCount">0</div><div class="nref-sub">Under your supervision</div></div></div>
-        <div class="nref-metric" onclick="showTab('my-courses')"><div class="nref-metric-icon"><i class="fas fa-book-open"></i></div><div><div class="nref-label">Assigned Units</div><div class="nref-value" id="totalCoursesCount">0</div><div class="nref-sub">Teaching assignments</div></div></div>
-        <div class="nref-metric" onclick="showTab('my-students')"><div class="nref-metric-icon"><i class="fas fa-exclamation-triangle"></i></div><div><div class="nref-label">At Risk</div><div class="nref-value" id="studentsAtRiskCount">0</div><div class="nref-sub">Need attention</div></div></div>
-        <div class="nref-metric" onclick="showTab('attendance')"><div class="nref-metric-icon"><i class="fas fa-clipboard-list"></i></div><div><div class="nref-label">Pending Attendance</div><div class="nref-value" id="pendingAttendanceCount">0</div><div class="nref-sub">Pending records</div></div></div>
-        <div class="nref-metric" onclick="showTab('cats')"><div class="nref-metric-icon"><i class="fas fa-file-signature"></i></div><div><div class="nref-label">Exams Due</div><div class="nref-value" id="examsDueCount">0</div><div class="nref-sub">Awaiting grading</div></div></div>
-        <div class="nref-metric"><div class="nref-metric-icon"><i class="fas fa-chart-line"></i></div><div><div class="nref-label">Avg Performance</div><div class="nref-value" id="avgPerformance">0%</div><div class="nref-sub">Class average</div></div></div>
+    <!-- LIVE METRICS -->
+    <section class="nrd-metrics" aria-label="Lecturer key metrics">
+        <button class="nrd-metric metric-blue" data-tab="my-students" type="button">
+            <span class="nrd-metric-icon"><i class="fas fa-users"></i></span><span><small>MY STUDENTS</small><b id="totalStudentsCount">0</b><em>Under your supervision</em></span>
+        </button>
+        <button class="nrd-metric metric-purple" data-tab="my-courses" type="button">
+            <span class="nrd-metric-icon"><i class="fas fa-book-open"></i></span><span><small>ASSIGNED UNITS</small><b id="totalCoursesCount">0</b><em>Active teaching units</em></span>
+        </button>
+        <button class="nrd-metric metric-red" data-tab="my-students" type="button">
+            <span class="nrd-metric-icon"><i class="fas fa-triangle-exclamation"></i></span><span><small>AT RISK</small><b id="studentsAtRiskCount">0</b><em>Need attention</em></span>
+        </button>
+        <button class="nrd-metric metric-amber" data-tab="attendance" type="button">
+            <span class="nrd-metric-icon"><i class="fas fa-clipboard-check"></i></span><span><small>PENDING ATTENDANCE</small><b id="pendingAttendanceCount">0</b><em>Pending today</em></span>
+        </button>
+        <button class="nrd-metric metric-green" data-tab="cats" type="button">
+            <span class="nrd-metric-icon"><i class="fas fa-file-circle-check"></i></span><span><small>EXAMS DUE</small><b id="examsDueCount">0</b><em>Awaiting action</em></span>
+        </button>
+        <button class="nrd-metric metric-sky" data-tab="reports" type="button">
+            <span class="nrd-metric-icon"><i class="fas fa-chart-line"></i></span><span><small>AVG PERFORMANCE</small><b id="avgPerformance">0%</b><em>Current student average</em></span>
+        </button>
+        <span id="unreadMessagesCount" hidden>0</span>
     </section>
 
-    <section class="nref-main-grid">
-        <article class="nref-panel"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-calendar-day"></i><strong>Next Class Today</strong></div><button type="button" onclick="showTab('sessions')">View Schedule</button></div><div class="nref-panel-body"><div class="nref-class"><div class="nref-kicker">Teaching Session</div><h3>View Today's Sessions</h3><p><i class="far fa-clock"></i> Check your scheduled teaching sessions</p><p><i class="fas fa-map-marker-alt"></i> Open Sessions to view venue and class details</p><button type="button" onclick="showTab('sessions')">Enter Sessions <i class="fas fa-arrow-right"></i></button></div></div></article>
-        <article class="nref-panel"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-tasks" style="color:#ef4444"></i><strong>Pending Tasks</strong></div><button type="button" onclick="showTab('attendance')">View All</button></div><div class="nref-panel-body"><div class="nref-task"><i class="far fa-circle"></i><span>Attendance records pending</span><span class="task-count" id="dashboardPendingTaskAttendance">0</span></div><div class="nref-task"><i class="far fa-circle"></i><span>Exams awaiting grading</span><span class="task-count" id="dashboardPendingTaskExams">0</span></div><div class="nref-task"><i class="far fa-circle"></i><span>Unread messages</span><span class="task-count" id="dashboardPendingTaskMessages">0</span></div><div class="nref-task"><i class="far fa-circle"></i><span>Review student risk alerts</span><span class="task-count" id="dashboardPendingTaskRisk">0</span></div></div></article>
-        <article class="nref-panel"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-file-alt" style="color:#7c3aed"></i><strong>Upcoming Exams</strong></div><button type="button" onclick="showTab('cats')">View All</button></div><div class="nref-panel-body"><div class="nref-exam"><strong>Examination Workload</strong><p><span id="dashboardExamSummary">0</span> exam(s) currently due for lecturer action.</p><span class="nref-badge">Open CATs &amp; Exams →</span></div></div></article>
-    </section>
-
-    <article class="nref-panel" style="margin-bottom:10px"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-bolt" style="color:#f59e0b"></i><strong>Quick Actions</strong></div><span style="font-size:9px;color:#94a3b8">Most-used lecturer tools</span></div><div class="nref-actions">
-        <button class="nref-action a1" type="button" onclick="showTab('cats')"><i class="fas fa-plus"></i>Create Exam</button>
-        <button class="nref-action a2" type="button" onclick="showTab('attendance')"><i class="fas fa-calendar-check"></i>Mark Attendance</button>
-        <button class="nref-action a3" type="button" onclick="showTab('marks-management')"><i class="fas fa-chart-line"></i>Manage Marks</button>
-        <button class="nref-action a4" type="button" onclick="showTab('my-students')"><i class="fas fa-users"></i>View Students</button>
-        <button class="nref-action a5" type="button" onclick="showTab('online-learning')"><i class="fas fa-book-open"></i>Online Learning</button>
-        <button class="nref-action a6" type="button" onclick="showTab('research-papers')"><i class="fas fa-file-signature"></i>Research Papers</button>
-    </div></article>
-
-    <section class="nref-charts">
-        <article class="nref-panel"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-chart-bar" style="color:#7c3aed"></i><strong>Student Performance Trends</strong></div><button type="button" onclick="showTab('reports')">View Details</button></div><div class="nref-chart-body"><canvas id="performanceChart"></canvas></div></article>
-        <article class="nref-panel"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-chart-pie" style="color:#f59e0b"></i><strong>Attendance Overview</strong></div><button type="button" onclick="showTab('attendance')">View Details</button></div><div class="nref-chart-body"><canvas id="attendanceTrendChart"></canvas></div></article>
-        <article class="nref-panel"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-triangle-exclamation" style="color:#ef4444"></i><strong>Risk Level Distribution</strong></div><button type="button" onclick="showTab('my-students')">View Details</button></div><div class="nref-chart-body"><canvas id="studentDistributionChart"></canvas></div></article>
-    </section>
-
-    <section class="nref-insights">
-        <article class="nref-panel"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-trophy" style="color:#f59e0b"></i><strong>Top Performing Students</strong></div><button type="button" onclick="showTab('my-students')">View All</button></div><div class="nref-list" id="topStudentsList"><div class="nref-row"><span class="nref-rank">1</span><span>Loading students...</span><span>--</span></div></div></article>
-        <article class="nref-panel"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-exclamation-triangle" style="color:#ef4444"></i><strong>At-Risk Students</strong></div><button type="button" onclick="showTab('my-students')">View Details</button></div><div class="nref-list" id="riskStudentList"><div class="nref-row"><span class="nref-dot red"></span><span>Loading risk information...</span><span class="nref-risk">--</span></div></div></article>
-        <article class="nref-panel"><div class="nref-panel-head"><div class="nref-panel-title"><i class="fas fa-clock" style="color:#334155"></i><strong>Recent Activity</strong></div><button type="button" onclick="showTab('reports')">View All</button></div><div class="nref-list" id="recentActivityList"><div class="nref-row" style="grid-template-columns:12px 1fr"><span class="nref-dot"></span><span>Loading recent activity...</span></div></div></article>
-    </section>
-
-    <section class="nref-ops">
-        <article class="nref-mini"><h4><i class="fas fa-bell" style="color:#ef4444"></i> Alerts &amp; Attention</h4><div class="nref-mini-body" id="intelligentAlerts">Loading lecturer alerts...</div><div class="nref-footer-meta"><span id="attendanceAlerts">Attendance alerts</span><span id="lastUpdatedTime">--</span></div></article>
-        <article class="nref-mini"><h4><i class="fas fa-chart-line" style="color:#2563eb"></i> Teaching &amp; Clinical Overview</h4><div class="nref-mini-body" id="courseProgressList">Loading course progress...</div><div class="nref-footer-meta"><span id="gradingSystemInfo">Grading overview</span><span id="locationBreakdown">🏫 0 · 🏥 0</span></div></article>
-    </section>
-
-    <!-- Compatibility targets retained for the existing dashboard engine. -->
-    <div class="nref-hidden-compat" aria-hidden="true">
-        <span id="unitCountDisplay">0</span><span id="studentCountDisplay">0</span>
-        <span id="todayAttendanceTotal">0</span><span id="todayAttendanceTotal2">0</span><span id="weeklyAttendanceTotal">0</span><span id="monthlyAttendanceRate">0%</span><span id="overallAttendanceTotal">0</span><span id="todayPresent">0</span><span id="todayAbsent">0</span><span id="todayPending">0</span><span id="lectureAttendance">0</span><span id="clinicalAttendance">0</span><span id="labAttendance">0</span>
-        <span id="clinicalRing"></span><span id="clinicalHoursBar"></span><span id="programSubtitle"></span><span id="programTypeBadge"></span><span id="userProgramBadge"></span><span id="quickStatsContainer"></span>
+    <!-- HIDDEN COMPATIBILITY VALUES USED BY EXISTING JS -->
+    <div hidden>
+        <span id="welcomeHeader">Lecturer</span><span id="welcomeBannerText"></span><span id="studentCountDisplay">0</span><span id="unitCountDisplay">0</span>
+        <span id="programSubtitle"></span><span id="programTypeBadge"></span><span id="userProgramBadge"></span><span id="passingThresholdDisplay"></span><span id="gradingSystemInfo"></span>
     </div>
+
+    <!-- TODAY / IMMEDIATE ATTENTION -->
+    <section class="nrd-three-column">
+        <article class="nrd-card nrd-next-class">
+            <header><div><i class="fas fa-calendar-day"></i><div><h2>Next Class Today</h2><small>Your immediate teaching schedule</small></div></div><button data-tab="sessions" type="button">View Schedule</button></header>
+            <div class="nrd-card-body nrd-next-body">
+                <div class="nrd-time-block"><strong id="nrdNextClassTime">--:--</strong><span id="nrdNextClassDuration">Today</span></div>
+                <div><strong id="nrdNextClassName">Teaching schedule</strong><span id="nrdNextClassUnit">Your next scheduled class</span><span id="nrdNextClassVenue"><i class="fas fa-location-dot"></i> Check Sessions</span></div>
+            </div>
+        </article>
+        <article class="nrd-card">
+            <header><div><i class="fas fa-list-check"></i><div><h2>Pending Tasks</h2><small>Items requiring your attention</small></div></div><span class="nrd-count-badge" id="nrdPendingTaskCount">0</span></header>
+            <div class="nrd-task-list" id="intelligentAlerts"><div class="nrd-empty">Loading tasks...</div></div>
+        </article>
+        <article class="nrd-card nrd-next-exam">
+            <header><div><i class="fas fa-file-pen"></i><div><h2>Upcoming Exam</h2><small>Exams and CATs</small></div></div><button data-tab="cats" type="button">View All</button></header>
+            <div class="nrd-exam-body"><span class="nrd-exam-icon"><i class="fas fa-file-signature"></i></span><strong id="nrdNextExamName">No upcoming exam</strong><span id="nrdNextExamMeta">Check Exams / CATS for the latest schedule.</span></div>
+        </article>
+    </section>
+
+    <!-- QUICK ACTIONS -->
+    <article class="nrd-card nrd-quick-actions">
+        <header><div><i class="fas fa-bolt"></i><div><h2>Quick Actions</h2><small>Access your most-used lecturer tools</small></div></div><button data-tab="dashboard" type="button">Overview</button></header>
+        <div class="nrd-actions">
+            <button data-tab="cats" type="button"><i class="fas fa-file-circle-plus"></i><span>Create Exam</span></button>
+            <button data-tab="attendance" type="button"><i class="fas fa-user-check"></i><span>Mark Attendance</span></button>
+            <button data-tab="marks-management" type="button"><i class="fas fa-chart-column"></i><span>Manage Marks</span></button>
+            <button data-tab="my-students" type="button"><i class="fas fa-users"></i><span>View Students</span></button>
+            <button data-tab="online-learning" type="button"><i class="fas fa-laptop-code"></i><span>Online Learning</span></button>
+            <button data-tab="research-papers" type="button"><i class="fas fa-file-signature"></i><span>Research Papers</span></button>
+        </div>
+    </article>
+
+    <!-- PERFORMANCE / ATTENDANCE / RISK -->
+    <section class="nrd-three-column nrd-analytics">
+        <article class="nrd-card nrd-chart-card"><header><div><i class="fas fa-chart-column"></i><div><h2>Student Performance Trends</h2><small>Performance by assigned unit</small></div></div><button data-tab="reports" type="button">View Details</button></header><div class="nrd-chart"><canvas id="performanceChart"></canvas></div></article>
+        <article class="nrd-card nrd-chart-card"><header><div><i class="fas fa-calendar-check"></i><div><h2>Attendance Overview</h2><small>Current attendance activity</small></div></div><button data-tab="attendance" type="button">View Details</button></header><div class="nrd-attendance-summary"><div><b id="todayPresent">0</b><span>Present</span></div><div><b id="todayAbsent">0</b><span>Absent</span></div><div><b id="todayPending">0</b><span>Pending</span></div></div><div class="nrd-attendance-foot"><span>Lecture <b id="lectureAttendance">0</b></span><span>Clinical <b id="clinicalAttendance">0</b></span><span>Lab <b id="labAttendance">0</b></span></div></article>
+        <article class="nrd-card nrd-chart-card"><header><div><i class="fas fa-shield-halved"></i><div><h2>Risk Level Distribution</h2><small>Early warning system</small></div></div><button data-tab="my-students" type="button">View Details</button></header><div class="nrd-risk-bars"><div><span>High Risk</span><b id="highRiskCount">0</b><i><em id="nrdHighRiskBar"></em></i></div><div><span>Medium Risk</span><b id="mediumRiskCount">0</b><i><em id="nrdMediumRiskBar"></em></i></div><div><span>Low Risk</span><b id="lowRiskCount">0</b><i><em id="nrdLowRiskBar"></em></i></div></div></article>
+    </section>
+
+    <!-- STUDENT INSIGHTS -->
+    <section class="nrd-three-column nrd-insights">
+        <article class="nrd-card"><header><div><i class="fas fa-trophy"></i><div><h2>Top Performing Students</h2><small>Highest current performance</small></div></div><button data-tab="my-students" type="button">View All</button></header><div id="topStudentsList"><div class="nrd-empty">Loading students...</div></div></article>
+        <article class="nrd-card"><header><div><i class="fas fa-triangle-exclamation"></i><div><h2>At-Risk Students</h2><small>Students requiring attention</small></div></div><button data-tab="my-students" type="button">View Details</button></header><div id="riskStudentList"><div class="nrd-empty">Loading risk data...</div></div></article>
+        <article class="nrd-card"><header><div><i class="fas fa-clock"></i><div><h2>Recent Activity</h2><small>Latest portal activity</small></div></div><button data-tab="reports" type="button">View All</button></header><div id="recentActivityList"><div class="nrd-empty">Loading activity...</div></div></article>
+    </section>
+
+    <!-- SECONDARY ANALYTICS RETAINED -->
+    <section class="nrd-secondary-grid">
+        <article class="nrd-card"><header><div><i class="fas fa-chart-line"></i><div><h2>Attendance Trend</h2><small>Last 7 days</small></div></div></header><div class="nrd-chart nrd-small-chart"><canvas id="attendanceTrendChart"></canvas></div></article>
+        <article class="nrd-card"><header><div><i class="fas fa-venus-mars"></i><div><h2>Student Distribution</h2><small>Program demographics</small></div></div></header><div class="nrd-chart nrd-small-chart"><canvas id="studentDistributionChart"></canvas></div></article>
+        <article class="nrd-card"><header><div><i class="fas fa-hospital"></i><div><h2>Clinical Hours</h2><small>1,500 hours required</small></div></div></header><div class="nrd-clinical"><div class="nrd-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"></circle><circle id="clinicalRing" cx="50" cy="50" r="40"></circle></svg><b id="clinicalHoursPercent">0%</b></div><div><strong><span id="clinicalHoursCompleted">0</span> / 1,500 hrs</strong><span>On Track: <b id="clinicalOnTrack">0</b></span><span>At Risk: <b id="clinicalAtRisk">0</b></span><span>Critical: <b id="clinicalCritical">0</b></span></div></div><div class="nrd-clinical-bar"><span id="clinicalHoursBar"></span></div></article>
+    </section>
+
+    <div class="nrd-hidden-data" hidden>
+        <span id="todayAttendanceTotal">0</span><span id="todayAttendanceTotal2">0</span><span id="weeklyAttendanceTotal">0</span><span id="monthlyAttendanceRate">0%</span><span id="overallAttendanceTotal">0</span><span id="locationBreakdown">🏫 0 · 🏥 0</span><span id="todayDateDisplay"></span><span id="courseProgressList"></span><span id="attendanceAlerts"></span><span id="quickStatsContainer"></span>
+    </div>
+
+    <footer class="nrd-footer"><i class="fas fa-sync-alt"></i> Auto-refresh every 30s <span>•</span> <span id="lastUpdatedTime">Last updated: Just now</span></footer>
 </div>
-
-<script>
-(function(){
-  function updateReferenceGreeting(){
-    var h=new Date().getHours(),g='Good Morning',e='🌅';
-    if(h>=12&&h<17){g='Good Afternoon';e='☀️'}
-    else if(h>=17&&h<21){g='Good Evening';e='🌆'}
-    else if(h>=21||h<5){g='Good Night';e='🌙'}
-    var a=document.getElementById('dashboardGreeting'),b=document.getElementById('dashboardGreetingEmoji'),c=document.getElementById('dashboardClock');
-    if(a)a.textContent=g;if(b)b.textContent=e;
-    if(c)c.textContent=new Date().toLocaleTimeString('en-KE',{hour:'numeric',minute:'2-digit'});
-    var n=document.getElementById('welcomeHeader'),u=document.getElementById('dashboardUserName');
-    var hn=document.getElementById('dashboardWelcomeName');if(n&&n.textContent.trim()&&n.textContent.trim()!=='Lecturer'){if(u)u.textContent=n.textContent.trim();if(hn)hn.textContent=n.textContent.trim();}
-    var role=document.getElementById('programDisplayName'),pr=document.getElementById('dashboardProgramRole');
-    if(role&&pr&&role.textContent.trim())pr.textContent=role.textContent.trim();
-    var p=document.getElementById('dashboardExamSummary'),e1=document.getElementById('examsDueCount');if(p&&e1)p.textContent=e1.textContent;
-    var t=document.getElementById('dashboardPendingTaskAttendance'),t1=document.getElementById('pendingAttendanceCount');if(t&&t1)t.textContent=t1.textContent;
-    var t2=document.getElementById('dashboardPendingTaskExams');if(t2&&e1)t2.textContent=e1.textContent;
-    var t3=document.getElementById('dashboardPendingTaskMessages'),m=document.getElementById('unreadMessagesCount');if(t3&&m)t3.textContent=m.textContent;
-    var t4=document.getElementById('dashboardPendingTaskRisk'),r=document.getElementById('studentsAtRiskCount');if(t4&&r)t4.textContent=r.textContent;
-  }
-  updateReferenceGreeting();setInterval(updateReferenceGreeting,30000);
-  window.addEventListener('lecturerMainReady',updateReferenceGreeting);
-  window.addEventListener('load',function(){setTimeout(updateReferenceGreeting,500);});
-})();
-</script>
 </section>
-
 <!-- ===== PROFILE SECTION - ENHANCED WITH EDITABLE FIELDS ===== -->
 <section id="profile-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
@@ -9025,6 +9201,147 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
     }else{
         boot();
     }
+})();
+</script>
+
+
+<script id="nchsm-lecturer-shell-js">
+/* ============================================================
+   NCHSM LECTURER PORTAL — GLOBAL SEARCH + HERO GREETING
+   Does not replace existing module logic.
+   ============================================================ */
+(function(){
+  'use strict';
+
+  function textOf(el){ return (el?.textContent || '').replace(/\s+/g,' ').trim(); }
+
+  function updateLecturerHero(){
+    const hour = new Date().getHours();
+    let greeting='Good Morning', emoji='🌅';
+    if(hour>=12 && hour<17){ greeting='Good Afternoon'; emoji='☀️'; }
+    else if(hour>=17 && hour<21){ greeting='Good Evening'; emoji='🌆'; }
+    else if(hour>=21 || hour<5){ greeting='Good Night'; emoji='🌙'; }
+
+    const sourceName = document.getElementById('welcomeHeader');
+    const name = textOf(sourceName) || 'Lecturer';
+    const g=document.getElementById('lecturerGreetingText');
+    const e=document.getElementById('lecturerGreetingEmoji');
+    const n=document.getElementById('lecturerHeroName');
+    if(g) g.textContent=greeting;
+    if(e) e.textContent=emoji;
+    if(n) n.textContent=name;
+  }
+
+  function getSearchIndex(){
+    const results=[];
+    const seen=new Set();
+    document.querySelectorAll('#sidebar [data-tab]').forEach(link=>{
+      const tab=link.getAttribute('data-tab');
+      const label=textOf(link).replace(/\b(NEW|NUR|RESEARCH)\b/g,'').trim();
+      if(!tab || !label || seen.has(tab)) return;
+      seen.add(tab);
+      results.push({type:'module',label,tab,detail:'Open module'});
+    });
+
+    document.querySelectorAll('.tab-content').forEach(section=>{
+      const id=section.id;
+      if(!id || id==='dashboard-content') return;
+      const heading=section.querySelector('h1,h2,h3,[class*="title"]');
+      const label=textOf(heading) || id.replace(/-content$/,'').replace(/-/g,' ');
+      if(!seen.has(id)) results.push({type:'module',label,tab:id.replace(/-content$/,''),detail:'Portal section'});
+    });
+
+    return results;
+  }
+
+  function showTabFromSearch(tab){
+    if(!tab) return;
+    const link=document.querySelector('#sidebar [data-tab="'+CSS.escape(tab)+'"]');
+    if(link){ link.click(); return; }
+    if(typeof window.showTab==='function'){ window.showTab(tab); return; }
+    const section=document.getElementById(tab+'-content');
+    if(section){
+      document.querySelectorAll('.tab-content').forEach(x=>x.style.display='none');
+      section.style.display='block';
+    }
+  }
+
+  function initSearch(){
+    const input=document.getElementById('lecturerGlobalSearch');
+    const box=document.getElementById('lecturerSearchResults');
+    if(!input || !box) return;
+
+    const render=(query)=>{
+      const q=(query||'').trim().toLowerCase();
+      if(!q){ box.innerHTML=''; box.classList.remove('show'); input.setAttribute('aria-expanded','false'); return; }
+      const matches=getSearchIndex().filter(item=>
+        item.label.toLowerCase().includes(q) || item.detail.toLowerCase().includes(q)
+      ).slice(0,10);
+
+      if(!matches.length){
+        box.innerHTML='<div class="nchsm-search-empty">No portal section found for <strong>'+escapeHtml(query)+'</strong>.</div><div class="nchsm-search-hint">Try students, research, exams, marks, attendance, resources or reports.</div>';
+      }else{
+        box.innerHTML=matches.map((item,i)=>
+          '<button type="button" class="nchsm-search-result" data-result-tab="'+escapeAttr(item.tab)+'" role="option">'+
+          '<i class="fas '+(item.label.toLowerCase().includes('research')?'fa-file-signature':'fa-layer-group')+'"></i>'+
+          '<span><strong>'+escapeHtml(item.label)+'</strong><small>'+escapeHtml(item.detail)+'</small></span></button>'
+        ).join('')+'<div class="nchsm-search-hint">Use ↑ ↓ to move and Enter to open.</div>';
+      }
+      box.classList.add('show'); input.setAttribute('aria-expanded','true');
+    };
+
+    input.addEventListener('input',()=>render(input.value));
+    input.addEventListener('focus',()=>{ if(input.value.trim()) render(input.value); });
+    input.addEventListener('keydown',(e)=>{
+      if(e.key==='Escape'){ input.value=''; box.classList.remove('show'); input.setAttribute('aria-expanded','false'); input.blur(); return; }
+      if(e.key==='Enter'){
+        const first=box.querySelector('[data-result-tab]');
+        if(first){ showTabFromSearch(first.getAttribute('data-result-tab')); box.classList.remove('show'); input.setAttribute('aria-expanded','false'); input.blur(); }
+      }
+    });
+    box.addEventListener('click',(e)=>{
+      const btn=e.target.closest('[data-result-tab]');
+      if(!btn) return;
+      showTabFromSearch(btn.getAttribute('data-result-tab'));
+      box.classList.remove('show'); input.setAttribute('aria-expanded','false'); input.value=''; input.blur();
+    });
+    document.addEventListener('click',(e)=>{
+      if(!e.target.closest('.nchsm-global-search')){ box.classList.remove('show'); input.setAttribute('aria-expanded','false'); }
+    });
+    document.addEventListener('keydown',(e)=>{
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){
+        e.preventDefault(); input.focus(); input.select();
+      }
+    });
+  }
+
+  function escapeHtml(value){
+    return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  }
+  function escapeAttr(value){ return escapeHtml(value).replace(/`/g,'&#96;'); }
+
+  function initMobileNav(){
+    const toggle=document.getElementById('mobileNavToggle');
+    const sidebar=document.getElementById('sidebar');
+    if(!toggle||!sidebar) return;
+    toggle.addEventListener('click',()=>{
+      const open=sidebar.classList.toggle('mobile-open');
+      toggle.setAttribute('aria-expanded',String(open));
+    });
+  }
+
+  function boot(){
+    initSearch();
+    initMobileNav();
+    updateLecturerHero();
+    setTimeout(updateLecturerHero,500);
+    setTimeout(updateLecturerHero,1500);
+    document.addEventListener('appReady',updateLecturerHero);
+    window.addEventListener('appReady',updateLecturerHero);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
+  else boot();
 })();
 </script>
 
