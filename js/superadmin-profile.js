@@ -2,10 +2,14 @@
 // SUPER ADMIN PROFILE MODULE — ENHANCED
 // 2FA (otplib) + Login History + Supabase Sync
 // Matches NCHSMLogin v5.2 architecture
+// Wrapped in IIFE to avoid global name collisions
 // ============================================================
 
+(function () {
+'use strict';
+
 // ============================================================
-// LOAD OTPLIB (same CDN as login system expects)
+// LOAD OTPLIB (same CDN as login system)
 // ============================================================
 (function loadOtplib() {
     if (typeof otplib !== 'undefined') return;
@@ -17,15 +21,16 @@
 })();
 
 // ============================================================
-// SHARED HELPERS — hook into the login system's Supabase client
+// SHARED HELPERS (renamed to avoid clashing with script.js)
 // ============================================================
-function getSupabase() {
+function profileGetSupabase() {
     if (window.NCHSMLogin?.supabase) return window.NCHSMLogin.supabase;
     if (window.sb) return window.sb;
-    return window.supabase;
+    if (window.supabaseClient) return window.supabaseClient;
+    return null;
 }
 
-function getCurrentUserId() {
+function profileGetCurrentUserId() {
     try {
         const p = JSON.parse(localStorage.getItem('userProfile') || 'null');
         if (p?.user_id) return p.user_id;
@@ -33,12 +38,38 @@ function getCurrentUserId() {
     return profileData.id;
 }
 
-function getCurrentUserProfile() {
+function profileGetCurrentUserProfile() {
     try {
         return JSON.parse(localStorage.getItem('userProfile') || 'null') || {};
     } catch (e) {
         return {};
     }
+}
+
+function profileEscapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function profileGetBrowserName() {
+    const ua = navigator.userAgent;
+    if (ua.includes('Firefox')) return 'Firefox';
+    if (ua.includes('Edg/')) return 'Edge';
+    if (ua.includes('Chrome')) return 'Chrome';
+    if (ua.includes('Safari')) return 'Safari';
+    if (ua.includes('Opera') || ua.includes('OPR')) return 'Opera';
+    return 'Unknown Browser';
+}
+
+function profileGetDeviceIcon(device) {
+    if (!device) return 'fa-desktop';
+    const d = device.toLowerCase();
+    if (d.includes('mobile') || d.includes('phone')) return 'fa-mobile-alt';
+    if (d.includes('tablet') || d.includes('ipad')) return 'fa-tablet-alt';
+    if (d.includes('laptop') || d.includes('macbook')) return 'fa-laptop';
+    return 'fa-desktop';
 }
 
 // ============================================================
@@ -96,8 +127,7 @@ function loadProfileData() {
             try { user = getCurrentUser(); } catch (e) {}
         }
 
-        // Pull from login's userProfile store
-        const loginProfile = getCurrentUserProfile();
+        const loginProfile = profileGetCurrentUserProfile();
 
         if (!user && loginProfile?.user_id) {
             user = {
@@ -113,7 +143,6 @@ function loadProfileData() {
             };
         }
 
-        // Restore cached 2FA state
         try {
             const saved2FA = JSON.parse(localStorage.getItem('twoFactorSettings') || 'null');
             if (saved2FA) {
@@ -241,7 +270,7 @@ function updateProfileUI() {
 // ============================================================
 function loadProfileStats() {
     try {
-        const supabase = getSupabase();
+        const supabase = profileGetSupabase();
         if (!supabase) return;
 
         supabase
@@ -262,12 +291,12 @@ function loadProfileStats() {
 }
 
 // ============================================================
-// 2FA — real otplib, Supabase-backed (matches login system)
+// 2FA — otplib + Supabase (matches login system)
 // ============================================================
 
-async function fetch2FAStatus() {
-    const supabase = getSupabase();
-    const userId = getCurrentUserId();
+async function profileFetch2FAStatus() {
+    const supabase = profileGetSupabase();
+    const userId = profileGetCurrentUserId();
     if (!supabase || !userId || userId === 'SA-001') return null;
 
     try {
@@ -297,7 +326,7 @@ async function update2FAUI() {
     const enabledSection = document.getElementById('twoFactorEnabledSection');
     const setupDateEl = document.getElementById('twoFactorSetupDate');
 
-    const remote = await fetch2FAStatus();
+    const remote = await profileFetch2FAStatus();
     const enabled = remote
         ? !!remote.two_factor_enabled
         : !!profileData.twoFactorEnabled;
@@ -323,19 +352,18 @@ async function update2FAUI() {
     if (enabledSection) enabledSection.style.display = enabled ? 'block' : 'none';
 
     if (setupDateEl && remote?.two_factor_setup_date) {
-        setupDateEl.textContent = new Date(remote.two_factor_setup_date).toLocaleString();
+        setupDateEl.textContent = 'Enabled on ' + new Date(remote.two_factor_setup_date).toLocaleString();
     }
 }
 
-async function generate2FASecretForProfile() {
-    const supabase = getSupabase();
-    const userId = getCurrentUserId();
+async function profileGenerate2FASecret() {
+    const supabase = profileGetSupabase();
+    const userId = profileGetCurrentUserId();
 
     let secret;
     if (typeof otplib !== 'undefined' && typeof otplib.generateSecret === 'function') {
         secret = otplib.generateSecret();
     } else {
-        // Fallback: 32-char base32 secret
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
         secret = '';
         for (let i = 0; i < 32; i++) {
@@ -360,7 +388,7 @@ async function generate2FASecretForProfile() {
     return secret;
 }
 
-async function verifyTOTP(secret, token) {
+async function profileVerifyTOTP(secret, token) {
     try {
         if (typeof otplib === 'undefined' || typeof otplib.verify !== 'function') {
             console.error('OTPLib unavailable — cannot verify TOTP');
@@ -375,21 +403,23 @@ async function verifyTOTP(secret, token) {
 }
 
 async function show2FASetupModal() {
-    const supabase = getSupabase();
-    const userId = getCurrentUserId();
+    const supabase = profileGetSupabase();
+    const userId = profileGetCurrentUserId();
     const userEmail = profileData.email;
 
     let secret = profileData.twoFactorSecret;
     if (supabase && userId && userId !== 'SA-001') {
-        const remote = await fetch2FAStatus();
+        const remote = await profileFetch2FAStatus();
         if (remote?.two_factor_secret) secret = remote.two_factor_secret;
     }
 
-    if (!secret) secret = await generate2FASecretForProfile();
+    if (!secret) secret = await profileGenerate2FASecret();
 
     if (!secret) {
         if (typeof showFeedback === 'function') {
             showFeedback('Could not generate 2FA secret', 'error');
+        } else {
+            alert('Could not generate 2FA secret');
         }
         return;
     }
@@ -485,7 +515,7 @@ async function show2FASetupModal() {
     sessionStorage.setItem('2fa_setup_user', userId || '');
 
     modal.style.display = 'flex';
-    wireSetupOtpInputs();
+    profileWireSetupOtpInputs();
 
     if (typeof trackGALogin === 'function') {
         trackGALogin('2fa_setup_started', {
@@ -495,7 +525,7 @@ async function show2FASetupModal() {
     }
 }
 
-function wireSetupOtpInputs() {
+function profileWireSetupOtpInputs() {
     const inputs = document.querySelectorAll('#twoFactorModal .setup-otp');
     inputs.forEach((input, index) => {
         input.addEventListener('input', function () {
@@ -558,12 +588,12 @@ async function verifyAndEnable2FA() {
         return;
     }
 
-    const supabase = getSupabase();
-    const userId = getCurrentUserId();
+    const supabase = profileGetSupabase();
+    const userId = profileGetCurrentUserId();
     let secret = sessionStorage.getItem('2fa_setup_secret') || profileData.twoFactorSecret;
 
     if (!secret && supabase && userId && userId !== 'SA-001') {
-        const remote = await fetch2FAStatus();
+        const remote = await profileFetch2FAStatus();
         secret = remote?.two_factor_secret;
     }
 
@@ -581,7 +611,7 @@ async function verifyAndEnable2FA() {
         verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
     }
 
-    const isValid = await verifyTOTP(secret, code);
+    const isValid = await profileVerifyTOTP(secret, code);
 
     if (!isValid) {
         if (errorEl) {
@@ -654,7 +684,7 @@ async function verifyAndEnable2FA() {
         });
     }
 
-    show2FASuccessScreen();
+    profileShow2FASuccessScreen();
     update2FAUI();
 
     if (typeof showFeedback === 'function') {
@@ -662,7 +692,7 @@ async function verifyAndEnable2FA() {
     }
 }
 
-function show2FASuccessScreen() {
+function profileShow2FASuccessScreen() {
     const content = document.getElementById('twoFactorModalContent');
     if (!content) return;
 
@@ -677,8 +707,8 @@ function show2FASuccessScreen() {
     profileData.twoFactorBackupCodes = backupCodes;
     localStorage.setItem('twoFactorBackupCodes', JSON.stringify(backupCodes));
 
-    const supabase = getSupabase();
-    const userId = getCurrentUserId();
+    const supabase = profileGetSupabase();
+    const userId = profileGetCurrentUserId();
     if (supabase && userId && userId !== 'SA-001') {
         supabase
             .from('consolidated_user_profiles_table')
@@ -705,22 +735,18 @@ function show2FASuccessScreen() {
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-            ${backupCodes
-                .map(
-                    (c) => `
+            ${backupCodes.map((c) => `
                 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px;text-align:center;">
                     <code style="font-family:monospace;font-size:13px;letter-spacing:1.5px;color:#1e293b;">${c}</code>
                 </div>
-            `
-                )
-                .join('')}
+            `).join('')}
         </div>
 
         <div style="display:flex;gap:8px;margin-bottom:12px;">
-            <button onclick='copyBackupCodes(${JSON.stringify(backupCodes).replace(/'/g, "\\'")})' style="flex:1;padding:11px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13px;color:#4C1D95;">
+            <button onclick="profileCopyBackupCodes()" style="flex:1;padding:11px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13px;color:#4C1D95;">
                 <i class="fas fa-copy"></i> Copy Codes
             </button>
-            <button onclick='downloadBackupCodes(${JSON.stringify(backupCodes).replace(/'/g, "\\'")})' style="flex:1;padding:11px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13px;color:#4C1D95;">
+            <button onclick="profileDownloadBackupCodes()" style="flex:1;padding:11px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13px;color:#4C1D95;">
                 <i class="fas fa-download"></i> Download
             </button>
         </div>
@@ -748,12 +774,12 @@ function copySecretKey(secret) {
         });
 }
 
-function copyBackupCodes(codes) {
+function profileCopyBackupCodes() {
+    const codes = profileData.twoFactorBackupCodes || [];
     navigator.clipboard
         .writeText(codes.join('\n'))
         .then(() => {
-            if (typeof showFeedback === 'function')
-                showFeedback('Backup codes copied', 'success');
+            if (typeof showFeedback === 'function') showFeedback('Backup codes copied', 'success');
         })
         .catch(() => {
             const ta = document.createElement('textarea');
@@ -762,12 +788,12 @@ function copyBackupCodes(codes) {
             ta.select();
             document.execCommand('copy');
             ta.remove();
-            if (typeof showFeedback === 'function')
-                showFeedback('Backup codes copied', 'success');
+            if (typeof showFeedback === 'function') showFeedback('Backup codes copied', 'success');
         });
 }
 
-function downloadBackupCodes(codes) {
+function profileDownloadBackupCodes() {
+    const codes = profileData.twoFactorBackupCodes || [];
     const text = `NCHSM Portal — 2FA Backup Codes
 Generated: ${new Date().toLocaleString()}
 Email: ${profileData.email}
@@ -795,8 +821,8 @@ async function disable2FA() {
     )
         return;
 
-    const supabase = getSupabase();
-    const userId = getCurrentUserId();
+    const supabase = profileGetSupabase();
+    const userId = profileGetCurrentUserId();
 
     if (supabase && userId && userId !== 'SA-001') {
         const { error } = await supabase
@@ -849,45 +875,26 @@ function close2FAModal() {
 // ============================================================
 function loadLoginHistory() {
     let container = document.getElementById('loginHistoryContainer');
-    if (!container) {
-        const profileSection =
-            document.querySelector('#profile .profile-content') ||
-            document.querySelector('#profile');
-        if (profileSection) {
-            const historyDiv = document.createElement('div');
-            historyDiv.id = 'loginHistoryContainer';
-            historyDiv.style.cssText =
-                'margin-top:20px;background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1);';
-            historyDiv.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                    <h3 style="font-size:16px;font-weight:600;color:#1e293b;margin:0;">
-                        <i class="fas fa-history" style="color:#4C1D95;margin-right:8px;"></i>Login History
-                    </h3>
-                    <button onclick="clearLoginHistory()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:12px;">
-                        <i class="fas fa-trash-alt"></i> Clear
-                    </button>
-                </div>
-                <div id="loginHistoryList" style="max-height:320px;overflow-y:auto;">
-                    <div style="text-align:center;color:#94a3b8;padding:20px;">
-                        <i class="fas fa-spinner fa-spin"></i> Loading login history...
-                    </div>
-                </div>
-            `;
-            profileSection.appendChild(historyDiv);
-            container = historyDiv;
-        }
+    const listContainer = document.getElementById('loginHistoryList');
+
+    if (!container || !listContainer) {
+        console.warn('Login history container missing in HTML');
+        return;
     }
 
-    const listContainer = document.getElementById('loginHistoryList');
-    if (!listContainer) return;
+    listContainer.innerHTML = `
+        <div style="text-align: center; color: #94a3b8; padding: 20px;">
+            <i class="fas fa-spinner fa-spin"></i> Loading login history...
+        </div>
+    `;
 
     try {
-        const supabase = getSupabase();
+        const supabase = profileGetSupabase();
         if (supabase) {
             supabase
                 .from('user_sessions')
-                .select('login_time, device_info, ip_address, login_type, is_active')
-                .eq('user_id', getCurrentUserId())
+                .select('login_time, device_info, ip_address, login_type, is_active, user_agent')
+                .eq('user_id', profileGetCurrentUserId())
                 .order('login_time', { ascending: false })
                 .limit(20)
                 .then(({ data, error }) => {
@@ -896,33 +903,45 @@ function loadLoginHistory() {
                             data.map((d) => ({
                                 login_time: d.login_time,
                                 ip_address: d.ip_address,
-                                device: d.device_info,
-                                browser: extractBrowser(d.device_info),
+                                device: d.device_info || profileParseDeviceFromUA(d.user_agent),
+                                browser: profileExtractBrowser(d.device_info || d.user_agent),
                                 status: 'SUCCESS',
                                 location: '—',
                                 login_type: d.login_type
                             }))
                         );
                     } else {
-                        loadLocalLoginHistory();
+                        profileLoadLocalLoginHistory();
                     }
                 })
-                .catch(() => loadLocalLoginHistory());
+                .catch(() => profileLoadLocalLoginHistory());
         } else {
-            loadLocalLoginHistory();
+            profileLoadLocalLoginHistory();
         }
     } catch (e) {
-        loadLocalLoginHistory();
+        profileLoadLocalLoginHistory();
     }
 }
 
-function extractBrowser(deviceInfo) {
+function profileParseDeviceFromUA(ua) {
+    if (!ua) return 'Unknown';
+    const isMobile = /Mobile/i.test(ua);
+    const isTablet = /Tablet/i.test(ua);
+    return isMobile ? 'Mobile' : isTablet ? 'Tablet' : 'Desktop';
+}
+
+function profileExtractBrowser(deviceInfo) {
     if (!deviceInfo) return 'Unknown';
-    const m = deviceInfo.match(/^([A-Za-z]+)/);
+    const s = String(deviceInfo);
+    if (/Edg\//i.test(s)) return 'Edge';
+    if (/Chrome\//i.test(s)) return 'Chrome';
+    if (/Firefox\//i.test(s)) return 'Firefox';
+    if (/Safari\//i.test(s)) return 'Safari';
+    const m = s.match(/^([A-Za-z]+)/);
     return m ? m[1] : 'Unknown';
 }
 
-function loadLocalLoginHistory() {
+function profileLoadLocalLoginHistory() {
     let history = [];
     try {
         history = JSON.parse(localStorage.getItem('loginHistory') || '[]');
@@ -934,9 +953,9 @@ function loadLocalLoginHistory() {
         history = [
             {
                 login_time: new Date().toISOString(),
-                ip_address: '192.168.1.1',
+                ip_address: '—',
                 device: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
-                browser: getBrowserName(),
+                browser: profileGetBrowserName(),
                 status: 'SUCCESS',
                 location: 'Nairobi, Kenya'
             }
@@ -969,8 +988,8 @@ function renderLoginHistory(history) {
             const statusColor = isSuccess ? '#10b981' : '#dc2626';
             const statusIcon = isSuccess ? 'fa-check-circle' : 'fa-times-circle';
             const statusText = isSuccess ? 'Successful' : 'Failed';
-            const deviceIcon = getDeviceIcon(entry.device);
-            const browserName = entry.browser || getBrowserName();
+            const deviceIcon = profileGetDeviceIcon(entry.device);
+            const browserName = entry.browser || profileGetBrowserName();
 
             return `
             <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;${
@@ -983,10 +1002,10 @@ function renderLoginHistory(history) {
                 </div>
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <span style="font-size:13px;font-weight:500;color:#1e293b;">${escapeHtml(
+                        <span style="font-size:13px;font-weight:500;color:#1e293b;">${profileEscapeHtml(
                             entry.device || 'Unknown Device'
                         )}</span>
-                        <span style="font-size:11px;color:#64748b;">• ${escapeHtml(browserName)}</span>
+                        <span style="font-size:11px;color:#64748b;">• ${profileEscapeHtml(browserName)}</span>
                         <span style="font-size:10px;padding:2px 6px;border-radius:10px;background:${
                             isSuccess ? '#ecfdf5' : '#fef2f2'
                         };color:${statusColor};font-weight:500;">
@@ -998,12 +1017,12 @@ function renderLoginHistory(history) {
                             <i class="fas fa-clock" style="font-size:10px;"></i> ${time}
                         </span>
                         <span style="font-size:11px;color:#94a3b8;">
-                            <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> ${escapeHtml(
+                            <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> ${profileEscapeHtml(
                                 entry.location || 'Unknown'
                             )}
                         </span>
                         <span style="font-size:11px;color:#94a3b8;">
-                            <i class="fas fa-network-wired" style="font-size:10px;"></i> ${escapeHtml(
+                            <i class="fas fa-network-wired" style="font-size:10px;"></i> ${profileEscapeHtml(
                                 entry.ip_address || 'N/A'
                             )}
                         </span>
@@ -1014,34 +1033,15 @@ function renderLoginHistory(history) {
         .join('');
 }
 
-function getDeviceIcon(device) {
-    if (!device) return 'fa-desktop';
-    const d = device.toLowerCase();
-    if (d.includes('mobile') || d.includes('phone')) return 'fa-mobile-alt';
-    if (d.includes('tablet') || d.includes('ipad')) return 'fa-tablet-alt';
-    if (d.includes('laptop') || d.includes('macbook')) return 'fa-laptop';
-    return 'fa-desktop';
-}
-
-function getBrowserName() {
-    const ua = navigator.userAgent;
-    if (ua.includes('Firefox')) return 'Firefox';
-    if (ua.includes('Edg/')) return 'Edge';
-    if (ua.includes('Chrome')) return 'Chrome';
-    if (ua.includes('Safari')) return 'Safari';
-    if (ua.includes('Opera') || ua.includes('OPR')) return 'Opera';
-    return 'Unknown Browser';
-}
-
 function logLoginAttempt(status, details = {}) {
     const entry = {
         user_email: profileData.email,
         login_time: new Date().toISOString(),
-        ip_address: details.ip || '192.168.1.1',
+        ip_address: details.ip || '—',
         device:
             details.device ||
             (navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'),
-        browser: getBrowserName(),
+        browser: profileGetBrowserName(),
         status: status,
         location: details.location || 'Nairobi, Kenya',
         user_agent: navigator.userAgent
@@ -1054,15 +1054,6 @@ function logLoginAttempt(status, details = {}) {
         localStorage.setItem('loginHistory', JSON.stringify(history));
     } catch (e) {}
 
-    const supabase = getSupabase();
-    if (supabase) {
-        supabase
-            .from('login_history')
-            .insert(entry)
-            .then(() => {})
-            .catch(() => {});
-    }
-
     return entry;
 }
 
@@ -1071,8 +1062,8 @@ function clearLoginHistory() {
 
     localStorage.removeItem('loginHistory');
 
-    const supabase = getSupabase();
-    const userId = getCurrentUserId();
+    const supabase = profileGetSupabase();
+    const userId = profileGetCurrentUserId();
     if (supabase && userId && userId !== 'SA-001') {
         supabase
             .from('user_sessions')
@@ -1101,7 +1092,7 @@ function loadRecentActivity() {
     const container = document.getElementById('profileRecentActivity');
     if (!container) return;
 
-    const supabase = getSupabase();
+    const supabase = profileGetSupabase();
     if (!supabase) {
         container.innerHTML = `
             <div style="text-align:center;color:#94a3b8;padding:20px;">
@@ -1132,8 +1123,8 @@ function loadRecentActivity() {
                     const time = action.timestamp
                         ? new Date(action.timestamp).toLocaleString()
                         : '';
-                    const icon = getActionIcon(action.action_type);
-                    const color = getActionColor(action.action_type);
+                    const icon = profileGetActionIcon(action.action_type);
+                    const color = profileGetActionColor(action.action_type);
                     const statusColor = action.status === 'SUCCESS' ? '#10b981' : '#dc2626';
                     const statusText = action.status === 'SUCCESS' ? '✅' : '❌';
 
@@ -1144,9 +1135,9 @@ function loadRecentActivity() {
                         </div>
                         <div style="flex:1;min-width:0;">
                             <div style="font-size:12px;color:#1e293b;font-weight:500;">
-                                ${escapeHtml(action.action_type || 'Activity')}
+                                ${profileEscapeHtml(action.action_type || 'Activity')}
                                 <span style="font-weight:400;color:#94a3b8;font-size:11px;">
-                                    ${escapeHtml(action.details || '').substring(0, 30)}
+                                    ${profileEscapeHtml(action.details || '').substring(0, 30)}
                                 </span>
                                 <span style="color:${statusColor};font-size:10px;">${statusText}</span>
                             </div>
@@ -1167,7 +1158,7 @@ function loadRecentActivity() {
 // ============================================================
 // HELPERS
 // ============================================================
-function getActionColor(action) {
+function profileGetActionColor(action) {
     const colors = {
         LOGIN: '#10b981',
         LOGOUT: '#6b7280',
@@ -1186,7 +1177,7 @@ function getActionColor(action) {
     return colors[action] || '#4C1D95';
 }
 
-function getActionIcon(action) {
+function profileGetActionIcon(action) {
     const icons = {
         LOGIN: 'fa-sign-in-alt',
         LOGOUT: 'fa-sign-out-alt',
@@ -1205,27 +1196,29 @@ function getActionIcon(action) {
     return icons[action] || 'fa-circle';
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 // ============================================================
 // EDIT PROFILE
 // ============================================================
 function showEditProfileModal() {
     const modal = document.getElementById('editProfileModal');
-    if (!modal) return;
+    if (!modal) {
+        console.warn('editProfileModal not found');
+        return;
+    }
 
-    document.getElementById('editProfileName').value = profileData.name;
-    document.getElementById('editProfileEmail').value = profileData.email;
-    document.getElementById('editProfilePhone').value = profileData.phone || '';
-    document.getElementById('editProfileEmployeeId').value = profileData.employeeId || '';
-    document.getElementById('editProfileDepartment').value =
-        profileData.department || 'Administration';
-    document.getElementById('editProfileLocation').value = profileData.location || '';
+    const nameEl = document.getElementById('editProfileName');
+    const emailEl = document.getElementById('editProfileEmail');
+    const phoneEl = document.getElementById('editProfilePhone');
+    const empEl = document.getElementById('editProfileEmployeeId');
+    const deptEl = document.getElementById('editProfileDepartment');
+    const locEl = document.getElementById('editProfileLocation');
+
+    if (nameEl) nameEl.value = profileData.name;
+    if (emailEl) emailEl.value = profileData.email;
+    if (phoneEl) phoneEl.value = profileData.phone || '';
+    if (empEl) empEl.value = profileData.employeeId || '';
+    if (deptEl) deptEl.value = profileData.department || 'Administration';
+    if (locEl) locEl.value = profileData.location || '';
 
     modal.style.display = 'flex';
 }
@@ -1236,21 +1229,29 @@ function closeEditProfileModal() {
 }
 
 function saveProfileChanges() {
-    const name = document.getElementById('editProfileName').value.trim();
-    const email = document.getElementById('editProfileEmail').value.trim();
-    const phone = document.getElementById('editProfilePhone').value.trim();
-    const employeeId = document.getElementById('editProfileEmployeeId').value.trim();
-    const department = document.getElementById('editProfileDepartment').value;
-    const location = document.getElementById('editProfileLocation').value.trim();
+    const nameEl = document.getElementById('editProfileName');
+    const emailEl = document.getElementById('editProfileEmail');
+    const phoneEl = document.getElementById('editProfilePhone');
+    const empEl = document.getElementById('editProfileEmployeeId');
+    const deptEl = document.getElementById('editProfileDepartment');
+    const locEl = document.getElementById('editProfileLocation');
+
+    const name = nameEl?.value.trim() || '';
+    const email = emailEl?.value.trim() || '';
+    const phone = phoneEl?.value.trim() || '';
+    const employeeId = empEl?.value.trim() || '';
+    const department = deptEl?.value || 'Administration';
+    const location = locEl?.value.trim() || '';
 
     if (!name || !email) {
         if (typeof showFeedback === 'function') showFeedback('Name and email are required', 'error');
+        else alert('Name and email are required');
         return;
     }
 
     try {
-        const supabase = getSupabase();
-        const userId = getCurrentUserId();
+        const supabase = profileGetSupabase();
+        const userId = profileGetCurrentUserId();
         if (supabase && userId && userId !== 'SA-001') {
             supabase
                 .from('consolidated_user_profiles_table')
@@ -1301,10 +1302,14 @@ function changePassword() {
     const modal = document.getElementById('changePasswordModal');
     if (modal) {
         modal.style.display = 'flex';
-        document.getElementById('currentPassword').value = '';
-        document.getElementById('newPassword').value = '';
-        document.getElementById('confirmPassword').value = '';
-        document.getElementById('passwordFeedback').style.display = 'none';
+        const cp = document.getElementById('currentPassword');
+        const np = document.getElementById('newPassword');
+        const cf = document.getElementById('confirmPassword');
+        const fb = document.getElementById('passwordFeedback');
+        if (cp) cp.value = '';
+        if (np) np.value = '';
+        if (cf) cf.value = '';
+        if (fb) fb.style.display = 'none';
     }
 }
 
@@ -1314,10 +1319,12 @@ function closeChangePasswordModal() {
 }
 
 function handlePasswordChange() {
-    const current = document.getElementById('currentPassword').value;
-    const newPass = document.getElementById('newPassword').value;
-    const confirm = document.getElementById('confirmPassword').value;
+    const current = document.getElementById('currentPassword')?.value || '';
+    const newPass = document.getElementById('newPassword')?.value || '';
+    const confirm = document.getElementById('confirmPassword')?.value || '';
     const feedback = document.getElementById('passwordFeedback');
+
+    if (!feedback) return;
 
     if (!current) {
         feedback.textContent = 'Please enter your current password';
@@ -1350,7 +1357,7 @@ function handlePasswordChange() {
         submitBtn.textContent = 'Updating...';
     }
 
-    const supabase = getSupabase();
+    const supabase = profileGetSupabase();
     if (supabase?.auth?.updateUser) {
         supabase.auth
             .updateUser({ password: newPass })
@@ -1456,7 +1463,11 @@ function refreshProfile() {
 }
 
 function viewAuditLogs() {
-    if (typeof showTab === 'function') showTab('audit');
+    if (typeof showTab === 'function') {
+        showTab('audit');
+    } else {
+        console.warn('showTab not available');
+    }
 }
 
 function exportProfileData() {
@@ -1509,7 +1520,6 @@ function initProfile() {
         loadLoginHistory();
         update2FAUI();
 
-        // Log this session in the local history
         if (typeof logLoginAttempt === 'function') {
             logLoginAttempt('SUCCESS');
         }
@@ -1519,7 +1529,7 @@ function initProfile() {
 }
 
 // ============================================================
-// EXPOSE TO GLOBAL
+// EXPOSE TO GLOBAL (REQUIRED — buttons in HTML call these)
 // ============================================================
 window.loadProfileData = loadProfileData;
 window.updateProfileUI = updateProfileUI;
@@ -1548,15 +1558,17 @@ window.disable2FA = disable2FA;
 window.close2FAModal = close2FAModal;
 window.update2FAUI = update2FAUI;
 window.copySecretKey = copySecretKey;
-window.copyBackupCodes = copyBackupCodes;
-window.downloadBackupCodes = downloadBackupCodes;
-window.verifyTOTP = verifyTOTP;
-window.generate2FASecretForProfile = generate2FASecretForProfile;
+window.profileCopyBackupCodes = profileCopyBackupCodes;
+window.profileDownloadBackupCodes = profileDownloadBackupCodes;
+window.verifyTOTP = profileVerifyTOTP;
 
 console.log('✅ Enhanced Super Admin Profile module loaded (otplib 2FA + Login History)');
 
+// Auto-init
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     initProfile();
 } else {
     document.addEventListener('DOMContentLoaded', initProfile);
 }
+
+})(); // END IIFE
