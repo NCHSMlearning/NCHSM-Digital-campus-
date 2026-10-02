@@ -7,7 +7,7 @@
 // ✅ Latest question banks on top
 // ✅ Full TVET/KRCHN support with dynamic program detection
 // ✅ Filter order: Years → Levels → Categories
-// ✅ Points calculation: 2 points per correct answer
+// ✅ Practice points: 2 points per correct answer; Exam Review: 1 point per unique question viewed
 // ✅ Points display in stats
 // ✅ SAVES TO DATABASE (user_progress, nurseiq_attempts, profile)
 // ✅ SHOWS ALREADY ANSWERED QUESTIONS (green/red indicators)
@@ -193,6 +193,10 @@ class NurseIQModule {
         this.lastCourseProgressKey = 'nurseiq_last_course';
         this.progressVersion = '2.0';
         this.dashboardMetricsKey = 'nurseiq_dashboard_metrics';
+        this.examReviewProgressKey = 'nurseiq_exam_review_progress';
+        this.examReviewState = { viewed: {}, points: 0 };
+        this.currentExamReview = null;
+        this.currentExamReviewIndex = 0;
         this.saveTimeout = null;
         this._isSaving = false;
         this._isLoadingQuestions = false;
@@ -493,6 +497,7 @@ class NurseIQModule {
                 const parsed = JSON.parse(savedProgress);
                 if (parsed.version === this.progressVersion && parsed.answers) {
                     this.userTestAnswers = parsed.answers;
+                    this.examReviewState = parsed.examReviewState || this.examReviewState;
                 } else {
                     this.userTestAnswers = parsed;
                 }
@@ -512,7 +517,14 @@ class NurseIQModule {
                     const dbAnswers = data.progress_data.answers || {};
                     // Merge: database takes priority
                     this.userTestAnswers = { ...this.userTestAnswers, ...dbAnswers };
+                    if (data.progress_data.examReviewState) {
+                        this.examReviewState = {
+                            viewed: data.progress_data.examReviewState.viewed || {},
+                            points: Number(data.progress_data.examReviewState.points || 0)
+                        };
+                    }
                     console.log('📊 Loaded from database, total:', Object.keys(this.userTestAnswers).length);
+                    console.log('📚 Exam review points:', this.examReviewState.points);
                     // Save merged data back to localStorage
                     this.saveUserProgress();
                 }
@@ -535,6 +547,7 @@ class NurseIQModule {
             const progressData = {
                 version: this.progressVersion,
                 answers: this.userTestAnswers,
+                examReviewState: this.examReviewState,
                 lastSaved: new Date().toISOString()
             };
             localStorage.setItem(this.storageKey, JSON.stringify(progressData));
@@ -591,15 +604,20 @@ async saveProgressToDatabase() {
             }
         });
         
-        const points = correctAnswers * 2;
+        const practicePoints = correctAnswers * 2;
+        const reviewPoints = Number(this.examReviewState?.points || 0);
+        const points = practicePoints + reviewPoints;
         
         const progressData = {
             version: this.progressVersion,
             answers: this.userTestAnswers,
+            examReviewState: this.examReviewState,
             lastSaved: new Date().toISOString(),
             stats: {
                 totalAnswered,
                 correctAnswers,
+                practicePoints,
+                examReviewPoints: reviewPoints,
                 points,
                 accuracy: totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0
             }
@@ -726,12 +744,16 @@ async saveProgressToDatabase() {
             }
         });
         
-        const points = totalCorrect * 2;
+        const practicePoints = totalCorrect * 2;
+        const reviewPoints = Number(this.examReviewState?.points || 0);
+        const points = practicePoints + reviewPoints;
         
         return {
             answered: totalAnswered,
             correct: totalCorrect,
-            points: points,
+            practicePoints,
+            reviewPoints,
+            points,
             accuracy: totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0
         };
     }
@@ -777,7 +799,9 @@ async saveProgressToDatabase() {
             const targetQuestions = 100;
             const progress = Math.min(Math.round((totalAnswered / targetQuestions) * 100), 100);
             const streak = this.calculateStudyStreak();
-            const points = totalCorrect * 2;
+            const practicePoints = totalCorrect * 2;
+            const reviewPoints = Number(this.examReviewState?.points || 0);
+            const points = practicePoints + reviewPoints;
             
             let mostActiveCourse = { name: 'None', answered: 0 };
             Object.entries(courses).forEach(([courseId, courseData]) => {
@@ -795,6 +819,8 @@ async saveProgressToDatabase() {
                 totalCorrect,
                 accuracy,
                 progress,
+                practicePoints,
+                reviewPoints,
                 recentActivity,
                 streak,
                 totalCourses: Object.keys(courses).length,
@@ -1838,6 +1864,206 @@ async saveProgressToDatabase() {
     }
     
     // ============================================================
+    // 📋 NURSEIQ EXAM REVIEW - SINGLE REVIEW SURFACE
+    // ============================================================
+    async openExamReview(examId) {
+        const reviewEl = document.getElementById('nurseiqExamReview');
+        const bodyEl = document.getElementById('nurseiqExamReviewBody');
+        if (!reviewEl || !bodyEl) {
+            throw new Error('NurseIQ exam review container is missing from the HTML.');
+        }
+
+        const supabase = this.getSupabaseClient();
+        if (!supabase) throw new Error('Database connection not available.');
+        if (!this.userId) throw new Error('Please log in to view exam results.');
+
+        window.showTab?.('nurseiq');
+        document.getElementById('nurseiq')?.classList.add('nurseiq-exam-review-mode');
+        reviewEl.style.display = 'block';
+        bodyEl.innerHTML = `<div style="padding:60px 20px;text-align:center;color:#64748B;"><div style="width:42px;height:42px;border:3px solid #E2E8F0;border-top-color:#4C1D95;border-radius:50%;animation:nurseiqReviewSpin 1s linear infinite;margin:0 auto 14px;"></div><strong>Loading exam review...</strong><p style="font-size:12px;margin:6px 0 0;">Preparing your questions and answers.</p></div>`;
+
+        const id = parseInt(examId, 10);
+        const [{ data: exam, error: examError }, { data: questions, error: questionsError }, { data: answers, error: answersError }, { data: grade, error: gradeError }] = await Promise.all([
+            supabase.from('exams').select('*').eq('id', id).single(),
+            supabase.from('exam_questions').select('*').eq('exam_id', id).order('question_number', { ascending: true }),
+            supabase.from('exam_grades').select('*').eq('student_id', this.userId).eq('exam_id', id).neq('question_id', '00000000-0000-0000-0000-000000000000'),
+            supabase.from('exam_grades').select('*').eq('student_id', this.userId).eq('exam_id', id).eq('question_id', '00000000-0000-0000-0000-000000000000').maybeSingle()
+        ]);
+
+        if (examError) throw examError;
+        if (questionsError) throw questionsError;
+        if (answersError) throw answersError;
+        if (gradeError) throw gradeError;
+
+        const questionReview = (questions || []).map((q, index) => {
+            const answer = (answers || []).find(a => String(a.question_id) === String(q.id));
+            const options = ['a','b','c','d'].map(letter => ({ label: letter.toUpperCase(), value: q[`option_${letter}`] })).filter(o => o.value !== null && o.value !== undefined && String(o.value).trim() !== '');
+            return {
+                id: q.id || `${id}-${index + 1}`,
+                question_number: q.question_number || index + 1,
+                question_text: q.question_text || `Question ${index + 1}`,
+                options,
+                student_answer: answer?.selected_answer || 'Not answered',
+                correct_answer: q.correct_answer || 'N/A',
+                is_correct: !!answer && answer.selected_answer === q.correct_answer,
+                explanation: q.explanation || null,
+                marks_obtained: Number(answer?.marks || 0),
+                total_marks: Number(q.marks || 1)
+            };
+        });
+
+        const totalQuestions = questionReview.length;
+        const totalCorrect = questionReview.filter(q => q.is_correct).length;
+        const score = Number(grade?.marks ?? 0);
+        const totalMarks = Number(exam?.total_marks || 100);
+        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+        const passed = Number(percentage) >= Number(exam?.pass_mark || 60);
+
+        this.currentExamReview = {
+            examId: id,
+            exam,
+            questions: questionReview,
+            score,
+            totalMarks,
+            percentage,
+            totalCorrect,
+            totalQuestions,
+            passed
+        };
+        this.currentExamReviewIndex = 0;
+
+        const titleEl = document.getElementById('nurseiqExamReviewTitle');
+        const metaEl = document.getElementById('nurseiqExamReviewMeta');
+        const scoreEl = document.getElementById('nurseiqReviewScore');
+        const correctEl = document.getElementById('nurseiqReviewCorrect');
+        const totalEl = document.getElementById('nurseiqReviewTotal');
+        const pointsEl = document.getElementById('nurseiqReviewPoints');
+        if (titleEl) titleEl.textContent = `Exam Review — ${exam?.exam_name || 'Exam'}`;
+        if (metaEl) metaEl.textContent = `${exam?.exam_type || 'Assessment'} • Score ${percentage}% • ${totalQuestions} questions`;
+        if (scoreEl) scoreEl.textContent = `${score}/${totalMarks} (${percentage}%)`;
+        if (correctEl) correctEl.textContent = `${totalCorrect}/${totalQuestions}`;
+        if (totalEl) totalEl.textContent = String(totalQuestions);
+        if (pointsEl) pointsEl.textContent = `+${this.getExamReviewPointsForExam(id)}`;
+
+        this.renderExamReviewQuestion();
+        this.updateExamReviewPointsUI();
+    }
+
+    getExamReviewPointsForExam(examId) {
+        const viewed = this.examReviewState?.viewed?.[String(examId)] || {};
+        return Object.keys(viewed).length;
+    }
+
+    async markExamReviewQuestionViewed(question) {
+        if (!this.currentExamReview || !question) return false;
+        const examKey = String(this.currentExamReview.examId);
+        const questionKey = String(question.id || question.question_number);
+        if (!this.examReviewState.viewed) this.examReviewState.viewed = {};
+        if (!this.examReviewState.viewed[examKey]) this.examReviewState.viewed[examKey] = {};
+        if (this.examReviewState.viewed[examKey][questionKey]) return false;
+
+        this.examReviewState.viewed[examKey][questionKey] = {
+            viewedAt: new Date().toISOString(),
+            questionNumber: question.question_number
+        };
+        this.examReviewState.points = Number(this.examReviewState.points || 0) + 1;
+        this.saveUserProgress();
+        this.updateExamReviewPointsUI();
+        this.updateDashboardMetrics();
+        this.showNotification('🎯 +1 NurseIQ point for reviewing this question!', 'success');
+        await this.saveProgressToDatabase();
+        return true;
+    }
+
+    async renderExamReviewQuestion() {
+        const bodyEl = document.getElementById('nurseiqExamReviewBody');
+        const review = this.currentExamReview;
+        if (!bodyEl || !review) return;
+
+        const q = review.questions[this.currentExamReviewIndex];
+        if (!q) {
+            bodyEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748B;"><i class="fas fa-question-circle" style="font-size:40px;color:#94A3B8;"></i><h3 style="color:#0A3D62;">No question data available</h3><button onclick="window.closeNurseIQExamReview?.()" style="padding:9px 18px;background:#0A3D62;color:white;border:0;border-radius:8px;cursor:pointer;">Back to Exams</button></div>`;
+            return;
+        }
+
+        await this.markExamReviewQuestionViewed(q);
+
+        const isCorrect = q.is_correct;
+        const statusColor = isCorrect ? '#059669' : '#DC2626';
+        const statusBg = isCorrect ? '#ECFDF5' : '#FEF2F2';
+        const statusBorder = isCorrect ? '#A7F3D0' : '#FECACA';
+        const optionsHtml = q.options.length ? q.options.map(opt => {
+            const student = String(opt.label) === String(q.student_answer);
+            const correct = String(opt.label) === String(q.correct_answer);
+            let bg = '#F8FAFC', border = '#E2E8F0', indicator = '';
+            if (student && correct) { bg='#D1FAE5'; border='#34D399'; indicator='✓ Your answer · Correct'; }
+            else if (student) { bg='#FEE2E2'; border='#F87171'; indicator='✗ Your answer'; }
+            else if (correct) { bg='#ECFDF5'; border='#6EE7B7'; indicator='✓ Correct answer'; }
+            return `<div style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border:1px solid ${border};background:${bg};border-radius:9px;color:#334155;margin-bottom:8px;"><span style="font-weight:800;color:#0A3D62;">${this.escapeHtml(opt.label)}.</span><span style="flex:1;">${this.escapeHtml(String(opt.value))}</span><strong style="font-size:11px;color:${correct || student ? (student && !correct ? '#B91C1C' : '#047857') : '#94A3B8'};">${indicator}</strong></div>`;
+        }).join('') : '<div style="padding:12px;background:#F8FAFC;border-radius:8px;color:#64748B;">No answer options available.</div>';
+
+        const explanation = q.explanation ? `<div style="margin-top:16px;padding:14px 16px;background:#EFF6FF;border-left:4px solid #3B82F6;border-radius:8px;"><div style="font-weight:800;color:#1D4ED8;margin-bottom:5px;"><i class="fas fa-lightbulb"></i> Explanation</div><div style="font-size:13px;color:#475569;line-height:1.55;">${this.escapeHtml(String(q.explanation))}</div></div>` : '';
+
+        bodyEl.innerHTML = `
+            <div style="padding:18px 20px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+                <div><strong style="color:#0A3D62;">Question ${this.currentExamReviewIndex + 1} of ${review.totalQuestions}</strong><span style="color:#64748B;font-size:12px;margin-left:12px;">Marks: ${q.marks_obtained}/${q.total_marks}</span></div>
+                <div style="padding:5px 10px;border-radius:20px;background:${statusBg};border:1px solid ${statusBorder};color:${statusColor};font-size:11px;font-weight:800;">${isCorrect ? '✓ Correct' : '✗ Incorrect'}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:180px 1fr;min-height:420px;">
+                <div style="padding:16px;border-right:1px solid #E2E8F0;background:#FBFDFF;max-height:500px;overflow:auto;">
+                    <div style="font-size:10px;text-transform:uppercase;color:#64748B;font-weight:800;margin-bottom:10px;">Questions</div>
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
+                        ${review.questions.map((item,i)=>{
+                            const viewed=!!this.examReviewState?.viewed?.[String(review.examId)]?.[String(item.id || item.question_number)];
+                            const active=i===this.currentExamReviewIndex;
+                            const c=item.is_correct?'#059669':'#DC2626';
+                            return `<button type="button" onclick="window.nurseiqModule?.goToExamReviewQuestion(${i})" style="width:100%;aspect-ratio:1;border-radius:7px;border:1px solid ${active?'#4C1D95':'#E2E8F0'};background:${active?'#4C1D95':'white'};color:${active?'white':c};font-weight:800;cursor:pointer;font-size:11px;position:relative;">${i+1}${viewed&&!active?'<span style="position:absolute;right:2px;top:1px;font-size:7px;">✓</span>':''}</button>`;
+                        }).join('')}
+                    </div>
+                    <div style="margin-top:14px;padding:10px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;font-size:11px;color:#9A3412;"><strong>Review points:</strong> +${this.getExamReviewPointsForExam(review.examId)} / ${review.totalQuestions}</div>
+                </div>
+                <div style="padding:22px;">
+                    <div style="font-size:16px;line-height:1.55;color:#0F172A;font-weight:700;margin-bottom:18px;">${this.escapeHtml(String(q.question_text))}</div>
+                    <div>${optionsHtml}</div>
+                    ${explanation}
+                    <div style="margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;gap:10px;align-items:center;">
+                        <button type="button" onclick="window.nurseiqModule?.goToExamReviewQuestion(${this.currentExamReviewIndex - 1})" ${this.currentExamReviewIndex===0?'disabled':''} style="padding:9px 15px;border:1px solid #CBD5E1;background:white;color:#475569;border-radius:8px;cursor:pointer;font-weight:700;opacity:${this.currentExamReviewIndex===0?.5:1};"><i class="fas fa-chevron-left"></i> Previous</button>
+                        <span style="font-size:11px;color:#64748B;">Viewing this question earns 1 NurseIQ point once.</span>
+                        <button type="button" onclick="window.nurseiqModule?.goToExamReviewQuestion(${this.currentExamReviewIndex + 1})" ${this.currentExamReviewIndex===review.totalQuestions-1?'disabled':''} style="padding:9px 15px;border:0;background:#2563EB;color:white;border-radius:8px;cursor:pointer;font-weight:700;opacity:${this.currentExamReviewIndex===review.totalQuestions-1?.5:1};">Next <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async goToExamReviewQuestion(index) {
+        if (!this.currentExamReview) return;
+        const total = this.currentExamReview.questions.length;
+        if (index < 0 || index >= total) return;
+        this.currentExamReviewIndex = index;
+        await this.renderExamReviewQuestion();
+    }
+
+    updateExamReviewPointsUI() {
+        const pointsEl = document.getElementById('nurseiqReviewPoints');
+        if (pointsEl && this.currentExamReview) pointsEl.textContent = `+${this.getExamReviewPointsForExam(this.currentExamReview.examId)}`;
+        this.updateStatsUI?.(this.getDashboardMetrics());
+    }
+
+    closeExamReview() {
+        this.currentExamReview = null;
+        this.currentExamReviewIndex = 0;
+        document.getElementById('nurseiq')?.classList.remove('nurseiq-exam-review-mode');
+        const reviewEl = document.getElementById('nurseiqExamReview');
+        if (reviewEl) reviewEl.style.display = 'none';
+        window.showTab?.('cats');
+    }
+
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+    }
+
+    // ============================================================
     // 🚀 FORCE SAVE TO DATABASE
     // ============================================================
     async forceSaveToDatabase() {
@@ -1877,6 +2103,7 @@ async function initNurseIQ() {
         await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
     }
     nurseiqModule = new NurseIQModule();
+    window.nurseiqModule = nurseiqModule;
     await nurseiqModule.initialize();
     return nurseiqModule;
 }
@@ -1918,6 +2145,8 @@ window.clearAllProgress = function() {
             localStorage.removeItem(nurseiqModule.lastCourseProgressKey);
             localStorage.removeItem(nurseiqModule.dashboardMetricsKey);
             nurseiqModule.userTestAnswers = {};
+            nurseiqModule.examReviewState = { viewed: {}, points: 0 };
+            localStorage.removeItem(nurseiqModule.examReviewProgressKey);
             nurseiqModule.showNotification('All progress cleared', 'success');
             nurseiqModule.updateDashboardMetrics();
             nurseiqModule.loadQuestionBankCards();
@@ -1930,6 +2159,20 @@ window.forceSaveNurseIQ = function() {
     } else {
         console.error('❌ NurseIQ module not initialized');
     }
+};
+
+window.openNurseIQExamReview = async function(examId) {
+    try {
+        if (!nurseiqModule) await initNurseIQ();
+        return await nurseiqModule.openExamReview(examId);
+    } catch (error) {
+        console.error('❌ NurseIQ exam review error:', error);
+        throw error;
+    }
+};
+window.closeNurseIQExamReview = function() {
+    if (nurseiqModule) nurseiqModule.closeExamReview();
+    else window.showTab?.('cats');
 };
 
 // ============================================================
@@ -1947,5 +2190,5 @@ if (document.readyState === 'loading') {
 console.log('✅ NurseIQ module loaded - SAVES TO DATABASE!');
 console.log('📚 Questions grouped by course, latest on top!');
 console.log('🏷️ Auto-detects KRCHN/TVET programs like Finance Module!');
-console.log('💰 Points: 2 per correct answer!');
+console.log('💰 Points: 2 per correct practice answer + 1 per unique exam-review question!');
 console.log('💾 Saves progress to user_progress, nurseiq_attempts, and profile!');
