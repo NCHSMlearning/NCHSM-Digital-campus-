@@ -14299,7 +14299,7 @@ textarea:focus-visible{
         </div>
     </div>
 </section>
-
+<!-- ============================================================ -->
 <!-- 🧑‍💼 SUPER ADMIN PROFILE PAGE                                  -->
 <!-- ============================================================ -->
 <section id="profile" class="tab-content" style="padding: 0 4px; display: none;">
@@ -14444,12 +14444,10 @@ textarea:focus-visible{
             <div style="font-size: 20px; font-weight: 700; color: #f59e0b; margin-top: 2px;" id="profileStatActions">0</div>
             <div style="font-size: 11px; color: #94a3b8;">Total admin actions</div>
         </div>
-        <div style="background: white; border-radius: 14px; padding: 18px 20px; border-left: 4px solid #ef4444; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">2FA Status</div>
-            <div style="font-size: 20px; font-weight: 700; color: #ef4444; margin-top: 2px;" id="profileStat2FA">
-                <span style="color: #ef4444;">🔴 Disabled</span>
-            </div>
-            <div style="font-size: 11px; color: #94a3b8;">Two-factor authentication</div>
+        <div style="background: white; border-radius: 14px; padding: 18px 20px; border-left: 4px solid #7c3aed; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Two-Factor Auth</div>
+            <div id="twoFactorStatus" style="font-size: 20px; font-weight: 700; color: #dc2626; margin-top: 2px;">Disabled</div>
+            <div style="font-size: 11px; color: #94a3b8;">Extra login security</div>
         </div>
     </div>
 
@@ -14518,6 +14516,49 @@ textarea:focus-visible{
                     <i class="fas fa-check-circle" style="color: #10b981;"></i> Audit Logs
                 </span>
             </div>
+
+            <!-- ===== 2FA PANEL ===== -->
+            <div id="twoFactorSection" style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <div style="font-size: 14px; font-weight: 600; color: #1e293b;">
+                            <i class="fas fa-shield-alt" style="color: #7c3aed;"></i> Two-Factor Authentication
+                        </div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                            Add an extra layer of security to your account
+                        </div>
+                    </div>
+                    <div id="twoFactorSetupSection">
+                        <button id="twoFactorToggleBtn" onclick="show2FASetupModal()" style="padding: 10px 20px; border: none; background: #10b981; color: white; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            <i class="fas fa-shield-alt"></i> Enable 2FA
+                        </button>
+                    </div>
+                    <div id="twoFactorEnabledSection" style="display: none;">
+                        <button onclick="disable2FA()" style="padding: 10px 20px; border: 1px solid #dc2626; background: white; color: #dc2626; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            <i class="fas fa-times-circle"></i> Disable 2FA
+                        </button>
+                    </div>
+                </div>
+                <div id="twoFactorSetupDate" style="font-size: 11px; color: #64748b; margin-top: 8px;"></div>
+            </div>
+
+            <!-- ===== LOGIN HISTORY ===== -->
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 20px 0;">
+            <div id="loginHistoryContainer">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #0A3D62; font-size: 16px; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-history" style="color: #4C1D95;"></i> Login History
+                    </h3>
+                    <button onclick="clearLoginHistory()" style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 12px; font-weight: 600;">
+                        <i class="fas fa-trash-alt"></i> Clear
+                    </button>
+                </div>
+                <div id="loginHistoryList" style="max-height: 320px; overflow-y: auto;">
+                    <div style="text-align: center; color: #94a3b8; padding: 20px;">
+                        <i class="fas fa-spinner fa-spin"></i> Loading login history...
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- RIGHT COLUMN: QUICK ACTIONS & ACTIVITY -->
@@ -14530,96 +14571,37 @@ textarea:focus-visible{
                 </h4>
                 
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button onclick="changePassword()" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 12px 16px;
-                        background: #f8fafc;
-                        border: 1px solid #e5e7eb;
-                        border-radius: 10px;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        font-size: 14px;
-                        color: #1e293b;
-                        width: 100%;
-                    " onmouseover="this.style.background='#eef2ff'; this.style.borderColor='#4C1D95'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
+                    <button onclick="changePassword()" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; font-size: 14px; color: #1e293b; width: 100%;" onmouseover="this.style.background='#eef2ff'; this.style.borderColor='#4C1D95'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
                         <i class="fas fa-key" style="color: #4C1D95; width: 20px;"></i>
                         <span>Change Password</span>
                         <i class="fas fa-chevron-right" style="margin-left: auto; color: #94a3b8; font-size: 12px;"></i>
                     </button>
                     
-                    <button onclick="enable2FA()" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 12px 16px;
-                        background: #f8fafc;
-                        border: 1px solid #e5e7eb;
-                        border-radius: 10px;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        font-size: 14px;
-                        color: #1e293b;
-                        width: 100%;
-                    " onmouseover="this.style.background='#eef2ff'; this.style.borderColor='#4C1D95'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
+                    <button onclick="show2FASetupModal()" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; font-size: 14px; color: #1e293b; width: 100%;" onmouseover="this.style.background='#eef2ff'; this.style.borderColor='#4C1D95'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
                         <i class="fas fa-shield-alt" style="color: #f59e0b; width: 20px;"></i>
-                        <span>Enable 2FA</span>
+                        <span>Two-Factor Auth</span>
                         <i class="fas fa-chevron-right" style="margin-left: auto; color: #94a3b8; font-size: 12px;"></i>
                     </button>
                     
-                    <button onclick="viewAuditLogs()" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 12px 16px;
-                        background: #f8fafc;
-                        border: 1px solid #e5e7eb;
-                        border-radius: 10px;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        font-size: 14px;
-                        color: #1e293b;
-                        width: 100%;
-                    " onmouseover="this.style.background='#eef2ff'; this.style.borderColor='#4C1D95'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
+                    <button onclick="loadLoginHistory()" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; font-size: 14px; color: #1e293b; width: 100%;" onmouseover="this.style.background='#eef2ff'; this.style.borderColor='#4C1D95'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
                         <i class="fas fa-history" style="color: #3b82f6; width: 20px;"></i>
+                        <span>View Login History</span>
+                        <i class="fas fa-chevron-right" style="margin-left: auto; color: #94a3b8; font-size: 12px;"></i>
+                    </button>
+                    
+                    <button onclick="viewAuditLogs()" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; font-size: 14px; color: #1e293b; width: 100%;" onmouseover="this.style.background='#eef2ff'; this.style.borderColor='#4C1D95'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
+                        <i class="fas fa-clipboard-list" style="color: #059669; width: 20px;"></i>
                         <span>View My Audit Logs</span>
                         <i class="fas fa-chevron-right" style="margin-left: auto; color: #94a3b8; font-size: 12px;"></i>
                     </button>
                     
-                    <button onclick="exportProfileData()" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 12px 16px;
-                        background: #f8fafc;
-                        border: 1px solid #e5e7eb;
-                        border-radius: 10px;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        font-size: 14px;
-                        color: #1e293b;
-                        width: 100%;
-                    " onmouseover="this.style.background='#eef2ff'; this.style.borderColor='#4C1D95'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
+                    <button onclick="exportProfileData()" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; font-size: 14px; color: #1e293b; width: 100%;" onmouseover="this.style.background='#eef2ff'; this.style.borderColor='#4C1D95'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
                         <i class="fas fa-download" style="color: #059669; width: 20px;"></i>
                         <span>Export Profile Data</span>
                         <i class="fas fa-chevron-right" style="margin-left: auto; color: #94a3b8; font-size: 12px;"></i>
                     </button>
                     
-                    <button onclick="logout()" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 12px 16px;
-                        background: #fef2f2;
-                        border: 1px solid #fca5a5;
-                        border-radius: 10px;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        font-size: 14px;
-                        color: #991b1b;
-                        width: 100%;
-                    " onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">
+                    <button onclick="logout()" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; font-size: 14px; color: #991b1b; width: 100%;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">
                         <i class="fas fa-sign-out-alt" style="color: #dc2626; width: 20px;"></i>
                         <span>Sign Out</span>
                         <i class="fas fa-chevron-right" style="margin-left: auto; color: #94a3b8; font-size: 12px;"></i>
@@ -14642,7 +14624,8 @@ textarea:focus-visible{
         </div>
     </div>
 </section>
-                        <!-- ============================================================ -->
+
+<!-- ============================================================ -->
 <!-- ✏️ EDIT PROFILE MODAL                                         -->
 <!-- ============================================================ -->
 <div id="editProfileModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">
@@ -14741,7 +14724,8 @@ textarea:focus-visible{
         </div>
     </div>
 </div>
-                        <!-- ============================================================ -->
+
+<!-- ============================================================ -->
 <!-- 🔑 CHANGE PASSWORD MODAL                                      -->
 <!-- ============================================================ -->
 <div id="changePasswordModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 10001; align-items: center; justify-content: center; padding: 20px;">
@@ -14788,7 +14772,6 @@ textarea:focus-visible{
         </form>
     </div>
 </div>
-
         
 <!-- ============================================================ -->
 <!-- STUDENT BLOG MANAGEMENT MODULE -->
