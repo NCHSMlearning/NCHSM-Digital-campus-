@@ -610,6 +610,17 @@ window.LecturerOnlineLearning = (() => {
     function ensureCriterionMarkingUi(){
         const input=$('olCriterionFinalMark');
         if(!input)return;
+        const body=input.closest('.ol-criterion-body');
+        const saveBtn=body?.querySelector('button[onclick*="saveCriterionMark"]');
+        if(saveBtn){
+            saveBtn.classList.add('nchsm-save-criterion-mark');
+            saveBtn.style.setProperty('display','flex','important');
+            saveBtn.style.setProperty('visibility','visible','important');
+            saveBtn.style.setProperty('opacity','1','important');
+            saveBtn.style.setProperty('position','sticky','important');
+            saveBtn.style.setProperty('bottom','-1px','important');
+            saveBtn.style.setProperty('z-index','50','important');
+        }
         const parent=input.parentElement;
         if(parent && !parent.querySelector('[data-ol-criterion-max-hint]')){
             const hint=document.createElement('div');
@@ -622,11 +633,55 @@ window.LecturerOnlineLearning = (() => {
             const style=document.createElement('style');
             style.id='nchsmCriterionMarkingFixCss';
             style.textContent=`
-#online-learning-content .ol-criterion-reference{overflow:hidden!important}
-#online-learning-content .ol-criterion-body{position:relative;overflow:visible!important;padding-bottom:16px!important}
-#online-learning-content #olCriterionFinalMark{display:block!important;visibility:visible!important;opacity:1!important;box-sizing:border-box!important;width:100%!important}
-#online-learning-content .ol-criterion-body > .ol-btn.ol-primary:last-child{display:flex!important;visibility:visible!important;opacity:1!important;position:sticky!important;bottom:0!important;z-index:30!important;align-items:center!important;justify-content:center!important;min-height:46px!important;height:46px!important;width:100%!important;margin-top:14px!important;border-radius:10px!important;font-weight:900!important;box-shadow:0 -6px 14px rgba(255,255,255,.92),0 4px 12px rgba(76,29,149,.18)!important}
-#online-learning-content .ol-criterion-body > .ol-btn.ol-primary:last-child:hover{filter:brightness(.97)!important}
+#online-learning-content .ol-criterion-reference{
+    display:flex!important;
+    flex-direction:column!important;
+    min-height:0!important;
+    overflow:hidden!important;
+}
+#online-learning-content .ol-criterion-body{
+    position:relative!important;
+    min-height:0!important;
+    max-height:calc(100% - 43px)!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    padding:12px 12px 78px!important;
+    box-sizing:border-box!important;
+    scrollbar-width:thin!important;
+}
+#online-learning-content .ol-criterion-body::-webkit-scrollbar{width:7px!important}
+#online-learning-content .ol-criterion-body::-webkit-scrollbar-thumb{background:#cbd5e1!important;border-radius:10px!important}
+#online-learning-content #olCriterionFinalMark{
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+    box-sizing:border-box!important;
+    width:100%!important;
+}
+#online-learning-content .ol-criterion-body > .ol-btn.ol-primary:last-child,
+#online-learning-content .ol-criterion-body .nchsm-save-criterion-mark{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    position:sticky!important;
+    bottom:-1px!important;
+    z-index:50!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-height:48px!important;
+    height:48px!important;
+    width:100%!important;
+    margin:14px 0 0!important;
+    border-radius:10px!important;
+    font-weight:900!important;
+    box-shadow:0 -10px 18px rgba(255,255,255,.98),0 4px 12px rgba(76,29,149,.18)!important;
+    background:#4c1d95!important;
+    color:#fff!important;
+    border:0!important;
+    cursor:pointer!important;
+}
+#online-learning-content .ol-criterion-body > .ol-btn.ol-primary:last-child:hover,
+#online-learning-content .ol-criterion-body .nchsm-save-criterion-mark:hover{filter:brightness(.97)!important}
 `;
             document.head.appendChild(style);
         }
