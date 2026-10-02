@@ -322,6 +322,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
 
+        // Make the resolved profile available to the portal UI/hero/search helpers.
+        window.currentUserProfile = profile;
+        window.db = window.db || {};
+        window.db.currentUserProfile = profile;
+
         // ==========================================
         // 5. Verify lecturer role
         // ==========================================
@@ -382,6 +387,47 @@ document.addEventListener('DOMContentLoaded', async function() {
             welcomeBanner.textContent = `${typeEmoji} Welcome to your Lecturer Dashboard for ${programDisplay} (${typeLabel})`;
         }
 
+        // ============================================================
+        // NCHSM DYNAMIC LECTURER GREETING / HERO IDENTITY
+        // Keeps the hero greeting synchronized with the authenticated
+        // lecturer profile without changing authentication logic.
+        // ============================================================
+        window.updateLecturerGreeting = function() {
+            const hour = new Date().getHours();
+            let greeting = 'Good Morning';
+            let emoji = '🌅';
+
+            if (hour >= 12 && hour < 17) {
+                greeting = 'Good Afternoon';
+                emoji = '☀️';
+            } else if (hour >= 17 && hour < 21) {
+                greeting = 'Good Evening';
+                emoji = '🌆';
+            } else if (hour >= 21 || hour < 5) {
+                greeting = 'Good Night';
+                emoji = '🌙';
+            }
+
+            const name = (window.currentUserProfile?.full_name || profile.full_name || 'Lecturer').trim();
+            const greetingText = document.getElementById('lecturerGreetingText');
+            const greetingEmoji = document.getElementById('lecturerGreetingEmoji');
+            const heroName = document.getElementById('lecturerHeroName');
+
+            if (greetingText) greetingText.textContent = greeting;
+            if (greetingEmoji) greetingEmoji.textContent = emoji;
+            if (heroName) heroName.textContent = name;
+
+            // Keep the original header identity synchronized too.
+            const welcomeHeaderEl = document.getElementById('welcomeHeader');
+            if (welcomeHeaderEl && !welcomeHeaderEl.textContent.trim()) {
+                welcomeHeaderEl.textContent = name;
+            }
+        };
+
+        window.updateLecturerGreeting();
+        clearInterval(window.__nchsmGreetingTimer);
+        window.__nchsmGreetingTimer = setInterval(window.updateLecturerGreeting, 60000);
+
         const gradingInfo = document.getElementById('gradingSystemInfo');
         if (gradingInfo) {
             if (isTVET) {
@@ -415,6 +461,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         // 9. Dispatch appReady event
         // ==========================================
         document.dispatchEvent(new CustomEvent('appReady'));
+        if (typeof window.updateLecturerGreeting === 'function') {
+            window.updateLecturerGreeting();
+        }
 
         // ==========================================
         // 10. Resolve lecturer ID for all modules
