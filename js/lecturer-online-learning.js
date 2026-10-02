@@ -16,20 +16,10 @@ window.LecturerOnlineLearning = (() => {
         state.client=candidates.find(x=>x && typeof x.from==='function');
         return state.client;
     }
-    function safeJson(key,fallback=null){
-        try{return JSON.parse(localStorage.getItem(key)||'null') ?? fallback;}catch(_){return fallback;}
-    }
     async function resolveUser(){
-        let p={};
-        try{
-            const candidate=window.lecturerDB?.getCurrentUserProfile?.();
-            p=candidate && typeof candidate.then==='function' ? (await candidate) : (candidate || {});
-        }catch(_){}
-        if(!p || typeof p!=='object' || Array.isArray(p)) p={};
-        p=Object.keys(p).length?p:(safeJson('userProfile',null)||safeJson('lecturerData',null)||{});
+        const p=window.lecturerDB?.getCurrentUserProfile?.() || JSON.parse(localStorage.getItem('userProfile')||'null') || JSON.parse(localStorage.getItem('lecturerData')||'null') || {};
         state.profile=p;
-        const session=safeJson('staffSession',{})||{};
-        state.userId=p.user_id || p.auth_user_id || p.id || session.user_id || null;
+        state.userId=p.user_id || p.auth_user_id || p.id || JSON.parse(localStorage.getItem('staffSession')||'null')?.user_id;
         return state.userId;
     }
     function notify(msg,type='info'){ if(window.showNotification) window.showNotification(msg,type); else alert(msg); }
@@ -37,41 +27,7 @@ window.LecturerOnlineLearning = (() => {
     function formatPercentage(marks,maxMarks){const m=Number(marks),mx=Number(maxMarks);if(!Number.isFinite(m)||!Number.isFinite(mx)||mx<=0)return '—';return `${Math.round(Math.max(0,Math.min(100,(m/mx)*100))*100)/100}%`;}
     function clampMarks(marks,maxMarks){const m=Number(marks),mx=Number(maxMarks);return Number.isFinite(mx)&&mx>0?Math.max(0,Math.min(Number.isFinite(m)?m:0,mx)):Math.max(0,Number.isFinite(m)?m:0);}
     function statusBadge(a){return a.published?'<span class="ol-badge ol-published">PUBLISHED</span>':'<span class="ol-badge ol-draft">DRAFT</span>';}
-
-    function ensureDynamicStyles(){
-        if($('nchsmOnlineLearningDynamicStyles')) return;
-        const st=document.createElement('style');
-        st.id='nchsmOnlineLearningDynamicStyles';
-        st.textContent=`
-          .ol-q{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 2px 8px rgba(15,23,42,.04)}
-          .ol-q>div:first-child{color:#18304d}
-          .ol-rubric-item{transition:.16s ease;border:1px solid transparent!important;background:#fff!important}
-          .ol-rubric-item:hover{background:#f8fafc!important;border-color:#dbeafe!important;transform:translateY(-1px)}
-          .ol-rubric-item.active{background:#eff6ff!important;border-color:#bfdbfe!important;box-shadow:0 2px 7px rgba(37,99,235,.08)}
-          .ol-evidence-item{border:1px solid #e2e8f0;border-radius:10px;background:#fff;padding:11px;margin:7px 0;box-shadow:0 1px 4px rgba(15,23,42,.03)}
-          .ol-evidence-item>i{margin-right:6px}
-          .ol-last-grading-summary{background:linear-gradient(135deg,#f8fafc,#fff);border:1px solid #e2e8f0;border-radius:12px;padding:13px;margin:12px 0}
-          .ol-key-row{border:1px solid #e2e8f0;border-radius:11px;padding:11px;margin-bottom:8px;background:#fff;transition:.16s ease}
-          .ol-key-row:hover{border-color:#c4b5fd;box-shadow:0 3px 10px rgba(76,29,149,.06)}
-          .ol-criteria-card{border:1px solid #e2e8f0;border-radius:11px;padding:12px;margin-bottom:9px;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.03)}
-          .ol-criteria-requirement{padding:7px 9px;border-left:3px solid #c4b5fd;margin:5px 0;background:#f8fafc;border-radius:0 7px 7px 0;font-size:11px}
-          .ol-loading-state{display:flex;align-items:center;justify-content:center;gap:9px;min-height:130px;color:#64748b}
-          .ol-loading-state i{color:#4c1d95}
-          @media(max-width:760px){
-            .ol-q{padding:11px}.ol-evidence-item{font-size:12px}
-          }
-        `;
-        document.head.appendChild(st);
-    }
-
-    async function init(){
-        ensureDynamicStyles();
-        if(state.initialized && state.assignments.length){ wireAssignmentTargeting(); await load(); return; }
-        state.initialized=true;
-        await resolveUser();
-        wireAssignmentTargeting();
-        await load();
-    }
+    async function init(){ if(state.initialized && state.assignments.length){ wireAssignmentTargeting(); await load(); return; } state.initialized=true; await resolveUser(); wireAssignmentTargeting(); await load(); }
     async function load(){
         const db=client(); if(!db){ notify('Supabase client is not available. Check lecturer-database.js/config.js.','error'); return; }
         await resolveUser();
@@ -96,14 +52,12 @@ window.LecturerOnlineLearning = (() => {
     async function loadQuestionCount(id){ const db=client(); const {count}=await db.from('online_assignment_questions').select('*',{count:'exact',head:true}).eq('assignment_id',id); const el=$(`olqcount-${id}`); if(el)el.textContent=count??0; }
     function populateAssignmentFilter(){const s=$('olSubmissionAssignmentFilter');if(!s)return;const cur=s.value;s.innerHTML='<option value="">All assignments</option>'+state.assignments.map(a=>`<option value="${esc(a.id)}">${esc(a.title)}</option>`).join('');s.value=cur;}
     function resolveSubmissionMaxMarks(submission,assignment={}){
-        // The assignment / institutional marking key is authoritative.
-        // A stale online_submissions.max_marks value must not override it.
         const candidates=[
+            submission?.max_marks,
             assignment?.max_marks,
             assignment?.marking_key?.max_marks,
             submission?.online_assignments?.max_marks,
-            window._activeSubmissionMarkingKey?.max_marks,
-            submission?.max_marks
+            window._activeSubmissionMarkingKey?.max_marks
         ];
         for(const value of candidates){
             const n=Number(value);
@@ -653,7 +607,33 @@ window.LecturerOnlineLearning = (() => {
         if($('olRubricTotal')) $('olRubricTotal').textContent=`${done} / ${gradingState.criteria.length}`;
     }
 
+    function ensureCriterionMarkingUi(){
+        const input=$('olCriterionFinalMark');
+        if(!input)return;
+        const parent=input.parentElement;
+        if(parent && !parent.querySelector('[data-ol-criterion-max-hint]')){
+            const hint=document.createElement('div');
+            hint.setAttribute('data-ol-criterion-max-hint','1');
+            hint.style.cssText='margin-top:6px;font-size:11px;font-weight:800;color:#64748b;display:flex;align-items:center;justify-content:space-between;gap:8px';
+            hint.innerHTML='<span>Maximum for this criterion</span><strong id="olCriterionMaxHint" style="color:#4c1d95">—</strong>';
+            parent.appendChild(hint);
+        }
+        if(!document.getElementById('nchsmCriterionMarkingFixCss')){
+            const style=document.createElement('style');
+            style.id='nchsmCriterionMarkingFixCss';
+            style.textContent=`
+#online-learning-content .ol-criterion-reference{overflow:hidden!important}
+#online-learning-content .ol-criterion-body{position:relative;overflow:visible!important;padding-bottom:16px!important}
+#online-learning-content #olCriterionFinalMark{display:block!important;visibility:visible!important;opacity:1!important;box-sizing:border-box!important;width:100%!important}
+#online-learning-content .ol-criterion-body > .ol-btn.ol-primary:last-child{display:flex!important;visibility:visible!important;opacity:1!important;position:sticky!important;bottom:0!important;z-index:30!important;align-items:center!important;justify-content:center!important;min-height:46px!important;height:46px!important;width:100%!important;margin-top:14px!important;border-radius:10px!important;font-weight:900!important;box-shadow:0 -6px 14px rgba(255,255,255,.92),0 4px 12px rgba(76,29,149,.18)!important}
+#online-learning-content .ol-criterion-body > .ol-btn.ol-primary:last-child:hover{filter:brightness(.97)!important}
+`;
+            document.head.appendChild(style);
+        }
+    }
+
     function renderSelectedCriterion(){
+        ensureCriterionMarkingUi();
         const i=gradingState.selectedCriterionIndex;
         const c=gradingState.criteria[i];
         const g=gradingState.grades.get(i)||{};
@@ -669,7 +649,11 @@ window.LecturerOnlineLearning = (() => {
         if($('olCriterionFinalMark')){
             $('olCriterionFinalMark').value=final;
             $('olCriterionFinalMark').max=max;
+            $('olCriterionFinalMark').setAttribute('aria-label',`Lecturer Final Mark, maximum ${max}`);
+            $('olCriterionFinalMark').title=`Maximum allowed for this criterion: ${max} mark${max===1?'':'s'}`;
         }
+        const maxHint=$('olCriterionMaxHint');
+        if(maxHint)maxHint.textContent=`${max} mark${max===1?'':'s'}`;
         if($('olCriterionProgressText'))$('olCriterionProgressText').textContent=`${final} / ${max}`;
         if($('olCriterionProgressBar'))$('olCriterionProgressBar').style.width=(max?Math.max(0,Math.min(100,final/max*100)):0)+'%';
         if($('olCriterionStatus')) $('olCriterionStatus').textContent=g.manual_adjusted?'MANUAL ADJUSTMENT':(g.evidence?.length?'EVIDENCE FOUND':'NOT GRADED');
@@ -687,12 +671,7 @@ window.LecturerOnlineLearning = (() => {
     }
 
     function renderGradingTotals(){
-        const max=Number(
-            gradingState.key?.max_marks||
-            gradingState.assignment?.max_marks||
-            resolveSubmissionMaxMarks(gradingState.submission,gradingState.assignment)||
-            100
-        );
+        const max=Number(gradingState.key?.max_marks||gradingState.assignment?.max_marks||100);
         const auto=[...gradingState.grades.values()].reduce((s,g)=>s+Number(g?.automatic_mark||0),0);
         const final=[...gradingState.grades.values()].reduce((s,g)=>s+Number(g?.final_mark??g?.automatic_mark??0),0);
         const autoClamped=Math.min(max,Math.max(0,auto));
@@ -1325,7 +1304,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         list.innerHTML=markingKeyState.keys.map(k=>{
             const active=String(k.id)===String(managerSelectedKeyId);
             const verified=String(k.validation_status||'').toLowerCase()==='verified';
-            return `<button type="button" class="ol-key-row" data-key-id="${esc(k.id)}" style="display:block;width:100%;text-align:left;border-color:${active?'#a5b4fc':'#e5e7eb'};background:${active?'#f5f3ff':'#fff'};border-radius:10px;padding:11px;margin-bottom:7px;cursor:pointer">
+            return `<button type="button" data-key-id="${esc(k.id)}" style="display:block;width:100%;text-align:left;border:1px solid ${active?'#a5b4fc':'#e5e7eb'};background:${active?'#f5f3ff':'#fff'};border-radius:10px;padding:11px;margin-bottom:7px;cursor:pointer">
                 <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
                     <strong style="font-size:12px;color:#0f172a">${esc(k.title||'Untitled Key')}</strong>
                     <span class="ol-badge ${verified?'ol-published':'ol-review'}">${esc(k.validation_status||'UNVERIFIED')}</span>
@@ -1363,10 +1342,10 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         if(body){
             body.innerHTML=criteria.map((c,i)=>{
                 const reqs=c.requirements||[];
-                return `<div class="ol-criteria-card">
+                return `<div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:9px;background:#fff">
                     <div style="display:flex;justify-content:space-between;gap:10px"><strong>${i+1}. ${esc(c.criterion)}</strong><strong>${esc(c.max_marks)} marks</strong></div>
                     ${c.description?`<div style="font-size:11px;color:#64748b;margin-top:4px">${esc(c.description)}</div>`:''}
-                    ${reqs.length?`<div style="margin-top:8px">${reqs.map(r=>`<div class="ol-criteria-requirement"><b>${esc(r.description)}</b><span style="float:right">${esc(r.max_marks??r.weight??'—')}</span>${r.evidence_terms?.length?`<div style="color:#64748b;margin-top:2px">${esc(r.evidence_terms.join(' · '))}</div>`:''}</div>`).join('')}</div>`:'<div style="font-size:11px;color:#94a3b8;margin-top:7px">No sub-requirements configured.</div>'}
+                    ${reqs.length?`<div style="margin-top:8px">${reqs.map(r=>`<div style="padding:6px 8px;border-left:3px solid #c7d2fe;margin:4px 0;background:#f8fafc;font-size:11px"><b>${esc(r.description)}</b><span style="float:right">${esc(r.max_marks??r.weight??'—')}</span>${r.evidence_terms?.length?`<div style="color:#64748b;margin-top:2px">${esc(r.evidence_terms.join(' · '))}</div>`:''}</div>`).join('')}</div>`:'<div style="font-size:11px;color:#94a3b8;margin-top:7px">No sub-requirements configured.</div>'}
                 </div>`;
             }).join('')||'<div class="ol-empty">No structured criteria.</div>';
         }
@@ -1595,12 +1574,13 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         returnSubmission,
         submitFinalGrade,
         openSubmissionDocument,
+        openSubmissionDocument: openSubmissionDocument,
         downloadSubmissionDocument,
         downloadSubmission: downloadSubmissionDocument,
         updateGradePercentage,
         closeModal,
         viewSubmissionDocument,
-        closeDocumentViewer
+        closeDocumentViewer,
     };
 
 })();
@@ -1647,22 +1627,4 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
             }catch(_){}
         }
     });
-})();
-/* ============================================================
-   ONLINE LEARNING — SAFE AUTO BOOT
-   Runs only when the module section exists. The HTML bootstrap
-   remains compatible; duplicate init calls are guarded by state.
-   ============================================================ */
-(function(){
-    function boot(){
-        const section=document.getElementById('online-learning-content');
-        if(!section || !window.LecturerOnlineLearning) return;
-        if(section.dataset.olAutoBoot==='1') return;
-        section.dataset.olAutoBoot='1';
-        window.LecturerOnlineLearning.init().catch(err=>{
-            console.error('[Online Learning] initialization failed:',err);
-        });
-    }
-    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,80),{once:true});
-    else setTimeout(boot,80);
 })();
