@@ -22,6 +22,22 @@
  *******************************************************/
 
 // ============================================
+// FEEDBACK / TOAST HELPER
+// ============================================
+function showFeedback(message, type = 'info') {
+    const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
+    document.querySelectorAll('.exam-feedback-toast').forEach(el => el.remove());
+    const toast = document.createElement('div');
+    toast.className = 'exam-feedback-toast';
+    toast.textContent = message;
+    toast.style.cssText = `position:fixed;right:24px;bottom:24px;z-index:99999;max-width:420px;padding:13px 18px;background:${colors[type] || colors.info};color:#fff;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);font-size:13px;font-weight:600;line-height:1.45;opacity:0;transform:translateY(10px);transition:opacity .2s ease,transform .2s ease;`;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.opacity='1'; toast.style.transform='translateY(0)'; });
+    setTimeout(() => { toast.style.opacity='0'; toast.style.transform='translateY(10px)'; setTimeout(() => toast.remove(), 220); }, type === 'error' ? 5000 : 3500);
+}
+window.showFeedback = window.showFeedback || showFeedback;
+
+// ============================================
 // CONFIGURATION
 // ============================================
 const EXAM_CONFIG = {
@@ -2697,7 +2713,7 @@ window.closeEditModal = closeEditModal;
 window.getSelectedClasses = getSelectedClasses;
 window.loadAvailableClassesForExam = loadAvailableClassesForExam;
 window.populateProgramDropdowns = populateProgramDropdowns;
-window.showFeedback = showFeedback;
+window.showFeedback = window.showFeedback || showFeedback;
 window.escapeHtml = escapeHtml;
 window.getCurrentUser = getCurrentUser;
 window.ExamCache = ExamCache;
