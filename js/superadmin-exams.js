@@ -141,6 +141,66 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
 window.updateBlockTermOptions = updateBlockTermOptions;
 
 // ============================================
+// SELF-CONTAINED SHARED PROGRAM HELPERS
+// ============================================
+// These were previously supplied by script.js. Keep local fallbacks so
+// Exams/CATS remains functional when it is loaded as an independent file.
+function escapeHtml(text, isAttribute = false) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
+
+function isTVETProgram(programCode) {
+    if (!programCode) return false;
+    const code = String(programCode).toUpperCase().trim();
+    if (code === 'KRCHN') return false;
+    if (typeof window.MASTER_PROGRAMS !== 'undefined' && window.MASTER_PROGRAMS?.[code]) {
+        return window.MASTER_PROGRAMS[code].category === 'TVET';
+    }
+    const tvetCodes = [
+        'DPOTT','DCH','DHRIT','DSL','DSW','DCJS','DHSS','DICT','DME',
+        'CPOTT','CCH','CHRIT','CPC','CSL','CSW','CCJS','CAG','CHSS','CICT',
+        'CCA','ACH','AAG','ASW','PTE','COMT','CCG'
+    ];
+    return tvetCodes.includes(code);
+}
+
+function getProgramType(programCode) {
+    if (!programCode) return 'KRCHN';
+    const code = String(programCode).toUpperCase().trim();
+    if (typeof window.MASTER_PROGRAMS !== 'undefined' && window.MASTER_PROGRAMS?.[code]) {
+        return window.MASTER_PROGRAMS[code].category;
+    }
+    if (code === 'KRCHN') return 'KRCHN';
+    return isTVETProgram(code) ? 'TVET' : 'KRCHN';
+}
+
+function getProgramLevel(programCode) {
+    if (!programCode) return 'KRCHN';
+    const code = String(programCode).toUpperCase().trim();
+    if (typeof window.MASTER_PROGRAMS !== 'undefined' && window.MASTER_PROGRAMS?.[code]) {
+        const type = window.MASTER_PROGRAMS[code].type;
+        if (type === 'diploma') return 'DIPLOMA';
+        if (type === 'certificate') return 'CERTIFICATE';
+        if (type === 'artisan') return 'ARTISAN';
+        if (type === 'nursing') return 'KRCHN';
+        return 'OTHER';
+    }
+    if (code.startsWith('D')) return 'DIPLOMA';
+    if (code.startsWith('C') && code !== 'CCA') return 'CERTIFICATE';
+    if (code.startsWith('A')) return 'ARTISAN';
+    if (code === 'CCA' || code === 'PTE') return 'OTHER';
+    return 'KRCHN';
+}
+
+window.escapeHtml = window.escapeHtml || escapeHtml;
+window.isTVETProgram = window.isTVETProgram || isTVETProgram;
+window.getProgramType = window.getProgramType || getProgramType;
+window.getProgramLevel = window.getProgramLevel || getProgramLevel;
+
+// ============================================
 // CONFIGURATION
 // ============================================
 const EXAM_CONFIG = {
@@ -2844,7 +2904,7 @@ window.getExamTypeLabel = getExamTypeLabel;
 window.populateExamCourseSelects = populateExamCourseSelects;
 window.updateBlockTermOptions = updateBlockTermOptions;
 
-// 7. DOM is already global
-window.DOM = DOM;
+// 7. Keep DOM cache available to other Super Admin modules
+window.DOM = window.DOM || DOM;
 
 console.log('✅ CATS/Exams loaded (complete fixed version with email notifications, searchable dropdowns, and block filtering)!');
