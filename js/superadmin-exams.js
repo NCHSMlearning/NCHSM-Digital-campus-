@@ -38,6 +38,109 @@ function showFeedback(message, type = 'info') {
 window.showFeedback = window.showFeedback || showFeedback;
 
 // ============================================
+// BLOCK / TERM DROPDOWN HELPER
+// ============================================
+// Kept inside the external Exams module so it does not
+// depend on the function that previously lived in script.js.
+function updateBlockTermOptions(programSelectId, blockTermSelectId) {
+    const programSelect = typeof window.$ === 'function'
+        ? window.$(programSelectId)
+        : document.getElementById(programSelectId);
+    const blockTermSelect = typeof window.$ === 'function'
+        ? window.$(blockTermSelectId)
+        : document.getElementById(blockTermSelectId);
+
+    if (!programSelect || !blockTermSelect) {
+        console.warn(`updateBlockTermOptions: Elements not found - ${programSelectId}, ${blockTermSelectId}`);
+        return;
+    }
+
+    const programCode = programSelect.value;
+    const currentValue = blockTermSelect.value;
+
+    const getType = typeof window.getProgramType === 'function'
+        ? window.getProgramType
+        : (code => code === 'KRCHN' ? 'KRCHN' : 'TVET');
+    const tvetCheck = typeof window.isTVETProgram === 'function'
+        ? window.isTVETProgram
+        : (code => ['DPOTT','DCH','DHRIT','DSL','DSW','DCJS','DHSS','DICT','DME','CPOTT','CCH','CHRIT','CPC','CSL','CSW','CCJS','CAG','CHSS','CICT','ACH','AAG','ASW','CCA','PTE'].includes(String(code || '').toUpperCase()));
+    const getLevel = typeof window.getProgramLevel === 'function'
+        ? window.getProgramLevel
+        : (code => String(code || '').toUpperCase().startsWith('D') ? 'DIPLOMA' : 'CERTIFICATE');
+
+    blockTermSelect.innerHTML = '<option value="">-- Select Block/Term --</option>';
+    if (!programCode) return;
+
+    const programType = getType(programCode);
+    let options = [];
+
+    if (programType === 'KRCHN' || programCode === 'KRCHN') {
+        options = [
+            {value:'Introductory',text:'🌟 Introductory Block'},
+            {value:'Block 1',text:'📘 Block 1'},
+            {value:'Block 2',text:'📗 Block 2'},
+            {value:'Block 3',text:'📒 Block 3'},
+            {value:'Block 4',text:'📙 Block 4'},
+            {value:'Block 5',text:'📕 Block 5'},
+            {value:'Block 6',text:'📚 Block 6'},
+            {value:'Final',text:'🏆 Final Block'}
+        ];
+    } else if (programType === 'TVET' || tvetCheck(programCode)) {
+        const level = getLevel(programCode);
+        if (level === 'DIPLOMA') {
+            options = [
+                {value:'Y1T1',text:'📘 Year 1 Term 1'},
+                {value:'Y1T2',text:'📗 Year 1 Term 2'},
+                {value:'Y1T3',text:'📒 Year 1 Term 3'},
+                {value:'Y2T1',text:'📙 Year 2 Term 1'},
+                {value:'Y2T2',text:'📕 Year 2 Term 2'},
+                {value:'Y2T3',text:'📚 Year 2 Term 3'}
+            ];
+        } else if (level === 'CERTIFICATE') {
+            options = [
+                {value:'Y1T1',text:'📘 Year 1 Term 1'},
+                {value:'Y1T2',text:'📗 Year 1 Term 2'},
+                {value:'Y1T3',text:'📒 Year 1 Term 3'}
+            ];
+        } else {
+            options = [
+                {value:'Introductory',text:'🌟 Introductory Term'},
+                {value:'Term1',text:'📘 Term 1'},
+                {value:'Term2',text:'📗 Term 2'},
+                {value:'Term3',text:'📒 Term 3'},
+                {value:'Term4',text:'📙 Term 4'},
+                {value:'Term5',text:'📕 Term 5'},
+                {value:'Term6',text:'📚 Term 6'},
+                {value:'Final',text:'🏆 Final Term'}
+            ];
+        }
+    } else {
+        options = [
+            {value:'Introductory',text:'🌟 Introductory'},
+            {value:'Block 1',text:'📘 Block 1'},
+            {value:'Block 2',text:'📗 Block 2'},
+            {value:'Block 3',text:'📒 Block 3'},
+            {value:'Block 4',text:'📙 Block 4'},
+            {value:'Final',text:'🏆 Final'}
+        ];
+    }
+
+    options.push({value:'General',text:'📋 General'});
+    options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.text;
+        blockTermSelect.appendChild(option);
+    });
+
+    if (currentValue && Array.from(blockTermSelect.options).some(o => o.value === currentValue)) {
+        blockTermSelect.value = currentValue;
+    }
+}
+
+window.updateBlockTermOptions = updateBlockTermOptions;
+
+// ============================================
 // CONFIGURATION
 // ============================================
 const EXAM_CONFIG = {
