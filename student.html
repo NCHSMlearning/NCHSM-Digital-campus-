@@ -25,7 +25,6 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="/config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/otplib@12.0.1/otplib.min.js"></script>
 <!-- Fonts & Icons -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
@@ -1884,6 +1883,171 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
   #dashboard .streak-card .nchsm-streak-body{padding-left:10px!important;padding-right:10px!important}
   #dashboard .streak-card .streak-milestone{font-size:9px!important;padding:6px 2px!important}
   #dashboard .streak-card .nchsm-streak-status{font-size:8px!important}
+}
+</style>
+
+
+<style id="nchsm-cats-mobile-scroll-fix">
+/* ============================================================
+   CATS / EXAMS MOBILE SCROLL FIX
+   Ensures the complete assessment cards and action buttons can
+   always be reached on phones. No exam logic is changed.
+   ============================================================ */
+@media (max-width: 799px){
+  html, body{
+    height:auto!important;
+    min-height:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+
+  #app-content,
+  #app-content > .container,
+  #main-content.main{
+    min-height:0!important;
+  }
+
+  #main-content.main{
+    height:calc(100vh - 60px)!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    box-sizing:border-box!important;
+    padding-bottom:calc(32px + env(safe-area-inset-bottom))!important;
+  }
+
+  #main-content.main > .tab-content,
+  #cats.tab-content{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-x:hidden!important;
+    padding-bottom:calc(42px + env(safe-area-inset-bottom))!important;
+    box-sizing:border-box!important;
+  }
+
+  #cats .assessment-dashboard{
+    width:100%!important;
+    max-width:none!important;
+    min-height:0!important;
+  }
+
+  #cats .current-list{
+    overflow:visible!important;
+    height:auto!important;
+    max-height:none!important;
+    padding-bottom:18px!important;
+  }
+
+  #cats .current-assessment-card{
+    min-width:0!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+    overflow:visible!important;
+  }
+
+  #cats .current-main{
+    min-width:0!important;
+    overflow:visible!important;
+  }
+
+  #cats .current-action{
+    width:100%!important;
+    min-width:0!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
+    overflow:visible!important;
+    padding-top:4px!important;
+  }
+
+  #cats .current-action .exam-action-btn{
+    width:100%!important;
+    min-height:42px!important;
+    box-sizing:border-box!important;
+    display:flex!important;
+    position:relative!important;
+    z-index:2!important;
+  }
+
+  #cats .current-action .exam-timer,
+  #cats .current-action .current-status{
+    align-self:flex-start!important;
+  }
+
+  #cats .section-card,
+  #cats .current-section,
+  #cats .completed-section,
+  #cats .analytics-card{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  #cats .completed-table-wrap{
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:visible!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  /* Keep the assessment navigation reachable without clipping. */
+  #cats .assessment-nav{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  /* Give the last action area enough safe space above the phone's
+     browser/home indicator. */
+  #cats .current-list::after{
+    content:"";
+    display:block;
+    height:calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 480px){
+  #main-content.main{
+    padding-left:8px!important;
+    padding-right:8px!important;
+    padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
+  }
+
+  #cats{
+    padding:10px!important;
+    padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
+  }
+
+  #cats .current-assessment-card{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+    align-items:stretch!important;
+    padding:12px!important;
+  }
+
+  #cats .current-name{
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+    line-height:1.35!important;
+  }
+
+  #cats .current-meta{
+    row-gap:6px!important;
+  }
+
+  #cats .current-action{
+    border-top:1px solid #edf1f6!important;
+    padding-top:10px!important;
+  }
+
+  #cats .current-action .exam-action-btn{
+    min-height:44px!important;
+    font-size:11px!important;
+  }
 }
 </style>
 
@@ -7534,9 +7698,14 @@ render=function(){if(state.tab==='research'){renderResearch();return}_originalRe
 function boot(){bind();initResearch();loadData()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 document.addEventListener('appReady',function(){setTimeout(function(){bind();initResearch();loadData()},300)});
+window.deleteSubmissionDocument=deleteSubmissionDocument;
+window.viewResult=viewResult;
+window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};
+window.NCHSMStudentOnlineLearning.deleteSubmissionDocument=deleteSubmissionDocument;
+window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 })();
 
-window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.NCHSMStudentOnlineLearning.deleteSubmissionDocument=deleteSubmissionDocument;window.NCHSMStudentOnlineLearning.viewResult=viewResult;
+
 
 </script>
 
@@ -13816,6 +13985,7 @@ window.addEventListener('appinstalled', () => {
         if(toggle.dataset.nchsmBound==='1')return;
         toggle.dataset.nchsmBound='1';
         function setOpen(open){
+            if(!open && sidebar.contains(document.activeElement)){ toggle.focus(); }
             sidebar.classList.toggle('active',open);
             overlay.classList.toggle('active',open);
             document.body.classList.toggle('nchsm-nav-open',open);
@@ -14518,7 +14688,7 @@ function renderClinical(filter){var list=document.getElementById('clinical-list'
 function add(prefill){var procedure=prefill||prompt('Procedure / clinical activity:','IV cannulation');if(!procedure)return;var v={id:String(Date.now()),procedure:procedure,facility:prompt('Facility:','')||'',department:prompt('Department/Ward:','')||'',rotation:prompt('Rotation / block:','')||'',date:prompt('Date (YYYY-MM-DD):',new Date().toISOString().slice(0,10))||'',supervisor:prompt('Supervisor/Preceptor:','')||'',status:prompt('Status (Pending/Verified):','Pending')||'Pending',remarks:prompt('Remarks:','')||''};var d=load();d.unshift(v);save(d);renderClinical()}
 function renderHelp(q){var b=document.getElementById('help-articles');if(!b)return;q=(q||'').toLowerCase();b.innerHTML=HELP.filter(function(a){return !q||(a[0]+' '+a[1]).toLowerCase().indexOf(q)>=0}).map(function(a){return'<article class="help-item"><h3>'+esc(a[0])+'</h3><p>'+esc(a[1])+'</p></article>'}).join('')}
 function renderDates(){var b=document.getElementById('important-dates-list');if(!b)return;var arr=['Check Academic Calendar for registration deadlines','Check Timetable for current clinical and class schedules','Check Exam Card for examination eligibility and pending approvals','Check Academic Reports when results are published'];b.innerHTML=arr.map(function(x){return'<div class="date-row"><strong>'+esc(x)+'</strong><span>Portal information</span></div>'}).join('')}
-function pending(){var d=document.getElementById('dashboard');if(!d||document.getElementById('nchsm-pending-panel'))return;var p=document.createElement('section');p.id='nchsm-pending-panel';p.className='nchsm-pending-panel';p.innerHTML='<div class="nchsm-card" style="padding:18px"><h2 style="margin:0">Pending Actions</h2><p style="margin:4px 0;color:#64748b">Quick access to the areas most likely to need attention.</p><div class="pending-grid" style="margin-top:14px">'+[['fa-book','Unit Registration','hub-register'],['fa-money-bill-wave','Finance','finance'],['fa-id-card','Exam Card','hub-exam-card'],['fa-calendar-days','Timetable','hub-timetable']].map(function(x){return'<div class="pending-item" data-tab="'+x[2]+'"><i class="fas '+x[0]+'"></i>'+x[1]+'<strong>Open module →</strong></div>'}).join('')+'</div></div>';var h=d.querySelector('.nchsm-hero');d.insertBefore(p,h?h.nextSibling:d.firstChild);p.addEventListener('click',function(e){var a=e.target.closest('.pending-item');if(a&&window.showTab)window.showTab(a.dataset.tab)})}
+function pending(){var d=document.getElementById('dashboard');if(!d||document.getElementById('nchsm-pending-panel'))return;var p=document.createElement('section');p.id='nchsm-pending-panel';p.className='nchsm-pending-panel';p.innerHTML='<div class="nchsm-card" style="padding:18px"><h2 style="margin:0">Pending Actions</h2><p style="margin:4px 0;color:#64748b">Quick access to the areas most likely to need attention.</p><div class="pending-grid" style="margin-top:14px">'+[['fa-book','Unit Registration','hub-register'],['fa-money-bill-wave','Finance','finance'],['fa-id-card','Exam Card','hub-exam-card'],['fa-calendar-days','Timetable','hub-timetable']].map(function(x){return'<div class="pending-item" data-tab="'+x[2]+'"><i class="fas '+x[0]+'"></i>'+x[1]+'<strong>Open module →</strong></div>'}).join('')+'</div></div>';var h=d.querySelector('.nchsm-hero');if(h&&h.parentNode===d){d.insertBefore(p,h.nextSibling);}else{d.prepend(p);}p.addEventListener('click',function(e){var a=e.target.closest('.pending-item');if(a&&window.showTab)window.showTab(a.dataset.tab)})}
 function search(){if(document.getElementById('nchsm-search-overlay'))return;var o=document.createElement('div');o.id='nchsm-search-overlay';o.className='nchsm-search-overlay';o.innerHTML='<div class="nchsm-search-dialog"><input id="nchsm-global-search" placeholder="Search the student portal…" autocomplete="off"><div id="nchsm-search-results" class="nchsm-search-results"></div></div>';document.body.appendChild(o);var items=[];document.querySelectorAll('[data-tab]').forEach(function(a){var id=a.getAttribute('data-tab'),t=(a.innerText||a.textContent||'').trim();if(id&&t&&!items.some(function(v){return v.id===id}))items.push({id:id,text:t})});function draw(q){q=(q||'').toLowerCase();var r=items.filter(function(v){return !q||v.text.toLowerCase().indexOf(q)>=0});document.getElementById('nchsm-search-results').innerHTML=r.slice(0,30).map(function(v){return'<div class="search-result" data-tab="'+esc(v.id)+'"><i class="fas fa-arrow-right"></i>'+esc(v.text)+'</div>'}).join('')||'<div style="padding:20px;color:#64748b">No matching portal section.</div>'}window.nchsmOpenSearch=function(){o.style.display='block';document.getElementById('nchsm-global-search').focus();draw('')};document.getElementById('nchsm-global-search').addEventListener('input',function(){draw(this.value)});o.addEventListener('click',function(e){if(e.target===o)o.style.display='none';var r=e.target.closest('.search-result');if(r){o.style.display='none';if(window.showTab)window.showTab(r.dataset.tab)}});document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();window.nchsmOpenSearch()}if(e.key==='Escape')o.style.display='none'})}
 function boot(){var a=document.getElementById('clinical-add-entry');if(a)a.onclick=function(){add()};var s=document.getElementById('clinical-search');if(s)s.oninput=function(){renderClinical(s.value)};var l=document.getElementById('clinical-list');if(l)l.onclick=function(e){var b=e.target.closest('.clinical-delete');if(b&&confirm('Delete this clinical entry?')){save(load().filter(function(v){return v.id!==b.dataset.id}));renderClinical(s?s.value:'')}};var c=document.getElementById('procedure-chips');if(c){c.innerHTML=PROCEDURES.map(function(v){return'<button class="procedure-chip" type="button" data-procedure="'+esc(v)+'">'+esc(v)+'</button>'}).join('');c.onclick=function(e){var b=e.target.closest('.procedure-chip');if(b)add(b.dataset.procedure)}}var hs=document.getElementById('help-search');if(hs)hs.oninput=function(){renderHelp(hs.value)};var ht=document.getElementById('help-new-ticket');if(ht)ht.onclick=function(){if(window.showTab)window.showTab('support-tickets')};var ca=document.getElementById('open-academic-calendar');if(ca)ca.onclick=function(){if(window.showTab)window.showTab('calendar')};renderClinical();renderHelp();renderDates();pending();search()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();document.addEventListener('appReady',function(){setTimeout(function(){pending();renderClinical();renderDates()},250)});
