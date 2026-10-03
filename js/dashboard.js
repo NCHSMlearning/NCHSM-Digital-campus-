@@ -9,8 +9,11 @@
 // 6. ✅ Navigation working
 // 7. ✅ My Units support
 // 8. ✅ Uses total_points from RPC
-// 9. ✅ NURSEIQ POINTS DISPLAY FIXED - Shows 34 instead of 0
-// 10. ✅ GOOGLE ANALYTICS INTEGRATION - Full tracking
+// 9. ✅ NURSEIQ POINTS DISPLAYED FROM AUTHORITATIVE DASHBOARD RPC
+// 10. ✅ EXAM REVIEW POINTS INCLUDED IN NURSEIQ TOTAL
+// 11. ✅ LEGACY PROFILE POINTS NO LONGER OVERRIDE RPC
+
+// 12. ✅ GOOGLE ANALYTICS INTEGRATION - Full tracking
 // ============================================================
 
 class DashboardModule {
@@ -773,101 +776,76 @@ class DashboardModule {
     // ============================================================
     
     async fixNurseIQDisplay() {
-        console.log('🔧 Fixing NurseIQ display...');
-        
+        console.log('🔧 Syncing NurseIQ display from authoritative dashboard RPC...');
+
         try {
             if (!this.userId || !this.sb) {
-                console.warn('⚠️ Cannot fix NurseIQ: No userId or Supabase client');
+                console.warn('⚠️ Cannot sync NurseIQ: No userId or Supabase client');
                 return;
             }
-            
-            // Get NurseIQ points from database directly
-            const { data, error } = await this.sb
-                .from('consolidated_user_profiles_table')
-                .select('nurseiq_points, total_points, gamification_points, login_count')
-                .eq('user_id', this.userId)
-                .single();
-            
-            if (error) {
-                console.error('Error fetching NurseIQ:', error);
-                // Try fallback from RPC
-                const { data: rpcData } = await this.sb.rpc('get_student_dashboard', {
-                    p_user_id: this.userId
-                });
-                if (rpcData) {
-                    const points = rpcData?.nurseiq?.points || 0;
-                    this.nurseIQPoints = points;
-                    this.metrics.nurseiq.points = points;
-                    if (this.elements.nurseiqPoints) {
-                        this.elements.nurseiqPoints.innerText = points;
-                    }
-                    console.log(`✅ NurseIQ points from RPC: ${points}`);
-                    return;
-                }
+
+            // IMPORTANT:
+            // get_student_dashboard is the authoritative source for NurseIQ points.
+            // Do NOT read nurseiq_points from consolidated_user_profiles_table here,
+            // because that legacy/profile value may not include Exam Review points.
+            const { data: rpcData, error: rpcError } = await this.sb.rpc('get_student_dashboard', {
+                p_user_id: this.userId
+            });
+
+            if (rpcError) {
+                console.error('❌ NurseIQ dashboard RPC failed:', rpcError);
                 return;
             }
-            
-            const nurseiqPoints = data?.nurseiq_points || 0;
-            const totalPoints = data?.total_points || 0;
-            const gamificationPoints = data?.gamification_points || 0;
-            const loginCount = data?.login_count || 0;
-            
-            console.log(`📊 Database NurseIQ: ${nurseiqPoints}`);
-            console.log(`📊 Database Total: ${totalPoints}`);
-            console.log(`🏆 Gamification: ${gamificationPoints}`);
-            
-            // Store in metrics
+
+            const nurseiq = rpcData?.nurseiq || {};
+            const nurseiqPoints = Number(nurseiq.points ?? 0);
+            const totalPoints = Number(rpcData?.total_points ?? this.metrics.totalPoints ?? 0);
+            const gamificationPoints = Number(rpcData?.gamification?.points ?? this.gamificationPoints ?? 0);
+
             this.nurseIQPoints = nurseiqPoints;
-            this.metrics.nurseiqPoints = nurseiqPoints;
+            this.metrics.nurseIQPoints = nurseiqPoints;
+            this.metrics.nurseiq = {
+                ...this.metrics.nurseiq,
+                questions: Number(nurseiq.questions ?? this.metrics.nurseiq?.questions ?? 0),
+                score: Number(nurseiq.score ?? this.metrics.nurseiq?.score ?? 0),
+                accuracy: Number(nurseiq.accuracy ?? this.metrics.nurseiq?.accuracy ?? 0),
+                progress: Number(nurseiq.progress ?? this.metrics.nurseiq?.progress ?? 0),
+                points: nurseiqPoints
+            };
             this.metrics.totalPoints = totalPoints;
+            this.totalPoints = totalPoints;
             this.gamificationPoints = gamificationPoints;
-            
-            if (this.metrics.nurseiq) {
-                this.metrics.nurseiq.points = nurseiqPoints;
-            }
-            
-            // ✅ Update the UI elements directly
+
             if (this.elements.nurseiqPoints) {
-                this.elements.nurseiqPoints.innerText = nurseiqPoints;
+                this.elements.nurseiqPoints.textContent = nurseiqPoints;
             }
             if (this.elements.dashboardNurseIQPoints) {
                 this.elements.dashboardNurseIQPoints.textContent = nurseiqPoints;
             }
-            if (!this.elements.nurseiqPoints && !this.elements.dashboardNurseIQPoints) {
-                console.warn('⚠️ NurseIQ points element not found');
-            }
-            
             if (this.elements.totalPointsDisplay) {
-                this.elements.totalPointsDisplay.innerText = totalPoints;
-                console.log(`✅ Total points set to: ${totalPoints}`);
+                this.elements.totalPointsDisplay.textContent = totalPoints;
             }
-            
             if (this.elements.gamificationPointsDisplay) {
-                this.elements.gamificationPointsDisplay.innerText = gamificationPoints;
+                this.elements.gamificationPointsDisplay.textContent = gamificationPoints;
             }
-            
-            // ✅ Update login count display
-            if (this.elements.loginCountDisplay) {
-                this.elements.loginCountDisplay.innerText = loginCount;
-            }
-            
-            // ✅ Update login points (10 per login)
-            const loginPoints = loginCount * 10;
-            if (this.elements.loginPointsDisplay) {
-                this.elements.loginPointsDisplay.innerText = loginPoints;
-            }
-            
-            // ✅ Update the XP stats
+
             this.updateNurseIQStats(nurseiqPoints);
-            
-            // ✅ Update leaderboard
-            this.loadLeaderboardData('all');
-            
+
+            console.log('✅ NurseIQ display synced from RPC:', {
+                questions: nurseiq.questions,
+                attempts: nurseiq.attempts,
+                score: nurseiq.score,
+                accuracy: nurseiq.accuracy,
+                progress: nurseiq.progress,
+                points: nurseiqPoints,
+                totalPoints
+            });
+
         } catch (error) {
-            console.error('Error fixing NurseIQ display:', error);
+            console.error('❌ Error syncing NurseIQ display:', error);
         }
     }
-    
+
     // ============================================================
     // 📊 UPDATE NURSEIQ STATS IN THE UI
     // ============================================================
@@ -1709,7 +1687,19 @@ class DashboardModule {
             
             const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
             const progressPercent = totalQuestions > 0 ? Math.min(Math.round((totalQuestions / 105) * 100), 100) : 0;
-            const points = correctAnswers * 2;
+
+            // Exam Review points are awarded once per unique question reviewed
+            // and are persisted by NurseIQ under user_progress.progress_data.examReviewState.
+            let examReviewPoints = 0;
+            try {
+                const reviewPoints = progress?.progress_data?.examReviewState?.points;
+                examReviewPoints = Number(reviewPoints) || 0;
+            } catch (_) {
+                examReviewPoints = 0;
+            }
+
+            const practicePoints = correctAnswers * 2;
+            const points = practicePoints + examReviewPoints;
             
             this.metrics.nurseiq = { 
                 progress: progressPercent, 
@@ -1721,7 +1711,7 @@ class DashboardModule {
             this.nurseIQPoints = points;
             this.metrics.nurseiqPoints = points;
             
-            console.log(`🧠 NurseIQ calculated: ${points} pts (${correctAnswers} correct × 2)`);
+            console.log(`🧠 NurseIQ fallback calculated: ${points} pts (${practicePoints} practice + ${examReviewPoints} exam review)`);
             
         } catch (error) {
             console.error('NurseIQ error:', error);
@@ -2603,7 +2593,10 @@ class DashboardModule {
                 gamificationPoints = data?.gamification_points || 0;
                 this.metrics.totalPoints = data?.total_points || 0;
                 this.gamificationPoints = gamificationPoints;
-                nurseIQPoints = data?.nurseiq_points || 0;
+                // NurseIQ points must come from the dashboard/NurseIQ metrics,
+                // which include Exam Review points. The profile nurseiq_points field
+                // is a legacy fallback and may not include review points.
+                nurseIQPoints = Number(this.metrics.nurseiq?.points ?? this.nurseIQPoints ?? 0);
                 this.nurseIQPoints = nurseIQPoints;
             } catch (e) {
                 console.warn('Could not fetch login count for XP:', e);
@@ -2715,7 +2708,9 @@ class DashboardModule {
                 `${Math.max(0, Math.min(100, Number(xp.percent) || 0))}%`;
         }
 
-        setText(this.elements.dashboardNurseIQPoints, nurseiq.points ?? this.nurseIQPoints ?? 0);
+        const authoritativeNurseIQPoints = Number(nurseiq.points ?? this.nurseIQPoints ?? 0);
+        setText(this.elements.dashboardNurseIQPoints, authoritativeNurseIQPoints);
+        setText(this.elements.nurseiqPoints, authoritativeNurseIQPoints);
         setText(this.elements.attendancePoints, attendance.points ?? 0);
         setText(this.elements.loginPointsDisplay, login.points ?? 0);
         setText(this.elements.loginCountDisplay, login.count ?? 0);
