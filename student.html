@@ -12765,6 +12765,83 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
         }
     </style>
 </section>
+
+<!-- ============================================================
+     NURSEIQ EXAM REVIEW SURFACE
+     Shared review surface used by Exams -> Review Questions.
+     ============================================================ -->
+<style id="nurseiqExamReviewShellStyles">
+#nurseiq.nurseiq-exam-review-mode > *:not(#nurseiqExamReview){display:none!important}
+#nurseiqExamReview{width:100%;max-width:1180px;margin:0 auto;background:#fff;border:1px solid #E2E8F0;border-radius:18px;box-shadow:0 8px 30px rgba(15,23,42,.08);overflow:hidden}
+.nurseiq-review-hero{padding:20px 22px;background:linear-gradient(135deg,#0A3D62,#14577F 58%,#176B97);color:#fff}
+.nurseiq-review-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.nurseiq-review-title-wrap{display:flex;align-items:center;gap:12px;min-width:0}
+.nurseiq-review-icon{width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;color:#FDB913;font-size:20px;flex:0 0 auto}
+.nurseiq-review-title{margin:0;font-size:20px;font-weight:800;line-height:1.2}
+.nurseiq-review-meta{margin:5px 0 0;color:rgba(255,255,255,.82);font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+.nurseiq-review-back{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;border-radius:9px;padding:9px 13px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+.nurseiq-review-back:hover{background:rgba(255,255,255,.2)}
+.nurseiq-review-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:16px}
+.nurseiq-review-stat{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;min-width:0}
+.nurseiq-review-stat span{display:block;color:rgba(255,255,255,.72);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.35px}
+.nurseiq-review-stat strong{display:block;margin-top:3px;font-size:17px;color:#fff}
+.nurseiq-review-stat-points strong{color:#FDB913}
+.nurseiq-review-points-progress{height:4px;background:rgba(255,255,255,.16);border-radius:99px;overflow:hidden;margin-top:6px}
+.nurseiq-review-points-progress span{display:block;height:100%;width:0;background:#FDB913;border-radius:99px;transition:width .2s ease}
+.nurseiq-review-points-progress-text{display:block!important;margin-top:4px;color:rgba(255,255,255,.65)!important;font-size:8px!important;text-transform:none!important;letter-spacing:0!important}
+@media(max-width:800px){
+  #nurseiqExamReview{border-radius:14px}
+  .nurseiq-review-hero{padding:16px}
+  .nurseiq-review-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:520px){
+  .nurseiq-review-title-row{flex-direction:column}
+  .nurseiq-review-title-wrap{width:100%}
+  .nurseiq-review-back{width:100%}
+  .nurseiq-review-title{font-size:18px}
+  .nurseiq-review-stats{gap:7px}
+  .nurseiq-review-stat{padding:9px}
+}
+</style>
+
+<div id="nurseiqExamReview" class="nurseiq-exam-review" style="display:none;">
+    <div class="nurseiq-review-hero">
+        <div class="nurseiq-review-title-row">
+            <div class="nurseiq-review-title-wrap">
+                <div class="nurseiq-review-icon"><i class="fas fa-clipboard-check"></i></div>
+                <div>
+                    <h2 id="nurseiqExamReviewTitle" class="nurseiq-review-title">Exam Review</h2>
+                    <div id="nurseiqExamReviewMeta" class="nurseiq-review-meta">Preparing your exam review...</div>
+                </div>
+            </div>
+            <button type="button" class="nurseiq-review-back" onclick="window.closeNurseIQExamReview?.()">
+                <i class="fas fa-arrow-left"></i> Back to Exams
+            </button>
+        </div>
+        <div class="nurseiq-review-stats">
+            <div class="nurseiq-review-stat">
+                <span>Correct</span>
+                <strong id="nurseiqReviewCorrect">0/0</strong>
+            </div>
+            <div class="nurseiq-review-stat">
+                <span>Wrong</span>
+                <strong id="nurseiqReviewWrong">0/0</strong>
+            </div>
+            <div class="nurseiq-review-stat">
+                <span>Questions</span>
+                <strong id="nurseiqReviewTotal">0</strong>
+            </div>
+            <div class="nurseiq-review-stat nurseiq-review-stat-points">
+                <span>Review Points</span>
+                <strong id="nurseiqReviewPoints">0 / 0</strong>
+                <div class="nurseiq-review-points-progress"><span id="nurseiqReviewProgressBar"></span></div>
+                <span id="nurseiqReviewProgressText" class="nurseiq-review-points-progress-text">0 of 0 (0%)</span>
+            </div>
+        </div>
+    </div>
+    <div id="nurseiqExamReviewBody" class="nurseiq-review-body"></div>
+</div>
+
 <!-- END NURSEIQ / TVETIQ -->
 <!-- TOAST NOTIFICATION -->
 <!-- ========== TOAST NOTIFICATION ========== -->
