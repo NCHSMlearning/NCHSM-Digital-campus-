@@ -2027,331 +2027,376 @@ async function getCurrentUser() {
 }
 
 // ============================================
-// SEARCHABLE COURSE DROPDOWNS - CREATE
+// SEARCHABLE COURSE / UNIT DROPDOWNS
+// Lecturer-style implementation for Super Admin
 // ============================================
-let createCoursesData = [];
 
-async function initCreateCourseDropdown(program = '') {
-    console.log('🔍 Initializing create course dropdown...');
-    
-    const input = document.getElementById('createCourseSearchInput');
-    const list = document.getElementById('createCourseDropdownList');
-    const hidden = document.getElementById('exam_course_id');
-    
-    if (!input || !list) return;
-    
-    await loadCoursesForCreateDropdown(program);
-    
-    const newInput = input.cloneNode(true);
-    input.parentNode.replaceChild(newInput, input);
-    const freshInput = document.getElementById('createCourseSearchInput');
-    
-    freshInput.addEventListener('input', function() {
-        filterCreateCourseDropdown(this.value.toLowerCase().trim());
-    });
-    
-    freshInput.addEventListener('focus', function() {
-        document.getElementById('createCourseDropdownList').classList.add('show');
-        filterCreateCourseDropdown(this.value.toLowerCase().trim());
-    });
-    
-    freshInput.addEventListener('blur', function() {
-        setTimeout(() => {
-            document.getElementById('createCourseDropdownList').classList.remove('show');
-        }, 200);
-    });
-    
-    freshInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const firstItem = document.querySelector('#createCourseDropdownList .dropdown-item');
-            if (firstItem) firstItem.click();
-            e.preventDefault();
-        }
-        if (e.key === 'Escape') {
-            document.getElementById('createCourseDropdownList').classList.remove('show');
-        }
-    });
-    
-    filterCreateCourseDropdown('');
-    console.log('✅ Create course dropdown initialized');
+let createCoursesData = [];
+let editCoursesData = [];
+
+function normalizeSuperAdminCourse(row) {
+    row = row || {};
+    return {
+        id: row.id,
+        code: row.course_code || row.code || row.unit_code || row.courseCode || '',
+        name: row.course_name || row.name || row.unit_name || row.title || row.course || '',
+        program: row.program || row.program_code || row.target_program || ''
+    };
 }
 
-async function loadCoursesForCreateDropdown(program = '') {
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            console.error('❌ Supabase client not available');
-            createCoursesData = [];
-            return;
-        }
-        
-        let query = supabase
-            .from('courses')
-            .select('id, course_name, unit_code, code, name, target_program');
-        
-        if (program && program !== '') {
-            query = query.eq('target_program', program);
-        }
-        
-        const { data, error } = await query.order('course_name', { ascending: true });
-        if (error) throw error;
-        
-        createCoursesData = data || [];
-        console.log(`✅ Loaded ${createCoursesData.length} courses for create`);
-        filterCreateCourseDropdown('');
-    } catch (error) {
-        console.error('Error loading courses:', error);
-        createCoursesData = [];
+async function fetchSuperAdminCourses() {
+    const supabase = window.sb || window.supabase;
+    if (!supabase) {
+        console.error('❌ Supabase client not available');
+        return [];
     }
+
+    try {
+        const { data, error } = await supabase
+            .from('courses')
+            .select('*')
+            .limit(1000);
+
+        if (error) throw error;
+
+        return (data || []).map(normalizeSuperAdminCourse);
+    } catch (error) {
+        console.error('❌ Error loading courses:', error);
+        return [];
+    }
+}
+
+function courseMatchesProgram(course, program) {
+    if (!program) return true;
+    return !course.program || String(course.program).toLowerCase() === String(program).toLowerCase();
+}
+
+function renderSuperAdminCourseResults(list, courses, searchTerm, selectFn, programOverride = '') {
+    if (!list) return;
+
+    const query = String(searchTerm || '').trim().toLowerCase();
+
+    let filtered = courses.filter(course => {
+        const activeProgram = programOverride || document.getElementById('exam_program')?.value || '';
+        if (!courseMatchesProgram(course, activeProgram)) {
+            return false;
+        }
+
+        if (!query) return true;
+
+        return String(course.code || '').toLowerCase().includes(query) ||
+               String(course.name || '').toLowerCase().includes(query) ||
+               String(course.program || '').toLowerCase().includes(query);
+    });
+
+    if (!filtered.length) {
+        list.innerHTML =
+            '<div style="padding:12px;text-align:center;color:#94a3b8;font-size:13px;">' +
+            '<i class="fas fa-search"></i> No matching courses found</div>';
+        list.style.display = 'block';
+        return;
+    }
+
+    filtered = filtered.slice(0, 50);
+
+    list.innerHTML = filtered.map(course => {
+        const title = course.name || course.code || 'Unnamed Unit';
+        const code = course.code || '';
+        const program = course.program || '';
+
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        item.dataset.courseId = course.id;
+        item.style.cssText =
+            'padding:9px 14px;cursor:pointer;border-bottom:1px solid #f1f5f9;' +
+            'font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;';
+
+        item.innerHTML =
+            '<div>' +
+                '<strong style="color:#334155;">' + escapeHtml(title) + '</strong>' +
+                (code
+                    ? '<span style="font-size:11px;color:#94a3b8;margin-left:8px;">' +
+                      escapeHtml(code) + '</span>'
+                    : '') +
+            '</div>' +
+            (program
+                ? '<span style="font-size:10px;background:#ede9fe;color:#5b21b6;' +
+                  'padding:2px 7px;border-radius:10px;white-space:nowrap;">' +
+                  escapeHtml(program) + '</span>'
+                : '');
+
+        item.addEventListener('click', () => selectFn(course));
+        return item.outerHTML;
+    }).join('');
+
+    // Rebind safely after rendering; no inline onclick strings.
+    list.querySelectorAll('[data-course-id]').forEach(item => {
+        item.addEventListener('click', () => {
+            const course = courses.find(c => String(c.id) === String(item.dataset.courseId));
+            if (course) selectFn(course);
+        });
+    });
+
+    if (courses.length > 50) {
+        const more = document.createElement('div');
+        more.style.cssText =
+            'padding:8px;text-align:center;color:#94a3b8;font-size:11px;';
+        more.textContent = `Showing first 50 of ${filtered.length} matching units`;
+        list.appendChild(more);
+    }
+
+    list.style.display = 'block';
+}
+
+async function initCreateCourseDropdown(program = '') {
+    const input = document.getElementById('createCourseSearchInput');
+    const list = document.getElementById('createCourseDropdownList');
+
+    if (!input || !list) return;
+
+    createCoursesData = await fetchSuperAdminCourses();
+
+    input.dataset.courseSearchBound = '1';
+
+    // Avoid duplicate listeners when the Exams tab is opened repeatedly.
+    if (!input.dataset.bound) {
+        input.dataset.bound = '1';
+
+        input.addEventListener('input', () => {
+            filterCreateCourseDropdown(input.value);
+        });
+
+        input.addEventListener('focus', () => {
+            filterCreateCourseDropdown(input.value);
+        });
+
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                const first = list.querySelector('[data-course-id]');
+                if (first) first.click();
+                e.preventDefault();
+            }
+
+            if (e.key === 'Escape') {
+                list.style.display = 'none';
+            }
+        });
+    }
+
+    filterCreateCourseDropdown('');
 }
 
 function filterCreateCourseDropdown(searchTerm = '') {
     const list = document.getElementById('createCourseDropdownList');
     if (!list) return;
-    
-    let filtered = createCoursesData;
-    if (searchTerm) {
-        filtered = createCoursesData.filter(c => {
-            const name = (c.course_name || c.name || '').toLowerCase();
-            const code = (c.unit_code || c.code || '').toLowerCase();
-            return name.includes(searchTerm) || code.includes(searchTerm);
-        });
-    }
-    
-    if (filtered.length === 0) {
-        list.innerHTML = `<div class="no-results"><i class="fas fa-search"></i> No courses found</div>`;
-        list.classList.add('show');
-        return;
-    }
-    
-    let html = '';
-    const displayItems = filtered.slice(0, 50);
-    
-    displayItems.forEach(course => {
-        const displayName = course.course_name || course.name || 'Untitled';
-        const unitCode = course.unit_code || course.code || '';
-        const programTag = course.target_program ? `[${course.target_program}]` : '';
-        
-        html += `
-            <div class="dropdown-item" 
-                 onclick="selectCreateCourse('${course.id}', '${escapeHtml(displayName)}', '${escapeHtml(unitCode)}', '${escapeHtml(programTag)}')">
-                <span>${escapeHtml(displayName)}</span>
-                <span style="display:flex;gap:6px;align-items:center;">
-                    ${unitCode ? `<span class="course-code">${escapeHtml(unitCode)}</span>` : ''}
-                    ${programTag ? `<span class="program-tag">${escapeHtml(programTag)}</span>` : ''}
-                </span>
-            </div>
-        `;
-    });
-    
-    if (filtered.length > 50) {
-        html += `<div class="no-results" style="font-size:12px;">And ${filtered.length - 50} more</div>`;
-    }
-    
-    list.innerHTML = html;
-    list.classList.add('show');
+
+    renderSuperAdminCourseResults(
+        list,
+        createCoursesData,
+        searchTerm,
+        selectCreateCourseObject,
+        document.getElementById('exam_program')?.value || ''
+    );
 }
 
-function selectCreateCourse(courseId, courseName, courseCode, programTag) {
+function selectCreateCourseObject(course) {
     const input = document.getElementById('createCourseSearchInput');
     const hidden = document.getElementById('exam_course_id');
     const list = document.getElementById('createCourseDropdownList');
     const display = document.getElementById('createSelectedCourseDisplay');
     const nameDisplay = document.getElementById('createSelectedCourseName');
-    
-    if (input) input.value = courseName + (courseCode ? ` (${courseCode})` : '');
-    if (hidden) hidden.value = courseId;
-    if (list) list.classList.remove('show');
+
+    window.selectedSuperAdminCreateCourse = course;
+
+    const label = course.name + (course.code ? ` (${course.code})` : '');
+
+    if (input) input.value = label;
+    if (hidden) hidden.value = course.id || '';
+    if (list) list.style.display = 'none';
+
     if (display && nameDisplay) {
         display.style.display = 'inline';
-        nameDisplay.textContent = courseName + (courseCode ? ` (${courseCode})` : '');
+        nameDisplay.textContent = label;
     }
 }
 
-function updateCreateCourseDropdown() {
-    const programSelect = document.getElementById('exam_program');
-    const program = programSelect?.value || '';
-    loadCoursesForCreateDropdown(program);
-    filterCreateCourseDropdown('');
-    
+function selectCreateCourse(courseId, courseName, courseCode) {
+    selectCreateCourseObject({
+        id: courseId,
+        name: courseName || '',
+        code: courseCode || '',
+        program: ''
+    });
+}
+
+async function updateCreateCourseDropdown() {
+    const program = document.getElementById('exam_program')?.value || '';
+
+    // Keep the complete course list like the lecturer portal.
+    // Program is applied client-side so units with blank target_program
+    // remain available.
+    if (!createCoursesData.length) {
+        createCoursesData = await fetchSuperAdminCourses();
+    }
+
     const input = document.getElementById('createCourseSearchInput');
     const hidden = document.getElementById('exam_course_id');
     const display = document.getElementById('createSelectedCourseDisplay');
+
     if (input) input.value = '';
     if (hidden) hidden.value = '';
     if (display) display.style.display = 'none';
-}
 
-// ============================================
-// SEARCHABLE COURSE DROPDOWNS - EDIT
-// ============================================
-let editCoursesData = [];
+    window.selectedSuperAdminCreateCourse = null;
+
+    filterCreateCourseDropdown('');
+}
 
 async function initEditCourseDropdown(program = '', selectedId = '') {
-    console.log('🔍 Initializing edit course dropdown...');
-    
-    const input = document.getElementById('editCourseSearchInput');
-    const list = document.getElementById('editCourseDropdownList');
-    const hidden = document.getElementById('edit_exam_course');
-    
+    const input =
+        document.getElementById('editCourseSearchInput') ||
+        document.getElementById('courseSearchInput');
+
+    const list =
+        document.getElementById('editCourseDropdownList') ||
+        document.getElementById('courseDropdownList');
+
     if (!input || !list) return;
-    
-    await loadCoursesForEditDropdown(program);
-    
-    const newInput = input.cloneNode(true);
-    input.parentNode.replaceChild(newInput, input);
-    const freshInput = document.getElementById('editCourseSearchInput');
-    
-    freshInput.addEventListener('input', function() {
-        filterEditCourseDropdown(this.value.toLowerCase().trim());
-    });
-    
-    freshInput.addEventListener('focus', function() {
-        document.getElementById('editCourseDropdownList').classList.add('show');
-        filterEditCourseDropdown(this.value.toLowerCase().trim());
-    });
-    
-    freshInput.addEventListener('blur', function() {
-        setTimeout(() => {
-            document.getElementById('editCourseDropdownList').classList.remove('show');
-        }, 200);
-    });
-    
-    freshInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const firstItem = document.querySelector('#editCourseDropdownList .dropdown-item');
-            if (firstItem) firstItem.click();
-            e.preventDefault();
-        }
-        if (e.key === 'Escape') {
-            document.getElementById('editCourseDropdownList').classList.remove('show');
-        }
-    });
-    
+
+    editCoursesData = await fetchSuperAdminCourses();
+
+    if (!input.dataset.bound) {
+        input.dataset.bound = '1';
+
+        input.addEventListener('input', () => {
+            filterEditCourseDropdown(input.value);
+        });
+
+        input.addEventListener('focus', () => {
+            filterEditCourseDropdown(input.value);
+        });
+
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                const first = list.querySelector('[data-course-id]');
+                if (first) first.click();
+                e.preventDefault();
+            }
+
+            if (e.key === 'Escape') {
+                list.style.display = 'none';
+            }
+        });
+    }
+
     if (selectedId) {
         setEditCourseValue(selectedId);
-    }
-    
-    filterEditCourseDropdown('');
-    console.log('✅ Edit course dropdown initialized');
-}
-
-async function loadCoursesForEditDropdown(program = '') {
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            console.error('❌ Supabase client not available');
-            editCoursesData = [];
-            return;
-        }
-        
-        let query = supabase
-            .from('courses')
-            .select('id, course_name, unit_code, code, name, target_program');
-        
-        if (program && program !== '') {
-            query = query.eq('target_program', program);
-        }
-        
-        const { data, error } = await query.order('course_name', { ascending: true });
-        if (error) throw error;
-        
-        editCoursesData = data || [];
-        console.log(`✅ Loaded ${editCoursesData.length} courses for edit`);
+    } else {
         filterEditCourseDropdown('');
-    } catch (error) {
-        console.error('Error loading courses:', error);
-        editCoursesData = [];
     }
 }
 
 function filterEditCourseDropdown(searchTerm = '') {
-    let list = document.getElementById('editCourseDropdownList');
-    if (!list) {
-        list = document.getElementById('courseDropdownList');
-    }
+    const list =
+        document.getElementById('editCourseDropdownList') ||
+        document.getElementById('courseDropdownList');
+
     if (!list) return;
-    
-    let filtered = editCoursesData;
-    if (searchTerm) {
-        filtered = editCoursesData.filter(c => {
-            const name = (c.course_name || c.name || '').toLowerCase();
-            const code = (c.unit_code || c.code || '').toLowerCase();
-            return name.includes(searchTerm) || code.includes(searchTerm);
-        });
-    }
-    
-    if (filtered.length === 0) {
-        list.innerHTML = `<div class="no-results"><i class="fas fa-search"></i> No courses found</div>`;
-        list.classList.add('show');
-        return;
-    }
-    
-    let html = '';
-    const displayItems = filtered.slice(0, 50);
-    
-    displayItems.forEach(course => {
-        const displayName = course.course_name || course.name || 'Untitled';
-        const unitCode = course.unit_code || course.code || '';
-        const programTag = course.target_program ? `[${course.target_program}]` : '';
-        
-        html += `
-            <div class="dropdown-item" 
-                 onclick="selectEditCourse('${course.id}', '${escapeHtml(displayName)}', '${escapeHtml(unitCode)}', '${escapeHtml(programTag)}')">
-                <span>${escapeHtml(displayName)}</span>
-                <span style="display:flex;gap:6px;align-items:center;">
-                    ${unitCode ? `<span class="course-code">${escapeHtml(unitCode)}</span>` : ''}
-                    ${programTag ? `<span class="program-tag">${escapeHtml(programTag)}</span>` : ''}
-                </span>
-            </div>
-        `;
-    });
-    
-    if (filtered.length > 50) {
-        html += `<div class="no-results" style="font-size:12px;">And ${filtered.length - 50} more</div>`;
-    }
-    
-    list.innerHTML = html;
-    list.classList.add('show');
+
+    renderSuperAdminCourseResults(
+        list,
+        editCoursesData,
+        searchTerm,
+        selectEditCourseObject,
+        document.getElementById('edit_exam_program')?.value ||
+        document.getElementById('exam_program')?.value ||
+        ''
+    );
 }
 
-function selectEditCourse(courseId, courseName, courseCode, programTag) {
-    const input = document.getElementById('editCourseSearchInput') || document.getElementById('courseSearchInput');
+function selectEditCourseObject(course) {
+    const input =
+        document.getElementById('editCourseSearchInput') ||
+        document.getElementById('courseSearchInput');
+
     const hidden = document.getElementById('edit_exam_course');
-    const list = document.getElementById('editCourseDropdownList') || document.getElementById('courseDropdownList');
-    const display = document.getElementById('editSelectedCourseDisplay') || document.getElementById('selectedCourseDisplay');
-    const nameDisplay = document.getElementById('editSelectedCourseName') || document.getElementById('selectedCourseName');
-    
-    if (input) input.value = courseName + (courseCode ? ` (${courseCode})` : '');
-    if (hidden) hidden.value = courseId;
-    if (list) list.classList.remove('show');
+
+    const list =
+        document.getElementById('editCourseDropdownList') ||
+        document.getElementById('courseDropdownList');
+
+    const display =
+        document.getElementById('editSelectedCourseDisplay') ||
+        document.getElementById('selectedCourseDisplay');
+
+    const nameDisplay =
+        document.getElementById('editSelectedCourseName') ||
+        document.getElementById('selectedCourseName');
+
+    window.selectedSuperAdminEditCourse = course;
+
+    const label = course.name + (course.code ? ` (${course.code})` : '');
+
+    if (input) input.value = label;
+    if (hidden) hidden.value = course.id || '';
+    if (list) list.style.display = 'none';
+
     if (display && nameDisplay) {
         display.style.display = 'inline';
-        nameDisplay.textContent = courseName + (courseCode ? ` (${courseCode})` : '');
+        nameDisplay.textContent = label;
     }
+}
+
+function selectEditCourse(courseId, courseName, courseCode) {
+    selectEditCourseObject({
+        id: courseId,
+        name: courseName || '',
+        code: courseCode || '',
+        program: ''
+    });
 }
 
 function setEditCourseValue(courseId) {
     if (!courseId) return;
-    
-    const course = editCoursesData.find(c => c.id === courseId);
-    if (!course) return;
-    
-    const input = document.getElementById('editCourseSearchInput') || document.getElementById('courseSearchInput');
-    const hidden = document.getElementById('edit_exam_course');
-    const display = document.getElementById('editSelectedCourseDisplay') || document.getElementById('selectedCourseDisplay');
-    const nameDisplay = document.getElementById('editSelectedCourseName') || document.getElementById('selectedCourseName');
-    
-    if (hidden) hidden.value = courseId;
-    
-    const displayName = course.course_name || course.name || 'Untitled';
-    const unitCode = course.unit_code || course.code || '';
-    
-    if (input) input.value = displayName + (unitCode ? ` (${unitCode})` : '');
-    if (display && nameDisplay) {
-        display.style.display = 'inline';
-        nameDisplay.textContent = displayName + (unitCode ? ` (${unitCode})` : '');
+
+    const course = editCoursesData.find(
+        c => String(c.id) === String(courseId)
+    );
+
+    if (!course) {
+        const hidden = document.getElementById('edit_exam_course');
+        if (hidden) hidden.value = courseId;
+        return;
     }
+
+    selectEditCourseObject(course);
+}
+
+// Close both dropdowns when clicking outside.
+if (!window.__superAdminCourseOutsideClickBound) {
+    window.__superAdminCourseOutsideClickBound = true;
+
+    document.addEventListener('click', e => {
+        const createContainer =
+            document.getElementById('createCourseSearchContainer');
+
+        const editContainer =
+            document.getElementById('editCourseSearchContainer') ||
+            document.getElementById('courseSearchContainer');
+
+        if (createContainer && !createContainer.contains(e.target)) {
+            const list = document.getElementById('createCourseDropdownList');
+            if (list) list.style.display = 'none';
+        }
+
+        if (editContainer && !editContainer.contains(e.target)) {
+            const list =
+                document.getElementById('editCourseDropdownList') ||
+                document.getElementById('courseDropdownList');
+
+            if (list) list.style.display = 'none';
+        }
+    });
 }
 
 // ============================================
