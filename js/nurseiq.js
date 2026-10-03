@@ -2461,12 +2461,29 @@ async saveProgressToDatabase() {
                     });
             }
 
-            reviews.sort((a, b) =>
+            // Only show assessments that the student actually attempted.
+            // A sentinel summary grade / hasGrade record represents an attended
+            // attempt; scheduled, upcoming and missed assessments are excluded.
+            const attemptedReviews = reviews.filter(r => {
+                const hasSummaryAttempt = summaryGrades.some(g =>
+                    String(g.exam_id) === String(r.examId) &&
+                    String(g.student_id || this.userId) === String(this.userId)
+                );
+                const hasModuleAttempt = Boolean(r.grade && (r.gradeId || r.grade?.id)) ||
+                    Boolean(r.exam?.hasGrade && (r.exam?.gradeId || r.exam?.grade));
+                return hasSummaryAttempt || hasModuleAttempt;
+            });
+
+            const uniqueReviews = Array.from(
+                new Map(attemptedReviews.map(r => [String(r.examId), r])).values()
+            );
+
+            uniqueReviews.sort((a, b) =>
                 new Date(b.date || 0) - new Date(a.date || 0)
             );
 
-            this.releasedExamReviews = reviews;
-            this.completedExamCount = summaryGrades.length || reviews.length;
+            this.releasedExamReviews = uniqueReviews;
+            this.completedExamCount = uniqueReviews.length;
 
             this.renderReleasedExamReviews();
 
@@ -2496,6 +2513,24 @@ async saveProgressToDatabase() {
                     </td></tr>`;
             }
         }
+    }
+
+    ensureExamReviewNavigatorStyles() {
+        if (document.getElementById('nurseiq-exam-review-navigator-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'nurseiq-exam-review-navigator-styles';
+        style.textContent = `
+            .niq-question-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+            .niq-qnav{width:100%;aspect-ratio:1/1;border:1px solid #dbe4ef;border-radius:9px;background:#f8fafc;color:#64748b;font-weight:800;font-size:11px;cursor:pointer;transition:.16s ease;box-sizing:border-box}
+            .niq-qnav.correct{background:#eff6ff!important;border-color:#3b82f6!important;color:#1d4ed8!important}
+            .niq-qnav.incorrect{background:#fef2f2!important;border-color:#ef4444!important;color:#dc2626!important}
+            .niq-qnav.unanswered{background:#f8fafc!important;border-color:#cbd5e1!important;color:#64748b!important}
+            .niq-qnav.active{box-shadow:0 0 0 3px rgba(37,99,235,.16);transform:translateY(-1px)}
+            .niq-qnav.correct.active{box-shadow:0 0 0 3px rgba(37,99,235,.24)}
+            .niq-qnav.incorrect.active{box-shadow:0 0 0 3px rgba(239,68,68,.20)}
+            @media(max-width:520px){.niq-question-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.niq-qnav{font-size:10px;border-radius:7px}}
+        `;
+        document.head.appendChild(style);
     }
 
     renderReleasedExamReviews() {
@@ -2756,16 +2791,30 @@ async saveProgressToDatabase() {
             !q.isAnswered ? 'NOT ANSWERED' :
             q.isCorrect ? 'CORRECT' : 'INCORRECT';
 
+        this.ensureExamReviewNavigatorStyles();
+
         const nav = review.questions.map((item, i) => {
+            const statusClass = item.isCorrect
+                ? 'correct'
+                : item.isAnswered
+                    ? 'incorrect'
+                    : 'unanswered';
             const cls = [
                 'niq-qnav',
-                i === safeIndex ? 'active' : '',
-                item.isCorrect ? 'correct' :
-                    item.isAnswered ? 'incorrect' : ''
+                statusClass,
+                i === safeIndex ? 'active' : ''
             ].filter(Boolean).join(' ');
+
+            const statusLabel = item.isCorrect
+                ? 'Correct'
+                : item.isAnswered
+                    ? 'Wrong'
+                    : 'Not answered';
 
             return `
                 <button type="button" class="${cls}"
+                    title="Question ${i + 1}: ${statusLabel}"
+                    aria-label="Question ${i + 1}: ${statusLabel}"
                     onclick="window.nurseiqModule?.renderExamReviewQuestion(${i})">
                     ${i + 1}
                 </button>`;
