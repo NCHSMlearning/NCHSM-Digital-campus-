@@ -453,7 +453,7 @@ const LecturerDashboard = {
             const lecturerEl = document.getElementById('nrdNextClassLecturer');
 
             if (!nextClass) {
-                if (timeEl) timeEl.textContent = '--:--';
+                if (timeEl) timeEl.innerHTML = '--:--';
                 if (durationEl) durationEl.textContent = 'No upcoming class';
                 if (nameEl) nameEl.textContent = 'No Upcoming Class';
                 if (unitEl) unitEl.textContent = 'Check your timetable for the latest schedule.';
@@ -466,8 +466,8 @@ const LecturerDashboard = {
                 const endTime = String(nextClass.end_time || '').substring(0, 5) || 'TBA';
                 const dateLabel = isToday ? 'TODAY' : this.formatKenyaDate(classDate);
 
-                if (timeEl) timeEl.textContent = startTime;
-                if (durationEl) durationEl.textContent = `${dateLabel} • ${startTime} — ${endTime}`;
+                if (timeEl) timeEl.innerHTML = `${startTime}<span class="nrd-next-class-end-time">${endTime}</span>`;
+                if (durationEl) durationEl.textContent = `${dateLabel}`;
                 if (nameEl) nameEl.textContent = nextClass.session_name || nextClass.course_name || 'Scheduled Class';
                 if (unitEl) unitEl.textContent = nextClass.course_name || nextClass.session_name || nextClass.block || 'Scheduled teaching session';
                 if (venueEl) venueEl.textContent = nextClass.venue || 'Venue TBA';
