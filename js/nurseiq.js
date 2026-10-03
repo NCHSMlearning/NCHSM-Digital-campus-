@@ -197,6 +197,9 @@ class NurseIQModule {
         this.examReviewState = { viewed: {}, points: 0 };
         this.currentExamReview = null;
         this.currentExamReviewIndex = 0;
+        this.releasedExamRecords = [];
+        this.releasedExamMap = new Map();
+        this._releasedExamLoadTimer = null;
         this.saveTimeout = null;
         this._isSaving = false;
         this._isLoadingQuestions = false;
@@ -1864,6 +1867,167 @@ async saveProgressToDatabase() {
     }
     
     // ============================================================
+    // 📚 RELEASED EXAMS — NURSEIQ REVIEW SELECTOR
+    // ============================================================
+    getReleasedExamsFromModule() {
+        const examsModule = window.examsModule;
+        if (!examsModule) return [];
+        const source = Array.isArray(examsModule.completedExams) && examsModule.completedExams.length
+            ? examsModule.completedExams
+            : (Array.isArray(examsModule.allExams) ? examsModule.allExams : []);
+        return source
+            .filter(exam => exam && exam.isReleased === true && (exam.isCompleted === true || exam.hasGrade === true))
+            .map(exam => this.normalizeReleasedExam(exam, null))
+            .filter(Boolean)
+            .sort((a,b) => new Date(b.dateTaken || 0) - new Date(a.dateTaken || 0));
+    }
+
+    normalizeReleasedExam(exam, grade) {
+        if (!exam) return null;
+        const id = exam.id ?? exam.exam_id ?? exam.examId;
+        if (id === undefined || id === null || id === '') return null;
+        const isCat = !!exam.isCatExam || String(exam.exam_type || '').toUpperCase().includes('CAT');
+        const totalMarks = Number(exam.marks_out_of || exam.total_marks || (isCat ? 30 : 70));
+        let marks = Number(exam.marks ?? exam.displayScore ?? grade?.marks ?? grade?.total_score ?? 0);
+        let percentage = Number(exam.totalPercentage ?? grade?.percentage ?? 0);
+        if (!percentage && marks >= 0 && totalMarks > 0) percentage = Math.round((marks / totalMarks) * 100);
+        const dateValue = exam.gradedAt || exam.submitted_at || exam.examDate || exam.exam_date || exam.examStartDateTime || exam.created_at || grade?.updated_at;
+        const dateTaken = dateValue ? new Date(dateValue) : null;
+        const name = (typeof exam.exam_name === 'string' && exam.exam_name.trim() && exam.exam_name !== '[object Object]')
+            ? exam.exam_name.trim()
+            : ((typeof exam.title === 'string' && exam.title.trim()) ? exam.title.trim() : 'Assessment');
+        return {
+            id: Number(id),
+            name,
+            type: isCat ? 'CAT' : 'FINAL EXAM',
+            dateTaken: dateTaken && !Number.isNaN(dateTaken.getTime()) ? dateTaken.toISOString() : null,
+            score: marks,
+            totalMarks,
+            percentage,
+            grade: exam.gradeText || this.getResultGrade(percentage),
+            reviewPoints: this.getExamReviewPointsForExam(Number(id)),
+            released: true,
+            raw: exam
+        };
+    }
+
+    getResultGrade(percentage) {
+        const p = Number(percentage || 0);
+        if (p >= 85) return 'Distinction';
+        if (p >= 75) return 'Credit';
+        if (p >= 60) return 'Pass';
+        return 'Fail';
+    }
+
+    formatExamReviewDate(value) {
+        if (!value) return 'Date not available';
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return String(value);
+        return d.toLocaleDateString('en-KE', { day:'2-digit', month:'short', year:'numeric' });
+    }
+
+    async loadReleasedExamList() {
+        const tbody = document.getElementById('nurseiqReleasedExamTableBody');
+        const select = document.getElementById('nurseiqExamReviewSelect');
+        const openBtn = document.getElementById('nurseiqExamReviewOpenBtn');
+        if (!tbody || !select) return;
+
+        let records = this.getReleasedExamsFromModule();
+
+        // The Exams module can initialize slightly after NurseIQ. Give it a short window.
+        if (!records.length && !window.examsModule) {
+            await new Promise(resolve => setTimeout(resolve, 900));
+            records = this.getReleasedExamsFromModule();
+        }
+
+        // Secure fallback: use the same student-exams RPC already used by the CAT/Exams module.
+        if (!records.length) {
+            try {
+                const supabase = this.getSupabaseClient();
+                if (supabase && this.userId) {
+                    const { data, error } = await supabase.rpc('get_student_exams', { p_user_id: this.userId });
+                    if (!error && data) {
+                        const grades = Array.isArray(data.grades) ? data.grades : [];
+                        const releasedIds = new Set((data.released || []).map(v => String(v)));
+                        const releasedGrades = grades.filter(g => {
+                            const status = String(g.result_status || '').toUpperCase();
+                            return g && g.question_id === '00000000-0000-0000-0000-000000000000' && (
+                                releasedIds.has(String(g.id)) ||
+                                g.released === true || String(g.released).toLowerCase() === 'true' ||
+                                !!g.released_at || ['PASS','FAIL','RELEASED'].includes(status)
+                            );
+                        });
+                        const gradeByExam = new Map(releasedGrades.map(g => [String(g.exam_id), g]));
+                        records = (data.exams || [])
+                            .filter(e => gradeByExam.has(String(e.id ?? e.exam_id ?? e.examId)))
+                            .map(e => this.normalizeReleasedExam(e, gradeByExam.get(String(e.id ?? e.exam_id ?? e.examId))))
+                            .filter(Boolean);
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Could not load released NurseIQ exams:', error);
+            }
+        }
+
+        const unique = new Map();
+        records.forEach(r => unique.set(String(r.id), r));
+        this.releasedExamRecords = Array.from(unique.values()).sort((a,b) => new Date(b.dateTaken || 0) - new Date(a.dateTaken || 0));
+        this.releasedExamMap = new Map(this.releasedExamRecords.map(r => [String(r.id), r]));
+
+        if (!this.releasedExamRecords.length) {
+            select.innerHTML = '<option value="">No released exam results available</option>';
+            if (openBtn) openBtn.disabled = true;
+            tbody.innerHTML = '<tr><td colspan="8"><div class="ni-empty-review"><i class="fas fa-inbox"></i>No completed exams with released results are available yet.</div></td></tr>';
+            return;
+        }
+
+        select.innerHTML = '<option value="">Select a released exam...</option>' + this.releasedExamRecords.map(r =>
+            `<option value="${r.id}">${this.escapeHtml(r.name)} — ${r.type} — ${r.score}/${r.totalMarks} (${r.percentage}%)</option>`
+        ).join('');
+        if (openBtn) openBtn.disabled = true;
+
+        tbody.innerHTML = this.releasedExamRecords.map(r => `
+            <tr>
+                <td><div class="ni-exam-name">${this.escapeHtml(r.name)}</div></td>
+                <td><span class="ni-exam-type ${r.type === 'FINAL EXAM' ? 'final' : ''}">${this.escapeHtml(r.type)}</span></td>
+                <td>${this.escapeHtml(this.formatExamReviewDate(r.dateTaken))}</td>
+                <td><span class="ni-score">${this.escapeHtml(String(r.score))} / ${this.escapeHtml(String(r.totalMarks))}</span></td>
+                <td><span class="ni-percent">${this.escapeHtml(String(r.percentage))}%</span></td>
+                <td><span class="ni-released"><i class="fas fa-check-circle"></i> Released</span></td>
+                <td><strong style="color:#2563eb">+${r.reviewPoints}</strong></td>
+                <td><button type="button" class="ni-review-btn" onclick="window.openNurseIQExamReview?.(${r.id})"><i class="fas fa-book-open"></i> Review</button></td>
+            </tr>
+        `).join('');
+
+        if (select.options.length > 1) {
+            const remembered = sessionStorage.getItem('nurseiq_selected_exam_review');
+            if (remembered && this.releasedExamMap.has(String(remembered))) select.value = remembered;
+        }
+    }
+
+    openSelectedExamReview() {
+        const select = document.getElementById('nurseiqExamReviewSelect');
+        const id = select?.value;
+        if (!id) return;
+        sessionStorage.setItem('nurseiq_selected_exam_review', String(id));
+        return this.openExamReview(id);
+    }
+
+    setNurseIQView(view, button) {
+        document.querySelectorAll('#nurseiq .ni-nav-btn').forEach(btn => btn.classList.remove('active'));
+        if (button) button.classList.add('active');
+        const targets = {
+            practice: 'nurseiqPracticeArea',
+            review: 'nurseiqExamReviewList',
+            performance: 'nurseiqStatsBar',
+            achievements: 'nurseiqStatsBar'
+        };
+        const target = document.getElementById(targets[view] || 'nurseiqPracticeArea');
+        target?.scrollIntoView({ behavior:'smooth', block:'start' });
+        if (view === 'review') this.loadReleasedExamList();
+    }
+
+    // ============================================================
     // 📋 NURSEIQ EXAM REVIEW - SINGLE REVIEW SURFACE
     // ============================================================
     async openExamReview(examId) {
@@ -2207,7 +2371,11 @@ async saveProgressToDatabase() {
         document.getElementById('nurseiq')?.classList.remove('nurseiq-exam-review-mode');
         const reviewEl = document.getElementById('nurseiqExamReview');
         if (reviewEl) reviewEl.style.display = 'none';
-        window.showTab?.('cats');
+        window.showTab?.('nurseiq');
+        this.loadReleasedExamList?.();
+        const practiceBtn = document.querySelector('#nurseiq .ni-nav-btn');
+        document.querySelectorAll('#nurseiq .ni-nav-btn').forEach(btn => btn.classList.remove('active'));
+        if (practiceBtn) practiceBtn.classList.add('active');
     }
 
     escapeHtml(value) {
@@ -2230,9 +2398,22 @@ async saveProgressToDatabase() {
         console.log('🚀 Initializing NurseIQ Module...');
         
         this.cacheElements();
+        const reviewSelect = document.getElementById('nurseiqExamReviewSelect');
+        const reviewOpen = document.getElementById('nurseiqExamReviewOpenBtn');
+        if (reviewSelect && !reviewSelect.dataset.nurseiqBound) {
+            reviewSelect.dataset.nurseiqBound = '1';
+            reviewSelect.addEventListener('change', () => {
+                if (reviewOpen) reviewOpen.disabled = !reviewSelect.value;
+            });
+        }
+        if (reviewOpen && !reviewOpen.dataset.nurseiqBound) {
+            reviewOpen.dataset.nurseiqBound = '1';
+            reviewOpen.addEventListener('click', () => this.openSelectedExamReview());
+        }
         this.updateUIForProgram();
         await this.loadUserProgress();
         await this.loadQuestionBankCards();
+        await this.loadReleasedExamList();
         
         // ✅ Force save to database on init
         await this.saveProgressToDatabase();
@@ -2264,6 +2445,13 @@ window.initNurseIQ = initNurseIQ;
 window.loadQuestionBankCards = function() {
     if (nurseiqModule) nurseiqModule.loadQuestionBankCards();
     else initNurseIQ().then(() => nurseiqModule.loadQuestionBankCards()).catch(console.error);
+};
+window.loadReleasedExamList = function() {
+    if (nurseiqModule) return nurseiqModule.loadReleasedExamList();
+    return initNurseIQ().then(() => nurseiqModule.loadReleasedExamList()).catch(console.error);
+};
+window.setNurseIQView = function(view, button) {
+    if (nurseiqModule) nurseiqModule.setNurseIQView(view, button);
 };
 window.clearQuestionBankSearch = function() {
     if (nurseiqModule) nurseiqModule.clearQuestionBankSearch();
