@@ -245,28 +245,111 @@ class NurseIQModule {
             warning: '#f59e0b',
             info: '#4C1D95'
         };
-        
-        const container = document.getElementById('toast-container');
-        if (container) {
-            const toast = document.createElement('div');
-            toast.style.cssText = `
-                background: ${colors[type] || '#4C1D95'};
-                color: white;
-                padding: 12px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                max-width: 400px;
-                animation: slideInRight 0.3s ease;
-                font-size: 14px;
-                margin-bottom: 8px;
-                z-index: 9999;
+
+        // NurseIQ success feedback: compact toast in the top-right corner.
+        // Keep the message visually lightweight so it does not interrupt the test.
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.setAttribute('aria-live', 'polite');
+            container.setAttribute('aria-atomic', 'true');
+            container.style.cssText = `
+                position: fixed;
+                top: 18px;
+                right: 18px;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 8px;
+                z-index: 2147483647;
+                pointer-events: none;
             `;
-            toast.textContent = message;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+            document.body.appendChild(container);
         } else {
-            console.log(`[${type}] ${message}`);
+            // Force the shared container into the top-right if another page style
+            // has positioned it elsewhere.
+            container.style.position = 'fixed';
+            container.style.top = '18px';
+            container.style.right = '18px';
+            container.style.left = 'auto';
+            container.style.bottom = 'auto';
+            container.style.zIndex = '2147483647';
+            container.style.pointerEvents = 'none';
         }
+
+        const toast = document.createElement('div');
+        const isSuccess = type === 'success';
+        toast.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-height: 42px;
+            padding: 10px 14px;
+            background: #ffffff;
+            color: #17324d;
+            border: 1px solid ${isSuccess ? '#a7f3d0' : '#e2e8f0'};
+            border-left: 4px solid ${colors[type] || colors.info};
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+            max-width: min(360px, calc(100vw - 36px));
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.35;
+            animation: nurseIQToastIn 0.25s ease-out;
+            pointer-events: auto;
+        `;
+
+        const icon = document.createElement('span');
+        icon.style.cssText = `
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: ${isSuccess ? '#d1fae5' : `${colors[type] || colors.info}18`};
+            color: ${colors[type] || colors.info};
+            font-size: 13px;
+            font-weight: 800;
+        `;
+        icon.textContent = isSuccess ? '✓' : (type === 'error' ? '!' : 'i');
+
+        const text = document.createElement('span');
+        text.textContent = message;
+
+        toast.appendChild(icon);
+        toast.appendChild(text);
+        container.appendChild(toast);
+
+        // Add the animation once without touching the page's existing CSS.
+        if (!document.getElementById('nurseIQToastStyles')) {
+            const style = document.createElement('style');
+            style.id = 'nurseIQToastStyles';
+            style.textContent = `
+                @keyframes nurseIQToastIn {
+                    from { opacity: 0; transform: translate3d(18px, -6px, 0); }
+                    to { opacity: 1; transform: translate3d(0, 0, 0); }
+                }
+                @media (max-width: 600px) {
+                    #toast-container {
+                        top: 10px !important;
+                        right: 10px !important;
+                        left: 10px !important;
+                        align-items: stretch !important;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate3d(18px, -4px, 0)';
+            setTimeout(() => toast.remove(), 220);
+        }, type === 'success' ? 2600 : 3200);
     }
     
     // ============================================================
@@ -1439,78 +1522,199 @@ async saveProgressToDatabase() {
     }
     
     // ============================================================
-    // 📄 DISPLAY INTERACTIVE QUESTIONS
+    // 📄 DISPLAY INTERACTIVE QUESTIONS — PREMIUM FULL-SCREEN TEST MODE
     // ============================================================
     displayInteractiveQuestions(courseName, questions) {
-        if (!this.studentQuestionBankContent) return;
-        
-        const courseColor = questions[0]?.courses?.color || '#4f46e5';
+        const safeCourseName = this.escapeReviewHtml
+            ? this.escapeReviewHtml(courseName)
+            : String(courseName || '').replace(/[&<>\'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+        const course = questions[0]?.courses || {};
+        const unitCode = this.escapeReviewHtml(course.unit_code || 'MEDICAL CATALOG');
+        const questionCount = questions.length;
         const userStats = this.getCourseUserStats(this.currentCourseForTest.id, questions);
-        
-        let html = `
-            <div class="interactive-questions-container">
-                <div style="background: #f8fafc; border-bottom: 2px solid ${courseColor}; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <button onclick="window.loadQuestionBankCards()" style="padding: 6px 14px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px;">
-                            <i class="fas fa-arrow-left"></i> Back
-                        </button>
-                        <h3 style="margin: 0; color: #0A3D62; font-size: 16px; font-weight: 600;">${courseName}</h3>
+
+        const existing = document.getElementById('nurseiqTestFullscreen');
+        if (existing) existing.remove();
+
+        document.body.dataset.nurseiqPreviousOverflow = document.body.style.overflow || '';
+        document.body.style.overflow = 'hidden';
+        document.body.classList.add('niq-test-open');
+
+        this.courseTestStartedAt = Date.now();
+        if (this.courseTestTimer) clearInterval(this.courseTestTimer);
+
+        const overlay = document.createElement('div');
+        overlay.id = 'nurseiqTestFullscreen';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.innerHTML = `
+            <style>
+                #nurseiqTestFullscreen{position:fixed;inset:0;z-index:2147483000;background:#f4f8fc;color:#102f52;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}
+                #nurseiqTestFullscreen *{box-sizing:border-box}
+                #nurseiqTestFullscreen .niq-screen{height:100dvh;min-height:100vh;display:flex;flex-direction:column}
+                #nurseiqTestFullscreen .niq-header{height:82px;flex:0 0 82px;background:linear-gradient(135deg,#1557a6 0%,#174d93 48%,#103d7d 100%);color:#fff;display:flex;align-items:center;gap:20px;padding:12px 22px;box-shadow:0 3px 14px rgba(15,52,96,.16)}
+                #nurseiqTestFullscreen .niq-back{height:48px;padding:0 18px;border:1px solid rgba(255,255,255,.24);border-radius:12px;background:rgba(255,255,255,.08);color:#fff;display:inline-flex;align-items:center;gap:9px;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+                #nurseiqTestFullscreen .niq-back:hover{background:rgba(255,255,255,.16)}
+                #nurseiqTestFullscreen .niq-course-icon{width:40px;height:40px;border-radius:11px;background:#2d7ce0;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:inset 0 1px rgba(255,255,255,.2)}
+                #nurseiqTestFullscreen .niq-course-info{min-width:0;flex:1}
+                #nurseiqTestFullscreen .niq-course-title{margin:0 0 7px;font-size:19px;line-height:1.2;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px}
+                #nurseiqTestFullscreen .niq-badges{display:flex;align-items:center;gap:8px}
+                #nurseiqTestFullscreen .niq-badge{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.12)}
+                #nurseiqTestFullscreen .niq-badge.code{background:#dbeafe;color:#244b80;border:0}
+                #nurseiqTestFullscreen .niq-badge.practice{background:#22c55e;color:#fff;border:0}
+                #nurseiqTestFullscreen .niq-timer{width:220px;min-width:220px;height:58px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.10);border-radius:12px;padding:7px 14px;display:flex;align-items:center;gap:11px}
+                #nurseiqTestFullscreen .niq-timer-icon{font-size:24px}
+                #nurseiqTestFullscreen .niq-timer-label{font-size:10px;opacity:.8;display:block;margin-bottom:2px}
+                #nurseiqTestFullscreen #niqTestElapsed{font-size:20px;font-weight:800;letter-spacing:.4px;font-variant-numeric:tabular-nums}
+                #nurseiqTestFullscreen .niq-overall{width:380px;min-width:280px}
+                #nurseiqTestFullscreen .niq-overall-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:8px}
+                #nurseiqTestFullscreen .niq-progress-track{height:10px;border-radius:999px;background:rgba(255,255,255,.2);overflow:hidden}
+                #nurseiqTestFullscreen #niqTestProgressBar{height:100%;width:0%;background:#10d59a;border-radius:999px;transition:width .25s ease}
+                #nurseiqTestFullscreen .niq-progress-percent{text-align:right;font-size:11px;font-weight:700;margin-top:5px;opacity:.9}
+                #nurseiqTestFullscreen .niq-body{min-height:0;flex:1;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;padding:18px 22px 18px;overflow:hidden}
+                #nurseiqTestFullscreen .niq-main-card,#nurseiqTestFullscreen .niq-nav-card{background:#fff;border:1px solid #e2eaf3;border-radius:14px;box-shadow:0 4px 18px rgba(21,65,105,.05)}
+                #nurseiqTestFullscreen .niq-main-card{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+                #nurseiqTestFullscreen .niq-question-scroll{min-height:0;overflow:auto;padding:28px 32px 20px}
+                #nurseiqTestFullscreen .niq-question-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
+                #nurseiqTestFullscreen #questionNumberDisplay{font-size:17px;font-weight:800;color:#5523c7}
+                #nurseiqTestFullscreen #difficultyBadge{padding:7px 15px!important;border-radius:999px!important;font-size:11px!important;font-weight:800!important;letter-spacing:.2px}
+                #nurseiqTestFullscreen #questionText{font-size:18px!important;line-height:1.6!important;color:#173b64!important;margin:0 0 25px!important;font-weight:500}
+                #nurseiqTestFullscreen #optionsContainer{display:grid!important;grid-template-columns:1fr 1fr!important;gap:14px!important}
+                #nurseiqTestFullscreen #optionsContainer>div{min-height:76px!important;padding:14px 16px!important;border:1px solid #d7e1ec!important;border-radius:11px!important;background:#fff!important;display:flex;align-items:center;cursor:pointer;transition:all .16s ease;box-shadow:0 1px 2px rgba(15,23,42,.02)}
+                #nurseiqTestFullscreen #optionsContainer>div:hover{border-color:#6d28d9!important;background:#faf8ff!important;transform:translateY(-1px)}
+                #nurseiqTestFullscreen #optionsContainer>div.selected{border-color:#5b21b6!important;background:#f0eafe!important;box-shadow:0 0 0 2px rgba(91,33,182,.07)}
+                #nurseiqTestFullscreen #optionsContainer>div.correct{border-color:#10b981!important;background:#d8faec!important}
+                #nurseiqTestFullscreen #optionsContainer>div.incorrect{border-color:#ef4444!important;background:#fee8e8!important}
+                #nurseiqTestFullscreen #optionsContainer span:first-child{flex:0 0 31px;width:31px!important;height:31px!important;border-radius:50%;display:inline-flex!important;align-items:center;justify-content:center;background:#edf2f7!important;color:#244464!important;font-weight:800!important;font-size:12px!important;margin-right:12px}
+                #nurseiqTestFullscreen #optionsContainer>div.correct span:first-child{background:#fff!important;color:#059669}
+                #nurseiqTestFullscreen #optionsContainer>div.incorrect span:first-child{background:#fff!important;color:#dc2626}
+                #nurseiqTestFullscreen #optionsContainer span:last-child{font-size:16px;line-height:1.5;color:#173b64}
+                #nurseiqTestFullscreen #explanationContainer{margin-top:18px!important;padding:17px 20px!important;background:#edf5ff!important;border-radius:9px!important;border-left:4px solid #3b82f6!important}
+                #nurseiqTestFullscreen #explanationContainer>div:first-child{font-size:15px;font-weight:800;color:#1648a1;margin-bottom:8px}
+                #nurseiqTestFullscreen #explanationText{font-size:15px;line-height:1.65;color:#355777}
+                #nurseiqTestFullscreen .niq-footer{flex:0 0 auto;border-top:1px solid #e5ebf2;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff}
+                #nurseiqTestFullscreen .niq-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+                #nurseiqTestFullscreen .niq-btn{min-height:42px;padding:0 17px;border:0;border-radius:9px;cursor:pointer;font-size:13px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:.16s ease}
+                #nurseiqTestFullscreen .niq-btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+                #nurseiqTestFullscreen .niq-prev{background:#eef2f7;color:#94a3b8}.niq-next{background:#5b21b6;color:#fff}.niq-check{background:#10b981;color:#fff}.niq-reset{background:#eef2f7;color:#24364a}.niq-finish{background:#ef1f25;color:#fff}
+                #nurseiqTestFullscreen .niq-btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(.98)}
+                #nurseiqTestFullscreen .niq-nav-card{min-height:0;overflow:auto;padding:20px}
+                #nurseiqTestFullscreen .niq-nav-title{font-size:18px;font-weight:800;color:#142f50;margin-bottom:17px}
+                #nurseiqTestFullscreen .niq-nav-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+                #nurseiqTestFullscreen .niq-qnav{height:42px;border:1px solid #d7e1ec;border-radius:9px;background:#fff;color:#173b64;font-size:13px;font-weight:700;cursor:pointer}
+                #nurseiqTestFullscreen .niq-qnav:hover{border-color:#5b21b6;background:#faf8ff}
+                #nurseiqTestFullscreen .niq-qnav.current{background:#1769e0;color:#fff;border-color:#1769e0}
+                #nurseiqTestFullscreen .niq-qnav.answered{background:#e1faef;color:#087a54;border-color:#77d9b2}
+                #nurseiqTestFullscreen .niq-qnav.flagged{box-shadow:inset 0 -3px #f43f72}
+                #nurseiqTestFullscreen .niq-legend{display:grid;grid-template-columns:1fr 1fr;gap:13px 12px;margin-top:22px;font-size:12px;color:#314b69}
+                #nurseiqTestFullscreen .niq-legend-item{display:flex;align-items:center;gap:8px}
+                #nurseiqTestFullscreen .niq-dot{width:13px;height:13px;border-radius:50%;display:inline-block}
+                #nurseiqTestFullscreen .niq-dot.current{background:#1769e0}.niq-dot.answered{background:#10b981}.niq-dot.unanswered{background:#cbd5e1}.niq-dot.flagged{background:#f43f72}
+                #nurseiqTestFullscreen .niq-nav-summary{margin-top:22px;padding-top:17px;border-top:1px solid #e5ebf2;font-size:12px;color:#64748b;line-height:1.8}
+                #nurseiqTestFullscreen .niq-nav-summary strong{color:#173b64}
+                @media(max-width:1100px){#nurseiqTestFullscreen .niq-header{gap:12px;padding:10px 14px}.niq-timer{width:175px!important;min-width:175px!important}.niq-overall{width:280px!important}.niq-body{grid-template-columns:minmax(0,1fr) 280px!important}.niq-question-scroll{padding:24px!important}}
+                @media(max-width:850px){#nurseiqTestFullscreen .niq-header{height:auto;min-height:72px;flex-wrap:wrap}.niq-course-info{order:1;flex:1 1 calc(100% - 130px)}.niq-back{order:0}.niq-timer{order:2;width:auto!important;min-width:150px!important}.niq-overall{order:3;flex:1;width:auto!important;min-width:180px}.niq-body{grid-template-columns:1fr!important;overflow:auto;padding:12px}.niq-nav-card{max-height:240px;order:2}.niq-main-card{min-height:620px}.niq-question-scroll{overflow:visible}}
+                @media(max-width:600px){#nurseiqTestFullscreen .niq-course-icon{display:none}.niq-course-title{font-size:14px!important}.niq-badges .niq-badge.code{display:none}.niq-timer{min-width:125px!important}.niq-timer-label{display:none}.niq-timer-icon{font-size:19px}.niq-header{padding:9px!important}.niq-body{padding:8px!important}.niq-question-scroll{padding:18px 14px!important}.niq-question-text{font-size:16px!important}#nurseiqTestFullscreen #optionsContainer{grid-template-columns:1fr!important}.niq-footer{flex-direction:column!important;align-items:stretch!important}.niq-actions{width:100%;justify-content:space-between}.niq-actions:last-child{justify-content:flex-end}.niq-btn{padding:0 12px!important}}
+            </style>
+            <div class="niq-screen">
+                <header class="niq-header">
+                    <button type="button" class="niq-back" onclick="window.closeCourseTestFullscreen()"><i class="fas fa-arrow-left"></i> Back</button>
+                    <div class="niq-course-icon"><i class="fas fa-book-medical"></i></div>
+                    <div class="niq-course-info">
+                        <h1 class="niq-course-title">${safeCourseName}</h1>
+                        <div class="niq-badges"><span class="niq-badge code">${unitCode}</span><span class="niq-badge">${questionCount} Questions</span><span class="niq-badge practice">Practice Test</span></div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 13px; color: #64748b;">
-                            <i class="fas fa-question-circle"></i> ${questions.length} questions
-                        </span>
-                        <span style="font-size: 13px; color: #059669; background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-weight: 600;">
-                            ${userStats.completion}% Complete
-                        </span>
-                    </div>
-                </div>
-                <div style="padding: 16px;">
-                    <div id="questionDisplay" style="margin-bottom: 16px;">
-                        <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-                                <span style="font-weight: 600; color: #4C1D95; font-size: 14px;">Question ${this.currentQuestionIndex + 1} of ${questions.length}</span>
-                                <span id="difficultyBadge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e;">Medium</span>
+                    <div class="niq-timer"><span class="niq-timer-icon">⏱️</span><div><span class="niq-timer-label">Time Elapsed</span><strong id="niqTestElapsed">00:00:00</strong></div></div>
+                    <div class="niq-overall"><div class="niq-overall-top"><span>Overall Progress</span><strong id="niqTestProgressText">${Math.min(100, Math.round((userStats.answered / Math.max(questionCount,1))*100))}%</strong></div><div class="niq-progress-track"><div id="niqTestProgressBar"></div></div><div class="niq-progress-percent"><span id="questionProgress">${Math.min(100, Math.round((userStats.answered / Math.max(questionCount,1))*100))}% Complete</span></div></div>
+                </header>
+                <div class="niq-body">
+                    <section class="niq-main-card">
+                        <div class="niq-question-scroll">
+                            <div id="questionDisplay">
+                                <div class="niq-question-head"><span id="questionNumberDisplay">Question ${this.currentQuestionIndex + 1} of ${questionCount}</span><span id="difficultyBadge">MEDIUM</span></div>
+                                <div id="questionText">Loading question...</div>
+                                <div id="optionsContainer"></div>
+                                <div id="explanationContainer" style="display:none"><div>💡 Explanation</div><div id="explanationText"></div></div>
                             </div>
-                            <div id="questionText" style="font-size: 15px; line-height: 1.6; color: #1e293b;">
-                                Loading question...
-                            </div>
                         </div>
-                        <div id="optionsContainer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;"></div>
-                        <div id="explanationContainer" style="display: none; margin-top: 16px; padding: 16px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #3B82F6;">
-                            <div style="font-weight: 600; color: #1e40af; margin-bottom: 4px;">💡 Explanation</div>
-                            <div id="explanationText" style="color: #475569;"></div>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; padding-top: 12px; border-top: 1px solid #e5e7eb;">
-                        <div style="display: flex; gap: 8px;">
-                            <button onclick="window.prevQuestion()" id="prevBtn" style="padding: 8px 16px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-                                <i class="fas fa-chevron-left"></i> Previous
-                            </button>
-                            <button onclick="window.nextQuestion()" id="nextBtn" style="padding: 8px 16px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-                                Next <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button onclick="window.checkAnswer()" id="checkAnswerBtn" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                                <i class="fas fa-check-circle"></i> Check Answer
-                            </button>
-                            <button onclick="window.resetQuestion()" style="padding: 8px 16px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-                                <i class="fas fa-redo"></i> Reset
-                            </button>
-                            <button onclick="window.finishPractice()" style="padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                                <i class="fas fa-flag-checkered"></i> Finish
-                            </button>
-                        </div>
-                    </div>
+                        <footer class="niq-footer">
+                            <div class="niq-actions"><button type="button" class="niq-btn niq-prev" onclick="window.prevQuestion()" id="prevBtn"><i class="fas fa-chevron-left"></i> Previous</button><button type="button" class="niq-btn niq-next" onclick="window.nextQuestion()" id="nextBtn">Next <i class="fas fa-chevron-right"></i></button></div>
+                            <div class="niq-actions"><button type="button" class="niq-btn niq-check" onclick="window.checkAnswer()" id="checkAnswerBtn"><i class="fas fa-check-circle"></i> Check Answer</button><button type="button" class="niq-btn niq-reset" onclick="window.resetQuestion()"><i class="fas fa-redo"></i> Reset</button><button type="button" class="niq-btn niq-finish" onclick="window.finishPractice()"><i class="fas fa-flag-checkered"></i> Finish Test</button></div>
+                        </footer>
+                    </section>
+                    <aside class="niq-nav-card">
+                        <div class="niq-nav-title">Question Navigation</div>
+                        <div class="niq-nav-grid" id="niqQuestionNav"></div>
+                        <div class="niq-legend"><div class="niq-legend-item"><span class="niq-dot current"></span> Current</div><div class="niq-legend-item"><span class="niq-dot answered"></span> Answered</div><div class="niq-legend-item"><span class="niq-dot unanswered"></span> Not Answered</div><div class="niq-legend-item"><span class="niq-dot flagged"></span> Flagged</div></div>
+                        <div class="niq-nav-summary"><div>Answered: <strong id="niqAnsweredCount">${userStats.answered}</strong> / ${questionCount}</div><div>Remaining: <strong id="niqRemainingCount">${Math.max(0,questionCount-userStats.answered)}</strong></div></div>
+                    </aside>
                 </div>
             </div>
         `;
-        
-        this.studentQuestionBankContent.innerHTML = html;
-        setTimeout(() => this.loadCurrentQuestion(), 50);
+
+        document.body.appendChild(overlay);
+        this.renderQuestionNavigation();
+        this.updateTestTimer();
+        this.courseTestTimer = setInterval(() => this.updateTestTimer(), 1000);
+        setTimeout(() => this.loadCurrentQuestion(), 40);
     }
-    
+
+    renderQuestionNavigation() {
+        const nav = document.getElementById('niqQuestionNav');
+        if (!nav || !Array.isArray(this.currentCourseQuestions)) return;
+        nav.innerHTML = this.currentCourseQuestions.map((question, index) => {
+            const answer = this.userTestAnswers?.[question.id];
+            const answered = !!answer?.answered;
+            const current = index === this.currentQuestionIndex;
+            return `<button type="button" class="niq-qnav${current ? ' current' : ''}${answered ? ' answered' : ''}" onclick="window.goToQuestion(${index})">${index + 1}</button>`;
+        }).join('');
+        const answeredCount = this.currentCourseQuestions.filter(q => this.userTestAnswers?.[q.id]?.answered).length;
+        const remaining = Math.max(0, this.currentCourseQuestions.length - answeredCount);
+        const a = document.getElementById('niqAnsweredCount'); if (a) a.textContent = answeredCount;
+        const r = document.getElementById('niqRemainingCount'); if (r) r.textContent = remaining;
+    }
+
+    goToQuestion(index) {
+        if (!Array.isArray(this.currentCourseQuestions) || index < 0 || index >= this.currentCourseQuestions.length) return;
+        this.currentQuestionIndex = index;
+        this.loadCurrentQuestion();
+    }
+
+    updateTestTimer() {
+        const el = document.getElementById('niqTestElapsed');
+        if (!el || !this.courseTestStartedAt) return;
+        const total = Math.max(0, Math.floor((Date.now() - this.courseTestStartedAt) / 1000));
+        const h = String(Math.floor(total / 3600)).padStart(2,'0');
+        const m = String(Math.floor((total % 3600) / 60)).padStart(2,'0');
+        const sec = String(total % 60).padStart(2,'0');
+        el.textContent = `${h}:${m}:${sec}`;
+    }
+
+    // ============================================================
+    // ⬅️ CLOSE FULL-SCREEN COURSE TEST
+    // ============================================================
+    closeCourseTestFullscreen() {
+        const overlay = document.getElementById('nurseiqTestFullscreen');
+        if (overlay) overlay.remove();
+
+        if (this.courseTestTimer) {
+            clearInterval(this.courseTestTimer);
+            this.courseTestTimer = null;
+        }
+        this.courseTestStartedAt = null;
+
+        const previousOverflow = document.body.dataset.nurseiqPreviousOverflow || '';
+        document.body.style.overflow = previousOverflow;
+        document.body.classList.remove('niq-test-open');
+        delete document.body.dataset.nurseiqPreviousOverflow;
+
+        this.currentCourseForTest = null;
+        this.currentCourseQuestions = [];
+        this.currentQuestionIndex = 0;
+
+        this.loadQuestionBankCards();
+    }
+
     // ============================================================
     // 📥 LOAD CURRENT QUESTION - FIXED with already answered
     // ============================================================
@@ -1518,6 +1722,14 @@ async saveProgressToDatabase() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return;
         
+        // Update question number/header
+        const questionNumberDisplay = document.getElementById('questionNumberDisplay');
+        if (questionNumberDisplay) {
+            questionNumberDisplay.textContent = `Question ${this.currentQuestionIndex + 1} of ${this.currentCourseQuestions.length}`;
+        }
+
+        this.renderQuestionNavigation();
+
         // Update question text
         const questionText = document.getElementById('questionText');
         if (questionText) {
@@ -1605,6 +1817,16 @@ async saveProgressToDatabase() {
                 }
             }
         }
+
+        const answeredCount = this.currentCourseQuestions.filter(q => this.userTestAnswers?.[q.id]?.answered).length;
+        const completion = Math.min(100, Math.round((answeredCount / Math.max(this.currentCourseQuestions.length, 1)) * 100));
+        const progressText = document.getElementById('questionProgress');
+        const progressTop = document.getElementById('niqTestProgressText');
+        const progressBar = document.getElementById('niqTestProgressBar');
+        if (progressText) progressText.textContent = `${completion}% Complete`;
+        if (progressTop) progressTop.textContent = `${completion}%`;
+        if (progressBar) progressBar.style.width = `${completion}%`;
+        this.renderQuestionNavigation();
     }
     
     // ============================================================
@@ -1687,6 +1909,7 @@ async saveProgressToDatabase() {
                 difficulty: question.difficulty
             };
             this.saveUserProgress();
+            this.renderQuestionNavigation();
         }
     }
     
@@ -1771,7 +1994,7 @@ async saveProgressToDatabase() {
         // ✅ Force save to database immediately
         this.saveProgressToDatabase();
         
-        this.showNotification(isCorrect ? '✅ Correct! Well done!' : '❌ Incorrect. Review the explanation.', isCorrect ? 'success' : 'error');
+        this.showNotification(isCorrect ? 'You are correct! Point earned.' : 'Incorrect. Review the explanation.', isCorrect ? 'success' : 'error');
     }
     
     // ============================================================
@@ -1850,7 +2073,7 @@ async saveProgressToDatabase() {
         if (confirmFinish) {
             // ✅ Force save before finishing
             await this.saveProgressToDatabase();
-            this.loadQuestionBankCards();
+            this.closeCourseTestFullscreen();
             this.showNotification(`🎉 Practice complete! ${accuracy}% accuracy`, 'success');
             this.saveUserProgress();
         }
@@ -2762,11 +2985,17 @@ window.clearQuestionBankSearch = function() {
 window.startCourseTest = function(courseId, courseName, startIndex = 0) {
     if (nurseiqModule) nurseiqModule.startCourseTest(courseId, courseName, startIndex);
 };
+window.closeCourseTestFullscreen = function() {
+    if (nurseiqModule) nurseiqModule.closeCourseTestFullscreen();
+};
 window.prevQuestion = function() {
     if (nurseiqModule) nurseiqModule.prevQuestion();
 };
 window.nextQuestion = function() {
     if (nurseiqModule) nurseiqModule.nextQuestion();
+};
+window.goToQuestion = function(index) {
+    if (nurseiqModule) nurseiqModule.goToQuestion(index);
 };
 window.selectOption = function(index) {
     if (nurseiqModule) nurseiqModule.selectOption(index);
