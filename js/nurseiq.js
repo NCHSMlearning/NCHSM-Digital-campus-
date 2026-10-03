@@ -7,7 +7,7 @@
 // ✅ Latest question banks on top
 // ✅ Full TVET/KRCHN support with dynamic program detection
 // ✅ Filter order: Years → Levels → Categories
-// ✅ Practice points: 2 points per correct answer; Exam Review: 1 point per unique question viewed
+// ✅ Points calculation: 2 points per correct answer
 // ✅ Points display in stats
 // ✅ SAVES TO DATABASE (user_progress, nurseiq_attempts, profile)
 // ✅ SHOWS ALREADY ANSWERED QUESTIONS (green/red indicators)
@@ -193,17 +193,20 @@ class NurseIQModule {
         this.lastCourseProgressKey = 'nurseiq_last_course';
         this.progressVersion = '2.0';
         this.dashboardMetricsKey = 'nurseiq_dashboard_metrics';
-        this.examReviewProgressKey = 'nurseiq_exam_review_progress';
-        this.examReviewState = { viewed: {}, points: 0 };
-        this.currentExamReview = null;
-        this.currentExamReviewIndex = 0;
-        this.releasedExamRecords = [];
-        this.releasedExamMap = new Map();
-        this._releasedExamLoadTimer = null;
         this.saveTimeout = null;
         this._isSaving = false;
         this._isLoadingQuestions = false;
         this._dbSaveAttempted = false;
+
+        this.examReviewState = {
+            points: 0,
+            viewedQuestionIds: [],
+            viewedQuestionIdsByAttempt: {}
+        };
+        this.currentExamReview = null;
+        this.releasedExamReviews = [];
+        this.completedExamCount = 0;
+        this._examReviewBound = false;
     }
     
     // ============================================================
@@ -500,7 +503,6 @@ class NurseIQModule {
                 const parsed = JSON.parse(savedProgress);
                 if (parsed.version === this.progressVersion && parsed.answers) {
                     this.userTestAnswers = parsed.answers;
-                    this.examReviewState = parsed.examReviewState || this.examReviewState;
                 } else {
                     this.userTestAnswers = parsed;
                 }
@@ -518,17 +520,23 @@ class NurseIQModule {
                 
                 if (!error && data && data.progress_data) {
                     const dbAnswers = data.progress_data.answers || {};
-                    // Merge: database takes priority
                     this.userTestAnswers = { ...this.userTestAnswers, ...dbAnswers };
-                    if (data.progress_data.examReviewState) {
-                        this.examReviewState = {
-                            viewed: data.progress_data.examReviewState.viewed || {},
-                            points: Number(data.progress_data.examReviewState.points || 0)
-                        };
-                    }
+
+                    const dbReview = data.progress_data.examReviewState || {};
+                    this.examReviewState = {
+                        points: Number(dbReview.points ?? data.progress_data.exam_review_points ?? 0) || 0,
+                        viewedQuestionIds: Array.isArray(dbReview.viewedQuestionIds)
+                            ? dbReview.viewedQuestionIds.map(String)
+                            : [],
+                        viewedQuestionIdsByAttempt:
+                            dbReview.viewedQuestionIdsByAttempt &&
+                            typeof dbReview.viewedQuestionIdsByAttempt === 'object'
+                                ? dbReview.viewedQuestionIdsByAttempt
+                                : {}
+                    };
+
                     console.log('📊 Loaded from database, total:', Object.keys(this.userTestAnswers).length);
-                    console.log('📚 Exam review points:', this.examReviewState.points);
-                    // Save merged data back to localStorage
+                    console.log('🧠 Exam review points:', this.examReviewState.points);
                     this.saveUserProgress();
                 }
             }
@@ -551,6 +559,7 @@ class NurseIQModule {
                 version: this.progressVersion,
                 answers: this.userTestAnswers,
                 examReviewState: this.examReviewState,
+                exam_review_points: Number(this.examReviewState?.points || 0),
                 lastSaved: new Date().toISOString()
             };
             localStorage.setItem(this.storageKey, JSON.stringify(progressData));
@@ -608,24 +617,24 @@ async saveProgressToDatabase() {
         });
         
         const practicePoints = correctAnswers * 2;
-        const reviewPoints = Number(this.examReviewState?.points || 0);
-        const points = practicePoints + reviewPoints;
-        
+        const examReviewPoints = Number(this.examReviewState?.points || 0);
+
         const progressData = {
             version: this.progressVersion,
             answers: this.userTestAnswers,
             examReviewState: this.examReviewState,
+            exam_review_points: examReviewPoints,
             lastSaved: new Date().toISOString(),
             stats: {
                 totalAnswered,
                 correctAnswers,
-                practicePoints,
-                examReviewPoints: reviewPoints,
-                points,
+                points: practicePoints,
+                examReviewPoints,
+                totalNurseIQPoints: practicePoints + examReviewPoints,
                 accuracy: totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0
             }
         };
-        
+
         // 1. Save to user_progress
         const { error: progressError } = await supabase
             .from('user_progress')
@@ -702,24 +711,25 @@ async saveProgressToDatabase() {
                 .single();
             
             if (profile) {
+                const totalNurseIQPoints = practicePoints + examReviewPoints;
                 const totalPoints = (profile.login_count || 0) * 10 + 
                                    (profile.gamification_points || 0) + 
                                    (profile.attendance_points || 0) + 
-                                   points;
-                
+                                   totalNurseIQPoints;
+
                 const { error: profileError } = await supabase
                     .from('consolidated_user_profiles_table')
                     .update({
-                        nurseiq_points: points,
+                        nurseiq_points: totalNurseIQPoints,
                         total_points: totalPoints,
                         updated_at: new Date().toISOString()
                     })
                     .eq('user_id', this.userId);
-                
+
                 if (profileError) {
                     console.error('❌ Error updating profile:', profileError);
                 } else {
-                    console.log(`✅ Profile updated: NurseIQ=${points}, Total=${totalPoints}`);
+                    console.log(`✅ Profile updated: NurseIQ=${totalNurseIQPoints}, Total=${totalPoints}`);
                     this._dbSaveAttempted = true;
                 }
             }
@@ -749,14 +759,13 @@ async saveProgressToDatabase() {
         
         const practicePoints = totalCorrect * 2;
         const reviewPoints = Number(this.examReviewState?.points || 0);
-        const points = practicePoints + reviewPoints;
-        
+
         return {
             answered: totalAnswered,
             correct: totalCorrect,
             practicePoints,
             reviewPoints,
-            points,
+            points: practicePoints + reviewPoints,
             accuracy: totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0
         };
     }
@@ -802,9 +811,7 @@ async saveProgressToDatabase() {
             const targetQuestions = 100;
             const progress = Math.min(Math.round((totalAnswered / targetQuestions) * 100), 100);
             const streak = this.calculateStudyStreak();
-            const practicePoints = totalCorrect * 2;
-            const reviewPoints = Number(this.examReviewState?.points || 0);
-            const points = practicePoints + reviewPoints;
+            const points = totalCorrect * 2;
             
             let mostActiveCourse = { name: 'None', answered: 0 };
             Object.entries(courses).forEach(([courseId, courseData]) => {
@@ -822,8 +829,6 @@ async saveProgressToDatabase() {
                 totalCorrect,
                 accuracy,
                 progress,
-                practicePoints,
-                reviewPoints,
                 recentActivity,
                 streak,
                 totalCourses: Object.keys(courses).length,
@@ -952,9 +957,37 @@ async saveProgressToDatabase() {
             }
         });
         
+        this.updateNurseIQRedesignStats(metrics, stats);
         console.log('📊 NurseIQ Stats:', stats);
     }
     
+    updateNurseIQRedesignStats(metrics, stats) {
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        setText('niqPracticeQuestionsCount', metrics.totalAnswered || 0);
+        setText('niqExamReviewCount', this.releasedExamReviews?.length || 0);
+        setText('niqOverallAccuracy', `${stats.accuracy || 0}%`);
+        setText('niqTotalPoints', stats.points || 0);
+
+        setText('niqPracticeProgress', `${metrics.progress || 0}%`);
+        setText('niqAnsweredMeta', `${metrics.totalAnswered || 0} answered`);
+        setText('niqQuestionsMeta', `${metrics.totalAnswered || 0} practice questions`);
+
+        const progressBar = document.getElementById('niqPracticeProgressBar');
+        if (progressBar) progressBar.style.width = `${Math.max(0, Math.min(100, Number(metrics.progress || 0)))}%`;
+
+        setText('niqAchievementAnswered', metrics.totalAnswered || 0);
+        setText('niqAchievementCorrect', metrics.totalCorrect || 0);
+        setText('niqAchievementReviews', this.examReviewState?.viewedQuestionIds?.length || 0);
+
+        setText('niqReleasedCount', this.releasedExamReviews?.length || 0);
+        setText('niqCompletedCount', this.completedExamCount || this.releasedExamReviews?.length || 0);
+        setText('niqReviewPointsSummary', `+${this.examReviewState?.points || 0}`);
+    }
+
     // ============================================================
     // 📚 LOAD QUESTION BANK
     // ============================================================
@@ -1024,6 +1057,7 @@ async saveProgressToDatabase() {
             });
             
             const coursesArray = Object.values(coursesMap);
+            this.questionBankCourses = coursesArray;
             coursesArray.sort((a, b) => {
                 const dateA = a.stats.lastUpdated || new Date(0);
                 const dateB = b.stats.lastUpdated || new Date(0);
@@ -1867,522 +1901,6 @@ async saveProgressToDatabase() {
     }
     
     // ============================================================
-    // 📚 RELEASED EXAMS — NURSEIQ REVIEW SELECTOR
-    // ============================================================
-    getReleasedExamsFromModule() {
-        const examsModule = window.examsModule;
-        if (!examsModule) return [];
-        const source = Array.isArray(examsModule.completedExams) && examsModule.completedExams.length
-            ? examsModule.completedExams
-            : (Array.isArray(examsModule.allExams) ? examsModule.allExams : []);
-        return source
-            .filter(exam => exam && exam.isReleased === true && (exam.isCompleted === true || exam.hasGrade === true))
-            .map(exam => this.normalizeReleasedExam(exam, null))
-            .filter(Boolean)
-            .sort((a,b) => new Date(b.dateTaken || 0) - new Date(a.dateTaken || 0));
-    }
-
-    normalizeReleasedExam(exam, grade) {
-        if (!exam) return null;
-        const id = exam.id ?? exam.exam_id ?? exam.examId;
-        if (id === undefined || id === null || id === '') return null;
-        const isCat = !!exam.isCatExam || String(exam.exam_type || '').toUpperCase().includes('CAT');
-        const totalMarks = Number(exam.marks_out_of || exam.total_marks || (isCat ? 30 : 70));
-        let marks = Number(exam.marks ?? exam.displayScore ?? grade?.marks ?? grade?.total_score ?? 0);
-        let percentage = Number(exam.totalPercentage ?? grade?.percentage ?? 0);
-        if (!percentage && marks >= 0 && totalMarks > 0) percentage = Math.round((marks / totalMarks) * 100);
-        const dateValue = exam.gradedAt || exam.submitted_at || exam.examDate || exam.exam_date || exam.examStartDateTime || exam.created_at || grade?.updated_at;
-        const dateTaken = dateValue ? new Date(dateValue) : null;
-        const name = (typeof exam.exam_name === 'string' && exam.exam_name.trim() && exam.exam_name !== '[object Object]')
-            ? exam.exam_name.trim()
-            : ((typeof exam.title === 'string' && exam.title.trim()) ? exam.title.trim() : 'Assessment');
-        return {
-            id: Number(id),
-            name,
-            type: isCat ? 'CAT' : 'FINAL EXAM',
-            dateTaken: dateTaken && !Number.isNaN(dateTaken.getTime()) ? dateTaken.toISOString() : null,
-            score: marks,
-            totalMarks,
-            percentage,
-            grade: exam.gradeText || this.getResultGrade(percentage),
-            reviewPoints: this.getExamReviewPointsForExam(Number(id)),
-            released: true,
-            raw: exam
-        };
-    }
-
-    getResultGrade(percentage) {
-        const p = Number(percentage || 0);
-        if (p >= 85) return 'Distinction';
-        if (p >= 75) return 'Credit';
-        if (p >= 60) return 'Pass';
-        return 'Fail';
-    }
-
-    formatExamReviewDate(value) {
-        if (!value) return 'Date not available';
-        const d = new Date(value);
-        if (Number.isNaN(d.getTime())) return String(value);
-        return d.toLocaleDateString('en-KE', { day:'2-digit', month:'short', year:'numeric' });
-    }
-
-    async loadReleasedExamList() {
-        const tbody = document.getElementById('nurseiqReleasedExamTableBody');
-        const select = document.getElementById('nurseiqExamReviewSelect');
-        const openBtn = document.getElementById('nurseiqExamReviewOpenBtn');
-        if (!tbody || !select) return;
-
-        let records = this.getReleasedExamsFromModule();
-
-        // The Exams module can initialize slightly after NurseIQ. Give it a short window.
-        if (!records.length && !window.examsModule) {
-            await new Promise(resolve => setTimeout(resolve, 900));
-            records = this.getReleasedExamsFromModule();
-        }
-
-        // Secure fallback: use the same student-exams RPC already used by the CAT/Exams module.
-        if (!records.length) {
-            try {
-                const supabase = this.getSupabaseClient();
-                if (supabase && this.userId) {
-                    const { data, error } = await supabase.rpc('get_student_exams', { p_user_id: this.userId });
-                    if (!error && data) {
-                        const grades = Array.isArray(data.grades) ? data.grades : [];
-                        const releasedIds = new Set((data.released || []).map(v => String(v)));
-                        const releasedGrades = grades.filter(g => {
-                            const status = String(g.result_status || '').toUpperCase();
-                            return g && g.question_id === '00000000-0000-0000-0000-000000000000' && (
-                                releasedIds.has(String(g.id)) ||
-                                g.released === true || String(g.released).toLowerCase() === 'true' ||
-                                !!g.released_at || ['PASS','FAIL','RELEASED'].includes(status)
-                            );
-                        });
-                        const gradeByExam = new Map(releasedGrades.map(g => [String(g.exam_id), g]));
-                        records = (data.exams || [])
-                            .filter(e => gradeByExam.has(String(e.id ?? e.exam_id ?? e.examId)))
-                            .map(e => this.normalizeReleasedExam(e, gradeByExam.get(String(e.id ?? e.exam_id ?? e.examId))))
-                            .filter(Boolean);
-                    }
-                }
-            } catch (error) {
-                console.warn('⚠️ Could not load released NurseIQ exams:', error);
-            }
-        }
-
-        const unique = new Map();
-        records.forEach(r => unique.set(String(r.id), r));
-        this.releasedExamRecords = Array.from(unique.values()).sort((a,b) => new Date(b.dateTaken || 0) - new Date(a.dateTaken || 0));
-        this.releasedExamMap = new Map(this.releasedExamRecords.map(r => [String(r.id), r]));
-
-        if (!this.releasedExamRecords.length) {
-            select.innerHTML = '<option value="">No released exam results available</option>';
-            if (openBtn) openBtn.disabled = true;
-            tbody.innerHTML = '<tr><td colspan="8"><div class="ni-empty-review"><i class="fas fa-inbox"></i>No completed exams with released results are available yet.</div></td></tr>';
-            return;
-        }
-
-        select.innerHTML = '<option value="">Select a released exam...</option>' + this.releasedExamRecords.map(r =>
-            `<option value="${r.id}">${this.escapeHtml(r.name)} — ${r.type} — ${r.score}/${r.totalMarks} (${r.percentage}%)</option>`
-        ).join('');
-        if (openBtn) openBtn.disabled = true;
-
-        tbody.innerHTML = this.releasedExamRecords.map(r => `
-            <tr>
-                <td><div class="ni-exam-name">${this.escapeHtml(r.name)}</div></td>
-                <td><span class="ni-exam-type ${r.type === 'FINAL EXAM' ? 'final' : ''}">${this.escapeHtml(r.type)}</span></td>
-                <td>${this.escapeHtml(this.formatExamReviewDate(r.dateTaken))}</td>
-                <td><span class="ni-score">${this.escapeHtml(String(r.score))} / ${this.escapeHtml(String(r.totalMarks))}</span></td>
-                <td><span class="ni-percent">${this.escapeHtml(String(r.percentage))}%</span></td>
-                <td><span class="ni-released"><i class="fas fa-check-circle"></i> Released</span></td>
-                <td><strong style="color:#2563eb">+${r.reviewPoints}</strong></td>
-                <td><button type="button" class="ni-review-btn" onclick="window.openNurseIQExamReview?.(${r.id})"><i class="fas fa-book-open"></i> Review</button></td>
-            </tr>
-        `).join('');
-
-        if (select.options.length > 1) {
-            const remembered = sessionStorage.getItem('nurseiq_selected_exam_review');
-            if (remembered && this.releasedExamMap.has(String(remembered))) select.value = remembered;
-        }
-    }
-
-    openSelectedExamReview() {
-        const select = document.getElementById('nurseiqExamReviewSelect');
-        const id = select?.value;
-        if (!id) return;
-        sessionStorage.setItem('nurseiq_selected_exam_review', String(id));
-        return this.openExamReview(id);
-    }
-
-    setNurseIQView(view, button) {
-        document.querySelectorAll('#nurseiq .ni-nav-btn').forEach(btn => btn.classList.remove('active'));
-        if (button) button.classList.add('active');
-        const targets = {
-            practice: 'nurseiqPracticeArea',
-            review: 'nurseiqExamReviewList',
-            performance: 'nurseiqStatsBar',
-            achievements: 'nurseiqStatsBar'
-        };
-        const target = document.getElementById(targets[view] || 'nurseiqPracticeArea');
-        target?.scrollIntoView({ behavior:'smooth', block:'start' });
-        if (view === 'review') this.loadReleasedExamList();
-    }
-
-    // ============================================================
-    // 📋 NURSEIQ EXAM REVIEW - SINGLE REVIEW SURFACE
-    // ============================================================
-    async openExamReview(examId) {
-        const reviewEl = document.getElementById('nurseiqExamReview');
-        const bodyEl = document.getElementById('nurseiqExamReviewBody');
-        if (!reviewEl || !bodyEl) {
-            throw new Error('NurseIQ exam review container is missing from the HTML.');
-        }
-
-        const supabase = this.getSupabaseClient();
-        if (!supabase) throw new Error('Database connection not available.');
-        if (!this.userId) throw new Error('Please log in to view exam results.');
-
-        window.showTab?.('nurseiq');
-        document.getElementById('nurseiq')?.classList.add('nurseiq-exam-review-mode');
-        reviewEl.style.display = 'block';
-        bodyEl.innerHTML = `<div style="padding:60px 20px;text-align:center;color:#64748B;"><div style="width:42px;height:42px;border:3px solid #E2E8F0;border-top-color:#4C1D95;border-radius:50%;animation:nurseiqReviewSpin 1s linear infinite;margin:0 auto 14px;"></div><strong>Loading exam review...</strong><p style="font-size:12px;margin:6px 0 0;">Preparing your questions and answers.</p></div>`;
-
-        const id = parseInt(examId, 10);
-        const [{ data: exam, error: examError }, { data: questions, error: questionsError }, { data: answers, error: answersError }, { data: grade, error: gradeError }] = await Promise.all([
-            supabase.from('exams').select('*').eq('id', id).single(),
-            supabase.from('exam_questions').select('*').eq('exam_id', id).order('question_number', { ascending: true }),
-            supabase.from('exam_grades').select('*').eq('student_id', this.userId).eq('exam_id', id).neq('question_id', '00000000-0000-0000-0000-000000000000'),
-            supabase.from('exam_grades').select('*').eq('student_id', this.userId).eq('exam_id', id).eq('question_id', '00000000-0000-0000-0000-000000000000').maybeSingle()
-        ]);
-
-        if (examError) throw examError;
-        if (questionsError) throw questionsError;
-        if (answersError) throw answersError;
-        if (gradeError) throw gradeError;
-
-        const normalizeAnswer = value => String(value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-        const questionReview = (questions || []).map((q, index) => {
-            const answer = (answers || []).find(a => String(a.question_id) === String(q.id));
-            const options = ['a','b','c','d'].map(letter => ({ label: letter.toUpperCase(), value: q[`option_${letter}`] })).filter(o => o.value !== null && o.value !== undefined && String(o.value).trim() !== '');
-            const selectedAnswer = answer?.selected_answer ?? answer?.answer ?? answer?.student_answer ?? '';
-            const correctAnswer = q.correct_answer ?? q.correct_option ?? q.answer ?? '';
-            const selectedKey = normalizeAnswer(selectedAnswer);
-            const correctKey = normalizeAnswer(correctAnswer);
-            const explicitCorrect = answer?.is_correct === true || answer?.correct === true;
-            const explicitWrong = answer?.is_correct === false || answer?.correct === false;
-            const isCorrect = !!answer && (explicitCorrect || (!explicitWrong && !!selectedKey && !!correctKey && selectedKey === correctKey));
-            return {
-                id: q.id || `${id}-${index + 1}`,
-                question_number: q.question_number || index + 1,
-                question_text: q.question_text || `Question ${index + 1}`,
-                options,
-                student_answer: selectedAnswer || 'Not answered',
-                correct_answer: correctAnswer || 'N/A',
-                is_correct: isCorrect,
-                is_answered: !!answer && !!selectedKey,
-                explanation: q.explanation || null,
-                marks_obtained: Number(answer?.marks ?? answer?.marks_obtained ?? 0),
-                total_marks: Number(q.marks || 1)
-            };
-        });
-
-        const totalQuestions = questionReview.length;
-        const totalCorrect = questionReview.filter(q => q.is_correct).length;
-        const totalAnswered = questionReview.filter(q => q.is_answered).length;
-        const questionScore = questionReview.reduce((sum, q) => sum + (Number.isFinite(q.marks_obtained) ? q.marks_obtained : 0), 0);
-        const questionTotalMarks = questionReview.reduce((sum, q) => sum + (Number.isFinite(q.total_marks) ? q.total_marks : 0), 0);
-        const derivedScoreFromCorrect = questionReview.reduce((sum, q) => sum + (q.is_correct ? q.total_marks : 0), 0);
-        const gradeScore = Number(grade?.marks);
-        const score = Number.isFinite(gradeScore) && gradeScore > 0
-            ? gradeScore
-            : (questionScore > 0 ? questionScore : derivedScoreFromCorrect);
-        const totalMarks = questionTotalMarks > 0 ? questionTotalMarks : Number(exam?.total_marks || 100);
-        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-        const passed = Number(percentage) >= Number(exam?.pass_mark || 60);
-
-        this.currentExamReview = {
-            examId: id,
-            exam,
-            questions: questionReview,
-            score,
-            totalMarks,
-            percentage,
-            totalCorrect,
-            totalWrong: questionReview.filter(q => q.is_answered && !q.is_correct).length,
-            totalAnswered,
-            totalQuestions,
-            passed
-        };
-        this.currentExamReviewIndex = 0;
-
-        const titleEl = document.getElementById('nurseiqExamReviewTitle');
-        const metaEl = document.getElementById('nurseiqExamReviewMeta');
-        const correctEl = document.getElementById('nurseiqReviewCorrect');
-        const wrongEl = document.getElementById('nurseiqReviewWrong');
-        const totalEl = document.getElementById('nurseiqReviewTotal');
-        const pointsEl = document.getElementById('nurseiqReviewPoints');
-        if (titleEl) titleEl.textContent = 'Exam Review';
-        if (metaEl) metaEl.textContent = `${exam?.exam_name || 'Exam'} • ${exam?.exam_type || 'Assessment'} • Score ${percentage}% (${score}/${totalMarks})`;
-        if (correctEl) correctEl.textContent = `${totalCorrect}/${totalQuestions}`;
-        if (wrongEl) wrongEl.textContent = `${Math.max(0, totalQuestions - totalCorrect - (totalQuestions - totalAnswered))}/${totalQuestions}`;
-        if (totalEl) totalEl.textContent = String(totalQuestions);
-        if (pointsEl) pointsEl.textContent = `${this.getExamReviewPointsForExam(id)} / ${totalQuestions}`;
-
-        this.renderExamReviewQuestion();
-        this.updateExamReviewPointsUI();
-    }
-
-    getExamReviewPointsForExam(examId) {
-        const viewed = this.examReviewState?.viewed?.[String(examId)] || {};
-        return Object.keys(viewed).length;
-    }
-
-    async markExamReviewQuestionViewed(question) {
-        if (!this.currentExamReview || !question) return false;
-        const examKey = String(this.currentExamReview.examId);
-        const questionKey = String(question.id || question.question_number);
-        if (!this.examReviewState.viewed) this.examReviewState.viewed = {};
-        if (!this.examReviewState.viewed[examKey]) this.examReviewState.viewed[examKey] = {};
-        if (this.examReviewState.viewed[examKey][questionKey]) return false;
-
-        this.examReviewState.viewed[examKey][questionKey] = {
-            viewedAt: new Date().toISOString(),
-            questionNumber: question.question_number
-        };
-        this.examReviewState.points = Number(this.examReviewState.points || 0) + 1;
-        this.saveUserProgress();
-        this.updateExamReviewPointsUI();
-        this.updateDashboardMetrics();
-        this.showNotification('🎯 +1 NurseIQ point for reviewing this question!', 'success');
-        await this.saveProgressToDatabase();
-        return true;
-    }
-
-    async renderExamReviewQuestion() {
-        const bodyEl = document.getElementById('nurseiqExamReviewBody');
-        const review = this.currentExamReview;
-        if (!bodyEl || !review) return;
-
-        const q = review.questions[this.currentExamReviewIndex];
-        if (!q) {
-            bodyEl.innerHTML = `<div class="nurseiq-review-empty"><i class="fas fa-question-circle"></i><h3>No question data available</h3><button type="button" onclick="window.closeNurseIQExamReview?.()"><i class="fas fa-arrow-left"></i> Back to Exams</button></div>`;
-            return;
-        }
-
-        await this.markExamReviewQuestionViewed(q);
-
-        const isCorrect = q.is_correct;
-        const statusColor = isCorrect ? '#059669' : '#DC2626';
-        const statusBg = isCorrect ? '#ECFDF5' : '#FEF2F2';
-        const statusBorder = isCorrect ? '#A7F3D0' : '#FECACA';
-        const optionsHtml = q.options.length ? q.options.map(opt => {
-            const student = String(opt.label) === String(q.student_answer);
-            const correct = String(opt.label) === String(q.correct_answer);
-            let cls = 'nurseiq-answer-option';
-            let indicator = '';
-            if (student && correct) { cls += ' nurseiq-answer-correct'; indicator = '✓ Your answer · Correct'; }
-            else if (student) { cls += ' nurseiq-answer-wrong'; indicator = '✗ Your answer'; }
-            else if (correct) { cls += ' nurseiq-answer-correct'; indicator = '✓ Correct answer'; }
-            return `<div class="${cls}">
-                <span class="nurseiq-option-label">${this.escapeHtml(opt.label)}.</span>
-                <span class="nurseiq-option-text">${this.escapeHtml(String(opt.value))}</span>
-                ${indicator ? `<strong class="nurseiq-option-indicator">${indicator}</strong>` : ''}
-            </div>`;
-        }).join('') : '<div class="nurseiq-no-options">No answer options available.</div>';
-
-        const explanation = q.explanation ? `<div class="nurseiq-review-explanation"><div class="nurseiq-explanation-title"><i class="fas fa-lightbulb"></i> Explanation</div><div>${this.escapeHtml(String(q.explanation))}</div></div>` : '';
-        const viewedCount = this.getExamReviewPointsForExam(review.examId);
-        const progress = review.totalQuestions ? Math.round(((this.currentExamReviewIndex + 1) / review.totalQuestions) * 100) : 0;
-
-        bodyEl.innerHTML = `
-            <div class="nurseiq-review-question-head">
-                <div class="nurseiq-question-heading">
-                    <span class="nurseiq-question-number">Question ${this.currentExamReviewIndex + 1} of ${review.totalQuestions}</span>
-                    <span class="nurseiq-question-marks">${q.marks_obtained}/${q.total_marks} marks</span>
-                </div>
-                <div class="nurseiq-question-status" style="color:${statusColor};background:${statusBg};border-color:${statusBorder};">${isCorrect ? '✓ Correct' : '✗ Incorrect'}</div>
-            </div>
-
-            <div class="nurseiq-review-progress"><span style="width:${progress}%;"></span></div>
-
-            <div class="nurseiq-review-layout">
-                <aside class="nurseiq-review-sidebar">
-                    <div class="nurseiq-review-sidebar-title">Questions</div>
-                    <div class="nurseiq-question-grid">
-                        ${review.questions.map((item,i)=>{
-                            const viewed=!!this.examReviewState?.viewed?.[String(review.examId)]?.[String(item.id || item.question_number)];
-                            const active=i===this.currentExamReviewIndex;
-                            const resultClass = item.is_correct ? 'correct' : (item.is_answered ? 'wrong' : 'unanswered');
-                            return `<button type="button" aria-label="Question ${i+1}: ${item.is_correct ? 'correct' : (item.is_answered ? 'wrong' : 'not answered')}" onclick="window.nurseiqModule?.goToExamReviewQuestion(${i})" class="nurseiq-question-jump ${resultClass} ${active?'active':''}">${i+1}${viewed&&!active?'<span class="nurseiq-viewed-check">✓</span>':''}</button>`;
-                        }).join('')}
-                    </div>
-                    <div class="nurseiq-question-legend">
-                        <span><i class="legend-correct"></i> Correct</span>
-                        <span><i class="legend-wrong"></i> Failed</span>
-                        <span><i class="legend-unanswered"></i> Not answered</span>
-                    </div>
-                    <div class="nurseiq-review-points-card">
-                        <span><i class="fas fa-star"></i> Review points</span>
-                        <strong>+${viewedCount} <small>/ ${review.totalQuestions}</small></strong>
-                        <em>1 point per question viewed</em>
-                    </div>
-                </aside>
-
-                <main class="nurseiq-review-question-content">
-                    <div class="nurseiq-review-question-text">${this.escapeHtml(String(q.question_text))}</div>
-                    <div class="nurseiq-answer-list">${optionsHtml}</div>
-                    ${explanation}
-
-                    <div class="nurseiq-review-nav">
-                        <button type="button" class="nurseiq-review-nav-btn secondary" onclick="window.nurseiqModule?.goToExamReviewQuestion(${this.currentExamReviewIndex - 1})" ${this.currentExamReviewIndex===0?'disabled':''}>
-                            <i class="fas fa-chevron-left"></i><span>Previous</span>
-                        </button>
-                        <span class="nurseiq-review-nav-hint">Question ${this.currentExamReviewIndex + 1} of ${review.totalQuestions}</span>
-                        <button type="button" class="nurseiq-review-nav-btn primary" onclick="window.nurseiqModule?.goToExamReviewQuestion(${this.currentExamReviewIndex + 1})" ${this.currentExamReviewIndex===review.totalQuestions-1?'disabled':''}>
-                            <span>Next</span><i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
-                </main>
-            </div>
-        `;
-
-        this.injectExamReviewResponsiveStyles();
-        this.updateExamReviewPointsUI();
-    }
-
-    injectExamReviewResponsiveStyles() {
-        if (document.getElementById('nurseiqExamReviewResponsiveStyles')) return;
-        const style = document.createElement('style');
-        style.id = 'nurseiqExamReviewResponsiveStyles';
-        style.textContent = `
-            .nurseiq-review-question-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;}
-            .nurseiq-question-heading{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap;}
-            .nurseiq-question-number{font-weight:800;color:#0A3D62;font-size:14px;}
-            .nurseiq-question-marks{font-size:11px;color:#64748B;background:#fff;border:1px solid #E2E8F0;padding:4px 8px;border-radius:999px;}
-            .nurseiq-question-status{font-size:11px;font-weight:800;border:1px solid;border-radius:999px;padding:5px 10px;white-space:nowrap;}
-            .nurseiq-review-progress{height:3px;background:#E2E8F0;overflow:hidden;}
-            .nurseiq-review-progress span{display:block;height:100%;background:linear-gradient(90deg,#4C1D95,#2563EB);transition:width .2s ease;}
-            .nurseiq-review-layout{display:grid;grid-template-columns:190px minmax(0,1fr);min-height:430px;}
-            .nurseiq-review-sidebar{padding:16px;border-right:1px solid #E2E8F0;background:#FBFDFF;min-width:0;}
-            .nurseiq-review-sidebar-title{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#64748B;font-weight:800;margin-bottom:10px;}
-            .nurseiq-question-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
-            .nurseiq-question-jump{position:relative;min-width:0;aspect-ratio:1;border-radius:8px;border:2px solid #E2E8F0;background:#F8FAFC;color:#64748B;cursor:pointer;font-size:11px;font-weight:800;transition:.15s ease;}
-            .nurseiq-question-jump.correct{background:#2563EB;border-color:#2563EB;color:#fff;}
-            .nurseiq-question-jump.wrong{background:#EF4444;border-color:#EF4444;color:#fff;}
-            .nurseiq-question-jump.unanswered{background:#F8FAFC;border-color:#CBD5E1;color:#64748B;}
-            .nurseiq-question-jump:hover{transform:translateY(-1px);filter:brightness(.97);}
-            .nurseiq-question-jump.active{outline:3px solid rgba(37,99,235,.28);outline-offset:1px;box-shadow:0 0 0 1px #fff,0 3px 8px rgba(15,23,42,.16);transform:none;}
-            .nurseiq-question-jump.correct.active{background:#2563EB;color:#fff;}
-            .nurseiq-question-jump.wrong.active{background:#EF4444;color:#fff;}
-            .nurseiq-question-jump.unanswered.active{background:#F8FAFC;color:#334155;}
-            .nurseiq-question-legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:12px;font-size:9px;color:#64748B;font-weight:700;}
-            .nurseiq-question-legend span{display:inline-flex;align-items:center;gap:5px;}
-            .nurseiq-question-legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
-            .nurseiq-question-legend .legend-correct{background:#2563EB;}
-            .nurseiq-question-legend .legend-wrong{background:#EF4444;}
-            .nurseiq-question-legend .legend-unanswered{background:#CBD5E1;}
-            .nurseiq-viewed-check{position:absolute;right:2px;top:1px;font-size:7px;color:#059669;}
-            .nurseiq-review-points-card{margin-top:14px;padding:11px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:9px;color:#9A3412;}
-            .nurseiq-review-points-card span{display:block;font-size:10px;font-weight:800;}
-            .nurseiq-review-points-card strong{display:block;margin-top:3px;font-size:20px;line-height:1.1;}
-            .nurseiq-review-points-card small{font-size:11px;font-weight:600;}
-            .nurseiq-review-points-card em{display:block;margin-top:4px;font-style:normal;font-size:9px;color:#A16207;line-height:1.3;}
-            .nurseiq-review-question-content{padding:24px;min-width:0;}
-            .nurseiq-review-question-text{font-size:17px;line-height:1.55;color:#0F172A;font-weight:750;margin-bottom:18px;overflow-wrap:anywhere;}
-            .nurseiq-answer-list{display:flex;flex-direction:column;gap:8px;}
-            .nurseiq-answer-option{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border:1px solid #E2E8F0;background:#F8FAFC;border-radius:9px;color:#334155;line-height:1.45;}
-            .nurseiq-answer-correct{background:#ECFDF5;border-color:#6EE7B7;}
-            .nurseiq-answer-wrong{background:#FEF2F2;border-color:#F87171;}
-            .nurseiq-option-label{font-weight:800;color:#0A3D62;flex:0 0 auto;}
-            .nurseiq-option-text{flex:1;min-width:0;overflow-wrap:anywhere;}
-            .nurseiq-option-indicator{font-size:10px;white-space:nowrap;color:#047857;}
-            .nurseiq-answer-wrong .nurseiq-option-indicator{color:#B91C1C;}
-            .nurseiq-no-options{padding:12px;background:#F8FAFC;border-radius:8px;color:#64748B;font-size:13px;}
-            .nurseiq-review-explanation{margin-top:16px;padding:13px 15px;background:#EFF6FF;border-left:4px solid #3B82F6;border-radius:8px;color:#475569;font-size:13px;line-height:1.55;overflow-wrap:anywhere;}
-            .nurseiq-explanation-title{font-weight:800;color:#1D4ED8;margin-bottom:5px;}
-            .nurseiq-review-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;}
-            .nurseiq-review-nav-btn{min-height:40px;padding:0 14px;border-radius:9px;cursor:pointer;font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:.15s ease;}
-            .nurseiq-review-nav-btn.secondary{border:1px solid #CBD5E1;background:#fff;color:#475569;}
-            .nurseiq-review-nav-btn.primary{border:0;background:#2563EB;color:#fff;}
-            .nurseiq-review-nav-btn:hover:not(:disabled){transform:translateY(-1px);}
-            .nurseiq-review-nav-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
-            .nurseiq-review-nav-hint{font-size:10px;color:#64748B;text-align:center;}
-            .nurseiq-review-empty{padding:55px 20px;text-align:center;color:#64748B;}
-            .nurseiq-review-empty i{font-size:40px;color:#94A3B8;display:block;margin-bottom:10px;}
-            .nurseiq-review-empty h3{color:#0A3D62;margin:0 0 14px;}
-            .nurseiq-review-empty button{min-height:40px;padding:0 16px;background:#0A3D62;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:700;}
-            @media(max-width:800px){
-                .nurseiq-review-layout{grid-template-columns:1fr;min-height:0;}
-                .nurseiq-review-sidebar{border-right:0;border-bottom:1px solid #E2E8F0;padding:12px 14px;}
-                .nurseiq-question-grid{grid-template-columns:repeat(10,minmax(0,1fr));}
-                .nurseiq-review-points-card{margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-                .nurseiq-review-points-card strong{margin:0;}
-                .nurseiq-review-points-card em{margin:0 0 0 auto;}
-                .nurseiq-review-question-content{padding:18px;}
-            }
-            @media(max-width:520px){
-                .nurseiq-review-question-head{padding:12px 13px;align-items:flex-start;}
-                .nurseiq-question-heading{gap:7px;}
-                .nurseiq-question-number{font-size:13px;}
-                .nurseiq-question-marks{font-size:10px;}
-                .nurseiq-question-status{font-size:10px;padding:4px 8px;}
-                .nurseiq-review-sidebar{padding:10px;}
-                .nurseiq-question-grid{grid-template-columns:repeat(8,minmax(0,1fr));gap:5px;}
-                .nurseiq-question-jump{border-radius:7px;font-size:10px;}
-                .nurseiq-review-question-content{padding:15px 13px;}
-                .nurseiq-review-question-text{font-size:15px;line-height:1.5;}
-                .nurseiq-answer-option{padding:10px;gap:8px;font-size:13px;}
-                .nurseiq-option-indicator{font-size:9px;}
-                .nurseiq-review-explanation{font-size:12px;padding:11px 12px;}
-                .nurseiq-review-nav{gap:6px;}
-                .nurseiq-review-nav-btn{padding:0 10px;min-height:42px;}
-                .nurseiq-review-nav-btn span{display:none;}
-                .nurseiq-review-nav-btn.primary span{display:inline;}
-                .nurseiq-review-nav-hint{font-size:9px;flex:1;}
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    async goToExamReviewQuestion(index) {
-        if (!this.currentExamReview) return;
-        const total = this.currentExamReview.questions.length;
-        if (index < 0 || index >= total) return;
-        this.currentExamReviewIndex = index;
-        await this.renderExamReviewQuestion();
-    }
-
-    updateExamReviewPointsUI() {
-        const pointsEl = document.getElementById('nurseiqReviewPoints');
-        const progressBar = document.getElementById('nurseiqReviewProgressBar');
-        const progressText = document.getElementById('nurseiqReviewProgressText');
-        if (pointsEl && this.currentExamReview) {
-            const reviewed = this.getExamReviewPointsForExam(this.currentExamReview.examId);
-            pointsEl.textContent = `${reviewed} / ${this.currentExamReview.totalQuestions}`;
-            const pct = this.currentExamReview.totalQuestions ? Math.round((reviewed / this.currentExamReview.totalQuestions) * 100) : 0;
-            if (progressBar) progressBar.style.width = `${pct}%`;
-            if (progressText) progressText.textContent = `${reviewed} of ${this.currentExamReview.totalQuestions} (${pct}%)`;
-        }
-        this.updateStatsUI?.(this.getDashboardMetrics());
-    }
-
-    closeExamReview() {
-        this.currentExamReview = null;
-        this.currentExamReviewIndex = 0;
-        document.getElementById('nurseiq')?.classList.remove('nurseiq-exam-review-mode');
-        const reviewEl = document.getElementById('nurseiqExamReview');
-        if (reviewEl) reviewEl.style.display = 'none';
-        window.showTab?.('nurseiq');
-        this.loadReleasedExamList?.();
-        const practiceBtn = document.querySelector('#nurseiq .ni-nav-btn');
-        document.querySelectorAll('#nurseiq .ni-nav-btn').forEach(btn => btn.classList.remove('active'));
-        if (practiceBtn) practiceBtn.classList.add('active');
-    }
-
-    escapeHtml(value) {
-        return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
-    }
-
-    // ============================================================
     // 🚀 FORCE SAVE TO DATABASE
     // ============================================================
     async forceSaveToDatabase() {
@@ -2391,6 +1909,806 @@ async saveProgressToDatabase() {
         console.log('✅ Force save complete!');
     }
     
+
+    // ============================================================
+    // 🧠 EXAM REVIEW — RELEASED RESULTS
+    // ============================================================
+
+    escapeReviewHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    getReviewSupabase() {
+        return this.getSupabaseClient() || window.supabase || window.db?.supabase || null;
+    }
+
+    getExamModuleList() {
+        const module = window.examsModule || null;
+        return Array.isArray(module?.allExams) ? module.allExams :
+               Array.isArray(module?.exams) ? module.exams :
+               Array.isArray(window.studentExams) ? window.studentExams : [];
+    }
+
+    isReleasedExamRecord(exam, grade, releasedIds) {
+        const status = String(grade?.result_status || '').toUpperCase();
+        return (
+            status === 'PASS' ||
+            status === 'FAIL' ||
+            status === 'RELEASED' ||
+            grade?.released === true ||
+            grade?.released === 'true' ||
+            !!grade?.released_at ||
+            (!!grade?.id && releasedIds.has(String(grade.id))) ||
+            exam?.isReleased === true
+        );
+    }
+
+    formatReviewDate(value) {
+        if (!value) return '—';
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return '—';
+        return d.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    }
+
+    getReviewGradeLabel(percent) {
+        const p = Number(percent || 0);
+        if (p >= 85) return 'Distinction';
+        if (p >= 75) return 'Credit';
+        if (p >= 60) return 'Pass';
+        return 'Fail';
+    }
+
+    getReviewScore(grade, exam) {
+        const score = Number(grade?.marks ?? grade?.score ?? grade?.total_score ?? 0) || 0;
+        const total = Number(
+            grade?.marks_out_of ??
+            grade?.total_marks ??
+            exam?.total_marks ??
+            exam?.marks_out_of ??
+            100
+        ) || 100;
+        const percentage = Number(
+            grade?.percentage ??
+            grade?.total_percentage ??
+            grade?.score_percentage
+        );
+
+        return {
+            score,
+            total,
+            percent: Number.isFinite(percentage) && percentage > 0
+                ? Math.round(percentage)
+                : Math.round((score / total) * 100)
+        };
+    }
+
+    async setupExamReviewUI() {
+        if (this._examReviewBound) return;
+        this._examReviewBound = true;
+
+        const nurseiq = document.getElementById('nurseiq');
+        if (!nurseiq) return;
+
+        nurseiq.querySelectorAll('[data-niq-view]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const view = btn.getAttribute('data-niq-view');
+
+                nurseiq.querySelectorAll('[data-niq-view]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                if (view === 'exam-review') {
+                    await this.loadReleasedExamReviews();
+                    const panel = document.getElementById('niqExamReviewPanel');
+                    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        const selector = document.getElementById('nurseiqExamSelector');
+        const reviewButton = document.getElementById('nurseiqReviewSelectedBtn');
+
+        if (selector) {
+            selector.addEventListener('change', () => {
+                const exam = (this.releasedExamReviews || [])
+                    .find(e => String(e.examId) === String(selector.value));
+
+                if (exam) this.updateExamReviewSelection(exam);
+            });
+        }
+
+        if (reviewButton) {
+            reviewButton.addEventListener('click', () => {
+                const examId = selector?.value;
+                if (!examId) {
+                    this.showNotification('Select a released exam first.', 'warning');
+                    return;
+                }
+                this.openExamReview(examId);
+            });
+        }
+
+        const randomButton = document.getElementById('randomQuestionBtn');
+        if (randomButton && !randomButton.dataset.niqBound) {
+            randomButton.dataset.niqBound = '1';
+            randomButton.addEventListener('click', async () => {
+                if (!this.initialized && !this._isLoadingQuestions) {
+                    await this.loadQuestionBankCards();
+                }
+
+                const courses = Array.isArray(this.questionBankCourses) ? this.questionBankCourses : [];
+                const allQuestions = courses.flatMap(c => c.questions || []);
+
+                if (!allQuestions.length) {
+                    this.showNotification('Load the course catalog first.', 'info');
+                    return;
+                }
+
+                const q = allQuestions[Math.floor(Math.random() * allQuestions.length)];
+                const course = courses.find(c => String(c.id) === String(q.course_id));
+
+                if (course) {
+                    const questionIndex = course.questions.findIndex(x => String(x.id) === String(q.id));
+                    this.startCourseTest(course.id, course.name, Math.max(0, questionIndex));
+                }
+            });
+        }
+
+        await this.loadReleasedExamReviews();
+    }
+
+    updateExamReviewSelection(exam) {
+        const score = this.getReviewScore(exam.grade, exam.exam);
+        const selector = document.getElementById('nurseiqExamSelector');
+
+        if (selector && selector.value !== String(exam.examId)) {
+            selector.value = String(exam.examId);
+        }
+
+        const tableBody = document.getElementById('nurseiqReleasedExamsTableBody');
+        if (tableBody) {
+            tableBody.querySelectorAll('tr').forEach(row => row.classList.remove('niq-selected-row'));
+            const row = [...tableBody.querySelectorAll('tr')]
+                .find(r => String(r.getAttribute('data-exam-id')) === String(exam.examId));
+
+            if (row) row.classList.add('niq-selected-row');
+        }
+
+        const meta = document.getElementById('nurseiqExamReviewMeta');
+        if (meta) {
+            meta.textContent = `${exam.examType} • ${this.formatReviewDate(exam.date)} • ${score.score}/${score.total} (${score.percent}%)`;
+        }
+    }
+
+    async loadReleasedExamReviews() {
+        const supabase = this.getReviewSupabase();
+        const tableBody = document.getElementById('nurseiqReleasedExamsTableBody');
+        const selector = document.getElementById('nurseiqExamSelector');
+
+        if (!supabase || !this.userId) {
+            this.releasedExamReviews = [];
+
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr><td colspan="6">
+                        <div class="niq-empty">
+                            <i class="fas fa-user-lock"></i>
+                            <strong>Please log in to view your exam results.</strong>
+                            <span>Your released assessments will appear here.</span>
+                        </div>
+                    </td></tr>`;
+            }
+            return;
+        }
+
+        try {
+            const sentinel = '00000000-0000-0000-0000-000000000000';
+
+            const [gradesResult, releasedResult] = await Promise.all([
+                supabase
+                    .from('exam_grades')
+                    .select('*')
+                    .eq('student_id', this.userId)
+                    .eq('question_id', sentinel),
+                supabase
+                    .from('released_exam_results')
+                    .select('result_id')
+            ]);
+
+            const summaryGrades = gradesResult.data || [];
+            const releasedIds = new Set(
+                (releasedResult.data || []).map(r => String(r.result_id))
+            );
+
+            const examIds = [...new Set(
+                summaryGrades
+                    .map(g => g.exam_id)
+                    .filter(v => v !== null && v !== undefined)
+            )];
+
+            let exams = [];
+
+            if (examIds.length) {
+                const { data: examRows, error: examError } = await supabase
+                    .from('exams')
+                    .select('*')
+                    .in('id', examIds);
+
+                if (!examError) exams = examRows || [];
+            }
+
+            const moduleExams = this.getExamModuleList();
+            const examMap = new Map(
+                exams.map(e => [String(e.id ?? e.exam_id), e])
+            );
+
+            moduleExams.forEach(e => {
+                const id = e.id ?? e.exam_id;
+                if (id !== undefined && id !== null && !examMap.has(String(id))) {
+                    examMap.set(String(id), e);
+                }
+            });
+
+            const reviews = [];
+
+            summaryGrades.forEach(grade => {
+                const exam = examMap.get(String(grade.exam_id));
+                if (!exam) return;
+                if (!this.isReleasedExamRecord(exam, grade, releasedIds)) return;
+
+                const score = this.getReviewScore(grade, exam);
+                const examName =
+                    exam.exam_name ||
+                    exam.title ||
+                    `Assessment ${grade.exam_id}`;
+
+                reviews.push({
+                    examId: grade.exam_id,
+                    gradeId: grade.id,
+                    exam,
+                    grade,
+                    examName,
+                    examType: String(
+                        exam.exam_type ||
+                        (exam.isCatExam ? 'CAT' : 'EXAM')
+                    ).toUpperCase(),
+                    date:
+                        grade.released_at ||
+                        grade.graded_at ||
+                        grade.updated_at ||
+                        exam.exam_end_date ||
+                        exam.end_date ||
+                        exam.examEndDateTime,
+                    score: score.score,
+                    total: score.total,
+                    percent: score.percent,
+                    gradeLabel: this.getReviewGradeLabel(score.percent)
+                });
+            });
+
+            // Fallback to the already-loaded Exams module when direct
+            // summary rows are unavailable but the Exams module knows
+            // that the result is released.
+            if (!reviews.length) {
+                moduleExams
+                    .filter(e => e.isReleased && e.hasGrade)
+                    .forEach(e => {
+                        const score = this.getReviewScore(e, e);
+
+                        reviews.push({
+                            examId: e.id,
+                            gradeId: e.gradeId || e.id,
+                            exam: e,
+                            grade: e.grade || e,
+                            examName: e.exam_name || e.title || `Assessment ${e.id}`,
+                            examType: String(
+                                e.exam_type || (e.isCatExam ? 'CAT' : 'EXAM')
+                            ).toUpperCase(),
+                            date: e.gradedAt || e.released_at || e.examEndDateTime || e.examStartDateTime,
+                            score: score.score,
+                            total: score.total,
+                            percent: score.percent,
+                            gradeLabel: this.getReviewGradeLabel(score.percent)
+                        });
+                    });
+            }
+
+            reviews.sort((a, b) =>
+                new Date(b.date || 0) - new Date(a.date || 0)
+            );
+
+            this.releasedExamReviews = reviews;
+            this.completedExamCount = summaryGrades.length || reviews.length;
+
+            this.renderReleasedExamReviews();
+
+            if (this.currentExamReview) {
+                const current = reviews.find(
+                    r => String(r.examId) === String(this.currentExamReview.examId)
+                );
+                if (current) this.updateExamReviewSelection(current);
+            }
+
+            this.updateNurseIQRedesignStats(
+                this.getDashboardMetrics(),
+                this.calculateNurseIQPoints()
+            );
+        } catch (error) {
+            console.error('❌ Failed to load released exam reviews:', error);
+            this.releasedExamReviews = [];
+
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr><td colspan="6">
+                        <div class="niq-empty">
+                            <i class="fas fa-circle-exclamation"></i>
+                            <strong>Unable to load released results.</strong>
+                            <span>Please refresh and try again.</span>
+                        </div>
+                    </td></tr>`;
+            }
+        }
+    }
+
+    renderReleasedExamReviews() {
+        const tableBody = document.getElementById('nurseiqReleasedExamsTableBody');
+        const selector = document.getElementById('nurseiqExamSelector');
+
+        if (!tableBody || !selector) return;
+
+        const reviews = this.releasedExamReviews || [];
+
+        selector.innerHTML =
+            '<option value="">Select a released exam...</option>' +
+            reviews.map(e => `
+                <option value="${this.escapeReviewHtml(e.examId)}">
+                    ${this.escapeReviewHtml(e.examName)} — ${this.escapeReviewHtml(e.examType)} — ${e.percent}%
+                </option>
+            `).join('');
+
+        if (!reviews.length) {
+            tableBody.innerHTML = `
+                <tr><td colspan="6">
+                    <div class="niq-empty">
+                        <i class="fas fa-folder-open"></i>
+                        <strong>No released exam results yet.</strong>
+                        <span>Completed assessments will appear here once their results are released.</span>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = reviews.map(exam => `
+            <tr data-exam-id="${this.escapeReviewHtml(exam.examId)}">
+                <td>
+                    <div class="niq-exam-name">${this.escapeReviewHtml(exam.examName)}</div>
+                    <span class="niq-exam-type">${this.escapeReviewHtml(exam.examType)}</span>
+                </td>
+                <td>${this.escapeReviewHtml(this.formatReviewDate(exam.date))}</td>
+                <td>
+                    <span class="niq-score">${this.escapeReviewHtml(exam.score)}/${this.escapeReviewHtml(exam.total)}</span>
+                    <small>${this.escapeReviewHtml(exam.percent)}%</small>
+                </td>
+                <td><strong style="font-size:9px;color:#475569">${this.escapeReviewHtml(exam.gradeLabel)}</strong></td>
+                <td><span class="niq-release-badge"><i class="fas fa-check"></i> Released</span></td>
+                <td>
+                    <button type="button" class="niq-review-btn"
+                        onclick="window.nurseiqModule?.openExamReview('${this.escapeReviewHtml(exam.examId)}')">
+                        <i class="fas fa-book-open"></i> Review
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+        const first = reviews[0];
+        if (first) {
+            selector.value = String(first.examId);
+            this.updateExamReviewSelection(first);
+        }
+    }
+
+    async openExamReview(examId) {
+        const container = document.getElementById('nurseiqExamReview');
+        const body = document.getElementById('nurseiqExamReviewBody');
+        const nurseiq = document.getElementById('nurseiq');
+
+        if (!container || !body || !nurseiq) {
+            throw new Error('NurseIQ exam review container is missing from the HTML.');
+        }
+
+        let exam = (this.releasedExamReviews || [])
+            .find(e => String(e.examId) === String(examId));
+
+        if (!exam) {
+            await this.loadReleasedExamReviews();
+            exam = (this.releasedExamReviews || [])
+                .find(e => String(e.examId) === String(examId));
+        }
+
+        if (!exam) {
+            this.showNotification(
+                'This exam is not available for review. Results may still be pending release.',
+                'warning'
+            );
+            return;
+        }
+
+        const supabase = this.getReviewSupabase();
+
+        if (!supabase || !this.userId) {
+            this.showNotification('Please log in again to review this exam.', 'warning');
+            return;
+        }
+
+        container.style.display = 'block';
+        nurseiq.classList.add('niq-review-mode');
+
+        const title = document.getElementById('nurseiqExamReviewTitle');
+        const meta = document.getElementById('nurseiqExamReviewMeta');
+        const status = document.getElementById('nurseiqExamReviewStatus');
+        const scoreEl = document.getElementById('nurseiqReviewScore');
+        const correctEl = document.getElementById('nurseiqReviewCorrect');
+        const totalEl = document.getElementById('nurseiqReviewTotal');
+        const pointsEl = document.getElementById('nurseiqReviewPoints');
+
+        if (title) title.textContent = exam.examName;
+        if (meta) {
+            meta.textContent =
+                `${exam.examType} • ${this.formatReviewDate(exam.date)} • ${exam.score}/${exam.total} (${exam.percent}%)`;
+        }
+        if (status) status.textContent = 'RESULTS RELEASED';
+        if (scoreEl) scoreEl.textContent = `${exam.score}/${exam.total}`;
+        if (totalEl) totalEl.textContent = '—';
+        if (correctEl) correctEl.textContent = '—';
+        if (pointsEl) pointsEl.textContent = `+${this.examReviewState?.points || 0}`;
+
+        body.innerHTML = `
+            <div class="niq-review-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Loading your submitted answers...</div>
+            </div>`;
+
+        try {
+            const [questionsResult, answersResult] = await Promise.all([
+                supabase
+                    .from('exam_questions')
+                    .select('*')
+                    .eq('exam_id', exam.examId)
+                    .order('question_number', { ascending: true }),
+                supabase
+                    .from('exam_grades')
+                    .select('*')
+                    .eq('student_id', this.userId)
+                    .eq('exam_id', exam.examId)
+                    .neq('question_id', '00000000-0000-0000-0000-000000000000')
+            ]);
+
+            if (questionsResult.error) throw questionsResult.error;
+            if (answersResult.error) throw answersResult.error;
+
+            const questions = questionsResult.data || [];
+            const answers = answersResult.data || [];
+            const answerMap = new Map(
+                answers.map(a => [String(a.question_id), a])
+            );
+
+            const reviewQuestions = questions.map((q, index) => {
+                const answer = answerMap.get(String(q.id));
+
+                const selected =
+                    answer?.selected_answer ??
+                    answer?.student_answer ??
+                    answer?.answer ??
+                    '';
+
+                const correct =
+                    q.correct_answer ??
+                    q.answer ??
+                    '';
+
+                const normalizedSelected = String(selected || '').trim();
+                const normalizedCorrect = String(correct || '').trim();
+
+                const isAnswered = normalizedSelected !== '';
+                const isCorrect =
+                    isAnswered &&
+                    normalizedSelected.toLowerCase() === normalizedCorrect.toLowerCase();
+
+                return {
+                    id: q.id,
+                    number: q.question_number ?? index + 1,
+                    text: q.question_text || q.question || `Question ${index + 1}`,
+                    options: [
+                        ['A', q.option_a],
+                        ['B', q.option_b],
+                        ['C', q.option_c],
+                        ['D', q.option_d]
+                    ].filter(([, value]) =>
+                        value !== null &&
+                        value !== undefined &&
+                        String(value).trim() !== ''
+                    ),
+                    selected,
+                    correct,
+                    isAnswered,
+                    isCorrect,
+                    explanation: q.explanation || q.rationale || '',
+                    marks: answer?.marks ?? 0,
+                    totalMarks: q.marks ?? 1
+                };
+            });
+
+            const correctCount = reviewQuestions.filter(q => q.isCorrect).length;
+
+            this.currentExamReview = {
+                examId: exam.examId,
+                gradeId: exam.gradeId,
+                examName: exam.examName,
+                examType: exam.examType,
+                score: exam.score,
+                total: exam.total,
+                percent: exam.percent,
+                questions: reviewQuestions,
+                currentIndex: 0,
+                attemptKey: `${exam.examId}:${exam.gradeId || 'released'}`
+            };
+
+            if (correctEl) correctEl.textContent = `${correctCount}/${reviewQuestions.length}`;
+            if (totalEl) totalEl.textContent = String(reviewQuestions.length);
+            const reviewQuestionsCountEl = document.getElementById('niqReviewQuestionsCount');
+            if (reviewQuestionsCountEl) reviewQuestionsCountEl.textContent = String(reviewQuestions.length);
+
+            await this.renderExamReviewQuestion(0);
+            this.updateExamReviewSelection(exam);
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (error) {
+            console.error('❌ Exam review load failed:', error);
+
+            body.innerHTML = `
+                <div class="niq-empty">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <strong>Unable to load the exam review.</strong>
+                    <span>${this.escapeReviewHtml(error.message || 'Please try again.')}</span>
+                </div>`;
+        }
+    }
+
+    async renderExamReviewQuestion(index) {
+        const review = this.currentExamReview;
+        const body = document.getElementById('nurseiqExamReviewBody');
+
+        if (!review || !body || !review.questions?.length) {
+            if (body) {
+                body.innerHTML = `
+                    <div class="niq-empty">
+                        <i class="fas fa-file-circle-question"></i>
+                        <strong>No question review data is available.</strong>
+                        <span>The released result is available, but submitted question details could not be found.</span>
+                    </div>`;
+            }
+            return;
+        }
+
+        const safeIndex = Math.max(
+            0,
+            Math.min(index, review.questions.length - 1)
+        );
+
+        review.currentIndex = safeIndex;
+        const q = review.questions[safeIndex];
+
+        await this.recordExamReviewPoint(q.id, review.attemptKey);
+
+        const statusClass =
+            !q.isAnswered ? 'unanswered' :
+            q.isCorrect ? 'correct' : 'incorrect';
+
+        const statusText =
+            !q.isAnswered ? 'NOT ANSWERED' :
+            q.isCorrect ? 'CORRECT' : 'INCORRECT';
+
+        const nav = review.questions.map((item, i) => {
+            const cls = [
+                'niq-qnav',
+                i === safeIndex ? 'active' : '',
+                item.isCorrect ? 'correct' :
+                    item.isAnswered ? 'incorrect' : ''
+            ].filter(Boolean).join(' ');
+
+            return `
+                <button type="button" class="${cls}"
+                    onclick="window.nurseiqModule?.renderExamReviewQuestion(${i})">
+                    ${i + 1}
+                </button>`;
+        }).join('');
+
+        const options = q.options.map(([letter, value]) => {
+            const isStudent =
+                String(q.selected || '').trim().toLowerCase() ===
+                String(value).trim().toLowerCase();
+
+            const isCorrect =
+                String(q.correct || '').trim().toLowerCase() ===
+                String(value).trim().toLowerCase();
+
+            const cls = [
+                'niq-option',
+                isStudent ? 'student' : '',
+                isCorrect ? 'correct' : ''
+            ].filter(Boolean).join(' ');
+
+            return `
+                <div class="${cls}">
+                    <span class="letter">${letter}</span>
+                    <span>
+                        ${this.escapeReviewHtml(value)}
+                        ${isStudent ? ' <strong style="font-size:8px;color:#B91C1C">(Your answer)</strong>' : ''}
+                        ${isCorrect ? ' <strong style="font-size:8px;color:#15803D">(Correct)</strong>' : ''}
+                    </span>
+                </div>`;
+        }).join('');
+
+        const selectedDisplay = q.isAnswered ? q.selected : 'Not answered';
+        const correctDisplay = q.correct || 'Not available';
+
+        body.innerHTML = `
+            <div class="niq-review-layout">
+                <aside class="niq-review-nav">
+                    <div class="niq-review-nav-head">
+                        <strong>Question Navigator</strong>
+                        <span>${review.questions.length} questions • select any question</span>
+                    </div>
+                    <div class="niq-question-grid">${nav}</div>
+                </aside>
+
+                <article class="niq-review-card">
+                    <div class="niq-review-card-head">
+                        <div>
+                            <h3>Question ${q.number} of ${review.questions.length}</h3>
+                            <p>${this.escapeReviewHtml(review.examName)} • ${this.escapeReviewHtml(review.examType)}</p>
+                        </div>
+                        <span class="niq-answer-status ${statusClass}">${statusText}</span>
+                    </div>
+
+                    <div class="niq-question-body">
+                        <div class="niq-question-text">${this.escapeReviewHtml(q.text)}</div>
+
+                        <div class="niq-options">
+                            ${options || `
+                                <div class="niq-option">
+                                    <span class="letter">—</span>
+                                    <span>No answer options were stored for this question.</span>
+                                </div>`}
+                        </div>
+
+                        <div class="niq-answer-box">
+                            <div class="niq-answer-item">
+                                <label>Your Answer</label>
+                                <strong>${this.escapeReviewHtml(selectedDisplay)}</strong>
+                            </div>
+                            <div class="niq-answer-item">
+                                <label>Correct Answer</label>
+                                <strong>${this.escapeReviewHtml(correctDisplay)}</strong>
+                            </div>
+                        </div>
+
+                        <div class="niq-explanation">
+                            <label>Explanation</label>
+                            <p>${this.escapeReviewHtml(q.explanation || 'No explanation was provided for this question.')}</p>
+                        </div>
+                    </div>
+
+                    <div class="niq-review-footer">
+                        <button type="button"
+                            onclick="window.nurseiqModule?.renderExamReviewQuestion(${safeIndex - 1})"
+                            ${safeIndex === 0 ? 'disabled' : ''}>
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+
+                        <button type="button" class="primary"
+                            onclick="window.nurseiqModule?.renderExamReviewQuestion(${safeIndex + 1})"
+                            ${safeIndex === review.questions.length - 1 ? 'disabled' : ''}>
+                            Next Question <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </article>
+            </div>`;
+
+        const scoreEl = document.getElementById('nurseiqReviewScore');
+        const pointsEl = document.getElementById('nurseiqReviewPoints');
+
+        if (scoreEl) scoreEl.textContent = `${review.score}/${review.total}`;
+        if (pointsEl) pointsEl.textContent = `+${this.examReviewState?.points || 0}`;
+    }
+
+    async recordExamReviewPoint(questionId, attemptKey) {
+        if (!questionId || !attemptKey) return;
+
+        if (!this.examReviewState) {
+            this.examReviewState = {
+                points: 0,
+                viewedQuestionIds: [],
+                viewedQuestionIdsByAttempt: {}
+            };
+        }
+
+        if (!Array.isArray(this.examReviewState.viewedQuestionIds)) {
+            this.examReviewState.viewedQuestionIds = [];
+        }
+
+        if (
+            !this.examReviewState.viewedQuestionIdsByAttempt ||
+            typeof this.examReviewState.viewedQuestionIdsByAttempt !== 'object'
+        ) {
+            this.examReviewState.viewedQuestionIdsByAttempt = {};
+        }
+
+        const key = String(attemptKey);
+        const qid = String(questionId);
+
+        const attemptList = Array.isArray(
+            this.examReviewState.viewedQuestionIdsByAttempt[key]
+        )
+            ? this.examReviewState.viewedQuestionIdsByAttempt[key]
+            : [];
+
+        // Same question in the same exam attempt never earns another point.
+        if (attemptList.map(String).includes(qid)) return;
+
+        attemptList.push(qid);
+        this.examReviewState.viewedQuestionIdsByAttempt[key] = attemptList;
+
+        // Preserve a legacy flat list for existing dashboard data.
+        if (!this.examReviewState.viewedQuestionIds.map(String).includes(qid)) {
+            this.examReviewState.viewedQuestionIds.push(qid);
+        }
+
+        this.examReviewState.points =
+            Number(this.examReviewState.points || 0) + 1;
+
+        const pointsEl = document.getElementById('nurseiqReviewPoints');
+        const summaryEl = document.getElementById('niqReviewPointsSummary');
+
+        if (pointsEl) pointsEl.textContent = `+${this.examReviewState.points}`;
+        if (summaryEl) summaryEl.textContent = `+${this.examReviewState.points}`;
+
+        this.updateNurseIQRedesignStats(
+            this.getDashboardMetrics(),
+            this.calculateNurseIQPoints()
+        );
+
+        this.saveUserProgress();
+        await this.saveProgressToDatabase();
+    }
+
+    closeExamReview() {
+        const nurseiq = document.getElementById('nurseiq');
+        const container = document.getElementById('nurseiqExamReview');
+
+        if (container) container.style.display = 'none';
+        if (nurseiq) nurseiq.classList.remove('niq-review-mode');
+
+        this.currentExamReview = null;
+
+        nurseiq?.querySelectorAll('[data-niq-view]').forEach(btn => {
+            btn.classList.toggle(
+                'active',
+                btn.getAttribute('data-niq-view') === 'practice'
+            );
+        });
+
+        this.loadReleasedExamReviews();
+    }
+
     // ============================================================
     // 🚀 INITIALIZE
     // ============================================================
@@ -2398,26 +2716,19 @@ async saveProgressToDatabase() {
         console.log('🚀 Initializing NurseIQ Module...');
         
         this.cacheElements();
-        const reviewSelect = document.getElementById('nurseiqExamReviewSelect');
-        const reviewOpen = document.getElementById('nurseiqExamReviewOpenBtn');
-        if (reviewSelect && !reviewSelect.dataset.nurseiqBound) {
-            reviewSelect.dataset.nurseiqBound = '1';
-            reviewSelect.addEventListener('change', () => {
-                if (reviewOpen) reviewOpen.disabled = !reviewSelect.value;
-            });
-        }
-        if (reviewOpen && !reviewOpen.dataset.nurseiqBound) {
-            reviewOpen.dataset.nurseiqBound = '1';
-            reviewOpen.addEventListener('click', () => this.openSelectedExamReview());
-        }
         this.updateUIForProgram();
         await this.loadUserProgress();
         await this.loadQuestionBankCards();
-        await this.loadReleasedExamList();
-        
+        await this.setupExamReviewUI();
+
+        this.updateNurseIQRedesignStats(
+            this.getDashboardMetrics(),
+            this.calculateNurseIQPoints()
+        );
+
         // ✅ Force save to database on init
         await this.saveProgressToDatabase();
-        
+
         this.initialized = true;
         console.log('✅ NurseIQ Module initialized successfully');
     }
@@ -2435,7 +2746,6 @@ async function initNurseIQ() {
         await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
     }
     nurseiqModule = new NurseIQModule();
-    window.nurseiqModule = nurseiqModule;
     await nurseiqModule.initialize();
     return nurseiqModule;
 }
@@ -2445,13 +2755,6 @@ window.initNurseIQ = initNurseIQ;
 window.loadQuestionBankCards = function() {
     if (nurseiqModule) nurseiqModule.loadQuestionBankCards();
     else initNurseIQ().then(() => nurseiqModule.loadQuestionBankCards()).catch(console.error);
-};
-window.loadReleasedExamList = function() {
-    if (nurseiqModule) return nurseiqModule.loadReleasedExamList();
-    return initNurseIQ().then(() => nurseiqModule.loadReleasedExamList()).catch(console.error);
-};
-window.setNurseIQView = function(view, button) {
-    if (nurseiqModule) nurseiqModule.setNurseIQView(view, button);
 };
 window.clearQuestionBankSearch = function() {
     if (nurseiqModule) nurseiqModule.clearQuestionBankSearch();
@@ -2477,6 +2780,15 @@ window.resetQuestion = function() {
 window.finishPractice = function() {
     if (nurseiqModule) nurseiqModule.finishPractice();
 };
+window.openNurseIQExamReview = function(examId) {
+    if (nurseiqModule) return nurseiqModule.openExamReview(examId);
+};
+window.closeNurseIQExamReview = function() {
+    if (nurseiqModule) nurseiqModule.closeExamReview();
+};
+window.renderNurseIQExamReviewQuestion = function(index) {
+    if (nurseiqModule) return nurseiqModule.renderExamReviewQuestion(index);
+};
 window.clearAllProgress = function() {
     if (nurseiqModule) {
         if (confirm('Are you sure you want to clear all your progress? This cannot be undone.')) {
@@ -2484,8 +2796,6 @@ window.clearAllProgress = function() {
             localStorage.removeItem(nurseiqModule.lastCourseProgressKey);
             localStorage.removeItem(nurseiqModule.dashboardMetricsKey);
             nurseiqModule.userTestAnswers = {};
-            nurseiqModule.examReviewState = { viewed: {}, points: 0 };
-            localStorage.removeItem(nurseiqModule.examReviewProgressKey);
             nurseiqModule.showNotification('All progress cleared', 'success');
             nurseiqModule.updateDashboardMetrics();
             nurseiqModule.loadQuestionBankCards();
@@ -2498,20 +2808,6 @@ window.forceSaveNurseIQ = function() {
     } else {
         console.error('❌ NurseIQ module not initialized');
     }
-};
-
-window.openNurseIQExamReview = async function(examId) {
-    try {
-        if (!nurseiqModule) await initNurseIQ();
-        return await nurseiqModule.openExamReview(examId);
-    } catch (error) {
-        console.error('❌ NurseIQ exam review error:', error);
-        throw error;
-    }
-};
-window.closeNurseIQExamReview = function() {
-    if (nurseiqModule) nurseiqModule.closeExamReview();
-    else window.showTab?.('cats');
 };
 
 // ============================================================
@@ -2529,5 +2825,5 @@ if (document.readyState === 'loading') {
 console.log('✅ NurseIQ module loaded - SAVES TO DATABASE!');
 console.log('📚 Questions grouped by course, latest on top!');
 console.log('🏷️ Auto-detects KRCHN/TVET programs like Finance Module!');
-console.log('💰 Points: 2 per correct practice answer + 1 per unique exam-review question!');
-console.log('💾 Saves progress to user_progress, nurseiq_attempts, and profile!');
+console.log('💰 Points: 2 per correct practice answer + 1 per unique reviewed exam question!');
+console.log('💾 Saves practice progress + exam review state to user_progress and profile!');
