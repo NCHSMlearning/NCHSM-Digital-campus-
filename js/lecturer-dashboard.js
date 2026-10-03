@@ -450,13 +450,15 @@ const LecturerDashboard = {
             const nameEl = document.getElementById('nrdNextClassName');
             const unitEl = document.getElementById('nrdNextClassUnit');
             const venueEl = document.getElementById('nrdNextClassVenue');
+            const lecturerEl = document.getElementById('nrdNextClassLecturer');
 
             if (!nextClass) {
                 if (timeEl) timeEl.textContent = '--:--';
                 if (durationEl) durationEl.textContent = 'No upcoming class';
                 if (nameEl) nameEl.textContent = 'No Upcoming Class';
                 if (unitEl) unitEl.textContent = 'Check your timetable for the latest schedule.';
-                if (venueEl) venueEl.innerHTML = '<i class="fas fa-location-dot"></i> —';
+                if (venueEl) venueEl.textContent = '—';
+                if (lecturerEl) lecturerEl.textContent = '—';
             } else {
                 const classDate = new Date(`${nextClass.class_date}T00:00:00`);
                 const isToday = classDate.toDateString() === now.toDateString();
@@ -468,7 +470,8 @@ const LecturerDashboard = {
                 if (durationEl) durationEl.textContent = `${dateLabel} • ${startTime} — ${endTime}`;
                 if (nameEl) nameEl.textContent = nextClass.session_name || nextClass.course_name || 'Scheduled Class';
                 if (unitEl) unitEl.textContent = nextClass.course_name || nextClass.session_name || nextClass.block || 'Scheduled teaching session';
-                if (venueEl) venueEl.innerHTML = `<i class="fas fa-location-dot"></i> ${nextClass.venue || 'Venue TBA'}`;
+                if (venueEl) venueEl.textContent = nextClass.venue || 'Venue TBA';
+                if (lecturerEl) lecturerEl.textContent = nextClass.lecturer_name || 'TBA';
             }
         } catch (error) {
             console.error('❌ Next class query failed:', error);
