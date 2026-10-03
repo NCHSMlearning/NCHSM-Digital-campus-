@@ -353,6 +353,204 @@ const LecturerDashboard = {
         }
     },
 
+    // ─── NEXT CLASS / NEXT EXAM (STUDENT DASHBOARD-STYLE LOGIC) ───
+    normalizePersonName(value) {
+        return String(value || '')
+            .toLowerCase()
+            .replace(/\b(mr|mrs|ms|miss|dr|prof|madam|md|sir)\.?\b/g, ' ')
+            .replace(/[^a-z0-9]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    lecturerNameMatches(a, b) {
+        const left = this.normalizePersonName(a);
+        const right = this.normalizePersonName(b);
+        if (!left || !right) return false;
+        if (left === right || left.includes(right) || right.includes(left)) return true;
+
+        const leftTokens = new Set(left.split(' ').filter(Boolean));
+        const rightTokens = new Set(right.split(' ').filter(Boolean));
+        const shared = [...leftTokens].filter(token => rightTokens.has(token));
+        const meaningfulLeft = [...leftTokens].filter(t => t.length > 2);
+        const meaningfulRight = [...rightTokens].filter(t => t.length > 2);
+
+        // Handles records such as "Mr. Kevin Matoka" vs "Kevin matoka Tiong'i".
+        return shared.length >= 2 ||
+            (meaningfulLeft.length === 1 && meaningfulRight.includes(meaningfulLeft[0]));
+    },
+
+    normalizeUnitName(value) {
+        return String(value || '')
+            .toLowerCase()
+            .replace(/&/g, ' and ')
+            .replace(/[^a-z0-9]+/g, ' ')
+            .replace(/\b(ii|iii|iv|v|vi|i)\b/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    unitNamesMatch(a, b) {
+        const left = this.normalizeUnitName(a);
+        const right = this.normalizeUnitName(b);
+        if (!left || !right) return false;
+        if (left === right || left.includes(right) || right.includes(left)) return true;
+
+        const leftTokens = left.split(' ').filter(t => t.length > 2);
+        const rightTokens = new Set(right.split(' ').filter(t => t.length > 2));
+        const shared = leftTokens.filter(t => rightTokens.has(t));
+        const ratio = shared.length / Math.max(1, Math.min(leftTokens.length, rightTokens.size));
+        return shared.length >= 2 && ratio >= 0.6;
+    },
+
+    async loadNextClassAndExam() {
+        const supabase = this.getSupabaseClient();
+        if (!supabase) return;
+
+        const profile = window.lecturerDB?.getCurrentUserProfile?.() || {};
+        const lecturerName = profile.full_name || profile.name || '';
+        const program = this.getCurrentProgram();
+        const now = this.getKenyaNow();
+
+        // ------------------------------------------------------------
+        // NEXT CLASS — same future-date/time selection as Student Dashboard,
+        // but scoped to this lecturer's timetable records.
+        // ------------------------------------------------------------
+        try {
+            const todayDate = now.toISOString().split('T')[0];
+            const { data: timetableRows, error } = await supabase
+                .from('timetables')
+                .select('*')
+                .eq('program', program)
+                .gte('class_date', todayDate)
+                .order('class_date', { ascending: true })
+                .order('start_time', { ascending: true });
+
+            if (error) throw error;
+
+            const lecturerClasses = (timetableRows || []).filter(row =>
+                !row.is_holiday &&
+                !row.is_self_study &&
+                !row.is_exam &&
+                this.lecturerNameMatches(row.lecturer_name, lecturerName)
+            );
+
+            let nextClass = null;
+            for (const cls of lecturerClasses) {
+                if (!cls.class_date || !cls.start_time) continue;
+                const classDateTime = new Date(`${cls.class_date}T${cls.start_time}`);
+                if (classDateTime > now) {
+                    nextClass = cls;
+                    break;
+                }
+            }
+
+            const timeEl = document.getElementById('nrdNextClassTime');
+            const durationEl = document.getElementById('nrdNextClassDuration');
+            const nameEl = document.getElementById('nrdNextClassName');
+            const unitEl = document.getElementById('nrdNextClassUnit');
+            const venueEl = document.getElementById('nrdNextClassVenue');
+
+            if (!nextClass) {
+                if (timeEl) timeEl.textContent = '--:--';
+                if (durationEl) durationEl.textContent = 'No upcoming class';
+                if (nameEl) nameEl.textContent = 'No Upcoming Class';
+                if (unitEl) unitEl.textContent = 'Check your timetable for the latest schedule.';
+                if (venueEl) venueEl.innerHTML = '<i class="fas fa-location-dot"></i> —';
+            } else {
+                const classDate = new Date(`${nextClass.class_date}T00:00:00`);
+                const isToday = classDate.toDateString() === now.toDateString();
+                const startTime = String(nextClass.start_time || '').substring(0, 5) || 'TBA';
+                const endTime = String(nextClass.end_time || '').substring(0, 5) || 'TBA';
+                const dateLabel = isToday ? 'TODAY' : this.formatKenyaDate(classDate);
+
+                if (timeEl) timeEl.textContent = startTime;
+                if (durationEl) durationEl.textContent = `${dateLabel} • ${startTime} — ${endTime}`;
+                if (nameEl) nameEl.textContent = nextClass.session_name || nextClass.course_name || 'Scheduled Class';
+                if (unitEl) unitEl.textContent = nextClass.course_name || nextClass.session_name || nextClass.block || 'Scheduled teaching session';
+                if (venueEl) venueEl.innerHTML = `<i class="fas fa-location-dot"></i> ${nextClass.venue || 'Venue TBA'}`;
+            }
+        } catch (error) {
+            console.error('❌ Next class query failed:', error);
+            const nameEl = document.getElementById('nrdNextClassName');
+            const unitEl = document.getElementById('nrdNextClassUnit');
+            if (nameEl) nameEl.textContent = 'Unable to load next class';
+            if (unitEl) unitEl.textContent = 'Open the schedule for details.';
+        }
+
+        // ------------------------------------------------------------
+        // NEXT EXAM — use the real `exams` table and scope it to the
+        // lecturer's assigned units/classes. No cats_exams dependency.
+        // ------------------------------------------------------------
+        try {
+            const assignedUnits = Array.isArray(this.assignedUnits) ? this.assignedUnits : [];
+            const assignedNames = assignedUnits.map(u => u.subject_name).filter(Boolean);
+            const assignedBlocks = new Set(
+                assignedUnits.map(u => String(u.block || '').trim().toLowerCase()).filter(Boolean)
+            );
+
+            const { data: exams, error } = await supabase
+                .from('exams')
+                .select('*')
+                .eq('target_program', program)
+                .eq('is_active', true)
+                .in('status', ['Scheduled', 'scheduled', 'Upcoming', 'upcoming', 'Published', 'published'])
+                .order('exam_date', { ascending: true })
+                .order('exam_start_time', { ascending: true });
+
+            if (error) throw error;
+
+            const futureExams = (exams || []).filter(exam => {
+                if (!exam.exam_date) return false;
+
+                const block = String(exam.block || exam.block_term || '').trim().toLowerCase();
+                if (assignedBlocks.size && block && !assignedBlocks.has(block)) return false;
+
+                // Prefer unit-name matching. This accommodates exams where
+                // course_id is populated as well as legacy rows using names/codes.
+                const examText = [exam.exam_name, exam.title, exam.course_code].filter(Boolean).join(' ');
+                const unitMatch = assignedNames.some(name => this.unitNamesMatch(name, examText));
+                if (!unitMatch) return false;
+
+                const time = exam.exam_start_time || (exam.start_time ? new Date(exam.start_time).toTimeString().slice(0, 8) : '00:00:00');
+                const examDateTime = new Date(`${exam.exam_date}T${time}`);
+                return examDateTime > now;
+            }).sort((a, b) => {
+                const timeA = a.exam_start_time || (a.start_time ? new Date(a.start_time).toTimeString().slice(0, 8) : '00:00:00');
+                const timeB = b.exam_start_time || (b.start_time ? new Date(b.start_time).toTimeString().slice(0, 8) : '00:00:00');
+                return new Date(`${a.exam_date}T${timeA}`) - new Date(`${b.exam_date}T${timeB}`);
+            });
+
+            const exam = futureExams[0] || null;
+            const nameEl = document.getElementById('nrdNextExamName');
+            const metaEl = document.getElementById('nrdNextExamMeta');
+
+            if (!exam) {
+                if (nameEl) nameEl.textContent = 'No upcoming exam';
+                if (metaEl) metaEl.textContent = assignedNames.length
+                    ? 'No upcoming exam found for your assigned units.'
+                    : 'No assigned units available for exam matching.';
+                this.metrics.nextExam = null;
+            } else {
+                const examTime = exam.exam_start_time || (exam.start_time ? new Date(exam.start_time).toTimeString().slice(0, 5) : 'TBA');
+                const examDate = new Date(`${exam.exam_date}T00:00:00`);
+                const type = exam.exam_type || 'EXAM';
+                const title = exam.exam_name || exam.title || exam.course_code || 'Scheduled Exam';
+                const block = exam.block || exam.block_term || '';
+
+                if (nameEl) nameEl.textContent = title;
+                if (metaEl) metaEl.textContent = `${type} • ${this.formatKenyaDate(examDate)} • ${examTime.substring(0, 5)}${block ? ` • ${block}` : ''}`;
+                this.metrics.nextExam = exam;
+            }
+        } catch (error) {
+            console.error('❌ Next exam query failed:', error);
+            const nameEl = document.getElementById('nrdNextExamName');
+            const metaEl = document.getElementById('nrdNextExamMeta');
+            if (nameEl) nameEl.textContent = 'Unable to load exam';
+            if (metaEl) metaEl.textContent = 'Open Exams / CATS for the latest schedule.';
+        }
+    },
+
     // ─── INIT ───
     async init() {
         console.log('📊 Initializing Lecturer Dashboard...');
@@ -370,6 +568,7 @@ const LecturerDashboard = {
             await this.ensureSupabaseSession();
             await this.resolveLecturerId();
             await this.loadAssignedUnits();
+            await this.loadNextClassAndExam();
             await this.loadAssignedStudents();
             await this.loadMetrics();
             await this.loadAttendanceMetrics();
@@ -1916,6 +2115,7 @@ const LecturerDashboard = {
             await this.resolveLecturerId();
             this.setCacheKey();
             await this.loadAssignedUnits();
+            await this.loadNextClassAndExam();
             await this.loadAssignedStudents();
             await this.loadMetrics();
             await this.loadAttendanceMetrics();
