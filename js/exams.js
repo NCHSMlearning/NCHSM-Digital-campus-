@@ -1620,7 +1620,7 @@ applyDataFilter() {
                 let actionHtml = '';
                 if (isReleased && showMarks && marks > 0) {
                     actionHtml = `
-                        <button onclick="window.examsModule?.viewDetailedResults(${exam.id})" 
+                        <button aria-label="Open exam review" onclick="window.nurseiqModule?.openExamReview(${exam.id})" 
                                 style="padding: 6px 14px; border-radius: 20px; border: none; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #3B82F6, #2563EB); color: white; font-size: 11px;">
                             <i class="fas fa-clipboard-list"></i> Details
                         </button>
@@ -1942,26 +1942,6 @@ applyDataFilter() {
         }
         
         // ============================================
-        // 📊 VIEW DETAILED RESULTS
-        // ============================================
-        async viewDetailedResults(examId) {
-            console.log('🔍 Opening NurseIQ exam review for examId:', examId);
-            try {
-                if (typeof window.openNurseIQExamReview === 'function') {
-                    await window.openNurseIQExamReview(examId);
-                    return;
-                }
-
-                // NurseIQ is the only supported review surface.
-                this.showToast('NurseIQ exam review is still loading. Please try again.', 'warning');
-            } catch (error) {
-                console.error('❌ Error opening NurseIQ exam review:', error);
-                this.showToast('Unable to open the exam review. Please try again.', 'error');
-            }
-        }
-        
-        
-// ============================================
         // 📊 PERFORMANCE SUMMARY
         // ============================================
         updateCounts() {
