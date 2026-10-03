@@ -12662,26 +12662,44 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
 <!-- ============================================================ -->
 <div id="nurseiqExamReview" class="nurseiq-exam-review" style="display:none;">
     <div class="nurseiq-review-hero">
-        <div class="nurseiq-review-hero-main">
-            <div class="nurseiq-review-title-row">
-                <span class="nurseiq-review-icon"><i class="fas fa-clipboard-check"></i></span>
-                <div class="nurseiq-review-title-wrap">
-                    <h2 id="nurseiqExamReviewTitle">Exam Review</h2>
-                    <p id="nurseiqExamReviewMeta">Reviewing your completed assessment</p>
-                </div>
-                <span id="nurseiqExamReviewStatus" class="nurseiq-review-status">COMPLETED</span>
-            </div>
-        </div>
         <button type="button" class="nurseiq-review-back" onclick="window.closeNurseIQExamReview?.()">
             <i class="fas fa-arrow-left"></i><span>Back to Exams</span>
         </button>
+        <div class="nurseiq-review-hero-row">
+            <div class="nurseiq-review-icon"><i class="fas fa-file-alt"></i></div>
+            <div class="nurseiq-review-title-wrap">
+                <div class="nurseiq-review-title-line">
+                    <h2 id="nurseiqExamReviewTitle">Exam Review</h2>
+                    <span id="nurseiqExamReviewStatus" class="nurseiq-review-status">Completed</span>
+                </div>
+                <p id="nurseiqExamReviewMeta">Reviewing your completed assessment</p>
+            </div>
+        </div>
     </div>
 
     <div class="nurseiq-review-stats">
-        <div class="nurseiq-review-stat"><span>Score</span><strong id="nurseiqReviewScore">--</strong></div>
-        <div class="nurseiq-review-stat"><span>Correct</span><strong id="nurseiqReviewCorrect">--</strong></div>
-        <div class="nurseiq-review-stat"><span>Questions</span><strong id="nurseiqReviewTotal">--</strong></div>
-        <div class="nurseiq-review-stat nurseiq-review-stat-points"><span>Review Points</span><strong id="nurseiqReviewPoints">+0</strong></div>
+        <div class="nurseiq-review-stat nurseiq-stat-blue">
+            <span class="nurseiq-stat-icon"><i class="fas fa-clipboard-list"></i></span>
+            <div><small>Total Questions</small><strong id="nurseiqReviewTotal">--</strong></div>
+        </div>
+        <div class="nurseiq-review-stat nurseiq-stat-green">
+            <span class="nurseiq-stat-icon"><i class="fas fa-check"></i></span>
+            <div><small>Correct Answers</small><strong id="nurseiqReviewCorrect">--</strong></div>
+        </div>
+        <div class="nurseiq-review-stat nurseiq-stat-red">
+            <span class="nurseiq-stat-icon"><i class="fas fa-times"></i></span>
+            <div><small>Wrong Answers</small><strong id="nurseiqReviewWrong">--</strong></div>
+        </div>
+        <div class="nurseiq-review-stat nurseiq-stat-purple">
+            <span class="nurseiq-stat-icon"><i class="fas fa-star"></i></span>
+            <div><small>NurseIQ Review Points</small><strong id="nurseiqReviewPoints">0 / 0</strong></div>
+        </div>
+    </div>
+
+    <div class="nurseiq-review-progress-row">
+        <span>Review Progress</span>
+        <div class="nurseiq-review-progress-track"><span id="nurseiqReviewProgressBar"></span></div>
+        <strong id="nurseiqReviewProgressText">0 of 0 (0%)</strong>
     </div>
 
     <div id="nurseiqExamReviewBody" class="nurseiq-review-body"></div>
@@ -12689,48 +12707,60 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
 
 <style>
 @keyframes nurseiqReviewSpin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
-.nurseiq-exam-review { width:100%; max-width:1180px; margin:0 auto; padding:0 0 24px; box-sizing:border-box; }
-.nurseiq-review-hero { background:linear-gradient(135deg,#0A3D62,#1a5a7a); border-radius:16px; padding:20px 24px; margin-bottom:16px; color:#fff; box-shadow:0 4px 18px rgba(10,61,98,.18); display:flex; justify-content:space-between; align-items:center; gap:18px; }
-.nurseiq-review-hero-main { min-width:0; flex:1; }
-.nurseiq-review-title-row { display:flex; align-items:center; gap:12px; min-width:0; }
-.nurseiq-review-icon { width:42px; height:42px; flex:0 0 42px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:rgba(255,255,255,.12); color:#FDB913; font-size:18px; }
-.nurseiq-review-title-wrap { min-width:0; }
-.nurseiq-review-title-wrap h2 { margin:0; font-size:21px; line-height:1.25; font-weight:800; color:#fff; overflow-wrap:anywhere; }
-.nurseiq-review-title-wrap p { margin:5px 0 0; color:rgba(255,255,255,.82); font-size:12px; line-height:1.4; }
-.nurseiq-review-status { flex:0 0 auto; background:#D1FAE5; color:#065F46; padding:5px 10px; border-radius:20px; font-size:10px; font-weight:800; letter-spacing:.3px; }
-.nurseiq-review-back { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:42px; padding:0 15px; border-radius:10px; border:1px solid rgba(255,255,255,.28); background:rgba(255,255,255,.12); color:#fff; cursor:pointer; font-weight:700; font-size:13px; transition:.18s ease; }
-.nurseiq-review-back:hover { background:rgba(255,255,255,.2); transform:translateY(-1px); }
-.nurseiq-review-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
-.nurseiq-review-stat { min-width:0; background:#fff; border:1px solid #E2E8F0; border-radius:12px; padding:13px 15px; box-shadow:0 1px 3px rgba(15,23,42,.04); }
-.nurseiq-review-stat span { display:block; font-size:10px; color:#64748B; text-transform:uppercase; letter-spacing:.4px; font-weight:800; }
-.nurseiq-review-stat strong { display:block; margin-top:4px; color:#0A3D62; font-size:21px; line-height:1.2; overflow-wrap:anywhere; }
-.nurseiq-review-stat:nth-child(2) strong { color:#059669; }
-.nurseiq-review-stat:nth-child(3) strong { color:#4C1D95; }
-.nurseiq-review-stat-points strong { color:#D97706; }
-.nurseiq-review-body { background:#fff; border:1px solid #E2E8F0; border-radius:16px; box-shadow:0 2px 8px rgba(15,23,42,.05); overflow:hidden; }
+.nurseiq-exam-review { width:100%; max-width:1180px; margin:0 auto; padding:0 0 24px; box-sizing:border-box; font-family:inherit; }
+.nurseiq-review-hero { background:#fff; border:1px solid #E2E8F0; border-radius:16px; padding:18px 20px 20px; margin-bottom:14px; box-shadow:0 3px 12px rgba(15,23,42,.06); }
+.nurseiq-review-back { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:0 15px; border-radius:9px; border:1px solid #3B82F6; background:#fff; color:#2563EB; cursor:pointer; font-weight:700; font-size:13px; transition:.18s ease; margin-bottom:16px; }
+.nurseiq-review-back:hover { background:#EFF6FF; transform:translateY(-1px); }
+.nurseiq-review-hero-row { display:flex; align-items:center; gap:14px; min-width:0; }
+.nurseiq-review-icon { width:58px; height:58px; flex:0 0 58px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:#E8F1FF; color:#2563EB; font-size:27px; }
+.nurseiq-review-title-wrap { min-width:0; flex:1; }
+.nurseiq-review-title-line { display:flex; align-items:center; gap:12px; min-width:0; flex-wrap:wrap; }
+.nurseiq-review-title-wrap h2 { margin:0; font-size:24px; line-height:1.2; font-weight:800; color:#0F172A; overflow-wrap:anywhere; }
+.nurseiq-review-title-wrap p { margin:5px 0 0; color:#475569; font-size:13px; line-height:1.45; }
+.nurseiq-review-status { flex:0 0 auto; background:#D1FAE5; color:#047857; padding:6px 12px; border-radius:7px; font-size:11px; font-weight:800; }
+.nurseiq-review-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:13px; }
+.nurseiq-review-stat { min-width:0; display:flex; align-items:center; gap:12px; background:#fff; border:1px solid #E2E8F0; border-radius:11px; padding:14px; box-shadow:0 1px 4px rgba(15,23,42,.035); }
+.nurseiq-review-stat small { display:block; color:#334155; font-size:11px; font-weight:700; margin-bottom:5px; white-space:nowrap; }
+.nurseiq-review-stat strong { display:block; font-size:21px; line-height:1.1; color:#0F172A; }
+.nurseiq-stat-icon { width:42px; height:42px; flex:0 0 42px; display:flex; align-items:center; justify-content:center; border-radius:50%; font-size:18px; }
+.nurseiq-stat-blue .nurseiq-stat-icon { background:#DBEAFE; color:#2563EB; } .nurseiq-stat-blue strong { color:#1D4ED8; }
+.nurseiq-stat-green .nurseiq-stat-icon { background:#D1FAE5; color:#059669; } .nurseiq-stat-green strong { color:#047857; }
+.nurseiq-stat-red .nurseiq-stat-icon { background:#FEE2E2; color:#DC2626; } .nurseiq-stat-red strong { color:#DC2626; }
+.nurseiq-stat-purple .nurseiq-stat-icon { background:#EDE9FE; color:#7C3AED; } .nurseiq-stat-purple strong { color:#6D28D9; }
+.nurseiq-review-progress-row { display:grid; grid-template-columns:auto minmax(120px,1fr) auto; align-items:center; gap:14px; padding:3px 4px 16px; color:#0F172A; font-size:13px; }
+.nurseiq-review-progress-row > span { white-space:nowrap; }
+.nurseiq-review-progress-track { height:9px; border-radius:999px; background:#E2E8F0; overflow:hidden; }
+.nurseiq-review-progress-track span { display:block; width:0; height:100%; border-radius:999px; background:#10B981; transition:width .25s ease; }
+.nurseiq-review-progress-row strong { font-size:12px; font-weight:600; white-space:nowrap; color:#334155; }
+.nurseiq-review-body { background:#fff; border:1px solid #E2E8F0; border-radius:12px; box-shadow:0 2px 8px rgba(15,23,42,.05); overflow:hidden; }
 #nurseiq.nurseiq-exam-review-mode > *:not(#nurseiqExamReview) { display:none !important; }
 @media (max-width:800px) {
     .nurseiq-exam-review { padding-bottom:16px; }
-    .nurseiq-review-hero { padding:16px; border-radius:14px; align-items:flex-start; }
-    .nurseiq-review-title-row { align-items:flex-start; }
-    .nurseiq-review-status { margin-top:2px; }
     .nurseiq-review-stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
     .nurseiq-review-stat { padding:12px; }
-    .nurseiq-review-stat strong { font-size:19px; }
+    .nurseiq-review-stat small { font-size:10px; }
+    .nurseiq-review-progress-row { grid-template-columns:1fr auto; gap:7px 10px; }
+    .nurseiq-review-progress-row > span { grid-column:1; }
+    .nurseiq-review-progress-row strong { grid-column:2; }
+    .nurseiq-review-progress-track { grid-column:1 / -1; grid-row:2; }
 }
 @media (max-width:520px) {
-    .nurseiq-review-hero { flex-direction:column; gap:12px; padding:14px; }
-    .nurseiq-review-title-row { gap:9px; flex-wrap:wrap; }
-    .nurseiq-review-icon { width:36px; height:36px; flex-basis:36px; border-radius:10px; font-size:15px; }
-    .nurseiq-review-title-wrap { flex:1 1 calc(100% - 48px); }
-    .nurseiq-review-title-wrap h2 { font-size:17px; }
-    .nurseiq-review-title-wrap p { font-size:11px; }
-    .nurseiq-review-status { margin-left:45px; }
-    .nurseiq-review-back { width:100%; min-height:40px; }
-    .nurseiq-review-stats { gap:8px; }
-    .nurseiq-review-stat { padding:10px; border-radius:10px; }
-    .nurseiq-review-stat strong { font-size:17px; }
-    .nurseiq-review-body { border-radius:12px; }
+    .nurseiq-review-hero { padding:13px; border-radius:12px; }
+    .nurseiq-review-back { width:100%; margin-bottom:12px; min-height:39px; }
+    .nurseiq-review-hero-row { align-items:flex-start; gap:10px; }
+    .nurseiq-review-icon { width:42px; height:42px; flex-basis:42px; font-size:19px; }
+    .nurseiq-review-title-line { gap:7px; }
+    .nurseiq-review-title-wrap h2 { font-size:18px; }
+    .nurseiq-review-title-wrap p { font-size:10px; }
+    .nurseiq-review-status { font-size:9px; padding:5px 8px; }
+    .nurseiq-review-stats { gap:7px; }
+    .nurseiq-review-stat { gap:8px; padding:9px; border-radius:9px; }
+    .nurseiq-stat-icon { width:32px; height:32px; flex-basis:32px; font-size:13px; }
+    .nurseiq-review-stat small { font-size:9px; white-space:normal; line-height:1.2; }
+    .nurseiq-review-stat strong { font-size:16px; }
+    .nurseiq-review-progress-row { font-size:11px; }
+    .nurseiq-review-progress-row strong { font-size:10px; }
+    .nurseiq-review-body { border-radius:10px; }
 }
 </style>
 
