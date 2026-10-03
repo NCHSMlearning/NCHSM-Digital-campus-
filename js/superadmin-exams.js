@@ -175,8 +175,22 @@ const ExamCache = {
 };
 
 // ============================================
-// DOM CACHE - MUST BE DECLARED FIRST
+// DOM CACHE - SELF-CONTAINED MODULE
 // ============================================
+// The Exams/CATS module was extracted from the main script.js.
+// Keep its DOM cache local so it does not depend on a global DOM object.
+const DOM = {
+    examsTbody: null,
+    studentExams: null,
+    examSearch: null,
+    programFilter: null,
+    statusFilter: null,
+    monthFilter: null,
+    examForm: null,
+    classSelector: null,
+    courseSelect: null
+};
+
 function cacheDomElements() {
     DOM.examsTbody = document.getElementById('exams-table-body');
     DOM.studentExams = document.getElementById('student-exams');
