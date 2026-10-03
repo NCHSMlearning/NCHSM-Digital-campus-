@@ -718,23 +718,40 @@ async saveProgressToDatabase() {
             }
         };
 
-        // 1. Save to user_progress
-        const { error: progressError } = await supabase
-            .from('user_progress')
-            .upsert({
-                user_id: this.userId,
-                progress_data: progressData,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' });
-        
-        if (progressError) {
-            console.error('❌ Error saving to user_progress:', progressError);
+        // 1. Save to user_progress only when the student's profile row exists.
+        // user_progress.user_id has a foreign key to consolidated_user_profiles_table.user_id.
+        const { data: linkedProfile, error: linkedProfileError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id')
+            .eq('user_id', this.userId)
+            .maybeSingle();
+
+        if (linkedProfileError) {
+            console.warn('⚠️ Could not verify student profile for progress save:', linkedProfileError.message || linkedProfileError);
+        }
+
+        const canPersistServerProgress = !!linkedProfile;
+
+        if (canPersistServerProgress) {
+            const { error: progressError } = await supabase
+                .from('user_progress')
+                .upsert({
+                    user_id: this.userId,
+                    progress_data: progressData,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+            
+            if (progressError) {
+                console.warn('⚠️ Could not save user_progress:', progressError.message || progressError);
+            } else {
+                console.log('✅ Saved to user_progress');
+            }
         } else {
-            console.log('✅ Saved to user_progress');
+            console.warn('⚠️ No matching consolidated profile found for this user. Keeping NurseIQ progress locally until the profile is provisioned.');
         }
         
         // 2. Save/Update nurseiq_attempts - FIXED: Check if record exists first
-        if (totalAnswered > 0) {
+        if (totalAnswered > 0 && canPersistServerProgress) {
             try {
                 // First check if a record exists for this student
                 const { data: existing, error: checkError } = await supabase
