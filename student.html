@@ -2220,6 +2220,167 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 }
 </style>
 
+
+<style id="nchsm-final-mobile-scroll-stable">
+/* ============================================================
+   FINAL MOBILE SCROLL REPAIR — based ONLY on this supplied HTML
+   - Body/page owns vertical scrolling.
+   - Completed Assessments owns horizontal table scrolling only.
+   - No touchmove/wheel interception.
+   ============================================================ */
+@media (max-width: 799px){
+  html, body{
+    height:auto!important;
+    min-height:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+
+  #app-content,
+  #app-content > .container{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  #main-content.main{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-x:visible!important;
+    overflow-y:visible!important;
+    -webkit-overflow-scrolling:auto!important;
+    overscroll-behavior:auto!important;
+    box-sizing:border-box!important;
+    padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
+  }
+
+  #main-content.main > .tab-content,
+  #cats.tab-content{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-x:visible!important;
+    overflow-y:visible!important;
+    box-sizing:border-box!important;
+  }
+
+  #cats .section-card,
+  #cats .current-section,
+  #cats .completed-section,
+  #cats .analytics-card{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  #cats .current-list{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  /* Actual class used by this supplied HTML: .completed-table-wrap */
+  #cats .completed-table-wrap{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+    overscroll-behavior-y:auto!important;
+    touch-action:pan-x pan-y!important;
+    box-sizing:border-box!important;
+    scrollbar-width:thin!important;
+    scrollbar-color:#64748b #eef2f7!important;
+    padding-bottom:8px!important;
+  }
+
+  #cats .completed-table-wrap::-webkit-scrollbar{
+    height:9px!important;
+  }
+  #cats .completed-table-wrap::-webkit-scrollbar-track{
+    background:#eef2f7!important;
+    border-radius:999px!important;
+  }
+  #cats .completed-table-wrap::-webkit-scrollbar-thumb{
+    background:#64748b!important;
+    border-radius:999px!important;
+  }
+
+  #cats .completed-table-wrap > table.assessment-table{
+    display:table!important;
+    width:max-content!important;
+    min-width:980px!important;
+    max-width:none!important;
+    table-layout:auto!important;
+    margin:0!important;
+  }
+
+  #cats .completed-table-wrap th,
+  #cats .completed-table-wrap td{
+    white-space:nowrap!important;
+    box-sizing:border-box!important;
+  }
+
+  #cats .completed-table-wrap th:first-child,
+  #cats .completed-table-wrap td:first-child{
+    position:sticky!important;
+    left:0!important;
+    z-index:20!important;
+    min-width:210px!important;
+    background:#fff!important;
+    box-shadow:5px 0 9px rgba(15,23,42,.10)!important;
+  }
+
+  #cats .completed-table-wrap thead th:first-child{
+    z-index:25!important;
+    background:#f8fafc!important;
+  }
+
+  #cats .completed-table-wrap .row-actions{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:6px!important;
+    min-width:155px!important;
+    white-space:nowrap!important;
+  }
+
+  #cats .completed-table-wrap .result-btn,
+  #cats .completed-table-wrap .review-btn,
+  #cats .completed-table-wrap .retake-link{
+    flex:0 0 auto!important;
+    pointer-events:auto!important;
+  }
+
+  #cats .nchsm-table-scroll-hint{
+    display:block!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+}
+
+@media (max-width:480px){
+  #main-content.main{
+    padding-left:8px!important;
+    padding-right:8px!important;
+    padding-bottom:calc(52px + env(safe-area-inset-bottom))!important;
+  }
+
+  #cats{
+    padding:10px!important;
+    padding-bottom:calc(52px + env(safe-area-inset-bottom))!important;
+    overflow:visible!important;
+  }
+}
+</style>
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -6802,10 +6963,7 @@ async function saveResearchCorrection(submit){
     }).reduce(function(mx,x){return Math.max(mx,Number(x.version_number)||1)},Number(r.version_number)||1)+1;
     var fileName=(String(r.title||'research').replace(/[^a-zA-Z0-9_-]+/g,'_')+'_V'+next+'.html');
     var path=id+'/'+(r.research_group_id||r.id)+'/'+Date.now()+'_'+fileName;
-    var blob=new Blob(['<!doctype html><html><head><meta charset="utf-8"><title>'+esc(r.title||'Research Paper')+'</title></head><body>'+html+'
-
-
-</body></html>'],{type:'text/html'});
+    var blob=new Blob(['<!doctype html><html><head><meta charset="utf-8"><title>'+esc(r.title||'Research Paper')+'</title></head><body>'+html+'</body></html>'],{type:'text/html'});
     var up=await sb.storage.from('research-papers').upload(path,blob,{upsert:false,contentType:'text/html'});
     if(up.error)throw up.error;
     var payload={
@@ -7765,154 +7923,7 @@ async function saveInlineResearchCorrection(){
       /* The browser editor is HTML, but a DOCX submission must be a real DOCX. */
       fileBlob=await researchHtmlToDocxBlob(html,base.title||'Research Paper');
     }else{
-      var wrapper='<!doctype html><html><head><meta charset=\"utf-8\"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style>
-<style id="nchsm-completed-assessments-final-mobile-scroll">
-/* FINAL: Completed Assessments mobile table
-   Keep the table inside its own horizontal viewport and keep Actions reachable. */
-@media (max-width: 767px){
-  #cats .completed-section{
-    width:100%!important;
-    max-width:100%!important;
-    min-width:0!important;
-    overflow:visible!important;
-  }
-
-  #cats .completed-section .table-wrap{
-    display:block!important;
-    width:100%!important;
-    max-width:100%!important;
-    min-width:0!important;
-    overflow-x:auto!important;
-    overflow-y:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-    overscroll-behavior-x:contain!important;
-    touch-action:pan-x!important;
-    scrollbar-width:thin!important;
-    scrollbar-color:#64748b #eef2f7!important;
-    padding:0 0 10px!important;
-    margin:0!important;
-    box-sizing:border-box!important;
-    isolation:isolate!important;
-  }
-
-  #cats .completed-section .table-wrap::-webkit-scrollbar{
-    height:10px!important;
-  }
-  #cats .completed-section .table-wrap::-webkit-scrollbar-track{
-    background:#eef2f7!important;
-    border-radius:999px!important;
-  }
-  #cats .completed-section .table-wrap::-webkit-scrollbar-thumb{
-    background:#64748b!important;
-    border-radius:999px!important;
-  }
-
-  #cats .completed-section .assessment-table{
-    display:table!important;
-    width:max-content!important;
-    min-width:980px!important;
-    max-width:none!important;
-    table-layout:auto!important;
-    margin:0!important;
-    border-collapse:separate!important;
-    border-spacing:0!important;
-  }
-
-  #cats .completed-section .assessment-table th,
-  #cats .completed-section .assessment-table td{
-    white-space:nowrap!important;
-    box-sizing:border-box!important;
-  }
-
-  /* Keep Assessment visible while the student swipes through the remaining columns. */
-  #cats .completed-section .assessment-table th:first-child,
-  #cats .completed-section .assessment-table td:first-child{
-    position:sticky!important;
-    left:0!important;
-    z-index:20!important;
-    min-width:210px!important;
-    width:210px!important;
-    background:#fff!important;
-    box-shadow:6px 0 10px rgba(15,23,42,.10)!important;
-  }
-  #cats .completed-section .assessment-table thead th:first-child{
-    z-index:25!important;
-    background:#f8fafc!important;
-  }
-
-  /* Keep Actions reachable even on very narrow phones. */
-  #cats .completed-section .assessment-table th:last-child,
-  #cats .completed-section .assessment-table td:last-child{
-    min-width:180px!important;
-    width:180px!important;
-    position:sticky!important;
-    right:0!important;
-    z-index:19!important;
-    background:#fff!important;
-    box-shadow:-6px 0 10px rgba(15,23,42,.10)!important;
-  }
-  #cats .completed-section .assessment-table thead th:last-child{
-    z-index:24!important;
-    background:#f8fafc!important;
-  }
-
-  #cats .completed-section .row-actions{
-    display:flex!important;
-    flex-direction:column!important;
-    align-items:stretch!important;
-    justify-content:center!important;
-    gap:6px!important;
-    min-width:164px!important;
-    width:164px!important;
-    flex-wrap:nowrap!important;
-  }
-  #cats .completed-section .result-btn,
-  #cats .completed-section .review-btn,
-  #cats .completed-section .retake-link{
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    width:164px!important;
-    min-width:164px!important;
-    min-height:36px!important;
-    padding:8px 10px!important;
-    box-sizing:border-box!important;
-    font-size:9px!important;
-    line-height:1.1!important;
-    white-space:nowrap!important;
-    flex:0 0 auto!important;
-    pointer-events:auto!important;
-    position:relative!important;
-    z-index:30!important;
-  }
-
-  /* Make it obvious that the table itself is the swipe area. */
-  #cats .completed-section .table-wrap::before{
-    content:"Swipe left/right to view Percentage, Grade, Status and Actions";
-    display:block!important;
-    width:100%!important;
-    box-sizing:border-box!important;
-    padding:8px 10px!important;
-    margin:0 0 6px!important;
-    text-align:center!important;
-    font-size:10px!important;
-    font-weight:800!important;
-    color:#2563eb!important;
-    background:#eff6ff!important;
-    border:1px solid #dbeafe!important;
-    border-radius:8px!important;
-  }
-}
-
-@media (min-width:768px){
-  #cats .completed-section .table-wrap{
-    overflow-x:auto!important;
-    max-width:100%!important;
-    -webkit-overflow-scrolling:touch!important;
-  }
-}
-</style>
-</head><body>'+html+'</body></html>';
+      var wrapper='<!doctype html><html><head><meta charset=\"utf-8\"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style></head><body>'+html+'</body></html>';
       fileBlob=new Blob([wrapper],{type:'text/html'});
     }
     var upload=await db.storage.from('research-papers').upload(path,fileBlob,{contentType:isDocx?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'text/html',upsert:false});
