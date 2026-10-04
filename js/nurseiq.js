@@ -2622,6 +2622,12 @@ async saveProgressToDatabase() {
             return;
         }
 
+        // The buttons are clicked from the CATs/Exams tab.
+        // Switch to NurseIQ first so the review surface is actually visible.
+        if (typeof window.showTab === 'function') {
+            window.showTab('nurseiq');
+        }
+
         container.style.display = 'block';
         nurseiq.classList.add('niq-review-mode');
 
