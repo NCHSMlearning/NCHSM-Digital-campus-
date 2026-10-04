@@ -2576,7 +2576,7 @@ async saveProgressToDatabase() {
                 <td><span class="niq-release-badge"><i class="fas fa-check"></i> Released</span></td>
                 <td>
                     <button type="button" class="niq-review-btn"
-                        onclick="window.nurseiqModule?.openExamReview('${this.escapeReviewHtml(exam.examId)}')">
+                        onclick="window.openNurseIQExamReview?.('${this.escapeReviewHtml(exam.examId)}')">
                         <i class="fas fa-book-open"></i> Review
                     </button>
                 </td>
@@ -2617,7 +2617,6 @@ async saveProgressToDatabase() {
         }
 
         const supabase = this.getReviewSupabase();
-
         if (!supabase || !this.userId) {
             this.showNotification('Please log in again to review this exam.', 'warning');
             return;
@@ -2636,8 +2635,7 @@ async saveProgressToDatabase() {
 
         if (title) title.textContent = exam.examName;
         if (meta) {
-            meta.textContent =
-                `${exam.examType} • ${this.formatReviewDate(exam.date)} • ${exam.score}/${exam.total} (${exam.percent}%)`;
+            meta.textContent = `${exam.examType} • ${this.formatReviewDate(exam.date)} • ${exam.score}/${exam.total} (${exam.percent}%)`;
         }
         if (status) status.textContent = 'RESULTS RELEASED';
         if (scoreEl) scoreEl.textContent = `${exam.score}/${exam.total}`;
@@ -2652,102 +2650,158 @@ async saveProgressToDatabase() {
             </div>`;
 
         try {
-            const [questionsResult, answersResult] = await Promise.all([
-                supabase
-                    .from('exam_questions')
-                    .select('*')
-                    .eq('exam_id', exam.examId)
-                    .order('question_number', { ascending: true }),
-                supabase
-                    .from('exam_grades')
-                    .select('*')
-                    .eq('student_id', this.userId)
-                    .eq('exam_id', exam.examId)
-                    .neq('question_id', '00000000-0000-0000-0000-000000000000')
+            const sentinel = '00000000-0000-0000-0000-000000000000';
+
+            // IMPORTANT: bind the review to the student's latest submitted attempt.
+            // This prevents answers from an older attempt/retake being mixed into
+            // the currently released result.
+            let latestAttempt = null;
+            const attemptsResult = await supabase
+                .from('exam_attempts')
+                .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+                .eq('student_id', this.userId)
+                .eq('exam_id', exam.examId)
+                .order('attempt_number', { ascending: false })
+                .limit(1);
+
+            if (!attemptsResult.error) {
+                latestAttempt = (attemptsResult.data || [])[0] || null;
+            } else if (!String(attemptsResult.error.message || '').toLowerCase().includes('relation')) {
+                throw attemptsResult.error;
+            }
+
+            const questionsQuery = supabase
+                .from('exam_questions')
+                .select('*')
+                .eq('exam_id', exam.examId)
+                .order('question_number', { ascending: true });
+
+            let answersQuery = supabase
+                .from('exam_grades')
+                .select('*')
+                .eq('student_id', this.userId)
+                .eq('exam_id', exam.examId)
+                .neq('question_id', sentinel);
+
+            let gradeQuery = supabase
+                .from('exam_grades')
+                .select('*')
+                .eq('student_id', this.userId)
+                .eq('exam_id', exam.examId)
+                .eq('question_id', sentinel)
+                .order('updated_at', { ascending: false })
+                .limit(1);
+
+            if (latestAttempt?.id) {
+                answersQuery = answersQuery.eq('attempt_id', latestAttempt.id);
+                gradeQuery = gradeQuery.eq('attempt_id', latestAttempt.id);
+            }
+
+            const [questionsResult, answersResult, gradeResult] = await Promise.all([
+                questionsQuery,
+                answersQuery,
+                gradeQuery
             ]);
 
             if (questionsResult.error) throw questionsResult.error;
             if (answersResult.error) throw answersResult.error;
+            if (gradeResult.error) throw gradeResult.error;
 
             const questions = questionsResult.data || [];
             const answers = answersResult.data || [];
-            const answerMap = new Map(
-                answers.map(a => [String(a.question_id), a])
-            );
+            const grade = (gradeResult.data || [])[0] || exam.grade || null;
+            const answerMap = new Map(answers.map(a => [String(a.question_id), a]));
 
-            const reviewQuestions = questions.map((q, index) => {
+            const normalize = value => String(value ?? '')
+                .trim()
+                .toUpperCase()
+                .replace(/[()\s.\-_:]/g, '');
+
+            const optionKeyMatches = (answerValue, letter, optionText) => {
+                const a = normalize(answerValue);
+                if (!a) return false;
+                const l = normalize(letter);
+                const t = normalize(optionText);
+                return a === l || a === `${l})` || a === t || a === `OPTION${l}`;
+            };
+
+            const questionReview = questions.map((q, index) => {
                 const answer = answerMap.get(String(q.id));
+                const selected = answer?.selected_answer ?? answer?.student_answer ?? answer?.answer ?? '';
+                const correct = q.correct_answer ?? q.correct_option ?? q.answer ?? '';
+                const options = [
+                    ['A', q.option_a],
+                    ['B', q.option_b],
+                    ['C', q.option_c],
+                    ['D', q.option_d]
+                ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '');
 
-                const selected =
-                    answer?.selected_answer ??
-                    answer?.student_answer ??
-                    answer?.answer ??
-                    '';
+                const isAnswered = !!answer && normalize(selected) !== '';
+                const explicitCorrect = answer?.is_correct === true || answer?.correct === true;
+                const explicitWrong = answer?.is_correct === false || answer?.correct === false;
+                const markValue = Number(answer?.marks ?? answer?.marks_obtained);
+                const comparedCorrect = options.some(([letter, value]) =>
+                    optionKeyMatches(selected, letter, value) && optionKeyMatches(correct, letter, value)
+                );
+                const isCorrect = isAnswered && (
+                    explicitCorrect ||
+                    (!explicitWrong && (comparedCorrect || (Number.isFinite(markValue) && markValue > 0)))
+                );
 
-                const correct =
-                    q.correct_answer ??
-                    q.answer ??
-                    '';
-
-                const normalizedSelected = String(selected || '').trim();
-                const normalizedCorrect = String(correct || '').trim();
-
-                const isAnswered = normalizedSelected !== '';
-                const isCorrect =
-                    isAnswered &&
-                    normalizedSelected.toLowerCase() === normalizedCorrect.toLowerCase();
+                const selectedOption = options.find(([letter, value]) => optionKeyMatches(selected, letter, value));
+                const correctOption = options.find(([letter, value]) => optionKeyMatches(correct, letter, value));
 
                 return {
                     id: q.id,
                     number: q.question_number ?? index + 1,
                     text: q.question_text || q.question || `Question ${index + 1}`,
-                    options: [
-                        ['A', q.option_a],
-                        ['B', q.option_b],
-                        ['C', q.option_c],
-                        ['D', q.option_d]
-                    ].filter(([, value]) =>
-                        value !== null &&
-                        value !== undefined &&
-                        String(value).trim() !== ''
-                    ),
-                    selected,
-                    correct,
+                    options,
+                    selected: selectedOption ? selectedOption[0] : selected,
+                    selectedText: selectedOption ? selectedOption[1] : selected,
+                    correct: correctOption ? correctOption[0] : correct,
+                    correctText: correctOption ? correctOption[1] : correct,
                     isAnswered,
                     isCorrect,
                     explanation: q.explanation || q.rationale || '',
-                    marks: answer?.marks ?? 0,
+                    marks: answer?.marks ?? answer?.marks_obtained ?? 0,
                     totalMarks: q.marks ?? 1
                 };
             });
 
-            const correctCount = reviewQuestions.filter(q => q.isCorrect).length;
+            const correctCount = questionReview.filter(q => q.isCorrect).length;
+            const answeredCount = questionReview.filter(q => q.isAnswered).length;
+            const wrongCount = questionReview.filter(q => q.isAnswered && !q.isCorrect).length;
 
             this.currentExamReview = {
                 examId: exam.examId,
-                gradeId: exam.gradeId,
+                gradeId: exam.gradeId || grade?.id,
+                attemptId: latestAttempt?.id || grade?.attempt_id || null,
+                attemptNumber: latestAttempt?.attempt_number || null,
                 examName: exam.examName,
                 examType: exam.examType,
                 score: exam.score,
                 total: exam.total,
                 percent: exam.percent,
-                questions: reviewQuestions,
+                questions: questionReview,
                 currentIndex: 0,
-                attemptKey: `${exam.examId}:${exam.gradeId || 'released'}`
+                attemptKey: `${exam.examId}:${latestAttempt?.id || exam.gradeId || 'released'}`
             };
 
-            if (correctEl) correctEl.textContent = `${correctCount}/${reviewQuestions.length}`;
-            if (totalEl) totalEl.textContent = String(reviewQuestions.length);
+            if (correctEl) correctEl.textContent = `${correctCount}/${questionReview.length}`;
+            const wrongEl = document.getElementById('nurseiqReviewWrong');
+            if (wrongEl) wrongEl.textContent = `${wrongCount}/${questionReview.length}`;
+            if (totalEl) totalEl.textContent = String(questionReview.length);
             const reviewQuestionsCountEl = document.getElementById('niqReviewQuestionsCount');
-            if (reviewQuestionsCountEl) reviewQuestionsCountEl.textContent = String(reviewQuestions.length);
+            if (reviewQuestionsCountEl) reviewQuestionsCountEl.textContent = String(questionReview.length);
+
+            const answeredMeta = document.getElementById('niqReviewAnswered');
+            if (answeredMeta) answeredMeta.textContent = `${answeredCount} answered`;
 
             await this.renderExamReviewQuestion(0);
             this.updateExamReviewSelection(exam);
-
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (error) {
             console.error('❌ Exam review load failed:', error);
-
             body.innerHTML = `
                 <div class="niq-empty">
                     <i class="fas fa-triangle-exclamation"></i>
@@ -2815,20 +2869,14 @@ async saveProgressToDatabase() {
                 <button type="button" class="${cls}"
                     title="Question ${i + 1}: ${statusLabel}"
                     aria-label="Question ${i + 1}: ${statusLabel}"
-                    onclick="window.nurseiqModule?.renderExamReviewQuestion(${i})">
+                    onclick="window.renderNurseIQExamReviewQuestion?.(${i})">
                     ${i + 1}
                 </button>`;
         }).join('');
 
         const options = q.options.map(([letter, value]) => {
-            const isStudent =
-                String(q.selected || '').trim().toLowerCase() ===
-                String(value).trim().toLowerCase();
-
-            const isCorrect =
-                String(q.correct || '').trim().toLowerCase() ===
-                String(value).trim().toLowerCase();
-
+            const isStudent = String(q.selected || '').toUpperCase() === String(letter).toUpperCase();
+            const isCorrect = String(q.correct || '').toUpperCase() === String(letter).toUpperCase();
             const cls = [
                 'niq-option',
                 isStudent ? 'student' : '',
@@ -2841,13 +2889,17 @@ async saveProgressToDatabase() {
                     <span>
                         ${this.escapeReviewHtml(value)}
                         ${isStudent ? ' <strong style="font-size:8px;color:#B91C1C">(Your answer)</strong>' : ''}
-                        ${isCorrect ? ' <strong style="font-size:8px;color:#15803D">(Correct)</strong>' : ''}
+                        ${isCorrect ? ' <strong style="font-size:8px;color:#15803D">(Correct answer)</strong>' : ''}
                     </span>
                 </div>`;
         }).join('');
 
-        const selectedDisplay = q.isAnswered ? q.selected : 'Not answered';
-        const correctDisplay = q.correct || 'Not available';
+        const selectedDisplay = q.isAnswered
+            ? `${q.selected || ''}${q.selectedText ? ` — ${q.selectedText}` : ''}`
+            : 'Not answered';
+        const correctDisplay = q.correct
+            ? `${q.correct}${q.correctText ? ` — ${q.correctText}` : ''}`
+            : 'Not available';
 
         body.innerHTML = `
             <div class="niq-review-layout">
@@ -2898,13 +2950,13 @@ async saveProgressToDatabase() {
 
                     <div class="niq-review-footer">
                         <button type="button"
-                            onclick="window.nurseiqModule?.renderExamReviewQuestion(${safeIndex - 1})"
+                            onclick="window.renderNurseIQExamReviewQuestion?.(${safeIndex - 1})"
                             ${safeIndex === 0 ? 'disabled' : ''}>
                             <i class="fas fa-arrow-left"></i> Previous
                         </button>
 
                         <button type="button" class="primary"
-                            onclick="window.nurseiqModule?.renderExamReviewQuestion(${safeIndex + 1})"
+                            onclick="window.renderNurseIQExamReviewQuestion?.(${safeIndex + 1})"
                             ${safeIndex === review.questions.length - 1 ? 'disabled' : ''}>
                             Next Question <i class="fas fa-arrow-right"></i>
                         </button>
