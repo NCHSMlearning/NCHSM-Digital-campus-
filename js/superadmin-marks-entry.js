@@ -1429,6 +1429,10 @@ async function loadMEUnits() {
 // LOAD MARKS ENTRY - FIXED
 // ============================================================
 
+// ============================================================
+// LOAD MARKS ENTRY - REGISTRATION-AWARE (FIXED)
+// ============================================================
+
 async function loadMarksEntry() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
@@ -1471,7 +1475,7 @@ async function loadMarksEntry() {
         container.innerHTML = `
             <div style="text-align: center; padding: 40px;">
                 <div class="loading-spinner"></div>
-                <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unitCode || unit}...</p>
+                <p style="color: #6b7280; margin-top: 10px;">Loading students for ${unitCode || unit}...</p>
             </div>
         `;
     }
@@ -1479,6 +1483,7 @@ async function loadMarksEntry() {
     try {
         await loadRetakeData(block, unit, year);
         
+        // STEP 1: Try student_marks table first
         const { data: marks, error: marksError } = await sb
             .from('student_marks')
             .select('*')
@@ -1488,25 +1493,16 @@ async function loadMarksEntry() {
         
         if (marksError) throw marksError;
         
-        console.log(`📊 Found ${marks?.length || 0} enrolled students for ${unit}`);
+        console.log(`📊 Found ${marks?.length || 0} marks records for ${unit}`);
         
+        // STEP 2: If no marks exist, fall back to approved registrations
         if (!marks || marks.length === 0) {
-            if (container) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 60px 20px;">
-                        <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                        <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
-                        <p style="color: #94a3b8;">Use "Manage Students" to add students to this unit</p>
-                        <button onclick="openMarksStudentManager()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                            <i class="fas fa-users"></i> Manage Students
-                        </button>
-                    </div>
-                `;
-            }
-            updateMarksEntryStats([], assessmentType);
+            console.log(`⚠️ No marks records. Checking approved registrations...`);
+            await loadFromApprovedRegistrations(program, block, unit, year, unitCode);
             return;
         }
         
+        // STEP 3: Normal path — render existing marks
         const admissions = marks.map(m => m.admission_number);
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
@@ -1552,15 +1548,11 @@ async function loadMarksEntry() {
             };
         });
         
-        console.log(`📊 Displaying ${fullMarks.length} enrolled students`);
+        console.log(`📊 Displaying ${fullMarks.length} students from marks table`);
         
         me_currentMarks = fullMarks;
-        
-        // ✅ CHANGE THIS LINE - PASS THE PROGRAM
         renderMarksEntryTable(fullMarks, unitCode, assessmentType, program);
-        
         updateMarksEntryStats(fullMarks, assessmentType);
-        
         await loadUnitColumnSettings();
         updateAssessmentTypeDisplay();
         
@@ -1578,10 +1570,288 @@ async function loadMarksEntry() {
                 </div>
             `;
         }
-        if (typeof showNotification === 'function') {
-            showNotification('Error loading marks: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// LOAD FROM APPROVED REGISTRATIONS
+// Finds approved students, creates blank marks records
+// ============================================================
+
+async function loadFromApprovedRegistrations(program, block, unit, year, unitCode) {
+    const container = document.getElementById('me_marks_container');
+    
+    try {
+        const unitSelect = document.getElementById('me_subject_select');
+        const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+        const targetUnitCode = selectedOption?.dataset?.code || unitCode || '';
+        
+        console.log(`🔍 Searching approved registrations:`);
+        console.log(`   program=${program}, block=${block}, year=${year}`);
+        console.log(`   unit="${unit}" (code: ${targetUnitCode})`);
+        
+        // ==========================================
+        // Query approved registrations for this unit
+        // ==========================================
+        const { data: regs, error: regError } = await sb
+            .from('student_unit_registrations')
+            .select('student_id, unit_code, unit_name, block, program, academic_year, reg_type, status')
+            .eq('program', program)
+            .eq('block', block)
+            .eq('status', 'approved')
+            .eq('academic_year', parseInt(year));
+        
+        if (regError) throw regError;
+        
+        // Filter by unit_code OR unit_name client-side (handles both)
+        const matchingRegs = (regs || []).filter(r => 
+            r.unit_code === targetUnitCode || 
+            r.unit_name === unit ||
+            (r.unit_name && unit && r.unit_name.includes(unit)) ||
+            (unit && r.unit_name && unit.includes(r.unit_name))
+        );
+        
+        console.log(`✅ Found ${matchingRegs.length} approved registrations for this unit`);
+        
+        // ==========================================
+        // No approved registrations — check for pending ones
+        // ==========================================
+        if (matchingRegs.length === 0) {
+            const { data: allRegs } = await sb
+                .from('student_unit_registrations')
+                .select('student_id, unit_code, unit_name, status')
+                .eq('program', program)
+                .eq('block', block)
+                .eq('academic_year', parseInt(year));
+            
+            const pendingMatches = (allRegs || []).filter(r => 
+                (r.unit_code === targetUnitCode || 
+                 r.unit_name === unit ||
+                 (r.unit_name && unit && r.unit_name.includes(unit)) ||
+                 (unit && r.unit_name && unit.includes(r.unit_name)))
+                && r.status === 'pending'
+            );
+            
+            const pendingCount = pendingMatches.length;
+            
+            if (pendingCount > 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; background: #fffbeb; border-radius: 8px;">
+                        <i class="fas fa-clock" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #92400e; margin: 0 0 8px 0;">Registrations Pending Approval</h3>
+                        <p style="color: #78350f; font-size: 14px;">
+                            <strong>${pendingCount}</strong> student(s) have registered for this unit but their registration is not yet approved.
+                        </p>
+                        <p style="color: #92400e; font-size: 12px; margin-top: 8px;">
+                            Approve them to begin entering marks.
+                        </p>
+                        <button onclick="approveRegistrationsForUnit('${program}', '${block}', '${unit.replace(/'/g, "\\'")}', ${year})" 
+                                style="margin-top: 16px; padding: 12px 24px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">
+                            <i class="fas fa-check-circle"></i> Approve All ${pendingCount} Pending Registrations
+                        </button>
+                        <div style="margin-top: 12px;">
+                            <button onclick="openMarksStudentManager()" 
+                                    style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                                <i class="fas fa-users"></i> Manage Students Manually
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // No registrations at all
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-users-slash" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b; margin: 0 0 8px 0;">No students registered for this unit</h3>
+                    <p style="color: #94a3b8; font-size: 13px;">
+                        No approved registrations found for ${year}.
+                    </p>
+                    <div style="margin-top: 16px;">
+                        <button onclick="openMarksStudentManager()" 
+                                style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            <i class="fas fa-users"></i> Manage Students Manually
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        // ==========================================
+        // Fetch student names
+        // ==========================================
+        const studentIds = matchingRegs.map(r => r.student_id);
+        const { data: students } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name, block, program')
+            .in('student_id', studentIds);
+        
+        const studentMap = {};
+        (students || []).forEach(s => {
+            studentMap[s.student_id] = s.full_name || 'Unknown';
+        });
+        
+        // ==========================================
+        // Create blank marks records in student_marks
+        // ==========================================
+        const now = new Date().toISOString();
+        const marksToInsert = matchingRegs.map(reg => ({
+            admission_number: reg.student_id,
+            student_name: studentMap[reg.student_id] || 'Unknown',
+            block: block,
+            subject_name: unit,
+            academic_year: parseInt(year),
+            assessment_type: 'full',
+            cat1_score: 0,
+            cat2_score: 0,
+            exam_score: 0,
+            final_score: 0,
+            grade: '',
+            approval_status: 'draft',
+            published: false,
+            created_at: now,
+            updated_at: now
+        }));
+        
+        console.log(`📝 Creating ${marksToInsert.length} blank marks records...`);
+        
+        // Upsert each one (safer than bulk for schema variations)
+        let successCount = 0;
+        let skipCount = 0;
+        
+        for (const record of marksToInsert) {
+            try {
+                // Check if already exists
+                const { data: existing } = await sb
+                    .from('student_marks')
+                    .select('id')
+                    .eq('admission_number', record.admission_number)
+                    .eq('subject_name', record.subject_name)
+                    .eq('block', record.block)
+                    .eq('academic_year', record.academic_year)
+                    .maybeSingle();
+                
+                if (existing) {
+                    skipCount++;
+                    continue;
+                }
+                
+                const { error: insertError } = await sb
+                    .from('student_marks')
+                    .insert(record);
+                
+                if (insertError && insertError.code !== '23505') {
+                    console.warn(`⚠️ Failed to create marks for ${record.admission_number}:`, insertError.message);
+                } else {
+                    successCount++;
+                }
+            } catch (err) {
+                console.warn(`⚠️ Error creating marks for ${record.admission_number}:`, err.message);
+            }
+        }
+        
+        console.log(`✅ Created ${successCount} marks records (${skipCount} already existed)`);
+        
+        // Reload — now marks records exist, students will appear
+        await loadMarksEntry();
+        
+    } catch (error) {
+        console.error('❌ Error loading from registrations:', error);
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
+                    <h4 style="color: #991b1b;">Error loading students</h4>
+                    <p style="color: #64748b;">${error.message}</p>
+                    <button onclick="loadMarksEntry()" class="btn-action" 
+                            style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
         }
     }
+}
+
+
+// ============================================================
+// APPROVE ALL PENDING REGISTRATIONS FOR A UNIT
+// ============================================================
+
+async function approveRegistrationsForUnit(program, block, unit, year) {
+    if (!confirm(`Approve all pending registrations for "${unit}"?\n\nBlock: ${block}\nYear: ${year}\n\nThis will allow you to enter marks for these students.`)) {
+        return;
+    }
+    
+    showLoading('Approving registrations...');
+    
+    try {
+        const unitSelect = document.getElementById('me_subject_select');
+        const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+        const unitCode = selectedOption?.dataset?.code || '';
+        
+        // Get all pending registrations for this unit
+        const { data: pending, error: fetchError } = await sb
+            .from('student_unit_registrations')
+            .select('id, student_id, unit_code, unit_name')
+            .eq('program', program)
+            .eq('block', block)
+            .eq('academic_year', parseInt(year))
+            .eq('status', 'pending');
+        
+        if (fetchError) throw fetchError;
+        
+        // Filter client-side
+        const matching = (pending || []).filter(r => 
+            r.unit_code === unitCode || 
+            r.unit_name === unit ||
+            (r.unit_name && unit && r.unit_name.includes(unit)) ||
+            (unit && r.unit_name && unit.includes(r.unit_name))
+        );
+        
+        if (matching.length === 0) {
+            hideLoading();
+            showNotification('No pending registrations found for this unit', 'warning');
+            return;
+        }
+        
+        // Update all in one query by IDs
+        const ids = matching.map(r => r.id);
+        const { error: updateError } = await sb
+            .from('student_unit_registrations')
+            .update({ 
+                status: 'approved',
+                updated_at: new Date().toISOString()
+            })
+            .in('id', ids);
+        
+        if (updateError) throw updateError;
+        
+        hideLoading();
+        showNotification(`✅ Approved ${matching.length} registrations! Loading students...`, 'success');
+        
+        // Small delay to let notification show
+        await new Promise(r => setTimeout(r, 500));
+        
+        // Reload marks entry
+        await loadMarksEntry();
+        
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Error approving registrations:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+
+// ============================================================
+// REFRESH MARKS TABLE (helper)
+// ============================================================
+
+async function refreshMarksTable() {
+    await loadMarksEntry();
 }
 // ============================================================
 // RENDER MARKS ENTRY TABLE - COMPLETELY FIXED
@@ -5149,7 +5419,10 @@ window.toggleAllStudentCheckboxes = toggleAllStudentCheckboxes;
 window.filterStudentPublishList = filterStudentPublishList;
 window.updateStudentPublishStats = updateStudentPublishStats;
 window.publishSelectedStudents = publishSelectedStudents;
-
+// Registration-aware marks entry
+window.loadFromApprovedRegistrations = loadFromApprovedRegistrations;
+window.approveRegistrationsForUnit = approveRegistrationsForUnit;
+window.refreshMarksTable = refreshMarksTable;
 // Utility
 window.escapeHtml = escapeHtml;
 
