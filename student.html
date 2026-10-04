@@ -6803,25 +6803,7 @@ async function saveResearchCorrection(submit){
     var fileName=(String(r.title||'research').replace(/[^a-zA-Z0-9_-]+/g,'_')+'_V'+next+'.html');
     var path=id+'/'+(r.research_group_id||r.id)+'/'+Date.now()+'_'+fileName;
     var blob=new Blob(['<!doctype html><html><head><meta charset="utf-8"><title>'+esc(r.title||'Research Paper')+'</title></head><body>'+html+'
-<script id="nchsm-nurseiq-review-bridge">
-(function(){
-  function bridge(){
-    if (!window.openNurseIQExamReview && window.nurseiqModule && typeof window.nurseiqModule.openExamReview === 'function') {
-      window.openNurseIQExamReview = function(examId){ return window.nurseiqModule.openExamReview(examId); };
-    }
-    if (!window.renderNurseIQExamReviewQuestion && window.nurseiqModule && typeof window.nurseiqModule.renderExamReviewQuestion === 'function') {
-      window.renderNurseIQExamReviewQuestion = function(index){ return window.nurseiqModule.renderExamReviewQuestion(index); };
-    }
-    if (!window.closeNurseIQExamReview && window.nurseiqModule && typeof window.nurseiqModule.closeExamReview === 'function') {
-      window.closeNurseIQExamReview = function(){ return window.nurseiqModule.closeExamReview(); };
-    }
-  }
-  bridge();
-  document.addEventListener('appReady',bridge);
-  setTimeout(bridge,500);
-  setTimeout(bridge,1500);
-})();
-</script>
+
 
 </body></html>'],{type:'text/html'});
     var up=await sb.storage.from('research-papers').upload(path,blob,{upsert:false,contentType:'text/html'});
@@ -7783,7 +7765,154 @@ async function saveInlineResearchCorrection(){
       /* The browser editor is HTML, but a DOCX submission must be a real DOCX. */
       fileBlob=await researchHtmlToDocxBlob(html,base.title||'Research Paper');
     }else{
-      var wrapper='<!doctype html><html><head><meta charset=\"utf-8\"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style></head><body>'+html+'</body></html>';
+      var wrapper='<!doctype html><html><head><meta charset=\"utf-8\"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style>
+<style id="nchsm-completed-assessments-final-mobile-scroll">
+/* FINAL: Completed Assessments mobile table
+   Keep the table inside its own horizontal viewport and keep Actions reachable. */
+@media (max-width: 767px){
+  #cats .completed-section{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow:visible!important;
+  }
+
+  #cats .completed-section .table-wrap{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+    touch-action:pan-x!important;
+    scrollbar-width:thin!important;
+    scrollbar-color:#64748b #eef2f7!important;
+    padding:0 0 10px!important;
+    margin:0!important;
+    box-sizing:border-box!important;
+    isolation:isolate!important;
+  }
+
+  #cats .completed-section .table-wrap::-webkit-scrollbar{
+    height:10px!important;
+  }
+  #cats .completed-section .table-wrap::-webkit-scrollbar-track{
+    background:#eef2f7!important;
+    border-radius:999px!important;
+  }
+  #cats .completed-section .table-wrap::-webkit-scrollbar-thumb{
+    background:#64748b!important;
+    border-radius:999px!important;
+  }
+
+  #cats .completed-section .assessment-table{
+    display:table!important;
+    width:max-content!important;
+    min-width:980px!important;
+    max-width:none!important;
+    table-layout:auto!important;
+    margin:0!important;
+    border-collapse:separate!important;
+    border-spacing:0!important;
+  }
+
+  #cats .completed-section .assessment-table th,
+  #cats .completed-section .assessment-table td{
+    white-space:nowrap!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Keep Assessment visible while the student swipes through the remaining columns. */
+  #cats .completed-section .assessment-table th:first-child,
+  #cats .completed-section .assessment-table td:first-child{
+    position:sticky!important;
+    left:0!important;
+    z-index:20!important;
+    min-width:210px!important;
+    width:210px!important;
+    background:#fff!important;
+    box-shadow:6px 0 10px rgba(15,23,42,.10)!important;
+  }
+  #cats .completed-section .assessment-table thead th:first-child{
+    z-index:25!important;
+    background:#f8fafc!important;
+  }
+
+  /* Keep Actions reachable even on very narrow phones. */
+  #cats .completed-section .assessment-table th:last-child,
+  #cats .completed-section .assessment-table td:last-child{
+    min-width:180px!important;
+    width:180px!important;
+    position:sticky!important;
+    right:0!important;
+    z-index:19!important;
+    background:#fff!important;
+    box-shadow:-6px 0 10px rgba(15,23,42,.10)!important;
+  }
+  #cats .completed-section .assessment-table thead th:last-child{
+    z-index:24!important;
+    background:#f8fafc!important;
+  }
+
+  #cats .completed-section .row-actions{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    justify-content:center!important;
+    gap:6px!important;
+    min-width:164px!important;
+    width:164px!important;
+    flex-wrap:nowrap!important;
+  }
+  #cats .completed-section .result-btn,
+  #cats .completed-section .review-btn,
+  #cats .completed-section .retake-link{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:164px!important;
+    min-width:164px!important;
+    min-height:36px!important;
+    padding:8px 10px!important;
+    box-sizing:border-box!important;
+    font-size:9px!important;
+    line-height:1.1!important;
+    white-space:nowrap!important;
+    flex:0 0 auto!important;
+    pointer-events:auto!important;
+    position:relative!important;
+    z-index:30!important;
+  }
+
+  /* Make it obvious that the table itself is the swipe area. */
+  #cats .completed-section .table-wrap::before{
+    content:"Swipe left/right to view Percentage, Grade, Status and Actions";
+    display:block!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+    padding:8px 10px!important;
+    margin:0 0 6px!important;
+    text-align:center!important;
+    font-size:10px!important;
+    font-weight:800!important;
+    color:#2563eb!important;
+    background:#eff6ff!important;
+    border:1px solid #dbeafe!important;
+    border-radius:8px!important;
+  }
+}
+
+@media (min-width:768px){
+  #cats .completed-section .table-wrap{
+    overflow-x:auto!important;
+    max-width:100%!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+}
+</style>
+</head><body>'+html+'</body></html>';
       fileBlob=new Blob([wrapper],{type:'text/html'});
     }
     var upload=await db.storage.from('research-papers').upload(path,fileBlob,{contentType:isDocx?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'text/html',upsert:false});
@@ -7897,6 +8026,26 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 
 
 
+</script>
+
+<script id="nchsm-nurseiq-review-bridge">
+(function(){
+  function bridge(){
+    if (!window.openNurseIQExamReview && window.nurseiqModule && typeof window.nurseiqModule.openExamReview === 'function') {
+      window.openNurseIQExamReview = function(examId){ return window.nurseiqModule.openExamReview(examId); };
+    }
+    if (!window.renderNurseIQExamReviewQuestion && window.nurseiqModule && typeof window.nurseiqModule.renderExamReviewQuestion === 'function') {
+      window.renderNurseIQExamReviewQuestion = function(index){ return window.nurseiqModule.renderExamReviewQuestion(index); };
+    }
+    if (!window.closeNurseIQExamReview && window.nurseiqModule && typeof window.nurseiqModule.closeExamReview === 'function') {
+      window.closeNurseIQExamReview = function(){ return window.nurseiqModule.closeExamReview(); };
+    }
+  }
+  bridge();
+  document.addEventListener('appReady',bridge);
+  setTimeout(bridge,500);
+  setTimeout(bridge,1500);
+})();
 </script>
 
 <!-- ==================== HUB EXAM CARD TAB ==================== -->
@@ -14942,10 +15091,9 @@ function renderClinical(filter){var list=document.getElementById('clinical-list'
 function add(prefill){var procedure=prefill||prompt('Procedure / clinical activity:','IV cannulation');if(!procedure)return;var v={id:String(Date.now()),procedure:procedure,facility:prompt('Facility:','')||'',department:prompt('Department/Ward:','')||'',rotation:prompt('Rotation / block:','')||'',date:prompt('Date (YYYY-MM-DD):',new Date().toISOString().slice(0,10))||'',supervisor:prompt('Supervisor/Preceptor:','')||'',status:prompt('Status (Pending/Verified):','Pending')||'Pending',remarks:prompt('Remarks:','')||''};var d=load();d.unshift(v);save(d);renderClinical()}
 function renderHelp(q){var b=document.getElementById('help-articles');if(!b)return;q=(q||'').toLowerCase();b.innerHTML=HELP.filter(function(a){return !q||(a[0]+' '+a[1]).toLowerCase().indexOf(q)>=0}).map(function(a){return'<article class="help-item"><h3>'+esc(a[0])+'</h3><p>'+esc(a[1])+'</p></article>'}).join('')}
 function renderDates(){var b=document.getElementById('important-dates-list');if(!b)return;var arr=['Check Academic Calendar for registration deadlines','Check Timetable for current clinical and class schedules','Check Exam Card for examination eligibility and pending approvals','Check Academic Reports when results are published'];b.innerHTML=arr.map(function(x){return'<div class="date-row"><strong>'+esc(x)+'</strong><span>Portal information</span></div>'}).join('')}
-function pending(){var d=document.getElementById('dashboard');if(!d||document.getElementById('nchsm-pending-panel'))return;var p=document.createElement('section');p.id='nchsm-pending-panel';p.className='nchsm-pending-panel';p.innerHTML='<div class="nchsm-card" style="padding:18px"><h2 style="margin:0">Pending Actions</h2><p style="margin:4px 0;color:#64748b">Quick access to the areas most likely to need attention.</p><div class="pending-grid" style="margin-top:14px">'+[['fa-book','Unit Registration','hub-register'],['fa-money-bill-wave','Finance','finance'],['fa-id-card','Exam Card','hub-exam-card'],['fa-calendar-days','Timetable','hub-timetable']].map(function(x){return'<div class="pending-item" data-tab="'+x[2]+'"><i class="fas '+x[0]+'"></i>'+x[1]+'<strong>Open module →</strong></div>'}).join('')+'</div></div>';var h=d.querySelector('.nchsm-hero');if(h&&h.parentNode===d){d.insertBefore(p,h.nextSibling);}else{d.prepend(p);}p.addEventListener('click',function(e){var a=e.target.closest('.pending-item');if(a&&window.showTab)window.showTab(a.dataset.tab)})}
 function search(){if(document.getElementById('nchsm-search-overlay'))return;var o=document.createElement('div');o.id='nchsm-search-overlay';o.className='nchsm-search-overlay';o.innerHTML='<div class="nchsm-search-dialog"><input id="nchsm-global-search" placeholder="Search the student portal…" autocomplete="off"><div id="nchsm-search-results" class="nchsm-search-results"></div></div>';document.body.appendChild(o);var items=[];document.querySelectorAll('[data-tab]').forEach(function(a){var id=a.getAttribute('data-tab'),t=(a.innerText||a.textContent||'').trim();if(id&&t&&!items.some(function(v){return v.id===id}))items.push({id:id,text:t})});function draw(q){q=(q||'').toLowerCase();var r=items.filter(function(v){return !q||v.text.toLowerCase().indexOf(q)>=0});document.getElementById('nchsm-search-results').innerHTML=r.slice(0,30).map(function(v){return'<div class="search-result" data-tab="'+esc(v.id)+'"><i class="fas fa-arrow-right"></i>'+esc(v.text)+'</div>'}).join('')||'<div style="padding:20px;color:#64748b">No matching portal section.</div>'}window.nchsmOpenSearch=function(){o.style.display='block';document.getElementById('nchsm-global-search').focus();draw('')};document.getElementById('nchsm-global-search').addEventListener('input',function(){draw(this.value)});o.addEventListener('click',function(e){if(e.target===o)o.style.display='none';var r=e.target.closest('.search-result');if(r){o.style.display='none';if(window.showTab)window.showTab(r.dataset.tab)}});document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();window.nchsmOpenSearch()}if(e.key==='Escape')o.style.display='none'})}
-function boot(){var a=document.getElementById('clinical-add-entry');if(a)a.onclick=function(){add()};var s=document.getElementById('clinical-search');if(s)s.oninput=function(){renderClinical(s.value)};var l=document.getElementById('clinical-list');if(l)l.onclick=function(e){var b=e.target.closest('.clinical-delete');if(b&&confirm('Delete this clinical entry?')){save(load().filter(function(v){return v.id!==b.dataset.id}));renderClinical(s?s.value:'')}};var c=document.getElementById('procedure-chips');if(c){c.innerHTML=PROCEDURES.map(function(v){return'<button class="procedure-chip" type="button" data-procedure="'+esc(v)+'">'+esc(v)+'</button>'}).join('');c.onclick=function(e){var b=e.target.closest('.procedure-chip');if(b)add(b.dataset.procedure)}}var hs=document.getElementById('help-search');if(hs)hs.oninput=function(){renderHelp(hs.value)};var ht=document.getElementById('help-new-ticket');if(ht)ht.onclick=function(){if(window.showTab)window.showTab('support-tickets')};var ca=document.getElementById('open-academic-calendar');if(ca)ca.onclick=function(){if(window.showTab)window.showTab('calendar')};renderClinical();renderHelp();renderDates();pending();search()}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();document.addEventListener('appReady',function(){setTimeout(function(){pending();renderClinical();renderDates()},250)});
+function boot(){var a=document.getElementById('clinical-add-entry');if(a)a.onclick=function(){add()};var s=document.getElementById('clinical-search');if(s)s.oninput=function(){renderClinical(s.value)};var l=document.getElementById('clinical-list');if(l)l.onclick=function(e){var b=e.target.closest('.clinical-delete');if(b&&confirm('Delete this clinical entry?')){save(load().filter(function(v){return v.id!==b.dataset.id}));renderClinical(s?s.value:'')}};var c=document.getElementById('procedure-chips');if(c){c.innerHTML=PROCEDURES.map(function(v){return'<button class="procedure-chip" type="button" data-procedure="'+esc(v)+'">'+esc(v)+'</button>'}).join('');c.onclick=function(e){var b=e.target.closest('.procedure-chip');if(b)add(b.dataset.procedure)}}var hs=document.getElementById('help-search');if(hs)hs.oninput=function(){renderHelp(hs.value)};var ht=document.getElementById('help-new-ticket');if(ht)ht.onclick=function(){if(window.showTab)window.showTab('support-tickets')};var ca=document.getElementById('open-academic-calendar');if(ca)ca.onclick=function(){if(window.showTab)window.showTab('calendar')};renderClinical();renderHelp();renderDates();search()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();document.addEventListener('appReady',function(){setTimeout(function(){renderClinical();renderDates()},250)});
 })();
 </script>
 </html>
