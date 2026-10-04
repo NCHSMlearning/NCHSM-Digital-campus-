@@ -1427,7 +1427,7 @@ applyDataFilter() {
                 else if (exam.actionState === 'expired') { status = 'Missed'; statusClass = 'status-missed'; }
 
                 let actionHtml = '<span style="color:#94a3b8">—</span>';
-                if (isReleased && marks > 0) {
+                if (isReleased) {
                     actionHtml = `<div class="row-actions"><button type="button" class="result-btn" onclick="window.openNurseIQExamReview?.(${exam.id})"><i class="fas fa-chart-column"></i> View Result</button><button type="button" class="review-btn" onclick="window.openNurseIQExamReview?.(${exam.id})"><i class="fas fa-book-open"></i> Review Questions</button></div>`;
                 } else if (isRetake) {
                     const userId = this.userId || window.db?.currentUserId || '';
