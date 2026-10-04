@@ -1381,6 +1381,34 @@ applyDataFilter() {
         displayCompletedTable() {
             if (!this.completedTable) return;
 
+            // ============================================================
+            // MOBILE TABLE SCROLL FIX
+            // The table is rendered inside a fixed-width portal column.
+            // Configure the actual wrapper from the Exams module so the
+            // table itself becomes a real touch-scroll viewport on phones.
+            // ============================================================
+            const completedWrap = this.completedTable.closest('.completed-table-wrap');
+            const completedTableEl = this.completedTable.closest('table.assessment-table');
+            if (completedWrap) {
+                completedWrap.style.width = '100%';
+                completedWrap.style.maxWidth = '100%';
+                completedWrap.style.minWidth = '0';
+                completedWrap.style.display = 'block';
+                completedWrap.style.overflowX = 'auto';
+                completedWrap.style.overflowY = 'hidden';
+                completedWrap.style.webkitOverflowScrolling = 'touch';
+                completedWrap.style.touchAction = 'pan-x pan-y';
+                completedWrap.style.overscrollBehaviorX = 'contain';
+                completedWrap.style.position = 'relative';
+                completedWrap.style.boxSizing = 'border-box';
+            }
+            if (completedTableEl) {
+                completedTableEl.style.width = 'max-content';
+                completedTableEl.style.minWidth = '900px';
+                completedTableEl.style.tableLayout = 'auto';
+                completedTableEl.style.margin = '0';
+            }
+
             const completedReleased = this.completedExams
                 .filter(exam => exam.isCompleted || exam.isReleased || exam.actionState === 'expired' || exam.actionState === 'pending_release')
                 .sort((a, b) => {
@@ -1458,6 +1486,36 @@ applyDataFilter() {
             }).join('');
 
             this.completedTable.innerHTML = html;
+
+            // Re-apply scroll geometry after rows/buttons are inserted.
+            if (completedWrap) {
+                const width = Math.max(900, completedTableEl?.scrollWidth || 900);
+                if (completedTableEl) completedTableEl.style.width = `${width}px`;
+                completedWrap.scrollLeft = 0;
+            }
+
+            // Make the first column sticky and keep action buttons reachable.
+            if (completedTableEl) {
+                completedTableEl.querySelectorAll('th:first-child, td:first-child').forEach(cell => {
+                    cell.style.position = 'sticky';
+                    cell.style.left = '0';
+                    cell.style.zIndex = cell.tagName === 'TH' ? '5' : '3';
+                    cell.style.background = '#fff';
+                    cell.style.boxShadow = '5px 0 8px rgba(15,23,42,.06)';
+                });
+                completedTableEl.querySelectorAll('.row-actions').forEach(actions => {
+                    actions.style.display = 'flex';
+                    actions.style.flexWrap = 'nowrap';
+                    actions.style.minWidth = '190px';
+                    actions.style.gap = '6px';
+                });
+                completedTableEl.querySelectorAll('.result-btn, .review-btn, .retake-link').forEach(button => {
+                    button.style.flex = '0 0 auto';
+                    button.style.whiteSpace = 'nowrap';
+                    button.style.pointerEvents = 'auto';
+                    button.style.touchAction = 'manipulation';
+                });
+            }
         }
 
         // ============================================
