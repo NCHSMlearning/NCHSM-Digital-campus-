@@ -1404,6 +1404,18 @@ applyDataFilter() {
         displayCompletedTable() {
             if (!this.completedTable) return;
 
+            // Grade and release state intentionally share ONE column.
+            // Remove the old standalone Status header so CATs and Final Exams
+            // use the same Grade/Release presentation.
+            const completedTableElement = this.completedTable.closest('table');
+            if (completedTableElement) {
+                const headerCells = completedTableElement.querySelectorAll('thead th');
+                if (headerCells.length >= 7) {
+                    headerCells[4].textContent = 'Grade / Release';
+                    headerCells[5].remove();
+                }
+            }
+
             const completedReleased = this.completedExams
                 .filter(exam => exam.isCompleted || exam.isReleased || exam.actionState === 'expired' || exam.actionState === 'pending_release')
                 .sort((a, b) => {
@@ -1432,23 +1444,25 @@ applyDataFilter() {
                 if (!isReleased || isPendingRelease) { marks = 0; percentage = 0; }
 
                 let grade = 'Pending';
+                let gradeLetter = '';
                 let gradeClass = 'grade-pending';
-                if (isRetake) { grade = 'Retake Available'; gradeClass = 'grade-retake'; }
-                else if (isPendingRelease) { grade = 'Pending Release'; gradeClass = 'grade-pending'; }
-                else if (exam.actionState === 'expired' && !exam.hasGrade) { grade = 'Missed'; gradeClass = 'grade-missed'; }
-                else if (isReleased) {
+                if (isRetake) {
+                    grade = 'Retake Available';
+                    gradeClass = 'grade-retake';
+                } else if (isPendingRelease) {
+                    grade = 'Pending Release';
+                    gradeClass = 'grade-pending';
+                } else if (exam.actionState === 'expired' && !exam.hasGrade) {
+                    grade = 'Missed';
+                    gradeClass = 'grade-missed';
+                } else if (isReleased) {
                     const resultGrade = getAssessmentGrade(percentage, !!exam.isTVET);
+                    gradeLetter = resultGrade.grade;
                     grade = resultGrade.rating;
-                    gradeClass = resultGrade.rating === 'Distinction' || resultGrade.rating === 'MASTERY' ? 'grade-distinction' :
-                                 resultGrade.rating === 'Credit' || resultGrade.rating === 'PROFICIENT' ? 'grade-credit' :
-                                 resultGrade.rating === 'Pass' || resultGrade.rating === 'COMPETENT' ? 'grade-pass' : 'grade-fail';
+                    gradeClass = resultGrade.grade === 'A' ? 'grade-distinction' :
+                                 resultGrade.grade === 'B' ? 'grade-credit' :
+                                 resultGrade.grade === 'C' ? 'grade-pass' : 'grade-fail';
                 }
-
-                let status = 'Pending';
-                let statusClass = 'status-pending';
-                if (isRetake) { status = 'Retake Available'; statusClass = 'status-retake'; }
-                else if (isReleased) { status = 'Released'; statusClass = 'status-released'; }
-                else if (exam.actionState === 'expired') { status = 'Missed'; statusClass = 'status-missed'; }
 
                 let actionHtml = '<span style="color:#94a3b8">—</span>';
                 if (isReleased) {
@@ -1468,19 +1482,23 @@ applyDataFilter() {
                 const pctText = isReleased && percentage !== null && Number.isFinite(percentage) ? `${Math.round(percentage)}%` : 'Pending';
                 const dateText = exam.formattedExamDateTime || exam.examDate || 'Date not available';
 
+                const gradeCell = isReleased
+                    ? `<div class="grade-status-stack">
+                           <span class="grade-pill ${gradeClass}">${this.escapeHtml(gradeLetter)} — ${this.escapeHtml(grade)}</span>
+                           <span class="grade-release-label"><i class="fas fa-circle-check"></i> Released</span>
+                       </div>`
+                    : `<div class="grade-status-stack">
+                           <span class="grade-pill ${gradeClass}">${this.escapeHtml(grade)}</span>
+                           ${isPendingRelease ? '<span class="grade-release-label" style="color:#b45309"><i class="fas fa-clock"></i> Awaiting Release</span>' : ''}
+                       </div>`;
+
                 return `
                     <tr>
                         <td><div class="assessment-name-main">${this.escapeHtml(displayName)}</div><div class="assessment-date">Submitted/assessed: ${this.escapeHtml(String(dateText))}</div></td>
                         <td><span class="type-badge ${isCatExam ? 'type-cat' : 'type-final'}">${isCatExam ? 'CAT' : 'FINAL EXAM'}</span></td>
                         <td><span class="score-main">${scoreText}</span></td>
                         <td><span class="${isReleased && percentage >= 60 ? 'percentage-good' : isReleased ? 'percentage-fail' : ''}">${pctText}</span></td>
-                        <td>
-                            <div class="grade-status-stack">
-                                <span class="grade-pill ${gradeClass}">${grade}</span>
-                                ${isReleased ? '<span class="grade-release-label"><i class="fas fa-circle-check"></i> Released</span>' : ''}
-                            </div>
-                        </td>
-                        <td><span class="status-pill ${statusClass}">${status}</span></td>
+                        <td>${gradeCell}</td>
                         <td>${actionHtml}</td>
                     </tr>
                 `;
