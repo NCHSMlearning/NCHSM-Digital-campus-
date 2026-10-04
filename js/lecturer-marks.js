@@ -1279,6 +1279,10 @@ function getVisibleColumns() {
 // LOAD MARKS ENTRY - WITH TVET SUPPORT
 // ============================================================
 
+// ============================================================
+// LOAD MARKS ENTRY - REGISTRATION-AWARE (FIXED)
+// ============================================================
+
 async function loadMarksEntry() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
@@ -1340,6 +1344,10 @@ async function loadMarksEntry() {
         await loadLecturerRetakeData(block, unit, year);
         
         updateLoadingProgress(40, 2, 'Loading student marks...');
+        
+        // ==========================================
+        // STEP 1: Try student_marks table
+        // ==========================================
         const { data: marks, error } = await supabase
             .from('student_marks')
             .select('*')
@@ -1351,21 +1359,19 @@ async function loadMarksEntry() {
         
         console.log(`📊 Found ${marks?.length || 0} enrolled students in student_marks`);
         
+        // ==========================================
+        // STEP 2: If no marks, fall back to approved registrations
+        // ==========================================
         if (!marks || marks.length === 0) {
+            console.log(`⚠️ No marks records. Checking approved registrations...`);
             hideLoadingScreen();
-            if (container) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 60px 20px;">
-                        <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                        <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
-                        <p style="color: #94a3b8;">Please contact the administrator to add students.</p>
-                    </div>
-                `;
-            }
-            updateMarksEntryStats([], me_currentAssessmentType);
+            await loadLecturerFromApprovedRegistrations(program, block, unit, year);
             return;
         }
         
+        // ==========================================
+        // STEP 3: Normal path — render existing marks
+        // ==========================================
         updateLoadingProgress(60, 3, 'Loading student details...');
         const admissions = marks.map(m => m.admission_number);
         const { data: students, error: studentError } = await supabase
@@ -1448,7 +1454,194 @@ async function loadMarksEntry() {
         showNotification('Error loading marks: ' + error.message, 'error');
     }
 }
+// ============================================================
+// LOAD FROM APPROVED REGISTRATIONS (LECTURER VERSION)
+// Lecturers see approved students even if marks not yet created
+// ============================================================
 
+async function loadLecturerFromApprovedRegistrations(program, block, unit, year) {
+    const container = document.getElementById('me_marks_container');
+    
+    try {
+        const supabase = getSupabase();
+        if (!supabase) throw new Error('Database not available');
+        
+        const unitSelect = document.getElementById('me_subject_select');
+        const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+        const targetUnitCode = selectedOption?.dataset?.code || '';
+        
+        console.log(`🔍 Lecturer searching approved registrations:`);
+        console.log(`   program=${program}, block=${block}, year=${year}`);
+        console.log(`   unit="${unit}" (code: ${targetUnitCode})`);
+        
+        // ==========================================
+        // Query approved registrations for this unit
+        // ==========================================
+        const { data: regs, error: regError } = await supabase
+            .from('student_unit_registrations')
+            .select('student_id, unit_code, unit_name, block, program, academic_year, reg_type, status')
+            .eq('program', program)
+            .eq('block', block)
+            .eq('status', 'approved')
+            .eq('academic_year', parseInt(year));
+        
+        if (regError) throw regError;
+        
+        // Filter by unit_code OR unit_name client-side
+        const matchingRegs = (regs || []).filter(r => 
+            r.unit_code === targetUnitCode || 
+            r.unit_name === unit ||
+            (r.unit_name && unit && r.unit_name.includes(unit)) ||
+            (unit && r.unit_name && unit.includes(r.unit_name))
+        );
+        
+        console.log(`✅ Found ${matchingRegs.length} approved registrations`);
+        
+        // ==========================================
+        // No approved registrations
+        // ==========================================
+        if (matchingRegs.length === 0) {
+            // Check for pending registrations
+            const { data: allRegs } = await supabase
+                .from('student_unit_registrations')
+                .select('student_id, unit_code, unit_name, status')
+                .eq('program', program)
+                .eq('block', block)
+                .eq('academic_year', parseInt(year));
+            
+            const pendingMatches = (allRegs || []).filter(r => 
+                (r.unit_code === targetUnitCode || 
+                 r.unit_name === unit ||
+                 (r.unit_name && unit && r.unit_name.includes(unit)) ||
+                 (unit && r.unit_name && unit.includes(r.unit_name)))
+                && r.status === 'pending'
+            );
+            
+            if (pendingMatches.length > 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; background: #fffbeb; border-radius: 8px;">
+                        <i class="fas fa-clock" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #92400e; margin: 0 0 8px 0;">Awaiting Admin Approval</h3>
+                        <p style="color: #78350f; font-size: 14px;">
+                            <strong>${pendingMatches.length}</strong> student(s) have registered for this unit.
+                        </p>
+                        <p style="color: #92400e; font-size: 12px; margin-top: 8px;">
+                            Their registrations must be approved by the Super Admin before you can enter marks.
+                        </p>
+                        <p style="color: #94a3b8; font-size: 12px; margin-top: 12px;">
+                            <i class="fas fa-info-circle"></i> Contact your department head or administrator.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // No registrations at all
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-users-slash" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b; margin: 0 0 8px 0;">No students registered</h3>
+                    <p style="color: #94a3b8; font-size: 13px;">
+                        No approved registrations found for ${year}.
+                    </p>
+                    <p style="color: #94a3b8; font-size: 12px; margin-top: 8px;">
+                        <i class="fas fa-info-circle"></i> Students must register for this unit in the portal.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+        
+        // ==========================================
+        // Fetch student names
+        // ==========================================
+        const studentIds = matchingRegs.map(r => r.student_id);
+        const { data: students } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name, block, program')
+            .in('student_id', studentIds);
+        
+        const studentMap = {};
+        (students || []).forEach(s => {
+            studentMap[s.student_id] = s.full_name || 'Unknown';
+        });
+        
+        // ==========================================
+        // Create blank marks records in student_marks
+        // ==========================================
+        const now = new Date().toISOString();
+        const marksToInsert = matchingRegs.map(reg => ({
+            admission_number: reg.student_id,
+            student_name: studentMap[reg.student_id] || 'Unknown',
+            block: block,
+            subject_name: unit,
+            academic_year: parseInt(year),
+            assessment_type: 'full',
+            cat1_score: 0,
+            cat2_score: 0,
+            exam_score: 0,
+            final_score: 0,
+            grade: '',
+            approval_status: 'draft',
+            published: false,
+            created_at: now,
+            updated_at: now
+        }));
+        
+        console.log(`📝 Creating ${marksToInsert.length} blank marks records...`);
+        
+        let successCount = 0;
+        let skipCount = 0;
+        
+        for (const record of marksToInsert) {
+            try {
+                const { data: existing } = await supabase
+                    .from('student_marks')
+                    .select('id')
+                    .eq('admission_number', record.admission_number)
+                    .eq('subject_name', record.subject_name)
+                    .eq('block', record.block)
+                    .eq('academic_year', record.academic_year)
+                    .maybeSingle();
+                
+                if (existing) {
+                    skipCount++;
+                    continue;
+                }
+                
+                const { error: insertError } = await supabase
+                    .from('student_marks')
+                    .insert(record);
+                
+                if (insertError && insertError.code !== '23505') {
+                    console.warn(`⚠️ Failed to create marks for ${record.admission_number}:`, insertError.message);
+                } else {
+                    successCount++;
+                }
+            } catch (err) {
+                console.warn(`⚠️ Error creating marks for ${record.admission_number}:`, err.message);
+            }
+        }
+        
+        console.log(`✅ Created ${successCount} marks records (${skipCount} already existed)`);
+        
+        // Reload — now marks records exist
+        await loadMarksEntry();
+        
+    } catch (error) {
+        console.error('❌ Error loading from registrations:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
+                <h4 style="color: #991b1b;">Error loading students</h4>
+                <p style="color: #64748b;">${error.message}</p>
+                <button onclick="loadMarksEntry()" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-sync-alt"></i> Retry
+                </button>
+            </div>
+        `;
+    }
+}
 // ============================================================
 // RENDER MARKS ENTRY TABLE - WITH TVET GRADING REFERENCE
 // ============================================================
@@ -2776,7 +2969,7 @@ window.createLecturerRetakeModal = createLecturerRetakeModal;
 window.openLecturerRetakeModal = openLecturerRetakeModal;
 window.closeLecturerRetakeModal = closeLecturerRetakeModal;
 window.saveLecturerRetakeExam = saveLecturerRetakeExam;
-
+window.loadLecturerFromApprovedRegistrations = loadLecturerFromApprovedRegistrations;
 // Admin check
 window.isUserAdmin = isUserAdmin;
 
