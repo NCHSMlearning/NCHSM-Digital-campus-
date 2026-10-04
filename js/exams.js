@@ -2,6 +2,14 @@
     'use strict';
      
     console.log('✅ exams.js - COMPLETE FIXED VERSION WITH RETAKE SUPPORT');
+    // Keep grade + release status together in the Grade cell for CATs and Final Exams.
+    if (!document.getElementById('nchsm-exam-grade-status-style')) {
+        const style = document.createElement('style');
+        style.id = 'nchsm-exam-grade-status-style';
+        style.textContent = '.grade-status-stack{display:flex;flex-direction:column;align-items:center;gap:3px}.grade-release-label{font-size:8px;font-weight:800;color:#15803d;white-space:nowrap}.grade-release-label i{font-size:8px;margin-right:2px}';
+        document.head.appendChild(style);
+    }
+
     
     // ============================================
     // 🕐 KENYA TIMEZONE HELPERS
@@ -46,6 +54,31 @@
             minute: '2-digit',
             hour12: true
         });
+    }
+
+    // ============================================
+    // 🎓 UNIFIED GRADING — NURSING + TVET
+    // ============================================
+    function getNursingGrade(score) {
+        const value = Number(score);
+        if (!Number.isFinite(value)) return { grade: '', rating: 'Not Graded', points: 0.0 };
+        if (value >= 85) return { grade: 'A', rating: 'Distinction', points: 4.0 };
+        if (value >= 75) return { grade: 'B', rating: 'Credit', points: 3.0 };
+        if (value >= 60) return { grade: 'C', rating: 'Pass', points: 2.0 };
+        return { grade: 'D', rating: 'Fail', points: 0.0 };
+    }
+
+    function getTVETGrade(score) {
+        const value = Number(score);
+        if (!Number.isFinite(value) || value <= 0) return { grade: 'E', rating: 'NOT YET COMPETENT', points: 0.0 };
+        if (value >= 80) return { grade: 'A', rating: 'MASTERY', points: 4.0 };
+        if (value >= 65) return { grade: 'B', rating: 'PROFICIENT', points: 3.0 };
+        if (value >= 50) return { grade: 'C', rating: 'COMPETENT', points: 2.0 };
+        return { grade: 'E', rating: 'NOT YET COMPETENT', points: 0.0 };
+    }
+
+    function getAssessmentGrade(score, isTVET) {
+        return isTVET ? getTVETGrade(score) : getNursingGrade(score);
     }
 
     // ============================================
@@ -835,7 +868,7 @@ applyDataFilter() {
                 let retakeUnlocked = false;
                 
                 if (grade) {
-                    const gradeStatus = grade.result_status || '';
+                    const gradeStatus = String(grade.result_status || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
                     const marks = grade.marks !== null && grade.marks !== undefined ? parseFloat(grade.marks) : null;
                     const totalScore = grade.total_score !== null && grade.total_score !== undefined ? parseFloat(grade.total_score) : null;
                     
@@ -853,19 +886,17 @@ applyDataFilter() {
                     } else {
                         // Normal grade processing
                         hasTaken = (
-                            (marks !== null && marks > 0) ||
-                            (totalScore !== null && totalScore > 0) ||
-                            gradeStatus === 'PASS' || 
-                            gradeStatus === 'FAIL' || 
-                            gradeStatus === 'RELEASED'
+                            (marks !== null && marks >= 0) ||
+                            (totalScore !== null && totalScore >= 0) ||
+                            ['PASS', 'FAIL', 'RELEASED', 'RESULT_RELEASED', 'COMPLETED'].includes(gradeStatus)
                         );
                     }
                     
                     // Released logic
-                    if (gradeStatus === 'PASS' || gradeStatus === 'FAIL' || gradeStatus === 'RELEASED') {
+                    if (['PASS', 'FAIL', 'RELEASED', 'RESULT_RELEASED', 'COMPLETED'].includes(gradeStatus)) {
                         isReleased = true;
                         isPendingRelease = false;
-                    } else if (gradeStatus === 'PENDING_REVIEW' || gradeStatus === 'PENDING') {
+                    } else if (['PENDING_REVIEW', 'PENDING', 'PENDING_RELEASE', 'AWAITING_RELEASE'].includes(gradeStatus)) {
                         isPendingRelease = true;
                         isReleased = false;
                         if (marks !== null && marks > 0) {
@@ -891,7 +922,7 @@ applyDataFilter() {
                 }
                 
                 // Check exam status
-                if (group.status === 'Released' || group.status === 'Completed') {
+                if (['RELEASED', 'COMPLETED'].includes(String(group.status || '').trim().toUpperCase())) {
                     if (grade && (grade.marks !== null || grade.total_score !== null)) {
                         isReleased = true;
                         isPendingRelease = false;
@@ -1089,20 +1120,12 @@ applyDataFilter() {
                         buttonText = 'View Results';
                         finalMessage = '✅ Results Released';
                         
-                        if (displayPercentage !== null && displayPercentage > 0) {
-                            if (displayPercentage >= 85) {
-                                gradeText = 'Distinction';
-                                gradeClass = 'distinction';
-                            } else if (displayPercentage >= 75) {
-                                gradeText = 'Credit';
-                                gradeClass = 'credit';
-                            } else if (displayPercentage >= 60) {
-                                gradeText = 'Pass';
-                                gradeClass = 'pass';
-                            } else {
-                                gradeText = 'Fail';
-                                gradeClass = 'fail';
-                            }
+                        if (displayPercentage !== null && displayPercentage >= 0) {
+                            const resultGrade = getAssessmentGrade(displayPercentage, isExamTVET);
+                            gradeText = resultGrade.rating;
+                            gradeClass = resultGrade.rating === 'Distinction' || resultGrade.rating === 'MASTERY' ? 'distinction' :
+                                          resultGrade.rating === 'Credit' || resultGrade.rating === 'PROFICIENT' ? 'credit' :
+                                          resultGrade.rating === 'Pass' || resultGrade.rating === 'COMPETENT' ? 'pass' : 'fail';
                         } else {
                             gradeText = 'Completed';
                             gradeClass = 'completed';
@@ -1414,10 +1437,11 @@ applyDataFilter() {
                 else if (isPendingRelease) { grade = 'Pending Release'; gradeClass = 'grade-pending'; }
                 else if (exam.actionState === 'expired' && !exam.hasGrade) { grade = 'Missed'; gradeClass = 'grade-missed'; }
                 else if (isReleased) {
-                    if (percentage >= 85) { grade = 'Distinction'; gradeClass = 'grade-distinction'; }
-                    else if (percentage >= 75) { grade = 'Credit'; gradeClass = 'grade-credit'; }
-                    else if (percentage >= 60) { grade = 'Pass'; gradeClass = 'grade-pass'; }
-                    else { grade = 'Fail'; gradeClass = 'grade-fail'; }
+                    const resultGrade = getAssessmentGrade(percentage, !!exam.isTVET);
+                    grade = resultGrade.rating;
+                    gradeClass = resultGrade.rating === 'Distinction' || resultGrade.rating === 'MASTERY' ? 'grade-distinction' :
+                                 resultGrade.rating === 'Credit' || resultGrade.rating === 'PROFICIENT' ? 'grade-credit' :
+                                 resultGrade.rating === 'Pass' || resultGrade.rating === 'COMPETENT' ? 'grade-pass' : 'grade-fail';
                 }
 
                 let status = 'Pending';
@@ -1440,8 +1464,8 @@ applyDataFilter() {
                     actionHtml = '<span style="color:#b45309;font-size:8px;font-weight:800">Awaiting marking/release</span>';
                 }
 
-                const scoreText = isReleased && marks > 0 ? `${Math.round(marks)}/${totalMarks}` : 'Pending';
-                const pctText = isReleased && marks > 0 ? `${Math.round(percentage)}%` : 'Pending';
+                const scoreText = isReleased && marks !== null && Number.isFinite(marks) ? `${Math.round(marks)}/${totalMarks}` : 'Pending';
+                const pctText = isReleased && percentage !== null && Number.isFinite(percentage) ? `${Math.round(percentage)}%` : 'Pending';
                 const dateText = exam.formattedExamDateTime || exam.examDate || 'Date not available';
 
                 return `
@@ -1450,7 +1474,12 @@ applyDataFilter() {
                         <td><span class="type-badge ${isCatExam ? 'type-cat' : 'type-final'}">${isCatExam ? 'CAT' : 'FINAL EXAM'}</span></td>
                         <td><span class="score-main">${scoreText}</span></td>
                         <td><span class="${isReleased && percentage >= 60 ? 'percentage-good' : isReleased ? 'percentage-fail' : ''}">${pctText}</span></td>
-                        <td><span class="grade-pill ${gradeClass}">${grade}</span></td>
+                        <td>
+                            <div class="grade-status-stack">
+                                <span class="grade-pill ${gradeClass}">${grade}</span>
+                                ${isReleased ? '<span class="grade-release-label"><i class="fas fa-circle-check"></i> Released</span>' : ''}
+                            </div>
+                        </td>
                         <td><span class="status-pill ${statusClass}">${status}</span></td>
                         <td>${actionHtml}</td>
                     </tr>
@@ -1799,10 +1828,10 @@ applyDataFilter() {
             const lowest = Math.min(...percentages);
             const average = percentages.reduce((a, b) => a + b, 0) / percentages.length;
             
-            const distinctions = completedReleased.filter(e => e.totalPercentage >= 85).length;
-            const credits = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
-            const passes = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
-            const fails = completedReleased.filter(e => e.totalPercentage < 60).length;
+            const distinctions = completedReleased.filter(e => { const g = getAssessmentGrade(e.totalPercentage, !!e.isTVET); return g.grade === 'A'; }).length;
+            const credits = completedReleased.filter(e => { const g = getAssessmentGrade(e.totalPercentage, !!e.isTVET); return g.grade === 'B'; }).length;
+            const passes = completedReleased.filter(e => { const g = getAssessmentGrade(e.totalPercentage, !!e.isTVET); return g.grade === 'C'; }).length;
+            const fails = completedReleased.filter(e => { const g = getAssessmentGrade(e.totalPercentage, !!e.isTVET); return g.grade === 'D' || g.grade === 'E'; }).length;
             
             const passed = distinctions + credits + passes;
             const passRateValue = completedReleased.length > 0 ? (passed / completedReleased.length) * 100 : 0;
@@ -1867,9 +1896,9 @@ applyDataFilter() {
             }
             
             const avg = completedReleased.reduce((sum, e) => sum + e.totalPercentage, 0) / completedReleased.length;
-            const distinctionCount = completedReleased.filter(e => e.totalPercentage >= 85).length;
-            const creditCount = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
-            const passCount = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
+            const distinctionCount = completedReleased.filter(e => { const g = getAssessmentGrade(e.totalPercentage, !!e.isTVET); return g.grade === 'A'; }).length;
+            const creditCount = completedReleased.filter(e => { const g = getAssessmentGrade(e.totalPercentage, !!e.isTVET); return g.grade === 'B'; }).length;
+            const passCount = completedReleased.filter(e => { const g = getAssessmentGrade(e.totalPercentage, !!e.isTVET); return g.grade === 'C'; }).length;
             
             const transcriptModal = `
                 <div id="transcriptModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
@@ -2009,44 +2038,6 @@ applyDataFilter() {
         }
     }
     
-
-// ============================================================
-// MOBILE SCROLL SAFETY — COMPLETED ASSESSMENTS
-// Keeps one vertical page scroll and one horizontal table scroll.
-// Does not intercept touch/wheel events.
-// ============================================================
-(function installExamMobileScrollSafety() {
-    function apply() {
-        if (window.innerWidth > 799) return;
-        const main = document.getElementById('main-content');
-        const cats = document.getElementById('cats');
-        const wrap = cats?.querySelector('.completed-table-wrap');
-        if (main) {
-            main.style.setProperty('height', 'auto', 'important');
-            main.style.setProperty('max-height', 'none', 'important');
-            main.style.setProperty('overflow-y', 'visible', 'important');
-            main.style.setProperty('overflow-x', 'visible', 'important');
-            main.style.setProperty('-webkit-overflow-scrolling', 'auto', 'important');
-        }
-        if (cats) {
-            cats.style.setProperty('overflow-y', 'visible', 'important');
-            cats.style.setProperty('overflow-x', 'visible', 'important');
-        }
-        if (wrap) {
-            wrap.style.setProperty('overflow-x', 'auto', 'important');
-            wrap.style.setProperty('overflow-y', 'hidden', 'important');
-            wrap.style.setProperty('-webkit-overflow-scrolling', 'touch', 'important');
-            wrap.style.setProperty('touch-action', 'pan-x pan-y', 'important');
-        }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', apply, { once: true });
-    } else {
-        apply();
-    }
-    window.addEventListener('resize', apply, { passive: true });
-})();
-
     initializeExamsModule();
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
