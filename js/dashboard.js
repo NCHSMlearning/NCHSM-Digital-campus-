@@ -732,8 +732,8 @@ class DashboardModule {
         if (this.elements.welcomeStudentName && userProfile.full_name) {
             this.elements.welcomeStudentName.innerText = userProfile.full_name;
         }
-        
-        await this.fetchGamificationPoints();
+        // Gamification totals are already supplied by get_student_dashboard().
+        // Do not block dashboard initialization with a second profile query.
         
         this.updateTimeGreeting();
         this.updateLastLoginDisplay();
@@ -763,7 +763,7 @@ class DashboardModule {
         await this.loadAllMetrics();
         this.startAutoRefresh();
         
-        // ✅ FIX: Ensure NurseIQ is displayed after loading
+        // Final UI repaint only; no database request is made here.
         setTimeout(() => {
             this.fixNurseIQDisplay();
         }, 1500);
@@ -776,45 +776,21 @@ class DashboardModule {
     // ============================================================
     
     async fixNurseIQDisplay() {
-        console.log('🔧 Syncing NurseIQ display from authoritative dashboard RPC...');
-
+        // NurseIQ data is already authoritative in this.metrics from
+        // get_student_dashboard(). This method ONLY repaints the UI.
+        // It deliberately performs NO Supabase query / RPC call.
         try {
-            if (!this.userId || !this.sb) {
-                console.warn('⚠️ Cannot sync NurseIQ: No userId or Supabase client');
-                return;
-            }
-
-            // IMPORTANT:
-            // get_student_dashboard is the authoritative source for NurseIQ points.
-            // Do NOT read nurseiq_points from consolidated_user_profiles_table here,
-            // because that legacy/profile value may not include Exam Review points.
-            const { data: rpcData, error: rpcError } = await this.sb.rpc('get_student_dashboard', {
-                p_user_id: this.userId
-            });
-
-            if (rpcError) {
-                console.error('❌ NurseIQ dashboard RPC failed:', rpcError);
-                return;
-            }
-
-            const nurseiq = rpcData?.nurseiq || {};
-            const nurseiqPoints = Number(nurseiq.points ?? 0);
-            const totalPoints = Number(rpcData?.total_points ?? this.metrics.totalPoints ?? 0);
-            const gamificationPoints = Number(rpcData?.gamification?.points ?? this.gamificationPoints ?? 0);
+            const nurseiq = this.metrics?.nurseiq || {};
+            const nurseiqPoints = Number(nurseiq.points ?? this.nurseIQPoints ?? 0);
+            const totalPoints = Number(this.metrics?.totalPoints ?? this.totalPoints ?? 0);
+            const gamificationPoints = Number(
+                this.metrics?.gamification?.points ?? this.gamificationPoints ?? 0
+            );
 
             this.nurseIQPoints = nurseiqPoints;
-            this.metrics.nurseIQPoints = nurseiqPoints;
-            this.metrics.nurseiq = {
-                ...this.metrics.nurseiq,
-                questions: Number(nurseiq.questions ?? this.metrics.nurseiq?.questions ?? 0),
-                score: Number(nurseiq.score ?? this.metrics.nurseiq?.score ?? 0),
-                accuracy: Number(nurseiq.accuracy ?? this.metrics.nurseiq?.accuracy ?? 0),
-                progress: Number(nurseiq.progress ?? this.metrics.nurseiq?.progress ?? 0),
-                points: nurseiqPoints
-            };
-            this.metrics.totalPoints = totalPoints;
             this.totalPoints = totalPoints;
             this.gamificationPoints = gamificationPoints;
+            this.metrics.nurseIQPoints = nurseiqPoints;
 
             if (this.elements.nurseiqPoints) {
                 this.elements.nurseiqPoints.textContent = nurseiqPoints;
@@ -830,19 +806,8 @@ class DashboardModule {
             }
 
             this.updateNurseIQStats(nurseiqPoints);
-
-            console.log('✅ NurseIQ display synced from RPC:', {
-                questions: nurseiq.questions,
-                attempts: nurseiq.attempts,
-                score: nurseiq.score,
-                accuracy: nurseiq.accuracy,
-                progress: nurseiq.progress,
-                points: nurseiqPoints,
-                totalPoints
-            });
-
         } catch (error) {
-            console.error('❌ Error syncing NurseIQ display:', error);
+            console.warn('NurseIQ display repaint skipped:', error);
         }
     }
 
@@ -1332,6 +1297,9 @@ class DashboardModule {
                 this.cacheKey = `dashboard_${this.userId}`;
             }
 
+            // SINGLE AUTHORITATIVE DASHBOARD RPC:
+            // NurseIQ, points, streak, attendance and dashboard metrics all use
+            // this payload. Do not add a second get_student_dashboard call here.
             const { data, error } = await this.sb.rpc('get_student_dashboard', {
                 p_user_id: this.userId
             });
@@ -1464,10 +1432,11 @@ class DashboardModule {
             console.log(`📊 Level from RPC: ${this.metrics.xp.level}`);
             console.log(`🔥 Streak from RPC: ${this.metrics.login.streak}`);
             console.log(`🧠 NurseIQ Points from RPC: ${this.nurseIQPoints}`);
-            
-            // Load reviews and newsletter
-            await this.loadReviewsSnapshot();
-            await this.loadNewsletterSnapshot();
+            // These are independent of each other; load them concurrently.
+            await Promise.all([
+                this.loadReviewsSnapshot(),
+                this.loadNewsletterSnapshot()
+            ]);
             
             // ✅ Update UI
             this.saveToCache();
@@ -1492,15 +1461,11 @@ class DashboardModule {
                     hour12: true,
                     timeZone: 'Africa/Nairobi'
                 });
-            }
-            
-            // Update exams
-            await this.updateExamsMetric();
-            
-            console.log('✅ Dashboard loaded from DATABASE');
-            
-            // Load dashboard cards that are independent of the RPC payload.
+            }            console.log('✅ Dashboard core data loaded from DATABASE');
+
+            // Independent dashboard cards load concurrently after the main RPC.
             await Promise.all([
+                this.updateExamsMetric(),
                 this.loadLeaderboardData('all'),
                 this.loadQuickNextClass(),
                 this.loadDashboardCourses(),
