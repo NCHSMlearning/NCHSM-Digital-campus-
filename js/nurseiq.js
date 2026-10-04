@@ -87,36 +87,19 @@ function isTVETProgram(programCode) {
 // ============================================================
 
 function getCurrentUserData() {
-    let user = window.currentUserProfile || window.currentUser || window.user;
+    const user = window.currentUserProfile || window.currentUser || window.user;
     if (user) {
-        console.log('👤 User found in window:', user.full_name || user.name);
+        console.log('👤 Authenticated user found:', user.full_name || user.name || user.email || 'Student');
         return user;
     }
-    try {
-        const stored = localStorage.getItem('nchsm_user');
-        if (stored) {
-            user = JSON.parse(stored);
-            console.log('👤 User loaded from localStorage:', user.full_name || user.name);
-            return user;
-        }
-    } catch (e) {}
-    try {
-        const stored = localStorage.getItem('userProfile');
-        if (stored) {
-            user = JSON.parse(stored);
-            console.log('👤 User loaded from userProfile:', user.full_name || user.name);
-            return user;
-        }
-    } catch (e) {}
-    console.warn('⚠️ No user found');
+    console.warn('⚠️ No authenticated user profile is available yet.');
     return null;
 }
 
 function getCurrentUserId() {
     const user = getCurrentUserData();
-    if (user) {
-        return user.id || user.user_id || user.student_id || null;
-    }
+    if (user?.user_id) return user.user_id;
+    if (user?.id) return user.id;
     return null;
 }
 
@@ -189,10 +172,7 @@ class NurseIQModule {
         this.currentCourseQuestions = [];
         this.showAnswersMode = true;
         this.initialized = false;
-        this.storageKey = 'nurseiq_user_progress';
-        this.lastCourseProgressKey = 'nurseiq_last_course';
         this.progressVersion = '2.0';
-        this.dashboardMetricsKey = 'nurseiq_dashboard_metrics';
         this.saveTimeout = null;
         this._isSaving = false;
         this._isLoadingQuestions = false;
@@ -495,10 +475,6 @@ class NurseIQModule {
         if (this.nurseiqStatsBar) this.nurseiqStatsBar.style.display = 'block';
         if (this.nurseiqQuickStats) this.nurseiqQuickStats.style.display = 'grid';
         
-        localStorage.setItem('nurseiq_program_mode', this.currentProgram);
-        localStorage.setItem('nurseiq_program_display', displayName);
-        localStorage.setItem('nurseiq_program_code', programCode);
-        localStorage.setItem('nurseiq_is_tvet', String(isTVET));
         
         console.log('✅ UI updated for program:', displayName);
     }
@@ -576,102 +552,166 @@ class NurseIQModule {
     // ============================================================
     // 📥 LOAD USER PROGRESS
     // ============================================================
+    // ============================================================
+    // 📥 LOAD USER PROGRESS - SUPABASE IS THE SOURCE OF TRUTH
+    // ============================================================
     async loadUserProgress() {
         try {
-            if (!this.userId) return;
-            
-            // Load from localStorage first
-            const savedProgress = localStorage.getItem(this.storageKey);
-            if (savedProgress) {
-                const parsed = JSON.parse(savedProgress);
-                if (parsed.version === this.progressVersion && parsed.answers) {
-                    this.userTestAnswers = parsed.answers;
-                } else {
-                    this.userTestAnswers = parsed;
-                }
-                console.log('📊 Loaded from localStorage:', Object.keys(this.userTestAnswers).length, 'answered questions');
+            if (!this.userId || this.userId.startsWith('anonymous_')) {
+                console.warn('⚠️ NurseIQ progress load skipped: authenticated user ID unavailable.');
+                return;
             }
-            
-            // Load from database - OVERWRITE localStorage with database data
+
             const supabase = this.getSupabaseClient();
-            if (supabase && this.userId && !this.userId.startsWith('anonymous_')) {
-                const { data, error } = await supabase
-                    .from('user_progress')
-                    .select('progress_data')
-                    .eq('user_id', this.userId)
-                    .maybeSingle();
-                
-                if (!error && data && data.progress_data) {
-                    const dbAnswers = data.progress_data.answers || {};
-                    this.userTestAnswers = { ...this.userTestAnswers, ...dbAnswers };
-
-                    const dbReview = data.progress_data.examReviewState || {};
-                    this.examReviewState = {
-                        points: Number(dbReview.points ?? data.progress_data.exam_review_points ?? 0) || 0,
-                        viewedQuestionIds: Array.isArray(dbReview.viewedQuestionIds)
-                            ? dbReview.viewedQuestionIds.map(String)
-                            : [],
-                        viewedQuestionIdsByAttempt:
-                            dbReview.viewedQuestionIdsByAttempt &&
-                            typeof dbReview.viewedQuestionIdsByAttempt === 'object'
-                                ? dbReview.viewedQuestionIdsByAttempt
-                                : {}
-                    };
-
-                    console.log('📊 Loaded from database, total:', Object.keys(this.userTestAnswers).length);
-                    console.log('🧠 Exam review points:', this.examReviewState.points);
-                    this.saveUserProgress();
-                }
+            if (!supabase) {
+                console.warn('⚠️ NurseIQ progress load skipped: Supabase client unavailable.');
+                return;
             }
-            
-            this.updateDashboardMetrics();
-            
-        } catch (error) {
-            console.warn('Could not load user progress:', error);
-        }
-    }
-    
-    // ============================================================
-    // 💾 SAVE USER PROGRESS
-    // ============================================================
-    saveUserProgress() {
-        if (!this.userId || this.userId.startsWith('anonymous_')) return;
-        
-        try {
-            const progressData = {
-                version: this.progressVersion,
-                answers: this.userTestAnswers,
-                examReviewState: this.examReviewState,
-                exam_review_points: Number(this.examReviewState?.points || 0),
-                lastSaved: new Date().toISOString()
-            };
-            localStorage.setItem(this.storageKey, JSON.stringify(progressData));
-            
-            if (this.currentCourseForTest) {
-                const lastProgress = {
-                    courseId: this.currentCourseForTest.id,
-                    courseName: this.currentCourseForTest.name,
-                    currentIndex: this.currentQuestionIndex,
-                    totalQuestions: this.currentCourseQuestions.length,
-                    timestamp: new Date().toISOString()
+
+            const { data, error } = await supabase
+                .from('user_progress')
+                .select('progress_data')
+                .eq('user_id', this.userId)
+                .maybeSingle();
+
+            if (error) {
+                console.error('❌ Could not load NurseIQ progress from Supabase:', error);
+                return;
+            }
+
+            // Supabase is authoritative when a server record exists.
+            if (data?.progress_data) {
+                const dbAnswers = data.progress_data.answers || {};
+                this.userTestAnswers = dbAnswers;
+
+                const dbReview = data.progress_data.examReviewState || {};
+                this.examReviewState = {
+                    points: Number(
+                        dbReview.points ??
+                        data.progress_data.exam_review_points ??
+                        0
+                    ) || 0,
+                    viewedQuestionIds: Array.isArray(dbReview.viewedQuestionIds)
+                        ? dbReview.viewedQuestionIds.map(String)
+                        : [],
+                    viewedQuestionIdsByAttempt:
+                        dbReview.viewedQuestionIdsByAttempt &&
+                        typeof dbReview.viewedQuestionIdsByAttempt === 'object'
+                            ? dbReview.viewedQuestionIdsByAttempt
+                            : {}
                 };
-                localStorage.setItem(this.lastCourseProgressKey, JSON.stringify(lastProgress));
+
+                console.log(
+                    '📊 Loaded NurseIQ progress from Supabase:',
+                    Object.keys(this.userTestAnswers).length,
+                    'answered questions'
+                );
+                console.log('🧠 Exam review points:', this.examReviewState.points);
+
+                // Remove any old legacy progress copies. They are no longer read.
+                try {
+                    localStorage.removeItem('nurseiq_user_progress');
+                    localStorage.removeItem('nurseiq_last_course');
+                    localStorage.removeItem('nurseiq_dashboard_metrics');
+                } catch (cleanupError) {
+                    console.warn('⚠️ Could not remove legacy NurseIQ browser data:', cleanupError);
+                }
+
+                this.updateDashboardMetrics();
+                return;
             }
-            
-            if (this.userId && !this.userId.startsWith('anonymous_')) {
-                if (this.saveTimeout) clearTimeout(this.saveTimeout);
-                this.saveTimeout = setTimeout(() => {
-                    this.saveProgressToDatabase();
-                }, 1000);
+
+            // ONE-TIME MIGRATION ONLY:
+            // If this student has no server progress yet, recover the old local
+            // progress once, save it to Supabase, then permanently delete the
+            // legacy browser copies.
+            let legacyProgress = null;
+            try {
+                const legacyRaw = localStorage.getItem('nurseiq_user_progress');
+                if (legacyRaw) {
+                    legacyProgress = JSON.parse(legacyRaw);
+                }
+            } catch (legacyError) {
+                console.warn('⚠️ Could not read legacy NurseIQ progress for migration:', legacyError);
             }
-            
+
+            if (legacyProgress?.answers) {
+                this.userTestAnswers = legacyProgress.answers || {};
+
+                const legacyReview = legacyProgress.examReviewState || {};
+                this.examReviewState = {
+                    points: Number(
+                        legacyReview.points ??
+                        legacyProgress.exam_review_points ??
+                        0
+                    ) || 0,
+                    viewedQuestionIds: Array.isArray(legacyReview.viewedQuestionIds)
+                        ? legacyReview.viewedQuestionIds.map(String)
+                        : [],
+                    viewedQuestionIdsByAttempt:
+                        legacyReview.viewedQuestionIdsByAttempt &&
+                        typeof legacyReview.viewedQuestionIdsByAttempt === 'object'
+                            ? legacyReview.viewedQuestionIdsByAttempt
+                            : {}
+                };
+
+                console.log(
+                    '🔄 One-time NurseIQ migration:',
+                    Object.keys(this.userTestAnswers).length,
+                    'answered questions,',
+                    this.examReviewState.points,
+                    'exam-review points'
+                );
+
+                await this.saveProgressToDatabase();
+
+                try {
+                    localStorage.removeItem('nurseiq_user_progress');
+                    localStorage.removeItem('nurseiq_last_course');
+                    localStorage.removeItem('nurseiq_dashboard_metrics');
+                    console.log('✅ Legacy NurseIQ browser progress migrated and removed.');
+                } catch (cleanupError) {
+                    console.warn('⚠️ Migration succeeded but legacy browser cleanup failed:', cleanupError);
+                }
+
+                this.updateDashboardMetrics();
+                return;
+            }
+
+            // No server record and no legacy progress.
+            this.userTestAnswers = {};
+            this.examReviewState = {
+                points: 0,
+                viewedQuestionIds: [],
+                viewedQuestionIdsByAttempt: {}
+            };
+
+            console.log('📊 No existing NurseIQ progress found in Supabase. Starting fresh.');
             this.updateDashboardMetrics();
-            
+
         } catch (error) {
-            console.warn('Could not save progress:', error);
+            console.error('❌ Could not load NurseIQ progress:', error);
         }
     }
-    
+
+    // ============================================================
+    // 💾 SAVE USER PROGRESS - SUPABASE ONLY
+    // ============================================================
+    async saveUserProgress() {
+        if (!this.userId || this.userId.startsWith('anonymous_')) {
+            console.warn('⚠️ NurseIQ progress not saved: authenticated user ID unavailable.');
+            return;
+        }
+
+        if (this.saveTimeout) clearTimeout(this.saveTimeout);
+
+        this.saveTimeout = setTimeout(() => {
+            this.saveProgressToDatabase();
+        }, 300);
+
+        this.updateDashboardMetrics();
+    }
+
    // ============================================================
 // 💾 SAVE TO DATABASE - FIXED (no ON CONFLICT)
 // ============================================================
@@ -936,8 +976,6 @@ async saveProgressToDatabase() {
                 lastUpdated: new Date().toISOString(),
                 points: points
             };
-            
-            localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
             return metrics;
             
         } catch (error) {
@@ -1017,7 +1055,6 @@ async saveProgressToDatabase() {
     updateDashboardMetrics() {
         try {
             const metrics = this.getDashboardMetrics();
-            localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
             this.updateStatsUI(metrics);
         } catch (error) {
             console.error('Error updating dashboard metrics:', error);
@@ -1474,12 +1511,9 @@ async saveProgressToDatabase() {
     // 📥 GET LAST COURSE PROGRESS
     // ============================================================
     getLastCourseProgress() {
-        try {
-            const lastProgress = localStorage.getItem(this.lastCourseProgressKey);
-            return lastProgress ? JSON.parse(lastProgress) : null;
-        } catch (error) {
-            return null;
-        }
+        // Persistent course progress is now contained in Supabase user_progress.
+        // This method is retained for compatibility with existing UI calls.
+        return null;
     }
     
     // ============================================================
@@ -1933,7 +1967,7 @@ async saveProgressToDatabase() {
     // ============================================================
     // ✅ CHECK ANSWER - FIXED
     // ============================================================
-    checkAnswer() {
+    async checkAnswer() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) {
             this.showNotification('No question found!', 'error');
@@ -2005,11 +2039,11 @@ async saveProgressToDatabase() {
             explanationText.textContent = question.explanation || 'No explanation available.';
         }
         
-        // ✅ Save progress (this saves to localStorage AND database)
-        this.saveUserProgress();
+        // ✅ Save progress to Supabase
+        await this.saveUserProgress();
         
         // ✅ Force save to database immediately
-        this.saveProgressToDatabase();
+        await this.saveProgressToDatabase();
         
         this.showNotification(isCorrect ? 'You are correct! Point earned.' : 'Incorrect. Review the explanation.', isCorrect ? 'success' : 'error');
     }
@@ -3033,7 +3067,7 @@ async saveProgressToDatabase() {
             this.calculateNurseIQPoints()
         );
 
-        this.saveUserProgress();
+        await this.saveUserProgress();
         await this.saveProgressToDatabase();
     }
 
@@ -3057,12 +3091,85 @@ async saveProgressToDatabase() {
     }
 
     // ============================================================
+    // 🔐 RESOLVE AUTHENTICATED USER FROM SUPABASE
+    // ============================================================
+    async resolveAuthenticatedUser() {
+        const supabase = this.getSupabaseClient();
+        if (!supabase) {
+            console.warn('⚠️ NurseIQ cannot resolve authenticated user: Supabase client unavailable.');
+            return false;
+        }
+
+        try {
+            const { data: authData, error: authError } = await supabase.auth.getUser();
+
+            if (authError || !authData?.user?.id) {
+                console.warn(
+                    '⚠️ NurseIQ could not resolve authenticated Supabase user:',
+                    authError?.message || 'No authenticated user'
+                );
+                return false;
+            }
+
+            const authUser = authData.user;
+            this.userId = authUser.id;
+
+            const { data: profile, error: profileError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', authUser.id)
+                .maybeSingle();
+
+            if (profileError) {
+                console.warn('⚠️ NurseIQ profile lookup warning:', profileError.message || profileError);
+            }
+
+            this.user = {
+                ...authUser,
+                ...(profile || {}),
+                id: authUser.id,
+                user_id: authUser.id
+            };
+
+            const program = this.user?.program || this.user?.program_code || 'KRCHN';
+            this.programType = getProgramType(program);
+            this.programLevel = getProgramLevel(program);
+            this.programCode = program.toUpperCase();
+            this.programDisplayName = getProgramDisplayName(program);
+            this.isTVETStudent = isTVETProgram(program);
+            this.intakeYear = this.user?.intake_year || this.user?.intake || '2026';
+            this.userBlock = this.user?.block || this.user?.current_block || 'Introductory';
+            this.currentProgram = this.isTVETStudent ? 'tvet' : 'nursing';
+
+            console.log('✅ NurseIQ authenticated user resolved:', this.userId);
+            console.log('📋 NurseIQ profile:', {
+                full_name: this.user?.full_name || this.user?.name || authUser.email,
+                student_id: this.user?.student_id || null,
+                program: this.programCode,
+                block: this.userBlock
+            });
+
+            return true;
+        } catch (error) {
+            console.error('❌ NurseIQ authentication resolution failed:', error);
+            return false;
+        }
+    }
+
+    // ============================================================
     // 🚀 INITIALIZE
     // ============================================================
     async initialize() {
         console.log('🚀 Initializing NurseIQ Module...');
-        
+
         this.cacheElements();
+
+        const authenticated = await this.resolveAuthenticatedUser();
+        if (!authenticated) {
+            this.showNotification('Unable to load NurseIQ: authenticated user unavailable.', 'error');
+            return false;
+        }
+
         this.updateUIForProgram();
         await this.loadUserProgress();
         await this.loadQuestionBankCards();
@@ -3073,9 +3180,7 @@ async saveProgressToDatabase() {
             this.calculateNurseIQPoints()
         );
 
-        // ✅ Force save to database on init
-        await this.saveProgressToDatabase();
-
+        // Progress is saved when it changes; initialization only loads server state.
         this.initialized = true;
         console.log('✅ NurseIQ Module initialized successfully');
     }
@@ -3142,16 +3247,47 @@ window.closeNurseIQExamReview = function() {
 window.renderNurseIQExamReviewQuestion = function(index) {
     if (nurseiqModule) return nurseiqModule.renderExamReviewQuestion(index);
 };
-window.clearAllProgress = function() {
+window.clearAllProgress = async function() {
     if (nurseiqModule) {
         if (confirm('Are you sure you want to clear all your progress? This cannot be undone.')) {
-            localStorage.removeItem(nurseiqModule.storageKey);
-            localStorage.removeItem(nurseiqModule.lastCourseProgressKey);
-            localStorage.removeItem(nurseiqModule.dashboardMetricsKey);
-            nurseiqModule.userTestAnswers = {};
-            nurseiqModule.showNotification('All progress cleared', 'success');
-            nurseiqModule.updateDashboardMetrics();
-            nurseiqModule.loadQuestionBankCards();
+            try {
+                const supabase = nurseiqModule.getSupabaseClient();
+
+                if (!supabase || !nurseiqModule.userId) {
+                    nurseiqModule.showNotification('Unable to clear progress: authenticated user unavailable.', 'error');
+                    return;
+                }
+
+                const { error } = await supabase
+                    .from('user_progress')
+                    .delete()
+                    .eq('user_id', nurseiqModule.userId);
+
+                if (error) {
+                    console.error('❌ Error clearing NurseIQ progress:', error);
+                    nurseiqModule.showNotification('Could not clear progress.', 'error');
+                    return;
+                }
+
+                nurseiqModule.userTestAnswers = {};
+                nurseiqModule.examReviewState = {
+                    points: 0,
+                    viewedQuestionIds: [],
+                    viewedQuestionIdsByAttempt: {}
+                };
+
+                // Remove only legacy keys that may still exist from older versions.
+                localStorage.removeItem('nurseiq_user_progress');
+                localStorage.removeItem('nurseiq_last_course');
+                localStorage.removeItem('nurseiq_dashboard_metrics');
+
+                nurseiqModule.showNotification('All progress cleared', 'success');
+                nurseiqModule.updateDashboardMetrics();
+                nurseiqModule.loadQuestionBankCards();
+            } catch (error) {
+                console.error('❌ Exception clearing NurseIQ progress:', error);
+                nurseiqModule.showNotification('Could not clear progress.', 'error');
+            }
         }
     }
 };
