@@ -1889,12 +1889,16 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 
 <style id="nchsm-cats-mobile-scroll-fix">
 /* ============================================================
-   CATS / EXAMS MOBILE SCROLL FIX
-   Ensures the complete assessment cards and action buttons can
-   always be reached on phones. No exam logic is changed.
+   CATS / EXAMS SCROLL ARCHITECTURE — MATCH NURSEIQ
+   - The document/body owns vertical page scrolling.
+   - #main-content is NEVER a fixed-height mobile scroll container.
+   - CATS/Final Exams use horizontal scrolling only where content
+     genuinely exceeds the phone width (assessment table).
+   - No touchmove/wheel interception and no nested page scroll.
    ============================================================ */
-@media (max-width: 799px){
-  html, body{
+@media (max-width:1023px){
+  /* Same shell model used by NurseIQ. */
+  html,body{
     height:auto!important;
     min-height:100%!important;
     overflow-x:hidden!important;
@@ -1902,20 +1906,23 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
   }
 
   #app-content,
-  #app-content > .container,
-  #main-content.main{
+  #app-content > .container{
+    height:auto!important;
     min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
   }
 
   #main-content.main{
-    height:calc(100vh - 60px)!important;
+    height:auto!important;
+    min-height:0!important;
     max-height:none!important;
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-    overscroll-behavior-y:contain!important;
+    overflow:visible!important;
+    overflow-x:visible!important;
+    overflow-y:visible!important;
+    -webkit-overflow-scrolling:auto!important;
+    overscroll-behavior:auto!important;
     box-sizing:border-box!important;
-    padding-bottom:calc(32px + env(safe-area-inset-bottom))!important;
   }
 
   #main-content.main > .tab-content,
@@ -1924,101 +1931,112 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
     min-height:0!important;
     max-height:none!important;
     overflow:visible!important;
-    overflow-x:hidden!important;
-    padding-bottom:calc(42px + env(safe-area-inset-bottom))!important;
+    overflow-x:visible!important;
+    overflow-y:visible!important;
     box-sizing:border-box!important;
   }
 
-  #cats .assessment-dashboard{
+  #cats{
     width:100%!important;
-    max-width:none!important;
-    min-height:0!important;
-  }
-
-  #cats .current-list{
-    overflow:visible!important;
-    height:auto!important;
-    max-height:none!important;
-    padding-bottom:18px!important;
-  }
-
-  #cats .current-assessment-card{
-    min-width:0!important;
-    width:100%!important;
-    box-sizing:border-box!important;
-    overflow:visible!important;
-  }
-
-  #cats .current-main{
+    max-width:100%!important;
     min-width:0!important;
     overflow:visible!important;
   }
 
-  #cats .current-action{
-    width:100%!important;
-    min-width:0!important;
-    align-items:stretch!important;
-    justify-content:flex-start!important;
-    overflow:visible!important;
-    padding-top:4px!important;
-  }
-
-  #cats .current-action .exam-action-btn{
-    width:100%!important;
-    min-height:42px!important;
-    box-sizing:border-box!important;
-    display:flex!important;
-    position:relative!important;
-    z-index:2!important;
-  }
-
-  #cats .current-action .exam-timer,
-  #cats .current-action .current-status{
-    align-self:flex-start!important;
-  }
-
+  #cats .assessment-dashboard,
   #cats .section-card,
   #cats .current-section,
   #cats .completed-section,
-  #cats .analytics-card{
+  #cats .analytics-card,
+  #cats .current-list{
     height:auto!important;
+    min-height:0!important;
     max-height:none!important;
+    overflow:visible!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Current CATs / Final Exams: let the whole page grow naturally. */
+  #cats .current-assessment-card{
+    width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
     overflow:visible!important;
   }
 
-  #cats .completed-table-wrap{
-    max-width:100%!important;
-    overflow-x:auto!important;
-    overflow-y:visible!important;
-    -webkit-overflow-scrolling:touch!important;
+  #cats .current-main,
+  #cats .current-action{
+    min-width:0!important;
+    overflow:visible!important;
   }
 
-  /* Keep the assessment navigation reachable without clipping. */
+  /* Completed assessment table: same principle as NurseIQ's table wrap.
+     Horizontal scroll is local to the wide table; vertical page scrolling
+     remains owned by the document. */
+  #cats .completed-table-wrap{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    max-height:560px!important;
+    overflow-x:auto!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior:contain!important;
+    touch-action:pan-x pan-y!important;
+    box-sizing:border-box!important;
+  }
+
+  #cats .assessment-table{
+    min-width:760px!important;
+  }
+
+  #cats .assessment-table th:first-child,
+  #cats .assessment-table td:first-child{
+    position:sticky!important;
+    left:0!important;
+    z-index:3!important;
+    background:#fff!important;
+    box-shadow:5px 0 8px rgba(15,23,42,.06)!important;
+  }
+
+  #cats .assessment-table thead th:first-child{
+    z-index:5!important;
+    background:#f8fafc!important;
+  }
+
+  #cats .row-actions{
+    min-width:150px!important;
+  }
+
+  #cats .result-btn,
+  #cats .review-btn,
+  #cats .retake-link{
+    min-height:34px!important;
+    padding:7px 10px!important;
+    font-size:9px!important;
+    white-space:nowrap!important;
+    pointer-events:auto!important;
+  }
+
   #cats .assessment-nav{
     height:auto!important;
     max-height:none!important;
     overflow:visible!important;
   }
-
-  /* Give the last action area enough safe space above the phone's
-     browser/home indicator. */
-  #cats .current-list::after{
-    content:"";
-    display:block;
-    height:calc(24px + env(safe-area-inset-bottom));
-  }
 }
 
-@media (max-width: 480px){
-  #main-content.main{
-    padding-left:8px!important;
-    padding-right:8px!important;
-    padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
+@media(max-width:760px){
+  #cats{
+    padding:12px!important;
+    overflow:visible!important;
   }
 
-  #cats{
-    padding:10px!important;
-    padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
+  #cats .assessment-nav{
+    grid-template-columns:repeat(2,1fr)!important;
+  }
+
+  #cats .assessment-nav button:last-child{
+    grid-column:span 2;
   }
 
   #cats .current-assessment-card{
@@ -2026,6 +2044,19 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
     gap:10px!important;
     align-items:stretch!important;
     padding:12px!important;
+  }
+
+  #cats .current-action{
+    width:100%!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
+    padding-top:4px!important;
+  }
+
+  #cats .current-action .exam-action-btn{
+    width:100%!important;
+    min-height:42px!important;
+    box-sizing:border-box!important;
   }
 
   #cats .current-name{
@@ -2038,19 +2069,356 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
   #cats .current-meta{
     row-gap:6px!important;
   }
+}
 
-  #cats .current-action{
-    border-top:1px solid #edf1f6!important;
-    padding-top:10px!important;
+@media(max-width:480px){
+  #main-content.main{
+    padding-left:8px!important;
+    padding-right:8px!important;
+    padding-bottom:calc(52px + env(safe-area-inset-bottom))!important;
   }
 
-  #cats .current-action .exam-action-btn{
-    min-height:44px!important;
-    font-size:11px!important;
+  #cats{
+    padding:10px!important;
+    padding-bottom:calc(52px + env(safe-area-inset-bottom))!important;
+  }
+
+  #cats .completed-table-wrap{
+    max-height:560px!important;
   }
 }
 </style>
 
+
+<style id="nchsm-mobile-completed-table-scroll-fix">
+/* Mobile Completed Assessments: real touch-scrollable table */
+@media (max-width: 1023px){
+  #cats .completed-section{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow:visible!important;
+  }
+  #cats .completed-section .panel-head{
+    min-width:0!important;
+    overflow:visible!important;
+  }
+  #cats .completed-section .table-wrap{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:scroll!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+    touch-action:pan-x!important;
+    scrollbar-width:thin!important;
+    scrollbar-color:#94a3b8 transparent!important;
+    padding-bottom:8px!important;
+    box-sizing:border-box!important;
+  }
+  #cats .completed-section .table-wrap::-webkit-scrollbar{height:8px!important}
+  #cats .completed-section .table-wrap::-webkit-scrollbar-thumb{background:#94a3b8!important;border-radius:99px!important}
+  #cats .completed-section .assessment-table{
+    width:max-content!important;
+    min-width:900px!important;
+    table-layout:auto!important;
+  }
+  #cats .completed-section .assessment-table th,
+  #cats .completed-section .assessment-table td{
+    white-space:nowrap!important;
+  }
+  #cats .completed-section .assessment-table th:first-child,
+  #cats .completed-section .assessment-table td:first-child{
+    position:sticky!important;
+    left:0!important;
+    z-index:6!important;
+    background:#fff!important;
+    box-shadow:5px 0 8px rgba(15,23,42,.08)!important;
+    min-width:185px!important;
+  }
+  #cats .completed-section .assessment-table thead th:first-child{
+    background:#f8fafc!important;
+    z-index:8!important;
+  }
+  #cats .completed-section .row-actions{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:6px!important;
+    min-width:155px!important;
+  }
+  #cats .completed-section .result-btn,
+  #cats .completed-section .review-btn,
+  #cats .completed-section .retake-link{
+    flex:0 0 auto!important;
+    min-height:34px!important;
+    padding:7px 10px!important;
+    font-size:9px!important;
+    white-space:nowrap!important;
+    pointer-events:auto!important;
+  }
+  #cats .completed-section .table-wrap::after{
+    content:"Swipe left → to see Actions";
+    display:block!important;
+    position:sticky!important;
+    left:0!important;
+    width:max-content!important;
+    margin:0 0 -2px auto!important;
+    padding:4px 8px!important;
+    font-size:8px!important;
+    font-weight:800!important;
+    color:#64748b!important;
+    background:#f8fafc!important;
+    border-radius:6px!important;
+  }
+}
+</style>
+
+<style id="nchsm-final-mobile-exam-review-fix">
+/* ============================================================
+   FINAL MOBILE/RESPONSIVE REPAIR
+   - Never allow the fixed header to cover page content.
+   - Make assessment tables genuinely touch-scrollable.
+   - Keep first assessment column visible while scrolling.
+   - Keep NurseIQ review/question bank inside the viewport.
+   ============================================================ */
+@media(max-width:1023px){
+  #app-content>.container{padding-top:60px!important}
+  #main-content.main{padding-top:12px!important;box-sizing:border-box!important;overflow-x:hidden!important}
+  #cats{overflow-x:hidden!important;min-width:0!important}
+  #cats .completed-table-wrap,
+  #cats .current-list{
+    width:100%!important;max-width:100%!important;box-sizing:border-box!important;
+    -webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain!important;
+  }
+  #cats .completed-table-wrap{
+    overflow-x:auto!important;overflow-y:auto!important;touch-action:pan-x pan-y!important;
+    scrollbar-width:thin!important;
+  }
+  #cats .assessment-table{min-width:900px!important;width:900px!important}
+  #cats .assessment-table th:first-child,
+  #cats .assessment-table td:first-child{
+    position:sticky!important;left:0!important;z-index:3!important;background:#fff!important;
+    box-shadow:5px 0 8px rgba(15,23,42,.06)!important;
+  }
+  #cats .assessment-table thead th:first-child{z-index:5!important;background:#f8fafc!important}
+  #cats .row-actions{min-width:150px!important}
+  #cats .result-btn,#cats .review-btn,#cats .retake-link{min-height:34px!important;padding:7px 10px!important;font-size:9px!important}
+
+  #nurseiq{min-width:0!important;overflow-x:hidden!important}
+  #nurseiq .niq-table-wrap{
+    width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;
+  }
+  #nurseiq .niq-table{min-width:760px!important}
+  #nurseiq .niq-question-grid{
+    overflow-x:auto!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;
+  }
+  #nurseiq .niq-filter-row{min-width:0!important}
+  #nurseiq .niq-filter-row input,
+  #nurseiq .niq-filter-row select,
+  #nurseiq .niq-filter-actions button{min-width:0!important;max-width:100%!important}
+  #courseCatalogCards{grid-template-columns:1fr!important;min-width:0!important}
+  #questionView,#studentQuestionBankContent,#courseCatalogGrid{min-width:0!important;width:100%!important;overflow:hidden!important}
+
+  #nurseiqExamReview{width:100%!important;max-width:100%!important;min-width:0!important;overflow:visible!important}
+  #nurseiqExamReview .niq-review-layout{grid-template-columns:1fr!important;min-width:0!important}
+  #nurseiqExamReview .niq-review-nav,
+  #nurseiqExamReview .niq-review-card{width:100%!important;min-width:0!important;max-width:100%!important}
+  #nurseiqExamReview .niq-question-grid{
+    grid-template-columns:repeat(6,minmax(38px,1fr))!important;
+    max-height:210px!important;overflow:auto!important;touch-action:pan-x pan-y!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  #nurseiqExamReview .niq-question-body{min-width:0!important;overflow-wrap:anywhere!important}
+  #nurseiqExamReview .niq-options{min-width:0!important}
+  #nurseiqExamReview .niq-option{min-width:0!important;overflow-wrap:anywhere!important}
+  #nurseiqExamReview .niq-answer-box{grid-template-columns:1fr!important}
+  #nurseiqExamReview .niq-review-footer{position:sticky;bottom:0;z-index:4}
+}
+
+.nchsm-table-scroll-hint{
+  display:none;margin:6px 10px 10px;padding:7px 9px;border-radius:8px;
+  background:#f8fafc;border:1px dashed #cbd5e1;color:#64748b;
+  font-size:9px;font-weight:700;text-align:center;
+}
+@media(max-width:1023px){.nchsm-table-scroll-hint{display:block}}
+
+/* Remove accidental visual clipping from the fixed shell on narrow screens. */
+@media(max-width:640px){
+  .main-header.nchsm-reference-header{height:60px!important;min-height:60px!important}
+  #app-content>.container{padding-top:60px!important}
+  #main-content.main{padding:10px 10px 18px!important}
+  #cats .completed-table-wrap{max-height:62vh!important}
+  #cats .assessment-table{min-width:900px!important}
+  #nurseiqExamReview .niq-review-hero{padding:14px!important;flex-direction:column!important;align-items:stretch!important}
+  #nurseiqExamReview .niq-review-back{width:100%!important}
+  #nurseiqExamReview .niq-review-stats{grid-template-columns:1fr 1fr!important}
+}
+</style>
+
+
+<style id="nchsm-final-mobile-scroll-stable">
+/* ============================================================
+   FINAL MOBILE SCROLL REPAIR — based ONLY on this supplied HTML
+   - Body/page owns vertical scrolling.
+   - Completed Assessments owns horizontal table scrolling only.
+   - No touchmove/wheel interception.
+   ============================================================ */
+@media (max-width: 799px){
+  html, body{
+    height:auto!important;
+    min-height:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+
+  #app-content,
+  #app-content > .container{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  #main-content.main{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-x:visible!important;
+    overflow-y:visible!important;
+    -webkit-overflow-scrolling:auto!important;
+    overscroll-behavior:auto!important;
+    box-sizing:border-box!important;
+    padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
+  }
+
+  #main-content.main > .tab-content,
+  #cats.tab-content{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    overflow-x:visible!important;
+    overflow-y:visible!important;
+    box-sizing:border-box!important;
+  }
+
+  #cats .section-card,
+  #cats .current-section,
+  #cats .completed-section,
+  #cats .analytics-card{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  #cats .current-list{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  /* Actual class used by this supplied HTML: .completed-table-wrap */
+  #cats .completed-table-wrap{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+    overscroll-behavior-y:auto!important;
+    touch-action:pan-x pan-y!important;
+    box-sizing:border-box!important;
+    scrollbar-width:thin!important;
+    scrollbar-color:#64748b #eef2f7!important;
+    padding-bottom:8px!important;
+  }
+
+  #cats .completed-table-wrap::-webkit-scrollbar{
+    height:9px!important;
+  }
+  #cats .completed-table-wrap::-webkit-scrollbar-track{
+    background:#eef2f7!important;
+    border-radius:999px!important;
+  }
+  #cats .completed-table-wrap::-webkit-scrollbar-thumb{
+    background:#64748b!important;
+    border-radius:999px!important;
+  }
+
+  #cats .completed-table-wrap > table.assessment-table{
+    display:table!important;
+    width:max-content!important;
+    min-width:980px!important;
+    max-width:none!important;
+    table-layout:auto!important;
+    margin:0!important;
+  }
+
+  #cats .completed-table-wrap th,
+  #cats .completed-table-wrap td{
+    white-space:nowrap!important;
+    box-sizing:border-box!important;
+  }
+
+  #cats .completed-table-wrap th:first-child,
+  #cats .completed-table-wrap td:first-child{
+    position:sticky!important;
+    left:0!important;
+    z-index:20!important;
+    min-width:210px!important;
+    background:#fff!important;
+    box-shadow:5px 0 9px rgba(15,23,42,.10)!important;
+  }
+
+  #cats .completed-table-wrap thead th:first-child{
+    z-index:25!important;
+    background:#f8fafc!important;
+  }
+
+  #cats .completed-table-wrap .row-actions{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:6px!important;
+    min-width:155px!important;
+    white-space:nowrap!important;
+  }
+
+  #cats .completed-table-wrap .result-btn,
+  #cats .completed-table-wrap .review-btn,
+  #cats .completed-table-wrap .retake-link{
+    flex:0 0 auto!important;
+    pointer-events:auto!important;
+  }
+
+  #cats .nchsm-table-scroll-hint{
+    display:block!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+}
+
+@media (max-width:480px){
+  #main-content.main{
+    padding-left:8px!important;
+    padding-right:8px!important;
+    padding-bottom:calc(52px + env(safe-area-inset-bottom))!important;
+  }
+
+  #cats{
+    padding:10px!important;
+    padding-bottom:calc(52px + env(safe-area-inset-bottom))!important;
+    overflow:visible!important;
+  }
+}
+</style>
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -7709,6 +8077,26 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 
 </script>
 
+<script id="nchsm-nurseiq-review-bridge">
+(function(){
+  function bridge(){
+    if (!window.openNurseIQExamReview && window.nurseiqModule && typeof window.nurseiqModule.openExamReview === 'function') {
+      window.openNurseIQExamReview = function(examId){ return window.nurseiqModule.openExamReview(examId); };
+    }
+    if (!window.renderNurseIQExamReviewQuestion && window.nurseiqModule && typeof window.nurseiqModule.renderExamReviewQuestion === 'function') {
+      window.renderNurseIQExamReviewQuestion = function(index){ return window.nurseiqModule.renderExamReviewQuestion(index); };
+    }
+    if (!window.closeNurseIQExamReview && window.nurseiqModule && typeof window.nurseiqModule.closeExamReview === 'function') {
+      window.closeNurseIQExamReview = function(){ return window.nurseiqModule.closeExamReview(); };
+    }
+  }
+  bridge();
+  document.addEventListener('appReady',bridge);
+  setTimeout(bridge,500);
+  setTimeout(bridge,1500);
+})();
+</script>
+
 <!-- ==================== HUB EXAM CARD TAB ==================== -->
 <section class="tab-content" id="hub-exam-card" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
@@ -7982,7 +8370,15 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 #cats .stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.stat-card{background:#fff;border:1px solid #dfe7f1;border-radius:15px;padding:15px;min-height:88px;box-shadow:0 3px 12px rgba(15,23,42,.04);display:flex;align-items:center;gap:12px}.stat-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto}.stat-card.current .stat-icon{background:#e6f1ff;color:#2563eb}.stat-card.completed .stat-icon{background:#e8f8f0;color:#059669}.stat-card.released .stat-icon{background:#f1eaff;color:#7c3aed}.stat-card.average .stat-icon{background:#fff3d6;color:#d97706}.stat-label{margin:0;color:#65748b;font-size:10px;font-weight:700}.stat-value{margin:3px 0 0;color:#142c55;font-size:22px;line-height:1;font-weight:850}.stat-note{margin:4px 0 0;color:#94a3b8;font-size:9px}
 #cats .main-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(300px,.82fr);gap:16px;align-items:start}.section-card{background:#fff;border:1px solid #dfe7f1;border-radius:17px;box-shadow:0 3px 14px rgba(15,23,42,.045);overflow:hidden;margin-bottom:16px}.section-head{padding:15px 17px;border-bottom:1px solid #edf1f6;display:flex;align-items:center;justify-content:space-between;gap:12px}.section-title-wrap{display:flex;align-items:center;gap:10px;min-width:0}.section-icon{width:34px;height:34px;border-radius:10px;background:#e9f2ff;color:#2563eb;display:flex;align-items:center;justify-content:center;flex:0 0 auto}.section-icon.green{background:#e8f8f0;color:#059669}.section-title{margin:0;color:#142c55;font-size:15px;font-weight:850}.section-sub{display:block;color:#8190a6;font-size:9px;margin-top:2px}.section-count{background:#edf5ff;color:#2563eb;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;white-space:nowrap}.section-action{border:1px solid #dbe5f0;background:#fff;color:#2563eb;border-radius:8px;padding:6px 9px;font-size:9px;font-weight:800;cursor:pointer}
 #cats .current-list{padding:12px 14px;display:grid;gap:9px}.current-assessment-card{border:1px solid #e3eaf3;border-radius:13px;padding:13px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;transition:.18s;background:#fff}.current-assessment-card:hover{border-color:#a8c5ed;box-shadow:0 5px 15px rgba(37,99,235,.07)}.current-main{min-width:0}.current-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.current-name{color:#16335f;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.type-badge{padding:3px 8px;border-radius:999px;font-size:9px;font-weight:850}.type-cat{background:#f0e9ff;color:#6d28d9}.type-final{background:#e4f1ff;color:#1d4ed8}.type-tvet{background:#fdebf4;color:#9d174d}.retake-badge{background:#efe7ff;color:#6d28d9;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:850}.current-meta{display:flex;gap:12px;flex-wrap:wrap;color:#718198;font-size:9px;margin-top:7px}.current-meta span{display:inline-flex;align-items:center;gap:4px}.current-meta i{color:#7b91b0}.current-action{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:135px}.exam-action-btn{border:0;border-radius:9px;padding:9px 14px;font-size:10px;font-weight:850;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap}.btn-start{background:#1473e6;color:#fff;box-shadow:0 4px 10px rgba(20,115,230,.18)}.btn-retake{background:#7c3aed;color:#fff}.btn-missed{background:#fef2f2;color:#b91c1c}.btn-upcoming{background:#f8fafc;color:#64748b}.btn-disabled{background:#f1f5f9;color:#94a3b8}.exam-timer{font-size:9px;font-weight:800;color:#64748b}.timer-active{color:#2563eb}.timer-expired{color:#dc2626}.timer-upcoming{color:#d97706}.current-status{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:#e8f8f0;color:#047857;font-size:9px;font-weight:850}.current-status.upcoming{background:#fff7df;color:#b45309}.current-status.retake{background:#f0e9ff;color:#6d28d9}.current-status.missed{background:#fee2e2;color:#b91c1c}
-#cats .completed-table-wrap{overflow:auto}.assessment-table{width:100%;border-collapse:collapse;min-width:760px}.assessment-table th{background:#f8fafc;color:#52627b;font-size:9px;text-transform:uppercase;letter-spacing:.3px;font-weight:850;padding:10px 12px;text-align:left;border-bottom:1px solid #e7edf4}.assessment-table td{padding:11px 12px;border-bottom:1px solid #edf1f5;font-size:10px;color:#334155;vertical-align:middle}.assessment-table tr:last-child td{border-bottom:0}.assessment-table .assessment-name-main{font-weight:800;color:#17345f;font-size:11px}.assessment-table .assessment-date{font-size:8px;color:#94a3b8;margin-top:3px}.score-main{font-weight:850;color:#172554}.percentage-good{color:#047857;font-weight:850}.percentage-fail{color:#b91c1c;font-weight:850}.grade-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:8px;font-weight:850}.grade-distinction{background:#dff7e9;color:#047857}.grade-credit{background:#e3efff;color:#1d4ed8}.grade-pass{background:#fff3d6;color:#b45309}.grade-fail{background:#fee2e2;color:#b91c1c}.grade-pending{background:#fff7df;color:#92400e}.grade-missed{background:#f1f5f9;color:#64748b}.grade-retake{background:#f0e9ff;color:#6d28d9}.status-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:8px;font-weight:850}.status-released{background:#e8f8f0;color:#047857}.status-pending{background:#fff7df;color:#92400e}.status-retake{background:#f0e9ff;color:#6d28d9}.status-missed{background:#fee2e2;color:#b91c1c}.row-actions{display:flex;gap:5px;flex-wrap:wrap}.result-btn,.review-btn,.retake-link{border:1px solid #cfe0f5;background:#fff;color:#2563eb;border-radius:7px;padding:6px 8px;font-size:8px;font-weight:850;cursor:pointer;text-decoration:none;white-space:nowrap}.review-btn{border-color:#d8c9ff;color:#6d28d9;background:#fbf9ff}.retake-link{border-color:#d8c9ff;color:#6d28d9}.result-btn:hover,.review-btn:hover,.retake-link:hover{transform:translateY(-1px)}
+#cats .current-list{max-height:560px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#CBD5E1 transparent}
+#cats .current-list::-webkit-scrollbar{width:8px}
+#cats .current-list::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
+#cats .current-list::-webkit-scrollbar-track{background:transparent}
+#cats .completed-table-wrap{width:100%;max-width:100%;max-height:560px;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#CBD5E1 transparent}
+#cats .completed-table-wrap::-webkit-scrollbar{height:8px;width:8px}
+#cats .completed-table-wrap::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
+#cats .completed-table-wrap::-webkit-scrollbar-track{background:transparent}
+.assessment-table{width:100%;border-collapse:collapse;min-width:760px}.assessment-table th{background:#f8fafc;color:#52627b;font-size:9px;text-transform:uppercase;letter-spacing:.3px;font-weight:850;padding:10px 12px;text-align:left;border-bottom:1px solid #e7edf4}.assessment-table td{padding:11px 12px;border-bottom:1px solid #edf1f5;font-size:10px;color:#334155;vertical-align:middle}.assessment-table tr:last-child td{border-bottom:0}.assessment-table .assessment-name-main{font-weight:800;color:#17345f;font-size:11px}.assessment-table .assessment-date{font-size:8px;color:#94a3b8;margin-top:3px}.score-main{font-weight:850;color:#172554}.percentage-good{color:#047857;font-weight:850}.percentage-fail{color:#b91c1c;font-weight:850}.grade-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:8px;font-weight:850}.grade-distinction{background:#dff7e9;color:#047857}.grade-credit{background:#e3efff;color:#1d4ed8}.grade-pass{background:#fff3d6;color:#b45309}.grade-fail{background:#fee2e2;color:#b91c1c}.grade-pending{background:#fff7df;color:#92400e}.grade-missed{background:#f1f5f9;color:#64748b}.grade-retake{background:#f0e9ff;color:#6d28d9}.status-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:8px;font-weight:850}.status-released{background:#e8f8f0;color:#047857}.status-pending{background:#fff7df;color:#92400e}.status-retake{background:#f0e9ff;color:#6d28d9}.status-missed{background:#fee2e2;color:#b91c1c}.row-actions{display:flex;gap:5px;flex-wrap:wrap}.result-btn,.review-btn,.retake-link{border:1px solid #cfe0f5;background:#fff;color:#2563eb;border-radius:7px;padding:6px 8px;font-size:8px;font-weight:850;cursor:pointer;text-decoration:none;white-space:nowrap}.review-btn{border-color:#d8c9ff;color:#6d28d9;background:#fbf9ff}.retake-link{border-color:#d8c9ff;color:#6d28d9}.result-btn:hover,.review-btn:hover,.retake-link:hover{transform:translateY(-1px)}
 #cats .analytics-card{padding:0}.chart-head{padding:14px 15px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px}.chart-controls{display:flex;gap:4px}.toggle-btn{border:1px solid #dce5ef;background:#fff;color:#64748b;border-radius:7px;padding:5px 7px;font-size:8px;font-weight:850;cursor:pointer}.toggle-btn.active{background:#1473e6;color:#fff;border-color:#1473e6}.chart-body{height:250px;padding:4px 12px 8px;position:relative}.chart-body canvas{width:100%!important;height:100%!important}.chart-legend{padding:0 15px 13px;display:flex;gap:10px;flex-wrap:wrap;color:#718198;font-size:8px}.legend-item{display:inline-flex;align-items:center;gap:4px}.legend-line{width:18px;height:2px;display:inline-block;background:#1473e6}.legend-exam{background:#10b981}.legend-avg{background:#f59e0b}.legend-pass{background:#ef4444}.legend-dash{border-top:2px dashed #ef4444;background:transparent}
 #cats .summary-mini{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px 14px}.summary-mini-item{border:1px solid #e5ebf3;border-radius:10px;padding:10px;background:#fbfdff}.summary-mini-label{display:block;color:#7c8ba1;font-size:8px;font-weight:750}.summary-mini-value{display:block;color:#172554;font-size:17px;font-weight:850;margin-top:3px}.summary-mini-value.good{color:#047857}.summary-mini-value.bad{color:#b91c1c}.summary-mini-value.purple{color:#6d28d9}
 #cats .info-panel{padding:14px}.info-panel h4{margin:0 0 10px;color:#172554;font-size:12px;font-weight:850}.grade-row{display:grid;grid-template-columns:74px 70px 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #edf1f5;font-size:8px;color:#64748b}.grade-row:last-child{border-bottom:0}.grade-name{font-weight:850}.grade-name.dist{color:#047857}.grade-name.cred{color:#2563eb}.grade-name.pass{color:#b45309}.grade-name.fail{color:#b91c1c}.weight-row{display:grid;grid-template-columns:72px 38px 1fr;gap:8px;align-items:center;margin:9px 0;font-size:9px;font-weight:750;color:#334155}.weight-bar{height:7px;background:#edf1f6;border-radius:999px;overflow:hidden}.weight-fill{height:100%;border-radius:999px;background:#7c3aed}.weight-fill.final{background:#ef4444}.weight-total{margin-top:10px;padding-top:9px;border-top:1px solid #e5ebf3;display:flex;justify-content:space-between;font-size:10px;font-weight:850;color:#172554}
@@ -8027,7 +8423,7 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
   <div class="main-grid">
     <div>
       <div class="section-card current-section" id="current-section">
-        <div class="section-head"><div class="section-title-wrap"><div class="section-icon"><i class="fas fa-clock"></i></div><div><h3 class="section-title">Current Assessments</h3><span class="section-sub">Assessments currently available, upcoming, or reset for continuation.</span></div><span class="section-count" id="current-count">0 pending</span></div><button type="button" class="section-action" onclick="window.examsModule?.refresh()"><i class="fas fa-sync-alt"></i> Refresh</button></div>
+        <div class="section-head"><div class="section-title-wrap"><div class="section-icon"><i class="fas fa-clock"></i></div><div><h3 class="section-title">Available &amp; Current Assessments</h3><span class="section-sub">Assessments currently available, upcoming, or reset for continuation.</span></div><span class="section-count" id="current-count">0 pending</span></div><button type="button" class="section-action" onclick="window.examsModule?.refresh()"><i class="fas fa-sync-alt"></i> Refresh</button></div>
         <div class="current-list" id="current-assessments-table"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><h3>Loading assessments...</h3></div></div>
         <div class="empty-state" id="current-empty" style="display:none"><i class="fas fa-clipboard-list"></i><h3>No Current Assessments</h3><p>You don't have any pending assessments at the moment.</p></div>
       </div>
@@ -8035,6 +8431,7 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
       <div class="section-card completed-section" id="completed-section">
         <div class="section-head"><div class="section-title-wrap"><div class="section-icon green"><i class="fas fa-circle-check"></i></div><div><h3 class="section-title">Completed Assessments</h3><span class="section-sub">Released results, pending marking, missed assessments and retakes.</span></div><span class="section-count" id="completed-count">0 completed</span></div><span id="completed-average" style="background:#f3f6fa;color:#64748b;padding:5px 9px;border-radius:999px;font-size:9px;font-weight:800">Average: --</span></div>
         <div class="completed-table-wrap"><table class="assessment-table"><thead><tr><th>Assessment</th><th>Type</th><th>Score</th><th>Percentage</th><th>Grade</th><th>Status</th><th>Actions</th></tr></thead><tbody id="completed-assessments-table"><tr><td colspan="7" style="padding:35px;text-align:center;color:#94a3b8">Loading completed assessments...</td></tr></tbody></table></div>
+        <div class="nchsm-table-scroll-hint"><i class="fas fa-arrows-left-right"></i> Swipe left/right to view Percentage, Grade, Status and Actions</div>
         <div class="empty-state" id="completed-empty" style="display:none"><i class="fas fa-graduation-cap"></i><h3>No Completed Assessments</h3><p>Your assessment results will appear here once submitted or graded.</p><button type="button" onclick="window.examsModule?.applyFilter('current')">View Current Assessments</button></div>
       </div>
     </div>
@@ -12767,7 +13164,19 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 .niq-mini{background:#F8FAFC;border:1px solid #EEF2F7;border-radius:8px;padding:8px;text-align:center}
 .niq-mini strong{display:block;font-size:15px;color:var(--niq-navy)}
 .niq-mini span{display:block;margin-top:2px;font-size:8px;text-transform:uppercase;letter-spacing:.3px;color:#94A3B8;font-weight:800}
-.niq-table-wrap{width:100%;overflow-x:auto}
+.niq-table-wrap{
+  width:100%;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#CBD5E1 transparent;
+}
+.niq-table-wrap::-webkit-scrollbar{height:8px;width:8px}
+.niq-table-wrap::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
+.niq-table-wrap::-webkit-scrollbar-track{background:transparent}
 .niq-table{width:100%;border-collapse:collapse;min-width:720px}
 .niq-table th{background:#F8FAFC;color:#71839A;font-size:8px;text-transform:uppercase;letter-spacing:.45px;font-weight:800;padding:9px 10px;text-align:left;border-bottom:1px solid #E8EEF5}
 .niq-table td{padding:10px;border-bottom:1px solid #EEF2F6;color:#30465F;font-size:10px;vertical-align:middle}
@@ -12849,14 +13258,17 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 .niq-review-nav-head span{display:block;margin-top:3px;font-size:8px;color:#94A3B8}
 .niq-question-grid{padding:9px;display:grid;grid-template-columns:repeat(5,1fr);gap:5px;max-height:540px;overflow:auto}
 .niq-qnav{
-  width:100%;height:30px;border:1px solid #E2E8F0;background:#F8FAFC;border-radius:6px;color:#64748B;
-  cursor:pointer;font-size:8px;font-weight:800
+  width:100%;height:30px;border:1px solid #D7DEE8;background:#F1F5F9;border-radius:6px;color:#64748B;
+  cursor:pointer;font-size:8px;font-weight:800;transition:transform .12s ease,box-shadow .12s ease,filter .12s ease
 }
-.niq-qnav:hover{border-color:#C4B5FD;background:#F5F0FF;color:#6D28D9}
-.niq-qnav.active{background:#4C1D95;border-color:#4C1D95;color:#fff}
-.niq-qnav.correct{background:#ECFDF5;border-color:#A7F3D0;color:#047857}
-.niq-qnav.incorrect{background:#FEF2F2;border-color:#FECACA;color:#B91C1C}
-.niq-qnav.active.correct,.niq-qnav.active.incorrect{background:#4C1D95;color:#fff;border-color:#4C1D95}
+.niq-qnav:hover{filter:brightness(.98);transform:translateY(-1px);box-shadow:0 2px 6px rgba(15,23,42,.08)}
+.niq-qnav.active{box-shadow:0 0 0 2px #4C1D95,0 2px 6px rgba(15,23,42,.10);transform:translateY(-1px)}
+.niq-qnav.correct{background:#DBEAFE;border-color:#60A5FA;color:#1D4ED8}
+.niq-qnav.incorrect{background:#FEE2E2;border-color:#F87171;color:#B91C1C}
+.niq-qnav.unanswered{background:#F1F5F9;border-color:#CBD5E1;color:#64748B}
+.niq-qnav.active.correct{background:#DBEAFE;color:#1D4ED8;border-color:#2563EB}
+.niq-qnav.active.incorrect{background:#FEE2E2;color:#B91C1C;border-color:#DC2626}
+.niq-qnav.active.unanswered{background:#E2E8F0;color:#475569;border-color:#64748B}
 .niq-review-card{background:#fff;border:1px solid #E2E8F0;border-radius:13px;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,.04)}
 .niq-review-card-head{padding:12px 15px;border-bottom:1px solid #EEF2F6;display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .niq-review-card-head h3{margin:0;color:#17314F;font-size:13px}
@@ -12881,6 +13293,18 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 .niq-review-footer{display:flex;justify-content:space-between;gap:8px;padding:11px 15px;border-top:1px solid #EEF2F6;background:#FBFCFE}
 .niq-review-footer button{height:32px;padding:0 11px;border-radius:7px;border:1px solid #DDE6EF;background:#fff;color:#475569;cursor:pointer;font-size:9px;font-weight:800}
 .niq-review-footer button.primary{background:#4C1D95;color:#fff;border-color:#4C1D95}
+.niq-review-legend{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  margin:-2px 0 12px;padding:9px 11px;background:#fff;border:1px solid #E2E8F0;border-radius:10px;
+  box-shadow:0 1px 4px rgba(15,23,42,.035);
+}
+.niq-review-legend-item{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:800}
+.niq-review-legend-item i{width:8px;height:8px;border-radius:50%;display:block}
+.niq-review-legend-item.correct{background:#EFF6FF;color:#1D4ED8}.niq-review-legend-item.correct i{background:#2563EB}
+.niq-review-legend-item.incorrect{background:#FEF2F2;color:#B91C1C}.niq-review-legend-item.incorrect i{background:#DC2626}
+.niq-review-legend-item.unanswered{background:#F1F5F9;color:#64748B}.niq-review-legend-item.unanswered i{background:#94A3B8}
+.niq-review-attempt-note{margin-left:auto;color:#64748B;font-size:8px;font-weight:700;display:inline-flex;align-items:center;gap:5px}
+.niq-review-attempt-note i{color:#10B981}
 .niq-review-loading{text-align:center;padding:55px 20px;color:#94A3B8}
 .niq-review-loading i{font-size:22px;color:#7C3AED;margin-bottom:9px}
 #nurseiq.niq-review-mode > .niq-page{display:none!important}
@@ -12895,6 +13319,11 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 .course-card:hover{transform:translateY(-3px);box-shadow:0 8px 25px rgba(0,0,0,.08)}
 @keyframes niqSpin{to{transform:rotate(360deg)}}
 
+@media(min-width:761px){
+  #nurseiq .niq-table-wrap{max-height:560px}
+  #nurseiq .niq-table thead th{position:sticky;top:0;z-index:2}
+  #cats .completed-table-wrap thead th{position:sticky;top:0;z-index:2}
+}
 @media(max-width:1050px){
   .niq-content-grid{grid-template-columns:1fr}
   .niq-filter-row{grid-template-columns:1fr 1fr 1fr}
@@ -12902,7 +13331,22 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
   .niq-filter-actions{grid-column:1/-1}
 }
 @media(max-width:760px){
-  #nurseiq{padding:14px!important}
+  #nurseiq{padding:14px!important;overflow-x:hidden!important}
+  #nurseiq .niq-page,#nurseiqExamReview{width:100%;max-width:100%;min-width:0}
+  #nurseiq .niq-panel,#nurseiq .niq-practice-panel,#nurseiq .niq-card{min-width:0}
+  #nurseiq .niq-table-wrap{max-width:100%;overflow-x:auto!important;overflow-y:auto!important;touch-action:pan-x pan-y}
+  #cats .current-list{max-height:62vh!important;overflow-y:auto!important}
+  #cats .completed-table-wrap{max-height:62vh!important;overflow:auto!important}
+  #cats .assessment-table{min-width:760px}
+  #nurseiq .courseCatalogGrid,#courseCatalogGrid,#studentQuestionBankContent,#questionView{max-width:100%;min-width:0}
+  #nurseiq .niq-review-layout{min-width:0}
+  #nurseiq .niq-review-nav,#nurseiq .niq-review-card{min-width:0;width:100%}
+  #nurseiq .niq-question-grid{width:100%;max-width:100%;overflow-x:auto!important;overflow-y:auto!important;touch-action:pan-x pan-y;grid-template-columns:repeat(8,minmax(30px,1fr))}
+  #nurseiq .niq-question-body{min-width:0;overflow-wrap:anywhere}
+  #nurseiq .niq-options{min-width:0}
+  #nurseiq .niq-option{min-width:0;overflow-wrap:anywhere}
+  .niq-review-attempt-note{width:100%;margin-left:0}
+
   .niq-hero{padding:17px;border-radius:14px}
   .niq-hero-main{align-items:flex-start;flex-direction:column}
   .niq-hero-actions{width:100%;justify-content:flex-start}
@@ -12961,6 +13405,13 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
     <div class="niq-review-stat points"><span>Review Points</span><strong id="nurseiqReviewPoints">+0</strong></div>
   </div>
 
+  <div class="niq-review-legend" aria-label="Question status legend">
+    <span class="niq-review-legend-item correct"><i></i> Correct</span>
+    <span class="niq-review-legend-item incorrect"><i></i> Wrong</span>
+    <span class="niq-review-legend-item unanswered"><i></i> Not answered</span>
+    <span class="niq-review-attempt-note"><i class="fas fa-shield-check"></i> Showing questions from this submitted attempt</span>
+  </div>
+
   <div id="nurseiqExamReviewBody">
     <div class="niq-review-loading"><i class="fas fa-spinner fa-spin"></i><div>Loading exam review...</div></div>
   </div>
@@ -13012,7 +13463,7 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
   <div class="niq-content-grid">
     <div class="niq-panel" id="niqExamReviewPanel">
       <div class="niq-panel-head">
-        <div class="niq-panel-title"><i class="fas fa-clipboard-check"></i><div><h3>Completed Exams — Results Released</h3><p>Select an assessment to preview exactly what you submitted.</p></div></div>
+        <div class="niq-panel-title"><i class="fas fa-clipboard-check"></i><div><h3>Completed Exams — Results Released</h3><p>Select an assessment to preview exactly what you submitted. Swipe/scroll the table on smaller screens.</p></div></div>
         <span class="niq-release-badge"><i class="fas fa-lock-open"></i> Results Released</span>
       </div>
       <div class="niq-exam-picker">
@@ -13037,6 +13488,7 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
           </tbody>
         </table>
       </div>
+      <div class="nchsm-table-scroll-hint"><i class="fas fa-arrows-left-right"></i> Swipe left/right to view Score, Grade and Review</div>
     </div>
 
     <div class="niq-side-stack">
@@ -13262,17 +13714,17 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 <script src="/js/database.js"></script>
 <!-- ===== 4️⃣ FOURTH: Core Modules ===== -->
 <script src="/js/gamification.js"></script>
-<script src="/js/dashboard.js"></script>
+<script src="/js/dashboard.js?v=20261004-responsive-review"></script>
 <script src="/js/profile.js"></script>
 <script src="/js/attendance.js"></script>
 <script src="/js/courses.js"></script>
-<script src="/js/exams.js"></script>
+<script src="/js/exams.js?v=20261004-responsive-review"></script>
 <script src="/js/unit-registration.js"></script>
 <script src="/js/resources.js"></script>
 <script src="/js/calendar.js"></script>
 <script src="/js/messages.js"></script>
 <script src="/js/student-tickets.js"></script>
-<script src="/js/nurseiq.js"></script>
+<script src="/js/nurseiq.js?v=20261004-responsive-review"></script>
 <script src="/js/exam-card.js"></script>
 <script src="/js/lecture-card.js"></script>
 <script src="/js/academic-reports.js"></script>
@@ -14287,164 +14739,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   #enrollment .enr-tab-btn{min-height:46px!important;padding:9px 12px!important;font-size:12px!important;}
 }
 </style>
-<script id="nchsm-loading-progress-controller">(function(){var p=0,t=null;function paint(n,label){p=Math.max(p,Math.min(99,n));var f=document.getElementById("progress-fill"),x=document.getElementById("nchsm-loading-percent"),s=document.getElementById("progress-text");if(f)f.style.width=p+"%";if(x)x.textContent=Math.round(p)+"%";if(s&&label)s.textContent=label}window.nchsmLoadingProgress=function(n,label){paint(n,label)};window.nchsmFinishLoading=function(){paint(100,"Portal ready");if(t)clearInterval(t);setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.style.transition="opacity .25s ease";l.style.opacity="0";setTimeout(function(){l.style.display="none"},260)}},160)};function start(){paint(8,"Starting secure session…");var a=[[20,"Checking authentication…"],[38,"Loading student profile…"],[55,"Preparing dashboard…"],[70,"Loading academic data…"],[84,"Finalizing portal…"],[94,"Almost ready"]],i=0;t=setInterval(function(){if(i<a.length){paint(a[i][0],a[i][1]);i++}else clearInterval(t)},500)}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start()})();</script><!-- ============================================================
-     NCHSM FINAL MOBILE SCROLL ARCHITECTURE
-     SINGLE SOURCE OF TRUTH — DO NOT ADD ANOTHER SCROLL PATCH
-     ============================================================ -->
-<style id="nchsm-final-scroll-architecture">
-@media (max-width: 799px) {
-  html {
-    height: auto !important;
-    min-height: 100% !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    overscroll-behavior-y: none !important;
-    -webkit-overflow-scrolling: auto !important;
-  }
-
-  body {
-    height: auto !important;
-    min-height: 100% !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    overscroll-behavior-y: none !important;
-    touch-action: pan-y !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  #app-content,
-  #app-content > .container,
-  #main-content.main,
-  #main-content.main > .tab-content,
-  #cats.tab-content {
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-sizing: border-box !important;
-  }
-
-  #main-content.main {
-    margin: 0 !important;
-    padding-bottom: calc(56px + env(safe-area-inset-bottom)) !important;
-    overscroll-behavior-y: none !important;
-    -webkit-overflow-scrolling: auto !important;
-  }
-
-  #cats,
-  #cats .assessment-dashboard,
-  #cats .section-card,
-  #cats .current-section,
-  #cats .completed-section,
-  #cats .analytics-card,
-  #cats .current-list,
-  #cats .assessment-nav {
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-sizing: border-box !important;
-  }
-
-  /* The page owns vertical scrolling. The table owns horizontal scrolling. */
-  #cats .completed-table-wrap,
-  #cats .completed-section .table-wrap {
-    display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    overscroll-behavior-x: contain !important;
-    overscroll-behavior-y: none !important;
-    touch-action: pan-x pan-y !important;
-    -webkit-overflow-scrolling: touch !important;
-    box-sizing: border-box !important;
-    padding-bottom: 8px !important;
-  }
-
-  #cats .completed-table-wrap > .assessment-table,
-  #cats .completed-section .table-wrap > .assessment-table {
-    width: max-content !important;
-    min-width: 900px !important;
-    max-width: none !important;
-    margin: 0 !important;
-    table-layout: auto !important;
-  }
-
-  #cats .completed-table-wrap th,
-  #cats .completed-table-wrap td,
-  #cats .completed-section .table-wrap th,
-  #cats .completed-section .table-wrap td {
-    white-space: nowrap !important;
-  }
-}
-</style>
-<script id="nchsm-final-scroll-guard">
-(function () {
-  'use strict';
-
-  // Deliberately do NOT listen for touchmove/wheel and do NOT call preventDefault.
-  // Vertical scrolling belongs to the browser/page; only the assessment table
-  // gets a horizontal overflow container.
-  function enforceMobileScrollArchitecture() {
-    if (window.innerWidth > 799) return;
-
-    var html = document.documentElement;
-    var body = document.body;
-    var main = document.getElementById('main-content');
-    var cats = document.getElementById('cats');
-    var tableWrap = cats && cats.querySelector('.completed-table-wrap');
-
-    [html, body].forEach(function (el) {
-      if (!el) return;
-      el.style.setProperty('height', 'auto', 'important');
-      el.style.setProperty('min-height', '100%', 'important');
-      el.style.setProperty('overflow-x', 'hidden', 'important');
-      el.style.setProperty('overflow-y', 'auto', 'important');
-      el.style.setProperty('overscroll-behavior-y', 'none', 'important');
-    });
-
-    if (main) {
-      main.style.setProperty('height', 'auto', 'important');
-      main.style.setProperty('min-height', '0', 'important');
-      main.style.setProperty('max-height', 'none', 'important');
-      main.style.setProperty('overflow', 'visible', 'important');
-      main.style.setProperty('overscroll-behavior-y', 'none', 'important');
-    }
-
-    if (cats) {
-      cats.style.setProperty('height', 'auto', 'important');
-      cats.style.setProperty('max-height', 'none', 'important');
-      cats.style.setProperty('overflow', 'visible', 'important');
-    }
-
-    if (tableWrap) {
-      tableWrap.style.setProperty('overflow-x', 'auto', 'important');
-      tableWrap.style.setProperty('overflow-y', 'hidden', 'important');
-      tableWrap.style.setProperty('touch-action', 'pan-x pan-y', 'important');
-      tableWrap.style.setProperty('overscroll-behavior-x', 'contain', 'important');
-      tableWrap.style.setProperty('overscroll-behavior-y', 'none', 'important');
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', enforceMobileScrollArchitecture, { once: true });
-  } else {
-    enforceMobileScrollArchitecture();
-  }
-
-  window.addEventListener('resize', enforceMobileScrollArchitecture, { passive: true });
-  window.addEventListener('orientationchange', function () {
-    setTimeout(enforceMobileScrollArchitecture, 50);
-  }, { passive: true });
-})();
-</script>
-
-
-</body>
+<script id="nchsm-loading-progress-controller">(function(){var p=0,t=null;function paint(n,label){p=Math.max(p,Math.min(99,n));var f=document.getElementById("progress-fill"),x=document.getElementById("nchsm-loading-percent"),s=document.getElementById("progress-text");if(f)f.style.width=p+"%";if(x)x.textContent=Math.round(p)+"%";if(s&&label)s.textContent=label}window.nchsmLoadingProgress=function(n,label){paint(n,label)};window.nchsmFinishLoading=function(){paint(100,"Portal ready");if(t)clearInterval(t);setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.style.transition="opacity .25s ease";l.style.opacity="0";setTimeout(function(){l.style.display="none"},260)}},160)};function start(){paint(8,"Starting secure session…");var a=[[20,"Checking authentication…"],[38,"Loading student profile…"],[55,"Preparing dashboard…"],[70,"Loading academic data…"],[84,"Finalizing portal…"],[94,"Almost ready"]],i=0;t=setInterval(function(){if(i<a.length){paint(a[i][0],a[i][1]);i++}else clearInterval(t)},500)}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start()})();</script></body>
 <style id="nchsm-final-reference-lock">
 /* FINAL VISUAL LOCK — keeps the desktop dashboard close to the supplied reference image. */
 @media (min-width: 901px){
@@ -14845,10 +15140,9 @@ function renderClinical(filter){var list=document.getElementById('clinical-list'
 function add(prefill){var procedure=prefill||prompt('Procedure / clinical activity:','IV cannulation');if(!procedure)return;var v={id:String(Date.now()),procedure:procedure,facility:prompt('Facility:','')||'',department:prompt('Department/Ward:','')||'',rotation:prompt('Rotation / block:','')||'',date:prompt('Date (YYYY-MM-DD):',new Date().toISOString().slice(0,10))||'',supervisor:prompt('Supervisor/Preceptor:','')||'',status:prompt('Status (Pending/Verified):','Pending')||'Pending',remarks:prompt('Remarks:','')||''};var d=load();d.unshift(v);save(d);renderClinical()}
 function renderHelp(q){var b=document.getElementById('help-articles');if(!b)return;q=(q||'').toLowerCase();b.innerHTML=HELP.filter(function(a){return !q||(a[0]+' '+a[1]).toLowerCase().indexOf(q)>=0}).map(function(a){return'<article class="help-item"><h3>'+esc(a[0])+'</h3><p>'+esc(a[1])+'</p></article>'}).join('')}
 function renderDates(){var b=document.getElementById('important-dates-list');if(!b)return;var arr=['Check Academic Calendar for registration deadlines','Check Timetable for current clinical and class schedules','Check Exam Card for examination eligibility and pending approvals','Check Academic Reports when results are published'];b.innerHTML=arr.map(function(x){return'<div class="date-row"><strong>'+esc(x)+'</strong><span>Portal information</span></div>'}).join('')}
-function pending(){var d=document.getElementById('dashboard');if(!d||document.getElementById('nchsm-pending-panel'))return;var p=document.createElement('section');p.id='nchsm-pending-panel';p.className='nchsm-pending-panel';p.innerHTML='<div class="nchsm-card" style="padding:18px"><h2 style="margin:0">Pending Actions</h2><p style="margin:4px 0;color:#64748b">Quick access to the areas most likely to need attention.</p><div class="pending-grid" style="margin-top:14px">'+[['fa-book','Unit Registration','hub-register'],['fa-money-bill-wave','Finance','finance'],['fa-id-card','Exam Card','hub-exam-card'],['fa-calendar-days','Timetable','hub-timetable']].map(function(x){return'<div class="pending-item" data-tab="'+x[2]+'"><i class="fas '+x[0]+'"></i>'+x[1]+'<strong>Open module →</strong></div>'}).join('')+'</div></div>';var h=d.querySelector('.nchsm-hero');if(h&&h.parentNode===d){d.insertBefore(p,h.nextSibling);}else{d.prepend(p);}p.addEventListener('click',function(e){var a=e.target.closest('.pending-item');if(a&&window.showTab)window.showTab(a.dataset.tab)})}
 function search(){if(document.getElementById('nchsm-search-overlay'))return;var o=document.createElement('div');o.id='nchsm-search-overlay';o.className='nchsm-search-overlay';o.innerHTML='<div class="nchsm-search-dialog"><input id="nchsm-global-search" placeholder="Search the student portal…" autocomplete="off"><div id="nchsm-search-results" class="nchsm-search-results"></div></div>';document.body.appendChild(o);var items=[];document.querySelectorAll('[data-tab]').forEach(function(a){var id=a.getAttribute('data-tab'),t=(a.innerText||a.textContent||'').trim();if(id&&t&&!items.some(function(v){return v.id===id}))items.push({id:id,text:t})});function draw(q){q=(q||'').toLowerCase();var r=items.filter(function(v){return !q||v.text.toLowerCase().indexOf(q)>=0});document.getElementById('nchsm-search-results').innerHTML=r.slice(0,30).map(function(v){return'<div class="search-result" data-tab="'+esc(v.id)+'"><i class="fas fa-arrow-right"></i>'+esc(v.text)+'</div>'}).join('')||'<div style="padding:20px;color:#64748b">No matching portal section.</div>'}window.nchsmOpenSearch=function(){o.style.display='block';document.getElementById('nchsm-global-search').focus();draw('')};document.getElementById('nchsm-global-search').addEventListener('input',function(){draw(this.value)});o.addEventListener('click',function(e){if(e.target===o)o.style.display='none';var r=e.target.closest('.search-result');if(r){o.style.display='none';if(window.showTab)window.showTab(r.dataset.tab)}});document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();window.nchsmOpenSearch()}if(e.key==='Escape')o.style.display='none'})}
-function boot(){var a=document.getElementById('clinical-add-entry');if(a)a.onclick=function(){add()};var s=document.getElementById('clinical-search');if(s)s.oninput=function(){renderClinical(s.value)};var l=document.getElementById('clinical-list');if(l)l.onclick=function(e){var b=e.target.closest('.clinical-delete');if(b&&confirm('Delete this clinical entry?')){save(load().filter(function(v){return v.id!==b.dataset.id}));renderClinical(s?s.value:'')}};var c=document.getElementById('procedure-chips');if(c){c.innerHTML=PROCEDURES.map(function(v){return'<button class="procedure-chip" type="button" data-procedure="'+esc(v)+'">'+esc(v)+'</button>'}).join('');c.onclick=function(e){var b=e.target.closest('.procedure-chip');if(b)add(b.dataset.procedure)}}var hs=document.getElementById('help-search');if(hs)hs.oninput=function(){renderHelp(hs.value)};var ht=document.getElementById('help-new-ticket');if(ht)ht.onclick=function(){if(window.showTab)window.showTab('support-tickets')};var ca=document.getElementById('open-academic-calendar');if(ca)ca.onclick=function(){if(window.showTab)window.showTab('calendar')};renderClinical();renderHelp();renderDates();pending();search()}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();document.addEventListener('appReady',function(){setTimeout(function(){pending();renderClinical();renderDates()},250)});
+function boot(){var a=document.getElementById('clinical-add-entry');if(a)a.onclick=function(){add()};var s=document.getElementById('clinical-search');if(s)s.oninput=function(){renderClinical(s.value)};var l=document.getElementById('clinical-list');if(l)l.onclick=function(e){var b=e.target.closest('.clinical-delete');if(b&&confirm('Delete this clinical entry?')){save(load().filter(function(v){return v.id!==b.dataset.id}));renderClinical(s?s.value:'')}};var c=document.getElementById('procedure-chips');if(c){c.innerHTML=PROCEDURES.map(function(v){return'<button class="procedure-chip" type="button" data-procedure="'+esc(v)+'">'+esc(v)+'</button>'}).join('');c.onclick=function(e){var b=e.target.closest('.procedure-chip');if(b)add(b.dataset.procedure)}}var hs=document.getElementById('help-search');if(hs)hs.oninput=function(){renderHelp(hs.value)};var ht=document.getElementById('help-new-ticket');if(ht)ht.onclick=function(){if(window.showTab)window.showTab('support-tickets')};var ca=document.getElementById('open-academic-calendar');if(ca)ca.onclick=function(){if(window.showTab)window.showTab('calendar')};renderClinical();renderHelp();renderDates();search()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();document.addEventListener('appReady',function(){setTimeout(function(){renderClinical();renderDates()},250)});
 })();
 </script>
 </html>
