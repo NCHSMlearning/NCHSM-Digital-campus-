@@ -10379,8 +10379,14 @@
                 <!-- Row 1 -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                     <div>
-                        <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">Exam Title *</label>
-                        <input type="text" id="exam_title" placeholder="e.g., End of Term Exam" required style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: white; font-size: 14px; outline: none;">
+                        <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">
+                            Exam Name
+                            <span style="font-weight: 400; font-size: 10px; color: #94a3b8; margin-left: 8px;">
+                                <i class="fas fa-lock"></i> Automatically generated from Course/Unit + Exam Type
+                            </span>
+                        </label>
+                        <input type="text" id="exam_title" data-auto-generated="true" placeholder="Select a Course/Unit and Exam Type" readonly required
+                               style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; font-size: 14px; outline: none; cursor: not-allowed;">
                     </div>
                     <div>
                         <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">Exam Type *</label>
@@ -10554,7 +10560,7 @@
                 <!-- Course Searchable Dropdown -->
                 <div>
                     <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">
-                        Course/Unit (Optional)
+                        Course/Unit *
                         <span style="font-weight: 400; font-size: 10px; color: #94a3b8; margin-left: 8px;">
                             <i class="fas fa-search"></i> Type to search
                         </span>
@@ -10589,7 +10595,7 @@
                     </div>
                     
                     <div style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap;">
-                        <span><i class="fas fa-info-circle"></i> Type to search, click to select</span>
+                        <span><i class="fas fa-info-circle"></i> Required — type to search, then click to select</span>
                         <span id="createSelectedCourseDisplay" style="color: #7c3aed; font-weight: 500; display: none;">
                             <i class="fas fa-check-circle"></i> Selected: <span id="createSelectedCourseName"></span>
                         </span>
