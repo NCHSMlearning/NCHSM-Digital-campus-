@@ -1360,8 +1360,6 @@ function initExams() {
     loadAvailableClassesForExam();
     
     const programSelect = document.getElementById('exam_program');
-    const blockSelect = document.getElementById('exam_block_term');
-    
     if (typeof initCreateCourseDropdown === 'function') initCreateCourseDropdown(programSelect?.value || '');
     
     if (DOM.examSearch) DOM.examSearch.addEventListener('input', filterExamsTable);
@@ -1369,25 +1367,35 @@ function initExams() {
     if (DOM.statusFilter) DOM.statusFilter.addEventListener('change', filterExamsTable);
     if (DOM.monthFilter) DOM.monthFilter.addEventListener('change', filterExamsTable);
     
-    if (programSelect) {
-        const newPS = programSelect.cloneNode(true);
-        programSelect.parentNode.replaceChild(newPS, programSelect);
-        document.getElementById('exam_program').addEventListener('change', function() {
-            updateBlockTermOptions('exam_program', 'exam_block_term');
-            loadAvailableClassesForExam();
-            loadStudentsForNotification();
-            if (typeof updateCreateCourseDropdown === 'function') updateCreateCourseDropdown();
+    // ✅ Event delegation — survives dropdown replacement by script.js
+    // Bound ONCE on document; guard against double-binding across re-inits.
+    if (!window.__examDelegationBound) {
+        window.__examDelegationBound = true;
+
+        document.addEventListener('change', function(e) {
+            if (!e.target) return;
+
+            if (e.target.id === 'exam_program') {
+                console.log('🎯 Program changed via delegation:', e.target.value);
+                updateBlockTermOptions('exam_program', 'exam_block_term');
+                loadAvailableClassesForExam();
+                loadStudentsForNotification();
+                if (typeof updateCreateCourseDropdown === 'function') updateCreateCourseDropdown();
+            }
+
+            if (e.target.id === 'exam_block_term') {
+                console.log('🎯 Block changed via delegation:', e.target.value);
+                loadStudentsForNotification();
+            }
         });
     }
     
-    if (blockSelect) {
-        const newBS = blockSelect.cloneNode(true);
-        blockSelect.parentNode.replaceChild(newBS, blockSelect);
-        document.getElementById('exam_block_term').addEventListener('change', loadStudentsForNotification);
-    }
-    
     setTimeout(() => {
-        if (programSelect?.value) { updateBlockTermOptions('exam_program', 'exam_block_term'); loadAvailableClassesForExam(); }
+        const ps = document.getElementById('exam_program');
+        if (ps?.value) {
+            updateBlockTermOptions('exam_program', 'exam_block_term');
+            loadAvailableClassesForExam();
+        }
         loadStudentsForNotification();
     }, 500);
     
