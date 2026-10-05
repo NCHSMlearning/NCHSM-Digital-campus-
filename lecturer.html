@@ -3762,18 +3762,23 @@
                     Exam Type *
                 </label>
 
-                <select id="exam_type"
-                        required
-                        style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:14px; outline:none;">
-
-                    <option value="">-- Select --</option>
-                    <option value="EXAM">📝 Final Exam</option>
-                    <option value="CAT">📋 CAT</option>
-                    <option value="CAT_1">📋 CAT 1</option>
-                    <option value="CAT_2">📋 CAT 2</option>
-                    <option value="ASSIGNMENT">📄 Assignment</option>
-
-                </select>
+               <select id="exam_type" required style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: white; font-size: 14px; outline: none;">
+    <option value="">-- Select --</option>
+    <optgroup label="🎯 Main Exams (Count Toward Final Grade)">
+        <option value="EXAM">📝 Final Exam</option>
+        <option value="END_TERM">📚 End of Term Exam</option>
+        <option value="SUPPLEMENTARY">🔁 Supplementary Exam</option>
+    </optgroup>
+    <optgroup label="📋 CATs & Formative (Practice Only)">
+        <option value="CAT">📋 CAT</option>
+        <option value="CAT_1">📋 CAT 1</option>
+        <option value="CAT_2">📋 CAT 2</option>
+        <option value="OSCE">🩺 OSCE</option>
+        <option value="PRACTICAL">🔬 Practical</option>
+        <option value="ASSIGNMENT">📄 Assignment</option>
+        <option value="QUIZ">❓ Quiz</option>
+    </optgroup>
+</select>
             </div>
 
 
