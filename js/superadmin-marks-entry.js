@@ -1577,7 +1577,6 @@ async function loadMarksEntry() {
 // LOAD FROM APPROVED REGISTRATIONS
 // Finds approved students, creates blank marks records
 // ============================================================
-
 async function loadFromApprovedRegistrations(program, block, unit, year, unitCode) {
     const container = document.getElementById('me_marks_container');
     
@@ -1680,40 +1679,89 @@ async function loadFromApprovedRegistrations(program, block, unit, year, unitCod
         }
         
         // ==========================================
-        // Fetch student names
+        // FETCH STUDENT DETAILS (resolve UUID → real admission number)
         // ==========================================
-        const studentIds = matchingRegs.map(r => r.student_id);
-        const { data: students } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, block, program')
-            .in('student_id', studentIds);
+        const userIds = matchingRegs.map(r => r.student_id);
         
-        const studentMap = {};
+        const { data: students, error: studentErr } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, student_id, admission_number, full_name')
+            .in('user_id', userIds);
+        
+        if (studentErr) {
+            console.warn('⚠️ Could not fetch student profiles:', studentErr);
+        }
+        
+        // Build lookup: UUID (user_id) → student details
+        const studentLookup = {};
         (students || []).forEach(s => {
-            studentMap[s.student_id] = s.full_name || 'Unknown';
+            if (s.user_id) {
+                const rawAdmission = s.admission_number || s.student_id;
+                const isUUID = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
+                
+                studentLookup[s.user_id] = {
+                    full_name: s.full_name || 'Unknown',
+                    admission_number: (!isUUID && rawAdmission) ? rawAdmission : null
+                };
+            }
         });
+        
+        console.log(`📋 Resolved ${Object.keys(studentLookup).length} students`);
+        console.log('📋 Sample:', Object.entries(studentLookup).slice(0, 3));
         
         // ==========================================
         // Create blank marks records in student_marks
         // ==========================================
         const now = new Date().toISOString();
-        const marksToInsert = matchingRegs.map(reg => ({
-            admission_number: reg.student_id,
-            student_name: studentMap[reg.student_id] || 'Unknown',
-            block: block,
-            subject_name: unit,
-            academic_year: parseInt(year),
-            assessment_type: 'full',
-            cat1_score: 0,
-            cat2_score: 0,
-            exam_score: 0,
-            final_score: 0,
-            grade: '',
-            approval_status: 'draft',
-            published: false,
-            created_at: now,
-            updated_at: now
-        }));
+        
+        const marksToInsert = matchingRegs.map(reg => {
+            const uuid = reg.student_id;
+            const student = studentLookup[uuid];
+            
+            if (!student) {
+                console.warn(`⚠️ No profile found for UUID: ${uuid}`);
+                return null;
+            }
+            
+            if (!student.admission_number) {
+                console.warn(`⚠️ No valid admission number for ${student.full_name} (${uuid})`);
+                return null;
+            }
+            
+            console.log(`   ✅ ${student.full_name} | ${student.admission_number}`);
+            
+            return {
+                admission_number: student.admission_number,
+                student_id: uuid,
+                student_name: student.full_name,
+                block: block,
+                subject_name: unit,
+                academic_year: parseInt(year),
+                assessment_type: 'full',
+                cat1_score: 0,
+                cat2_score: 0,
+                exam_score: 0,
+                final_score: 0,
+                grade: '',
+                approval_status: 'draft',
+                published: false,
+                program: program,
+                created_at: now,
+                updated_at: now
+            };
+        }).filter(Boolean);
+        
+        if (marksToInsert.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b;">Could not resolve student details</h3>
+                    <p style="color: #64748b;">Student profiles don't have valid admission numbers set.</p>
+                    <p style="color: #94a3b8; font-size: 12px;">Check the consolidated_user_profiles_table.</p>
+                </div>
+            `;
+            return;
+        }
         
         console.log(`📝 Creating ${marksToInsert.length} blank marks records...`);
         
@@ -1774,8 +1822,6 @@ async function loadFromApprovedRegistrations(program, block, unit, year, unitCod
         }
     }
 }
-
-
 // ============================================================
 // APPROVE ALL PENDING REGISTRATIONS FOR A UNIT
 // ============================================================
@@ -3498,7 +3544,6 @@ async function openMarksStudentManager() {
 // ============================================================
 // ADD SELECTED STUDENTS TO UNIT - SUPER ADMIN (NO BLOCK CHECK)
 // ============================================================
-
 async function addSelectedStudentsToUnit() {
     const selectedCheckboxes = document.querySelectorAll('#availableStudentsList input:checked');
     
@@ -3543,24 +3588,71 @@ async function addSelectedStudentsToUnit() {
     updateLoadingProgress(10, 1, 'Processing...');
     
     try {
-        // ✅ Use window.sb directly
         if (!window.sb) throw new Error('Database not available');
         
+        // ==========================================
+        // STEP 1: Collect student data from checkboxes
+        // ==========================================
+        const studentData = [];
+        selectedCheckboxes.forEach(cb => {
+            studentData.push({
+                uuid: cb.value,
+                name: cb.dataset.name || 'Unknown',
+                block: cb.dataset.block || block
+            });
+        });
+        
+        updateLoadingProgress(30, 1, 'Resolving admission numbers...');
+        
+        // ==========================================
+        // STEP 2: Resolve UUIDs → real admission numbers
+        // ==========================================
+        const uuids = studentData.map(s => s.uuid);
+        
+        const { data: profiles, error: profileErr } = await window.sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, student_id, admission_number, full_name')
+            .in('user_id', uuids);
+        
+        if (profileErr) {
+            console.error('❌ Could not fetch profiles:', profileErr);
+            throw new Error('Could not fetch student profiles');
+        }
+        
+        const profileLookup = {};
+        (profiles || []).forEach(p => {
+            const rawAdmission = p.admission_number || p.student_id;
+            const isUUID = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
+            
+            profileLookup[p.user_id] = {
+                full_name: p.full_name || 'Unknown',
+                admission_number: (!isUUID && rawAdmission) ? rawAdmission : null
+            };
+        });
+        
+        updateLoadingProgress(50, 1, 'Adding students to unit...');
+        
+        // ==========================================
+        // STEP 3: Insert each student with correct admission number
+        // ==========================================
         let addedCount = 0;
         let skippedCount = 0;
         
-        updateLoadingProgress(30, 1, 'Checking existing records...');
-        
-        for (const checkbox of selectedCheckboxes) {
-            const admission = checkbox.value;
-            const studentName = checkbox.dataset.name || 'Unknown';
-            const studentBlock = checkbox.dataset.block || block;
+        for (const student of studentData) {
+            const profile = profileLookup[student.uuid];
+            
+            if (!profile || !profile.admission_number) {
+                console.warn(`⚠️ Skipping ${student.name}: no valid admission number`);
+                continue;
+            }
+            
+            const realAdmission = profile.admission_number;
             
             // Check if already enrolled
             const { data: existing, error: checkError } = await window.sb
                 .from('student_marks')
                 .select('id')
-                .eq('admission_number', admission)
+                .eq('admission_number', realAdmission)
                 .eq('block', block)
                 .eq('subject_name', unit)
                 .eq('academic_year', year);
@@ -3575,25 +3667,25 @@ async function addSelectedStudentsToUnit() {
                 continue;
             }
             
-            // Insert with unit block (store original block for reference)
-           const { error: insertError } = await window.sb
-    .from('student_marks')
-    .insert({
-        admission_number: admission,
-        student_name: studentName,
-        block: block,
-        subject_name: unit,
-        academic_year: year,
-        // ✅ REMOVED: program: program,
-        cat1_score: 0,
-        cat2_score: 0,
-        exam_score: 0,
-        final_score: 0,
-        grade: '',
-        assessment_type: 'full',
-        approval_status: 'draft',
-        published: false
-    });
+            const { error: insertError } = await window.sb
+                .from('student_marks')
+                .insert({
+                    admission_number: realAdmission,
+                    student_id: student.uuid,
+                    student_name: profile.full_name,
+                    block: block,
+                    subject_name: unit,
+                    academic_year: year,
+                    cat1_score: 0,
+                    cat2_score: 0,
+                    exam_score: 0,
+                    final_score: 0,
+                    grade: '',
+                    assessment_type: 'full',
+                    approval_status: 'draft',
+                    published: false,
+                    program: program
+                });
             
             if (insertError) {
                 console.error('Error adding student:', insertError);
