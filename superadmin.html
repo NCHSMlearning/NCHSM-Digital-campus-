@@ -10378,16 +10378,7 @@
                 
                 <!-- Row 1 -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                    <div>
-                        <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">
-                            Exam Name
-                            <span style="font-weight: 400; font-size: 10px; color: #94a3b8; margin-left: 8px;">
-                                <i class="fas fa-lock"></i> Automatically generated from Course/Unit + Exam Type
-                            </span>
-                        </label>
-                        <input type="text" id="exam_title" data-auto-generated="true" placeholder="Select a Course/Unit and Exam Type" readonly required
-                               style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; font-size: 14px; outline: none; cursor: not-allowed;">
-                    </div>
+                    <!-- Exam Type FIRST: determines automatic vs manual naming -->
                     <div>
                         <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">Exam Type *</label>
                         <select id="exam_type" required style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: white; font-size: 14px; outline: none;">
@@ -10402,11 +10393,23 @@
                                 <option value="CAT_1">📋 CAT 1</option>
                                 <option value="CAT_2">📋 CAT 2</option>
                                 <option value="OSCE">🩺 OSCE</option>
+                                <option value="RAT">📝 RAT</option>
                                 <option value="PRACTICAL">🔬 Practical</option>
                                 <option value="ASSIGNMENT">📄 Assignment</option>
                                 <option value="QUIZ">❓ Quiz</option>
                             </optgroup>
                         </select>
+                    </div>
+                    <!-- Name SECOND: automatic for Main Exams, manual for other assessments -->
+                    <div>
+                        <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">
+                            Exam / Assessment Name *
+                            <span id="exam_title_helper" style="font-weight: 400; font-size: 10px; color: #94a3b8; margin-left: 8px;">
+                                <i class="fas fa-info-circle"></i> Select Exam Type first
+                            </span>
+                        </label>
+                        <input type="text" id="exam_title" data-auto-generated="false" placeholder="Select Exam Type first" required
+                               style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: white; color: #334155; font-size: 14px; outline: none;">
                     </div>
                     <div>
                         <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">Status</label>
@@ -10418,6 +10421,7 @@
                             <option value="Draft">📝 Draft</option>
                         </select>
                     </div>
+
                     <div>
                         <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">Exam Basis</label>
                         <select id="exam_basis" style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: white; font-size: 14px; outline: none;">
@@ -10555,12 +10559,13 @@
                             <span id="exam_block_hint">Select a program above to see available blocks/terms</span>
                         </div>
                     </div>
+
                 </div>
                 
                 <!-- Course Searchable Dropdown -->
                 <div>
                     <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">
-                        Course/Unit *
+                        Course/Unit <span id="exam_course_required_marker">*</span>
                         <span style="font-weight: 400; font-size: 10px; color: #94a3b8; margin-left: 8px;">
                             <i class="fas fa-search"></i> Type to search
                         </span>
@@ -10595,7 +10600,7 @@
                     </div>
                     
                     <div style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap;">
-                        <span><i class="fas fa-info-circle"></i> Required — type to search, then click to select</span>
+                        <span id="createCourseHelperText"><i class="fas fa-info-circle"></i> Required for Main Exams — type to search, then click to select</span>
                         <span id="createSelectedCourseDisplay" style="color: #7c3aed; font-weight: 500; display: none;">
                             <i class="fas fa-check-circle"></i> Selected: <span id="createSelectedCourseName"></span>
                         </span>
