@@ -58,145 +58,288 @@ window.debounce = debounce;
 async function sendEmailWithBrevo(to, subject, htmlContent) {
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) return { success: false, error: 'Supabase not available' };
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
-        const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to, subject, html: htmlContent, from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>' })
-        });
-        const data = await response.json();
-        return response.ok && data.success ? { success: true, data } : { success: false, error: data.error || 'Unknown error' };
-    } catch (error) {
-        return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
-    }
-}
+        if (!supabase) return { success: false, error: 'Supabase client not available' };
 
-async function sendEmailWithEdgeFunctionFallback(to, subject, htmlContent) {
-    try {
-        const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ to, subject, html: htmlContent, from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>' })
-        });
-        const data = await response.json();
-        return response.ok && data.success ? { success: true, data } : { success: false, error: data.error || 'Unknown error' };
+        let accessToken = null;
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            accessToken = session?.access_token || null;
+        } catch (_) {}
+
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+        const response = await fetch(
+            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email',
+            {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    to,
+                    subject,
+                    html: htmlContent,
+                    from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>'
+                })
+            }
+        );
+
+        let data = {};
+        try { data = await response.json(); } catch (_) {}
+
+        if (response.ok && data.success !== false) {
+            console.log(`✅ Exam email accepted for ${to}`);
+            return { success: true, data };
+        }
+
+        const error = data.error || data.message || `Email service returned HTTP ${response.status}`;
+        console.error(`❌ Exam email failed for ${to}:`, error, data);
+        return { success: false, error };
     } catch (error) {
-        return { success: false, error: error.message };
+        console.error(`❌ Exam email request failed for ${to}:`, error);
+        return { success: false, error: error.message || 'Network error' };
     }
 }
 
 async function sendExamNotificationEmail(examData, recipients) {
-    if (!recipients || recipients.length === 0) return { sent: 0, total: 0, failed: 0 };
-    const examDate = examData.exam_date ? new Date(examData.exam_date).toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBD';
+    const validRecipients = (recipients || []).filter(
+        s => s && typeof s.email === 'string' && s.email.trim()
+    );
+
+    if (!validRecipients.length) {
+        return {
+            sent: 0,
+            total: recipients?.length || 0,
+            attempted: 0,
+            failed: recipients?.length || 0,
+            errors: ['No recipient records contained an email address.']
+        };
+    }
+
+    const examDate = examData.exam_date
+        ? new Date(examData.exam_date).toLocaleDateString('en-KE', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        })
+        : 'TBD';
     const examTime = examData.exam_start_time || 'TBD';
     const examLink = examData.online_link || examData.exam_link || '#';
     const examTitle = examData.title || examData.exam_name || 'New Exam';
     const examType = examData.exam_type || 'EXAM';
     const examTypeLabel = getExamTypeLabel(examType);
+
     const emailHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
         body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8;}
         .container{max-width:580px;margin:0 auto;padding:20px;}
         .card{background:white;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.1);}
         .header{background:linear-gradient(135deg,#0A3D62,#1a5276);padding:30px 35px;text-align:center;color:white;}
-        .header h1{margin:0;font-size:24px;}
-        .header p{margin:4px 0 0;opacity:0.8;}
-        .body{padding:30px 35px;}
-        .greeting{background:#e8f4f8;border-radius:12px;padding:16px;margin-bottom:20px;border-left:4px solid #10b981;}
-        .greeting p{margin:0;font-size:16px;color:#0A3D62;}
-        .details{background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;}
-        .details h4{margin:0 0 12px 0;color:#1e293b;}
-        .details table{width:100%;border-collapse:collapse;font-size:14px;}
-        .details td{padding:8px 0;border-bottom:1px solid #e2e8f0;}
-        .details .label{color:#64748B;font-weight:500;}
-        .details .value{color:#0A3D62;font-weight:600;text-align:right;}
-        .details tr:last-child td{border-bottom:none;}
+        .header h1{margin:0;font-size:24px;}.header p{margin:4px 0 0;opacity:.8;}
+        .body{padding:30px 35px;}.greeting{background:#e8f4f8;border-radius:12px;padding:16px;margin-bottom:20px;border-left:4px solid #10b981;}
+        .greeting p{margin:0;font-size:16px;color:#0A3D62;}.details{background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;}
+        .details h4{margin:0 0 12px;color:#1e293b;}.details table{width:100%;border-collapse:collapse;font-size:14px;}
+        .details td{padding:8px 0;border-bottom:1px solid #e2e8f0;}.details .label{color:#64748B;font-weight:500;}
+        .details .value{color:#0A3D62;font-weight:600;text-align:right;}.details tr:last-child td{border-bottom:none;}
         .btn{display:inline-block;background:#0A3D62;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:16px;}
-        .footer{background:#F8FAFC;padding:20px;text-align:center;border-top:1px solid #E2E8F0;font-size:0.85rem;color:#64748B;}
+        .footer{background:#F8FAFC;padding:20px;text-align:center;}
     </style></head><body><div class="container"><div class="card">
-    <div class="header"><h1>📝 ${examTypeLabel} Posted!</h1><p>Nakuru College of Health Sciences and Management</p></div>
-    <div class="body"><div class="greeting"><p>👋 <strong>Dear Student,</strong></p><p style="margin:8px 0 0;color:#1e293b;">A new exam has been posted for your program. Please review the details below.</p></div>
-    <div class="details"><h4>📋 Exam Details</h4><table>
-    <tr><td class="label">📝 Exam Title</td><td class="value"><strong>${escapeHtml(examTitle)}</strong></td></tr>
-    <tr><td class="label">🎓 Program</td><td class="value">${escapeHtml(examData.target_program || examData.program_type || 'N/A')}</td></tr>
-    <tr><td class="label">📚 Block/Term</td><td class="value">${escapeHtml(examData.block || 'N/A')}</td></tr>
-    <tr><td class="label">📅 Date</td><td class="value">${examDate}</td></tr>
-    <tr><td class="label">⏰ Time</td><td class="value">${examTime}</td></tr>
-    <tr><td class="label">⏱️ Duration</td><td class="value">${examData.duration_minutes || 'N/A'} minutes</td></tr>
-    <tr><td class="label">📊 Total Marks</td><td class="value">${examData.marks_out_of || examData.total_marks || 100}</td></tr>
-    <tr><td class="label">✅ Pass Mark</td><td class="value">${examData.pass_mark || 50}%</td></tr>
-    ${examLink && examLink !== '#' ? '<tr><td class="label">🔗 Exam Link</td><td class="value"><a href="'+escapeHtml(examLink)+'" target="_blank">Click Here</a></td></tr>' : ''}
-    </table></div>
-    ${examLink && examLink !== '#' ? '<div style="text-align:center;margin:20px 0;"><a href="'+escapeHtml(examLink)+'" target="_blank" class="btn">🚪 Take Exam</a></div>' : ''}
-    <div style="background:#fef3c7;border-radius:12px;padding:12px 16px;border-left:4px solid #f59e0b;margin-top:16px;"><p style="margin:0;font-size:13px;color:#78350F;"><strong>Important:</strong> Please ensure you have a stable internet connection before starting the exam.</p></div>
-    </div><div class="footer"><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p style="font-size:0.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p></div>
+        <div class="header"><h1>📝 New Examination Notice</h1><p>Nakuru College of Health Sciences and Management</p></div>
+        <div class="body">
+            <div class="greeting"><p>Dear Student, a new assessment has been scheduled for you.</p></div>
+            <div class="details"><h4>Examination Details</h4><table>
+                <tr><td class="label">Assessment</td><td class="value">${escapeHtml(examTitle)}</td></tr>
+                <tr><td class="label">Type</td><td class="value">${escapeHtml(examTypeLabel)}</td></tr>
+                <tr><td class="label">Date</td><td class="value">${escapeHtml(examDate)}</td></tr>
+                <tr><td class="label">Time</td><td class="value">${escapeHtml(examTime)}</td></tr>
+                <tr><td class="label">Duration</td><td class="value">${examData.duration_minutes || 60} minutes</td></tr>
+                <tr><td class="label">Marks</td><td class="value">${examData.marks_out_of || examData.total_marks || 100}</td></tr>
+                <tr><td class="label">Pass Mark</td><td class="value">${examData.pass_mark || 50}%</td></tr>
+                ${examLink && examLink !== '#' ? `<tr><td class="label">Exam Link</td><td class="value"><a href="${escapeHtml(examLink)}" target="_blank">Open Exam</a></td></tr>` : ''}
+            </table></div>
+            ${examLink && examLink !== '#' ? `<div style="text-align:center;margin:20px 0;"><a href="${escapeHtml(examLink)}" target="_blank" class="btn">🚪 Take Exam</a></div>` : ''}
+            <div style="background:#fef3c7;border-radius:12px;padding:12px 16px;border-left:4px solid #f59e0b;margin-top:16px;">
+                <p style="margin:0;font-size:13px;color:#78350F;"><strong>Important:</strong> Please ensure you have a stable internet connection before starting the exam.</p>
+            </div>
+        </div>
+        <div class="footer"><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
+        <p style="font-size:.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p></div>
     </div></div></body></html>`;
-    let sentCount = 0, failedCount = 0;
-    for (const student of recipients) {
-        if (!student.email) { failedCount++; continue; }
-        try {
-            const result = await sendEmailWithBrevo(student.email, `📝 ${examTypeLabel}: ${examTitle}`, emailHtml);
-            if (result.success) sentCount++; else failedCount++;
-            await new Promise(r => setTimeout(r, 200));
-        } catch (error) { failedCount++; }
+
+    console.log(`📧 EMAIL NOTIFICATION: attempting ${validRecipients.length} of ${recipients.length} recipients`);
+
+    let sentCount = 0;
+    let failedCount = 0;
+    const errors = [];
+
+    // Send in small concurrent batches instead of waiting 200ms for every student.
+    const batchSize = 8;
+    for (let i = 0; i < validRecipients.length; i += batchSize) {
+        const batch = validRecipients.slice(i, i + batchSize);
+        const results = await Promise.all(batch.map(student =>
+            sendEmailWithBrevo(
+                student.email.trim(),
+                `📝 ${examTypeLabel}: ${examTitle}`,
+                emailHtml
+            )
+        ));
+
+        results.forEach((result, index) => {
+            if (result.success) {
+                sentCount++;
+            } else {
+                failedCount++;
+                if (errors.length < 10) {
+                    errors.push(`${batch[index].email}: ${result.error || 'Unknown email error'}`);
+                }
+            }
+        });
     }
+
     try {
         const supabase = window.sb || window.supabase;
-        if (supabase) await supabase.from('exam_notifications').insert([{ exam_id: examData.id, recipients: recipients.length, sent_count: sentCount, failed_count: failedCount, sent_at: new Date().toISOString() }]);
-    } catch (error) { console.warn('Could not save notification record:', error); }
-    return { sent: sentCount, failed: failedCount, total: recipients.length };
+        if (supabase && examData.id) {
+            await supabase.from('exam_notifications').insert([{
+                exam_id: examData.id,
+                recipients: validRecipients.length,
+                sent_count: sentCount,
+                failed_count: failedCount,
+                sent_at: new Date().toISOString()
+            }]);
+        }
+    } catch (error) {
+        console.warn('Could not save notification record:', error);
+    }
+
+    console.log('📧 EMAIL NOTIFICATION COMPLETE:', {
+        requested: recipients.length,
+        attempted: validRecipients.length,
+        sent: sentCount,
+        failed: failedCount,
+        errors
+    });
+
+    return {
+        sent: sentCount,
+        failed: failedCount,
+        total: recipients.length,
+        attempted: validRecipients.length,
+        errors
+    };
 }
 
 let selectedStudentsForNotification = [];
-let allStudentsForProgram = [];
+let allStudentsForProgram = [];   // ALL approved students in selected program
+let allStudentsForBlock = [];     // Students in selected program + selected block
 
-document.addEventListener('DOMContentLoaded', function() {
-    document.addEventListener('change', function(e) {
-        if (e.target && e.target.id === 'exam_notify_target') {
-            const container = document.getElementById('specific_students_container');
-            if (container) container.style.display = e.target.value === 'specific' ? 'block' : 'none';
-        }
+function getNotificationTarget() {
+    return document.getElementById('exam_notify_target')?.value || 'all';
+}
+
+function getNotificationRecipientsForCount() {
+    const target = getNotificationTarget();
+
+    if (target === 'specific') {
+        return [...selectedStudentsForNotification];
+    }
+
+    if (target === 'program') {
+        return [...allStudentsForProgram];
+    }
+
+    if (target === 'block') {
+        return [...allStudentsForBlock];
+    }
+
+    // "all" means the current Program + current Block.
+    return [...allStudentsForBlock];
+}
+
+function updateNotificationCount() {
+    const countEl = document.getElementById('student_notify_count');
+    if (!countEl) return;
+
+    const recipients = getNotificationRecipientsForCount();
+    countEl.textContent = `${recipients.length} students`;
+
+    console.log('📊 Notification target/count:', {
+        target: getNotificationTarget(),
+        programStudents: allStudentsForProgram.length,
+        blockStudents: allStudentsForBlock.length,
+        selectedStudents: selectedStudentsForNotification.length,
+        recipients: recipients.length
     });
-});
+}
 
 async function loadStudentsForNotification() {
     const program = document.getElementById('exam_program')?.value;
     const block = document.getElementById('exam_block_term')?.value;
-    console.log('📋 Loading students for:', { program, block });
+
+    console.log('📋 Loading notification students:', { program, block });
+
     if (!program) {
         allStudentsForProgram = [];
-        const countEl = document.getElementById('student_notify_count');
-        if (countEl) countEl.textContent = '0 students';
+        allStudentsForBlock = [];
+        selectedStudentsForNotification = [];
+        updateNotificationCount();
+        updateSelectedStudentsDisplay();
         return;
     }
+
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) return;
-        let query = supabase.from('consolidated_user_profiles_table')
+        if (!supabase) throw new Error('Supabase client not available');
+
+        // IMPORTANT: always load the complete PROGRAM population first.
+        // Do not apply the block filter here, otherwise changing the target
+        // cannot change the count.
+        const { data: programStudents, error: programError } = await supabase
+            .from('consolidated_user_profiles_table')
             .select('user_id, full_name, email, program, block')
-            .eq('role', 'student').eq('status', 'approved').eq('program', program);
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .eq('program', program)
+            .limit(1000);
+
+        if (programError) throw programError;
+
+        allStudentsForProgram = programStudents || [];
+
+        // Derive the selected-block population from the same program dataset.
+        // This keeps the count and the actual recipients consistent.
         if (block && block !== '' && block !== '-- Select --' && block !== '-- Select Block/Term --') {
-            query = query.eq('block', block);
-            console.log(`📋 Filtering by block: ${block}`);
-        } else console.log('📋 No block filter applied - showing all students in program');
-        const { data, error } = await query.limit(500);
-        if (error) throw error;
-        allStudentsForProgram = data || [];
-        console.log(`✅ Loaded ${allStudentsForProgram.length} students for notification`);
-        const countEl = document.getElementById('student_notify_count');
-        if (countEl) countEl.textContent = `${allStudentsForProgram.length} students`;
+            allStudentsForBlock = allStudentsForProgram.filter(
+                s => String(s.block || '').trim() === String(block).trim()
+            );
+        } else {
+            allStudentsForBlock = [];
+        }
+
+        // Remove selections that no longer exist in the current program.
+        const validIds = new Set(allStudentsForProgram.map(s => s.user_id));
+        selectedStudentsForNotification = selectedStudentsForNotification.filter(
+            s => validIds.has(s.user_id)
+        );
+
+        console.log('✅ Notification populations loaded:', {
+            program,
+            block,
+            programCount: allStudentsForProgram.length,
+            blockCount: allStudentsForBlock.length,
+            target: getNotificationTarget()
+        });
+
+        updateNotificationCount();
         updateSelectedStudentsDisplay();
+
     } catch (error) {
-        console.error('Error loading students:', error);
+        console.error('❌ Error loading notification students:', error);
         allStudentsForProgram = [];
-        const countEl = document.getElementById('student_notify_count');
-        if (countEl) countEl.textContent = '0 students';
+        allStudentsForBlock = [];
+        selectedStudentsForNotification = [];
+        updateNotificationCount();
+        updateSelectedStudentsDisplay();
     }
 }
+
 
 function searchStudentsForNotification() {
     const searchTerm = document.getElementById('exam_student_search')?.value?.toLowerCase() || '';
@@ -390,10 +533,15 @@ async function handleAddExam(e){
     const classes=getSelectedClasses(), user=await getCurrentUser(), notifyStudents=document.getElementById('exam_notify_students')?.checked||false, notifyTarget=document.getElementById('exam_notify_target')?.value||'all';
     let recipients=[];
     if(notifyStudents){
-        if(notifyTarget==='specific')recipients=[...selectedStudentsForNotification];
-        else if(notifyTarget==='program')recipients=allStudentsForProgram.filter(s=>s.program===fields.program);
-        else recipients=[...allStudentsForProgram];
-        console.log(`📧 Recipients: ${recipients.length} students (target: ${notifyTarget}, block: ${fields.block})`);
+        if(notifyTarget==='specific'){
+            recipients=[...selectedStudentsForNotification];
+        } else if(notifyTarget==='program'){
+            recipients=[...allStudentsForProgram];
+        } else {
+            // Both "all" and "block" are scoped to the selected Program + Block.
+            recipients=[...allStudentsForBlock];
+        }
+        console.log(`📧 Recipients: ${recipients.length} students (target: ${notifyTarget}, program: ${fields.program}, block: ${fields.block})`);
     }
     try{
         const supabase=window.sb||window.supabase;if(!supabase)throw new Error('Supabase client not available');
@@ -407,7 +555,15 @@ async function handleAddExam(e){
         const {data,error}=await supabase.from('exams').insert(examData).select('id');if(error)throw error;examData.id=data?.[0]?.id;
         let emailResult={sent:0,total:0,failed:0};if(notifyStudents&&recipients.length>0)emailResult=await sendExamNotificationEmail(examData,recipients);
         let feedbackMsg=`✅ "${fields.title}" created successfully!`;
-        if(notifyStudents){if(recipients.length>0){feedbackMsg+=` 📧 ${emailResult.sent} emails sent to ${recipients.length} students.`;if(emailResult.failed>0)feedbackMsg+=` ⚠️ ${emailResult.failed} failed.`;}else feedbackMsg+=' ⚠️ No students found to notify.';}
+        if(notifyStudents){
+        if(recipients.length>0){
+            feedbackMsg+=` 📧 ${emailResult.sent}/${emailResult.attempted || recipients.length} emails sent.`;
+            if(emailResult.failed>0){
+                feedbackMsg+=` ⚠️ ${emailResult.failed} failed.`;
+                if(emailResult.errors?.length) feedbackMsg+=` First error: ${emailResult.errors[0]}`;
+            }
+        }else feedbackMsg+=' ⚠️ No students found to notify.';
+    }
         showFeedback(feedbackMsg,'success');if(e.target)e.target.reset();selectedStudentsForNotification=[];updateSelectedStudentsDisplay();const nc=document.getElementById('exam_notify_students');if(nc)nc.checked=true;ExamCache.clear();loadExams(true);
     }catch(error){showFeedback(`Failed: ${error.message}`,'error');}finally{btn.disabled=false;btn.innerHTML=original;}
 }
@@ -604,7 +760,7 @@ function initExams(){
 }
 
 window.filterExamsTable=filterExamsTable;window.buildExamNameFromCourse=buildExamNameFromCourse;window.updateCreateCourseDropdown=updateCreateCourseDropdown;window.initCreateCourseDropdown=initCreateCourseDropdown;window.loadCoursesForCreateDropdown=loadCoursesForCreateDropdown;window.filterCreateCourseDropdown=filterCreateCourseDropdown;window.selectCreateCourse=selectCreateCourse;window.initEditCourseDropdown=initEditCourseDropdown;window.selectEditCourse=selectEditCourse;window.setEditCourseValue=setEditCourseValue;
-window.sendEmailWithBrevo=sendEmailWithBrevo;window.sendEmailWithEdgeFunctionFallback=sendEmailWithEdgeFunctionFallback;window.sendExamNotificationEmail=sendExamNotificationEmail;window.loadStudentsForNotification=loadStudentsForNotification;window.searchStudentsForNotification=searchStudentsForNotification;window.toggleStudentForNotification=toggleStudentForNotification;window.updateSelectedStudentsDisplay=updateSelectedStudentsDisplay;window.debounce=debounce;
+window.updateNotificationCount=updateNotificationCount;window.getNotificationRecipientsForCount=getNotificationRecipientsForCount;window.sendEmailWithBrevo=sendEmailWithBrevo;window.sendEmailWithEdgeFunctionFallback=sendEmailWithEdgeFunctionFallback;window.sendExamNotificationEmail=sendExamNotificationEmail;window.loadStudentsForNotification=loadStudentsForNotification;window.searchStudentsForNotification=searchStudentsForNotification;window.toggleStudentForNotification=toggleStudentForNotification;window.updateSelectedStudentsDisplay=updateSelectedStudentsDisplay;window.debounce=debounce;
 window.loadExams=loadExams;window.showExamTab=showExamTab;window.deleteExam=deleteExam;window.closeExam=closeExam;window.openEditExamModal=openEditExamModal;window.saveEditedExam=saveEditedExam;window.exportExamsToCSV=exportExamsToCSV;window.handleAddExam=handleAddExam;window.addCustomBlocks=addCustomBlocks;window.addClass=addClass;window.removeClass=removeClass;window.closeEditModal=closeEditModal;window.getSelectedClasses=getSelectedClasses;window.loadAvailableClassesForExam=loadAvailableClassesForExam;window.populateProgramDropdowns=populateProgramDropdowns;window.escapeHtml=window.escapeHtml||escapeHtml;window.getCurrentUser=getCurrentUser;window.ExamCache=ExamCache;window.initExams=initExams;window.openGradeModal=openGradeModal;window.closeGradeModal=closeGradeModal;window.saveGrades=saveGrades;window.filterGradeStudents=filterGradeStudents;window.updateGradeTotal=updateGradeTotal;window.getExamTypeLabel=getExamTypeLabel;window.updateBlockTermOptions=updateBlockTermOptions;window.DOM=window.DOM||DOM;
 
 console.log('✅ CATS/Exams loaded — delegated events, unified student source, no race conditions.');
