@@ -1887,34 +1887,42 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 }
 </style>
 
-<style id="nchsm-exams-academic-reports-table-final">
-/* Exams/CATs final table architecture: same simple wrapper as Academic Reports.
-   Page handles vertical scrolling; this wrapper handles horizontal table scrolling only. */
-#cats .current-list{max-height:none!important;overflow:visible!important;}
-#cats .completed-section{height:auto!important;max-height:none!important;overflow:visible!important;}
+
+<style id="nchsm-exams-academic-reports-scroll-final">
+/* FINAL Exams/CATs table: same simple container architecture as Academic Reports. */
+#cats .completed-section{width:100%;max-width:100%;min-width:0;overflow:visible}
 #cats .completed-table-wrap{
-  width:100%!important;
-  max-width:100%!important;
-  height:auto!important;
-  max-height:none!important;
-  overflow-x:auto!important;
-  overflow-y:hidden!important;
-  box-sizing:border-box!important;
-  margin:0!important;
-  padding:0!important;
+  width:100%;
+  max-width:100%;
+  max-height:none;
+  overflow-x:auto;
+  overflow-y:visible;
+  box-sizing:border-box;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#94A3B8 #EEF2F7;
+  scrollbar-gutter:stable;
+  padding-bottom:8px;
 }
-#cats .assessment-table{
-  width:100%!important;
-  min-width:760px!important;
-  max-width:none!important;
-  border-collapse:collapse!important;
-  table-layout:auto!important;
-}
-#cats .assessment-table th,
-#cats .assessment-table td{white-space:nowrap;}
+#cats .completed-table-wrap::-webkit-scrollbar{height:10px}
+#cats .completed-table-wrap::-webkit-scrollbar-thumb{background:#94A3B8;border-radius:999px;border:2px solid #EEF2F7}
+#cats .completed-table-wrap::-webkit-scrollbar-track{background:#EEF2F7;border-radius:999px}
+#cats .assessment-table{width:max-content;min-width:760px;table-layout:auto}
+#cats .assessment-table th,#cats .assessment-table td{white-space:nowrap}
 @media(max-width:760px){
-  #cats .completed-table-wrap{overflow-x:auto!important;overflow-y:hidden!important;}
-  #cats .assessment-table{width:760px!important;min-width:760px!important;}
+  #cats .completed-table-wrap{
+    overflow-x:auto!important;overflow-y:visible!important;
+    max-height:none!important;
+    touch-action:pan-x pan-y!important;
+    scrollbar-width:thin!important;
+    scrollbar-color:#94A3B8 #EEF2F7!important;
+    padding-bottom:8px!important;
+  }
+  #cats .completed-table-wrap::-webkit-scrollbar{height:10px!important}
+  #cats .completed-table-wrap::-webkit-scrollbar-thumb{background:#94A3B8!important;border-radius:999px!important;border:2px solid #EEF2F7!important}
+  #cats .completed-table-wrap::-webkit-scrollbar-track{background:#EEF2F7!important;border-radius:999px!important}
+  #cats .assessment-table{width:max-content!important;min-width:760px!important;max-width:none!important}
 }
 </style>
 </head>
@@ -7843,11 +7851,15 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
 #cats .stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.stat-card{background:#fff;border:1px solid #dfe7f1;border-radius:15px;padding:15px;min-height:88px;box-shadow:0 3px 12px rgba(15,23,42,.04);display:flex;align-items:center;gap:12px}.stat-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto}.stat-card.current .stat-icon{background:#e6f1ff;color:#2563eb}.stat-card.completed .stat-icon{background:#e8f8f0;color:#059669}.stat-card.released .stat-icon{background:#f1eaff;color:#7c3aed}.stat-card.average .stat-icon{background:#fff3d6;color:#d97706}.stat-label{margin:0;color:#65748b;font-size:10px;font-weight:700}.stat-value{margin:3px 0 0;color:#142c55;font-size:22px;line-height:1;font-weight:850}.stat-note{margin:4px 0 0;color:#94a3b8;font-size:9px}
 #cats .main-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(300px,.82fr);gap:16px;align-items:start}.section-card{background:#fff;border:1px solid #dfe7f1;border-radius:17px;box-shadow:0 3px 14px rgba(15,23,42,.045);overflow:hidden;margin-bottom:16px}.section-head{padding:15px 17px;border-bottom:1px solid #edf1f6;display:flex;align-items:center;justify-content:space-between;gap:12px}.section-title-wrap{display:flex;align-items:center;gap:10px;min-width:0}.section-icon{width:34px;height:34px;border-radius:10px;background:#e9f2ff;color:#2563eb;display:flex;align-items:center;justify-content:center;flex:0 0 auto}.section-icon.green{background:#e8f8f0;color:#059669}.section-title{margin:0;color:#142c55;font-size:15px;font-weight:850}.section-sub{display:block;color:#8190a6;font-size:9px;margin-top:2px}.section-count{background:#edf5ff;color:#2563eb;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;white-space:nowrap}.section-action{border:1px solid #dbe5f0;background:#fff;color:#2563eb;border-radius:8px;padding:6px 9px;font-size:9px;font-weight:800;cursor:pointer}
 #cats .current-list{padding:12px 14px;display:grid;gap:9px}.current-assessment-card{border:1px solid #e3eaf3;border-radius:13px;padding:13px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;transition:.18s;background:#fff}.current-assessment-card:hover{border-color:#a8c5ed;box-shadow:0 5px 15px rgba(37,99,235,.07)}.current-main{min-width:0}.current-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.current-name{color:#16335f;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.type-badge{padding:3px 8px;border-radius:999px;font-size:9px;font-weight:850}.type-cat{background:#f0e9ff;color:#6d28d9}.type-final{background:#e4f1ff;color:#1d4ed8}.type-tvet{background:#fdebf4;color:#9d174d}.retake-badge{background:#efe7ff;color:#6d28d9;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:850}.current-meta{display:flex;gap:12px;flex-wrap:wrap;color:#718198;font-size:9px;margin-top:7px}.current-meta span{display:inline-flex;align-items:center;gap:4px}.current-meta i{color:#7b91b0}.current-action{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:135px}.exam-action-btn{border:0;border-radius:9px;padding:9px 14px;font-size:10px;font-weight:850;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap}.btn-start{background:#1473e6;color:#fff;box-shadow:0 4px 10px rgba(20,115,230,.18)}.btn-retake{background:#7c3aed;color:#fff}.btn-missed{background:#fef2f2;color:#b91c1c}.btn-upcoming{background:#f8fafc;color:#64748b}.btn-disabled{background:#f1f5f9;color:#94a3b8}.exam-timer{font-size:9px;font-weight:800;color:#64748b}.timer-active{color:#2563eb}.timer-expired{color:#dc2626}.timer-upcoming{color:#d97706}.current-status{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:#e8f8f0;color:#047857;font-size:9px;font-weight:850}.current-status.upcoming{background:#fff7df;color:#b45309}.current-status.retake{background:#f0e9ff;color:#6d28d9}.current-status.missed{background:#fee2e2;color:#b91c1c}
-#cats .current-list{padding:12px 14px;display:grid;gap:9px;max-height:none;overflow:visible}
-#cats .completed-table-wrap{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;box-sizing:border-box}
-#cats .completed-table-wrap::-webkit-scrollbar{height:8px}
-#cats .completed-table-wrap::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
-#cats .completed-table-wrap::-webkit-scrollbar-track{background:transparent}
+#cats .current-list{max-height:560px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#CBD5E1 transparent}
+#cats .current-list::-webkit-scrollbar{width:8px}
+#cats .current-list::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:99px}
+#cats .current-list::-webkit-scrollbar-track{background:transparent}
+#cats .completed-table-wrap{width:100%;max-width:100%;max-height:none;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#94A3B8 #EEF2F7;scrollbar-gutter:stable both-edges}
+#cats .completed-table-wrap::-webkit-scrollbar{height:10px}
+#cats .completed-table-wrap::-webkit-scrollbar-thumb{background:#94A3B8;border-radius:99px;border:2px solid #EEF2F7}
+#cats .completed-table-wrap::-webkit-scrollbar-track{background:#EEF2F7;border-radius:99px}
+#cats .completed-table-wrap::-webkit-scrollbar-button{display:none;width:0;height:0}
 .assessment-table{width:100%;border-collapse:collapse;min-width:760px}.assessment-table th{background:#f8fafc;color:#52627b;font-size:9px;text-transform:uppercase;letter-spacing:.3px;font-weight:850;padding:10px 12px;text-align:left;border-bottom:1px solid #e7edf4}.assessment-table td{padding:11px 12px;border-bottom:1px solid #edf1f5;font-size:10px;color:#334155;vertical-align:middle}.assessment-table tr:last-child td{border-bottom:0}.assessment-table .assessment-name-main{font-weight:800;color:#17345f;font-size:11px}.assessment-table .assessment-date{font-size:8px;color:#94a3b8;margin-top:3px}.score-main{font-weight:850;color:#172554}.percentage-good{color:#047857;font-weight:850}.percentage-fail{color:#b91c1c;font-weight:850}.grade-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:8px;font-weight:850}.grade-distinction{background:#dff7e9;color:#047857}.grade-credit{background:#e3efff;color:#1d4ed8}.grade-pass{background:#fff3d6;color:#b45309}.grade-fail{background:#fee2e2;color:#b91c1c}.grade-pending{background:#fff7df;color:#92400e}.grade-missed{background:#f1f5f9;color:#64748b}.grade-retake{background:#f0e9ff;color:#6d28d9}.status-pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:8px;font-weight:850}.status-released{background:#e8f8f0;color:#047857}.status-pending{background:#fff7df;color:#92400e}.status-retake{background:#f0e9ff;color:#6d28d9}.status-missed{background:#fee2e2;color:#b91c1c}.row-actions{display:flex;gap:5px;flex-wrap:wrap}.result-btn,.review-btn,.retake-link{border:1px solid #cfe0f5;background:#fff;color:#2563eb;border-radius:7px;padding:6px 8px;font-size:8px;font-weight:850;cursor:pointer;text-decoration:none;white-space:nowrap}.review-btn{border-color:#d8c9ff;color:#6d28d9;background:#fbf9ff}.retake-link{border-color:#d8c9ff;color:#6d28d9}.result-btn:hover,.review-btn:hover,.retake-link:hover{transform:translateY(-1px)}
 #cats .analytics-card{padding:0}.chart-head{padding:14px 15px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px}.chart-controls{display:flex;gap:4px}.toggle-btn{border:1px solid #dce5ef;background:#fff;color:#64748b;border-radius:7px;padding:5px 7px;font-size:8px;font-weight:850;cursor:pointer}.toggle-btn.active{background:#1473e6;color:#fff;border-color:#1473e6}.chart-body{height:250px;padding:4px 12px 8px;position:relative}.chart-body canvas{width:100%!important;height:100%!important}.chart-legend{padding:0 15px 13px;display:flex;gap:10px;flex-wrap:wrap;color:#718198;font-size:8px}.legend-item{display:inline-flex;align-items:center;gap:4px}.legend-line{width:18px;height:2px;display:inline-block;background:#1473e6}.legend-exam{background:#10b981}.legend-avg{background:#f59e0b}.legend-pass{background:#ef4444}.legend-dash{border-top:2px dashed #ef4444;background:transparent}
 #cats .summary-mini{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px 14px}.summary-mini-item{border:1px solid #e5ebf3;border-radius:10px;padding:10px;background:#fbfdff}.summary-mini-label{display:block;color:#7c8ba1;font-size:8px;font-weight:750}.summary-mini-value{display:block;color:#172554;font-size:17px;font-weight:850;margin-top:3px}.summary-mini-value.good{color:#047857}.summary-mini-value.bad{color:#b91c1c}.summary-mini-value.purple{color:#6d28d9}
@@ -12806,8 +12818,11 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
   #nurseiq .niq-panel,#nurseiq .niq-practice-panel,#nurseiq .niq-card{min-width:0}
   #nurseiq .niq-table-wrap{max-width:100%;overflow-x:auto!important;overflow-y:auto!important;touch-action:pan-x pan-y}
   #cats .current-list{max-height:none!important;overflow:visible!important}
-  #cats .completed-table-wrap{width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important}
-  #cats .assessment-table{width:max-content!important;min-width:760px!important;max-width:none!important}
+  #cats .completed-table-wrap{width:100%!important;max-width:100%!important;max-height:none!important;overflow-x:auto!important;overflow-y:visible!important;touch-action:pan-x pan-y!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain!important;scrollbar-width:thin!important;scrollbar-color:#94A3B8 #EEF2F7!important;scrollbar-gutter:stable!important;padding-bottom:8px!important}
+  #cats .completed-table-wrap::-webkit-scrollbar{height:10px!important}
+  #cats .completed-table-wrap::-webkit-scrollbar-thumb{background:#94A3B8!important;border-radius:99px!important;border:2px solid #EEF2F7!important}
+  #cats .completed-table-wrap::-webkit-scrollbar-track{background:#EEF2F7!important;border-radius:99px!important}
+  #cats .assessment-table{width:max-content!important;min-width:760px!important;table-layout:auto!important}
   #nurseiq .courseCatalogGrid,#courseCatalogGrid,#studentQuestionBankContent,#questionView{max-width:100%;min-width:0}
   #nurseiq .niq-review-layout{min-width:0}
   #nurseiq .niq-review-nav,#nurseiq .niq-review-card{min-width:0;width:100%}
@@ -13464,11 +13479,102 @@ async function initializeApp() {
         window.db.currentUserId = userSession.user.id;
         await window.db.loadUserProfile();
 
-        // Populate dashboard greeting from the authenticated profile — never from hardcoded demo data.
-        const dashboardName = document.getElementById('welcome-student-name');
-        if (dashboardName && window.db.currentUserProfile?.full_name) {
-            dashboardName.textContent = window.db.currentUserProfile.full_name.trim();
+        // ===== AUTHENTICATED HEADER IDENTITY =====
+        // Always derive the header identity from the real authenticated student.
+        // The old header fell back to the literal word "Student", which produced
+        // the "ST" avatar on mobile when the profile was not yet exposed globally.
+        function syncAuthenticatedHeaderIdentity(profileOverride, authUser) {
+            const p = profileOverride || window.db?.currentUserProfile || window.currentUserProfile || {};
+            const u = authUser || userSession?.user || {};
+            const meta = u?.user_metadata || {};
+
+            const rawName = [
+                p.full_name,
+                p.name,
+                p.student_name,
+                meta.full_name,
+                meta.name,
+                meta.fullName
+            ].find(v => typeof v === 'string' && v.trim());
+
+            // Do not use "Student" as the identity when an authenticated name is available.
+            const displayName = rawName ? rawName.trim() : '';
+
+            const headerName = document.getElementById('header-user-name');
+            if (headerName && displayName) headerName.textContent = displayName;
+
+            const dashboardName = document.getElementById('welcome-student-name');
+            if (dashboardName && displayName) dashboardName.textContent = displayName;
+
+            const welcomeHeader = document.getElementById('welcome-header');
+            if (welcomeHeader && displayName) {
+                welcomeHeader.textContent = 'Welcome back, ' + displayName + '!';
+            }
+
+            const photo = document.getElementById('header-profile-photo');
+            if (photo && displayName) {
+                const avatarName = encodeURIComponent(displayName);
+                photo.src = `https://ui-avatars.com/api/?name=${avatarName}&background=4C1D95&color=fff&size=100&bold=true`;
+                photo.alt = displayName + ' profile';
+            }
+
+            const sidebarName = document.getElementById('sidebarUserName');
+            if (sidebarName && displayName) sidebarName.textContent = displayName;
+
+            const sidebarAvatar = document.getElementById('sidebar-avatar');
+            if (sidebarAvatar && displayName) {
+                sidebarAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4C1D95&color=fff&size=100&bold=true`;
+                sidebarAvatar.alt = displayName + ' profile';
+            }
+
+            return displayName;
         }
+
+        // Final authoritative profile sync: use the same table that profile.js
+        // uses, keyed by the authenticated Supabase user UUID. This guarantees
+        // the header and sidebar receive the real student's name even if the
+        // database module exposes its profile a moment later.
+        async function ensureAuthenticatedStudentIdentity() {
+            try {
+                let profile = window.db?.currentUserProfile || window.currentUserProfile || null;
+                const uid = userSession?.user?.id;
+
+                if ((!profile?.full_name || !String(profile.full_name).trim()) && uid && window.db?.supabase) {
+                    const { data, error } = await window.db.supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('full_name,student_id,admission_number,profile_photo_url,passport_url,program,block,current_block')
+                        .eq('user_id', uid)
+                        .maybeSingle();
+
+                    if (error) {
+                        console.warn('⚠️ Header profile lookup failed:', error.message);
+                    } else if (data) {
+                        profile = { ...(profile || {}), ...data };
+                        window.db.currentUserProfile = profile;
+                        window.currentUserProfile = profile;
+                    }
+                }
+
+                const displayName = syncAuthenticatedHeaderIdentity(profile, userSession.user);
+                if (displayName) {
+                    console.log('✅ Student identity synced:', displayName);
+                } else {
+                    console.warn('⚠️ No student full_name available for authenticated user:', uid);
+                }
+            } catch (identityError) {
+                console.warn('⚠️ Student identity sync failed:', identityError);
+            }
+        }
+
+        ensureAuthenticatedStudentIdentity();
+
+        // Re-apply after Dashboard/Profile modules finish initialization.
+        document.addEventListener('appReady', () => {
+            ensureAuthenticatedStudentIdentity();
+        }, { once: true });
+        window.addEventListener('appReady', () => {
+            ensureAuthenticatedStudentIdentity();
+        }, { once: true });
         
         console.log('✅ User authenticated');
         
@@ -13499,19 +13605,11 @@ async function initializeApp() {
         document.dispatchEvent(new Event('appReady'));
         window.dispatchEvent(new Event('appReady'));
         
-        const welcomeHeader = document.getElementById('welcome-header');
-        if (welcomeHeader && window.db.currentUserProfile?.full_name) {
-            welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
-        }
-        const headerName = document.getElementById('header-user-name');
-        if (headerName && window.db.currentUserProfile?.full_name) {
-            headerName.textContent = window.db.currentUserProfile.full_name;
-        }
-        if (window.db.currentUserProfile?.full_name) {
-            const nameForAvatar = window.db.currentUserProfile.full_name.replace(/\s+/g, '');
-            const headerPhoto = document.getElementById('header-profile-photo');
-            if (headerPhoto) headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
-        }
+        // Re-sync after the global profile references are exposed. This also
+        // handles profile data that becomes available slightly after appReady.
+        syncAuthenticatedHeaderIdentity(window.db.currentUserProfile, userSession.user);
+        setTimeout(() => syncAuthenticatedHeaderIdentity(window.db.currentUserProfile, userSession.user), 500);
+        setTimeout(() => syncAuthenticatedHeaderIdentity(window.db.currentUserProfile, userSession.user), 1500);
         
         if (typeof initUI === 'function') initUI();
         if (typeof initProfileModule === 'function') setTimeout(() => initProfileModule(), 100);
