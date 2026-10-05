@@ -1428,7 +1428,6 @@ async function loadMEUnits() {
 // ============================================================
 // LOAD MARKS ENTRY - FIXED
 // ============================================================
-
 // ============================================================
 // LOAD MARKS ENTRY - REGISTRATION-AWARE (FIXED)
 // ============================================================
@@ -1483,7 +1482,9 @@ async function loadMarksEntry() {
     try {
         await loadRetakeData(block, unit, year);
         
+        // ==========================================
         // STEP 1: Try student_marks table first
+        // ==========================================
         const { data: marks, error: marksError } = await sb
             .from('student_marks')
             .select('*')
@@ -1495,28 +1496,52 @@ async function loadMarksEntry() {
         
         console.log(`📊 Found ${marks?.length || 0} marks records for ${unit}`);
         
+        // ==========================================
         // STEP 2: If no marks exist, fall back to approved registrations
+        // ==========================================
         if (!marks || marks.length === 0) {
             console.log(`⚠️ No marks records. Checking approved registrations...`);
             await loadFromApprovedRegistrations(program, block, unit, year, unitCode);
             return;
         }
         
+        // ==========================================
         // STEP 3: Normal path — render existing marks
-        const admissions = marks.map(m => m.admission_number);
-        const { data: students, error: studentError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, block, intake_year, program')
-            .eq('role', 'student')
-            .in('student_id', admissions);
+        // ==========================================
         
-        if (studentError) {
-            console.warn('⚠️ Could not fetch student names:', studentError);
+        // ==========================================
+        // FETCH STUDENT NAMES (match by UUID + admission)
+        // ==========================================
+        const admissions = marks.map(m => m.admission_number).filter(Boolean);
+        const studentUuids = marks.map(m => m.student_id).filter(Boolean);
+        
+        let allProfiles = [];
+        
+        // Query by admission_number
+        if (admissions.length > 0) {
+            const { data: byAdmission } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name')
+                .or(`student_id.in.(${admissions.join(',')}),admission_number.in.(${admissions.join(',')})`);
+            allProfiles = allProfiles.concat(byAdmission || []);
         }
         
+        // Query by UUID
+        if (studentUuids.length > 0) {
+            const { data: byUuid } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name')
+                .in('user_id', studentUuids);
+            allProfiles = allProfiles.concat(byUuid || []);
+        }
+        
+        // Build lookup that works with EITHER admission_number OR UUID
         const studentMap = {};
-        students?.forEach(s => {
-            studentMap[s.student_id] = s.full_name || 'Unknown';
+        allProfiles.forEach(s => {
+            const name = s.full_name || 'Unknown';
+            if (s.admission_number) studentMap[s.admission_number] = name;
+            if (s.student_id && !String(s.student_id).includes('-')) studentMap[s.student_id] = name;
+            if (s.user_id) studentMap[s.user_id] = name;
         });
         
         const fullMarks = marks.map(m => {
@@ -1527,7 +1552,8 @@ async function loadMarksEntry() {
             
             return {
                 admission: admission,
-                name: studentMap[admission] || m.student_name || 'Unknown',
+                student_id: m.student_id || '',
+                name: studentMap[admission] || studentMap[m.student_id] || m.student_name || 'Unknown',
                 program: program,
                 cat1: m.cat1_score || 0,
                 cat2: m.cat2_score || 0,
