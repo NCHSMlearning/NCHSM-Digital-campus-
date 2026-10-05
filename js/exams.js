@@ -1404,18 +1404,6 @@ applyDataFilter() {
         displayCompletedTable() {
             if (!this.completedTable) return;
 
-            // Grade and release state intentionally share ONE column.
-            // Remove the old standalone Status header so CATs and Final Exams
-            // use the same Grade/Release presentation.
-            const completedTableElement = this.completedTable.closest('table');
-            if (completedTableElement) {
-                const headerCells = completedTableElement.querySelectorAll('thead th');
-                if (headerCells.length >= 7) {
-                    headerCells[4].textContent = 'Grade / Release';
-                    headerCells[5].remove();
-                }
-            }
-
             const completedReleased = this.completedExams
                 .filter(exam => exam.isCompleted || exam.isReleased || exam.actionState === 'expired' || exam.actionState === 'pending_release')
                 .sort((a, b) => {
@@ -1494,8 +1482,7 @@ applyDataFilter() {
 
                 return `
                     <tr>
-                        <td><div class="assessment-name-main">${this.escapeHtml(displayName)}</div><div class="assessment-date">Submitted/assessed: ${this.escapeHtml(String(dateText))}</div></td>
-                        <td><span class="type-badge ${isCatExam ? 'type-cat' : 'type-final'}">${isCatExam ? 'CAT' : 'FINAL EXAM'}</span></td>
+                        <td><div class="assessment-name-main">${this.escapeHtml(displayName)}</div><div class="assessment-type-inline"><span class="type-badge ${isCatExam ? 'type-cat' : 'type-final'}">${isCatExam ? 'CAT' : 'FINAL EXAM'}</span></div></td>
                         <td><span class="score-main">${scoreText}</span></td>
                         <td><span class="${isReleased && percentage >= 60 ? 'percentage-good' : isReleased ? 'percentage-fail' : ''}">${pctText}</span></td>
                         <td>${gradeCell}</td>
