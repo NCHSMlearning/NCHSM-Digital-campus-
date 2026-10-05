@@ -13539,19 +13539,24 @@ async function initializeApp() {
                 let profile = window.db?.currentUserProfile || window.currentUserProfile || null;
                 const uid = userSession?.user?.id;
 
-                if ((!profile?.full_name || !String(profile.full_name).trim()) && uid && window.db?.supabase) {
+                // ALWAYS use the authenticated user's row as the authoritative
+                // source for the shell identity.  Do not trust an earlier
+                // fallback profile containing only role/Student information.
+                if (uid && window.db?.supabase) {
                     const { data, error } = await window.db.supabase
                         .from('consolidated_user_profiles_table')
-                        .select('full_name,student_id,admission_number,profile_photo_url,passport_url,program,block,current_block')
+                        .select('full_name,student_id,admission_number,profile_photo_url,passport_url,program,block,current_block,role,status')
                         .eq('user_id', uid)
                         .maybeSingle();
 
                     if (error) {
-                        console.warn('⚠️ Header profile lookup failed:', error.message);
+                        console.warn('⚠️ Authoritative student profile lookup failed:', error.message);
                     } else if (data) {
                         profile = { ...(profile || {}), ...data };
                         window.db.currentUserProfile = profile;
                         window.currentUserProfile = profile;
+                        window.app = window.app || {};
+                        window.app.user = profile;
                     }
                 }
 
@@ -13566,14 +13571,16 @@ async function initializeApp() {
             }
         }
 
-        ensureAuthenticatedStudentIdentity();
+        // Wait for the authoritative student name BEFORE Dashboard/Profile
+        // modules initialize, so they receive Tiongii instead of the fallback.
+        await ensureAuthenticatedStudentIdentity();
 
         // Re-apply after Dashboard/Profile modules finish initialization.
         document.addEventListener('appReady', () => {
-            ensureAuthenticatedStudentIdentity();
+            void ensureAuthenticatedStudentIdentity();
         }, { once: true });
         window.addEventListener('appReady', () => {
-            ensureAuthenticatedStudentIdentity();
+            void ensureAuthenticatedStudentIdentity();
         }, { once: true });
         
         console.log('✅ User authenticated');
@@ -13608,8 +13615,10 @@ async function initializeApp() {
         // Re-sync after the global profile references are exposed. This also
         // handles profile data that becomes available slightly after appReady.
         syncAuthenticatedHeaderIdentity(window.db.currentUserProfile, userSession.user);
-        setTimeout(() => syncAuthenticatedHeaderIdentity(window.db.currentUserProfile, userSession.user), 500);
-        setTimeout(() => syncAuthenticatedHeaderIdentity(window.db.currentUserProfile, userSession.user), 1500);
+        // Dashboard/Profile modules may refresh the shell after initialization.
+        // Re-apply the authoritative identity after those modules have mounted.
+        setTimeout(() => ensureAuthenticatedStudentIdentity(), 450);
+        setTimeout(() => ensureAuthenticatedStudentIdentity(), 1100);
         
         if (typeof initUI === 'function') initUI();
         if (typeof initProfileModule === 'function') setTimeout(() => initProfileModule(), 100);
