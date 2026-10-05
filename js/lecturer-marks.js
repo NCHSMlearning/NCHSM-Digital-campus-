@@ -1279,10 +1279,6 @@ function getVisibleColumns() {
 // LOAD MARKS ENTRY - WITH TVET SUPPORT
 // ============================================================
 
-// ============================================================
-// LOAD MARKS ENTRY - REGISTRATION-AWARE (FIXED)
-// ============================================================
-
 async function loadMarksEntry() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
@@ -1373,20 +1369,40 @@ async function loadMarksEntry() {
         // STEP 3: Normal path — render existing marks
         // ==========================================
         updateLoadingProgress(60, 3, 'Loading student details...');
-        const admissions = marks.map(m => m.admission_number);
-        const { data: students, error: studentError } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, block, intake_year, program')
-            .eq('role', 'student')
-            .in('student_id', admissions);
-        
-        if (studentError) {
-            console.warn('⚠️ Could not fetch student names:', studentError);
+
+        // ==========================================
+        // FETCH STUDENT NAMES (match by UUID + admission)
+        // ==========================================
+        const admissions = marks.map(m => m.admission_number).filter(Boolean);
+        const studentUuids = marks.map(m => m.student_id).filter(Boolean);
+
+        let allProfiles = [];
+
+        // Query by admission_number
+        if (admissions.length > 0) {
+            const { data: byAdmission } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name')
+                .or(`student_id.in.(${admissions.join(',')}),admission_number.in.(${admissions.join(',')})`);
+            allProfiles = allProfiles.concat(byAdmission || []);
         }
-        
+
+        // Query by UUID
+        if (studentUuids.length > 0) {
+            const { data: byUuid } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name')
+                .in('user_id', studentUuids);
+            allProfiles = allProfiles.concat(byUuid || []);
+        }
+
+        // Build lookup that works with EITHER admission_number OR UUID
         const studentMap = {};
-        students?.forEach(s => {
-            studentMap[s.student_id] = s.full_name || 'Unknown';
+        allProfiles.forEach(s => {
+            const name = s.full_name || 'Unknown';
+            if (s.admission_number) studentMap[s.admission_number] = name;
+            if (s.student_id && !String(s.student_id).includes('-')) studentMap[s.student_id] = name;
+            if (s.user_id) studentMap[s.user_id] = name;
         });
         
         updateLoadingProgress(80, 4, 'Processing marks data...');
@@ -1399,7 +1415,8 @@ async function loadMarksEntry() {
             
             return {
                 admission: admission,
-                name: studentMap[admission] || m.student_name || 'Unknown',
+                student_id: m.student_id || '',
+                name: studentMap[admission] || studentMap[m.student_id] || m.student_name || 'Unknown',
                 program: program,
                 cat1: m.cat1_score || 0,
                 cat2: m.cat2_score || 0,
@@ -1553,40 +1570,89 @@ async function loadLecturerFromApprovedRegistrations(program, block, unit, year)
         }
         
         // ==========================================
-        // Fetch student names
+        // FETCH STUDENT DETAILS (resolve UUID → real admission number)
         // ==========================================
-        const studentIds = matchingRegs.map(r => r.student_id);
-        const { data: students } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, block, program')
-            .in('student_id', studentIds);
+        const userIds = matchingRegs.map(r => r.student_id);
         
-        const studentMap = {};
+        const { data: students, error: studentErr } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id, student_id, admission_number, full_name')
+            .in('user_id', userIds);
+        
+        if (studentErr) {
+            console.warn('⚠️ Could not fetch student profiles:', studentErr);
+        }
+        
+        // Build lookup: UUID (user_id) → student details
+        const studentLookup = {};
         (students || []).forEach(s => {
-            studentMap[s.student_id] = s.full_name || 'Unknown';
+            if (s.user_id) {
+                const rawAdmission = s.admission_number || s.student_id;
+                const isUUID = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
+                
+                studentLookup[s.user_id] = {
+                    full_name: s.full_name || 'Unknown',
+                    admission_number: (!isUUID && rawAdmission) ? rawAdmission : null
+                };
+            }
         });
+        
+        console.log(`📋 Resolved ${Object.keys(studentLookup).length} students`);
+        console.log('📋 Sample:', Object.entries(studentLookup).slice(0, 3));
         
         // ==========================================
         // Create blank marks records in student_marks
         // ==========================================
         const now = new Date().toISOString();
-        const marksToInsert = matchingRegs.map(reg => ({
-            admission_number: reg.student_id,
-            student_name: studentMap[reg.student_id] || 'Unknown',
-            block: block,
-            subject_name: unit,
-            academic_year: parseInt(year),
-            assessment_type: 'full',
-            cat1_score: 0,
-            cat2_score: 0,
-            exam_score: 0,
-            final_score: 0,
-            grade: '',
-            approval_status: 'draft',
-            published: false,
-            created_at: now,
-            updated_at: now
-        }));
+        
+        const marksToInsert = matchingRegs.map(reg => {
+            const uuid = reg.student_id;
+            const student = studentLookup[uuid];
+            
+            if (!student) {
+                console.warn(`⚠️ No profile found for UUID: ${uuid}`);
+                return null;
+            }
+            
+            if (!student.admission_number) {
+                console.warn(`⚠️ No valid admission number for ${student.full_name} (${uuid})`);
+                return null;
+            }
+            
+            console.log(`   ✅ ${student.full_name} | ${student.admission_number}`);
+            
+            return {
+                admission_number: student.admission_number,   // ✅ REAL admission number
+                student_id: uuid,                              // ✅ UUID for future joins
+                student_name: student.full_name,
+                block: block,
+                subject_name: unit,
+                academic_year: parseInt(year),
+                assessment_type: 'full',
+                cat1_score: 0,
+                cat2_score: 0,
+                exam_score: 0,
+                final_score: 0,
+                grade: '',
+                approval_status: 'draft',
+                published: false,
+                program: program,
+                created_at: now,
+                updated_at: now
+            };
+        }).filter(Boolean);
+        
+        if (marksToInsert.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b;">Could not resolve student details</h3>
+                    <p style="color: #64748b;">Student profiles don't have valid admission numbers set.</p>
+                    <p style="color: #94a3b8; font-size: 12px;">Check the consolidated_user_profiles_table.</p>
+                </div>
+            `;
+            return;
+        }
         
         console.log(`📝 Creating ${marksToInsert.length} blank marks records...`);
         
