@@ -1889,16 +1889,12 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 
 <style id="nchsm-cats-mobile-scroll-fix">
 /* ============================================================
-   CATS / EXAMS SCROLL ARCHITECTURE — MATCH NURSEIQ
-   - The document/body owns vertical page scrolling.
-   - #main-content is NEVER a fixed-height mobile scroll container.
-   - CATS/Final Exams use horizontal scrolling only where content
-     genuinely exceeds the phone width (assessment table).
-   - No touchmove/wheel interception and no nested page scroll.
+   CATS / EXAMS MOBILE SCROLL FIX
+   Ensures the complete assessment cards and action buttons can
+   always be reached on phones. No exam logic is changed.
    ============================================================ */
-@media (max-width:1023px){
-  /* Same shell model used by NurseIQ. */
-  html,body{
+@media (max-width: 799px){
+  html, body{
     height:auto!important;
     min-height:100%!important;
     overflow-x:hidden!important;
@@ -1906,23 +1902,20 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
   }
 
   #app-content,
-  #app-content > .container{
-    height:auto!important;
+  #app-content > .container,
+  #main-content.main{
     min-height:0!important;
-    max-height:none!important;
-    overflow:visible!important;
   }
 
   #main-content.main{
-    height:auto!important;
-    min-height:0!important;
+    height:calc(100vh - 60px)!important;
     max-height:none!important;
-    overflow:visible!important;
-    overflow-x:visible!important;
-    overflow-y:visible!important;
-    -webkit-overflow-scrolling:auto!important;
-    overscroll-behavior:auto!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
     box-sizing:border-box!important;
+    padding-bottom:calc(32px + env(safe-area-inset-bottom))!important;
   }
 
   #main-content.main > .tab-content,
@@ -1931,125 +1924,42 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
     min-height:0!important;
     max-height:none!important;
     overflow:visible!important;
-    overflow-x:visible!important;
-    overflow-y:visible!important;
+    overflow-x:hidden!important;
+    padding-bottom:calc(42px + env(safe-area-inset-bottom))!important;
     box-sizing:border-box!important;
   }
 
-  #cats{
+  #cats .assessment-dashboard{
     width:100%!important;
-    max-width:100%!important;
-    min-width:0!important;
-    overflow:visible!important;
-  }
-
-  #cats .assessment-dashboard,
-  #cats .section-card,
-  #cats .current-section,
-  #cats .completed-section,
-  #cats .analytics-card,
-  #cats .current-list{
-    height:auto!important;
+    max-width:none!important;
     min-height:0!important;
-    max-height:none!important;
+  }
+
+  #cats .current-list{
     overflow:visible!important;
-    box-sizing:border-box!important;
-  }
-
-  /* Current CATs / Final Exams: let the whole page grow naturally. */
-  #cats .current-assessment-card{
-    width:100%!important;
-    min-width:0!important;
-    box-sizing:border-box!important;
-    overflow:visible!important;
-  }
-
-  #cats .current-main,
-  #cats .current-action{
-    min-width:0!important;
-    overflow:visible!important;
-  }
-
-  /* Completed assessment table: same principle as NurseIQ's table wrap.
-     Horizontal scroll is local to the wide table; vertical page scrolling
-     remains owned by the document. */
-  #cats .completed-table-wrap{
-    width:100%!important;
-    max-width:100%!important;
-    min-width:0!important;
-    max-height:560px!important;
-    overflow-x:auto!important;
-    overflow-y:auto!important;
-    -webkit-overflow-scrolling:touch!important;
-    overscroll-behavior:contain!important;
-    touch-action:pan-x pan-y!important;
-    box-sizing:border-box!important;
-  }
-
-  #cats .assessment-table{
-    min-width:760px!important;
-  }
-
-  #cats .assessment-table th:first-child,
-  #cats .assessment-table td:first-child{
-    position:sticky!important;
-    left:0!important;
-    z-index:3!important;
-    background:#fff!important;
-    box-shadow:5px 0 8px rgba(15,23,42,.06)!important;
-  }
-
-  #cats .assessment-table thead th:first-child{
-    z-index:5!important;
-    background:#f8fafc!important;
-  }
-
-  #cats .row-actions{
-    min-width:150px!important;
-  }
-
-  #cats .result-btn,
-  #cats .review-btn,
-  #cats .retake-link{
-    min-height:34px!important;
-    padding:7px 10px!important;
-    font-size:9px!important;
-    white-space:nowrap!important;
-    pointer-events:auto!important;
-  }
-
-  #cats .assessment-nav{
     height:auto!important;
     max-height:none!important;
-    overflow:visible!important;
-  }
-}
-
-@media(max-width:760px){
-  #cats{
-    padding:12px!important;
-    overflow:visible!important;
-  }
-
-  #cats .assessment-nav{
-    grid-template-columns:repeat(2,1fr)!important;
-  }
-
-  #cats .assessment-nav button:last-child{
-    grid-column:span 2;
+    padding-bottom:18px!important;
   }
 
   #cats .current-assessment-card{
-    grid-template-columns:1fr!important;
-    gap:10px!important;
-    align-items:stretch!important;
-    padding:12px!important;
+    min-width:0!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+    overflow:visible!important;
+  }
+
+  #cats .current-main{
+    min-width:0!important;
+    overflow:visible!important;
   }
 
   #cats .current-action{
     width:100%!important;
+    min-width:0!important;
     align-items:stretch!important;
     justify-content:flex-start!important;
+    overflow:visible!important;
     padding-top:4px!important;
   }
 
@@ -2057,6 +1967,65 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
     width:100%!important;
     min-height:42px!important;
     box-sizing:border-box!important;
+    display:flex!important;
+    position:relative!important;
+    z-index:2!important;
+  }
+
+  #cats .current-action .exam-timer,
+  #cats .current-action .current-status{
+    align-self:flex-start!important;
+  }
+
+  #cats .section-card,
+  #cats .current-section,
+  #cats .completed-section,
+  #cats .analytics-card{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  #cats .completed-table-wrap{
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:visible!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  /* Keep the assessment navigation reachable without clipping. */
+  #cats .assessment-nav{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  /* Give the last action area enough safe space above the phone's
+     browser/home indicator. */
+  #cats .current-list::after{
+    content:"";
+    display:block;
+    height:calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 480px){
+  #main-content.main{
+    padding-left:8px!important;
+    padding-right:8px!important;
+    padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
+  }
+
+  #cats{
+    padding:10px!important;
+    padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
+  }
+
+  #cats .current-assessment-card{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+    align-items:stretch!important;
+    padding:12px!important;
   }
 
   #cats .current-name{
@@ -2069,22 +2038,15 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
   #cats .current-meta{
     row-gap:6px!important;
   }
-}
 
-@media(max-width:480px){
-  #main-content.main{
-    padding-left:8px!important;
-    padding-right:8px!important;
-    padding-bottom:calc(52px + env(safe-area-inset-bottom))!important;
+  #cats .current-action{
+    border-top:1px solid #edf1f6!important;
+    padding-top:10px!important;
   }
 
-  #cats{
-    padding:10px!important;
-    padding-bottom:calc(52px + env(safe-area-inset-bottom))!important;
-  }
-
-  #cats .completed-table-wrap{
-    max-height:560px!important;
+  #cats .current-action .exam-action-btn{
+    min-height:44px!important;
+    font-size:11px!important;
   }
 }
 </style>
@@ -8430,8 +8392,8 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 
       <div class="section-card completed-section" id="completed-section">
         <div class="section-head"><div class="section-title-wrap"><div class="section-icon green"><i class="fas fa-circle-check"></i></div><div><h3 class="section-title">Completed Assessments</h3><span class="section-sub">Released results, pending marking, missed assessments and retakes.</span></div><span class="section-count" id="completed-count">0 completed</span></div><span id="completed-average" style="background:#f3f6fa;color:#64748b;padding:5px 9px;border-radius:999px;font-size:9px;font-weight:800">Average: --</span></div>
-        <div class="completed-table-wrap"><table class="assessment-table"><thead><tr><th>Assessment</th><th>Type</th><th>Score</th><th>Percentage</th><th>Grade</th><th>Status</th><th>Actions</th></tr></thead><tbody id="completed-assessments-table"><tr><td colspan="7" style="padding:35px;text-align:center;color:#94a3b8">Loading completed assessments...</td></tr></tbody></table></div>
-        <div class="nchsm-table-scroll-hint"><i class="fas fa-arrows-left-right"></i> Swipe left/right to view Percentage, Grade, Status and Actions</div>
+        <div class="completed-table-wrap"><table class="assessment-table"><thead><tr><th>Assessment</th><th>Score</th><th>Percentage</th><th>Grade / Release</th><th>Actions</th></tr></thead><tbody id="completed-assessments-table"><tr><td colspan="5" style="padding:35px;text-align:center;color:#94a3b8">Loading completed assessments...</td></tr></tbody></table></div>
+        <div class="nchsm-table-scroll-hint"><i class="fas fa-arrows-left-right"></i> Swipe left/right to view Score, Percentage, Grade / Release and Actions</div>
         <div class="empty-state" id="completed-empty" style="display:none"><i class="fas fa-graduation-cap"></i><h3>No Completed Assessments</h3><p>Your assessment results will appear here once submitted or graded.</p><button type="button" onclick="window.examsModule?.applyFilter('current')">View Current Assessments</button></div>
       </div>
     </div>
