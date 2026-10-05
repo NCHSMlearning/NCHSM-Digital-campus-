@@ -19,6 +19,10 @@
  * ✅ sendEmailWithBrevo function defined
  * ✅ Edge Function email sending
  * ✅ Fallback email support
+ * ✅ NEW: Course name + code captured on create/edit
+ * ✅ NEW: Students filtered by REGISTERED UNITS
+ * ✅ NEW: Grade modal shows only registered students
+ * ✅ NEW: Edit modal restores course selection
  *******************************************************/
 
 // ============================================
@@ -40,8 +44,6 @@ window.showFeedback = window.showFeedback || showFeedback;
 // ============================================
 // BLOCK / TERM DROPDOWN HELPER
 // ============================================
-// Kept inside the external Exams module so it does not
-// depend on the function that previously lived in script.js.
 function updateBlockTermOptions(programSelectId, blockTermSelectId) {
     const programSelect = typeof window.$ === 'function'
         ? window.$(programSelectId)
@@ -137,14 +139,11 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
         blockTermSelect.value = currentValue;
     }
 }
-
 window.updateBlockTermOptions = updateBlockTermOptions;
 
 // ============================================
 // SELF-CONTAINED SHARED PROGRAM HELPERS
 // ============================================
-// These were previously supplied by script.js. Keep local fallbacks so
-// Exams/CATS remains functional when it is loaded as an independent file.
 function escapeHtml(text, isAttribute = false) {
     if (text === null || text === undefined) return '';
     const div = document.createElement('div');
@@ -235,10 +234,8 @@ const ExamCache = {
 };
 
 // ============================================
-// DOM CACHE - SELF-CONTAINED MODULE
+// DOM CACHE
 // ============================================
-// The Exams/CATS module was extracted from the main script.js.
-// Keep its DOM cache local so it does not depend on a global DOM object.
 const DOM = {
     examsTbody: null,
     studentExams: null,
@@ -264,7 +261,7 @@ function cacheDomElements() {
 }
 
 // ============================================
-// DEBOUNCE HELPER - GLOBAL
+// DEBOUNCE HELPER
 // ============================================
 function debounce(fn, delay = 300) {
     let timer;
@@ -287,12 +284,10 @@ async function sendEmailWithBrevo(to, subject, htmlContent) {
             return { success: false, error: 'Supabase not available' };
         }
         
-        // Get session token
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError || !session) {
             console.error('❌ No session:', sessionError);
-            // Try with anon key fallback
             return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
         }
         
@@ -327,14 +322,9 @@ async function sendEmailWithBrevo(to, subject, htmlContent) {
         
     } catch (error) {
         console.error('❌ Email error:', error);
-        // Try fallback
         return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
     }
 }
-
-// ============================================
-// 📧 FALLBACK: Edge Function with Anon Key
-// ============================================
 
 async function sendEmailWithEdgeFunctionFallback(to, subject, htmlContent) {
     try {
@@ -374,7 +364,7 @@ async function sendEmailWithEdgeFunctionFallback(to, subject, htmlContent) {
 }
 
 // ============================================
-// 📧 EXAM NOTIFICATION FUNCTIONS
+// 📧 EXAM NOTIFICATION
 // ============================================
 
 async function sendExamNotificationEmail(examData, recipients) {
@@ -385,12 +375,8 @@ async function sendExamNotificationEmail(examData, recipients) {
     
     console.log(`📧 Sending exam notification to ${recipients.length} students...`);
     
-    // Prepare email content
     const examDate = examData.exam_date ? new Date(examData.exam_date).toLocaleDateString('en-KE', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     }) : 'TBD';
     
     const examTime = examData.exam_start_time || 'TBD';
@@ -434,7 +420,6 @@ async function sendExamNotificationEmail(examData, recipients) {
                 <h1>📝 ${examTypeLabel} Posted!</h1>
                 <p>Nakuru College of Health Sciences and Management</p>
             </div>
-            
             <div class="body">
                 <div class="greeting">
                     <p>👋 <strong>Dear Student,</strong></p>
@@ -442,11 +427,11 @@ async function sendExamNotificationEmail(examData, recipients) {
                         A new exam has been posted for your program. Please review the details below.
                     </p>
                 </div>
-                
                 <div class="details">
                     <h4>📋 Exam Details</h4>
                     <table>
                         <tr><td class="label">📝 Exam Title</td><td class="value"><strong>${escapeHtml(examTitle)}</strong></td></tr>
+                        <tr><td class="label">📚 Unit</td><td class="value">${escapeHtml(examData.course_name || 'N/A')}</td></tr>
                         <tr><td class="label">🎓 Program</td><td class="value">${escapeHtml(examData.target_program || examData.program_type || 'N/A')}</td></tr>
                         <tr><td class="label">📚 Block/Term</td><td class="value">${escapeHtml(examData.block || 'N/A')}</td></tr>
                         <tr><td class="label">📅 Date</td><td class="value">${examDate}</td></tr>
@@ -457,12 +442,10 @@ async function sendExamNotificationEmail(examData, recipients) {
                         ${examLink && examLink !== '#' ? `<tr><td class="label">🔗 Exam Link</td><td class="value"><a href="${escapeHtml(examLink)}" target="_blank">Click Here</a></td></tr>` : ''}
                     </table>
                 </div>
-                
                 ${examLink && examLink !== '#' ? `
                 <div style="text-align: center; margin: 20px 0;">
                     <a href="${escapeHtml(examLink)}" target="_blank" class="btn">🚪 Take Exam</a>
                 </div>` : ''}
-                
                 <div style="background: #fef3c7; border-radius: 12px; padding: 12px 16px; border-left: 4px solid #f59e0b; margin-top: 16px;">
                     <p style="margin: 0; font-size: 13px; color: #78350F;">
                         <i class="fas fa-info-circle"></i> 
@@ -470,7 +453,6 @@ async function sendExamNotificationEmail(examData, recipients) {
                     </p>
                 </div>
             </div>
-            
             <div class="footer">
                 <p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
                 <p style="font-size:0.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p>
@@ -480,15 +462,11 @@ async function sendExamNotificationEmail(examData, recipients) {
 </body>
 </html>`;
     
-    // Send emails
     let sentCount = 0;
     let failedCount = 0;
     
     for (const student of recipients) {
-        if (!student.email) {
-            failedCount++;
-            continue;
-        }
+        if (!student.email) { failedCount++; continue; }
         
         try {
             const result = await sendEmailWithBrevo(
@@ -497,14 +475,9 @@ async function sendExamNotificationEmail(examData, recipients) {
                 emailHtml
             );
             
-            if (result.success) {
-                sentCount++;
-            } else {
-                failedCount++;
-                console.error(`Failed to send to ${student.email}:`, result.error);
-            }
+            if (result.success) sentCount++;
+            else failedCount++;
             
-            // Small delay to avoid rate limiting
             await new Promise(r => setTimeout(r, 200));
             
         } catch (error) {
@@ -515,7 +488,6 @@ async function sendExamNotificationEmail(examData, recipients) {
     
     console.log(`✅ Exam notifications sent: ${sentCount} sent, ${failedCount} failed`);
     
-    // Save notification record
     try {
         const supabase = window.sb || window.supabase;
         if (supabase) {
@@ -541,50 +513,37 @@ async function sendExamNotificationEmail(examData, recipients) {
 let selectedStudentsForNotification = [];
 let allStudentsForProgram = [];
 
-// Toggle student selection visibility
 document.addEventListener('DOMContentLoaded', function() {
     const notifyTarget = document.getElementById('exam_notify_target');
     if (notifyTarget) {
         notifyTarget.addEventListener('change', function() {
             const container = document.getElementById('specific_students_container');
-            if (this.value === 'specific') {
-                container.style.display = 'block';
-            } else {
-                container.style.display = 'none';
-            }
+            if (container) container.style.display = this.value === 'specific' ? 'block' : 'none';
         });
     }
     
-    // Load students when program or block changes
     const programSelect = document.getElementById('exam_program');
     const blockSelect = document.getElementById('exam_block_term');
     
-    if (programSelect) {
-        programSelect.addEventListener('change', loadStudentsForNotification);
-    }
-    if (blockSelect) {
-        blockSelect.addEventListener('change', loadStudentsForNotification);
-    }
+    if (programSelect) programSelect.addEventListener('change', loadStudentsForNotification);
+    if (blockSelect) blockSelect.addEventListener('change', loadStudentsForNotification);
     
-    // ✅ Load students on page load after a delay
     setTimeout(function() {
-        const program = programSelect?.value;
-        if (program) {
-            loadStudentsForNotification();
-        }
+        if (programSelect?.value) loadStudentsForNotification();
     }, 1000);
 });
 
 // ============================================
-// 🔥 LOAD STUDENTS FOR NOTIFICATION - WITH BLOCK FILTER
+// 🔥 LOAD REGISTERED STUDENTS FOR NOTIFICATION
+// Now filters by REGISTERED UNITS (student_unit_registrations)
 // ============================================
 
 async function loadStudentsForNotification() {
     const program = document.getElementById('exam_program')?.value;
     const block = document.getElementById('exam_block_term')?.value;
+    const selectedCourseId = document.getElementById('exam_course_id')?.value;
     
-    // ✅ Debug logging
-    console.log('📋 Loading students for:', { program, block });
+    console.log('📋 Loading registered students for:', { program, block, selectedCourseId });
     
     if (!program) {
         allStudentsForProgram = [];
@@ -597,19 +556,65 @@ async function loadStudentsForNotification() {
         const supabase = window.sb || window.supabase;
         if (!supabase) return;
         
+        // ==========================================
+        // STEP 1: If a course is selected, find students registered for that unit
+        // ==========================================
+        let studentUuids = null;
+        
+        if (selectedCourseId) {
+            // Get the course name to match against registrations
+            const { data: course } = await supabase
+                .from('courses')
+                .select('course_name, unit_code, target_program')
+                .eq('id', selectedCourseId)
+                .maybeSingle();
+            
+            if (course) {
+                const unitName = course.course_name;
+                const unitCode = course.unit_code;
+                
+                console.log(`📚 Filtering by registered unit: "${unitName}" (${unitCode})`);
+                
+                // Find approved registrations for this unit
+                let regQuery = supabase
+                    .from('student_unit_registrations')
+                    .select('student_id, unit_code, unit_name, status')
+                    .eq('status', 'approved');
+                
+                if (unitName) {
+                    regQuery = regQuery.or(`unit_name.eq.${unitName},unit_code.eq.${unitCode}`);
+                } else if (unitCode) {
+                    regQuery = regQuery.eq('unit_code', unitCode);
+                }
+                
+                const { data: regs, error: regError } = await regQuery;
+                
+                if (!regError && regs && regs.length > 0) {
+                    studentUuids = regs.map(r => r.student_id);
+                    console.log(`📚 Found ${studentUuids.length} students registered for this unit`);
+                } else {
+                    console.log(`📚 No registrations found for this unit — showing all program students`);
+                }
+            }
+        }
+        
+        // ==========================================
+        // STEP 2: Query student profiles
+        // ==========================================
         let query = supabase
             .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, email, program, block')
+            .select('user_id, full_name, email, program, block, student_id, admission_number')
             .eq('role', 'student')
-            .eq('status', 'approved')
             .eq('program', program);
         
-        // ✅ FIX: Only filter by block if a specific block is selected
+        // Filter by block if selected
         if (block && block !== '' && block !== '-- Select --' && block !== '-- Select Block/Term --') {
             query = query.eq('block', block);
-            console.log(`📋 Filtering by block: ${block}`);
-        } else {
-            console.log('📋 No block filter applied - showing all students in program');
+        }
+        
+        // Filter by registered students if we found them
+        if (studentUuids && studentUuids.length > 0) {
+            query = query.in('user_id', studentUuids);
         }
         
         const { data, error } = await query.limit(500);
@@ -619,18 +624,16 @@ async function loadStudentsForNotification() {
         allStudentsForProgram = data || [];
         console.log(`✅ Loaded ${allStudentsForProgram.length} students for notification`);
         
-        // Show sample students
         if (allStudentsForProgram.length > 0) {
-            console.log('📋 Sample students:', allStudentsForProgram.slice(0, 3).map(s => s.full_name));
+            console.log('📋 Sample:', allStudentsForProgram.slice(0, 3).map(s => s.full_name));
         }
         
-        // Update count
         const countEl = document.getElementById('student_notify_count');
         if (countEl) {
-            countEl.textContent = `${allStudentsForProgram.length} students`;
+            const label = studentUuids ? 'registered students' : 'students';
+            countEl.textContent = `${allStudentsForProgram.length} ${label}`;
         }
         
-        // Update selected students display
         updateSelectedStudentsDisplay();
         
     } catch (error) {
@@ -641,18 +644,12 @@ async function loadStudentsForNotification() {
     }
 }
 
-// ============================================
-// SEARCH STUDENTS FOR NOTIFICATION
-// ============================================
-
 function searchStudentsForNotification() {
     const searchTerm = document.getElementById('exam_student_search')?.value?.toLowerCase() || '';
     const resultsContainer = document.getElementById('student_search_results');
-    
     if (!resultsContainer) return;
     
     let filtered = allStudentsForProgram;
-    
     if (searchTerm) {
         filtered = allStudentsForProgram.filter(s => 
             (s.full_name || '').toLowerCase().includes(searchTerm) ||
@@ -691,29 +688,17 @@ function searchStudentsForNotification() {
     resultsContainer.style.display = 'block';
 }
 
-// ============================================
-// TOGGLE STUDENT FOR NOTIFICATION
-// ============================================
-
 function toggleStudentForNotification(studentId) {
     const student = allStudentsForProgram.find(s => s.user_id === studentId);
     if (!student) return;
     
     const index = selectedStudentsForNotification.findIndex(s => s.user_id === studentId);
-    
-    if (index > -1) {
-        selectedStudentsForNotification.splice(index, 1);
-    } else {
-        selectedStudentsForNotification.push(student);
-    }
+    if (index > -1) selectedStudentsForNotification.splice(index, 1);
+    else selectedStudentsForNotification.push(student);
     
     updateSelectedStudentsDisplay();
     searchStudentsForNotification();
 }
-
-// ============================================
-// UPDATE SELECTED STUDENTS DISPLAY
-// ============================================
 
 function updateSelectedStudentsDisplay() {
     const container = document.getElementById('selected_students_list');
@@ -737,72 +722,46 @@ function updateSelectedStudentsDisplay() {
     container.innerHTML = html;
 }
 
-// ============================================
-// GET NOTIFICATION RECIPIENTS - WITH BLOCK FILTER
-// ============================================
-
 function getNotificationRecipients() {
     const target = document.getElementById('exam_notify_target')?.value || 'all';
-    const program = document.getElementById('exam_program')?.value;
     const block = document.getElementById('exam_block_term')?.value;
     
     let recipients = [];
     
-    // ✅ Always filter by the selected block
     switch(target) {
         case 'all':
-            // All students in program + block
+        case 'block':
             recipients = allStudentsForProgram.filter(s => {
-                if (block && block !== '' && block !== '-- Select --') {
-                    return s.block === block;
-                }
+                if (block && block !== '' && block !== '-- Select --') return s.block === block;
                 return true;
             });
             break;
         case 'program':
-            // All students in program (regardless of block)
             recipients = allStudentsForProgram;
-            break;
-        case 'block':
-            // All students in specific block
-            recipients = allStudentsForProgram.filter(s => {
-                if (block && block !== '' && block !== '-- Select --') {
-                    return s.block === block;
-                }
-                return true;
-            });
             break;
         case 'specific':
             recipients = selectedStudentsForNotification;
             break;
         default:
-            recipients = allStudentsForProgram.filter(s => {
-                if (block && block !== '' && block !== '-- Select --') {
-                    return s.block === block;
-                }
-                return true;
-            });
+            recipients = allStudentsForProgram;
     }
     
-    console.log(`📧 Recipients: ${recipients.length} students (target: ${target}, block: ${block})`);
+    console.log(`📧 Recipients: ${recipients.length} students (target: ${target})`);
     return recipients;
 }
 
 // ============================================
-// LOAD EXAMS - FIXED (Properly attaches course data)
+// LOAD EXAMS
 // ============================================
 async function loadExams(forceRefresh = false) {
     console.log('📝 Loading exams...');
-    
-    // ✅ Call cacheDomElements FIRST to initialize DOM
     cacheDomElements();
     
     if (!DOM.examsTbody) {
-        console.warn('⚠️ exams-table-body not found in DOM');
+        console.warn('⚠️ exams-table-body not found');
         return;
     }
     
-    // Check cache
     if (!forceRefresh) {
         const cached = ExamCache.get('exams_list');
         if (cached) {
@@ -814,12 +773,10 @@ async function loadExams(forceRefresh = false) {
     }
     
     DOM.examsTbody.innerHTML = `
-        <tr>
-            <td colspan="12" style="padding: 40px; text-align: center; color: #94a3b8;">
-                <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
-                <p style="margin-top: 10px; font-size: 13px;">Loading exams...</p>
-            </td>
-        </tr>
+        <tr><td colspan="12" style="padding: 40px; text-align: center; color: #94a3b8;">
+            <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+            <p style="margin-top: 10px; font-size: 13px;">Loading exams...</p>
+        </td></tr>
     `;
 
     try {
@@ -833,34 +790,20 @@ async function loadExams(forceRefresh = false) {
             .limit(200);
 
         if (error) throw error;
-        
         console.log(`✅ Loaded ${exams?.length || 0} exams`);
         
-        const { data: allCourses, error: coursesError } = await supabase
+        const { data: allCourses } = await supabase
             .from('courses')
             .select('id, course_name, name, unit_code, target_program');
         
-        if (coursesError) {
-            console.error('Error fetching courses:', coursesError);
-        } else {
+        if (allCourses) {
             const courseMap = {};
-            allCourses?.forEach(c => { courseMap[c.id] = c; });
+            allCourses.forEach(c => { courseMap[c.id] = c; });
             window._courseMap = courseMap;
-            
-            let attachedCount = 0;
-            exams.forEach(exam => {
-                if (exam.course_id && courseMap[exam.course_id]) {
-                    exam.course = courseMap[exam.course_id];
-                    attachedCount++;
-                }
-            });
-            
-            console.log(`✅ Loaded ${allCourses?.length || 0} courses`);
-            console.log(`✅ Attached course data to ${attachedCount} exams`);
+            console.log(`✅ Loaded ${allCourses.length} courses`);
         }
 
         ExamCache.set('exams_list', exams || []);
-        
         renderExamsTable(exams || []);
         renderStudentExams(exams || []);
         updateExamStats(exams || []);
@@ -868,25 +811,18 @@ async function loadExams(forceRefresh = false) {
     } catch (error) {
         console.error('Error loading exams:', error);
         DOM.examsTbody.innerHTML = `
-            <tr>
-                <td colspan="12" style="padding: 30px; text-align: center; color: #dc2626; font-size: 13px;">
-                    <i class="fas fa-exclamation-circle"></i> Failed to load exams: ${error.message}
-                    <br>
-                    <button onclick="loadExams(true)" style="margin-top: 10px; padding: 6px 16px; background: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sync-alt"></i> Retry
-                    </button>
-                </td>
-            </tr>
+            <tr><td colspan="12" style="padding: 30px; text-align: center; color: #dc2626; font-size: 13px;">
+                <i class="fas fa-exclamation-circle"></i> Failed: ${error.message}
+                <br><button onclick="loadExams(true)" style="margin-top: 10px; padding: 6px 16px; background: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-sync-alt"></i> Retry
+                </button>
+            </td></tr>
         `;
     }
 }
 
-// ============================================
-// UPDATE EXAM STATS
-// ============================================
 function updateExamStats(exams) {
     if (!exams) exams = [];
-    
     const total = exams.length;
     const published = exams.filter(e => e.status === 'published' || e.status === 'Published').length;
     const inProgress = exams.filter(e => e.status === 'InProgress' || e.status === 'In Progress').length;
@@ -899,13 +835,8 @@ function updateExamStats(exams) {
         statValues[2].textContent = inProgress;
         statValues[3].textContent = draft;
     }
-    
-    console.log(`📊 Exam Stats: Total=${total}, Published=${published}, InProgress=${inProgress}, Draft=${draft}`);
 }
 
-// ============================================
-// GET STATUS BADGE
-// ============================================
 function getStatusBadge(status) {
     const statusMap = {
         'Published': { bg: '#d1fae5', color: '#065f46', icon: '✅', label: 'Published' },
@@ -920,12 +851,8 @@ function getStatusBadge(status) {
         'draft': { bg: '#f3f4f6', color: '#6b7280', icon: '📝', label: 'Draft' },
         'Closed': { bg: '#fee2e2', color: '#991b1b', icon: '🔒', label: 'Closed' },
         'closed': { bg: '#fee2e2', color: '#991b1b', icon: '🔒', label: 'Closed' },
-        'Approved': { bg: '#d1fae5', color: '#065f46', icon: '✅', label: 'Approved' },
-        'approved': { bg: '#d1fae5', color: '#065f46', icon: '✅', label: 'Approved' },
-        'Pending': { bg: '#fef3c7', color: '#92400e', icon: '⏳', label: 'Pending' },
-        'pending': { bg: '#fef3c7', color: '#92400e', icon: '⏳', label: 'Pending' },
-        'Rejected': { bg: '#fee2e2', color: '#991b1b', icon: '❌', label: 'Rejected' },
-        'rejected': { bg: '#fee2e2', color: '#991b1b', icon: '❌', label: 'Rejected' }
+        'Released': { bg: '#d1fae5', color: '#065f46', icon: '🎉', label: 'Released' },
+        'released': { bg: '#d1fae5', color: '#065f46', icon: '🎉', label: 'Released' }
     };
     
     const s = statusMap[status] || statusMap['Draft'];
@@ -935,19 +862,17 @@ function getStatusBadge(status) {
 }
 
 // ============================================
-// RENDER EXAMS TABLE - FULLY FIXED
+// RENDER EXAMS TABLE
 // ============================================
 function renderExamsTable(exams) {
     if (!DOM.examsTbody) return;
     
     if (!exams || exams.length === 0) {
         DOM.examsTbody.innerHTML = `
-            <tr>
-                <td colspan="12" style="padding: 40px; text-align: center; color: #94a3b8;">
-                    <i class="fas fa-info-circle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                    No exams found. Create your first exam!
-                </td>
-            </tr>
+            <tr><td colspan="12" style="padding: 40px; text-align: center; color: #94a3b8;">
+                <i class="fas fa-info-circle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                No exams found. Create your first exam!
+            </td></tr>
         `;
         return;
     }
@@ -956,23 +881,15 @@ function renderExamsTable(exams) {
     
     for (const e of exams) {
         let courseName = 'N/A';
-        if (e.course?.course_name) {
-            courseName = e.course.course_name;
-        } else if (e.course?.name) {
-            courseName = e.course.name;
-        } else if (e.course?.unit_code) {
-            courseName = e.course.unit_code;
-        } else if (e.course_name) {
-            courseName = e.course_name;
-        } else if (e.unit_name) {
-            courseName = e.unit_name;
-        } else if (e.subject_name) {
-            courseName = e.subject_name;
-        } else if (e.course_id && window._courseMap && window._courseMap[e.course_id]) {
+        if (e.course_name) courseName = e.course_name;
+        else if (e.course?.course_name) courseName = e.course.course_name;
+        else if (e.course?.name) courseName = e.course.name;
+        else if (e.course_name) courseName = e.course_name;
+        else if (e.unit_name) courseName = e.unit_name;
+        else if (e.subject_name) courseName = e.subject_name;
+        else if (e.course_id && window._courseMap && window._courseMap[e.course_id]) {
             const c = window._courseMap[e.course_id];
             courseName = c.course_name || c.name || c.unit_code || 'Unknown Course';
-        } else if (e.course_id) {
-            courseName = `Course ID: ${String(e.course_id).substring(0, 8)}...`;
         }
         
         const title = e.title || e.exam_name || 'Untitled';
@@ -989,26 +906,16 @@ function renderExamsTable(exams) {
             try {
                 const d = new Date(examDate);
                 if (!isNaN(d.getTime())) {
-                    formattedDate = d.toLocaleDateString('en-KE', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                    });
+                    formattedDate = d.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' });
                 }
-            } catch (err) {
-                formattedDate = examDate || 'N/A';
-            }
+            } catch (err) { formattedDate = examDate || 'N/A'; }
         }
         
         if (e.exam_start_time) {
-            try {
-                const timeStr = e.exam_start_time;
-                if (timeStr && timeStr.includes(':')) {
-                    const parts = timeStr.split(':');
-                    formattedTime = parts[0] + ':' + parts[1];
-                }
-            } catch (err) {
-                formattedTime = e.exam_start_time || 'N/A';
+            const timeStr = e.exam_start_time;
+            if (timeStr && timeStr.includes(':')) {
+                const parts = timeStr.split(':');
+                formattedTime = parts[0] + ':' + parts[1];
             }
         }
         
@@ -1020,9 +927,7 @@ function renderExamsTable(exams) {
         const link = e.online_link || e.exam_link;
         
         html += `
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" 
-                onmouseover="this.style.background='#f8fafc'" 
-                onmouseout="this.style.background='transparent'"
+            <tr style="border-bottom: 1px solid #f1f5f9;"
                 data-program="${escapeHtml(programDisplay)}"
                 data-status="${escapeHtml(status)}"
                 data-month="${escapeHtml(e.intake_month || '')}">
@@ -1052,7 +957,11 @@ function renderExamsTable(exams) {
                     <button onclick="openGradeModal('${e.id}')" class="btn-sm" style="padding: 4px 10px; font-size: 11px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Grade">
                         <i class="fas fa-check-double"></i>
                     </button>
-                    ${status !== 'Completed' && status !== 'Closed' && status !== 'completed' ? `
+                    ${status !== 'Released' && status !== 'released' && status !== 'Completed' && status !== 'Closed' ? `
+                    <button onclick="releaseExamResults('${e.id}')" class="btn-sm" style="padding: 4px 10px; font-size: 11px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Release Results & Sync to Marks Entry">
+                        <i class="fas fa-check-circle"></i> Release
+                    </button>` : ''}
+                    ${status !== 'Completed' && status !== 'Closed' && status !== 'completed' && status !== 'Released' ? `
                     <button onclick="closeExam('${e.id}')" class="btn-sm" style="padding: 4px 10px; font-size: 11px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Close">
                         <i class="fas fa-lock"></i>
                     </button>` : ''}
@@ -1071,9 +980,6 @@ function renderExamsTable(exams) {
     console.log(`✅ Rendered ${exams.length} exams`);
 }
 
-// ============================================
-// RENDER STUDENT EXAMS
-// ============================================
 function renderStudentExams(exams) {
     if (!DOM.studentExams) return;
     
@@ -1083,25 +989,18 @@ function renderStudentExams(exams) {
     );
     
     if (published.length === 0) {
-        DOM.studentExams.innerHTML = `
-            <p style="color: #94a3b8; padding: 20px; text-align: center; font-size: 14px;">
-                <i class="fas fa-info-circle"></i> No published assessments available.
-            </p>
-        `;
+        DOM.studentExams.innerHTML = `<p style="color: #94a3b8; padding: 20px; text-align: center; font-size: 14px;"><i class="fas fa-info-circle"></i> No published assessments available.</p>`;
         return;
     }
     
     let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;">';
     
-    const displayExams = published.slice(0, 6);
-    for (const exam of displayExams) {
+    for (const exam of published.slice(0, 6)) {
         const dateStr = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : '';
-        const statusClass = exam.status === 'Upcoming' ? 'upcoming' : 
-                           exam.status === 'InProgress' ? 'in-progress' : 'completed';
-        const borderColor = statusClass === 'upcoming' ? '#f59e0b' : 
-                           statusClass === 'in-progress' ? '#3b82f6' : '#10b981';
+        const statusClass = exam.status === 'Upcoming' ? 'upcoming' : exam.status === 'InProgress' ? 'in-progress' : 'completed';
+        const borderColor = statusClass === 'upcoming' ? '#f59e0b' : statusClass === 'in-progress' ? '#3b82f6' : '#10b981';
         const link = exam.online_link || exam.exam_link;
-        const courseName = exam.course?.course_name || exam.course_name || exam.subject_name || 'N/A';
+        const courseName = exam.course_name || exam.course?.course_name || exam.course_name || exam.subject_name || 'N/A';
         
         html += `
             <div style="background: white; border-radius: 12px; padding: 14px 16px; border-left: 4px solid ${borderColor}; border: 1px solid #f1f5f9;">
@@ -1114,9 +1013,7 @@ function renderStudentExams(exams) {
                     <span><strong>Marks:</strong> ${exam.marks_out_of || exam.total_marks || 100}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 6px;">
-                    <span style="font-size: 11px; font-weight: 500; color: ${borderColor};">
-                        ${exam.status}
-                    </span>
+                    <span style="font-size: 11px; font-weight: 500; color: ${borderColor};">${exam.status}</span>
                     ${link ? `<a href="${escapeHtml(link)}" target="_blank" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; padding: 4px 16px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
                         <i class="fas fa-external-link-alt" style="font-size: 10px;"></i> Take Exam
                     </a>` : ''}
@@ -1129,9 +1026,6 @@ function renderStudentExams(exams) {
     DOM.studentExams.innerHTML = html;
 }
 
-// ============================================
-// GET PROGRAM OPTIONS
-// ============================================
 function getProgramOptions() {
     const groups = [
         { label: '🎓 KRCHN Nursing', programs: ['KRCHN - Kenya Registered Community Health Nursing'] },
@@ -1181,31 +1075,19 @@ function getProgramOptions() {
     return html;
 }
 
-// ============================================
-// POPULATE PROGRAM DROPDOWNS
-// ============================================
 function populateProgramDropdowns() {
     const examProgram = document.getElementById('exam_program');
     const editExamProgram = document.getElementById('edit_exam_program');
-    
     const options = getProgramOptions();
-    if (examProgram) {
-        examProgram.innerHTML = '<option value="">-- Select Program --</option>' + options;
-    }
-    if (editExamProgram) {
-        if (!editExamProgram.querySelector('option[value=""]')) {
-            editExamProgram.innerHTML = '<option value="">-- Select Program --</option>' + options;
-        }
+    if (examProgram) examProgram.innerHTML = '<option value="">-- Select Program --</option>' + options;
+    if (editExamProgram && !editExamProgram.querySelector('option[value=""]')) {
+        editExamProgram.innerHTML = '<option value="">-- Select Program --</option>' + options;
     }
 }
 
-// ============================================
-// LOAD CLASSES FOR EXAM - WITH TVET SUPPORT
-// ============================================
 async function loadAvailableClassesForExam() {
     if (!DOM.classSelector) return;
     
-    // Get current program from the exam form
     const programSelect = document.getElementById('exam_program');
     const program = programSelect?.value || 'KRCHN';
     const isTVET = isTVETProgram(program);
@@ -1213,14 +1095,12 @@ async function loadAvailableClassesForExam() {
     const isDiploma = programLevel === 'DIPLOMA';
     const isCertificate = programLevel === 'CERTIFICATE';
     
-    // Build options based on program type
     let options = [];
     let blockLabel = 'Block';
     
     if (isTVET) {
         blockLabel = 'Term';
         if (isDiploma) {
-            // Diploma TVET: Year 1 Term 1 to Year 2 Term 3
             options = [
                 { value: 'Y1T1', label: 'Year 1 Term 1' },
                 { value: 'Y1T2', label: 'Year 1 Term 2' },
@@ -1230,14 +1110,12 @@ async function loadAvailableClassesForExam() {
                 { value: 'Y2T3', label: 'Year 2 Term 3' }
             ];
         } else if (isCertificate) {
-            // Certificate TVET: Year 1 Term 1 to Term 3
             options = [
                 { value: 'Y1T1', label: 'Year 1 Term 1' },
                 { value: 'Y1T2', label: 'Year 1 Term 2' },
                 { value: 'Y1T3', label: 'Year 1 Term 3' }
             ];
         } else {
-            // Other TVET
             options = [
                 { value: 'Introductory', label: 'Introductory Term' },
                 { value: 'Term1', label: 'Term 1' },
@@ -1250,7 +1128,6 @@ async function loadAvailableClassesForExam() {
             ];
         }
     } else {
-        // KRCHN Blocks
         options = [
             { value: 'Introductory', label: 'Introductory Block' },
             { value: 'Block 1', label: 'Block 1' },
@@ -1264,9 +1141,7 @@ async function loadAvailableClassesForExam() {
     }
     
     DOM.classSelector.innerHTML = `
-        <p style="color:#6b7280;font-size:12px;margin:0 0 8px 0;grid-column:1/-1;">
-            <i class="fas fa-info-circle"></i> Select ${blockLabel}s:
-        </p>
+        <p style="color:#6b7280;font-size:12px;margin:0 0 8px 0;grid-column:1/-1;"><i class="fas fa-info-circle"></i> Select ${blockLabel}s:</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;grid-column:1/-1;">
             ${options.map(opt => `
                 <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;">
@@ -1278,9 +1153,7 @@ async function loadAvailableClassesForExam() {
         <div style="display:flex;gap:6px;grid-column:1/-1;margin-top:4px;">
             <input type="text" id="customBlocksInput" placeholder="Custom ${blockLabel}s (comma)" 
                    style="flex:1;padding:6px 12px;border-radius:6px;border:1px solid #ddd;font-size:12px;">
-            <button onclick="addCustomBlocks()" style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">
-                Add
-            </button>
+            <button onclick="addCustomBlocks()" style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">Add</button>
         </div>
     `;
 }
@@ -1296,10 +1169,7 @@ function addCustomBlocks() {
     blocks.forEach(block => {
         const label = document.createElement('label');
         label.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;';
-        label.innerHTML = `
-            <input type="checkbox" class="exam-class-checkbox" value="${escapeHtml(block)}">
-            <span>${escapeHtml(block)}</span>
-        `;
+        label.innerHTML = `<input type="checkbox" class="exam-class-checkbox" value="${escapeHtml(block)}"><span>${escapeHtml(block)}</span>`;
         div.appendChild(label);
     });
     input.value = '';
@@ -1307,14 +1177,12 @@ function addCustomBlocks() {
 
 function getSelectedClasses() {
     const selected = [];
-    document.querySelectorAll('.exam-class-checkbox:checked').forEach(cb => {
-        selected.push(cb.value);
-    });
+    document.querySelectorAll('.exam-class-checkbox:checked').forEach(cb => selected.push(cb.value));
     return selected;
 }
 
 // ============================================
-// CREATE EXAM WITH EMAIL NOTIFICATION - WITH BLOCK FILTERING
+// ✅ CREATE EXAM — SAVES course_name + course_code
 // ============================================
 async function handleAddExam(e) {
     e.preventDefault();
@@ -1325,6 +1193,8 @@ async function handleAddExam(e) {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Creating...';
 
+    const selectedCourse = window.selectedSuperAdminCreateCourse;
+    
     const fields = {
         title: document.getElementById('exam_title')?.value.trim(),
         type: document.getElementById('exam_type')?.value,
@@ -1338,7 +1208,12 @@ async function handleAddExam(e) {
         block: document.getElementById('exam_block_term')?.value,
         intake: parseInt(document.getElementById('exam_intake')?.value),
         intakeMonth: document.getElementById('exam_intake_month')?.value || null,
+        
+        // ✅ Course capture
         course: document.getElementById('exam_course_id')?.value || null,
+        courseName: selectedCourse?.name || null,
+        courseCode: selectedCourse?.code || null,
+        
         outOf: parseInt(document.getElementById('exam_out_of')?.value) || 100,
         passMark: parseInt(document.getElementById('exam_pass_mark')?.value) || 50,
         minFee: parseInt(document.getElementById('exam_min_fee')?.value) || 0,
@@ -1355,50 +1230,22 @@ async function handleAddExam(e) {
     const classes = getSelectedClasses();
     const user = await getCurrentUser();
     
-    // ✅ Get notification settings
     const notifyStudents = document.getElementById('exam_notify_students')?.checked || false;
     const notifyTarget = document.getElementById('exam_notify_target')?.value || 'all';
     
-    // Get recipients for notification - WITH BLOCK FILTER
+    // Get recipients for notification - registered students first
     let recipients = [];
     if (notifyStudents) {
-        const program = fields.program;
-        const block = fields.block;
-        
         if (notifyTarget === 'specific') {
             recipients = selectedStudentsForNotification;
         } else {
-            // Load students based on selection
-            const supabase = window.sb || window.supabase;
-            if (supabase) {
-                let query = supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id, full_name, email, program, block')
-                    .eq('role', 'student')
-                    .eq('status', 'approved')
-                    .eq('program', program);
-                
-                // ✅ FIX: ALWAYS filter by block for 'all' and 'block' targets
-                if (notifyTarget === 'all' || notifyTarget === 'block') {
-                    if (block && block !== '' && block !== '-- Select --' && block !== '-- Select Block/Term --') {
-                        query = query.eq('block', block);
-                        console.log(`📋 Loading students for block: ${block}`);
-                    }
-                }
-                // 'program' target = all students in program (no block filter)
-                
-                const { data } = await query.limit(500);
-                recipients = data || [];
-                console.log(`📧 Found ${recipients.length} students for notification`);
-            }
+            recipients = allStudentsForProgram;
         }
     }
 
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Supabase client not available');
-        }
+        if (!supabase) throw new Error('Supabase client not available');
         
         const examData = {
             title: fields.title,
@@ -1416,7 +1263,12 @@ async function handleAddExam(e) {
             block_term: fields.block,
             intake_year: fields.intake,
             intake_month: fields.intakeMonth,
+            
+            // ✅ Course linking (all three fields)
             course_id: fields.course,
+            course_name: fields.courseName,
+            course_code: fields.courseCode,
+            
             marks_out_of: fields.outOf,
             total_marks: fields.outOf,
             MARKS: String(fields.outOf),
@@ -1436,20 +1288,17 @@ async function handleAddExam(e) {
         const examId = data?.[0]?.id;
         examData.id = examId;
 
-        // ✅ Send email notifications
+        // Send email notifications
         let emailResult = { sent: 0, total: 0 };
         if (notifyStudents && recipients.length > 0) {
             emailResult = await sendExamNotificationEmail(examData, recipients);
         }
 
-        // Show feedback with notification status
         let feedbackMsg = `✅ "${fields.title}" created successfully!`;
         if (notifyStudents) {
             if (recipients.length > 0) {
                 feedbackMsg += ` 📧 ${emailResult.sent} email notifications sent to ${recipients.length} students.`;
-                if (emailResult.failed > 0) {
-                    feedbackMsg += ` ⚠️ ${emailResult.failed} failed.`;
-                }
+                if (emailResult.failed > 0) feedbackMsg += ` ⚠️ ${emailResult.failed} failed.`;
             } else {
                 feedbackMsg += ` ⚠️ No students found to notify.`;
             }
@@ -1458,10 +1307,20 @@ async function handleAddExam(e) {
         
         if (e.target) e.target.reset();
         
-        // Reset selected students
+        // Reset notification state
         selectedStudentsForNotification = [];
         updateSelectedStudentsDisplay();
-        document.getElementById('exam_notify_students').checked = true;
+        const notifyCheck = document.getElementById('exam_notify_students');
+        if (notifyCheck) notifyCheck.checked = true;
+        
+        // ✅ Reset course selection
+        window.selectedSuperAdminCreateCourse = null;
+        const courseSearchInput = document.getElementById('createCourseSearchInput');
+        if (courseSearchInput) courseSearchInput.value = '';
+        const courseHiddenInput = document.getElementById('exam_course_id');
+        if (courseHiddenInput) courseHiddenInput.value = '';
+        const courseDisplay = document.getElementById('createSelectedCourseDisplay');
+        if (courseDisplay) courseDisplay.style.display = 'none';
         
         ExamCache.clear();
         loadExams(true);
@@ -1475,125 +1334,85 @@ async function handleAddExam(e) {
 }
 
 // ============================================
-// OPEN EDIT EXAM MODAL - COMPLETE FIX
+// ✅ OPEN EDIT EXAM MODAL — RESTORES course object
 // ============================================
 async function openEditExamModal(id) {
     console.log('📝 Opening edit modal for exam:', id);
     
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Supabase client not available');
-        }
+        if (!supabase) throw new Error('Supabase client not available');
         
-        const { data: exam, error } = await supabase
-            .from('exams')
-            .select('*')
-            .eq('id', id)
-            .single();
-        
+        const { data: exam, error } = await supabase.from('exams').select('*').eq('id', id).single();
         if (error) throw error;
         
         console.log('✅ Exam loaded:', exam.title);
-        console.log('📋 Exam data:', exam);
         
         const modal = document.getElementById('examEditModal');
         if (!modal) {
-            console.error('❌ examEditModal not found');
             showFeedback('Edit modal not found', 'error');
             return;
         }
         
-        // Populate all fields
-        const idEl = document.getElementById('edit_exam_id');
-        if (idEl) idEl.value = exam.id;
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val || '';
+        };
         
-        const titleEl = document.getElementById('edit_exam_title');
-        if (titleEl) titleEl.value = exam.title || exam.exam_name || '';
+        setVal('edit_exam_id', exam.id);
+        setVal('edit_exam_title', exam.title || exam.exam_name || '');
+        setVal('edit_exam_type', exam.exam_type || 'CAT');
+        setVal('edit_exam_status', exam.status || 'Upcoming');
+        setVal('edit_exam_basis', exam.exam_basis || 'ordinary');
         
-        const typeEl = document.getElementById('edit_exam_type');
-        if (typeEl) typeEl.value = exam.exam_type || 'CAT';
-        
-        const statusEl = document.getElementById('edit_exam_status');
-        if (statusEl) statusEl.value = exam.status || 'Upcoming';
-        
-        const basisEl = document.getElementById('edit_exam_basis');
-        if (basisEl) basisEl.value = exam.exam_basis || 'ordinary';
-        
-        const dateEl = document.getElementById('edit_exam_date');
-        if (dateEl && exam.exam_date) {
+        // Date
+        if (exam.exam_date) {
             const d = new Date(exam.exam_date);
-            if (!isNaN(d.getTime())) {
-                dateEl.value = d.toISOString().split('T')[0];
-            }
+            if (!isNaN(d.getTime())) setVal('edit_exam_date', d.toISOString().split('T')[0]);
         }
         
-        const startTimeEl = document.getElementById('edit_exam_start_time');
-        if (startTimeEl && exam.exam_start_time) {
-            const timeStr = exam.exam_start_time;
-            if (timeStr && timeStr.includes(':')) {
-                startTimeEl.value = timeStr.substring(0, 5);
-            }
+        // Time
+        if (exam.exam_start_time && exam.exam_start_time.includes(':')) {
+            setVal('edit_exam_start_time', exam.exam_start_time.substring(0, 5));
         }
         
-        const durationEl = document.getElementById('edit_exam_duration');
-        if (durationEl) durationEl.value = exam.duration_minutes || 60;
+        setVal('edit_exam_duration', exam.duration_minutes || 60);
+        setVal('edit_exam_deadline', exam.marks_entry_deadline || '');
+        setVal('edit_exam_program', exam.target_program || exam.program_type || '');
+        setVal('edit_exam_block', exam.block || exam.block_term || '');
+        setVal('edit_exam_intake', exam.intake_year || '');
+        setVal('edit_exam_intake_month', exam.intake_month || '');
+        setVal('edit_exam_out_of', exam.marks_out_of || exam.total_marks || 100);
+        setVal('edit_exam_pass_mark', exam.pass_mark || 50);
+        setVal('edit_exam_min_fee', exam.min_fee_balance || 0);
+        setVal('edit_exam_link', exam.online_link || exam.exam_link || '');
+        setVal('edit_exam_course', exam.course_id || '');
         
-        const deadlineEl = document.getElementById('edit_exam_deadline');
-        if (deadlineEl) deadlineEl.value = exam.marks_entry_deadline || '';
-        
-        const programEl = document.getElementById('edit_exam_program');
-        if (programEl) {
-            const program = exam.target_program || exam.program_type || '';
-            programEl.value = program;
-            console.log('✅ Program set to:', program);
+        // ✅ Restore selected course object so saveEditedExam() can capture name + code
+        if (exam.course_name || exam.course_id) {
+            window.selectedSuperAdminEditCourse = {
+                id: exam.course_id,
+                name: exam.course_name || '',
+                code: exam.course_code || ''
+            };
             
-            if (typeof initEditCourseDropdown === 'function') {
-                await initEditCourseDropdown(program, exam.course_id);
-            }
-        }
-        
-        const blockEl = document.getElementById('edit_exam_block');
-        if (blockEl) blockEl.value = exam.block || exam.block_term || '';
-        
-        const intakeEl = document.getElementById('edit_exam_intake');
-        if (intakeEl) intakeEl.value = exam.intake_year || '';
-        
-        const monthEl = document.getElementById('edit_exam_intake_month');
-        if (monthEl) monthEl.value = exam.intake_month || '';
-        
-        const outOfEl = document.getElementById('edit_exam_out_of');
-        if (outOfEl) outOfEl.value = exam.marks_out_of || exam.total_marks || 100;
-        
-        const passMarkEl = document.getElementById('edit_exam_pass_mark');
-        if (passMarkEl) passMarkEl.value = exam.pass_mark || 50;
-        
-        const minFeeEl = document.getElementById('edit_exam_min_fee');
-        if (minFeeEl) minFeeEl.value = exam.min_fee_balance || 0;
-        
-        const linkEl = document.getElementById('edit_exam_link');
-        if (linkEl) linkEl.value = exam.online_link || exam.exam_link || '';
-        
-        const courseEl = document.getElementById('edit_exam_course');
-        if (courseEl && exam.course_id) {
-            courseEl.value = exam.course_id;
-        }
-        
-        const courseSearchEl = document.getElementById('editCourseSearchInput');
-        if (courseSearchEl && exam.course_id && window._courseMap) {
-            const course = window._courseMap[exam.course_id];
-            if (course) {
-                const displayName = course.course_name || course.name || '';
-                const unitCode = course.unit_code || course.code || '';
-                courseSearchEl.value = displayName + (unitCode ? ` (${unitCode})` : '');
+            const courseSearchEl = document.getElementById('editCourseSearchInput');
+            if (courseSearchEl && exam.course_name) {
+                courseSearchEl.value = exam.course_name + (exam.course_code ? ` (${exam.course_code})` : '');
                 
                 const displayEl = document.getElementById('editSelectedCourseDisplay');
                 const nameEl = document.getElementById('editSelectedCourseName');
                 if (displayEl && nameEl) {
                     displayEl.style.display = 'inline';
-                    nameEl.textContent = displayName + (unitCode ? ` (${unitCode})` : '');
+                    nameEl.textContent = courseSearchEl.value;
                 }
             }
+        } else {
+            window.selectedSuperAdminEditCourse = null;
+        }
+        
+        if (typeof initEditCourseDropdown === 'function') {
+            await initEditCourseDropdown(exam.target_program || exam.program_type || '', exam.course_id);
         }
         
         if (typeof renderAssignedClasses === 'function') {
@@ -1601,7 +1420,7 @@ async function openEditExamModal(id) {
         }
         
         modal.style.display = 'flex';
-        console.log('✅ Edit modal opened with all data!');
+        console.log('✅ Edit modal opened');
         
     } catch (error) {
         console.error('❌ Error in openEditExamModal:', error);
@@ -1610,7 +1429,7 @@ async function openEditExamModal(id) {
 }
 
 // ============================================
-// SAVE EDITED EXAM - COMPLETE FIX
+// ✅ SAVE EDITED EXAM — SAVES course_name + course_code
 // ============================================
 async function saveEditedExam(event) {
     if (event) {
@@ -1627,7 +1446,7 @@ async function saveEditedExam(event) {
     }
     
     const id = idEl.value;
-    console.log('📋 Exam ID:', id);
+    const selectedCourse = window.selectedSuperAdminEditCourse;
     
     const data = {
         title: document.getElementById('edit_exam_title')?.value?.trim() || '',
@@ -1645,7 +1464,12 @@ async function saveEditedExam(event) {
         block_term: document.getElementById('edit_exam_block')?.value || '',
         intake_year: parseInt(document.getElementById('edit_exam_intake')?.value) || null,
         intake_month: document.getElementById('edit_exam_intake_month')?.value || null,
+        
+        // ✅ Course linking
         course_id: document.getElementById('edit_exam_course')?.value || null,
+        course_name: selectedCourse?.name || null,
+        course_code: selectedCourse?.code || null,
+        
         marks_out_of: parseInt(document.getElementById('edit_exam_out_of')?.value) || 100,
         total_marks: parseInt(document.getElementById('edit_exam_out_of')?.value) || 100,
         MARKS: String(parseInt(document.getElementById('edit_exam_out_of')?.value) || 100),
@@ -1662,6 +1486,13 @@ async function saveEditedExam(event) {
         }
     });
     
+    // Preserve existing course_name if not changed
+    if (!data.course_name && !selectedCourse) {
+        // Don't overwrite existing course_name; leave it alone
+        delete data.course_name;
+        delete data.course_code;
+    }
+    
     console.log('📤 Update data:', data);
     
     let saveBtn = document.querySelector('#editExamForm button[type="submit"]') || 
@@ -1671,10 +1502,7 @@ async function saveEditedExam(event) {
     if (!saveBtn) {
         const buttons = document.querySelectorAll('#examEditModal button');
         for (const btn of buttons) {
-            if (btn.textContent.toLowerCase().includes('save')) {
-                saveBtn = btn;
-                break;
-            }
+            if (btn.textContent.toLowerCase().includes('save')) { saveBtn = btn; break; }
         }
     }
     
@@ -1686,22 +1514,16 @@ async function saveEditedExam(event) {
     
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Supabase client not available');
-        }
+        if (!supabase) throw new Error('Supabase client not available');
         
-        const { error } = await supabase
-            .from('exams')
-            .update(data)
-            .eq('id', id);
-        
-        if (error) {
-            console.error('❌ Database error:', error);
-            throw error;
-        }
+        const { error } = await supabase.from('exams').update(data).eq('id', id);
+        if (error) throw error;
         
         console.log('✅ Exam updated successfully!');
         showFeedback('✅ Exam updated successfully!', 'success');
+        
+        // Clear edit course state
+        window.selectedSuperAdminEditCourse = null;
         
         ExamCache.clear();
         await loadExams(true);
@@ -1717,9 +1539,6 @@ async function saveEditedExam(event) {
     }
 }
 
-// ============================================
-// RENDER ASSIGNED CLASSES
-// ============================================
 function renderAssignedClasses(examId, classes) {
     const container = document.getElementById('edit_exam_classes_container');
     if (!container) return;
@@ -1743,27 +1562,18 @@ function renderAssignedClasses(examId, classes) {
     `;
 }
 
-// ============================================
-// ADD/REMOVE CLASS
-// ============================================
 async function addClass(examId) {
     const input = document.getElementById('edit_exam_add_class');
     if (!input?.value.trim()) return;
-    
     const className = input.value.trim();
     
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Supabase client not available');
-        }
+        if (!supabase) throw new Error('Supabase client not available');
         
         const { data: exam } = await supabase.from('exams').select('assigned_classes').eq('id', examId).single();
         const current = exam?.assigned_classes || [];
-        if (current.includes(className)) {
-            showFeedback('Already assigned', 'warning');
-            return;
-        }
+        if (current.includes(className)) { showFeedback('Already assigned', 'warning'); return; }
         current.push(className);
         await supabase.from('exams').update({ assigned_classes: current }).eq('id', examId);
         showFeedback(`✅ Added "${className}"`, 'success');
@@ -1776,13 +1586,9 @@ async function addClass(examId) {
 
 async function removeClass(examId, className) {
     if (!confirm(`Remove "${className}"?`)) return;
-    
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Supabase client not available');
-        }
-        
+        if (!supabase) throw new Error('Supabase client not available');
         const { data: exam } = await supabase.from('exams').select('assigned_classes').eq('id', examId).single();
         const current = (exam?.assigned_classes || []).filter(c => c !== className);
         await supabase.from('exams').update({ assigned_classes: current }).eq('id', examId);
@@ -1793,18 +1599,11 @@ async function removeClass(examId, className) {
     }
 }
 
-// ============================================
-// DELETE EXAM
-// ============================================
 async function deleteExam(id, name) {
     if (!confirm(`Delete "${name}"?`)) return;
-    
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Supabase client not available');
-        }
-        
+        if (!supabase) throw new Error('Supabase client not available');
         const { error } = await supabase.from('exams').delete().eq('id', id);
         if (error) throw error;
         ExamCache.clear();
@@ -1815,22 +1614,12 @@ async function deleteExam(id, name) {
     }
 }
 
-// ============================================
-// CLOSE EXAM
-// ============================================
 async function closeExam(id) {
     if (!confirm('Close this exam?')) return;
-    
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Supabase client not available');
-        }
-        
-        const { error } = await supabase
-            .from('exams')
-            .update({ status: 'Completed', updated_at: new Date().toISOString() })
-            .eq('id', id);
+        if (!supabase) throw new Error('Supabase client not available');
+        const { error } = await supabase.from('exams').update({ status: 'Completed', updated_at: new Date().toISOString() }).eq('id', id);
         if (error) throw error;
         ExamCache.clear();
         showFeedback('✅ Exam closed', 'success');
@@ -1840,9 +1629,6 @@ async function closeExam(id) {
     }
 }
 
-// ============================================
-// CLOSE EDIT MODAL
-// ============================================
 function closeEditModal() {
     const modal = document.getElementById('examEditModal');
     if (modal) {
@@ -1850,11 +1636,9 @@ function closeEditModal() {
         const form = document.getElementById('editExamForm');
         if (form) form.reset();
     }
+    window.selectedSuperAdminEditCourse = null;
 }
 
-// ============================================
-// FILTER EXAMS TABLE - GLOBAL
-// ============================================
 const filterExamsTable = debounce(function() {
     const search = document.getElementById('exam-search')?.value?.toLowerCase() || '';
     const program = document.getElementById('exam_filter_program')?.value || '';
@@ -1881,26 +1665,18 @@ const filterExamsTable = debounce(function() {
     });
 }, 300);
 
-// ============================================
-// EXPORT EXAMS
-// ============================================
 function exportExamsToCSV() {
     const rows = document.querySelectorAll('#exams-table-body tr');
     const visible = Array.from(rows).filter(r => r.style.display !== 'none' && !r.querySelector('td[colspan]'));
     
-    if (visible.length === 0) {
-        showFeedback('No exams to export', 'warning');
-        return;
-    }
+    if (visible.length === 0) { showFeedback('No exams to export', 'warning'); return; }
     
     let csv = 'Type,Program,Course,Title,Out Of,Pass Mark,Date,Duration,Intake,Block,Status\n';
     visible.forEach(row => {
         const cols = row.querySelectorAll('td');
         if (cols.length >= 11) {
             const data = [];
-            for (let i = 0; i < 11; i++) {
-                data.push(`"${String(cols[i]?.textContent || '').replace(/"/g,'""').trim()}"`);
-            }
+            for (let i = 0; i < 11; i++) data.push(`"${String(cols[i]?.textContent || '').replace(/"/g,'""').trim()}"`);
             csv += data.join(',') + '\n';
         }
     });
@@ -1915,9 +1691,6 @@ function exportExamsToCSV() {
     showFeedback('✅ Exported!', 'success');
 }
 
-// ============================================
-// SHOW EXAM TAB - WITH BLOCK CHANGE LISTENER
-// ============================================
 function showExamTab(tab) {
     document.querySelectorAll('.exam-tab-content').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.exam-tab-btn').forEach(btn => {
@@ -1946,52 +1719,33 @@ function showExamTab(tab) {
         
         const programSelect = document.getElementById('exam_program');
         const program = programSelect?.value || '';
-        if (typeof initCreateCourseDropdown === 'function') {
-            initCreateCourseDropdown(program);
-        }
+        if (typeof initCreateCourseDropdown === 'function') initCreateCourseDropdown(program);
         
-        // ✅ Add program change listener
         if (programSelect) {
-            // Remove old listeners to avoid duplicates
             const newProgramSelect = programSelect.cloneNode(true);
             programSelect.parentNode.replaceChild(newProgramSelect, programSelect);
             const freshProgramSelect = document.getElementById('exam_program');
             
             freshProgramSelect.addEventListener('change', function() {
-                const program = this.value;
-                console.log('📋 Create Exam: Program changed to', program);
-                if (typeof updateCreateCourseDropdown === 'function') {
-                    updateCreateCourseDropdown();
-                }
-                // ✅ Load students when program changes
+                if (typeof updateCreateCourseDropdown === 'function') updateCreateCourseDropdown();
                 loadStudentsForNotification();
             });
         }
         
-        // ✅ Add block change listener
         const blockSelect = document.getElementById('exam_block_term');
         if (blockSelect) {
-            // Remove old listeners to avoid duplicates
             const newBlockSelect = blockSelect.cloneNode(true);
             blockSelect.parentNode.replaceChild(newBlockSelect, blockSelect);
             const freshBlockSelect = document.getElementById('exam_block_term');
-            
             freshBlockSelect.addEventListener('change', function() {
-                console.log('📋 Block changed to:', this.value);
                 loadStudentsForNotification();
             });
         }
         
-        // ✅ Force load students when Create tab is shown
-        setTimeout(function() {
-            loadStudentsForNotification();
-        }, 800);
+        setTimeout(loadStudentsForNotification, 800);
     }
 }
 
-// ============================================
-// GET CURRENT USER
-// ============================================
 async function getCurrentUser() {
     try {
         if (window.currentUserProfile?.user_id) return window.currentUserProfile;
@@ -2001,10 +1755,7 @@ async function getCurrentUser() {
             if (user?.user_id) return user;
         }
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            console.warn('Supabase client not available');
-            return null;
-        }
+        if (!supabase) return null;
         
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -2020,15 +1771,11 @@ async function getCurrentUser() {
             }
         }
         return null;
-    } catch (e) {
-        console.warn('Error getting current user:', e);
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
 // ============================================
-// SEARCHABLE COURSE / UNIT DROPDOWNS
-// Lecturer-style implementation for Super Admin
+// SEARCHABLE COURSE DROPDOWNS
 // ============================================
 
 let createCoursesData = [];
@@ -2046,19 +1793,10 @@ function normalizeSuperAdminCourse(row) {
 
 async function fetchSuperAdminCourses() {
     const supabase = window.sb || window.supabase;
-    if (!supabase) {
-        console.error('❌ Supabase client not available');
-        return [];
-    }
-
+    if (!supabase) return [];
     try {
-        const { data, error } = await supabase
-            .from('courses')
-            .select('*')
-            .limit(1000);
-
+        const { data, error } = await supabase.from('courses').select('*').limit(1000);
         if (error) throw error;
-
         return (data || []).map(normalizeSuperAdminCourse);
     } catch (error) {
         console.error('❌ Error loading courses:', error);
@@ -2073,130 +1811,71 @@ function courseMatchesProgram(course, program) {
 
 function renderSuperAdminCourseResults(list, courses, searchTerm, selectFn, programOverride = '') {
     if (!list) return;
-
     const query = String(searchTerm || '').trim().toLowerCase();
-
+    
     let filtered = courses.filter(course => {
         const activeProgram = programOverride || document.getElementById('exam_program')?.value || '';
-        if (!courseMatchesProgram(course, activeProgram)) {
-            return false;
-        }
-
+        if (!courseMatchesProgram(course, activeProgram)) return false;
         if (!query) return true;
-
         return String(course.code || '').toLowerCase().includes(query) ||
                String(course.name || '').toLowerCase().includes(query) ||
                String(course.program || '').toLowerCase().includes(query);
     });
-
+    
     if (!filtered.length) {
-        list.innerHTML =
-            '<div style="padding:12px;text-align:center;color:#94a3b8;font-size:13px;">' +
-            '<i class="fas fa-search"></i> No matching courses found</div>';
+        list.innerHTML = '<div style="padding:12px;text-align:center;color:#94a3b8;font-size:13px;"><i class="fas fa-search"></i> No matching courses found</div>';
         list.style.display = 'block';
         return;
     }
-
+    
     filtered = filtered.slice(0, 50);
-
+    
     list.innerHTML = filtered.map(course => {
         const title = course.name || course.code || 'Unnamed Unit';
         const code = course.code || '';
         const program = course.program || '';
-
         const item = document.createElement('div');
         item.className = 'dropdown-item';
         item.dataset.courseId = course.id;
-        item.style.cssText =
-            'padding:9px 14px;cursor:pointer;border-bottom:1px solid #f1f5f9;' +
-            'font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;';
-
-        item.innerHTML =
-            '<div>' +
-                '<strong style="color:#334155;">' + escapeHtml(title) + '</strong>' +
-                (code
-                    ? '<span style="font-size:11px;color:#94a3b8;margin-left:8px;">' +
-                      escapeHtml(code) + '</span>'
-                    : '') +
-            '</div>' +
-            (program
-                ? '<span style="font-size:10px;background:#ede9fe;color:#5b21b6;' +
-                  'padding:2px 7px;border-radius:10px;white-space:nowrap;">' +
-                  escapeHtml(program) + '</span>'
-                : '');
-
-        item.addEventListener('click', () => selectFn(course));
+        item.style.cssText = 'padding:9px 14px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;';
+        item.innerHTML = `<div><strong style="color:#334155;">${escapeHtml(title)}</strong>${code ? '<span style="font-size:11px;color:#94a3b8;margin-left:8px;">' + escapeHtml(code) + '</span>' : ''}</div>${program ? '<span style="font-size:10px;background:#ede9fe;color:#5b21b6;padding:2px 7px;border-radius:10px;white-space:nowrap;">' + escapeHtml(program) + '</span>' : ''}`;
         return item.outerHTML;
     }).join('');
-
-    // Rebind safely after rendering; no inline onclick strings.
+    
     list.querySelectorAll('[data-course-id]').forEach(item => {
         item.addEventListener('click', () => {
             const course = courses.find(c => String(c.id) === String(item.dataset.courseId));
             if (course) selectFn(course);
         });
     });
-
-    if (courses.length > 50) {
-        const more = document.createElement('div');
-        more.style.cssText =
-            'padding:8px;text-align:center;color:#94a3b8;font-size:11px;';
-        more.textContent = `Showing first 50 of ${filtered.length} matching units`;
-        list.appendChild(more);
-    }
-
+    
     list.style.display = 'block';
 }
 
 async function initCreateCourseDropdown(program = '') {
     const input = document.getElementById('createCourseSearchInput');
     const list = document.getElementById('createCourseDropdownList');
-
     if (!input || !list) return;
-
+    
     createCoursesData = await fetchSuperAdminCourses();
-
-    input.dataset.courseSearchBound = '1';
-
-    // Avoid duplicate listeners when the Exams tab is opened repeatedly.
+    
     if (!input.dataset.bound) {
         input.dataset.bound = '1';
-
-        input.addEventListener('input', () => {
-            filterCreateCourseDropdown(input.value);
-        });
-
-        input.addEventListener('focus', () => {
-            filterCreateCourseDropdown(input.value);
-        });
-
+        input.addEventListener('input', () => filterCreateCourseDropdown(input.value));
+        input.addEventListener('focus', () => filterCreateCourseDropdown(input.value));
         input.addEventListener('keydown', e => {
-            if (e.key === 'Enter') {
-                const first = list.querySelector('[data-course-id]');
-                if (first) first.click();
-                e.preventDefault();
-            }
-
-            if (e.key === 'Escape') {
-                list.style.display = 'none';
-            }
+            if (e.key === 'Enter') { const first = list.querySelector('[data-course-id]'); if (first) first.click(); e.preventDefault(); }
+            if (e.key === 'Escape') list.style.display = 'none';
         });
     }
-
+    
     filterCreateCourseDropdown('');
 }
 
 function filterCreateCourseDropdown(searchTerm = '') {
     const list = document.getElementById('createCourseDropdownList');
     if (!list) return;
-
-    renderSuperAdminCourseResults(
-        list,
-        createCoursesData,
-        searchTerm,
-        selectCreateCourseObject,
-        document.getElementById('exam_program')?.value || ''
-    );
+    renderSuperAdminCourseResults(list, createCoursesData, searchTerm, selectCreateCourseObject, document.getElementById('exam_program')?.value || '');
 }
 
 function selectCreateCourseObject(course) {
@@ -2205,262 +1884,185 @@ function selectCreateCourseObject(course) {
     const list = document.getElementById('createCourseDropdownList');
     const display = document.getElementById('createSelectedCourseDisplay');
     const nameDisplay = document.getElementById('createSelectedCourseName');
-
+    
     window.selectedSuperAdminCreateCourse = course;
-
     const label = course.name + (course.code ? ` (${course.code})` : '');
-
+    
     if (input) input.value = label;
     if (hidden) hidden.value = course.id || '';
     if (list) list.style.display = 'none';
-
-    if (display && nameDisplay) {
-        display.style.display = 'inline';
-        nameDisplay.textContent = label;
+    if (display && nameDisplay) { display.style.display = 'inline'; nameDisplay.textContent = label; }
+    
+    // ✅ Reload students for notification (now filtered by this unit)
+    if (typeof loadStudentsForNotification === 'function') {
+        loadStudentsForNotification();
     }
 }
 
 function selectCreateCourse(courseId, courseName, courseCode) {
-    selectCreateCourseObject({
-        id: courseId,
-        name: courseName || '',
-        code: courseCode || '',
-        program: ''
-    });
+    selectCreateCourseObject({ id: courseId, name: courseName || '', code: courseCode || '', program: '' });
 }
 
 async function updateCreateCourseDropdown() {
-    const program = document.getElementById('exam_program')?.value || '';
-
-    // Keep the complete course list like the lecturer portal.
-    // Program is applied client-side so units with blank target_program
-    // remain available.
-    if (!createCoursesData.length) {
-        createCoursesData = await fetchSuperAdminCourses();
-    }
-
+    if (!createCoursesData.length) createCoursesData = await fetchSuperAdminCourses();
     const input = document.getElementById('createCourseSearchInput');
     const hidden = document.getElementById('exam_course_id');
     const display = document.getElementById('createSelectedCourseDisplay');
-
     if (input) input.value = '';
     if (hidden) hidden.value = '';
     if (display) display.style.display = 'none';
-
     window.selectedSuperAdminCreateCourse = null;
-
     filterCreateCourseDropdown('');
 }
 
 async function initEditCourseDropdown(program = '', selectedId = '') {
-    const input =
-        document.getElementById('editCourseSearchInput') ||
-        document.getElementById('courseSearchInput');
-
-    const list =
-        document.getElementById('editCourseDropdownList') ||
-        document.getElementById('courseDropdownList');
-
+    const input = document.getElementById('editCourseSearchInput') || document.getElementById('courseSearchInput');
+    const list = document.getElementById('editCourseDropdownList') || document.getElementById('courseDropdownList');
     if (!input || !list) return;
-
+    
     editCoursesData = await fetchSuperAdminCourses();
-
+    
     if (!input.dataset.bound) {
         input.dataset.bound = '1';
-
-        input.addEventListener('input', () => {
-            filterEditCourseDropdown(input.value);
-        });
-
-        input.addEventListener('focus', () => {
-            filterEditCourseDropdown(input.value);
-        });
-
+        input.addEventListener('input', () => filterEditCourseDropdown(input.value));
+        input.addEventListener('focus', () => filterEditCourseDropdown(input.value));
         input.addEventListener('keydown', e => {
-            if (e.key === 'Enter') {
-                const first = list.querySelector('[data-course-id]');
-                if (first) first.click();
-                e.preventDefault();
-            }
-
-            if (e.key === 'Escape') {
-                list.style.display = 'none';
-            }
+            if (e.key === 'Enter') { const first = list.querySelector('[data-course-id]'); if (first) first.click(); e.preventDefault(); }
+            if (e.key === 'Escape') list.style.display = 'none';
         });
     }
-
-    if (selectedId) {
-        setEditCourseValue(selectedId);
-    } else {
-        filterEditCourseDropdown('');
-    }
+    
+    if (selectedId) setEditCourseValue(selectedId);
+    else filterEditCourseDropdown('');
 }
 
 function filterEditCourseDropdown(searchTerm = '') {
-    const list =
-        document.getElementById('editCourseDropdownList') ||
-        document.getElementById('courseDropdownList');
-
+    const list = document.getElementById('editCourseDropdownList') || document.getElementById('courseDropdownList');
     if (!list) return;
-
-    renderSuperAdminCourseResults(
-        list,
-        editCoursesData,
-        searchTerm,
-        selectEditCourseObject,
-        document.getElementById('edit_exam_program')?.value ||
-        document.getElementById('exam_program')?.value ||
-        ''
-    );
+    renderSuperAdminCourseResults(list, editCoursesData, searchTerm, selectEditCourseObject, document.getElementById('edit_exam_program')?.value || document.getElementById('exam_program')?.value || '');
 }
 
 function selectEditCourseObject(course) {
-    const input =
-        document.getElementById('editCourseSearchInput') ||
-        document.getElementById('courseSearchInput');
-
+    const input = document.getElementById('editCourseSearchInput') || document.getElementById('courseSearchInput');
     const hidden = document.getElementById('edit_exam_course');
-
-    const list =
-        document.getElementById('editCourseDropdownList') ||
-        document.getElementById('courseDropdownList');
-
-    const display =
-        document.getElementById('editSelectedCourseDisplay') ||
-        document.getElementById('selectedCourseDisplay');
-
-    const nameDisplay =
-        document.getElementById('editSelectedCourseName') ||
-        document.getElementById('selectedCourseName');
-
+    const list = document.getElementById('editCourseDropdownList') || document.getElementById('courseDropdownList');
+    const display = document.getElementById('editSelectedCourseDisplay') || document.getElementById('selectedCourseDisplay');
+    const nameDisplay = document.getElementById('editSelectedCourseName') || document.getElementById('selectedCourseName');
+    
     window.selectedSuperAdminEditCourse = course;
-
     const label = course.name + (course.code ? ` (${course.code})` : '');
-
+    
     if (input) input.value = label;
     if (hidden) hidden.value = course.id || '';
     if (list) list.style.display = 'none';
-
-    if (display && nameDisplay) {
-        display.style.display = 'inline';
-        nameDisplay.textContent = label;
-    }
+    if (display && nameDisplay) { display.style.display = 'inline'; nameDisplay.textContent = label; }
 }
 
 function selectEditCourse(courseId, courseName, courseCode) {
-    selectEditCourseObject({
-        id: courseId,
-        name: courseName || '',
-        code: courseCode || '',
-        program: ''
-    });
+    selectEditCourseObject({ id: courseId, name: courseName || '', code: courseCode || '', program: '' });
 }
 
 function setEditCourseValue(courseId) {
     if (!courseId) return;
-
-    const course = editCoursesData.find(
-        c => String(c.id) === String(courseId)
-    );
-
-    if (!course) {
-        const hidden = document.getElementById('edit_exam_course');
-        if (hidden) hidden.value = courseId;
-        return;
-    }
-
+    const course = editCoursesData.find(c => String(c.id) === String(courseId));
+    if (!course) { const hidden = document.getElementById('edit_exam_course'); if (hidden) hidden.value = courseId; return; }
     selectEditCourseObject(course);
 }
 
-// Close both dropdowns when clicking outside.
 if (!window.__superAdminCourseOutsideClickBound) {
     window.__superAdminCourseOutsideClickBound = true;
-
     document.addEventListener('click', e => {
-        const createContainer =
-            document.getElementById('createCourseSearchContainer');
-
-        const editContainer =
-            document.getElementById('editCourseSearchContainer') ||
-            document.getElementById('courseSearchContainer');
-
+        const createContainer = document.getElementById('createCourseSearchContainer');
+        const editContainer = document.getElementById('editCourseSearchContainer') || document.getElementById('courseSearchContainer');
         if (createContainer && !createContainer.contains(e.target)) {
             const list = document.getElementById('createCourseDropdownList');
             if (list) list.style.display = 'none';
         }
-
         if (editContainer && !editContainer.contains(e.target)) {
-            const list =
-                document.getElementById('editCourseDropdownList') ||
-                document.getElementById('courseDropdownList');
-
+            const list = document.getElementById('editCourseDropdownList') || document.getElementById('courseDropdownList');
             if (list) list.style.display = 'none';
         }
     });
 }
 
 // ============================================
-// GRADE MODAL FUNCTIONS
+// ✅ GRADE MODAL — Only shows REGISTERED students
 // ============================================
 
 async function openGradeModal(examId, examName = '') {
     try {
         console.log('🎯 Opening grade modal for exam:', examId);
-        
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            showFeedback('❌ Supabase client not available', 'error');
-            return;
-        }
+        if (!supabase) { showFeedback('❌ Supabase client not available', 'error'); return; }
         
         const currentUser = await getCurrentUser();
-        
         if (!currentUser || !currentUser.user_id) {
             showFeedback('❌ You must be logged in to grade exams.', 'error');
             return;
         }
 
-        const { data: exam, error: examError } = await supabase
-            .from('exams')
-            .select('*')
-            .eq('id', examId)
-            .single();
-
-        if (examError || !exam) {
-            showFeedback('❌ Error loading exam details.', 'error');
-            return;
-        }
+        const { data: exam, error: examError } = await supabase.from('exams').select('*').eq('id', examId).single();
+        if (examError || !exam) { showFeedback('❌ Error loading exam details.', 'error'); return; }
 
         const programField = exam.target_program || exam.program_type;
         const blockField = exam.block || exam.block_term;
+        const unitName = exam.course_name;
+        const unitCode = exam.course_code;
         
+        console.log(`📚 Grading unit: "${unitName}" (${unitCode})`);
+        
+        // ==========================================
+        // STEP 1: Find students registered for this unit
+        // ==========================================
+        let registeredStudentUuids = null;
+        
+        if (unitName || unitCode) {
+            let regQuery = supabase
+                .from('student_unit_registrations')
+                .select('student_id, unit_code, unit_name, status')
+                .eq('status', 'approved');
+            
+            if (unitName && unitCode) {
+                regQuery = regQuery.or(`unit_name.eq.${unitName},unit_code.eq.${unitCode}`);
+            } else if (unitName) {
+                regQuery = regQuery.eq('unit_name', unitName);
+            } else {
+                regQuery = regQuery.eq('unit_code', unitCode);
+            }
+            
+            const { data: regs, error: regError } = await regQuery;
+            
+            if (!regError && regs && regs.length > 0) {
+                registeredStudentUuids = regs.map(r => r.student_id);
+                console.log(`📚 Found ${registeredStudentUuids.length} registered students for this unit`);
+            } else {
+                console.log(`⚠️ No registrations found. Showing all program students.`);
+            }
+        }
+        
+        // ==========================================
+        // STEP 2: Query student profiles (filtered by registration)
+        // ==========================================
         let query = supabase
             .from('consolidated_user_profiles_table')
             .select('user_id, full_name, email, program, intake_year, block')
-            .eq('role', 'student')
-            .eq('status', 'approved');
+            .eq('role', 'student');
         
-        if (programField) {
-            query = query.eq('program', programField);
-        }
-        if (exam.intake_year) {
-            query = query.eq('intake_year', String(exam.intake_year));
-        }
-        if (blockField) {
-            query = query.eq('block', blockField);
+        if (programField) query = query.eq('program', programField);
+        if (exam.intake_year) query = query.eq('intake_year', String(exam.intake_year));
+        if (blockField) query = query.eq('block', blockField);
+        if (registeredStudentUuids && registeredStudentUuids.length > 0) {
+            query = query.in('user_id', registeredStudentUuids);
         }
         
         const { data: students, error: studentError } = await query.limit(200);
 
         if (studentError || !students || students.length === 0) {
-            showFeedback('⚠️ No students found for this exam criteria.', 'warning');
+            showFeedback('⚠️ No students found for this exam. Ensure they are registered for this unit.', 'warning');
             return;
         }
 
-        const { data: existingGrades } = await supabase
-            .from('exam_grades')
-            .select('*')
-            .eq('exam_id', examId);
+        const { data: existingGrades } = await supabase.from('exam_grades').select('*').eq('exam_id', examId);
 
         const examType = exam.exam_type || 'EXAM';
         const modalHtml = buildGradeModalHTML(exam, students, existingGrades || [], currentUser, examType);
@@ -2539,15 +2141,15 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
     }
     
     return `
-    <div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.3s ease;">
-        <div class="modal-content" style="background:white;border-radius:16px;max-width:1000px;width:100%;max-height:90vh;overflow-y:auto;padding:0;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:slideUp 0.3s ease;">
-            <div class="modal-header" style="padding:16px 24px;border-bottom:2px solid #4C1D95;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:white;z-index:10;border-radius:16px 16px 0 0;">
+    <div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div class="modal-content" style="background:white;border-radius:16px;max-width:1000px;width:100%;max-height:90vh;overflow-y:auto;padding:0;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div class="modal-header" style="padding:16px 24px;border-bottom:2px solid #4C1D95;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:white;z-index:10;">
                 <div>
                     <h3 style="margin:0;color:#4C1D95;">
                         <i class="fas fa-check-double"></i> ${examTypeLabel}: ${escapeHtml(examTitle)}
                     </h3>
                     <p style="margin:2px 0 0;font-size:12px;color:#94a3b8;">
-                        ${escapeHtml(exam.program_type || exam.target_program || 'N/A')} | Block: ${escapeHtml(exam.block || exam.block_term || 'N/A')} | ${exam.intake_year || 'N/A'}
+                        ${escapeHtml(exam.program_type || exam.target_program || 'N/A')} | Unit: ${escapeHtml(exam.course_name || 'N/A')} | Block: ${escapeHtml(exam.block || exam.block_term || 'N/A')} | ${exam.intake_year || 'N/A'}
                         | Pass: ${passMark}% | Students: ${students.length}
                     </p>
                 </div>
@@ -2560,7 +2162,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                            style="flex:1;min-width:200px;padding:8px 14px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;"
                            oninput="filterGradeStudents()">
                     <span style="font-size:12px;color:#94a3b8;display:flex;align-items:center;">
-                        <i class="fas fa-users"></i> ${students.length} students
+                        <i class="fas fa-users"></i> ${students.length} registered students
                     </span>
                 </div>
                 
@@ -2578,7 +2180,7 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
                 </div>
             </div>
             
-            <div class="modal-footer" style="padding:16px 24px;border-top:1px solid #e5e7eb;display:flex;gap:12px;justify-content:flex-end;border-radius:0 0 16px 16px;">
+            <div class="modal-footer" style="padding:16px 24px;border-top:1px solid #e5e7eb;display:flex;gap:12px;justify-content:flex-end;">
                 <button onclick="saveGrades('${exam.id}')" class="btn-action" style="background:#10b981;color:white;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600;">
                     <i class="fas fa-save"></i> Save Grades
                 </button>
@@ -2593,7 +2195,6 @@ function buildGradeModalHTML(exam, students, existingGrades, currentUser, examTy
 function showGradeModal(modalHtml) {
     const existingModal = document.getElementById('gradeModal');
     if (existingModal) existingModal.remove();
-
     const modal = document.createElement('div');
     modal.id = 'gradeModal';
     modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;';
@@ -2620,7 +2221,6 @@ function updateGradeTotal(studentId) {
     const cat1 = parseFloat(document.getElementById(`cat1-${studentId}`)?.value) || 0;
     const cat2 = parseFloat(document.getElementById(`cat2-${studentId}`)?.value) || 0;
     const finalExam = parseFloat(document.getElementById(`final-${studentId}`)?.value) || 0;
-    
     const total = ((cat1 + cat2 + finalExam) / 160) * 100;
     const totalInput = document.getElementById(`total-${studentId}`);
     if (totalInput) totalInput.value = total.toFixed(2);
@@ -2629,18 +2229,11 @@ function updateGradeTotal(studentId) {
 async function saveGrades(examId) {
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            showFeedback('❌ Supabase client not available', 'error');
-            return;
-        }
+        if (!supabase) { showFeedback('❌ Supabase client not available', 'error'); return; }
         
         const rows = document.querySelectorAll('#gradeTableBody tr');
         const currentUser = await getCurrentUser();
-        
-        if (!currentUser) {
-            showFeedback('❌ Please login first', 'error');
-            return;
-        }
+        if (!currentUser) { showFeedback('❌ Please login first', 'error'); return; }
         
         let saved = 0;
         
@@ -2674,17 +2267,9 @@ async function saveGrades(examId) {
                 .maybeSingle();
             
             if (existing) {
-                await supabase
-                    .from('exam_grades')
-                    .update(gradeData)
-                    .eq('id', existing.id);
+                await supabase.from('exam_grades').update(gradeData).eq('id', existing.id);
             } else {
-                await supabase
-                    .from('exam_grades')
-                    .insert({
-                        ...gradeData,
-                        created_at: new Date().toISOString()
-                    });
+                await supabase.from('exam_grades').insert({ ...gradeData, created_at: new Date().toISOString() });
             }
             
             saved++;
@@ -2713,121 +2298,208 @@ function getExamTypeLabel(examType) {
 }
 
 // ============================================
-// POPULATE EXAM COURSE SELECTS
+// 🔓 RELEASE EXAM RESULTS & SYNC TO MARKS ENTRY
 // ============================================
-async function populateExamCourseSelects(program, selected = '') {
-    console.log('📚 populateExamCourseSelects called with:', program, selected);
-    
-    const select = document.getElementById('exam_course_id');
-    if (!select) {
-        console.warn('⚠️ exam_course_id not found');
-        return;
-    }
-    
-    select.innerHTML = '<option value="">-- Optional: Select Course --</option>';
-    
-    if (!program) {
-        try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) {
-                console.warn('Supabase client not available');
-                return;
-            }
-            
-            const { data, error } = await supabase
-                .from('courses')
-                .select('id, course_name, target_program, unit_code')
-                .order('course_name', { ascending: true })
-                .limit(100);
-            
-            if (!error && data) {
-                data.forEach(course => {
-                    const option = document.createElement('option');
-                    option.value = course.id;
-                    option.textContent = `${course.course_name} (${course.unit_code || 'N/A'}) - ${course.target_program || 'General'}`;
-                    if (selected && course.id === selected) {
-                        option.selected = true;
-                    }
-                    select.appendChild(option);
-                });
-                console.log(`✅ Loaded ${data.length} courses`);
-            }
-        } catch (error) {
-            console.error('Error loading courses:', error);
-        }
-        return;
-    }
-    
+
+async function releaseExamResults(examId) {
     try {
         const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            console.warn('Supabase client not available');
+        if (!supabase) { showFeedback('❌ Supabase client not available', 'error'); return; }
+        
+        const currentUser = await getCurrentUser();
+        if (!currentUser?.user_id) { showFeedback('❌ You must be logged in', 'error'); return; }
+        
+        if (!confirm('Release results for this exam?\n\nStudents will see their grades AND marks will be added to Marks Entry.')) return;
+        
+        showFeedback('📤 Releasing results...', 'info');
+        
+        const { data: exam, error: examError } = await supabase.from('exams').select('*').eq('id', examId).single();
+        if (examError || !exam) throw new Error('Exam not found');
+        
+        const { data: grades, error: gradesError } = await supabase.from('exam_grades').select('*').eq('exam_id', examId);
+        if (gradesError) throw gradesError;
+        
+        if (!grades || grades.length === 0) {
+            showFeedback('⚠️ No grades found. Enter grades first.', 'warning');
             return;
         }
         
-        const { data, error } = await supabase
-            .from('courses')
-            .select('id, course_name, target_program, unit_code')
-            .eq('target_program', program)
-            .order('course_name', { ascending: true });
+        // Mark all grades as released
+        const { error: releaseError } = await supabase
+            .from('exam_grades')
+            .update({
+                result_status: 'Released',
+                released_at: new Date().toISOString(),
+                released_by: currentUser.user_id
+            })
+            .eq('exam_id', examId);
         
-        if (error) throw error;
+        if (releaseError) throw releaseError;
         
-        if (!data || data.length === 0) {
-            console.log(`No courses found for program: ${program}`);
-            const { data: allCourses } = await supabase
-                .from('courses')
-                .select('id, course_name, target_program, unit_code')
-                .limit(100);
-            
-            if (allCourses && allCourses.length > 0) {
-                allCourses.forEach(course => {
-                    const option = document.createElement('option');
-                    option.value = course.id;
-                    const displayName = course.course_name || 'Untitled';
-                    option.textContent = `${displayName} (${course.unit_code || 'N/A'}) - ${course.target_program || 'General'}`;
-                    if (selected && course.id === selected) {
-                        option.selected = true;
-                    }
-                    select.appendChild(option);
-                });
-                console.log(`✅ Loaded ${allCourses.length} courses as fallback`);
-                return;
-            }
-            return;
-        }
+        // Sync to student_marks
+        const syncResult = await syncGradesToMarksEntry(examId, exam, grades);
         
-        data.forEach(course => {
-            const option = document.createElement('option');
-            option.value = course.id;
-            option.textContent = `${course.course_name} (${course.unit_code || 'N/A'})`;
-            if (selected && course.id === selected) {
-                option.selected = true;
-            }
-            select.appendChild(option);
-        });
+        // Mark exam as Released
+        await supabase
+            .from('exams')
+            .update({
+                status: 'Released',
+                released_at: new Date().toISOString(),
+                released_by: currentUser.user_id
+            })
+            .eq('id', examId);
         
-        console.log(`✅ Loaded ${data.length} courses for program: ${program}`);
+        ExamCache.clear();
+        
+        showFeedback(
+            `✅ Results released! ${grades.length} grades visible to students. 📝 ${syncResult.synced} marks synced to Marks Entry.` +
+            (syncResult.errors > 0 ? ` ⚠️ ${syncResult.errors} errors.` : ''),
+            'success'
+        );
+        
+        loadExams(true);
         
     } catch (error) {
-        console.error('Error loading courses:', error);
+        console.error('❌ Error releasing results:', error);
+        showFeedback('❌ Failed to release: ' + error.message, 'error');
     }
+}
+
+async function syncGradesToMarksEntry(examId, exam, grades) {
+    const supabase = window.sb || window.supabase;
+    if (!supabase) throw new Error('Supabase not available');
+    
+    let synced = 0;
+    let errors = 0;
+    
+    console.log(`🔗 Syncing ${grades.length} grades to student_marks...`);
+    
+    // ✅ Use stored course_name, fallback to courses table
+    let unitName = exam.course_name;
+    if (!unitName && exam.course_id) {
+        const { data: course } = await supabase
+            .from('courses')
+            .select('course_name, unit_code')
+            .eq('id', exam.course_id)
+            .maybeSingle();
+        unitName = course?.course_name || 'Unknown Unit';
+    }
+    
+    const block = exam.block || exam.block_term || 'General';
+    const academicYear = exam.intake_year || new Date().getFullYear();
+    const assessmentType = (exam.exam_type || '').toUpperCase().includes('CAT') ? 'cat_only' : 'full';
+    const maxMarks = exam.marks_out_of || exam.total_marks || 100;
+    
+    for (const grade of grades) {
+        try {
+            // Step A: UUID → admission number
+            const { data: profile, error: profileError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name')
+                .eq('user_id', grade.student_id)
+                .maybeSingle();
+            
+            if (profileError || !profile) {
+                console.warn(`⚠️ No profile for ${grade.student_id}`);
+                errors++;
+                continue;
+            }
+            
+            const rawAdmission = profile.admission_number || profile.student_id;
+            const isUUID = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
+            
+            if (isUUID || !rawAdmission) {
+                console.warn(`⚠️ Invalid admission for ${profile.full_name}`);
+                errors++;
+                continue;
+            }
+            
+            const realAdmission = rawAdmission;
+            
+            // Step B: Calculate total
+            const cat1 = parseFloat(grade.cat_1_score) || 0;
+            const cat2 = parseFloat(grade.cat_2_score) || 0;
+            const examScore = parseFloat(grade.exam_score) || 0;
+            
+            let total = 0;
+            if (assessmentType === 'cat_only') {
+                total = Math.round(((cat1 + cat2) / 60) * 100 * 10) / 10;
+            } else {
+                total = Math.round(((cat1 + cat2) / 60 * 30 + examScore) * 10) / 10;
+            }
+            total = Math.min(total, 100);
+            
+            // Step C: Grade
+            const isTVET = exam.target_program && exam.target_program !== 'KRCHN';
+            let gradeLetter;
+            if (isTVET) {
+                gradeLetter = total >= 80 ? 'A' : total >= 65 ? 'B' : total >= 50 ? 'C' : 'E';
+            } else {
+                gradeLetter = total >= 75 ? 'A' : total >= 65 ? 'B' : total >= 60 ? 'C' : 'D';
+            }
+            
+            // Step D: Upsert into student_marks
+            const markRecord = {
+                admission_number: realAdmission,
+                student_id: profile.user_id,
+                student_name: profile.full_name || 'Unknown',
+                block: block,
+                subject_name: unitName,
+                assessment_type: assessmentType,
+                cat1_score: cat1,
+                cat2_score: cat2,
+                exam_score: examScore,
+                final_score: total,
+                grade: gradeLetter,
+                academic_year: parseInt(academicYear),
+                program: exam.target_program || exam.program_type || 'KRCHN',
+                approval_status: 'approved',
+                published: true,
+                published_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            
+            const { data: existing } = await supabase
+                .from('student_marks')
+                .select('id')
+                .eq('admission_number', realAdmission)
+                .eq('subject_name', unitName)
+                .eq('block', block)
+                .eq('academic_year', parseInt(academicYear))
+                .maybeSingle();
+            
+            if (existing) {
+                const { error: updateError } = await supabase.from('student_marks').update(markRecord).eq('id', existing.id);
+                if (updateError) throw updateError;
+            } else {
+                markRecord.created_at = new Date().toISOString();
+                const { error: insertError } = await supabase.from('student_marks').insert(markRecord);
+                if (insertError) throw insertError;
+            }
+            
+            synced++;
+            console.log(`   ✅ ${profile.full_name} | ${realAdmission} | ${total}% | ${gradeLetter}`);
+            
+        } catch (err) {
+            errors++;
+            console.error(`   ❌ Sync failed for ${grade.student_id}:`, err);
+        }
+    }
+    
+    console.log(`🔗 Sync complete: ${synced} synced, ${errors} errors`);
+    return { synced, errors, total: grades.length };
 }
 
 // ============================================
 // INIT
 // ============================================
 function initExams() {
-    // ✅ Initialize DOM FIRST
     cacheDomElements();
     
     const dateInput = document.getElementById('exam_date');
-    if (dateInput) {
-        dateInput.value = new Date().toISOString().split('T')[0];
-    }
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
     
     populateProgramDropdowns();
-    
     loadExams();
     loadAvailableClassesForExam();
     
@@ -2835,45 +2507,32 @@ function initExams() {
     const blockSelect = document.getElementById('exam_block_term');
     const program = programSelect?.value || '';
     
-    if (typeof initCreateCourseDropdown === 'function') {
-        initCreateCourseDropdown(program);
-    }
+    if (typeof initCreateCourseDropdown === 'function') initCreateCourseDropdown(program);
     
     if (DOM.examSearch) DOM.examSearch.addEventListener('input', filterExamsTable);
     if (DOM.programFilter) DOM.programFilter.addEventListener('change', filterExamsTable);
     if (DOM.statusFilter) DOM.statusFilter.addEventListener('change', filterExamsTable);
     if (DOM.monthFilter) DOM.monthFilter.addEventListener('change', filterExamsTable);
     
-    // ✅ Load students for notification when program/block changes
     if (programSelect) {
-        // Remove old listeners to avoid duplicates
         const newProgramSelect = programSelect.cloneNode(true);
         programSelect.parentNode.replaceChild(newProgramSelect, programSelect);
         const freshProgramSelect = document.getElementById('exam_program');
-        
         freshProgramSelect.addEventListener('change', function() {
-            // Update block dropdown
             updateBlockTermOptions('exam_program', 'exam_block_term');
-            // Update class checkboxes
             loadAvailableClassesForExam();
-            // Load students for notification
             loadStudentsForNotification();
-            // Update course dropdown
-            if (typeof updateCreateCourseDropdown === 'function') {
-                updateCreateCourseDropdown();
-            }
+            if (typeof updateCreateCourseDropdown === 'function') updateCreateCourseDropdown();
         });
     }
     
     if (blockSelect) {
-        // Remove old listeners to avoid duplicates
         const newBlockSelect = blockSelect.cloneNode(true);
         blockSelect.parentNode.replaceChild(newBlockSelect, blockSelect);
         const freshBlockSelect = document.getElementById('exam_block_term');
         freshBlockSelect.addEventListener('change', loadStudentsForNotification);
     }
     
-    // ✅ Set initial block dropdown and class checkboxes
     setTimeout(function() {
         if (programSelect?.value) {
             updateBlockTermOptions('exam_program', 'exam_block_term');
@@ -2882,27 +2541,20 @@ function initExams() {
         loadStudentsForNotification();
     }, 500);
     
-    console.log('🚀 Exams/CATS Management initialized with email notifications and block filtering!');
+    console.log('🚀 Exams/CATS initialized with registered students filter + course capture!');
 }
 
 // ============================================
-// 🔧 EXPOSE GLOBALLY - FIX ALL REFERENCES
+// EXPOSE GLOBALLY
 // ============================================
-
-// 1. Filter function
 window.filterExamsTable = filterExamsTable;
-
-// 2. Course dropdown functions
 window.updateCreateCourseDropdown = updateCreateCourseDropdown;
 window.initCreateCourseDropdown = initCreateCourseDropdown;
-window.loadCoursesForCreateDropdown = loadCoursesForCreateDropdown;
 window.filterCreateCourseDropdown = filterCreateCourseDropdown;
 window.selectCreateCourse = selectCreateCourse;
 window.initEditCourseDropdown = initEditCourseDropdown;
 window.selectEditCourse = selectEditCourse;
 window.setEditCourseValue = setEditCourseValue;
-
-// 3. Email notification functions
 window.sendEmailWithBrevo = sendEmailWithBrevo;
 window.sendEmailWithEdgeFunctionFallback = sendEmailWithEdgeFunctionFallback;
 window.sendExamNotificationEmail = sendExamNotificationEmail;
@@ -2911,15 +2563,9 @@ window.searchStudentsForNotification = searchStudentsForNotification;
 window.toggleStudentForNotification = toggleStudentForNotification;
 window.updateSelectedStudentsDisplay = updateSelectedStudentsDisplay;
 window.getNotificationRecipients = getNotificationRecipients;
-
-// 4. Make sure debounce is global
 window.debounce = debounce;
-
-// 5. Make sure createCoursesData is global
 window.createCoursesData = createCoursesData;
 window.editCoursesData = editCoursesData;
-
-// 6. Main functions
 window.loadExams = loadExams;
 window.showExamTab = showExamTab;
 window.deleteExam = deleteExam;
@@ -2946,10 +2592,12 @@ window.saveGrades = saveGrades;
 window.filterGradeStudents = filterGradeStudents;
 window.updateGradeTotal = updateGradeTotal;
 window.getExamTypeLabel = getExamTypeLabel;
-window.populateExamCourseSelects = populateExamCourseSelects;
 window.updateBlockTermOptions = updateBlockTermOptions;
 
-// 7. Keep DOM cache available to other Super Admin modules
+// ✅ NEW: Release + Sync functions
+window.releaseExamResults = releaseExamResults;
+window.syncGradesToMarksEntry = syncGradesToMarksEntry;
+
 window.DOM = window.DOM || DOM;
 
-console.log('✅ CATS/Exams loaded (complete fixed version with email notifications, searchable dropdowns, and block filtering)!');
+console.log('✅ CATS/Exams loaded — course capture + registered students filter + release/sync ready!');
