@@ -1887,6 +1887,42 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 }
 </style>
 
+
+<style id="nchsm-exams-cats-use-nurseiq-mobile-scroll">
+/* ============================================================
+   EXAMS / CATS MOBILE TABLE SCROLL
+   Uses the same touch-scroll behavior already working in NurseIQ.
+   IMPORTANT: this is scoped to Exams/CATs only.
+   ============================================================ */
+@media (max-width:760px){
+  #cats .completed-table-wrap{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-x pan-y!important;
+    overscroll-behavior:contain!important;
+    scrollbar-width:thin!important;
+    box-sizing:border-box!important;
+  }
+
+  #cats .assessment-table{
+    width:100%!important;
+    min-width:760px!important;
+  }
+
+  #cats .assessment-table th,
+  #cats .assessment-table td{
+    white-space:nowrap!important;
+  }
+
+  #cats .row-actions{
+    white-space:nowrap!important;
+    flex-wrap:nowrap!important;
+  }
+}
+</style>
 </head>
 <body>
 <!-- LOADING SCREEN -->
