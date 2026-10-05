@@ -34,7 +34,9 @@ const ExamCache = {
 };
 
 function cacheDomElements() {
-    if (typeof DOM === 'undefined') window.DOM = {};
+    /* Always create the shared DOM registry before assigning properties. */
+    window.DOM = window.DOM || {};
+    const DOM = window.DOM;
     DOM.examsTbody = document.getElementById('exams-table-body');
     DOM.studentExams = document.getElementById('student-exams');
     DOM.examSearch = document.getElementById('exam-search');
@@ -163,14 +165,40 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+function getSelectedNotificationBlocks(){
+    const blocks=[];
+    const select=document.getElementById('exam_block_term');
+    if(select){
+        const opt=select.selectedOptions?.[0];
+        let value=String(select.value||'').trim();
+        let text=String(opt?.textContent||'').trim();
+        if(!value && text && !/^--\s*select/i.test(text)) value=text;
+        if(value) blocks.push(value);
+    }
+
+    if(!blocks.length){
+        document.querySelectorAll('.exam-class-checkbox:checked').forEach(cb=>{
+            const v=String(cb.value||'').trim();
+            if(v) blocks.push(v);
+        });
+    }
+
+    // Normalize UI labels such as "Introductory Block" to the DB value "Introductory".
+    return [...new Set(blocks.map(v=>{
+        const x=String(v).trim();
+        return x.replace(/\s+Block$/i,'').replace(/\s+Term$/i,'').trim() || x;
+    }))];
+}
+
 async function loadStudentsForNotification() {
     const program=document.getElementById('exam_program')?.value||'';
-    const block=document.getElementById('exam_block_term')?.value||'';
-    console.log('📋 Loading students for notification:',{program,block});
+    const blocks=getSelectedNotificationBlocks();
+    console.log('📋 Loading students for notification:',{program,blocks});
 
-    if(!program){
+    const countEl=document.getElementById('student_notify_count');
+
+    if(!program || !blocks.length){
         allStudentsForProgram=[];
-        const countEl=document.getElementById('student_notify_count');
         if(countEl)countEl.textContent='0 students';
         updateSelectedStudentsDisplay();
         return;
@@ -180,13 +208,8 @@ async function loadStudentsForNotification() {
         const supabase=window.sb||window.supabase;
         if(!supabase)throw new Error('Supabase client not available');
 
-        /*
-         * Recipients come from the student profile table.
-         * Course/unit registration is NOT used.
-         *
-         * current_block is authoritative; block is retained as a fallback
-         * because some older student records use block instead.
-         */
+        // IMPORTANT: recipients come from student profiles, never unit registration.
+        // current_block is authoritative; block is a legacy fallback.
         const {data,error}=await supabase
             .from('consolidated_user_profiles_table')
             .select('user_id, full_name, email, program, intake_year, intake_month, block, current_block, status')
@@ -197,35 +220,26 @@ async function loadStudentsForNotification() {
 
         if(error)throw error;
 
-        const normalizeBlock=v=>String(v||'').trim().toLowerCase();
+        const normalizeBlock=v=>String(v||'').trim().toLowerCase().replace(/\s+block$/,'').replace(/\s+term$/,'');
+        const wanted=new Set(blocks.map(normalizeBlock));
 
         allStudentsForProgram=(data||[]).filter(student=>{
-            if(!block || block==='-- Select --' || block==='-- Select Block/Term --'){
-                return true;
-            }
-
             const effectiveBlock=student.current_block||student.block||'';
-            return normalizeBlock(effectiveBlock)===normalizeBlock(block);
+            return wanted.has(normalizeBlock(effectiveBlock));
         });
 
-        console.log(`✅ Loaded ${allStudentsForProgram.length} students for ${program} / ${block}`);
+        console.log(`✅ Loaded ${allStudentsForProgram.length} students for ${program} / ${blocks.join(', ')}`);
 
-        const countEl=document.getElementById('student_notify_count');
         if(countEl)countEl.textContent=`${allStudentsForProgram.length} students`;
-
         updateSelectedStudentsDisplay();
         searchStudentsForNotification();
     }catch(error){
         console.error('❌ Error loading students:',error);
         allStudentsForProgram=[];
-
-        const countEl=document.getElementById('student_notify_count');
         if(countEl)countEl.textContent='0 students';
-
         updateSelectedStudentsDisplay();
     }
 }
-
 
 function searchStudentsForNotification() {
     const searchTerm = document.getElementById('exam_student_search')?.value?.toLowerCase() || '';
@@ -383,6 +397,7 @@ function getProgramLevel(programCode){
     if(code.startsWith('D'))return 'DIPLOMA'; if(code.startsWith('C')&&code!=='CCA')return 'CERTIFICATE'; if(code.startsWith('A'))return 'ARTISAN'; if(code==='CCA'||code==='PTE')return 'OTHER'; return 'KRCHN';
 }
 async function loadAvailableClassesForExam(){
+    const DOM=window.DOM||{};
     if(!DOM.classSelector)return;
     const program=document.getElementById('exam_program')?.value||'KRCHN', isTVET=isTVETProgram(program), level=getProgramLevel(program);
     let options=[], blockLabel='Block';
@@ -764,7 +779,8 @@ let createUnitsData=[];
  * CREATE EXAM COURSE/UNIT SOURCE
  * --------------------------------
  * The create form uses units_catalog, not courses.
- * Units are determined by PROGRAM + CURRENT BLOCK.
+ * Units are determined by the selected PROGRAM only.
+ * Course/Unit search is independent of BLOCK/TERM and INTAKE YEAR.
  * We deliberately do NOT filter by intake_year because the curriculum
  * year in units_catalog is not the student's intake year.
  */
@@ -813,17 +829,24 @@ async function loadCoursesForCreateDropdown(program=''){
             return;
         }
 
-        const block=(document.getElementById('exam_block_term')?.value||'').trim();
-
+        /*
+         * COURSE/UNIT SEARCH IS INTENTIONALLY INDEPENDENT OF BLOCK/TERM.
+         *
+         * The selected Block/Term controls the student notification
+         * population, but it must NEVER restrict the Course/Unit search.
+         * A lecturer should be able to type/search across the complete
+         * active units catalogue for the selected program.
+         *
+         * Example: selecting Block 5 must not hide a unit merely because
+         * its curriculum year/block differs from the student's intake.
+         */
         let query=supabase
             .from('units_catalog')
             .select('id, unit_code, unit_name, program, block, term, year, unit_type, status, block_order, assessment_type')
             .eq('status','active');
 
+        /* Program is the only academic filter for the Course/Unit list. */
         if(program) query=query.eq('program',program);
-        if(block && block!=='-- Select --' && block!=='-- Select Block/Term --'){
-            query=query.eq('block',block);
-        }
 
         const {data,error}=await query
             .order('block_order',{ascending:true,nullsFirst:false})
@@ -832,9 +855,9 @@ async function loadCoursesForCreateDropdown(program=''){
         if(error)throw error;
 
         createUnitsData=data||[];
-        console.log('📚 units_catalog loaded:',{
-            program,
-            block,
+        console.log('📚 units_catalog loaded for Course/Unit search:',{
+            program:program||'ALL PROGRAMS',
+            filter:'NONE — all active units for selected program',
             count:createUnitsData.length,
             units:createUnitsData.map(u=>`${u.unit_code} - ${u.unit_name}`)
         });
@@ -868,10 +891,10 @@ function filterCreateCourseDropdown(searchTerm=''){
     }
 
     if(!filtered.length){
-        const block=(document.getElementById('exam_block_term')?.value||'').trim();
-        const message=block
-            ? `No active units found for ${escapeHtml(block)}`
-            : 'Select a program and block to load units';
+        const program=document.getElementById('exam_program')?.value||'';
+        const message=program
+            ? `No active courses/units found for ${escapeHtml(program)}`
+            : 'Select a program or search the course/unit list';
 
         list.innerHTML=`<div class="no-results">
             <i class="fas fa-book"></i> ${message}
@@ -990,6 +1013,7 @@ function selectCreateCourse(courseId,courseName,courseCode,programTag){
 function updateCreateCourseDropdown(){
     const program=document.getElementById('exam_program')?.value||'';
 
+    /* Course/Unit list is refreshed only by program; block is irrelevant. */
     loadCoursesForCreateDropdown(program);
 
     const input=document.getElementById('createCourseSearchInput'),
@@ -1077,6 +1101,7 @@ function initExams(){
             if(!e.target)return;
             if(e.target.id==='exam_program'){console.log('🎯 Program changed via delegation:',e.target.value);updateBlockTermOptions('exam_program','exam_block_term');loadAvailableClassesForExam();selectedStudentsForNotification=[];updateSelectedStudentsDisplay();loadStudentsForNotification();if(typeof updateCreateCourseDropdown==='function')updateCreateCourseDropdown();}
             if(e.target.id==='exam_block_term'){console.log('🎯 Block changed via delegation:',e.target.value);selectedStudentsForNotification=[];updateSelectedStudentsDisplay();loadStudentsForNotification();if(typeof updateCreateCourseDropdown==='function')updateCreateCourseDropdown();}
+            if(e.target.classList?.contains('exam-class-checkbox')){selectedStudentsForNotification=[];updateSelectedStudentsDisplay();loadStudentsForNotification();}
         });
     }
     setTimeout(()=>{const ps=document.getElementById('exam_program');if(ps?.value){updateBlockTermOptions('exam_program','exam_block_term');loadAvailableClassesForExam();}loadStudentsForNotification();},500);
