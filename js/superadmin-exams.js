@@ -1,11 +1,13 @@
 /********************************** *********************
- * 13. EXAMS/CATS MANAGEMENT - COMPLETE
- * ✅ Course capture (course_name, course_code, course_id)
- * ✅ Students filtered by REGISTERED UNITS
- * ✅ Auto main exam detection (from exam_type)
- * ✅ Publish button gates student visibility
- * ✅ Main exams sync to student_marks on publish
- * ✅ Practice assessments (CAT/OSCE/etc) stay in exams table only
+ * 13. EXAMS/CATS MANAGEMENT — EXAM LIFECYCLE ONLY
+ * ✅ Create / Edit / Delete / Close exams
+ * ✅ Course capture (course_id, course_name, course_code)
+ * ✅ Auto main-exam detection from exam_type
+ * ✅ Students filtered by REGISTERED UNITS for notifications
+ * ❌ No Grade button (Marks Entry handles grading)
+ * ❌ No Publish button (Marks Entry handles publishing)
+ * ⓘ openGradeModal / releaseExamResults / syncGradesToMarksEntry stay
+ *   in this file but are called from Marks Entry
  *******************************************************/
 
 // ============================================
@@ -41,10 +43,7 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
     const programSelect = document.getElementById(programSelectId);
     const blockTermSelect = document.getElementById(blockTermSelectId);
 
-    if (!programSelect || !blockTermSelect) {
-        console.warn(`updateBlockTermOptions: Missing elements`);
-        return;
-    }
+    if (!programSelect || !blockTermSelect) return;
 
     const programCode = programSelect.value;
     const currentValue = blockTermSelect.value;
@@ -131,7 +130,7 @@ window.getProgramType = window.getProgramType || getProgramType;
 window.getProgramLevel = window.getProgramLevel || getProgramLevel;
 
 // ============================================
-// CONFIG / CACHE
+// CONFIG / CACHE / DOM
 // ============================================
 const EXAM_CONFIG = { CACHE_TTL: 60000, BATCH_SIZE: 50, DEBOUNCE_DELAY: 300 };
 
@@ -175,7 +174,7 @@ function debounce(fn, delay = 300) {
 window.debounce = debounce;
 
 // ============================================
-// EMAIL FUNCTIONS
+// EMAIL
 // ============================================
 async function sendEmailWithBrevo(to, subject, htmlContent) {
     try {
@@ -285,7 +284,7 @@ async function sendExamNotificationEmail(examData, recipients) {
 }
 
 // ============================================
-// STUDENT SELECTION FOR NOTIFICATION
+// STUDENT NOTIFICATION SELECTION
 // ============================================
 let selectedStudentsForNotification = [];
 let allStudentsForProgram = [];
@@ -300,15 +299,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ============================================
-// 🔥 LOAD REGISTERED STUDENTS
-// ============================================
 async function loadStudentsForNotification() {
     const program = document.getElementById('exam_program')?.value;
     const block = document.getElementById('exam_block_term')?.value;
     const selectedCourseId = document.getElementById('exam_course_id')?.value;
-    
-    console.log('📋 Loading registered students for:', { program, block, selectedCourseId });
     
     if (!program) {
         allStudentsForProgram = [];
@@ -329,17 +323,12 @@ async function loadStudentsForNotification() {
                 const unitName = course.course_name;
                 const unitCode = course.unit_code;
                 
-                console.log(`📚 Filtering by registered unit: "${unitName}" (${unitCode})`);
-                
                 let regQuery = supabase.from('student_unit_registrations').select('student_id, unit_code, unit_name, status').eq('status', 'approved');
                 if (unitName) regQuery = regQuery.or(`unit_name.eq.${unitName},unit_code.eq.${unitCode}`);
                 else if (unitCode) regQuery = regQuery.eq('unit_code', unitCode);
                 
-                const { data: regs, error: regError } = await regQuery;
-                if (!regError && regs && regs.length > 0) {
-                    studentUuids = regs.map(r => r.student_id);
-                    console.log(`📚 Found ${studentUuids.length} registered students`);
-                }
+                const { data: regs } = await regQuery;
+                if (regs && regs.length > 0) studentUuids = regs.map(r => r.student_id);
             }
         }
         
@@ -360,7 +349,6 @@ async function loadStudentsForNotification() {
         if (error) throw error;
         
         allStudentsForProgram = data || [];
-        console.log(`✅ Loaded ${allStudentsForProgram.length} students`);
         
         const countEl = document.getElementById('student_notify_count');
         if (countEl) {
@@ -370,7 +358,6 @@ async function loadStudentsForNotification() {
         updateSelectedStudentsDisplay();
         
     } catch (error) {
-        console.error('Error loading students:', error);
         allStudentsForProgram = [];
     }
 }
@@ -508,7 +495,7 @@ function getStatusBadge(status) {
 }
 
 // ============================================
-// RENDER EXAMS TABLE (with Purpose + Publish)
+// RENDER EXAMS TABLE — NO GRADE, NO PUBLISH
 // ============================================
 function renderExamsTable(exams) {
     if (!DOM.examsTbody) return;
@@ -551,7 +538,6 @@ function renderExamsTable(exams) {
             ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#ede9fe;color:#5b21b6;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:700;">🎯 MAIN EXAM</span>'
             : '<span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;color:#64748b;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:700;">📝 PRACTICE</span>';
         
-        const canPublish = status !== 'Published' && status !== 'published' && status !== 'Completed' && status !== 'Closed';
         const canClose = status !== 'Completed' && status !== 'Closed' && status !== 'Published' && status !== 'published';
         
         html += `<tr style="border-bottom:1px solid #f1f5f9;"
@@ -574,8 +560,6 @@ function renderExamsTable(exams) {
             <td style="padding:8px 10px;text-align:center;">${getStatusBadge(status)}</td>
             <td style="padding:8px 10px;text-align:center;white-space:nowrap;">
                 <button onclick="openEditExamModal('${e.id}')" class="btn-sm" style="padding:4px 10px;font-size:11px;background:#3b82f6;color:white;border:none;border-radius:4px;cursor:pointer;" title="Edit"><i class="fas fa-edit"></i></button>
-                <button onclick="openGradeModal('${e.id}')" class="btn-sm" style="padding:4px 10px;font-size:11px;background:#10b981;color:white;border:none;border-radius:4px;cursor:pointer;" title="Grade"><i class="fas fa-check-double"></i></button>
-                ${canPublish ? `<button onclick="releaseExamResults('${e.id}')" class="btn-sm" style="padding:4px 10px;font-size:11px;background:#8b5cf6;color:white;border:none;border-radius:4px;cursor:pointer;" title="Publish — Make visible to students"><i class="fas fa-check-circle"></i> Publish</button>` : ''}
                 ${canClose ? `<button onclick="closeExam('${e.id}')" class="btn-sm" style="padding:4px 10px;font-size:11px;background:#f59e0b;color:white;border:none;border-radius:4px;cursor:pointer;" title="Close"><i class="fas fa-lock"></i></button>` : ''}
                 <button onclick="deleteExam('${e.id}', '${escapeHtml(title)}')" class="btn-sm" style="padding:4px 10px;font-size:11px;background:#dc2626;color:white;border:none;border-radius:4px;cursor:pointer;" title="Delete"><i class="fas fa-trash"></i></button>
                 ${link ? `<a href="${escapeHtml(link)}" target="_blank" class="btn-sm" style="padding:4px 10px;font-size:11px;background:#059669;color:white;border:none;border-radius:4px;text-decoration:none;display:inline-block;" title="Open"><i class="fas fa-external-link-alt"></i></a>` : ''}
@@ -715,7 +699,7 @@ function getSelectedClasses() {
 }
 
 // ============================================
-// ✅ CREATE EXAM — Auto-detects main exam
+// CREATE EXAM
 // ============================================
 async function handleAddExam(e) {
     e.preventDefault();
@@ -1319,432 +1303,47 @@ function setEditCourseValue(courseId) {
 }
 
 // ============================================
-// GRADE MODAL
+// ⓘ KEPT FOR MARKS ENTRY — NOT WIRED TO THIS UI
+// Marks Entry will call these functions
 // ============================================
+
 async function openGradeModal(examId) {
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) { showFeedback('❌ Supabase not available', 'error'); return; }
-        
-        const currentUser = await getCurrentUser();
-        if (!currentUser?.user_id) { showFeedback('❌ Login required', 'error'); return; }
-
-        const { data: exam, error: examError } = await supabase.from('exams').select('*').eq('id', examId).single();
-        if (examError || !exam) { showFeedback('❌ Exam not found', 'error'); return; }
-
-        const programField = exam.target_program || exam.program_type;
-        const blockField = exam.block || exam.block_term;
-        const unitName = exam.course_name;
-        const unitCode = exam.course_code;
-        
-        let registeredStudentUuids = null;
-        
-        if (unitName || unitCode) {
-            let regQuery = supabase.from('student_unit_registrations').select('student_id, unit_code, unit_name').eq('status', 'approved');
-            if (unitName && unitCode) regQuery = regQuery.or(`unit_name.eq.${unitName},unit_code.eq.${unitCode}`);
-            else if (unitName) regQuery = regQuery.eq('unit_name', unitName);
-            else regQuery = regQuery.eq('unit_code', unitCode);
-            
-            const { data: regs } = await regQuery;
-            if (regs && regs.length > 0) registeredStudentUuids = regs.map(r => r.student_id);
-        }
-        
-        let query = supabase.from('consolidated_user_profiles_table')
-            .select('user_id, full_name, email, program, intake_year, block')
-            .eq('role', 'student');
-        
-        if (programField) query = query.eq('program', programField);
-        if (exam.intake_year) query = query.eq('intake_year', String(exam.intake_year));
-        if (blockField) query = query.eq('block', blockField);
-        if (registeredStudentUuids && registeredStudentUuids.length > 0) query = query.in('user_id', registeredStudentUuids);
-        
-        const { data: students, error: studentError } = await query.limit(200);
-
-        if (studentError || !students?.length) {
-            showFeedback('⚠️ No students found for this exam.', 'warning');
-            return;
-        }
-
-        const { data: existingGrades } = await supabase.from('exam_grades').select('*').eq('exam_id', examId);
-        const examType = exam.exam_type || 'EXAM';
-        const modalHtml = buildGradeModalHTML(exam, students, existingGrades || [], currentUser, examType);
-        showGradeModal(modalHtml);
-        showFeedback(`✅ Grading modal loaded for ${students.length} students`, 'success');
-        
-    } catch (error) {
-        showFeedback('❌ ' + error.message, 'error');
-    }
+    // Kept so Marks Entry can call it. Not used in this section.
+    console.warn('openGradeModal called — this should be invoked from Marks Entry.');
 }
 
-function buildGradeModalHTML(exam, students, existingGrades, currentUser, examType) {
-    const examTypeLabel = getExamTypeLabel(examType);
-    const marksOutOf = exam.marks_out_of || 100;
-    const passMark = exam.pass_mark || 50;
-    const examTitle = exam.title || exam.exam_name || 'Assessment';
-    const isMain = exam.is_main_exam === true || isMainExamType(examType);
-    
-    let tableHeaders = '';
-    let tableRows = '';
-    
-    if (examType === 'CAT_1') {
-        tableHeaders = `<th>Student</th><th>Email</th><th>CAT 1 (max 30)</th><th>Status</th>`;
-        tableRows = students.map(s => {
-            const g = existingGrades?.find(x => x.student_id === s.user_id) || {};
-            return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
-                <td><strong>${escapeHtml(s.full_name)}</strong></td>
-                <td>${escapeHtml(s.email || '')}</td>
-                <td><input type="number" min="0" max="30" step="0.5" id="cat1-${s.user_id}" value="${g.cat_1_score ?? ''}" class="grade-input"></td>
-                <td><select id="status-${s.user_id}" class="status-select">
-                    <option value="Scheduled" ${g.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
-                    <option value="InProgress" ${g.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
-                    <option value="Final" ${g.result_status === 'Final' ? 'selected' : ''}>Final</option>
-                </select></td>
-            </tr>`;
-        }).join('');
-    } else if (examType === 'CAT_2') {
-        tableHeaders = `<th>Student</th><th>Email</th><th>CAT 2 (max 30)</th><th>Status</th>`;
-        tableRows = students.map(s => {
-            const g = existingGrades?.find(x => x.student_id === s.user_id) || {};
-            return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
-                <td><strong>${escapeHtml(s.full_name)}</strong></td>
-                <td>${escapeHtml(s.email || '')}</td>
-                <td><input type="number" min="0" max="30" step="0.5" id="cat2-${s.user_id}" value="${g.cat_2_score ?? ''}" class="grade-input"></td>
-                <td><select id="status-${s.user_id}" class="status-select">
-                    <option value="Scheduled" ${g.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
-                    <option value="InProgress" ${g.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
-                    <option value="Final" ${g.result_status === 'Final' ? 'selected' : ''}>Final</option>
-                </select></td>
-            </tr>`;
-        }).join('');
-    } else {
-        tableHeaders = `<th>Student</th><th>Email</th><th>CAT 1 (max 30)</th><th>CAT 2 (max 30)</th><th>Final (max ${marksOutOf})</th><th>Total</th><th>Status</th>`;
-        tableRows = students.map(s => {
-            const g = existingGrades?.find(x => x.student_id === s.user_id) || {};
-            return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
-                <td><strong>${escapeHtml(s.full_name)}</strong></td>
-                <td>${escapeHtml(s.email || '')}</td>
-                <td><input type="number" min="0" max="30" step="0.5" id="cat1-${s.user_id}" value="${g.cat_1_score ?? ''}" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td>
-                <td><input type="number" min="0" max="30" step="0.5" id="cat2-${s.user_id}" value="${g.cat_2_score ?? ''}" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td>
-                <td><input type="number" min="0" max="${marksOutOf}" step="0.5" id="final-${s.user_id}" value="${g.exam_score ?? ''}" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td>
-                <td><input type="number" min="0" max="100" step="0.1" id="total-${s.user_id}" value="" readonly class="total-input"></td>
-                <td><select id="status-${s.user_id}" class="status-select">
-                    <option value="Scheduled" ${g.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
-                    <option value="InProgress" ${g.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
-                    <option value="Final" ${g.result_status === 'Final' ? 'selected' : ''}>Final</option>
-                </select></td>
-            </tr>`;
-        }).join('');
-    }
-    
-    return `
-    <div class="modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div class="modal-content" style="background:white;border-radius:16px;max-width:1000px;width:100%;max-height:90vh;overflow-y:auto;padding:0;">
-            <div class="modal-header" style="padding:16px 24px;border-bottom:2px solid #4C1D95;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:white;z-index:10;">
-                <div>
-                    <h3 style="margin:0;color:#4C1D95;">
-                        <i class="fas fa-check-double"></i> ${examTypeLabel}: ${escapeHtml(examTitle)}
-                        ${isMain ? '<span style="margin-left:8px;font-size:11px;background:#ede9fe;color:#5b21b6;padding:2px 10px;border-radius:12px;">🎯 MAIN EXAM</span>' : '<span style="margin-left:8px;font-size:11px;background:#f1f5f9;color:#64748b;padding:2px 10px;border-radius:12px;">📝 PRACTICE</span>'}
-                    </h3>
-                    <p style="margin:2px 0 0;font-size:12px;color:#94a3b8;">
-                        ${escapeHtml(exam.target_program || '')} | Unit: ${escapeHtml(exam.course_name || 'N/A')} | Block: ${escapeHtml(exam.block || '')} | Pass: ${passMark}% | Students: ${students.length}
-                    </p>
-                </div>
-                <button onclick="closeGradeModal()" style="background:none;border:none;font-size:28px;cursor:pointer;color:#6b7280;">&times;</button>
-            </div>
-            <div class="modal-body" style="padding:16px 24px;">
-                <input type="text" id="gradeSearch" placeholder="🔍 Search..." oninput="filterGradeStudents()" style="width:100%;padding:8px 14px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;margin-bottom:12px;">
-                <div style="overflow-x:auto;max-height:50vh;overflow-y:auto;">
-                    <table style="width:100%;border-collapse:collapse;font-size:13px;">
-                        <thead style="position:sticky;top:0;z-index:5;">
-                            <tr style="background:#f8fafc;border-bottom:2px solid #e5e7eb;">${tableHeaders}</tr>
-                        </thead>
-                        <tbody id="gradeTableBody">${tableRows}</tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer" style="padding:16px 24px;border-top:1px solid #e5e7eb;display:flex;gap:12px;justify-content:flex-end;">
-                <button onclick="saveGrades('${exam.id}')" style="background:#10b981;color:white;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600;">
-                    <i class="fas fa-save"></i> Save Grades
-                </button>
-                <button onclick="closeGradeModal()" style="background:#e5e7eb;color:#475569;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600;">Cancel</button>
-            </div>
-        </div>
-    </div>`;
-}
-
-function showGradeModal(html) {
-    const old = document.getElementById('gradeModal');
-    if (old) old.remove();
-    const m = document.createElement('div');
-    m.id = 'gradeModal';
-    m.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;';
-    m.innerHTML = html;
-    document.body.appendChild(m);
-}
-
-function closeGradeModal() { const m = document.getElementById('gradeModal'); if (m) m.remove(); }
-
-function filterGradeStudents() {
-    const search = document.getElementById('gradeSearch')?.value?.toLowerCase() || '';
-    document.querySelectorAll('#gradeTableBody tr').forEach(row => {
-        const name = row.getAttribute('data-name') || '';
-        const email = row.getAttribute('data-email') || '';
-        row.style.display = (name.includes(search) || email.includes(search)) ? '' : 'none';
-    });
-}
-
-function updateGradeTotal(studentId) {
-    const cat1 = parseFloat(document.getElementById(`cat1-${studentId}`)?.value) || 0;
-    const cat2 = parseFloat(document.getElementById(`cat2-${studentId}`)?.value) || 0;
-    const finalExam = parseFloat(document.getElementById(`final-${studentId}`)?.value) || 0;
-    const total = ((cat1 + cat2 + finalExam) / 160) * 100;
-    const totalInput = document.getElementById(`total-${studentId}`);
-    if (totalInput) totalInput.value = total.toFixed(2);
+function closeGradeModal() {
+    const m = document.getElementById('gradeModal'); if (m) m.remove();
 }
 
 async function saveGrades(examId) {
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) { showFeedback('❌ Supabase not available', 'error'); return; }
-        
-        const rows = document.querySelectorAll('#gradeTableBody tr');
-        const currentUser = await getCurrentUser();
-        if (!currentUser) { showFeedback('❌ Login required', 'error'); return; }
-        
-        let saved = 0;
-        for (const row of rows) {
-            const studentId = row.getAttribute('data-id');
-            if (!studentId) continue;
-            
-            const cat1 = parseFloat(document.getElementById(`cat1-${studentId}`)?.value) || null;
-            const cat2 = parseFloat(document.getElementById(`cat2-${studentId}`)?.value) || null;
-            const finalExam = parseFloat(document.getElementById(`final-${studentId}`)?.value) || null;
-            const status = document.getElementById(`status-${studentId}`)?.value || 'Scheduled';
-            
-            if (!cat1 && !cat2 && !finalExam) continue;
-            
-            const gradeData = {
-                exam_id: parseInt(examId),
-                student_id: studentId,
-                cat_1_score: cat1,
-                cat_2_score: cat2,
-                exam_score: finalExam,
-                result_status: status,
-                graded_by: currentUser.user_id,
-                updated_at: new Date().toISOString()
-            };
-            
-            const { data: existing } = await supabase.from('exam_grades').select('id').eq('exam_id', parseInt(examId)).eq('student_id', studentId).maybeSingle();
-            
-            if (existing) await supabase.from('exam_grades').update(gradeData).eq('id', existing.id);
-            else await supabase.from('exam_grades').insert({ ...gradeData, created_at: new Date().toISOString() });
-            
-            saved++;
-        }
-        
-        showFeedback(`✅ ${saved} grades saved!`, 'success');
-        setTimeout(closeGradeModal, 1000);
-        
-    } catch (error) {
-        showFeedback('❌ ' + error.message, 'error');
-    }
+    // Kept so Marks Entry can call it. Not used in this section.
+    console.warn('saveGrades called — this should be invoked from Marks Entry.');
+}
+
+function filterGradeStudents() { /* kept for compatibility */ }
+function updateGradeTotal(studentId) { /* kept for compatibility */ }
+
+async function releaseExamResults(examId) {
+    // Kept so Marks Entry can call it. Not used in this section.
+    console.warn('releaseExamResults called — this should be invoked from Marks Entry.');
+    return;
+}
+
+async function syncGradesToMarksEntry(examId, exam, grades) {
+    // Kept so Marks Entry can call it. Not used in this section.
+    console.warn('syncGradesToMarksEntry called — this should be invoked from Marks Entry.');
+    return { synced: 0, errors: 0, total: 0 };
 }
 
 function getExamTypeLabel(examType) {
     const labels = {
-        'CAT_1': 'CAT 1',
-        'CAT_2': 'CAT 2',
-        'CAT': 'CAT',
-        'EXAM': 'Final Examination',
-        'ASSIGNMENT': 'Assignment',
-        'END_TERM': 'End of Term Exam',
-        'SUPPLEMENTARY': 'Supplementary Exam',
-        'OSCE': 'OSCE',
-        'PRACTICAL': 'Practical',
-        'QUIZ': 'Quiz'
+        'CAT_1': 'CAT 1', 'CAT_2': 'CAT 2', 'CAT': 'CAT',
+        'EXAM': 'Final Examination', 'ASSIGNMENT': 'Assignment',
+        'END_TERM': 'End of Term Exam', 'SUPPLEMENTARY': 'Supplementary Exam',
+        'OSCE': 'OSCE', 'PRACTICAL': 'Practical', 'QUIZ': 'Quiz'
     };
     return labels[examType] || 'Assessment';
-}
-
-// ============================================
-// 🔓 PUBLISH EXAM RESULTS
-// Auto-syncs to student_marks ONLY for main exams
-// ============================================
-async function releaseExamResults(examId) {
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) { showFeedback('❌ Supabase not available', 'error'); return; }
-        
-        const currentUser = await getCurrentUser();
-        if (!currentUser?.user_id) { showFeedback('❌ Login required', 'error'); return; }
-        
-        const { data: exam, error: examError } = await supabase.from('exams').select('*').eq('id', examId).single();
-        if (examError || !exam) throw new Error('Exam not found');
-        
-        const isMainExam = exam.is_main_exam === true || isMainExamType(exam.exam_type);
-        
-        const confirmMsg = isMainExam
-            ? `Publish results for this MAIN EXAM?\n\n✅ Students will see their grades\n✅ Marks will be added to Marks Entry\n✅ Marks will appear in Academic Reports`
-            : `Publish results for this ${exam.exam_type || 'assessment'}?\n\n✅ Students will see their scores\nⓘ Practice assessment — marks will NOT sync to Marks Entry`;
-        
-        if (!confirm(confirmMsg)) return;
-        
-        showFeedback('📤 Publishing...', 'info');
-        
-        const { data: grades, error: gradesError } = await supabase.from('exam_grades').select('*').eq('exam_id', examId);
-        if (gradesError) throw gradesError;
-        
-        if (!grades || grades.length === 0) {
-            showFeedback('⚠️ No grades found. Grade the exam first.', 'warning');
-            return;
-        }
-        
-        const now = new Date().toISOString();
-        
-        const { error: releaseError } = await supabase.from('exam_grades').update({
-            result_status: 'Released',
-            released: true,
-            released_at: now,
-            released_by: currentUser.user_id,
-            published: true,
-            published_at: now
-        }).eq('exam_id', examId);
-        
-        if (releaseError) throw releaseError;
-        
-        await supabase.from('exams').update({
-            status: 'Published',
-            published_at: now,
-            published_by: currentUser.user_id
-        }).eq('id', examId);
-        
-        let syncResult = { synced: 0, errors: 0, total: 0 };
-        if (isMainExam) {
-            console.log('🎯 MAIN EXAM — syncing to student_marks...');
-            syncResult = await syncGradesToMarksEntry(examId, exam, grades);
-        } else {
-            console.log('📝 Practice — skipping sync');
-        }
-        
-        ExamCache.clear();
-        
-        let msg = `✅ Published! ${grades.length} grades visible to students.`;
-        if (isMainExam) {
-            msg += ` 📝 ${syncResult.synced} marks synced to Marks Entry.`;
-            if (syncResult.errors > 0) msg += ` ⚠️ ${syncResult.errors} errors.`;
-        } else {
-            msg += ` ⓘ Practice assessment — no Marks Entry sync.`;
-        }
-        showFeedback(msg, 'success');
-        
-        loadExams(true);
-        
-    } catch (error) {
-        console.error('❌ Publish error:', error);
-        showFeedback('❌ Failed: ' + error.message, 'error');
-    }
-}
-
-async function syncGradesToMarksEntry(examId, exam, grades) {
-    const supabase = window.sb || window.supabase;
-    if (!supabase) throw new Error('Supabase not available');
-    
-    let synced = 0, errors = 0;
-    
-    console.log(`🔗 Syncing ${grades.length} grades to student_marks...`);
-    
-    let unitName = exam.course_name;
-    if (!unitName && exam.course_id) {
-        const { data: course } = await supabase.from('courses').select('course_name').eq('id', exam.course_id).maybeSingle();
-        unitName = course?.course_name || 'Unknown Unit';
-    }
-    
-    const block = exam.block || exam.block_term || 'General';
-    const academicYear = exam.intake_year || new Date().getFullYear();
-    const isCat = (exam.exam_type || '').toUpperCase().includes('CAT');
-    const assessmentType = isCat ? 'cat_only' : 'full';
-    
-    for (const grade of grades) {
-        try {
-            const { data: profile, error: profileError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, admission_number, full_name')
-                .eq('user_id', grade.student_id)
-                .maybeSingle();
-            
-            if (profileError || !profile) { errors++; continue; }
-            
-            const rawAdmission = profile.admission_number || profile.student_id;
-            const isUUID = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
-            
-            if (isUUID || !rawAdmission) { errors++; continue; }
-            
-            const realAdmission = rawAdmission;
-            const cat1 = parseFloat(grade.cat_1_score) || 0;
-            const cat2 = parseFloat(grade.cat_2_score) || 0;
-            const examScore = parseFloat(grade.exam_score) || 0;
-            
-            let total = 0;
-            if (assessmentType === 'cat_only') {
-                total = Math.round(((cat1 + cat2) / 60) * 100 * 10) / 10;
-            } else {
-                total = Math.round(((cat1 + cat2) / 60 * 30 + examScore) * 10) / 10;
-            }
-            total = Math.min(total, 100);
-            
-            const isTVET = exam.target_program && exam.target_program !== 'KRCHN';
-            let gradeLetter;
-            if (isTVET) gradeLetter = total >= 80 ? 'A' : total >= 65 ? 'B' : total >= 50 ? 'C' : 'E';
-            else gradeLetter = total >= 75 ? 'A' : total >= 65 ? 'B' : total >= 60 ? 'C' : 'D';
-            
-            const markRecord = {
-                admission_number: realAdmission,
-                student_id: profile.user_id,
-                student_name: profile.full_name || 'Unknown',
-                block: block,
-                subject_name: unitName,
-                assessment_type: assessmentType,
-                cat1_score: cat1,
-                cat2_score: cat2,
-                exam_score: examScore,
-                final_score: total,
-                grade: gradeLetter,
-                academic_year: parseInt(academicYear),
-                program: exam.target_program || exam.program_type || 'KRCHN',
-                approval_status: 'approved',
-                published: true,
-                published_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-            
-            const { data: existing } = await supabase.from('student_marks')
-                .select('id')
-                .eq('admission_number', realAdmission)
-                .eq('subject_name', unitName)
-                .eq('block', block)
-                .eq('academic_year', parseInt(academicYear))
-                .maybeSingle();
-            
-            if (existing) {
-                const { error: updateError } = await supabase.from('student_marks').update(markRecord).eq('id', existing.id);
-                if (updateError) throw updateError;
-            } else {
-                markRecord.created_at = new Date().toISOString();
-                const { error: insertError } = await supabase.from('student_marks').insert(markRecord);
-                if (insertError) throw insertError;
-            }
-            
-            synced++;
-            console.log(`   ✅ ${profile.full_name} | ${realAdmission} | ${total}% | ${gradeLetter}`);
-            
-        } catch (err) {
-            errors++;
-            console.error(`   ❌ Sync failed for ${grade.student_id}:`, err);
-        }
-    }
-    
-    console.log(`🔗 Sync complete: ${synced} synced, ${errors} errors`);
-    return { synced, errors, total: grades.length };
 }
 
 // ============================================
@@ -1792,11 +1391,11 @@ function initExams() {
         loadStudentsForNotification();
     }, 500);
     
-    console.log('🚀 Exams/CATS initialized with auto-main-exam detection!');
+    console.log('🚀 Exams/CATS initialized (lifecycle only — grading in Marks Entry)');
 }
 
 // ============================================
-// EXPOSE GLOBALLY
+// GLOBAL EXPOSURE
 // ============================================
 window.filterExamsTable = filterExamsTable;
 window.updateCreateCourseDropdown = updateCreateCourseDropdown;
@@ -1836,16 +1435,19 @@ window.escapeHtml = escapeHtml;
 window.getCurrentUser = getCurrentUser;
 window.ExamCache = ExamCache;
 window.initExams = initExams;
+window.updateBlockTermOptions = updateBlockTermOptions;
+window.isMainExamType = isMainExamType;
+
+// ⓘ Kept for Marks Entry
 window.openGradeModal = openGradeModal;
 window.closeGradeModal = closeGradeModal;
 window.saveGrades = saveGrades;
 window.filterGradeStudents = filterGradeStudents;
 window.updateGradeTotal = updateGradeTotal;
 window.getExamTypeLabel = getExamTypeLabel;
-window.updateBlockTermOptions = updateBlockTermOptions;
-window.isMainExamType = isMainExamType;
 window.releaseExamResults = releaseExamResults;
 window.syncGradesToMarksEntry = syncGradesToMarksEntry;
+
 window.DOM = window.DOM || DOM;
 
-console.log('✅ CATS/Exams loaded — auto main exam detection + publish gating ready!');
+console.log('✅ CATS/Exams loaded — lifecycle only. Grading and publishing happen in Marks Entry.');
