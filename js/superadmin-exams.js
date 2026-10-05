@@ -528,8 +528,9 @@ async function handleAddExam(e){
         course:document.getElementById('exam_course_id')?.value||null,outOf:parseInt(document.getElementById('exam_out_of')?.value)||100,passMark:parseInt(document.getElementById('exam_pass_mark')?.value)||50,
         minFee:parseInt(document.getElementById('exam_min_fee')?.value)||0,link:document.getElementById('exam_link')?.value.trim()||null
     };
-    fields.title=buildExamNameFromCourse()||fields.title;
-    if(!fields.title||!fields.course||!fields.program||!fields.date||!fields.intake||!fields.block||!fields.type||isNaN(fields.duration)){showFeedback('Please select the correct Course/Unit and fill all required fields.','error');btn.disabled=false;btn.innerHTML=original;return;}
+    if(isMainExamType(fields.type)){fields.title=buildExamNameFromCourse()||fields.title;}
+    const missingCourse=isMainExamType(fields.type)&&!fields.course;
+    if(!fields.title||missingCourse||!fields.program||!fields.date||!fields.intake||!fields.block||!fields.type||isNaN(fields.duration)){showFeedback(missingCourse?'Please select a Course/Unit for a Main Exam.':'Please enter the assessment name and fill all required fields.','error');btn.disabled=false;btn.innerHTML=original;return;}
     const classes=getSelectedClasses(), user=await getCurrentUser(), notifyStudents=document.getElementById('exam_notify_students')?.checked||false, notifyTarget=document.getElementById('exam_notify_target')?.value||'all';
     let recipients=[];
     if(notifyStudents){
@@ -654,9 +655,10 @@ async function initCreateCourseDropdown(program=''){
     if(!input.dataset.bound){input.dataset.bound='1';input.addEventListener('input',()=>filterCreateCourseDropdown(input.value.toLowerCase().trim()));input.addEventListener('focus',()=>{list.classList.add('show');filterCreateCourseDropdown(input.value.toLowerCase().trim())});input.addEventListener('blur',()=>setTimeout(()=>list.classList.remove('show'),200));input.addEventListener('keydown',e=>{if(e.key==='Enter'){const first=list.querySelector('.dropdown-item');if(first)first.click();e.preventDefault();}if(e.key==='Escape')list.classList.remove('show');});}
     filterCreateCourseDropdown('');
     const typeInput=document.getElementById('exam_type');
-    if(typeInput&&!typeInput.dataset.examNameBound){typeInput.dataset.examNameBound='1';typeInput.addEventListener('change',buildExamNameFromCourse);}
-    buildExamNameFromCourse();
+    if(typeInput&&!typeInput.dataset.examNameBound){typeInput.dataset.examNameBound='1';typeInput.addEventListener('change',updateExamTypeFormMode);}
+    updateExamTypeFormMode();
 }
+
 async function loadCoursesForCreateDropdown(program=''){
     try{const supabase=window.sb||window.supabase;if(!supabase){createCoursesData=[];return;}let query=supabase.from('courses').select('id, course_name, unit_code, code, name, target_program');if(program)query=query.eq('target_program',program);const {data,error}=await query.order('course_name',{ascending:true});if(error)throw error;createCoursesData=data||[];filterCreateCourseDropdown('');}catch(error){createCoursesData=[];}
 }
@@ -666,19 +668,52 @@ function filterCreateCourseDropdown(searchTerm=''){
     let html='';filtered.slice(0,50).forEach(course=>{const displayName=course.course_name||course.name||'Untitled',unitCode=course.unit_code||course.code||'',programTag=course.target_program?`[${course.target_program}]`:'';html+=`<div class="dropdown-item" onclick="selectCreateCourse('${course.id}','${escapeHtml(displayName).replace(/'/g,"\\'")}','${escapeHtml(unitCode).replace(/'/g,"\\'")}','${escapeHtml(programTag).replace(/'/g,"\\'")}')"><span>${escapeHtml(displayName)}</span><span style="display:flex;gap:6px;align-items:center;">${unitCode?`<span class="course-code">${escapeHtml(unitCode)}</span>`:''}${programTag?`<span class="program-tag">${escapeHtml(programTag)}</span>`:''}</span></div>`;});
     if(filtered.length>50)html+=`<div class="no-results" style="font-size:12px;">And ${filtered.length-50} more</div>`;list.innerHTML=html;list.classList.add('show');
 }
+const MAIN_EXAM_TYPES = new Set(['EXAM','END_TERM','SUPPLEMENTARY']);
+function isMainExamType(type){ return MAIN_EXAM_TYPES.has(String(type||'').toUpperCase()); }
+function updateExamTypeFormMode(){
+    const type=document.getElementById('exam_type')?.value||'';
+    const main=isMainExamType(type);
+    const title=document.getElementById('exam_title');
+    const courseInput=document.getElementById('createCourseSearchInput');
+    const marker=document.getElementById('exam_course_required_marker');
+    const courseHelper=document.getElementById('createCourseHelperText');
+    const titleHelper=document.getElementById('exam_title_helper');
+    if(!title)return;
+    if(main){
+        title.readOnly=true; title.required=true; title.style.background='#f8fafc'; title.style.cursor='not-allowed';
+        title.placeholder='Select a Course/Unit — name will be generated automatically';
+        title.title='Automatically generated from the selected Course/Unit and Exam Type';
+        title.dataset.autoGenerated='true';
+        if(marker)marker.style.display='inline';
+        if(courseHelper)courseHelper.innerHTML='<i class="fas fa-info-circle"></i> Required for Main Exams — type to search, then click to select';
+        if(titleHelper)titleHelper.innerHTML='<i class="fas fa-lock"></i> Automatically generated from Course/Unit + Exam Type';
+        if(courseInput)courseInput.required=true;
+        buildExamNameFromCourse();
+    }else{
+        if(title.dataset.autoGenerated==='true') title.value='';
+        title.dataset.autoGenerated='false'; title.readOnly=false; title.required=true; title.style.background='white'; title.style.cursor='text';
+        title.placeholder=type?'Type assessment name (e.g. '+(type==='OSCE'?'OSCE – Neonatal Resuscitation':type+' – Assessment')+')':'Select Exam Type first';
+        title.title='Enter the assessment name manually';
+        if(marker)marker.style.display='none';
+        if(courseHelper)courseHelper.innerHTML='<i class="fas fa-info-circle"></i> Optional — select a Course/Unit if this assessment is linked to a unit';
+        if(titleHelper)titleHelper.innerHTML='<i class="fas fa-pen"></i> Enter the assessment name manually';
+        if(courseInput)courseInput.required=false;
+    }
+}
+
 function buildExamNameFromCourse(){
     const titleInput=document.getElementById('exam_title');
     const courseInput=document.getElementById('createCourseSearchInput');
     const typeInput=document.getElementById('exam_type');
     if(!titleInput)return '';
-    const courseText=(courseInput?.value||'').trim();
     const examType=(typeInput?.value||'').trim();
+    if(!isMainExamType(examType))return (titleInput.value||'').trim();
+    const courseText=(courseInput?.value||'').trim();
     const cleanCourse=courseText.replace(/\s+\([^)]*\)\s*$/,'').trim();
-    const generated=cleanCourse?(examType?`${cleanCourse} — ${examType}`:cleanCourse):'';
-    titleInput.value=generated;
-    titleInput.readOnly=true;
+    const label=getExamTypeLabel(examType);
+    const generated=cleanCourse?(label && label!=='Assessment'?`${cleanCourse} — ${label}`:`${cleanCourse} — ${examType}`):'';
+    titleInput.value=generated; titleInput.readOnly=true; titleInput.dataset.autoGenerated='true';
     titleInput.setAttribute('aria-readonly','true');
-    titleInput.title='Automatically generated from the selected Course/Unit and Exam Type';
     return generated;
 }
 
@@ -687,7 +722,7 @@ function selectCreateCourse(courseId,courseName,courseCode,programTag){
     if(input)input.value=courseName+(courseCode?` (${courseCode})`:''),hidden&&(hidden.value=courseId),list&&list.classList.remove('show');if(display&&nameDisplay){display.style.display='inline';nameDisplay.textContent=courseName+(courseCode?` (${courseCode})`:'');}
     buildExamNameFromCourse();
 }
-function updateCreateCourseDropdown(){const program=document.getElementById('exam_program')?.value||'';loadCoursesForCreateDropdown(program);filterCreateCourseDropdown('');const input=document.getElementById('createCourseSearchInput'),hidden=document.getElementById('exam_course_id'),display=document.getElementById('createSelectedCourseDisplay');if(input)input.value='';if(hidden)hidden.value='';if(display)display.style.display='none';const title=document.getElementById('exam_title');if(title){title.value='';title.readOnly=true;} }
+function updateCreateCourseDropdown(){const program=document.getElementById('exam_program')?.value||'';loadCoursesForCreateDropdown(program);filterCreateCourseDropdown('');const input=document.getElementById('createCourseSearchInput'),hidden=document.getElementById('exam_course_id'),display=document.getElementById('createSelectedCourseDisplay');if(input)input.value='';if(hidden)hidden.value='';if(display)display.style.display='none';const title=document.getElementById('exam_title');if(title){title.value='';title.dataset.autoGenerated='false';} updateExamTypeFormMode(); }
 async function initEditCourseDropdown(program='',selectedId=''){
     const input=document.getElementById('editCourseSearchInput'),list=document.getElementById('editCourseDropdownList');if(!input||!list)return;await loadCoursesForEditDropdown(program);
     if(!input.dataset.bound){input.dataset.bound='1';input.addEventListener('input',()=>filterEditCourseDropdown(input.value.toLowerCase().trim()));input.addEventListener('focus',()=>{list.classList.add('show');filterEditCourseDropdown(input.value.toLowerCase().trim())});input.addEventListener('blur',()=>setTimeout(()=>list.classList.remove('show'),200));input.addEventListener('keydown',e=>{if(e.key==='Enter'){const first=list.querySelector('.dropdown-item');if(first)first.click();e.preventDefault();}if(e.key==='Escape')list.classList.remove('show');});}
@@ -741,7 +776,7 @@ async function saveGrades(examId){
         showFeedback(`✅ ${saved} grades saved successfully!`,'success');setTimeout(closeGradeModal,1000);
     }catch(error){showFeedback('❌ Failed to save grades: '+error.message,'error');}
 }
-function getExamTypeLabel(examType){return {'CAT_1':'CAT 1 Assessment','CAT_2':'CAT 2 Assessment','CAT':'Continuous Assessment Test','EXAM':'Final Examination','ASSIGNMENT':'Assignment','END_TERM':'End of Term Exam','SUPPLEMENTARY':'Supplementary Exam'}[examType]||'Assessment';}
+function getExamTypeLabel(examType){return {'CAT_1':'CAT 1 Assessment','CAT_2':'CAT 2 Assessment','CAT':'Continuous Assessment Test','EXAM':'Final Examination','ASSIGNMENT':'Assignment','END_TERM':'End of Term Exam','SUPPLEMENTARY':'Supplementary Exam','OSCE':'OSCE','RAT':'RAT','PRACTICAL':'Practical Assessment','QUIZ':'Quiz'}[examType]||'Assessment';}
 
 function initExams(){
     cacheDomElements();const dateInput=document.getElementById('exam_date');if(dateInput)dateInput.value=new Date().toISOString().split('T')[0];populateProgramDropdowns();loadExams();loadAvailableClassesForExam();
@@ -753,6 +788,7 @@ function initExams(){
             if(!e.target)return;
             if(e.target.id==='exam_program'){console.log('🎯 Program changed via delegation:',e.target.value);updateBlockTermOptions('exam_program','exam_block_term');loadAvailableClassesForExam();selectedStudentsForNotification=[];updateSelectedStudentsDisplay();loadStudentsForNotification();if(typeof updateCreateCourseDropdown==='function')updateCreateCourseDropdown();}
             if(e.target.id==='exam_block_term'){console.log('🎯 Block changed via delegation:',e.target.value);selectedStudentsForNotification=[];updateSelectedStudentsDisplay();loadStudentsForNotification();}
+            if(e.target.id==='exam_type'){updateExamTypeFormMode();}
         });
     }
     setTimeout(()=>{const ps=document.getElementById('exam_program');if(ps?.value){updateBlockTermOptions('exam_program','exam_block_term');loadAvailableClassesForExam();}loadStudentsForNotification();},500);
@@ -761,6 +797,6 @@ function initExams(){
 
 window.filterExamsTable=filterExamsTable;window.buildExamNameFromCourse=buildExamNameFromCourse;window.updateCreateCourseDropdown=updateCreateCourseDropdown;window.initCreateCourseDropdown=initCreateCourseDropdown;window.loadCoursesForCreateDropdown=loadCoursesForCreateDropdown;window.filterCreateCourseDropdown=filterCreateCourseDropdown;window.selectCreateCourse=selectCreateCourse;window.initEditCourseDropdown=initEditCourseDropdown;window.selectEditCourse=selectEditCourse;window.setEditCourseValue=setEditCourseValue;
 window.updateNotificationCount=updateNotificationCount;window.getNotificationRecipientsForCount=getNotificationRecipientsForCount;window.sendEmailWithBrevo=sendEmailWithBrevo;window.sendEmailWithEdgeFunctionFallback=sendEmailWithEdgeFunctionFallback;window.sendExamNotificationEmail=sendExamNotificationEmail;window.loadStudentsForNotification=loadStudentsForNotification;window.searchStudentsForNotification=searchStudentsForNotification;window.toggleStudentForNotification=toggleStudentForNotification;window.updateSelectedStudentsDisplay=updateSelectedStudentsDisplay;window.debounce=debounce;
-window.loadExams=loadExams;window.showExamTab=showExamTab;window.deleteExam=deleteExam;window.closeExam=closeExam;window.openEditExamModal=openEditExamModal;window.saveEditedExam=saveEditedExam;window.exportExamsToCSV=exportExamsToCSV;window.handleAddExam=handleAddExam;window.addCustomBlocks=addCustomBlocks;window.addClass=addClass;window.removeClass=removeClass;window.closeEditModal=closeEditModal;window.getSelectedClasses=getSelectedClasses;window.loadAvailableClassesForExam=loadAvailableClassesForExam;window.populateProgramDropdowns=populateProgramDropdowns;window.escapeHtml=window.escapeHtml||escapeHtml;window.getCurrentUser=getCurrentUser;window.ExamCache=ExamCache;window.initExams=initExams;window.openGradeModal=openGradeModal;window.closeGradeModal=closeGradeModal;window.saveGrades=saveGrades;window.filterGradeStudents=filterGradeStudents;window.updateGradeTotal=updateGradeTotal;window.getExamTypeLabel=getExamTypeLabel;window.updateBlockTermOptions=updateBlockTermOptions;window.DOM=window.DOM||DOM;
+window.loadExams=loadExams;window.showExamTab=showExamTab;window.deleteExam=deleteExam;window.closeExam=closeExam;window.openEditExamModal=openEditExamModal;window.saveEditedExam=saveEditedExam;window.exportExamsToCSV=exportExamsToCSV;window.handleAddExam=handleAddExam;window.addCustomBlocks=addCustomBlocks;window.addClass=addClass;window.removeClass=removeClass;window.closeEditModal=closeEditModal;window.getSelectedClasses=getSelectedClasses;window.loadAvailableClassesForExam=loadAvailableClassesForExam;window.populateProgramDropdowns=populateProgramDropdowns;window.escapeHtml=window.escapeHtml||escapeHtml;window.getCurrentUser=getCurrentUser;window.ExamCache=ExamCache;window.initExams=initExams;window.openGradeModal=openGradeModal;window.closeGradeModal=closeGradeModal;window.saveGrades=saveGrades;window.filterGradeStudents=filterGradeStudents;window.updateGradeTotal=updateGradeTotal;window.getExamTypeLabel=getExamTypeLabel;window.updateBlockTermOptions=updateBlockTermOptions;window.updateExamTypeFormMode=updateExamTypeFormMode;window.isMainExamType=isMainExamType;window.DOM=window.DOM||DOM;
 
 console.log('✅ CATS/Exams loaded — delegated events, unified student source, no race conditions.');
