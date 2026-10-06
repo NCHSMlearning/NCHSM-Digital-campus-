@@ -10,9 +10,9 @@ const CONFIG = {
     MAX_BLUR_COUNT: 3,
     MAX_TAB_SWITCHES: 2,
     MAX_TIME_PER_QUESTION: 120,
-    CONSECUTIVE_FACE_LOST_LIMIT: 15,
+    CONSECUTIVE_FACE_LOST_LIMIT: 6,
     TOTAL_VIOLATIONS_LIMIT: 3,
-    RECOVERY_TIMER_SECONDS: 45,
+    RECOVERY_TIMER_SECONDS: 15,
     RETRY_COOLDOWN_SECONDS: 10,
     STORAGE_PREFIX: 'exam_',
     SNAPSHOT_INTERVAL: 30000,
@@ -3853,7 +3853,8 @@ async function startExamFaceDetection() {
                 onPause: (reason, timer) => {
                     const overlay = DOM.faceBlockOverlay;
                     if (overlay) {
-                        overlay.style.display = 'flex';
+                        overlay.classList.remove('hidden');
+                        overlay.style.display = 'grid';
                         overlay.classList.add('active');
                         if (DOM.faceBlockReason) DOM.faceBlockReason.textContent = reason;
                         if (DOM.faceRecoveryCountdown) DOM.faceRecoveryCountdown.textContent = timer;
@@ -3877,6 +3878,7 @@ async function startExamFaceDetection() {
                     if (overlay) {
                         overlay.style.display = 'none';
                         overlay.classList.remove('active');
+                        overlay.classList.add('hidden');
                     }
                     if (DOM.proctoringStatusText) {
                         DOM.proctoringStatusText.textContent = 'Active';
@@ -4045,8 +4047,6 @@ class SecureFaceProctor {
     showCameraRecoveryState(reason = 'Camera connection interrupted.') {
         if (this.state.isSubmitting) return;
 
-        this.hideFaceVisibilityWarning();
-
         updateCameraStatus('danger', '📷 Camera unavailable - recovery required', '0 faces');
 
         if (DOM.faceBlockReason) {
@@ -4071,7 +4071,8 @@ class SecureFaceProctor {
 
         // Keep the existing rectangle visible. The overlay sits above it.
         if (DOM.faceBlockOverlay) {
-            DOM.faceBlockOverlay.style.display = 'flex';
+            DOM.faceBlockOverlay.classList.remove('hidden');
+            DOM.faceBlockOverlay.style.display = 'grid';
             DOM.faceBlockOverlay.classList.add('active');
         }
 
@@ -4105,9 +4106,6 @@ class SecureFaceProctor {
             this.state.consecutiveLost = 0;
             this.state.faceStable = true;
             this.state.multipleFacesStartTime = 0;
-            
-            // Face is back: remove the temporary guidance notification.
-            this.hideFaceVisibilityWarning();
             
             if (this.state.isPaused) {
                 this.resumeExam();
@@ -4143,13 +4141,7 @@ class SecureFaceProctor {
             const warning = DOM.multipleFacesWarning;
             if (warning) warning.style.display = 'none';
             
-            updateCameraStatus('warning', `⚠️ Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
-
-            // Give the student an immediate, non-blocking on-screen instruction
-            // before the normal violation/pause threshold is reached.
-            if (this.state.consecutiveLost >= 2) {
-                this.showFaceVisibilityWarning();
-            }
+            updateCameraStatus('warning', `⚠️ Face not visible — return to camera / improve lighting (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
         }
         
         if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) {
@@ -4157,56 +4149,6 @@ class SecureFaceProctor {
         }
     }
     
-    showFaceVisibilityWarning() {
-        if (this.state.isSubmitting || this.state.isPaused) return;
-
-        let warning = document.getElementById('face-visibility-warning');
-
-        if (!warning) {
-            warning = document.createElement('div');
-            warning.id = 'face-visibility-warning';
-            warning.setAttribute('role', 'alert');
-            warning.setAttribute('aria-live', 'assertive');
-
-            // Fixed overlay: does not alter, replace, or rebuild the camera rectangle.
-            Object.assign(warning.style, {
-                position: 'fixed',
-                top: '24px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: '99999',
-                width: 'min(92vw, 560px)',
-                boxSizing: 'border-box',
-                padding: '14px 20px',
-                borderRadius: '12px',
-                background: '#FEF3C7',
-                border: '2px solid #F59E0B',
-                color: '#92400E',
-                boxShadow: '0 8px 28px rgba(0,0,0,.20)',
-                fontFamily: 'inherit',
-                fontSize: '15px',
-                fontWeight: '700',
-                textAlign: 'center',
-                lineHeight: '1.45',
-                pointerEvents: 'none'
-            });
-
-            document.body.appendChild(warning);
-        }
-
-        warning.innerHTML = `
-            <div style="font-size:18px;margin-bottom:4px;">⚠️ Face Not Visible</div>
-            <div>Please return to the camera and make sure your face is clearly visible.</div>
-            <div style="margin-top:4px;font-weight:600;">💡 Move into good lighting and avoid sitting too far from the camera.</div>
-        `;
-        warning.style.display = 'block';
-    }
-
-    hideFaceVisibilityWarning() {
-        const warning = document.getElementById('face-visibility-warning');
-        if (warning) warning.style.display = 'none';
-    }
-
     showMultipleFacesWarning(faceCount) {
         const warning = DOM.multipleFacesWarning;
         if (!warning) return;
@@ -4268,8 +4210,6 @@ class SecureFaceProctor {
     }
     
     pauseExam(seconds) {
-        this.hideFaceVisibilityWarning();
-
         if (this.state.recoveryTimerId) {
             clearInterval(this.state.recoveryTimerId);
             this.state.recoveryTimerId = null;
@@ -4363,6 +4303,7 @@ resumeExam() {
     if (overlay) {
         overlay.style.display = 'none';
         overlay.classList.remove('active');
+        overlay.classList.add('hidden');
     }
     
     // HIDE multiple faces warning
@@ -4542,6 +4483,7 @@ retryCamera() {
                     if (DOM.faceBlockOverlay) {
                         DOM.faceBlockOverlay.style.display = 'none';
                         DOM.faceBlockOverlay.classList.remove('active');
+                        DOM.faceBlockOverlay.classList.add('hidden');
                     }
                 }
 
