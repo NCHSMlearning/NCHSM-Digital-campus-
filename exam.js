@@ -11,7 +11,7 @@ const CONFIG = {
     MAX_TAB_SWITCHES: 2,
     MAX_TIME_PER_QUESTION: 120,
     CONSECUTIVE_FACE_LOST_LIMIT: 6,
-    TOTAL_VIOLATIONS_LIMIT: 3,
+    TOTAL_VIOLATIONS_LIMIT: 6,
     RECOVERY_TIMER_SECONDS: 20,
     RETRY_COOLDOWN_SECONDS: 10,
     STORAGE_PREFIX: 'exam_',
@@ -4195,15 +4195,27 @@ class SecureFaceProctor {
         
         switch(this.state.totalViolations) {
             case 1:
-                this.callbacks.onViolation?.(1, '⚠️ Face Lost! Please look at the camera.');
+                this.callbacks.onViolation?.(1, '⚠️ Face Lost! Please return to the camera.');
                 this.pauseExam(timerSeconds);
                 break;
             case 2:
-                this.callbacks.onViolation?.(2, '🚨 FINAL WARNING! Face lost again.');
+                this.callbacks.onViolation?.(2, '⚠️ Face lost again. Please return to the camera.');
                 this.pauseExam(timerSeconds);
                 break;
             case 3:
-                this.callbacks.onViolation?.(3, '❌ Too many violations! Exam submitted.');
+                this.callbacks.onViolation?.(3, '⚠️ Third face violation. Please remain visible and improve lighting.');
+                this.pauseExam(timerSeconds);
+                break;
+            case 4:
+                this.callbacks.onViolation?.(4, '⚠️ Fourth face violation. Please remain centered in the camera.');
+                this.pauseExam(timerSeconds);
+                break;
+            case 5:
+                this.callbacks.onViolation?.(5, '🚨 Final recovery opportunity. Return to the camera now.');
+                this.pauseExam(timerSeconds);
+                break;
+            case 6:
+                this.callbacks.onViolation?.(6, '❌ Maximum face violations reached. Exam submitted.');
                 this.autoSubmitExam();
                 break;
         }
