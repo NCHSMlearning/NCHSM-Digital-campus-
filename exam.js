@@ -6,7 +6,9 @@ const CONFIG = {
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
     FACE_MODEL_URL: 'https://justadudewhohacks.github.io/face-api.js/models',
     FACE_DETECTION_INTERVAL: 500,
-    FACE_SCORE_THRESHOLD: 0.5,
+    FACE_SCORE_THRESHOLD: 0.45,
+    FACE_INPUT_SIZE: 224,
+    FACE_CONFIRMATIONS_REQUIRED: 2,
     MAX_BLUR_COUNT: 3,
     MAX_TAB_SWITCHES: 2,
     MAX_TIME_PER_QUESTION: 120,
@@ -333,14 +335,20 @@ async function loadFaceDetectionModels() {
 
 async function fastDetectFace(videoElement) {
     if (!videoElement || !videoElement.srcObject) return null;
+    if (videoElement.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+        !videoElement.videoWidth || !videoElement.videoHeight) return null;
     try {
+        if (!faceModelsLoaded) {
+            const loaded = await loadFaceDetectionModels();
+            if (!loaded) return null;
+        }
         const options = new faceapi.TinyFaceDetectorOptions({
-            inputSize: 160,
+            inputSize: CONFIG.FACE_INPUT_SIZE,
             scoreThreshold: CONFIG.FACE_SCORE_THRESHOLD
         });
-        const detections = await faceapi.detectAllFaces(videoElement, options);
-        return detections;
+        return await faceapi.detectAllFaces(videoElement, options);
     } catch (error) {
+        console.warn('Face detection frame failed:', error);
         return null;
     }
 }
@@ -3955,11 +3963,14 @@ class SecureFaceProctor {
             TOTAL_VIOLATIONS_LIMIT: CONFIG.TOTAL_VIOLATIONS_LIMIT,
             RECOVERY_TIMER_SECONDS: CONFIG.RECOVERY_TIMER_SECONDS,
             RETRY_COOLDOWN_SECONDS: CONFIG.RETRY_COOLDOWN_SECONDS,
+            FACE_CONFIRMATIONS_REQUIRED: CONFIG.FACE_CONFIRMATIONS_REQUIRED,
             DETECTION_INTERVAL: CONFIG.FACE_DETECTION_INTERVAL,
             VIOLATION_COOLDOWN: CONFIG.VIOLATION_COOLDOWN,
         };
         this.state = {
             consecutiveLost: 0,
+            faceConfirmations: 0,
+            lastFaceCount: 0,
             totalViolations: 0,
             isPaused: false,
             isSubmitting: false,
@@ -4081,52 +4092,58 @@ class SecureFaceProctor {
     
     handleDetectionResult(faceCount) {
         if (this.state.isSubmitting) return;
-        
+
         if (faceCount === 1) {
+            this.state.lastFaceCount = 1;
+            this.state.faceConfirmations = Math.min(
+                this.state.faceConfirmations + 1,
+                this.config.FACE_CONFIRMATIONS_REQUIRED || 2
+            );
             this.state.consecutiveLost = 0;
-            this.state.faceStable = true;
             this.state.multipleFacesStartTime = 0;
-            
-            if (this.state.isPaused) {
-                this.resumeExam();
+
+            if (this.state.faceConfirmations >= (this.config.FACE_CONFIRMATIONS_REQUIRED || 2)) {
+                this.state.faceStable = true;
+                if (this.state.isPaused) this.resumeExam();
+                updateCameraStatus('good', '✅ Face detected', '1 face');
+                const warning = DOM.multipleFacesWarning;
+                if (warning) warning.style.display = 'none';
+            } else {
+                updateCameraStatus('warning', '🔎 Confirming face…', '1 face');
             }
-            updateCameraStatus('good', '✅ Face detected', '1 face');
-            
-            const warning = DOM.multipleFacesWarning;
-            if (warning) warning.style.display = 'none';
             return;
         }
-        
-        if (this.state.isPaused) {
-            updateCameraStatus('warning', `⏳ Face still lost (${this.state.remainingTime || 0}s remaining)`, '0 faces');
-            return;
-        }
-        
-        this.state.consecutiveLost++;
-        this.state.faceStable = false;
-        
+
         if (faceCount > 1) {
+            this.state.lastFaceCount = faceCount;
+            this.state.faceConfirmations = 0;
+            this.state.consecutiveLost++;
+            this.state.faceStable = false;
             updateCameraStatus('warning', `⚠️ Multiple faces (${faceCount})`, `${faceCount} faces`);
             this.showMultipleFacesWarning(faceCount);
-            
             if (this.state.multipleFacesStartTime === 0) {
                 this.state.multipleFacesStartTime = Date.now();
-            } else if (Date.now() - this.state.multipleFacesStartTime > CONFIG.MULTIPLE_FACES_TIMEOUT * 1000) {
+            } else if (Date.now() - this.state.multipleFacesStartTime >= CONFIG.MULTIPLE_FACES_TIMEOUT * 1000) {
                 this.handleViolation();
                 this.state.multipleFacesStartTime = 0;
             }
             return;
-        } else {
-            this.state.multipleFacesStartTime = 0;
-            const warning = DOM.multipleFacesWarning;
-            if (warning) warning.style.display = 'none';
-            
-            updateCameraStatus('warning', `⚠️ Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
         }
-        
-        if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) {
-            this.handleViolation();
+
+        this.state.lastFaceCount = 0;
+        this.state.faceConfirmations = 0;
+        this.state.consecutiveLost++;
+        this.state.faceStable = false;
+        this.state.multipleFacesStartTime = 0;
+        const warning = DOM.multipleFacesWarning;
+        if (warning) warning.style.display = 'none';
+
+        if (this.state.isPaused) {
+            updateCameraStatus('warning', `⏳ Face still lost (${this.state.remainingTime || 0}s remaining)`, '0 faces');
+            return;
         }
+        updateCameraStatus('warning', `⚠️ Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
+        if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) this.handleViolation();
     }
     
     showMultipleFacesWarning(faceCount) {
@@ -4412,23 +4429,32 @@ retryCamera() {
             this.state.consecutiveLost = 0;
             this.state.multipleFacesStartTime = 0;
             
-            // Give camera time to warm up and check for face
+            // Give camera time to warm up, then verify across several frames.
             setTimeout(async () => {
                 try {
                     console.log('📷 Checking for face after retry...');
-                    const detections = await fastDetectFace(this.video);
-                    
-                    if (detections && detections.length === 1) {
-                        console.log('✅ Face detected after retry');
-                        // Force resume if paused
+                    let oneFaceHits = 0;
+                    let multipleFaceHit = false;
+                    for (let i = 0; i < 5; i++) {
+                        await new Promise(r => setTimeout(r, 300));
+                        const detections = await fastDetectFace(this.video);
+                        if (detections && detections.length === 1) oneFaceHits++;
+                        else if (detections && detections.length > 1) multipleFaceHit = true;
+                        if (oneFaceHits >= 2) break;
+                    }
+
+                    if (oneFaceHits >= 2) {
+                        console.log('✅ Stable face detected after retry');
+                        this.state.faceConfirmations = this.config.FACE_CONFIRMATIONS_REQUIRED;
+                        this.state.consecutiveLost = 0;
+                        this.state.faceStable = true;
                         if (this.state.isPaused) {
                             this.resumeExam();
                         } else {
-                            // Update UI
                             updateCameraStatus('good', '✅ Face detected', '1 face');
                             if (DOM.cameraContainer) {
                                 DOM.cameraContainer.classList.remove('face-lost');
-                    DOM.cameraContainer.classList.add('face-verified');
+                                DOM.cameraContainer.classList.add('face-verified');
                             }
                             if (DOM.proctoringStatusText) {
                                 DOM.proctoringStatusText.textContent = 'Active';
@@ -4438,34 +4464,31 @@ retryCamera() {
                                 DOM.statsFace.textContent = '✅ OK';
                                 DOM.statsFace.style.color = '#38A169';
                             }
-                            // Hide overlays
                             const overlay = DOM.faceBlockOverlay;
                             if (overlay) {
                                 overlay.style.display = 'none';
-                                overlay.classList.remove('active');
+                                overlay.classList.remove('active', 'hidden');
                             }
                             const warning = DOM.multipleFacesWarning;
                             if (warning) warning.style.display = 'none';
                             showToast('✅ Face detected!', 'success');
                         }
                         resolve(true);
-                    } else if (detections && detections.length > 1) {
-                        console.warn('⚠️ Multiple faces detected after retry');
+                    } else if (multipleFaceHit) {
                         showToast('⚠️ Multiple faces detected. Only one person allowed.', 'warning');
-                        this.handleDetectionResult(detections.length);
+                        this.handleDetectionResult(2);
                         resolve(false);
                     } else {
-                        console.warn('⚠️ No face detected after retry');
-                        showToast('⚠️ No face detected. Please look at the camera.', 'warning');
-                        // Start face detection monitoring again
+                        showToast('⚠️ No stable face detected. Please return to the camera and improve lighting.', 'warning');
                         this.handleDetectionResult(0);
                         resolve(false);
                     }
                 } catch (e) {
                     console.error('❌ Face detection after retry failed:', e);
+                    showToast('⚠️ Face detection is temporarily unavailable. Please retry the camera.', 'warning');
                     resolve(false);
                 }
-            }, 1500);
+            }, 1200);
         })
         .catch((error) => {
             console.error('❌ Camera restart failed:', error);
@@ -5069,7 +5092,7 @@ async function createNchsmWebRTCOffer(viewerId) {
 
 // ============================================================
 // DEBUG: LIVE SESSION STATUS
-// ============================================================    
+// ============================================================
 window.getLiveExamSessionStatus = function() {
     return {
         studentId: AppState.studentId,
