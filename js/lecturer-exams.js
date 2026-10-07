@@ -130,6 +130,12 @@
             return d.innerHTML;
         },
 
+        // ✅ NEW: UUID guard
+        isUuid(v) {
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                .test(String(v || '').trim());
+        },
+
         fmtDate(value) {
             if (!value) return 'N/A';
             try {
@@ -570,9 +576,9 @@
         selectCourse(course) {
             this.selectedCourse = course;
 
-            // ✅ Store the unit CODE (readable) rather than numeric id
+            // ✅ Store the catalog UUID (exams.course_id is uuid)
             const hidden = this.$('exam_course_id');
-            if (hidden) hidden.value = course.code || course.id || '';
+            if (hidden) hidden.value = course.id || '';
 
             const input = this.$('createCourseSearchInput');
             if (input) {
@@ -1530,13 +1536,20 @@
                     'examBlockTerm'
                 ]);
 
+                // ✅ UUID-safe course_id
+                const courseIdRaw =
+                    this.value(['exam_course_id']);
+
                 const courseId =
-                    this.value([
-                        'exam_course_id'
-                    ]) || null;
+                    this.isUuid(courseIdRaw)
+                        ? courseIdRaw
+                        : null;
 
                 const courseCode =
                     this.selectedCourse?.code ||
+                    null;
+
+                const courseName =
                     this.selectedCourse?.name ||
                     null;
 
@@ -1636,8 +1649,9 @@
                     block_term: block,
                     intake_year: parseInt(intake, 10) || null,
                     intake_month: intakeMonth,
-                    course_id: courseId,
-                    course_code: courseCode,
+                    course_id: courseId,           // ✅ UUID or null
+                    course_code: courseCode,       // ✅ "NCHSCH 313"
+                    course_name: courseName,       // ✅ "Community Health Nursing"
                     marks_out_of: marksOutOf,
                     total_marks: marksOutOf,
                     MARKS: String(marksOutOf),
@@ -1820,7 +1834,7 @@
 
                 let course = null;
 
-                if (ex.course_id) {
+                if (ex.course_id && this.isUuid(ex.course_id)) {
                     course = normalized.find(c =>
                         String(c.id) === String(ex.course_id)
                     );
@@ -1837,9 +1851,13 @@
                     this.selectCourse(course);
                 } else {
                     const hidden = this.$('exam_course_id');
-                    if (hidden) hidden.value = ex.course_id || ex.course_code || '';
+                    if (hidden) {
+                        hidden.value = this.isUuid(ex.course_id)
+                            ? ex.course_id
+                            : '';
+                    }
                     const input = this.$('createCourseSearchInput');
-                    if (input) input.value = ex.course_code || '';
+                    if (input) input.value = ex.course_code || ex.course_name || '';
                 }
             }
 
@@ -1941,12 +1959,19 @@
                 const intake = this.value(['exam_intake', 'examIntake']);
                 const intakeMonth = this.value(['exam_intake_month']) || null;
                 const block = this.value(['exam_block_term', 'examBlockTerm']);
-                const courseId = this.value(['exam_course_id']) || null;
+
+                // ✅ UUID-safe course_id
+                const courseIdRaw = this.value(['exam_course_id']);
+                const courseId = this.isUuid(courseIdRaw) ? courseIdRaw : null;
+
                 const courseCode =
                     this.selectedCourse?.code ||
-                    this.selectedCourse?.name ||
-                    this.value(['createCourseSearchInput']) ||
                     null;
+
+                const courseName =
+                    this.selectedCourse?.name ||
+                    null;
+
                 const marksOutOf = Number(this.value(['exam_out_of']) || 100);
                 const passMark = Number(this.value(['exam_pass_mark']) || 50);
                 const minFeeBalance = Number(this.value(['exam_min_fee']) || 0);
@@ -2011,8 +2036,9 @@
                     block_term: block,
                     intake_year: parseInt(intake, 10) || null,
                     intake_month: intakeMonth,
-                    course_id: courseId,
-                    course_code: courseCode,
+                    course_id: courseId,           // ✅ UUID or null
+                    course_code: courseCode,       // ✅ "NCHSCH 313"
+                    course_name: courseName,       // ✅ "Community Health Nursing"
                     marks_out_of: marksOutOf,
                     total_marks: marksOutOf,
                     MARKS: String(marksOutOf),
