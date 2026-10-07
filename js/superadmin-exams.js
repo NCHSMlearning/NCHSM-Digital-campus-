@@ -8,7 +8,6 @@
  * ✅ Grade weighting: 30% CATs + 70% Exam
  * ✅ Defensive edit-modal handling
  *******************************************************/
-
 // ============================================
 // FEEDBACK TOAST
 // ============================================
@@ -1716,3 +1715,44 @@ window.updateBlockTermOptions = updateBlockTermOptions;
 window.DOM = window.DOM || DOM;
 
 console.log('✅ CATS/Exams loaded — 13-column table, tolerant filters, correct weighting.');
+// ============================================================
+// SELF-BOOT — MUST BE AT THE BOTTOM OF THE FILE
+// All functions above must be defined before this runs.
+// ============================================================
+(function bootSuperadminExams() {
+    function boot() {
+        if (window.__superadminExamsBooted) {
+            console.log('ℹ️ superadmin-exams already booted — skipping');
+            return;
+        }
+
+        // Make sure initExams is actually available before setting the flag.
+        if (typeof window.initExams !== 'function' && typeof initExams !== 'function') {
+            console.warn('⏳ initExams not yet available — retrying in 300ms');
+            setTimeout(boot, 300);
+            return;
+        }
+
+        window.__superadminExamsBooted = true;
+
+        try {
+            if (typeof window.initExams === 'function') {
+                window.initExams();
+            } else {
+                initExams();
+            }
+            console.log('✅ superadmin-exams module self-booted');
+        } catch (e) {
+            console.error('❌ superadmin-exams boot failed:', e);
+            // Rollback flag so a retry can succeed
+            window.__superadminExamsBooted = false;
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot, { once: true });
+    } else {
+        // DOM already ready — boot after a short delay so script.js finishes
+        setTimeout(boot, 700);
+    }
+})();
