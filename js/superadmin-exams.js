@@ -592,7 +592,61 @@ function getProgramLevel(programCode) {
 }
 
 function updateBlockTermOptions(programSelectId = 'exam_program', blockSelectId = 'exam_block_term') {
-    // Provided by other parts of the system; no-op here.
+    const programEl = document.getElementById(programSelectId);
+    const blockEl = document.getElementById(blockSelectId);
+    if (!blockEl) return;
+
+    const program = programEl?.value || '';
+    const isTVET = program ? isTVETProgram(program) : false;
+    const level = program ? getProgramLevel(program) : '';
+    const currentValue = blockEl.value;
+
+    // ── Static list — same approach as the lecturer module ──
+    let blocks;
+    if (!program) {
+        // No program picked yet — show both blocks and terms as a starting point
+        blocks = [
+            'Introductory',
+            'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6',
+            'Final'
+        ];
+    } else if (isTVET) {
+        if (level === 'DIPLOMA') {
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
+        } else if (level === 'CERTIFICATE') {
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Final'];
+        } else if (level === 'ARTISAN') {
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Final'];
+        } else {
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
+        }
+    } else {
+        // KRCHN Nursing
+        blocks = [
+            'Introductory',
+            'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6',
+            'Final'
+        ];
+    }
+
+    const label = isTVET ? 'Term' : 'Block';
+
+    blockEl.innerHTML =
+        '<option value="">-- Select ' + label + ' --</option>' +
+        blocks.map(b =>
+            '<option value="' + escapeHtml(b) + '">' + escapeHtml(b) + '</option>'
+        ).join('');
+
+    // Restore previous selection if still valid
+    if (currentValue && blocks.includes(currentValue)) {
+        blockEl.value = currentValue;
+    }
+
+    // Update the hint if present
+    const hint = document.getElementById('exam_block_hint');
+    if (hint) hint.textContent = `${blocks.length} ${label.toLowerCase()}(s) available`;
+
+    console.log(`📋 updateBlockTermOptions: program=${program || '(none)'} → ${blocks.length} ${label.toLowerCase()}(s)`);
 }
 
 async function loadAvailableClassesForExam() {
