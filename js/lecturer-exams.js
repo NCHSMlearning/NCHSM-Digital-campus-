@@ -332,24 +332,32 @@
         },
 
         bindDynamicProgramEvents() {
-            const program = this.firstEl([
-                'exam_program',
-                'examProgram'
-            ]);
+            const program = this.firstEl(['exam_program', 'examProgram']);
+            const block   = this.firstEl(['exam_block_term', 'examBlockTerm']);
 
-            if (!program || program.dataset.examBound === '1') return;
-
-            program.dataset.examBound = '1';
-
-            program.addEventListener('change', async () => {
+            const onFilterChange = async () => {
                 await this.loadClasses();
-                this.renderCourses();
-                this.populateBlocks();
-            });
+
+                const input = this.$('createCourseSearchInput');
+                this.searchCourses(input ? input.value : '');
+
+                await this.updateStudentCount();
+            };
+
+            if (program && program.dataset.examBound !== '1') {
+                program.dataset.examBound = '1';
+                program.addEventListener('change', onFilterChange);
+            }
+
+            if (block && block.dataset.examBound !== '1') {
+                block.dataset.examBound = '1';
+                block.addEventListener('change', onFilterChange);
+            }
         },
 
         // --------------------------------------------------------
         // COURSE / UNIT SEARCH
+        // Source: units_catalog (primary) → courses (fallback)
         // --------------------------------------------------------
 
         async loadCourses() {
@@ -357,43 +365,63 @@
             if (!sb) return;
 
             try {
+                // ✅ Primary source: units_catalog
                 const { data, error } = await sb
-                    .from('courses')
-                    .select('*')
-                    .limit(500);
+                    .from('units_catalog')
+                    .select('id, unit_code, unit_name, program, block, assessment_type, status')
+                    .eq('status', 'active')
+                    .order('unit_name', { ascending: true });
 
                 if (error) throw error;
 
                 this.courses = data || [];
+
+                const byProgram = {};
+                this.courses.forEach(c => {
+                    const key = c.program || '(none)';
+                    byProgram[key] = (byProgram[key] || 0) + 1;
+                });
+
+                console.log(
+                    `📚 Loaded ${this.courses.length} units from units_catalog`
+                );
+                console.log('📊 Units per program:', byProgram);
+
                 this.bindCourseSearch();
+
             } catch (err) {
-                console.warn('Course loading:', err.message);
-                this.courses = [];
-                this.bindCourseSearch();
+                console.warn(
+                    '⚠️ units_catalog load failed, falling back to courses table:',
+                    err.message
+                );
+
+                try {
+                    const { data } = await sb
+                        .from('courses')
+                        .select('*')
+                        .limit(2000);
+
+                    this.courses = data || [];
+                    console.log(
+                        `📚 Loaded ${this.courses.length} rows from legacy courses table`
+                    );
+                    this.bindCourseSearch();
+                } catch (fallbackErr) {
+                    console.error('❌ Both sources failed:', fallbackErr);
+                    this.courses = [];
+                    this.bindCourseSearch();
+                }
             }
         },
 
         normalizeCourse(row) {
             return {
-                id: row.id,
-                code:
-                    row.course_code ||
-                    row.code ||
-                    row.unit_code ||
-                    row.courseCode ||
-                    '',
-                name:
-                    row.course_name ||
-                    row.name ||
-                    row.unit_name ||
-                    row.title ||
-                    row.course ||
-                    '',
-                program:
-                    row.program ||
-                    row.program_code ||
-                    row.target_program ||
-                    ''
+                id:      row.id,
+                code:    row.unit_code     || row.course_code || row.code || row.courseCode || '',
+                name:    row.unit_name     || row.course_name || row.name || row.title || row.course || '',
+                program: row.program       || row.program_code || row.target_program || '',
+                block:   row.block         || '',
+                assessment_type: row.assessment_type || 'full'
             };
         },
 
@@ -431,34 +459,52 @@
 
             let courses = this.courses.map(c => this.normalizeCourse(c));
 
-            const program = this.value([
-                'exam_program',
-                'examProgram'
-            ]);
+            const norm = s => String(s || '').trim().toUpperCase();
 
+            // ── Program filter ────────────────────────────────────
+            const program = this.value(['exam_program', 'examProgram']);
             if (program) {
                 const matching = courses.filter(c =>
-                    !c.program ||
-                    c.program === program
+                    !c.program || norm(c.program) === norm(program)
                 );
 
-                if (matching.length) courses = matching;
+                if (matching.length > 0) {
+                    courses = matching;
+                } else {
+                    console.warn(
+                        `⚠️ No units matched program "${program}" — showing all programs instead`
+                    );
+                }
             }
 
+            // ── Block filter (only when a block is picked) ────────
+            const block = this.value(['exam_block_term', 'examBlockTerm']);
+            if (block) {
+                const blockMatching = courses.filter(c =>
+                    !c.block || norm(c.block) === norm(block)
+                );
+
+                if (blockMatching.length > 0) {
+                    courses = blockMatching;
+                }
+            }
+
+            // ── Text search ───────────────────────────────────────
             if (query) {
                 courses = courses.filter(c =>
                     String(c.code).toLowerCase().includes(query) ||
                     String(c.name).toLowerCase().includes(query) ||
-                    String(c.program).toLowerCase().includes(query)
+                    String(c.program).toLowerCase().includes(query) ||
+                    String(c.block).toLowerCase().includes(query)
                 );
             }
 
-            courses = courses.slice(0, 50);
+            courses = courses.slice(0, query ? 100 : 300);
 
             if (!courses.length) {
                 list.innerHTML =
                     '<div style="padding:12px;text-align:center;color:#94a3b8;font-size:13px;">' +
-                    '<i class="fas fa-search"></i> No matching courses found' +
+                    '<i class="fas fa-search"></i> No matching units found' +
                     '</div>';
 
                 list.style.display = 'block';
@@ -467,31 +513,41 @@
 
             list.innerHTML = courses.map(c => {
                 const title = c.name || c.code || 'Unnamed Unit';
-                const code = c.code || '';
+                const code  = c.code || '';
+                const blk   = c.block ? String(c.block).replace(/_/g, ' ') : '';
 
                 return (
                     '<div class="dropdown-item" ' +
                     'data-course-id="' + this.esc(c.id) + '" ' +
                     'style="padding:9px 14px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:13px;">' +
 
-                    '<div>' +
+                    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
                     '<strong style="color:#334155;">' +
                     this.esc(title) +
                     '</strong>' +
 
                     (code
-                        ? '<span style="font-size:11px;color:#94a3b8;margin-left:8px;">' +
+                        ? '<span style="font-size:11px;color:#94a3b8;">' +
                           this.esc(code) +
                           '</span>'
                         : '') +
-
                     '</div>' +
+
+                    '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">' +
 
                     (c.program
                         ? '<span style="font-size:10px;background:#ede9fe;color:#5b21b6;padding:2px 7px;border-radius:10px;">' +
                           this.esc(c.program) +
                           '</span>'
                         : '') +
+
+                    (blk
+                        ? '<span style="font-size:10px;background:#e0f2fe;color:#075985;padding:2px 7px;border-radius:10px;">' +
+                          this.esc(blk) +
+                          '</span>'
+                        : '') +
+
+                    '</div>' +
 
                     '</div>'
                 );
@@ -514,8 +570,9 @@
         selectCourse(course) {
             this.selectedCourse = course;
 
+            // ✅ Store the unit CODE (readable) rather than numeric id
             const hidden = this.$('exam_course_id');
-            if (hidden) hidden.value = course.id || '';
+            if (hidden) hidden.value = course.code || course.id || '';
 
             const input = this.$('createCourseSearchInput');
             if (input) {
@@ -574,7 +631,6 @@
                 '</label>';
         },
 
-        // Return the classes currently selected in the exam form.
         selectedClasses() {
             return Array.from(
                 document.querySelectorAll('.exam-class-checkbox:checked')
@@ -880,8 +936,6 @@
             } catch (err) {
                 console.error('loadExams:', err);
 
-                // Fallback for databases that do not yet contain every
-                // new optional column.
                 try {
                     const p = this.profile();
                     const program = p.program || p.department || null;
@@ -1608,20 +1662,12 @@
                     .select('id')
                     .single();
 
-                /*
-                 * Compatibility fallback:
-                 * If the database is missing one of the newly added
-                 * optional columns, retry using the legacy-compatible
-                 * core columns instead of leaving the lecturer unable
-                 * to create an assessment.
-                 */
                 if (result.error) {
                     throw result.error;
                 }
 
                 row.id = result.data?.id;
 
-                // Send notification only when enabled.
                 if (this.checked('exam_notify_students')) {
                     try {
                         await this.notifyByEmail(row);
@@ -1768,22 +1814,33 @@
                 venueEl.value = desc.replace(/^Venue:\s*/i, '');
             }
 
-            if (ex.course_id) {
-                const course = this.courses
-                    .map(c => this.normalizeCourse(c))
-                    .find(c => String(c.id) === String(ex.course_id));
+            // ✅ Prefer id match, fall back to code match (for legacy rows)
+            if (ex.course_id || ex.course_code) {
+                const normalized = this.courses.map(c => this.normalizeCourse(c));
+
+                let course = null;
+
+                if (ex.course_id) {
+                    course = normalized.find(c =>
+                        String(c.id) === String(ex.course_id)
+                    );
+                }
+
+                if (!course && ex.course_code) {
+                    const codeN = String(ex.course_code).trim().toUpperCase();
+                    course = normalized.find(c =>
+                        String(c.code).trim().toUpperCase() === codeN
+                    );
+                }
 
                 if (course) {
                     this.selectCourse(course);
                 } else {
                     const hidden = this.$('exam_course_id');
-                    if (hidden) hidden.value = ex.course_id;
+                    if (hidden) hidden.value = ex.course_id || ex.course_code || '';
                     const input = this.$('createCourseSearchInput');
                     if (input) input.value = ex.course_code || '';
                 }
-            } else if (ex.course_code) {
-                const input = this.$('createCourseSearchInput');
-                if (input) input.value = ex.course_code;
             }
 
             const submit =
@@ -2622,22 +2679,6 @@
                         await this.updateStudentCount();
                     }
                 );
-            }
-
-            const programForCount = this.firstEl(['exam_program', 'examProgram']);
-            if (programForCount) {
-                programForCount.addEventListener('change', async () => {
-                    await this.loadClasses();
-                    await this.updateStudentCount();
-                });
-            }
-
-            const blockForCount = this.firstEl(['exam_block_term', 'examBlockTerm']);
-            if (blockForCount) {
-                blockForCount.addEventListener('change', async () => {
-                    await this.loadClasses();
-                    await this.updateStudentCount();
-                });
             }
 
             const studentSearch =
