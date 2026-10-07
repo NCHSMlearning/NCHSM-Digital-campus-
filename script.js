@@ -1080,12 +1080,15 @@ async function loadSectionData(tabId) {
             }
             break;
             
-        case 'cats': 
-            loadExams(); 
-            updateProgramDropdown($('exam_program'));
-            updateBlockTermOptions('exam_program', 'exam_block_term');
-            populateExamCourseSelects(); 
-            break;
+       case 'cats': 
+    // CATS/Exams is fully owned by js/superadmin-exams.js.
+    // Do NOT call any exam init here — the module self-boots.
+    if (typeof window.initExams === 'function' && !window.__superadminExamsBooted) {
+        console.log('📝 Triggering self-boot for superadmin-exams module');
+        window.__superadminExamsBooted = true;
+        window.initExams();
+    }
+    break;
             
         case 'support-tickets': 
             loadAdminTickets(); 
