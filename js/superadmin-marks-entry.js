@@ -1,1157 +1,5624 @@
-/********************************** *********************
- * 13. EXAMS/CATS MANAGEMENT - COMPLETE WITH EMAIL NOTIFICATIONS
- * Part 1
- *******************************************************/
+// ============================================================
+// ✅ FILE VERSION TRACKING
+// ============================================================
+console.log('📄 superadmin-marks-entry.js loaded');
+console.log('   📅 Version: 2025-08-21');
+console.log('   🔧 isTVETProgram should have NO parameters');
+console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
 
-// ============================================
-// FEEDBACK / TOAST HELPER
-// ============================================
-function showFeedback(message, type = 'info') {
-    const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
-    document.querySelectorAll('.exam-feedback-toast').forEach(el => el.remove());
-    const toast = document.createElement('div');
-    toast.className = 'exam-feedback-toast';
-    toast.textContent = message;
-    toast.style.cssText = `position:fixed;right:24px;bottom:24px;z-index:99999;max-width:420px;padding:13px 18px;background:${colors[type] || colors.info};color:#fff;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);font-size:13px;font-weight:600;line-height:1.45;opacity:0;transform:translateY(10px);transition:opacity .2s ease,transform .2s ease;`;
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => { toast.style.opacity='1'; toast.style.transform='translateY(0)'; });
-    setTimeout(() => { toast.style.opacity='0'; toast.style.transform='translateY(10px)'; setTimeout(() => toast.remove(), 220); }, type === 'error' ? 5000 : 3500);
-}
-window.showFeedback = window.showFeedback || showFeedback;
-
-const EXAM_CONFIG = { CACHE_TTL: 60000, BATCH_SIZE: 50, DEBOUNCE_DELAY: 300 };
-
-const ExamCache = {
-    _cache: {},
-    get(key) {
-        const item = this._cache[key];
-        if (!item) return null;
-        if (Date.now() - item.timestamp > EXAM_CONFIG.CACHE_TTL) { delete this._cache[key]; return null; }
-        return item.data;
-    },
-    set(key, data) { this._cache[key] = { data, timestamp: Date.now() }; },
-    clear() { this._cache = {}; }
+// ============================================================
+// ✅ SELF-HEALING - Force correct version (IMPROVED)
+// ============================================================
+(function() {
+    console.log('🔄 Self-healing: Checking isTVETProgram...');
+    
+    // Check if the current version is wrong (takes parameter)
+    const currentSrc = (window.isTVETProgram || function(){}).toString();
+    const isWrong = currentSrc.includes('function isTVETProgram(program)') || 
+                    currentSrc.includes('getProgramType(program)');
+    
+    if (isWrong) {
+        console.warn('⚠️ Old isTVETProgram detected! Overriding...');
+        
+        // ✅ IMPROVED: Works with OR without parameter
+        window.isTVETProgram = function(program) {
+            // If a program is passed, check it directly (backward compatibility)
+            if (program !== undefined && program !== null && program !== '') {
+                return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+            }
+            // Otherwise use the global state
+            const currentProgram = window.me_currentProgram || 
+                                  document.getElementById('me_program_select')?.value || 
+                                  '';
+            return currentProgram !== 'KRCHN' && currentProgram !== 'nursing' && currentProgram !== 'Nursing' && currentProgram !== '';
+        };
+        
+        console.log('✅ isTVETProgram overridden!');
+        console.log('   Source:', window.isTVETProgram.toString());
+        console.log('   Test with no param:', window.isTVETProgram());
+        console.log('   Test with "CCA":', window.isTVETProgram('CCA'));
+        console.log('   Test with "KRCHN":', window.isTVETProgram('KRCHN'));
+    } else {
+        console.log('✅ isTVETProgram is already correct!');
+    }
+    
+    // Ensure me_currentProgram is set from dropdown
+    if (!window.me_currentProgram) {
+        const select = document.getElementById('me_program_select');
+        if (select && select.value) {
+            window.me_currentProgram = select.value;
+            console.log('📋 me_currentProgram set to:', window.me_currentProgram);
+        }
+    }
+})();
+// ============================================================
+// STATE
+// ============================================================
+const getSupabase = () => window.sb || window.supabase || null;
+let me_currentMarks = [];
+let me_currentBlock = '';
+let me_currentUnit = '';
+let me_currentYear = '2025';
+let me_currentProgram = '';
+let me_currentAssessmentType = 'full';
+let me_columnSettings = {};
+let me_currentAssignments = [];
+let me_studentManagerData = {
+    allStudents: [],
+    enrolledStudents: [],
+    availableStudents: [],
+    enrolledMap: {}
 };
 
-function cacheDomElements() {
-    /* Always create the shared DOM registry before assigning properties. */
-    window.DOM = window.DOM || {};
-    const DOM = window.DOM;
-    DOM.examsTbody = document.getElementById('exams-table-body');
-    DOM.studentExams = document.getElementById('student-exams');
-    DOM.examSearch = document.getElementById('exam-search');
-    DOM.programFilter = document.getElementById('exam_filter_program');
-    DOM.statusFilter = document.getElementById('exam_filter_status');
-    DOM.monthFilter = document.getElementById('exam_filter_intake_month');
-    DOM.examForm = document.getElementById('add-exam-form-enhanced');
-    DOM.classSelector = document.getElementById('exam_class_selector');
-    DOM.courseSelect = document.getElementById('exam_course_id');
+// ============================================================
+// LOADING SCREEN FUNCTIONS - ADD THIS HERE
+// ============================================================
+
+function showLoadingScreen(message, title = 'Loading...') {
+    let overlay = document.getElementById('loadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 99999;
+            display: none; justify-content: center; align-items: center;
+            flex-direction: column; gap: 16px;
+        `;
+        overlay.innerHTML = `
+            <div style="background: white; padding: 30px 40px; border-radius: 16px; text-align: center; min-width: 200px;">
+                <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                <p id="loadingMessage" style="color: #1e293b; font-weight: 600; margin-top: 12px;">Loading...</p>
+                <div style="margin-top: 10px; background: #e5e7eb; border-radius: 8px; height: 6px; overflow: hidden; width: 100%;">
+                    <div id="loadingProgress" style="height: 100%; background: linear-gradient(90deg, #4C1D95, #7c3aed); width: 0%; transition: width 0.3s ease; border-radius: 8px;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #94a3b8;">
+                    <span id="step1Text">Initializing...</span>
+                    <span id="step2Text">Loading data...</span>
+                    <span id="step3Text">Processing...</span>
+                    <span id="step4Text">Rendering...</span>
+                </div>
+                <style>
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                </style>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    
+    overlay.style.display = 'flex';
+    const msgEl = document.getElementById('loadingMessage');
+    if (msgEl) msgEl.textContent = message || 'Loading...';
+    
+    const progressEl = document.getElementById('loadingProgress');
+    if (progressEl) progressEl.style.width = '0%';
+    
+    resetLoadingSteps();
+    console.log(`⏳ Loading: ${message}`);
 }
 
-function debounce(fn, delay = 300) {
-    let timer;
-    return function(...args) {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn.apply(this, args), delay);
+function updateLoadingProgress(percent, step = null, stepText = null) {
+    const progressEl = document.getElementById('loadingProgress');
+    if (progressEl) {
+        progressEl.style.width = Math.min(percent, 100) + '%';
+    }
+    
+    if (step && stepText) {
+        updateLoadingStep(step, stepText);
+    }
+}
+
+function updateLoadingStep(step, text) {
+    const stepMap = {
+        1: { el: 'step1Text' },
+        2: { el: 'step2Text' },
+        3: { el: 'step3Text' },
+        4: { el: 'step4Text' }
     };
-}
-window.debounce = debounce;
-
-async function sendEmailWithBrevo(to, subject, htmlContent) {
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) return { success: false, error: 'Supabase not available' };
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
-        const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to, subject, html: htmlContent, from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>' })
-        });
-        const data = await response.json();
-        return response.ok && data.success ? { success: true, data } : { success: false, error: data.error || 'Unknown error' };
-    } catch (error) {
-        return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
+    
+    const s = stepMap[step];
+    if (!s) return;
+    
+    const textEl = document.getElementById(s.el);
+    if (textEl) {
+        textEl.textContent = text;
+        textEl.style.color = '#1e293b';
+        textEl.style.fontWeight = '600';
     }
-}
-
-async function sendEmailWithEdgeFunctionFallback(to, subject, htmlContent) {
-    try {
-        const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ to, subject, html: htmlContent, from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>' })
-        });
-        const data = await response.json();
-        return response.ok && data.success ? { success: true, data } : { success: false, error: data.error || 'Unknown error' };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-}
-
-async function sendExamNotificationEmail(examData, recipients) {
-    if (!recipients || recipients.length === 0) return { sent: 0, total: 0, failed: 0 };
-    const examDate = examData.exam_date ? new Date(examData.exam_date).toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBD';
-    const examTime = examData.exam_start_time || 'TBD';
-    const examLink = examData.online_link || examData.exam_link || '#';
-    const examTitle = examData.title || examData.exam_name || 'New Exam';
-    const examType = examData.exam_type || 'EXAM';
-    const examTypeLabel = getExamTypeLabel(examType);
-    const emailHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-        body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8;}
-        .container{max-width:580px;margin:0 auto;padding:20px;}
-        .card{background:white;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.1);}
-        .header{background:linear-gradient(135deg,#0A3D62,#1a5276);padding:30px 35px;text-align:center;color:white;}
-        .header h1{margin:0;font-size:24px;}
-        .header p{margin:4px 0 0;opacity:0.8;}
-        .body{padding:30px 35px;}
-        .greeting{background:#e8f4f8;border-radius:12px;padding:16px;margin-bottom:20px;border-left:4px solid #10b981;}
-        .greeting p{margin:0;font-size:16px;color:#0A3D62;}
-        .details{background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px;}
-        .details h4{margin:0 0 12px 0;color:#1e293b;}
-        .details table{width:100%;border-collapse:collapse;font-size:14px;}
-        .details td{padding:8px 0;border-bottom:1px solid #e2e8f0;}
-        .details .label{color:#64748B;font-weight:500;}
-        .details .value{color:#0A3D62;font-weight:600;text-align:right;}
-        .details tr:last-child td{border-bottom:none;}
-        .btn{display:inline-block;background:#0A3D62;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:16px;}
-        .footer{background:#F8FAFC;padding:20px;text-align:center;border-top:1px solid #E2E8F0;font-size:0.85rem;color:#64748B;}
-    </style></head><body><div class="container"><div class="card">
-    <div class="header"><h1>📝 ${examTypeLabel} Posted!</h1><p>Nakuru College of Health Sciences and Management</p></div>
-    <div class="body"><div class="greeting"><p>👋 <strong>Dear Student,</strong></p><p style="margin:8px 0 0;color:#1e293b;">A new exam has been posted for your program. Please review the details below.</p></div>
-    <div class="details"><h4>📋 Exam Details</h4><table>
-    <tr><td class="label">📝 Exam Title</td><td class="value"><strong>${escapeHtml(examTitle)}</strong></td></tr>
-    <tr><td class="label">🎓 Program</td><td class="value">${escapeHtml(examData.target_program || examData.program_type || 'N/A')}</td></tr>
-    <tr><td class="label">📚 Block/Term</td><td class="value">${escapeHtml(examData.block || 'N/A')}</td></tr>
-    <tr><td class="label">📅 Date</td><td class="value">${examDate}</td></tr>
-    <tr><td class="label">⏰ Time</td><td class="value">${examTime}</td></tr>
-    <tr><td class="label">⏱️ Duration</td><td class="value">${examData.duration_minutes || 'N/A'} minutes</td></tr>
-    <tr><td class="label">📊 Total Marks</td><td class="value">${examData.marks_out_of || examData.total_marks || 100}</td></tr>
-    <tr><td class="label">✅ Pass Mark</td><td class="value">${examData.pass_mark || 50}%</td></tr>
-    ${examLink && examLink !== '#' ? '<tr><td class="label">🔗 Exam Link</td><td class="value"><a href="'+escapeHtml(examLink)+'" target="_blank">Click Here</a></td></tr>' : ''}
-    </table></div>
-    ${examLink && examLink !== '#' ? '<div style="text-align:center;margin:20px 0;"><a href="'+escapeHtml(examLink)+'" target="_blank" class="btn">🚪 Take Exam</a></div>' : ''}
-    <div style="background:#fef3c7;border-radius:12px;padding:12px 16px;border-left:4px solid #f59e0b;margin-top:16px;"><p style="margin:0;font-size:13px;color:#78350F;"><strong>Important:</strong> Please ensure you have a stable internet connection before starting the exam.</p></div>
-    </div><div class="footer"><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p style="font-size:0.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p></div>
-    </div></div></body></html>`;
-    let sentCount = 0, failedCount = 0;
-    for (const student of recipients) {
-        if (!student.email) { failedCount++; continue; }
-        try {
-            const result = await sendEmailWithBrevo(student.email, `📝 ${examTypeLabel}: ${examTitle}`, emailHtml);
-            if (result.success) sentCount++; else failedCount++;
-            await new Promise(r => setTimeout(r, 200));
-        } catch (error) { failedCount++; }
-    }
-    try {
-        const supabase = window.sb || window.supabase;
-        if (supabase) await supabase.from('exam_notifications').insert([{ exam_id: examData.id, recipients: recipients.length, sent_count: sentCount, failed_count: failedCount, sent_at: new Date().toISOString() }]);
-    } catch (error) { console.warn('Could not save notification record:', error); }
-    return { sent: sentCount, failed: failedCount, total: recipients.length };
-}
-
-let selectedStudentsForNotification = [];
-let allStudentsForProgram = [];
-
-document.addEventListener('DOMContentLoaded', function() {
-    document.addEventListener('change', function(e) {
-        if (e.target && e.target.id === 'exam_notify_target') {
-            const container = document.getElementById('specific_students_container');
-            if (container) container.style.display = e.target.value === 'specific' ? 'block' : 'none';
-        }
-    });
-});
-
-function getSelectedNotificationBlocks(){
-    const blocks=[];
-    const select=document.getElementById('exam_block_term');
-    if(select){
-        const opt=select.selectedOptions?.[0];
-        let value=String(select.value||'').trim();
-        let text=String(opt?.textContent||'').trim();
-        if(!value && text && !/^--\s*select/i.test(text)) value=text;
-        if(value) blocks.push(value);
-    }
-
-    if(!blocks.length){
-        document.querySelectorAll('.exam-class-checkbox:checked').forEach(cb=>{
-            const v=String(cb.value||'').trim();
-            if(v) blocks.push(v);
-        });
-    }
-
-    // Normalize UI labels such as "Introductory Block" to the DB value "Introductory".
-    return [...new Set(blocks.map(v=>{
-        const x=String(v).trim();
-        return x.replace(/\s+Block$/i,'').replace(/\s+Term$/i,'').trim() || x;
-    }))];
-}
-
-async function loadStudentsForNotification() {
-    const program=document.getElementById('exam_program')?.value||'';
-    const blocks=getSelectedNotificationBlocks();
-    console.log('📋 Loading students for notification:',{program,blocks});
-
-    const countEl=document.getElementById('student_notify_count');
-
-    if(!program || !blocks.length){
-        allStudentsForProgram=[];
-        if(countEl)countEl.textContent='0 students';
-        updateSelectedStudentsDisplay();
-        return;
-    }
-
-    try{
-        const supabase=window.sb||window.supabase;
-        if(!supabase)throw new Error('Supabase client not available');
-
-        // IMPORTANT: recipients come from student profiles, never unit registration.
-        // current_block is authoritative; block is a legacy fallback.
-        const {data,error}=await supabase
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, email, program, intake_year, intake_month, block, current_block, status')
-            .eq('role','student')
-            .eq('status','approved')
-            .eq('program',program)
-            .limit(1000);
-
-        if(error)throw error;
-
-        const normalizeBlock=v=>String(v||'').trim().toLowerCase().replace(/\s+block$/,'').replace(/\s+term$/,'');
-        const wanted=new Set(blocks.map(normalizeBlock));
-
-        allStudentsForProgram=(data||[]).filter(student=>{
-            const effectiveBlock=student.current_block||student.block||'';
-            return wanted.has(normalizeBlock(effectiveBlock));
-        });
-
-        console.log(`✅ Loaded ${allStudentsForProgram.length} students for ${program} / ${blocks.join(', ')}`);
-
-        if(countEl)countEl.textContent=`${allStudentsForProgram.length} students`;
-        updateSelectedStudentsDisplay();
-        searchStudentsForNotification();
-    }catch(error){
-        console.error('❌ Error loading students:',error);
-        allStudentsForProgram=[];
-        if(countEl)countEl.textContent='0 students';
-        updateSelectedStudentsDisplay();
-    }
-}
-
-function searchStudentsForNotification() {
-    const searchTerm = document.getElementById('exam_student_search')?.value?.toLowerCase() || '';
-    const resultsContainer = document.getElementById('student_search_results');
-    if (!resultsContainer) return;
-    let filtered = searchTerm ? allStudentsForProgram.filter(s => (s.full_name || '').toLowerCase().includes(searchTerm) || (s.email || '').toLowerCase().includes(searchTerm)) : allStudentsForProgram;
-    if (filtered.length === 0) {
-        resultsContainer.innerHTML = '<div style="padding:8px;color:#94a3b8;text-align:center;">No students found</div>';
-        resultsContainer.style.display = 'block'; return;
-    }
-    let html = '';
-    filtered.slice(0, 20).forEach(student => {
-        const isSelected = selectedStudentsForNotification.some(s => s.user_id === student.user_id);
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid #f1f5f9;${isSelected ? 'background:#dbeafe;' : ''}">
-        <div><strong style="font-size:13px;">${escapeHtml(student.full_name)}</strong><span style="font-size:11px;color:#6b7280;margin-left:8px;">${escapeHtml(student.email)}</span></div>
-        <button onclick="toggleStudentForNotification('${student.user_id}')" style="padding:2px 12px;border:none;border-radius:4px;cursor:pointer;font-size:11px;background:${isSelected ? '#dc2626' : '#059669'};color:white;">${isSelected ? 'Remove' : 'Add'}</button></div>`;
-    });
-    if (filtered.length > 20) html += `<div style="padding:6px;text-align:center;color:#94a3b8;font-size:12px;">+ ${filtered.length - 20} more students</div>`;
-    resultsContainer.innerHTML = html; resultsContainer.style.display = 'block';
-}
-
-function toggleStudentForNotification(studentId) {
-    const student = allStudentsForProgram.find(s => s.user_id === studentId);
-    if (!student) return;
-    const index = selectedStudentsForNotification.findIndex(s => s.user_id === studentId);
-    if (index > -1) selectedStudentsForNotification.splice(index, 1);
-    else selectedStudentsForNotification.push(student);
-    updateSelectedStudentsDisplay(); searchStudentsForNotification();
-}
-
-function updateSelectedStudentsDisplay() {
-    const container = document.getElementById('selected_students_list');
-    if (!container) return;
-    if (!selectedStudentsForNotification.length) {
-        container.innerHTML = '<span style="font-size:12px;color:#94a3b8;"><i class="fas fa-info-circle"></i> No students selected</span>'; return;
-    }
-    container.innerHTML = selectedStudentsForNotification.map(student =>
-        `<span style="background:#dbeafe;color:#1e40af;padding:2px 10px;border-radius:16px;font-size:12px;display:inline-flex;align-items:center;gap:4px;margin:2px;">${escapeHtml(student.full_name)}<span onclick="toggleStudentForNotification('${student.user_id}')" style="cursor:pointer;color:#dc2626;font-weight:700;margin-left:4px;">&times;</span></span>`
-    ).join('');
-}
-
-async function loadExams(forceRefresh = false) {
-    cacheDomElements();
-    if (!DOM.examsTbody) return;
-    if (!forceRefresh) {
-        const cached = ExamCache.get('exams_list');
-        if (cached) { renderExamsTable(cached); renderStudentExams(cached); updateExamStats(cached); return; }
-    }
-    DOM.examsTbody.innerHTML = `<tr><td colspan="12" style="padding:40px;text-align:center;color:#94a3b8;"><div class="loading-spinner" style="margin:0 auto 12px;"></div><p style="margin-top:10px;font-size:13px;">Loading exams...</p></td></tr>`;
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) throw new Error('Supabase client not available');
-        const { data: exams, error } = await supabase.from('exams').select('*').order('created_at', { ascending: false }).limit(200);
-        if (error) throw error;
-        const { data: allCourses } = await supabase.from('courses').select('id, course_name, name, unit_code, target_program');
-        if (allCourses) {
-            const courseMap = {}; allCourses.forEach(c => { courseMap[c.id] = c; }); window._courseMap = courseMap;
-            (exams || []).forEach(exam => { if (exam.course_id && courseMap[exam.course_id]) exam.course = courseMap[exam.course_id]; });
-        }
-        ExamCache.set('exams_list', exams || []);
-        renderExamsTable(exams || []); renderStudentExams(exams || []); updateExamStats(exams || []);
-    } catch (error) {
-        console.error('Error loading exams:', error);
-        DOM.examsTbody.innerHTML = `<tr><td colspan="12" style="padding:30px;text-align:center;color:#dc2626;font-size:13px;"><i class="fas fa-exclamation-circle"></i> Failed: ${error.message}<br><button onclick="loadExams(true)" style="margin-top:10px;padding:6px 16px;background:#7c3aed;color:white;border:none;border-radius:6px;cursor:pointer;"><i class="fas fa-sync-alt"></i> Retry</button></td></tr>`;
-    }
-}
-
-function updateExamStats(exams) {
-    const statValues = document.querySelectorAll('.exam-stat-value');
-    if (statValues && statValues.length >= 4) {
-        statValues[0].textContent = exams.length;
-        statValues[1].textContent = exams.filter(e => e.status === 'published' || e.status === 'Published').length;
-        statValues[2].textContent = exams.filter(e => e.status === 'InProgress' || e.status === 'In Progress').length;
-        statValues[3].textContent = exams.filter(e => e.status === 'Draft' || e.status === 'draft' || !e.status).length;
-    }
-}
-
-function getStatusBadge(status) {
-    const statusMap = {
-        Published:{bg:'#d1fae5',color:'#065f46',icon:'✅',label:'Published'},published:{bg:'#d1fae5',color:'#065f46',icon:'✅',label:'Published'},
-        Upcoming:{bg:'#dbeafe',color:'#1e40af',icon:'📅',label:'Upcoming'},upcoming:{bg:'#dbeafe',color:'#1e40af',icon:'📅',label:'Upcoming'},
-        InProgress:{bg:'#fef3c7',color:'#92400e',icon:'⏳',label:'In Progress'},'In Progress':{bg:'#fef3c7',color:'#92400e',icon:'⏳',label:'In Progress'},
-        Completed:{bg:'#d1fae5',color:'#065f46',icon:'✅',label:'Completed'},completed:{bg:'#d1fae5',color:'#065f46',icon:'✅',label:'Completed'},
-        Draft:{bg:'#f3f4f6',color:'#6b7280',icon:'📝',label:'Draft'},draft:{bg:'#f3f4f6',color:'#6b7280',icon:'📝',label:'Draft'},
-        Closed:{bg:'#fee2e2',color:'#991b1b',icon:'🔒',label:'Closed'},closed:{bg:'#fee2e2',color:'#991b1b',icon:'🔒',label:'Closed'}
-    };
-    const s = statusMap[status] || statusMap.Draft;
-    return `<span style="display:inline-flex;align-items:center;gap:4px;background:${s.bg};color:${s.color};padding:2px 12px;border-radius:12px;font-size:11px;font-weight:600;border:1px solid ${s.color}33;">${s.icon} ${s.label}</span>`;
-}
-
-function renderExamsTable(exams) {
-    if (!DOM.examsTbody) return;
-    if (!exams.length) { DOM.examsTbody.innerHTML = `<tr><td colspan="12" style="padding:40px;text-align:center;color:#94a3b8;">No exams found. Create your first exam!</td></tr>`; return; }
-    let html = '';
-    for (const e of exams) {
-        let courseName = e.course?.course_name || e.course?.name || e.course?.unit_code || e.course_name || e.unit_name || 'N/A';
-        if (e.course_id && window._courseMap?.[e.course_id]) { const c=window._courseMap[e.course_id]; courseName=c.course_name||c.name||c.unit_code||courseName; }
-        const title=e.title||e.exam_name||'Untitled', type=e.exam_type||'N/A', programDisplay=e.target_program||e.program_type||'N/A';
-        const marksOutOf=e.marks_out_of||e.total_marks||100, passMark=e.pass_mark||50, status=e.status||'draft', link=e.online_link||e.exam_link;
-        let formattedDate='N/A', formattedTime='N/A';
-        if (e.exam_date||e.created_at) { try { const d=new Date(e.exam_date||e.created_at); if(!isNaN(d.getTime())) formattedDate=d.toLocaleDateString('en-KE',{year:'numeric',month:'short',day:'numeric'}); } catch(err){} }
-        if(e.exam_start_time?.includes(':')) formattedTime=e.exam_start_time.substring(0,5);
-        const intakeDisplay=e.intake_year?`${e.intake_year}${e.intake_month?' '+e.intake_month:''}`:'N/A', blockDisplay=e.block||e.block_term||'N/A', durationDisplay=e.duration_minutes?e.duration_minutes+'m':'N/A';
-        html += `<tr style="border-bottom:1px solid #f1f5f9;" data-program="${escapeHtml(programDisplay)}" data-status="${escapeHtml(status)}" data-month="${escapeHtml(e.intake_month||'')}">
-        <td style="padding:8px 10px;font-size:12px;text-align:center;"><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${type==='EXAM'?'#dbeafe':'#fef3c7'};color:${type==='EXAM'?'#1e40af':'#92400e'};">${escapeHtml(type)}</span></td>
-        <td style="padding:8px 10px;font-size:12px;">${escapeHtml(programDisplay)}</td><td style="padding:8px 10px;font-size:12px;">${escapeHtml(courseName)}</td><td style="padding:8px 10px;font-weight:500;font-size:13px;">${escapeHtml(title)}</td>
-        <td style="padding:8px 10px;text-align:center;font-weight:600;">${marksOutOf}</td><td style="padding:8px 10px;text-align:center;font-weight:600;color:${parseInt(passMark)>=50?'#059669':'#dc2626'};">${passMark}%</td>
-        <td style="padding:8px 10px;font-size:12px;"><div>${formattedDate}</div><div style="font-size:10px;color:#94a3b8;">${formattedTime}</div></td><td style="padding:8px 10px;text-align:center;font-size:12px;">${durationDisplay}</td>
-        <td style="padding:8px 10px;font-size:12px;text-align:center;">${escapeHtml(intakeDisplay)}</td><td style="padding:8px 10px;font-size:12px;text-align:center;">${escapeHtml(blockDisplay)}</td><td style="padding:8px 10px;text-align:center;">${getStatusBadge(status)}</td>
-        <td style="padding:8px 10px;text-align:center;white-space:nowrap;">
-        <button onclick="openEditExamModal('${e.id}')" style="padding:4px 10px;background:#3b82f6;color:white;border:none;border-radius:4px;cursor:pointer;" title="Edit"><i class="fas fa-edit"></i></button>
-        <button onclick="openGradeModal('${e.id}')" style="padding:4px 10px;background:#10b981;color:white;border:none;border-radius:4px;cursor:pointer;" title="Grade"><i class="fas fa-check-double"></i></button>
-        ${status!=='Completed'&&status!=='Closed'&&status!=='completed'?`<button onclick="closeExam('${e.id}')" style="padding:4px 10px;background:#f59e0b;color:white;border:none;border-radius:4px;cursor:pointer;" title="Close"><i class="fas fa-lock"></i></button>`:''}
-        <button onclick="deleteExam('${e.id}', '${escapeHtml(title)}')" style="padding:4px 10px;background:#dc2626;color:white;border:none;border-radius:4px;cursor:pointer;" title="Delete"><i class="fas fa-trash"></i></button>
-        ${link?`<a href="${escapeHtml(link)}" target="_blank" style="padding:4px 10px;background:#059669;color:white;border-radius:4px;text-decoration:none;display:inline-block;" title="Open"><i class="fas fa-external-link-alt"></i></a>`:''}
-        </td></tr>`;
-    }
-    DOM.examsTbody.innerHTML=html;
-}
-
-function renderStudentExams(exams) {
-    if(!DOM.studentExams)return;
-    const published=exams.filter(e=>['Published','published','Upcoming','InProgress'].includes(e.status));
-    if(!published.length){DOM.studentExams.innerHTML='<p style="color:#94a3b8;padding:20px;text-align:center;">No published assessments available.</p>';return;}
-    let html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">';
-    for(const exam of published.slice(0,6)){
-        const dateStr=exam.exam_date?new Date(exam.exam_date).toLocaleDateString():'', statusClass=exam.status==='Upcoming'?'upcoming':exam.status==='InProgress'?'in-progress':'completed';
-        const borderColor=statusClass==='upcoming'?'#f59e0b':statusClass==='in-progress'?'#3b82f6':'#10b981', link=exam.online_link||exam.exam_link, courseName=exam.course?.course_name||exam.course_name||exam.subject_name||'N/A';
-        html+=`<div style="background:white;border-radius:12px;padding:14px 16px;border-left:4px solid ${borderColor};border:1px solid #f1f5f9;"><h4 style="margin:0 0 6px;font-size:14px;">${escapeHtml(exam.title||exam.exam_name||'Assessment')}</h4><div style="font-size:12px;color:#94a3b8;">${escapeHtml(courseName)}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;font-size:12px;color:#475569;margin-top:6px;"><span><strong>Type:</strong> ${escapeHtml(exam.exam_type||'')}</span><span><strong>Duration:</strong> ${exam.duration_minutes||'N/A'}m</span><span><strong>Date:</strong> ${dateStr}</span><span><strong>Marks:</strong> ${exam.marks_out_of||exam.total_marks||100}</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;"><span style="font-size:11px;color:${borderColor};">${escapeHtml(exam.status)}</span>${link?`<a href="${escapeHtml(link)}" target="_blank" style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;padding:4px 16px;border-radius:20px;text-decoration:none;font-size:12px;font-weight:600;">Take Exam</a>`:''}</div></div>`;
-    }
-    html+='</div>'; DOM.studentExams.innerHTML=html;
-}
-
-function getProgramOptions() {
-    const groups=[
-        {label:'🎓 KRCHN Nursing',programs:['KRCHN - Kenya Registered Community Health Nursing']},
-        {label:'🎯 TVET Diploma',programs:['DPOTT - Diploma in Perioperative Theatre Technology','DCH - Diploma in Community Health','DHRIT - Diploma in Health Records and IT','DSL - Diploma in Science Lab','DSW - Diploma in Social Work','DCJS - Diploma in Criminal Justice','DHSS - Diploma in Health Support Services','DICT - Diploma in ICT','DME - Diploma in Medical Engineering']},
-        {label:'📜 TVET Certificate',programs:['CPOTT - Certificate in Perioperative Theatre Technology','CCH - Certificate in Community Health','CHRIT - Certificate in Health Records and IT','CPC - Certificate in Patient Care','CSL - Certificate in Science Lab','CSW - Certificate in Social Work','CCJS - Certificate in Criminal Justice','CAG - Certificate in Agriculture','CHSS - Certificate in Health Support Services','CICT - Certificate in ICT']},
-        {label:'🔧 Artisan',programs:['ACH - Artisan in Community Health','AAG - Artisan in Agriculture','ASW - Artisan in Social Work']},
-        {label:'📊 Other',programs:['CCA - Certificate in Computer Applications','PTE - TVET/CDACC (PTE)']}
-    ];
-    return groups.map(g=>`<optgroup label="${g.label}">${g.programs.map(p=>{const code=p.split(' - ')[0];return `<option value="${code}">${p}</option>`}).join('')}</optgroup>`).join('');
-}
-function populateProgramDropdowns(){
-    const options=getProgramOptions(), examProgram=document.getElementById('exam_program'), editExamProgram=document.getElementById('edit_exam_program');
-    if(examProgram)examProgram.innerHTML='<option value="">-- Select Program --</option>'+options;
-    if(editExamProgram&&!editExamProgram.querySelector('option[value=""]'))editExamProgram.innerHTML='<option value="">-- Select Program --</option>'+options;
-}
-function isTVETProgram(programCode){
-    if(!programCode)return false; const code=String(programCode).toUpperCase().trim(); if(code==='KRCHN')return false;
-    return ['DPOTT','DCH','DHRIT','DSL','DSW','DCJS','DHSS','DICT','DME','CPOTT','CCH','CHRIT','CPC','CSL','CSW','CCJS','CAG','CHSS','CICT','CCA','ACH','AAG','ASW','PTE','COMT','CCG'].includes(code);
-}
-function getProgramLevel(programCode){
-    if(!programCode)return 'KRCHN'; const code=String(programCode).toUpperCase().trim();
-    if(code.startsWith('D'))return 'DIPLOMA'; if(code.startsWith('C')&&code!=='CCA')return 'CERTIFICATE'; if(code.startsWith('A'))return 'ARTISAN'; if(code==='CCA'||code==='PTE')return 'OTHER'; return 'KRCHN';
-}
-async function loadAvailableClassesForExam(){
-    const DOM=window.DOM||{};
-    if(!DOM.classSelector)return;
-    const program=document.getElementById('exam_program')?.value||'KRCHN', isTVET=isTVETProgram(program), level=getProgramLevel(program);
-    let options=[], blockLabel='Block';
-    if(isTVET){
-        blockLabel='Term';
-        if(level==='DIPLOMA')options=[['Y1T1','Year 1 Term 1'],['Y1T2','Year 1 Term 2'],['Y1T3','Year 1 Term 3'],['Y2T1','Year 2 Term 1'],['Y2T2','Year 2 Term 2'],['Y2T3','Year 2 Term 3']];
-        else if(level==='CERTIFICATE')options=[['Y1T1','Year 1 Term 1'],['Y1T2','Year 1 Term 2'],['Y1T3','Year 1 Term 3']];
-        else options=[['Introductory','Introductory Term'],['Term1','Term 1'],['Term2','Term 2'],['Term3','Term 3'],['Term4','Term 4'],['Term5','Term 5'],['Term6','Term 6'],['Final','Final Term']];
-    } else options=[['Introductory','Introductory Block'],['Block 1','Block 1'],['Block 2','Block 2'],['Block 3','Block 3'],['Block 4','Block 4'],['Block 5','Block 5'],['Block 6','Block 6'],['Final','Final Block']];
-    DOM.classSelector.innerHTML=`<p style="color:#6b7280;font-size:12px;margin:0 0 8px;grid-column:1/-1;"><i class="fas fa-info-circle"></i> Select ${blockLabel}s:</p><div style="display:flex;flex-wrap:wrap;gap:8px;grid-column:1/-1;">${options.map(o=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" class="exam-class-checkbox" value="${o[0]}"><span>${o[1]}</span></label>`).join('')}</div><div style="display:flex;gap:6px;grid-column:1/-1;margin-top:4px;"><input type="text" id="customBlocksInput" placeholder="Custom ${blockLabel}s (comma)" style="flex:1;padding:6px 12px;border-radius:6px;border:1px solid #ddd;font-size:12px;"><button onclick="addCustomBlocks()" style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">Add</button></div>`;
-}
-
-
-function addCustomBlocks(){
-    const input=document.getElementById('customBlocksInput'); if(!input?.value.trim())return;
-    const blocks=input.value.split(',').map(b=>b.trim()).filter(Boolean), container=DOM.classSelector, div=container?.querySelector('div:first-child')||container;
-    if(!div)return;
-    blocks.forEach(block=>{const label=document.createElement('label');label.style.cssText='display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;';label.innerHTML=`<input type="checkbox" class="exam-class-checkbox" value="${escapeHtml(block)}"><span>${escapeHtml(block)}</span>`;div.appendChild(label);}); input.value='';
-}
-function getSelectedClasses(){const selected=[];document.querySelectorAll('.exam-class-checkbox:checked').forEach(cb=>selected.push(cb.value));return selected;}
-
-async function handleAddExam(e){
-    e.preventDefault();
-
-    const btn=e.submitter;
-    if(!btn)return;
-
-    const original=btn.textContent;
-    btn.disabled=true;
-    btn.innerHTML='<span class="spinner"></span> Creating...';
-
-    const fields={
-        title:document.getElementById('exam_title')?.value.trim(),
-        type:document.getElementById('exam_type')?.value,
-        status:document.getElementById('exam_status')?.value||'published',
-        basis:document.getElementById('exam_basis')?.value||'ordinary',
-        date:document.getElementById('exam_date')?.value,
-        startTime:document.getElementById('exam_start_time')?.value||'09:00',
-        duration:parseInt(document.getElementById('exam_duration_minutes')?.value),
-        deadline:document.getElementById('exam_deadline')?.value||null,
-        program:document.getElementById('exam_program')?.value,
-        block:document.getElementById('exam_block_term')?.value,
-        intake:parseInt(document.getElementById('exam_intake')?.value),
-        intakeMonth:document.getElementById('exam_intake_month')?.value||null,
-
-        /*
-         * This hidden field now carries the selected units_catalog.id
-         * during creation. We resolve a legacy courses.id below only
-         * when the database has a matching course record.
-         */
-        unitId:document.getElementById('exam_course_id')?.value||null,
-
-        outOf:parseInt(document.getElementById('exam_out_of')?.value)||100,
-        passMark:parseInt(document.getElementById('exam_pass_mark')?.value)||50,
-        minFee:parseInt(document.getElementById('exam_min_fee')?.value)||0,
-        link:document.getElementById('exam_link')?.value.trim()||null
-    };
-
-    const typeUpper=String(fields.type||'').trim().toUpperCase();
-    const mainExamTypes=new Set(['EXAM','END_TERM','SUPPLEMENTARY','FINAL_EXAM','FINAL']);
-
-    if(mainExamTypes.has(typeUpper)){
-        fields.title=buildExamNameFromCourse()||fields.title;
-    }else{
-        /*
-         * Manual assessments keep the name typed by the lecturer.
-         */
-        fields.title=document.getElementById('exam_title')?.value.trim()||'';
-    }
-
-    const commonMissing=
-        !fields.title||
-        !fields.program||
-        !fields.date||
-        !fields.intake||
-        !fields.block||
-        !fields.type||
-        isNaN(fields.duration);
-
-    const courseRequired=mainExamTypes.has(typeUpper);
-
-    if(commonMissing || (courseRequired&&!fields.unitId)){
-        showFeedback(
-            courseRequired
-                ? 'Please select the Course/Unit for this main examination and fill all required fields.'
-                : 'Please enter the assessment name and fill all required fields.',
-            'error'
-        );
-        btn.disabled=false;
-        btn.innerHTML=original;
-        return;
-    }
-
-    const classes=getSelectedClasses();
-    const user=await getCurrentUser();
-    const notifyStudents=document.getElementById('exam_notify_students')?.checked||false;
-    const notifyTarget=document.getElementById('exam_notify_target')?.value||'all';
-
-    /*
-     * Use the exact same recipient array for:
-     * - displayed notification count
-     * - email sending
-     */
-    let recipients=[];
-
-    if(notifyStudents){
-        if(notifyTarget==='specific'){
-            recipients=[...selectedStudentsForNotification];
-        }else if(notifyTarget==='program'){
-            recipients=[...allStudentsForProgram];
-        }else{
-            recipients=[...allStudentsForProgram];
-        }
-
-        console.log(
-            `📧 Recipients: ${recipients.length} students `+
-            `(target: ${notifyTarget}, program: ${fields.program}, block: ${fields.block})`
-        );
-    }
-
-    try{
-        const supabase=window.sb||window.supabase;
-        if(!supabase)throw new Error('Supabase client not available');
-
-        /*
-         * Resolve selected units_catalog row.
-         */
-        const selectedUnit=
-            window.selectedExamUnit ||
-            createUnitsData.find(u=>String(u.id)===String(fields.unitId))||
-            null;
-
-        /*
-         * Keep the existing exams.course_id relationship safe.
-         * If a matching legacy course exists for this unit_code/program,
-         * store that courses.id. Otherwise leave course_id null.
-         */
-        let legacyCourseId=null;
-
-        if(selectedUnit?.unit_code){
-            try{
-                const {data:legacyCourse}=await supabase
-                    .from('courses')
-                    .select('id')
-                    .eq('unit_code',selectedUnit.unit_code)
-                    .eq('target_program',fields.program)
-                    .limit(1)
-                    .maybeSingle();
-
-                if(!legacyCourse){
-                    const {data:legacyCourseByCode}=await supabase
-                        .from('courses')
-                        .select('id')
-                        .eq('code',selectedUnit.unit_code)
-                        .eq('target_program',fields.program)
-                        .limit(1)
-                        .maybeSingle();
-
-                    legacyCourseId=legacyCourseByCode?.id||null;
-                }else{
-                    legacyCourseId=legacyCourse.id;
-                }
-            }catch(mappingError){
-                console.warn('⚠️ Legacy course mapping skipped:',mappingError);
+    
+    for (let i = 1; i < step; i++) {
+        const prev = stepMap[i];
+        if (prev) {
+            const prevEl = document.getElementById(prev.el);
+            if (prevEl) {
+                prevEl.style.color = '#059669';
+                prevEl.style.fontWeight = '600';
             }
         }
+    }
+}
 
-        const examData={
-            title:fields.title,
-            exam_name:fields.title,
-            exam_type:fields.type,
-            status:String(fields.status||'published').toLowerCase(),
-            exam_basis:fields.basis,
-            exam_date:fields.date,
-            exam_start_time:fields.startTime,
-            duration_minutes:fields.duration,
-            marks_entry_deadline:fields.deadline,
-            target_program:fields.program,
-            program_type:fields.program,
-            block:fields.block,
-            block_term:fields.block,
-            intake_year:fields.intake,
-            intake_month:fields.intakeMonth,
+function resetLoadingSteps() {
+    const steps = ['step1Text', 'step2Text', 'step3Text', 'step4Text'];
+    const texts = ['Initializing...', 'Loading data...', 'Processing...', 'Rendering...'];
+    steps.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = texts[index] || '...';
+            el.style.color = index === 0 ? '#1e293b' : '#94a3b8';
+            el.style.fontWeight = index === 0 ? '600' : '400';
+        }
+    });
+}
 
-            /*
-             * Legacy compatibility. The actual selector source is
-             * units_catalog; course_id is only populated when a matching
-             * legacy courses row exists.
-             */
-            course_id:legacyCourseId,
+function hideLoadingScreen() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    console.log('✅ Loading complete');
+}
 
-            marks_out_of:fields.outOf,
-            total_marks:fields.outOf,
-            MARKS:String(fields.outOf),
-            pass_mark:fields.passMark,
-            min_fee_balance:fields.minFee,
-            online_link:fields.link,
-            exam_link:fields.link,
-            assigned_classes:classes,
-            created_by:user?.user_id||user?.id||null,
-            created_at:new Date().toISOString(),
-            updated_at:new Date().toISOString()
+function showLoading(message) {
+    showLoadingScreen(message, 'Loading...');
+}
+
+function hideLoading() {
+    hideLoadingScreen();
+}
+
+// ============================================================
+// RETAKE/SUPPLEMENTARY STATE - THIS COMES AFTER
+// ============================================================
+
+let me_retakeData = {};
+let me_currentRetakeStudent = null;
+let me_currentRetakeUnit = null;
+const MAX_RETAKES = 2;
+
+// ============================================================
+// PROGRAM TYPE DETECTION
+// ============================================================
+
+// ✅ LOG: Function definitions starting
+console.log('📋 PROGRAM TYPE DETECTION - Loading...');
+
+function isTVETProgram() {
+    // Try multiple sources for the program
+    const program = window.me_currentProgram || 
+                    me_currentProgram || 
+                    document.getElementById('me_program_select')?.value || 
+                    '';
+    
+    return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+}
+
+// ✅ LOG: isTVETProgram() defined
+console.log('✅ isTVETProgram() defined:');
+console.log('   Source:', isTVETProgram.toString());
+
+function isNursingProgram() {
+    const program = window.me_currentProgram || 
+                    me_currentProgram || 
+                    document.getElementById('me_program_select')?.value || 
+                    '';
+    return program === 'KRCHN' || program === 'nursing' || program === 'Nursing';
+}
+
+function getExamMax() {
+    return isNursingProgram() ? 70 : 100;
+}
+
+function getTotalMax() {
+    return isNursingProgram() ? 130 : 160;
+}
+
+function getPassingThreshold() {
+    return isNursingProgram() ? 60 : 50;
+}
+
+function getProgramTypeLabel() {
+    return isNursingProgram() ? '📕 NURSING' : '📘 TVET';
+}
+// ============================================================
+// UPDATE PROGRAM DISPLAY - FIX FOR DROPDOWN
+// ============================================================
+
+function updateSelectedProgramDisplay() {
+    const select = document.getElementById('me_program_select');
+    if (!select) {
+        console.warn('⚠️ me_program_select not found');
+        return;
+    }
+    
+    const program = select.value;
+    const programText = select.options[select.selectedIndex]?.text || program || 'None selected';
+    
+    // ✅ CRITICAL: Set the global variable
+    window.me_currentProgram = program;
+    
+    console.log('📋 Program selected:', program, '→', programText);
+    console.log('📋 isTVETProgram():', isTVETProgram());
+    console.log('📋 getExamMax():', getExamMax());
+    console.log('📋 getTotalMax():', getTotalMax());
+    console.log('📋 getPassingThreshold():', getPassingThreshold());
+    
+    // Update the display if element exists
+    const displayEl = document.getElementById('selectedProgramName');
+    if (displayEl) {
+        displayEl.textContent = programText;
+    }
+    
+    // Update the program type badge
+    const typeEl = document.getElementById('selectedProgramType');
+    if (typeEl) {
+        if (isTVETProgram()) {
+            typeEl.innerHTML = '<i class="fas fa-tools"></i> TVET Program';
+            typeEl.style.background = '#fef3c7';
+            typeEl.style.color = '#92400e';
+            typeEl.style.border = '1px solid #f59e0b';
+        } else if (program === 'KRCHN') {
+            typeEl.innerHTML = '<i class="fas fa-graduation-cap"></i> Nursing Program';
+            typeEl.style.background = '#dbeafe';
+            typeEl.style.color = '#1e40af';
+            typeEl.style.border = '1px solid #93c5fd';
+        } else {
+            typeEl.innerHTML = '<i class="fas fa-info-circle"></i> None Selected';
+            typeEl.style.background = '#f1f5f9';
+            typeEl.style.color = '#64748b';
+            typeEl.style.border = '1px solid #e2e8f0';
+        }
+    }
+    
+    // Refresh marks if a unit is already selected
+    const unitSelect = document.getElementById('me_subject_select');
+    if (unitSelect && unitSelect.value) {
+        loadMarksEntry();
+    }
+}
+
+// Make it globally available
+window.updateSelectedProgramDisplay = updateSelectedProgramDisplay;
+// ============================================================
+// CHECK IF USER IS ADMIN
+// ============================================================
+
+function isUserAdmin() {
+    try {
+        if (window.currentUser) {
+            const role = window.currentUser.role || window.currentUser.user_role || window.currentUser.userRole;
+            if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'Super Admin') {
+                return true;
+            }
+        }
+        
+        const sessionUser = sessionStorage.getItem('user');
+        if (sessionUser) {
+            try {
+                const user = JSON.parse(sessionUser);
+                const role = user.role || user.user_role || user.userRole;
+                if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'Super Admin') {
+                    return true;
+                }
+            } catch (e) {}
+        }
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const roleParam = urlParams.get('role');
+        if (roleParam === 'superadmin' || roleParam === 'admin') {
+            return true;
+        }
+        
+        if (window.location.pathname.includes('superadmin') || window.location.pathname.includes('admin')) {
+            return true;
+        }
+        
+        return true;
+        
+    } catch (e) {
+        return true;
+    }
+}
+
+// ============================================================
+// DETECT VISIBLE COLUMNS
+// ============================================================
+
+function detectVisibleColumns() {
+    console.log('🔍 Detecting visible columns...');
+    
+    const table = document.querySelector('#me_marks_table');
+    if (!table) {
+        console.warn('⚠️ Table not found, using defaults');
+        return { hasCat1: true, hasCat2: true, hasExam: true };
+    }
+    
+    const headers = table.querySelectorAll('thead th');
+    let hasCat1 = false;
+    let hasCat2 = false;
+    let hasExam = false;
+    
+    const savedColumns = me_columnSettings.columns || [];
+    const savedCat1 = savedColumns.find(c => c.id === 'cat1');
+    const savedCat2 = savedColumns.find(c => c.id === 'cat2');
+    const savedExam = savedColumns.find(c => c.id === 'exam');
+    
+    if (savedCat1 !== undefined) {
+        hasCat1 = savedCat1.visible !== false;
+        console.log(`📋 Saved CAT1: ${hasCat1 ? 'visible' : 'hidden'}`);
+    }
+    if (savedCat2 !== undefined) {
+        hasCat2 = savedCat2.visible !== false;
+        console.log(`📋 Saved CAT2: ${hasCat2 ? 'visible' : 'hidden'}`);
+    }
+    if (savedExam !== undefined) {
+        hasExam = savedExam.visible !== false;
+        console.log(`📋 Saved Exam: ${hasExam ? 'visible' : 'hidden'}`);
+    }
+    
+    if (savedCat1 === undefined || savedCat2 === undefined || savedExam === undefined) {
+        headers.forEach((th, index) => {
+            const text = th.textContent.toLowerCase().trim();
+            const computedDisplay = window.getComputedStyle(th).display;
+            const inlineDisplay = th.style.display;
+            const isVisible = inlineDisplay !== 'none' && computedDisplay !== 'none';
+            
+            if (savedCat1 === undefined && (text.includes('cat1') || text.includes('cat 1'))) {
+                hasCat1 = isVisible;
+            }
+            if (savedCat2 === undefined && (text.includes('cat2') || text.includes('cat 2'))) {
+                hasCat2 = isVisible;
+            }
+            if (savedExam === undefined && text.includes('exam')) {
+                hasExam = isVisible;
+            }
+        });
+    }
+    
+    if (savedCat1 === undefined && !hasCat1) hasCat1 = true;
+    if (savedCat2 === undefined && !hasCat2) hasCat2 = true;
+    if (savedExam === undefined && !hasExam) hasExam = true;
+    
+    const result = { hasCat1, hasCat2, hasExam };
+    console.log('📊 Final detection result:', result);
+    
+    return result;
+}
+
+// ============================================================
+// GET AUTO ASSESSMENT TYPE
+// ============================================================
+
+function getAutoAssessmentType() {
+    const visible = detectVisibleColumns();
+    console.log('📊 Visible columns for assessment:', visible);
+    
+    if (visible.hasExam && !visible.hasCat1 && !visible.hasCat2) {
+        console.log('📋 → exam_only');
+        return 'exam_only';
+    }
+    
+    if (visible.hasCat1 && !visible.hasCat2 && !visible.hasExam) {
+        console.log('📋 → cat_only (CAT1 only)');
+        return 'cat_only';
+    }
+    
+    if (!visible.hasCat1 && visible.hasCat2 && !visible.hasExam) {
+        console.log('📋 → cat_only (CAT2 only)');
+        return 'cat_only';
+    }
+    
+    if (visible.hasCat1 && visible.hasCat2 && !visible.hasExam) {
+        console.log('📋 → cats_only');
+        return 'cats_only';
+    }
+    
+    if (visible.hasCat1 && !visible.hasCat2 && visible.hasExam) {
+        console.log('📋 → single_cat (CAT1 + Exam)');
+        return 'single_cat';
+    }
+    
+    if (!visible.hasCat1 && visible.hasCat2 && visible.hasExam) {
+        console.log('📋 → single_cat (CAT2 + Exam)');
+        return 'single_cat';
+    }
+    
+    console.log('📋 → full (default)');
+    return 'full';
+}
+
+// ============================================================
+// GET ASSESSMENT TYPE LABEL
+// ============================================================
+
+function getAssessmentTypeLabel(type) {
+    const isTVET = isTVETProgram();
+    
+    const labels = {
+        'full': isTVET ? 'Full (CAT1+CAT2+Exam) - 160 total' : 'Full (CAT1+CAT2+Exam) - 130 total',
+        'single_cat': isTVET ? 'Single CAT (CAT+Exam) - 130 total' : 'Single CAT (CAT+Exam) - out of 100',
+        'exam_only': isTVET ? 'Exam Only - out of 100' : 'Exam Only - out of 70',
+        'cats_only': 'CAT1+CAT2 Only - out of 60',
+        'cat_only': 'CAT Only - out of 30'
+    };
+    return labels[type] || type;
+}
+
+// ============================================================
+// UPDATE ASSESSMENT TYPE DISPLAY
+// ============================================================
+
+function updateAssessmentTypeDisplay() {
+    const autoType = getAutoAssessmentType();
+    const label = getAssessmentTypeLabel(autoType);
+    
+    const labelEl = document.getElementById('autoAssessmentTypeLabel');
+    if (labelEl) {
+        labelEl.textContent = label;
+    }
+    
+    const assessmentSelect = document.getElementById('me_assessment_type');
+    if (assessmentSelect) {
+        assessmentSelect.value = autoType;
+    }
+    
+    me_currentAssessmentType = autoType;
+}
+
+// ============================================================
+// ✅ NURSING CALCULATION - ORIGINAL WORKING FORMULA
+// ============================================================
+
+// ============================================================
+// ✅ NURSING CALCULATION - FIXED FOR exam_only
+// ============================================================
+
+function calculateNursingTotal(cat1, cat2, exam, type) {
+    let total = 0;
+    
+    // Clamp values
+    const c1 = Math.min(Math.max(cat1 || 0, 0), 30);
+    const c2 = Math.min(Math.max(cat2 || 0, 0), 30);
+    let e = Math.min(Math.max(exam || 0, 0), 100); // ✅ FIX: Allow up to 100 for exam_only
+    
+    switch(type) {
+        case 'full':
+            // CAT1+CAT2 = 60% of total, Exam = 40% of total
+            // Exam should be out of 70 for full assessment
+            e = Math.min(e, 70); // Clamp to 70 for full mode
+            total = Math.round(((c1 + c2) / 60 * 30 + e) * 10) / 10;
+            break;
+            
+        case 'single_cat':
+            // CAT + Exam (both out of 100)
+            total = Math.round((c1 + e) * 10) / 10;
+            break;
+            
+        case 'exam_only':
+            // ✅ FIX: Exam is out of 100 (percentage-based)
+            total = Math.round(e * 10) / 10;
+            break;
+            
+        case 'cats_only':
+            // CAT1 + CAT2 only (out of 100)
+            total = Math.round(((c1 + c2) / 60) * 100 * 10) / 10;
+            break;
+            
+        case 'cat_only':
+            // CAT1 only (out of 100)
+            total = Math.round((c1 / 30) * 100 * 10) / 10;
+            break;
+            
+        default:
+            e = Math.min(e, 70); // Clamp to 70 for default full mode
+            total = Math.round(((c1 + c2) / 60 * 30 + e) * 10) / 10;
+    }
+    
+    return Math.min(total, 100);
+}
+
+// ============================================================
+// ✅ TVET CALCULATION - PERMANENT FIX
+// ============================================================
+
+function calculateTVETTotal(cat1, cat2, exam, type) {
+    // Clamp values
+    const c1 = Math.min(Math.max(cat1 || 0, 0), 30);
+    const c2 = Math.min(Math.max(cat2 || 0, 0), 30);
+    const e = Math.min(Math.max(exam || 0, 0), 100);
+    
+    let total = 0;
+    let score = 0;
+    let maxScore = 0;
+    
+    switch(type) {
+        case 'full':
+            // CAT1(30) + CAT2(30) + Exam(100) = 160 total
+            score = c1 + c2 + e;
+            maxScore = 160;
+            total = (score / maxScore) * 100;
+            break;
+            
+        case 'single_cat':
+            // CAT1(30) + Exam(100) = 130 total
+            score = c1 + e;
+            maxScore = 130;
+            total = (score / maxScore) * 100;
+            break;
+            
+        case 'exam_only':
+            // Exam only - out of 100 (already a percentage)
+            total = e;
+            break;
+            
+        case 'cats_only':
+            // CAT1(30) + CAT2(30) = 60 total
+            score = c1 + c2;
+            maxScore = 60;
+            total = (score / maxScore) * 100;
+            break;
+            
+        case 'cat_only':
+            // CAT1 only = 30 total
+            score = c1;
+            maxScore = 30;
+            total = (score / maxScore) * 100;
+            break;
+            
+        default:
+            // Default: full mode
+            score = c1 + c2 + e;
+            maxScore = 160;
+            total = (score / maxScore) * 100;
+    }
+    
+    // Round to 1 decimal place and cap at 100
+    return Math.min(Math.round(total * 10) / 10, 100);
+}
+function calculateMarksEntryTotal(cat1, cat2, exam, type) {
+    const program = window.me_currentProgram || 
+                    document.getElementById('me_program_select')?.value || 
+                    '';
+    const isTVET = program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+    
+    if (isTVET) {
+        return calculateTVETTotal(cat1, cat2, exam, type);
+    } else {
+        return calculateNursingTotal(cat1, cat2, exam, type);
+    }
+}
+
+function getMarksEntryGrade(score) {
+    const program = window.me_currentProgram || 
+                    document.getElementById('me_program_select')?.value || 
+                    '';
+    const isTVET = program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+    
+    if (isTVET) {
+        return getTVETGrade(score);
+    } else {
+        return getNursingGrade(score);
+    }
+}
+
+// ============================================================
+// ✅ NURSING GRADING - ORIGINAL WORKING FORMULA
+// ============================================================
+
+function getNursingGrade(score) {
+    if (score >= 75) {
+        return { 
+            grade: 'A', 
+            rating: 'Distinction', 
+            points: 4.0, 
+            color: '#065f46', 
+            bgColor: '#d1fae5' 
         };
+    } else if (score >= 65) {
+        return { 
+            grade: 'B', 
+            rating: 'Credit', 
+            points: 3.0, 
+            color: '#1e40af', 
+            bgColor: '#dbeafe' 
+        };
+    } else if (score >= 60) {
+        return { 
+            grade: 'C', 
+            rating: 'Pass', 
+            points: 2.0, 
+            color: '#92400e', 
+            bgColor: '#fef3c7' 
+        };
+    } else {
+        return { 
+            grade: 'D', 
+            rating: 'Fail', 
+            points: 0.0, 
+            color: '#991b1b', 
+            bgColor: '#fee2e2' 
+        };
+    }
+}
 
-        /*
-         * Preserve the selected unit information for the notification
-         * and UI without assuming an exams.unit_id column exists.
-         */
-        if(selectedUnit){
-            examData.unit_code=selectedUnit.unit_code||null;
-            examData.unit_name=selectedUnit.unit_name||null;
+// ============================================================
+// ✅ TVET COMPETENCY-BASED GRADING - FIXED
+// ============================================================
+
+function getTVETGrade(score) {
+    if (score === null || score === undefined || score === 0) {
+        return { 
+            grade: 'E', 
+            rating: 'NOT YET COMPETENT',  // ✅ TVET rating
+            points: 0.0,
+            color: '#991b1b', 
+            bgColor: '#fee2e2' 
+        };
+    }
+    
+    if (score >= 80 && score <= 100) {
+        return { 
+            grade: 'A', 
+            rating: 'MASTERY',  // ✅ TVET rating - NOT "Distinction"!
+            points: 4.0,
+            color: '#065f46', 
+            bgColor: '#d1fae5' 
+        };
+    } else if (score >= 65 && score <= 79) {
+        return { 
+            grade: 'B', 
+            rating: 'PROFICIENT',  // ✅ TVET rating - NOT "Credit"!
+            points: 3.0,
+            color: '#1e40af', 
+            bgColor: '#dbeafe' 
+        };
+    } else if (score >= 50 && score <= 64) {
+        return { 
+            grade: 'C', 
+            rating: 'COMPETENT',  // ✅ TVET rating - NOT "Pass"!
+            points: 2.0,
+            color: '#92400e', 
+            bgColor: '#fef3c7' 
+        };
+    } else if (score >= 0 && score <= 49) {
+        return { 
+            grade: 'E', 
+            rating: 'NOT YET COMPETENT',  // ✅ TVET rating
+            points: 0.0,
+            color: '#991b1b', 
+            bgColor: '#fee2e2' 
+        };
+    }
+    
+    return { 
+        grade: 'E', 
+        rating: 'NOT YET COMPETENT', 
+        points: 0.0,
+        color: '#94a3b8', 
+        bgColor: '#f1f5f9' 
+    };
+}
+
+// ============================================================
+// ✅ NURSING GRADING - ORIGINAL (Unchanged)
+// ============================================================
+
+function getNursingGrade(score) {
+    if (score >= 75) {
+        return { 
+            grade: 'A', 
+            rating: 'Distinction', 
+            points: 4.0, 
+            color: '#065f46', 
+            bgColor: '#d1fae5' 
+        };
+    } else if (score >= 65) {
+        return { 
+            grade: 'B', 
+            rating: 'Credit', 
+            points: 3.0, 
+            color: '#1e40af', 
+            bgColor: '#dbeafe' 
+        };
+    } else if (score >= 60) {
+        return { 
+            grade: 'C', 
+            rating: 'Pass', 
+            points: 2.0, 
+            color: '#92400e', 
+            bgColor: '#fef3c7' 
+        };
+    } else {
+        return { 
+            grade: 'D', 
+            rating: 'Fail', 
+            points: 0.0, 
+            color: '#991b1b', 
+            bgColor: '#fee2e2' 
+        };
+    }
+}
+
+function calculateTVETGrade(score) {
+    if (score === null || score === undefined || score === 0) return 'E';
+    if (score >= 80) return 'A';
+    if (score >= 65) return 'B';
+    if (score >= 50) return 'C';
+    return 'E';
+}
+
+function calculateTVETPoints(grade) {
+    const points = {
+        'A': 4.0,
+        'B': 3.0,
+        'C': 2.0,
+        'E': 0.0
+    };
+    return points[grade] || 0;
+}
+
+function getTVETStatus(score) {
+    if (score === null || score === undefined || score === 0) return 'NOT YET COMPETENT';
+    if (score >= 80) return 'MASTERY';
+    if (score >= 65) return 'PROFICIENT';
+    if (score >= 50) return 'COMPETENT';
+    return 'NOT YET COMPETENT';
+}
+
+function getTVETComment(score) {
+    if (score === null || score === undefined || score === 0) return 'FAIL';
+    if (score >= 80) return 'EXCELLENT';
+    if (score >= 65) return 'GOOD';
+    if (score >= 50) return 'SATISFACTORY';
+    return 'FAIL';
+}
+// ============================================================
+// ✅ CORRECT CALCULATE GRADE FUNCTION
+// ============================================================
+
+function calculateGrade(score, program) {
+    if (score === null || score === undefined || score === 0) {
+        // ✅ TVET gets E, Nursing gets D
+        return isTVETProgram() ? 'E' : 'D';
+    }
+    
+    if (isTVETProgram()) {
+        // ✅ TVET Grading
+        if (score >= 80) return 'A';
+        if (score >= 65) return 'B';
+        if (score >= 50) return 'C';
+        return 'E';  // ✅ FIXED: E for TVET below 50%
+    } else {
+        // ✅ Nursing Grading
+        if (score >= 75) return 'A';
+        if (score >= 65) return 'B';
+        if (score >= 60) return 'C';
+        return 'D';
+    }
+}
+// ============================================================
+// ✅ RETAKE/SUPPLEMENTARY FUNCTIONS
+// ============================================================
+
+async function loadRetakeData(block, unit, year) {
+    try {
+        const { data, error } = await sb
+            .from('student_retakes')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year)
+            .order('attempt_number', { ascending: true });
+        
+        if (error) throw error;
+        
+        const retakeMap = {};
+        data?.forEach(retake => {
+            const key = retake.admission_number;
+            if (!retakeMap[key]) retakeMap[key] = [];
+            retakeMap[key].push(retake);
+        });
+        
+        me_retakeData = retakeMap;
+        console.log(`📊 Loaded retake data for ${Object.keys(retakeMap).length} students`);
+        return retakeMap;
+        
+    } catch (error) {
+        console.error('Error loading retake data:', error);
+        return {};
+    }
+}
+
+// ============================================================
+// RECORD RETAKE EXAM - WITH AUTO-UNPUBLISH
+// ============================================================
+
+async function recordRetakeExam(admission, studentName, unit, block, program, year, examScore, remarks) {
+    // Get current retake count
+    const existingRetakes = me_retakeData[admission] || [];
+    const attemptNumber = existingRetakes.length + 1;
+    
+    if (attemptNumber > MAX_RETAKES) {
+        showNotification(`⚠️ Maximum retakes (${MAX_RETAKES}) reached for this student`, 'error');
+        return false;
+    }
+    
+    // Calculate total and grade
+    const cat1 = 0; // Retake only uses exam score
+    const cat2 = 0;
+    const assessmentType = 'exam_only';
+    const total = calculateMarksEntryTotal(cat1, cat2, examScore, assessmentType);
+    const gradeInfo = getMarksEntryGrade(total);
+    const isPassing = total >= getPassingThreshold();
+    
+    const retakeData = {
+        admission_number: admission,
+        student_name: studentName,
+        block: block,
+        subject_name: unit,
+        program: program,
+        academic_year: year,
+        attempt_number: attemptNumber,
+        exam_score: examScore,
+        total_score: total,
+        grade: gradeInfo.grade,
+        status: isPassing ? 'PASS' : 'FAIL',
+        remarks: remarks || `Retake attempt #${attemptNumber}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+    
+    try {
+        // Insert retake record
+        const { error } = await sb
+            .from('student_retakes')
+            .insert(retakeData);
+        
+        if (error) throw error;
+        
+        // ✅ STEP 1: Check if marks were published
+        const { data: existingMark, error: fetchError } = await sb
+            .from('student_marks')
+            .select('published, approval_status')
+            .eq('admission_number', admission)
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('academic_year', year)
+            .maybeSingle();
+        
+        if (fetchError) {
+            console.warn('Could not fetch existing mark status:', fetchError);
         }
-
-        /*
-         * Some installations may not have unit_code/unit_name columns
-         * on exams. Retry without those optional fields if PostgREST
-         * reports an unknown-column error.
-         */
-        let insertResult=await supabase
-            .from('exams')
-            .insert(examData)
-            .select('id');
-
-        if(insertResult.error &&
-           /column .* (unit_code|unit_name) .* does not exist/i.test(insertResult.error.message||'')){
-            delete examData.unit_code;
-            delete examData.unit_name;
-
-            insertResult=await supabase
-                .from('exams')
-                .insert(examData)
-                .select('id');
+        
+        // ✅ STEP 2: Build update data
+        const updateData = {
+            retake_count: attemptNumber,
+            retake_score: examScore,
+            retake_grade: gradeInfo.grade,
+            retake_status: isPassing ? 'PASS' : 'FAIL',
+            retake_date: new Date().toISOString(),
+            final_grade: isPassing ? gradeInfo.grade : null,
+            final_status: isPassing ? 'PASS' : 'FAIL',
+            updated_at: new Date().toISOString()
+        };
+        
+        // ✅ STEP 3: If marks were published, UNPUBLISH them
+        if (existingMark && existingMark.published === true) {
+            updateData.published = false;
+            updateData.published_at = null;
+            updateData.published_by = null;
+            updateData.unpublished_at = new Date().toISOString();
+            updateData.unpublished_reason = 'Retake recorded - needs re-publishing';
+            
+            // If approval_status was 'approved', reset to 'draft' for review
+            if (existingMark.approval_status === 'approved') {
+                updateData.approval_status = 'draft';
+            }
+            
+            console.log(`🔓 Unpublished marks for ${studentName} (${admission}) - retake recorded, needs re-publishing`);
         }
-
-        if(insertResult.error)throw insertResult.error;
-
-        examData.id=insertResult.data?.[0]?.id;
-
-        let emailResult={sent:0,total:0,failed:0};
-
-        if(notifyStudents&&recipients.length>0){
-            emailResult=await sendExamNotificationEmail(examData,recipients);
+        
+        // ✅ STEP 4: Update student_marks
+        const { error: updateError } = await sb
+            .from('student_marks')
+            .update(updateData)
+            .eq('admission_number', admission)
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('academic_year', year);
+        
+        if (updateError) {
+            console.warn('Could not update student_marks with retake info:', updateError);
         }
-
-        let feedbackMsg=`✅ "${fields.title}" created successfully!`;
-
-        if(selectedUnit){
-            feedbackMsg+=` 📚 ${selectedUnit.unit_code} — ${selectedUnit.unit_name}`;
+        
+        // ✅ STEP 5: Log the action
+        try {
+            const logData = {
+                block: block,
+                subject: unit,
+                academic_year: year,
+                action: existingMark && existingMark.published === true ? 'retake_unpublished' : 'retake_recorded',
+                action_by: window.currentUser?.id || null,
+                action_by_name: window.currentUser?.full_name || window.currentUser?.name || 'System',
+                admission: admission,
+                student_name: studentName,
+                retake_attempt: attemptNumber,
+                retake_score: examScore,
+                created_at: new Date().toISOString()
+            };
+            
+            if (existingMark && existingMark.published === true) {
+                logData.reason = `Retake recorded (attempt #${attemptNumber}) - marks auto-unpublished for re-review`;
+            } else {
+                logData.reason = `Retake recorded (attempt #${attemptNumber})`;
+            }
+            
+            await sb
+                .from('mark_approval_logs')
+                .insert(logData);
+        } catch (logError) {
+            console.warn('Could not save approval log:', logError);
         }
+        
+        // ✅ STEP 6: Refresh retake data
+        await loadRetakeData(block, unit, year);
+        
+        // ✅ STEP 7: Show notification
+        let message = `✅ Retake recorded for ${studentName} (Attempt #${attemptNumber})`;
+        if (existingMark && existingMark.published === true) {
+            message += ' 🔓 Marks auto-unpublished - please review and re-publish';
+        }
+        showNotification(message, 'success');
+        
+        return true;
+        
+    } catch (error) {
+        console.error('Error recording retake:', error);
+        showNotification('❌ Error recording retake: ' + error.message, 'error');
+        return false;
+    }
+}
+function getRetakeBadge(retakeCount, isPassing) {
+    if (retakeCount === 0) return '';
+    
+    const color = isPassing ? '#059669' : '#dc2626';
+    const icon = isPassing ? '✅' : '❌';
+    const text = isPassing ? 'Passed' : 'Failed';
+    
+    return `<span style="display: inline-block; margin-left: 6px; background: ${color}; color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 700;">
+        ⭐ R${retakeCount} ${icon}
+    </span>`;
+}
 
-        if(notifyStudents){
-            if(recipients.length>0){
-                feedbackMsg+=` 📧 ${emailResult.sent} emails sent to ${recipients.length} students.`;
-                if(emailResult.failed>0){
-                    feedbackMsg+=` ⚠️ ${emailResult.failed} failed.`;
-                }
-            }else{
-                feedbackMsg+=' ⚠️ No students found to notify.';
+function getRetakeHistoryDisplay(retakes) {
+    if (!retakes || retakes.length === 0) return 'First attempt';
+    
+    let html = '<div style="font-size: 11px; line-height: 1.4;">';
+    retakes.forEach((r, i) => {
+        const isPass = r.status === 'PASS';
+        html += `<div style="display: flex; align-items: center; gap: 4px; ${i > 0 ? 'margin-top: 2px;' : ''}">`;
+        html += `<span style="color: #94a3b8;">#${r.attempt_number}:</span>`;
+        html += `<span style="font-weight: 600; color: ${isPass ? '#059669' : '#dc2626'};">${r.exam_score}%</span>`;
+        html += `<span style="color: ${isPass ? '#059669' : '#dc2626'};">${isPass ? '✅' : '❌'}</span>`;
+        html += `</div>`;
+    });
+    html += '</div>';
+    return html;
+}
+
+// ============================================================
+// OPEN RETAKE MODAL
+// ============================================================
+
+function openRetakeModal(admission, name, unit, block) {
+    const modal = document.getElementById('retakeModal');
+    if (!modal) {
+        // Create modal if it doesn't exist
+        createRetakeModal();
+        setTimeout(() => openRetakeModal(admission, name, unit, block), 100);
+        return;
+    }
+    
+    const retakes = me_retakeData[admission] || [];
+    const attemptNumber = retakes.length + 1;
+    
+    document.getElementById('retake_student_name').textContent = name;
+    document.getElementById('retake_admission').textContent = admission;
+    document.getElementById('retake_unit').textContent = unit;
+    document.getElementById('retake_block').textContent = block.replace(/_/g, ' ');
+    document.getElementById('retake_attempt').textContent = attemptNumber;
+    document.getElementById('retake_max_attempts').textContent = MAX_RETAKES;
+    
+    // Show attempt history
+    const historyContainer = document.getElementById('retake_history');
+    if (historyContainer) {
+        if (retakes.length > 0) {
+            let historyHtml = '<div style="margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 6px;">';
+            historyHtml += '<p style="font-weight: 600; margin: 0 0 8px 0; font-size: 13px; color: #475569;">📋 Attempt History:</p>';
+            retakes.forEach((r, i) => {
+                const isPass = r.status === 'PASS';
+                historyHtml += `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
+                    <span>Attempt #${r.attempt_number}</span>
+                    <span style="font-weight: 600; color: ${isPass ? '#059669' : '#dc2626'};">${r.exam_score}%</span>
+                    <span style="color: ${isPass ? '#059669' : '#dc2626'};">${r.status}</span>
+                    <span style="color: #94a3b8; font-size: 10px;">${new Date(r.created_at).toLocaleDateString()}</span>
+                </div>`;
+            });
+            historyHtml += '</div>';
+            historyContainer.innerHTML = historyHtml;
+            historyContainer.style.display = 'block';
+        } else {
+            historyContainer.style.display = 'none';
+        }
+    }
+    
+    // Store current retake info
+    me_currentRetakeStudent = { admission, name };
+    me_currentRetakeUnit = unit;
+    
+    // Clear previous input
+    document.getElementById('retake_score').value = '';
+    document.getElementById('retake_remarks').value = '';
+    
+    modal.style.display = 'flex';
+}
+
+function closeRetakeModal() {
+    document.getElementById('retakeModal').style.display = 'none';
+}
+
+// ============================================================
+// SAVE RETAKE EXAM - ENHANCED WITH AUTO-UNPUBLISH FEEDBACK
+// ============================================================
+
+async function saveRetakeExam() {
+    const scoreInput = document.getElementById('retake_score');
+    const remarksInput = document.getElementById('retake_remarks');
+    
+    const examScore = parseFloat(scoreInput?.value);
+    const remarks = remarksInput?.value || '';
+    
+    // ✅ Validate score
+    if (isNaN(examScore) || examScore < 0 || examScore > 100) {
+        showNotification('⚠️ Please enter a valid score between 0 and 100', 'warning');
+        return;
+    }
+    
+    // ✅ Validate student selected
+    if (!me_currentRetakeStudent) {
+        showNotification('⚠️ No student selected', 'error');
+        return;
+    }
+    
+    // ✅ Confirm before saving
+    const studentName = me_currentRetakeStudent.name;
+    const confirmMsg = `⚠️ Record retake for ${studentName}?\n\n` +
+        `Score: ${examScore}%\n` +
+        `Unit: ${me_currentRetakeUnit}\n` +
+        `Block: ${me_currentBlock}\n\n` +
+        `This will update the student's marks.`;
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    // ✅ Show loading
+    if (typeof showLoading === 'function') {
+        showLoading(`Recording retake for ${studentName}...`);
+    }
+    
+    try {
+        const { admission, name } = me_currentRetakeStudent;
+        const unit = me_currentRetakeUnit;
+        const block = me_currentBlock;
+        const program = me_currentProgram;
+        const year = me_currentYear;
+        
+        // ✅ Check if marks were published before recording retake
+        let wasPublished = false;
+        try {
+            const { data: existingMark } = await sb
+                .from('student_marks')
+                .select('published')
+                .eq('admission_number', admission)
+                .eq('subject_name', unit)
+                .eq('block', block)
+                .eq('academic_year', year)
+                .maybeSingle();
+            
+            wasPublished = existingMark?.published === true;
+        } catch (e) {
+            console.warn('Could not check publish status:', e);
+        }
+        
+        // ✅ Record the retake
+        const success = await recordRetakeExam(admission, name, unit, block, program, year, examScore, remarks);
+        
+        // ✅ Hide loading
+        if (typeof hideLoading === 'function') {
+            hideLoading();
+        }
+        
+        if (success) {
+            // ✅ Close modal
+            closeRetakeModal();
+            
+            // ✅ Show success message with auto-unpublish warning if applicable
+            if (wasPublished) {
+                showNotification(
+                    `✅ Retake recorded for ${name} (${examScore}%) 🔓 Marks were auto-unpublished. Please review and re-publish.`,
+                    'warning'
+                );
+            } else {
+                showNotification(
+                    `✅ Retake recorded for ${name} (${examScore}%)`,
+                    'success'
+                );
+            }
+            
+            // ✅ Refresh the marks table
+            setTimeout(() => {
+                loadMarksEntry();
+            }, 500);
+        }
+        
+    } catch (error) {
+        // ✅ Hide loading on error
+        if (typeof hideLoading === 'function') {
+            hideLoading();
+        }
+        console.error('❌ Error saving retake:', error);
+        showNotification('❌ Error saving retake: ' + error.message, 'error');
+    }
+}
+
+function createRetakeModal() {
+    const modalHTML = `
+    <div id="retakeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #1e293b;">
+                    <i class="fas fa-sync-alt" style="color: #f59e0b;"></i> Supplementary/Retake Exam
+                </h3>
+                <button onclick="closeRetakeModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #f59e0b;">
+                <p style="margin: 0 0 4px 0;"><strong>Student:</strong> <span id="retake_student_name"></span></p>
+                <p style="margin: 0 0 4px 0;"><strong>Admission:</strong> <span id="retake_admission"></span></p>
+                <p style="margin: 0 0 4px 0;"><strong>Unit:</strong> <span id="retake_unit"></span></p>
+                <p style="margin: 0 0 4px 0;"><strong>Block:</strong> <span id="retake_block"></span></p>
+                <p style="margin: 0;"><strong>Attempt:</strong> #<span id="retake_attempt"></span> of <span id="retake_max_attempts"></span></p>
+            </div>
+            
+            <div id="retake_history" style="display: none;"></div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px;">Exam Score (%)</label>
+                <input type="number" id="retake_score" min="0" max="100" step="0.5" 
+                       style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px;" 
+                       placeholder="Enter score (0-100)">
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px;">Remarks (Optional)</label>
+                <input type="text" id="retake_remarks" 
+                       style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px;" 
+                       placeholder="e.g., Improvement shown, Second attempt">
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="closeRetakeModal()" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Cancel
+                </button>
+                <button onclick="saveRetakeExam()" style="padding: 10px 24px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-save"></i> Save Retake
+                </button>
+            </div>
+        </div>
+    </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// ============================================================
+// RECALCULATE ALL TOTALS
+// ============================================================
+
+function recalculateAllTotals() {
+    const assessmentType = me_currentAssessmentType;
+    const rows = document.querySelectorAll('#me_marks_container table tbody tr');
+    
+    rows.forEach((row, index) => {
+        const cat1Input = document.getElementById(`me_cat1_${index}`);
+        const cat2Input = document.getElementById(`me_cat2_${index}`);
+        const examInput = document.getElementById(`me_exam_${index}`);
+        
+        const cat1 = parseFloat(cat1Input?.value) || 0;
+        const cat2 = parseFloat(cat2Input?.value) || 0;
+        const exam = parseFloat(examInput?.value) || 0;
+        
+        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
+        const gradeInfo = getMarksEntryGrade(total);
+        const passingThreshold = getPassingThreshold();
+        const isPassing = total >= passingThreshold;
+        
+        const totalEl = document.getElementById(`me_total_${index}`);
+        if (totalEl) {
+            totalEl.textContent = total > 0 ? total : '--';
+            totalEl.style.color = isPassing ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
+        }
+        
+        const gradeEl = document.getElementById(`me_grade_${index}`);
+        if (gradeEl) {
+            gradeEl.textContent = total > 0 ? gradeInfo.grade : '--';
+            gradeEl.style.color = gradeInfo.color;
+        }
+        
+        const pointsEl = document.getElementById(`me_points_${index}`);
+        if (pointsEl) {
+            pointsEl.textContent = total > 0 ? gradeInfo.points.toFixed(1) : '--';
+            pointsEl.style.color = gradeInfo.color;
+        }
+        
+        const ratingEl = document.getElementById(`me_rating_${index}`);
+        if (ratingEl) {
+            if (total > 0) {
+                ratingEl.innerHTML = `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
+            } else {
+                ratingEl.innerHTML = '<span style="color: #94a3b8;">PENDING</span>';
             }
         }
+        
+        if (me_currentMarks && me_currentMarks[index]) {
+            me_currentMarks[index].cat1 = cat1;
+            me_currentMarks[index].cat2 = cat2;
+            me_currentMarks[index].exam = exam;
+            me_currentMarks[index].assessmentType = assessmentType;
+        }
+    });
+    
+    updateMarksEntryStats(me_currentMarks, assessmentType);
+    updateAssessmentTypeDisplay();
+    
+    console.log(`✅ Recalculated all totals with assessment type: ${assessmentType}`);
+}
 
-        showFeedback(feedbackMsg,'success');
+// ============================================================
+// LOAD BLOCKS
+// ============================================================
 
-        if(e.target)e.target.reset();
-
-        selectedStudentsForNotification=[];
-        window.selectedExamUnit=null;
-
-        updateSelectedStudentsDisplay();
-
-        const nc=document.getElementById('exam_notify_students');
-        if(nc)nc.checked=true;
-
-        ExamCache.clear();
-        loadExams(true);
-
-        /*
-         * Reinitialize the create unit selector after form reset.
-         */
-        setTimeout(()=>{
-            const program=document.getElementById('exam_program')?.value||'';
-            if(program)initCreateCourseDropdown(program);
-        },100);
-
-    }catch(error){
-        console.error('❌ Exam creation failed:',error);
-        showFeedback(`Failed: ${error.message}`,'error');
-    }finally{
-        btn.disabled=false;
-        btn.innerHTML=original;
+async function loadMEBlocks() {
+    const program = document.getElementById('me_program_select')?.value;
+    const blockSelect = document.getElementById('me_block_select');
+    const unitSelect = document.getElementById('me_subject_select');
+    const year = document.getElementById('me_year_select')?.value;
+    
+    if (!program) {
+        blockSelect.innerHTML = '<option value="">-- Select Program First --</option>';
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+        return;
+    }
+    
+    me_currentProgram = program;
+    me_currentYear = year;
+    
+    blockSelect.innerHTML = '<option value="">Loading blocks...</option>';
+    
+    try {
+        const { data, error } = await sb
+            .from('units_catalog')
+            .select('block')
+            .eq('program', program)
+            .eq('status', 'active')
+            .order('block', { ascending: true });
+        
+        if (error) throw error;
+        
+        const blocks = [...new Set(data.map(d => d.block))];
+        
+        blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
+        blocks.forEach(block => {
+            const option = document.createElement('option');
+            option.value = block;
+            option.textContent = block.replace(/_/g, ' ');
+            blockSelect.appendChild(option);
+        });
+        
+        if (blocks.length === 0) {
+            blockSelect.innerHTML = '<option value="">No blocks found</option>';
+        }
+        
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+        
+    } catch (error) {
+        console.error('Error loading blocks:', error);
+        blockSelect.innerHTML = '<option value="">Error loading blocks</option>';
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading blocks: ' + error.message, 'error');
+        }
     }
 }
 
+// ============================================================
+// LOAD UNITS - FIXED
+// ============================================================
 
-async function openEditExamModal(id){
-    try{
-        const supabase=window.sb||window.supabase;if(!supabase)throw new Error('Supabase client not available');
-        const {data:exam,error}=await supabase.from('exams').select('*').eq('id',id).single();if(error)throw error;
-        const modal=document.getElementById('examEditModal');if(!modal){showFeedback('Edit modal not found','error');return;}
-        const setVal=(elId,val)=>{const el=document.getElementById(elId);if(el)el.value=val||''};
-        setVal('edit_exam_id',exam.id);setVal('edit_exam_title',exam.title||exam.exam_name||'');setVal('edit_exam_type',exam.exam_type||'CAT');setVal('edit_exam_status',exam.status||'Upcoming');
-        setVal('edit_exam_basis',exam.exam_basis||'ordinary');if(exam.exam_date){const d=new Date(exam.exam_date);if(!isNaN(d.getTime()))setVal('edit_exam_date',d.toISOString().split('T')[0]);}
-        if(exam.exam_start_time?.includes(':'))setVal('edit_exam_start_time',exam.exam_start_time.substring(0,5));setVal('edit_exam_duration',exam.duration_minutes||60);setVal('edit_exam_deadline',exam.marks_entry_deadline||'');
-        setVal('edit_exam_program',exam.target_program||exam.program_type||'');setVal('edit_exam_block',exam.block||exam.block_term||'');setVal('edit_exam_intake',exam.intake_year||'');setVal('edit_exam_intake_month',exam.intake_month||'');
-        setVal('edit_exam_out_of',exam.marks_out_of||exam.total_marks||100);setVal('edit_exam_pass_mark',exam.pass_mark||50);setVal('edit_exam_min_fee',exam.min_fee_balance||0);setVal('edit_exam_link',exam.online_link||exam.exam_link||'');setVal('edit_exam_course',exam.course_id||'');
-        if(typeof initEditCourseDropdown==='function')await initEditCourseDropdown(exam.target_program||'',exam.course_id);
-        const editTitle=document.getElementById('edit_exam_title');if(editTitle)editTitle.readOnly=true;
-        if(typeof renderAssignedClasses==='function')renderAssignedClasses(exam.id,exam.assigned_classes||[]);modal.style.display='flex';
-    }catch(error){showFeedback('❌ Failed to load exam: '+error.message,'error');}
-}
-
-async function saveEditedExam(event){
-    if(event){event.preventDefault();event.stopPropagation();}
-    const id=document.getElementById('edit_exam_id')?.value;if(!id){showFeedback('❌ Exam ID not found','error');return;}
-    const outOf=parseInt(document.getElementById('edit_exam_out_of')?.value)||100;
-    const data={
-        title:document.getElementById('edit_exam_title')?.value?.trim()||'',exam_name:document.getElementById('edit_exam_title')?.value?.trim()||'',exam_type:document.getElementById('edit_exam_type')?.value||'CAT',
-        status:document.getElementById('edit_exam_status')?.value||'Upcoming',exam_basis:document.getElementById('edit_exam_basis')?.value||'ordinary',exam_date:document.getElementById('edit_exam_date')?.value||null,
-        exam_start_time:document.getElementById('edit_exam_start_time')?.value||null,duration_minutes:parseInt(document.getElementById('edit_exam_duration')?.value)||60,marks_entry_deadline:document.getElementById('edit_exam_deadline')?.value||null,
-        target_program:document.getElementById('edit_exam_program')?.value||'',program_type:document.getElementById('edit_exam_program')?.value||'',block:document.getElementById('edit_exam_block')?.value||'',block_term:document.getElementById('edit_exam_block')?.value||'',
-        intake_year:parseInt(document.getElementById('edit_exam_intake')?.value)||null,intake_month:document.getElementById('edit_exam_intake_month')?.value||null,course_id:document.getElementById('edit_exam_course')?.value||null,
-        marks_out_of:outOf,total_marks:outOf,MARKS:String(outOf),pass_mark:parseInt(document.getElementById('edit_exam_pass_mark')?.value)||50,min_fee_balance:parseInt(document.getElementById('edit_exam_min_fee')?.value)||0,
-        online_link:document.getElementById('edit_exam_link')?.value?.trim()||null,exam_link:document.getElementById('edit_exam_link')?.value?.trim()||null,updated_at:new Date().toISOString()
-    };
-    Object.keys(data).forEach(k=>{if(data[k]===undefined||data[k]===null||data[k]==='')delete data[k]});
-    const saveBtn=document.querySelector('#editExamForm button[type="submit"]')||document.querySelector('#examEditModal .btn-primary');
-    const original=saveBtn?.textContent||'Save Changes';if(saveBtn){saveBtn.disabled=true;saveBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Saving...';}
-    try{const supabase=window.sb||window.supabase;if(!supabase)throw new Error('Supabase client not available');const {error}=await supabase.from('exams').update(data).eq('id',id);if(error)throw error;showFeedback('✅ Exam updated successfully!','success');ExamCache.clear();await loadExams(true);closeEditModal();}
-    catch(error){showFeedback('❌ Failed to save: '+error.message,'error');if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML=original;}}
-}
-
-function renderAssignedClasses(examId,classes){
-    const container=document.getElementById('edit_exam_classes_container');if(!container)return;
-    container.innerHTML=`<label style="font-weight:600;font-size:11px;text-transform:uppercase;color:#475569;display:block;margin-bottom:4px;">Assigned Blocks</label><div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:#f8fafc;border-radius:8px;min-height:32px;border:1px solid #e2e8f0;">${classes?.length?classes.map(c=>`<span style="background:#7c3aed;color:#fff;padding:2px 12px;border-radius:16px;font-size:11px;display:inline-flex;align-items:center;gap:4px;">${escapeHtml(c)}<span onclick="removeClass('${examId}','${escapeHtml(c)}')" style="cursor:pointer;color:#fca5a5;font-weight:700;">&times;</span></span>`).join(''):'<span style="color:#94a3b8;font-size:12px;">No blocks assigned</span>'}</div><div style="display:flex;gap:6px;margin-top:6px;"><input type="text" id="edit_exam_add_class" placeholder="Add block" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #e2e8f0;font-size:12px;"><button onclick="addClass('${examId}')" style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;"><i class="fas fa-plus"></i></button></div>`;
-}
-async function addClass(examId){
-    const input=document.getElementById('edit_exam_add_class');if(!input?.value.trim())return;const className=input.value.trim();
-    try{const supabase=window.sb||window.supabase;const {data:exam}=await supabase.from('exams').select('assigned_classes').eq('id',examId).single();const current=exam?.assigned_classes||[];if(current.includes(className)){showFeedback('Already assigned','warning');return;}current.push(className);const {error}=await supabase.from('exams').update({assigned_classes:current}).eq('id',examId);if(error)throw error;showFeedback(`✅ Added "${className}"`,'success');input.value='';renderAssignedClasses(examId,current);}catch(e){showFeedback(`Error: ${e.message}`,'error');}
-}
-async function removeClass(examId,className){
-    if(!confirm(`Remove "${className}"?`))return;try{const supabase=window.sb||window.supabase;const {data:exam}=await supabase.from('exams').select('assigned_classes').eq('id',examId).single();const current=(exam?.assigned_classes||[]).filter(c=>c!==className);const {error}=await supabase.from('exams').update({assigned_classes:current}).eq('id',examId);if(error)throw error;showFeedback(`✅ Removed "${className}"`,'success');renderAssignedClasses(examId,current);}catch(e){showFeedback(`Error: ${e.message}`,'error');}
-}
-async function deleteExam(id,name){
-    if(!confirm(`Delete "${name}"?`))return;try{const supabase=window.sb||window.supabase;const {error}=await supabase.from('exams').delete().eq('id',id);if(error)throw error;ExamCache.clear();showFeedback(`✅ "${name}" deleted`,'success');loadExams(true);}catch(e){showFeedback(`Delete failed: ${e.message}`,'error');}
-}
-async function closeExam(id){
-    if(!confirm('Close this exam?'))return;try{const supabase=window.sb||window.supabase;const {error}=await supabase.from('exams').update({status:'Completed',updated_at:new Date().toISOString()}).eq('id',id);if(error)throw error;ExamCache.clear();showFeedback('✅ Exam closed','success');loadExams(true);}catch(e){showFeedback(`Failed: ${e.message}`,'error');}
-}
-function closeEditModal(){const modal=document.getElementById('examEditModal');if(modal){modal.style.display='none';const form=document.getElementById('editExamForm');if(form)form.reset();}}
-
-const filterExamsTable=debounce(function(){
-    const search=document.getElementById('exam-search')?.value?.toLowerCase()||'',program=document.getElementById('exam_filter_program')?.value||'',status=document.getElementById('exam_filter_status')?.value||'',month=document.getElementById('exam_filter_intake_month')?.value||'';
-    document.querySelectorAll('#exams-table-body tr').forEach(row=>{if(row.querySelector('td[colspan]'))return;const cells=row.querySelectorAll('td');if(cells.length<12)return;const title=cells[3]?.textContent?.toLowerCase()||'',prog=cells[1]?.textContent||'',stat=cells[10]?.textContent||'',intake=cells[8]?.textContent||'';let show=true;if(search&&!title.includes(search))show=false;if(program&&!prog.includes(program))show=false;if(status&&!stat.toLowerCase().includes(status.toLowerCase()))show=false;if(month&&!intake.includes(month))show=false;row.style.display=show?'':'none';});
-},300);
-
-function exportExamsToCSV(){
-    const rows=document.querySelectorAll('#exams-table-body tr'),visible=Array.from(rows).filter(r=>r.style.display!=='none'&&!r.querySelector('td[colspan]'));if(!visible.length){showFeedback('No exams to export','warning');return;}
-    let csv='Type,Program,Course,Title,Out Of,Pass Mark,Date,Duration,Intake,Block,Status\n';visible.forEach(row=>{const cols=row.querySelectorAll('td');if(cols.length>=11){const data=[];for(let i=0;i<11;i++)data.push(`"${String(cols[i]?.textContent||'').replace(/"/g,'""').trim()}"`);csv+=data.join(',')+'\n';}});
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`exams_${new Date().toISOString().split('T')[0]}.csv`;a.click();URL.revokeObjectURL(url);showFeedback('✅ Exported!','success');
-}
-
-function showExamTab(tab){
-    document.querySelectorAll('.exam-tab-content').forEach(el=>el.style.display='none');document.querySelectorAll('.exam-tab-btn').forEach(btn=>{btn.className='exam-tab-btn';btn.style.background='transparent';btn.style.color='#334155';btn.style.boxShadow='none';});
-    if(tab==='list'){document.getElementById('examListTab').style.display='block';const btn=document.getElementById('examListTabBtn');if(btn){btn.className='exam-tab-btn active';btn.style.background='linear-gradient(135deg,#7c3aed,#6d28d9)';btn.style.color='white';btn.style.boxShadow='0 4px 16px rgba(124,58,237,0.3)';}loadExams();}
-    else if(tab==='create'){document.getElementById('examCreateTab').style.display='block';const btn=document.getElementById('examCreateTabBtn');if(btn){btn.className='exam-tab-btn active';btn.style.background='linear-gradient(135deg,#7c3aed,#6d28d9)';btn.style.color='white';btn.style.boxShadow='0 4px 16px rgba(124,58,237,0.3)';}loadAvailableClassesForExam();const program=document.getElementById('exam_program')?.value||'';if(typeof initCreateCourseDropdown==='function')initCreateCourseDropdown(program);setTimeout(loadStudentsForNotification,800);}
-}
-
-async function getCurrentUser(){
-    try{
-        if(window.currentUserProfile?.user_id)return window.currentUserProfile;const stored=sessionStorage.getItem('currentUserProfile');if(stored){const user=JSON.parse(stored);if(user?.user_id)return user;}
-        const supabase=window.sb||window.supabase;if(!supabase)return null;const {data:{user}}=await supabase.auth.getUser();if(user){const {data:profile}=await supabase.from('consolidated_user_profiles_table').select('*').eq('user_id',user.id).single();if(profile){window.currentUserProfile=profile;sessionStorage.setItem('currentUserProfile',JSON.stringify(profile));return profile;}}return null;
-    }catch(e){return null;}
-}
-
-let createCoursesData=[],editCoursesData=[];
-let createUnitsData=[];
-
-/*
- * CREATE EXAM COURSE/UNIT SOURCE
- * --------------------------------
- * The create form uses units_catalog, not courses.
- * Units are determined by the selected PROGRAM only.
- * Course/Unit search is independent of BLOCK/TERM and INTAKE YEAR.
- * We deliberately do NOT filter by intake_year because the curriculum
- * year in units_catalog is not the student's intake year.
- */
-function showCourseSearchDropdown(show=true){
-    const list=document.getElementById('createCourseDropdownList');
-    if(!list)return;
-    if(show){
-        list.classList.add('show');
-        list.style.setProperty('display','block','important');
-        list.style.setProperty('visibility','visible','important');
-        list.style.setProperty('opacity','1','important');
-        list.style.setProperty('z-index','999999','important');
-    }else{
-        list.classList.remove('show');
-        list.style.setProperty('display','none','important');
+async function loadMEUnits() {
+    const program = document.getElementById('me_program_select')?.value;
+    const block = document.getElementById('me_block_select')?.value;
+    const unitSelect = document.getElementById('me_subject_select');
+    const year = document.getElementById('me_year_select')?.value;
+    
+    if (!program || !block) {
+        unitSelect.innerHTML = '<option value="">-- Select Block First --</option>';
+        return;
+    }
+    
+    me_currentProgram = program;  // ✅ ADD THIS LINE
+    me_currentBlock = block;
+    
+    unitSelect.innerHTML = '<option value="">Loading units...</option>';
+    
+    try {
+        const { data, error } = await sb
+            .from('units_catalog')
+            .select('unit_code, unit_name, assessment_type')
+            .eq('program', program)
+            .eq('block', block)
+            .eq('status', 'active')
+            .order('unit_name', { ascending: true });
+        
+        if (error) throw error;
+        
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+        data.forEach(unit => {
+            const option = document.createElement('option');
+            option.value = unit.unit_name;
+            option.dataset.assessment = unit.assessment_type || 'full';
+            option.dataset.code = unit.unit_code || '';
+            option.textContent = `${unit.unit_code || ''} - ${unit.unit_name}`;
+            unitSelect.appendChild(option);
+        });
+        
+        if (data.length === 0) {
+            unitSelect.innerHTML = '<option value="">No units found for this block</option>';
+        }
+        
+        const assessmentSelect = document.getElementById('me_assessment_type');
+        if (assessmentSelect && data.length > 0) {
+            const firstUnit = data[0];
+            assessmentSelect.value = firstUnit.assessment_type || 'full';
+            assessmentSelect.disabled = true;
+        }
+        
+        await loadLecturerAssignments();
+        
+    } catch (error) {
+        console.error('Error loading units:', error);
+        unitSelect.innerHTML = '<option value="">Error loading units</option>';
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading units: ' + error.message, 'error');
+        }
     }
 }
+// ============================================================
+// LOAD MARKS ENTRY - FIXED
+// ============================================================
+// ============================================================
+// LOAD MARKS ENTRY - REGISTRATION-AWARE (FIXED)
+// ============================================================
 
-function installCourseSearchHandlers(){
-    if(window.__nchsmCourseSearchHandlersInstalled)return;
-    window.__nchsmCourseSearchHandlersInstalled=true;
-
-    document.addEventListener('input',async function(e){
-        if(!e.target || e.target.id!=='createCourseSearchInput')return;
-        const input=e.target;
-        const program=document.getElementById('exam_program')?.value||'';
-        console.log('🔎 Course/Unit search:', {term: input.value || '', loadedUnits: Array.isArray(createUnitsData) ? createUnitsData.length : 0, program});
-        showCourseSearchDropdown(true);
-        if(!Array.isArray(createUnitsData) || createUnitsData.length===0){
-            await loadCoursesForCreateDropdown(program);
+async function loadMarksEntry() {
+    const program = document.getElementById('me_program_select')?.value;
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const year = document.getElementById('me_year_select')?.value;
+    const unitSelect = document.getElementById('me_subject_select');
+    const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+    const assessmentType = selectedOption?.dataset?.assessment || 'full';
+    const unitCode = selectedOption?.dataset?.code || '';
+    
+    const dynamicContent = document.getElementById('marksEntryDynamicContent');
+    const placeholder = document.getElementById('marksEntryPlaceholder');
+    const container = document.getElementById('me_marks_container');
+    
+    if (!program || !block || !unit) {
+        if (dynamicContent) dynamicContent.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'block';
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
+                    <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
+                </div>
+            `;
         }
-        filterCreateCourseDropdown(input.value||'');
-    },true);
-
-    document.addEventListener('focusin',async function(e){
-        if(!e.target || e.target.id!=='createCourseSearchInput')return;
-        const input=e.target;
-        const program=document.getElementById('exam_program')?.value||'';
-        if(!Array.isArray(createUnitsData) || createUnitsData.length===0){
-            await loadCoursesForCreateDropdown(program);
-        }
-        filterCreateCourseDropdown(input.value||'');
-        showCourseSearchDropdown(true);
-    },true);
-
-    document.addEventListener('keydown',function(e){
-        if(!e.target || e.target.id!=='createCourseSearchInput')return;
-        const list=document.getElementById('createCourseDropdownList');
-        if(e.key==='Escape')showCourseSearchDropdown(false);
-        if(e.key==='Enter'){
-            const first=list?.querySelector('.dropdown-item');
-            if(first){first.click();e.preventDefault();}
-        }
-    },true);
-
-    document.addEventListener('mousedown',function(e){
-        const container=document.getElementById('createCourseSearchContainer');
-        if(container && !container.contains(e.target))showCourseSearchDropdown(false);
-    },true);
-}
-
-async function initCreateCourseDropdown(program=''){
-    const input=document.getElementById('createCourseSearchInput'),
-          list=document.getElementById('createCourseDropdownList');
-    installCourseSearchHandlers();
-    if(!input||!list)return;
-
-    await loadCoursesForCreateDropdown(program);
-    filterCreateCourseDropdown(input.value||'');
-
-    const typeInput=document.getElementById('exam_type');
-    if(typeInput&&!typeInput.dataset.examNameBound){
-        typeInput.dataset.examNameBound='1';
-        typeInput.addEventListener('change',buildExamNameFromCourse);
+        return;
     }
-
-    buildExamNameFromCourse();
-}
-
-async function loadCoursesForCreateDropdown(program=''){
-    try{
-        const supabase=window.sb||window.supabase;
-        if(!supabase){
-            createUnitsData=[];
-            filterCreateCourseDropdown('');
+    
+    if (dynamicContent) dynamicContent.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
+    
+    me_currentProgram = program;
+    me_currentBlock = block;
+    me_currentUnit = unit;
+    me_currentYear = year;
+    me_currentAssessmentType = assessmentType;
+    
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <div class="loading-spinner"></div>
+                <p style="color: #6b7280; margin-top: 10px;">Loading students for ${unitCode || unit}...</p>
+            </div>
+        `;
+    }
+    
+    try {
+        await loadRetakeData(block, unit, year);
+        
+        // ==========================================
+        // STEP 1: Try student_marks table first
+        // ==========================================
+        const { data: marks, error: marksError } = await sb
+            .from('student_marks')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (marksError) throw marksError;
+        
+        console.log(`📊 Found ${marks?.length || 0} marks records for ${unit}`);
+        
+        // ==========================================
+        // STEP 2: If no marks exist, fall back to approved registrations
+        // ==========================================
+        if (!marks || marks.length === 0) {
+            console.log(`⚠️ No marks records. Checking approved registrations...`);
+            await loadFromApprovedRegistrations(program, block, unit, year, unitCode);
             return;
         }
-
-        /*
-         * COURSE/UNIT SEARCH IS INTENTIONALLY INDEPENDENT OF BLOCK/TERM.
-         *
-         * The selected Block/Term controls the student notification
-         * population, but it must NEVER restrict the Course/Unit search.
-         * A lecturer should be able to type/search across the complete
-         * active units catalogue for the selected program.
-         *
-         * Example: selecting Block 5 must not hide a unit merely because
-         * its curriculum year/block differs from the student's intake.
-         */
-        let query=supabase
-            .from('units_catalog')
-            .select('id, unit_code, unit_name, program, block, term, year, unit_type, status, block_order, assessment_type')
-            .eq('status','active');
-
-        /* Program is the only academic filter for the Course/Unit list. */
-        if(program) query=query.eq('program',program);
-
-        const {data,error}=await query
-            .order('block_order',{ascending:true,nullsFirst:false})
-            .order('unit_code',{ascending:true});
-
-        if(error)throw error;
-
-        createUnitsData=data||[];
-        console.log('📚 units_catalog loaded for Course/Unit search:',{
-            program:program||'ALL PROGRAMS',
-            filter:'NONE — all active units for selected program',
-            count:createUnitsData.length,
-            units:createUnitsData.map(u=>`${u.unit_code} - ${u.unit_name}`)
+        
+        // ==========================================
+        // STEP 3: Normal path — render existing marks
+        // ==========================================
+        
+        // ==========================================
+        // FETCH STUDENT NAMES (match by UUID + admission)
+        // ==========================================
+        const admissions = marks.map(m => m.admission_number).filter(Boolean);
+        const studentUuids = marks.map(m => m.student_id).filter(Boolean);
+        
+        let allProfiles = [];
+        
+        // Query by admission_number
+        if (admissions.length > 0) {
+            const { data: byAdmission } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name')
+                .or(`student_id.in.(${admissions.join(',')}),admission_number.in.(${admissions.join(',')})`);
+            allProfiles = allProfiles.concat(byAdmission || []);
+        }
+        
+        // Query by UUID
+        if (studentUuids.length > 0) {
+            const { data: byUuid } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name')
+                .in('user_id', studentUuids);
+            allProfiles = allProfiles.concat(byUuid || []);
+        }
+        
+        // Build lookup that works with EITHER admission_number OR UUID
+        const studentMap = {};
+        allProfiles.forEach(s => {
+            const name = s.full_name || 'Unknown';
+            if (s.admission_number) studentMap[s.admission_number] = name;
+            if (s.student_id && !String(s.student_id).includes('-')) studentMap[s.student_id] = name;
+            if (s.user_id) studentMap[s.user_id] = name;
         });
-
-        filterCreateCourseDropdown('');
-    }catch(error){
-        console.error('❌ Failed to load units_catalog:',error);
-        createUnitsData=[];
-        filterCreateCourseDropdown('');
+        
+        const fullMarks = marks.map(m => {
+            const admission = m.admission_number || '';
+            const retakes = me_retakeData[admission] || [];
+            const hasRetake = retakes.length > 0;
+            const lastRetake = retakes[retakes.length - 1];
+            
+            return {
+                admission: admission,
+                student_id: m.student_id || '',
+                name: studentMap[admission] || studentMap[m.student_id] || m.student_name || 'Unknown',
+                program: program,
+                cat1: m.cat1_score || 0,
+                cat2: m.cat2_score || 0,
+                exam: m.exam_score || 0,
+                final: m.final_score || 0,
+                grade: m.grade || '',
+                gradedBy: m.graded_by || '',
+                assessmentType: m.assessment_type || assessmentType,
+                id: m.id || null,
+                approval_status: m.approval_status || 'draft',
+                published: m.published || false,
+                hasRetake: hasRetake,
+                retakeCount: retakes.length,
+                retakeScore: lastRetake?.exam_score || null,
+                retakeGrade: lastRetake?.grade || null,
+                retakeStatus: lastRetake?.status || null,
+                retakeHistory: retakes
+            };
+        });
+        
+        console.log(`📊 Displaying ${fullMarks.length} students from marks table`);
+        
+        me_currentMarks = fullMarks;
+        renderMarksEntryTable(fullMarks, unitCode, assessmentType, program);
+        updateMarksEntryStats(fullMarks, assessmentType);
+        await loadUnitColumnSettings();
+        updateAssessmentTypeDisplay();
+        
+    } catch (error) {
+        console.error('Error loading marks:', error);
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                    <h4 style="color: #991b1b;">Error loading marks</h4>
+                    <p style="color: #64748b;">${error.message}</p>
+                    <button onclick="loadMarksEntry()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+        }
     }
 }
 
-function filterCreateCourseDropdown(searchTerm=''){
-    const list=document.getElementById('createCourseDropdownList');
-    if(!list)return;
-
-    let filtered=Array.isArray(createUnitsData)?createUnitsData.slice():[];
-
-    if(searchTerm){
-        filtered=filtered.filter(u=>{
-            const text=[
-                u.unit_name||'',
-                u.unit_code||'',
-                u.program||'',
-                u.block||'',
-                u.assessment_type||''
-            ].join(' ').toLowerCase();
-
-            return text.includes(searchTerm);
+// ============================================================
+// LOAD FROM APPROVED REGISTRATIONS
+// Finds approved students, creates blank marks records
+// ============================================================
+async function loadFromApprovedRegistrations(program, block, unit, year, unitCode) {
+    const container = document.getElementById('me_marks_container');
+    
+    try {
+        const unitSelect = document.getElementById('me_subject_select');
+        const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+        const targetUnitCode = selectedOption?.dataset?.code || unitCode || '';
+        
+        console.log(`🔍 Searching approved registrations:`);
+        console.log(`   program=${program}, block=${block}, year=${year}`);
+        console.log(`   unit="${unit}" (code: ${targetUnitCode})`);
+        
+        // ==========================================
+        // Query approved registrations for this unit
+        // ==========================================
+        const { data: regs, error: regError } = await sb
+            .from('student_unit_registrations')
+            .select('student_id, unit_code, unit_name, block, program, academic_year, reg_type, status')
+            .eq('program', program)
+            .eq('block', block)
+            .eq('status', 'approved')
+            .eq('academic_year', parseInt(year));
+        
+        if (regError) throw regError;
+        
+        // Filter by unit_code OR unit_name client-side (handles both)
+        const matchingRegs = (regs || []).filter(r => 
+            r.unit_code === targetUnitCode || 
+            r.unit_name === unit ||
+            (r.unit_name && unit && r.unit_name.includes(unit)) ||
+            (unit && r.unit_name && unit.includes(r.unit_name))
+        );
+        
+        console.log(`✅ Found ${matchingRegs.length} approved registrations for this unit`);
+        
+        // ==========================================
+        // No approved registrations — check for pending ones
+        // ==========================================
+        if (matchingRegs.length === 0) {
+            const { data: allRegs } = await sb
+                .from('student_unit_registrations')
+                .select('student_id, unit_code, unit_name, status')
+                .eq('program', program)
+                .eq('block', block)
+                .eq('academic_year', parseInt(year));
+            
+            const pendingMatches = (allRegs || []).filter(r => 
+                (r.unit_code === targetUnitCode || 
+                 r.unit_name === unit ||
+                 (r.unit_name && unit && r.unit_name.includes(unit)) ||
+                 (unit && r.unit_name && unit.includes(r.unit_name)))
+                && r.status === 'pending'
+            );
+            
+            const pendingCount = pendingMatches.length;
+            
+            if (pendingCount > 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; background: #fffbeb; border-radius: 8px;">
+                        <i class="fas fa-clock" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #92400e; margin: 0 0 8px 0;">Registrations Pending Approval</h3>
+                        <p style="color: #78350f; font-size: 14px;">
+                            <strong>${pendingCount}</strong> student(s) have registered for this unit but their registration is not yet approved.
+                        </p>
+                        <p style="color: #92400e; font-size: 12px; margin-top: 8px;">
+                            Approve them to begin entering marks.
+                        </p>
+                        <button onclick="approveRegistrationsForUnit('${program}', '${block}', '${unit.replace(/'/g, "\\'")}', ${year})" 
+                                style="margin-top: 16px; padding: 12px 24px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">
+                            <i class="fas fa-check-circle"></i> Approve All ${pendingCount} Pending Registrations
+                        </button>
+                        <div style="margin-top: 12px;">
+                            <button onclick="openMarksStudentManager()" 
+                                    style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                                <i class="fas fa-users"></i> Manage Students Manually
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // No registrations at all
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-users-slash" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b; margin: 0 0 8px 0;">No students registered for this unit</h3>
+                    <p style="color: #94a3b8; font-size: 13px;">
+                        No approved registrations found for ${year}.
+                    </p>
+                    <div style="margin-top: 16px;">
+                        <button onclick="openMarksStudentManager()" 
+                                style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            <i class="fas fa-users"></i> Manage Students Manually
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        // ==========================================
+        // FETCH STUDENT DETAILS (resolve UUID → real admission number)
+        // ==========================================
+        const userIds = matchingRegs.map(r => r.student_id);
+        
+        const { data: students, error: studentErr } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, student_id, admission_number, full_name')
+            .in('user_id', userIds);
+        
+        if (studentErr) {
+            console.warn('⚠️ Could not fetch student profiles:', studentErr);
+        }
+        
+        // Build lookup: UUID (user_id) → student details
+        const studentLookup = {};
+        (students || []).forEach(s => {
+            if (s.user_id) {
+                const rawAdmission = s.admission_number || s.student_id;
+                const isUUID = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
+                
+                studentLookup[s.user_id] = {
+                    full_name: s.full_name || 'Unknown',
+                    admission_number: (!isUUID && rawAdmission) ? rawAdmission : null
+                };
+            }
         });
+        
+        console.log(`📋 Resolved ${Object.keys(studentLookup).length} students`);
+        console.log('📋 Sample:', Object.entries(studentLookup).slice(0, 3));
+        
+        // ==========================================
+        // Create blank marks records in student_marks
+        // ==========================================
+        const now = new Date().toISOString();
+        
+        const marksToInsert = matchingRegs.map(reg => {
+            const uuid = reg.student_id;
+            const student = studentLookup[uuid];
+            
+            if (!student) {
+                console.warn(`⚠️ No profile found for UUID: ${uuid}`);
+                return null;
+            }
+            
+            if (!student.admission_number) {
+                console.warn(`⚠️ No valid admission number for ${student.full_name} (${uuid})`);
+                return null;
+            }
+            
+            console.log(`   ✅ ${student.full_name} | ${student.admission_number}`);
+            
+            return {
+                admission_number: student.admission_number,
+                student_id: uuid,
+                student_name: student.full_name,
+                block: block,
+                subject_name: unit,
+                academic_year: parseInt(year),
+                assessment_type: 'full',
+                cat1_score: 0,
+                cat2_score: 0,
+                exam_score: 0,
+                final_score: 0,
+                grade: '',
+                approval_status: 'draft',
+                published: false,
+                program: program,
+                created_at: now,
+                updated_at: now
+            };
+        }).filter(Boolean);
+        
+        if (marksToInsert.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b;">Could not resolve student details</h3>
+                    <p style="color: #64748b;">Student profiles don't have valid admission numbers set.</p>
+                    <p style="color: #94a3b8; font-size: 12px;">Check the consolidated_user_profiles_table.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        console.log(`📝 Creating ${marksToInsert.length} blank marks records...`);
+        
+        // Upsert each one (safer than bulk for schema variations)
+        let successCount = 0;
+        let skipCount = 0;
+        
+        for (const record of marksToInsert) {
+            try {
+                // Check if already exists
+                const { data: existing } = await sb
+                    .from('student_marks')
+                    .select('id')
+                    .eq('admission_number', record.admission_number)
+                    .eq('subject_name', record.subject_name)
+                    .eq('block', record.block)
+                    .eq('academic_year', record.academic_year)
+                    .maybeSingle();
+                
+                if (existing) {
+                    skipCount++;
+                    continue;
+                }
+                
+                const { error: insertError } = await sb
+                    .from('student_marks')
+                    .insert(record);
+                
+                if (insertError && insertError.code !== '23505') {
+                    console.warn(`⚠️ Failed to create marks for ${record.admission_number}:`, insertError.message);
+                } else {
+                    successCount++;
+                }
+            } catch (err) {
+                console.warn(`⚠️ Error creating marks for ${record.admission_number}:`, err.message);
+            }
+        }
+        
+        console.log(`✅ Created ${successCount} marks records (${skipCount} already existed)`);
+        
+        // Reload — now marks records exist, students will appear
+        await loadMarksEntry();
+        
+    } catch (error) {
+        console.error('❌ Error loading from registrations:', error);
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
+                    <h4 style="color: #991b1b;">Error loading students</h4>
+                    <p style="color: #64748b;">${error.message}</p>
+                    <button onclick="loadMarksEntry()" class="btn-action" 
+                            style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+        }
     }
+}
+// ============================================================
+// APPROVE ALL PENDING REGISTRATIONS FOR A UNIT
+// ============================================================
 
-    if(!filtered.length){
-        const program=document.getElementById('exam_program')?.value||'';
-        const message=program
-            ? `No active courses/units found for ${escapeHtml(program)}`
-            : 'Select a program or search the course/unit list';
+async function approveRegistrationsForUnit(program, block, unit, year) {
+    if (!confirm(`Approve all pending registrations for "${unit}"?\n\nBlock: ${block}\nYear: ${year}\n\nThis will allow you to enter marks for these students.`)) {
+        return;
+    }
+    
+    showLoading('Approving registrations...');
+    
+    try {
+        const unitSelect = document.getElementById('me_subject_select');
+        const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+        const unitCode = selectedOption?.dataset?.code || '';
+        
+        // Get all pending registrations for this unit
+        const { data: pending, error: fetchError } = await sb
+            .from('student_unit_registrations')
+            .select('id, student_id, unit_code, unit_name')
+            .eq('program', program)
+            .eq('block', block)
+            .eq('academic_year', parseInt(year))
+            .eq('status', 'pending');
+        
+        if (fetchError) throw fetchError;
+        
+        // Filter client-side
+        const matching = (pending || []).filter(r => 
+            r.unit_code === unitCode || 
+            r.unit_name === unit ||
+            (r.unit_name && unit && r.unit_name.includes(unit)) ||
+            (unit && r.unit_name && unit.includes(r.unit_name))
+        );
+        
+        if (matching.length === 0) {
+            hideLoading();
+            showNotification('No pending registrations found for this unit', 'warning');
+            return;
+        }
+        
+        // Update all in one query by IDs
+        const ids = matching.map(r => r.id);
+        const { error: updateError } = await sb
+            .from('student_unit_registrations')
+            .update({ 
+                status: 'approved',
+                updated_at: new Date().toISOString()
+            })
+            .in('id', ids);
+        
+        if (updateError) throw updateError;
+        
+        hideLoading();
+        showNotification(`✅ Approved ${matching.length} registrations! Loading students...`, 'success');
+        
+        // Small delay to let notification show
+        await new Promise(r => setTimeout(r, 500));
+        
+        // Reload marks entry
+        await loadMarksEntry();
+        
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Error approving registrations:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
 
-        list.innerHTML=`<div class="no-results">
-            <i class="fas fa-book"></i> ${message}
-        </div>`;
-        showCourseSearchDropdown(true);
+
+// ============================================================
+// REFRESH MARKS TABLE (helper)
+// ============================================================
+
+async function refreshMarksTable() {
+    await loadMarksEntry();
+}
+// ============================================================
+// RENDER MARKS ENTRY TABLE - COMPLETELY FIXED
+// ============================================================
+
+function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
+    const container = document.getElementById('me_marks_container');
+    if (!container) return;
+    
+    // ✅ Use passed program, fallback to me_currentProgram or select element
+    let currentProgram = program || me_currentProgram || '';
+    if (!currentProgram) {
+        const select = document.getElementById('me_program_select');
+        currentProgram = select?.value || '';
+    }
+    
+    const isTVET = currentProgram !== 'KRCHN' && currentProgram !== 'nursing' && currentProgram !== 'Nursing';
+    const examMaxDisplay = isTVET ? 100 : 70;
+    const passingThreshold = isTVET ? 50 : 60;
+    const programLabel = isTVET ? '📘 TVET' : '📕 NURSING';
+    const isAdmin = isUserAdmin();
+    
+    const showCat1 = assessmentType !== 'exam_only';
+    const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
+    const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
+    
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+            <div>
+                <h3 style="margin: 0; color: #0f172a;">${unitCode || me_currentUnit}</h3>
+                <span style="font-size: 12px; color: #64748b;">${currentProgram} | ${me_currentBlock?.replace(/_/g, ' ') || ''} | ${me_currentYear}</span>
+                <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">${programLabel}</span>
+                <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
+                <span style="font-size: 12px; color: #f59e0b; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⭐ Retakes: ${marks.filter(m => m.hasRetake).length}</span>
+                ${isAdmin ? `<span style="font-size: 12px; color: #8b5cf6; margin-left: 12px; background: #ede9fe; padding: 2px 12px; border-radius: 40px;">👑 Admin Mode</span>` : ''}
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button onclick="openMarksStudentManager()" class="btn-action" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-users"></i> Manage Students
+                </button>
+                <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-save"></i> Save All
+                </button>
+                <button onclick="exportMarksEntry()" class="btn-action" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-file-export"></i> Export CSV
+                </button>
+                <button onclick="loadMarksEntry()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                ${isAdmin ? `
+                <button onclick="resetUnitColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-undo"></i> Reset Columns
+                </button>
+                ` : ''}
+            </div>
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table id="me_marks_table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                        <th style="padding: 10px 6px; text-align: center; width: 35px;">#</th>
+                        <th style="padding: 10px 8px; text-align: left;">Admission</th>
+                        <th style="padding: 10px 8px; text-align: left;">Name</th>
+                        ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-30)</th>` : ''}
+                        ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-30)</th>` : ''}
+                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${examMaxDisplay})</th>` : ''}
+                        <th style="padding: 10px 8px; text-align: center;">Total (%)</th>
+                        <th style="padding: 10px 8px; text-align: center;">Grade</th>
+                        <th style="padding: 10px 8px; text-align: center;">Points</th>
+                        <th style="padding: 10px 8px; text-align: center;">Rating</th>
+                        <th style="padding: 10px 8px; text-align: center;">Retake</th>
+                        ${isAdmin ? '<th style="padding: 10px 8px; text-align: center;">Approval</th>' : ''}
+                    </tr>
+                </thead>
+                <tbody>`;
+    
+    // ✅ BUILD ROWS INSIDE THE LOOP - total is DEFINED here!
+    marks.forEach((m, i) => {
+        const cat1 = parseFloat(m.cat1) || 0;
+        const cat2 = parseFloat(m.cat2) || 0;
+        const exam = parseFloat(m.exam) || 0;
+        
+        // ✅ total is DEFINED here
+        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
+        const gradeInfo = getMarksEntryGrade(total);
+        const isPassing = total >= passingThreshold;
+        const displayTotal = total > 0 ? total : '--';
+        const displayGrade = total > 0 ? gradeInfo.grade : '--';
+        const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
+        
+        const retakeHistory = m.retakeHistory || [];
+        const hasRetake = m.hasRetake || false;
+        const retakeCount = m.retakeCount || 0;
+        const retakeScore = m.retakeScore;
+        const retakeStatus = m.retakeStatus;
+        const isRetakePassing = retakeStatus === 'PASS';
+        
+        const needsRetake = total > 0 && !isPassing && retakeCount < MAX_RETAKES;
+        const maxRetakesReached = total > 0 && !isPassing && retakeCount >= MAX_RETAKES;
+        
+        let rowStyle = '';
+        if (hasRetake && isRetakePassing) {
+            rowStyle = 'background: linear-gradient(90deg, #f0fdf4, #dcfce7); border-left: 4px solid #059669;';
+        } else if (hasRetake && !isRetakePassing) {
+            rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
+        } else if (needsRetake) {
+            rowStyle = 'background: linear-gradient(90deg, #fffbeb, #fef3c7); border-left: 4px solid #f59e0b;';
+        } else if (maxRetakesReached) {
+            rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
+        }
+        
+        const approvalBadge = {
+            'pending': '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:10px;">⏳ Pending</span>',
+            'approved': '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:10px;">✅ Approved</span>',
+            'rejected': '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:10px;">❌ Rejected</span>',
+            'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>'
+        }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>';
+        
+        // ✅ RETAKE ACTIONS
+        let retakeActionsHtml = '';
+
+        if (isPassing) {
+            retakeActionsHtml = `
+                <span style="color: #059669; font-size: 11px; font-weight: 600;">✅ Passed</span>
+            `;
+        } else if (hasRetake) {
+            retakeActionsHtml = `
+                <div style="font-size: 10px; margin-bottom: 4px;">
+                    <span style="color: #dc2626; font-weight: 600;">
+                        ❌ Failed (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})
+                    </span>
+                    ${retakeScore !== null && retakeScore !== undefined ? `
+                        <span style="display: block; font-size: 9px; color: #64748b;">Score: ${retakeScore}%</span>
+                    ` : ''}
+                </div>
+                <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                        style="background: #3b82f6; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
+                    <i class="fas fa-edit"></i> Edit Retake
+                </button>
+            `;
+            
+            if (retakeCount < MAX_RETAKES) {
+                retakeActionsHtml += `
+                    <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                            style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
+                        <i class="fas fa-sync-alt"></i> Add Retake
+                    </button>
+                `;
+            } else {
+                retakeActionsHtml += `
+                    <span style="color: #dc2626; font-size: 8px; font-weight: 600; display: block; text-align: center; margin-top: 2px;">
+                        ⛔ Max retakes reached
+                    </span>
+                `;
+            }
+        } else {
+            retakeActionsHtml = `
+                <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                        style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
+                    <i class="fas fa-sync-alt"></i> Add Retake
+                </button>
+            `;
+        }
+
+        // ✅ Build the row - total is DEFINED here
+        html += `<tr style="${rowStyle}">
+            <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
+            <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
+            <td style="padding: 8px 8px;">
+                <strong>${m.name || 'Unknown'}</strong>
+                ${hasRetake ? `
+                    <span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 700;">
+                        ⭐ R${retakeCount}
+                    </span>
+                ` : ''}
+                ${retakeScore !== null && retakeScore !== undefined ? `
+                    <span style="display: inline-block; margin-left: 4px; font-size: 10px; color: ${isRetakePassing ? '#059669' : '#dc2626'};">
+                        (Retake: ${retakeScore}%)
+                    </span>
+                ` : ''}
+                ${retakeHistory.length > 0 ? `
+                    <span style="display: block; font-size: 10px; color: #94a3b8; margin-top: 2px;">
+                        <i class="fas fa-history"></i> ${retakeHistory.length} attempt(s)
+                    </span>
+                ` : ''}
+            </td>
+            ${showCat1 ? `<td style="padding: 8px; text-align: center;">
+                <input type="number" id="me_cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+            </td>` : ''}
+            ${showCat2 ? `<td style="padding: 8px; text-align: center;">
+                <input type="number" id="me_cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+            </td>` : ''}
+            ${showExam ? `<td style="padding: 8px; text-align: center;">
+                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${examMaxDisplay}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+                <span style="font-size: 9px; color: #94a3b8; display: block;">Max: ${examMaxDisplay}</span>
+            </td>` : ''}
+            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
+            <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color};">${displayGrade}</td>
+            <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color};">${displayPoints}</td>
+            <td id="me_rating_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">
+                ${total > 0 ? `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
+            </td>
+            <td style="padding: 8px 6px; text-align: center;">
+                ${retakeActionsHtml}
+            </td>
+            ${isAdmin ? `<td style="padding: 8px 6px; text-align: center; font-size: 11px;">${approvalBadge}</td>` : ''}
+        </tr>`;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        
+        ${marks.filter(m => m.hasRetake).length > 0 ? `
+        <div style="margin-top: 16px; padding: 12px 16px; background: #fffbeb; border-radius: 8px; border: 1px solid #f59e0b;">
+            <p style="margin: 0; font-size: 13px; color: #92400e;">
+                <i class="fas fa-star" style="color: #f59e0b;"></i>
+                <strong>Retake Summary:</strong> 
+                ${marks.filter(m => m.hasRetake && m.retakeStatus === 'PASS').length} students passed after retake, 
+                ${marks.filter(m => m.hasRetake && m.retakeStatus === 'FAIL').length} still failing after retake
+                <span style="display: inline-block; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 12px; font-size: 11px;">
+                    ⭐ Total retakes: ${marks.reduce((sum, m) => sum + (m.retakeCount || 0), 0)}
+                </span>
+                <span style="display: inline-block; margin-left: 12px; font-size: 10px; color: #3b82f6;">
+                    <i class="fas fa-edit"></i> Click "Edit Retake" to modify retake scores
+                </span>
+            </p>
+        </div>
+        ` : ''}
+        
+        <div style="text-align: center; margin-top: 16px;">
+            <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
+                <i class="fas fa-save"></i> 💾 Save All Marks (Auto-Approved)
+            </button>
+            ${marks.filter(m => m.hasRetake).length > 0 ? `
+            <span style="display: inline-block; margin-left: 12px; font-size: 11px; color: #3b82f6;">
+                <i class="fas fa-edit"></i> Click Edit Retake to modify retake scores
+            </span>
+            ` : ''}
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    if (!document.getElementById('retakeModal')) {
+        createRetakeModal();
+    }
+}
+
+// ============================================================
+// UPDATE MARKS ROW
+// ============================================================
+
+function updateMarksEntryRow(index) {
+    const cat1 = parseFloat(document.getElementById(`me_cat1_${index}`)?.value) || 0;
+    const cat2 = parseFloat(document.getElementById(`me_cat2_${index}`)?.value) || 0;
+    const exam = parseFloat(document.getElementById(`me_exam_${index}`)?.value) || 0;
+    const assessmentType = me_currentAssessmentType;
+    const passingThreshold = getPassingThreshold();
+    
+    const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
+    const gradeInfo = getMarksEntryGrade(total);
+    const isPassing = total >= passingThreshold;
+    
+    const totalEl = document.getElementById(`me_total_${index}`);
+    if (totalEl) {
+        totalEl.textContent = total > 0 ? total : '--';
+        totalEl.style.color = isPassing ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
+    }
+    
+    const gradeEl = document.getElementById(`me_grade_${index}`);
+    if (gradeEl) {
+        gradeEl.textContent = total > 0 ? gradeInfo.grade : '--';
+        gradeEl.style.color = gradeInfo.color;
+    }
+    
+    const pointsEl = document.getElementById(`me_points_${index}`);
+    if (pointsEl) {
+        pointsEl.textContent = total > 0 ? gradeInfo.points.toFixed(1) : '--';
+        pointsEl.style.color = gradeInfo.color;
+    }
+    
+    const ratingEl = document.getElementById(`me_rating_${index}`);
+    if (ratingEl) {
+        if (total > 0) {
+            ratingEl.innerHTML = `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
+        } else {
+            ratingEl.innerHTML = '<span style="color: #94a3b8;">PENDING</span>';
+        }
+    }
+    
+    if (me_currentMarks && me_currentMarks[index]) {
+        me_currentMarks[index].cat1 = cat1;
+        me_currentMarks[index].cat2 = cat2;
+        me_currentMarks[index].exam = exam;
+    }
+}
+
+// ============================================================
+// UPDATE STATS
+// ============================================================
+
+function updateMarksEntryStats(marks, assessmentType) {
+    const isTVET = isTVETProgram();
+    const passingThreshold = getPassingThreshold();
+    const programLabel = getProgramTypeLabel();
+    
+    const totalEnrolled = marks.length;
+    const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
+    const passing = marks.filter(m => {
+        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
+        return total >= passingThreshold;
+    });
+    
+    const avg = withScores.length > 0 ? 
+        withScores.reduce((sum, m) => sum + calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType), 0) / withScores.length : 0;
+    
+    // Count retakes
+    const withRetakes = marks.filter(m => m.hasRetake);
+    const retakePassed = marks.filter(m => m.hasRetake && m.retakeStatus === 'PASS');
+    const retakeFailed = marks.filter(m => m.hasRetake && m.retakeStatus === 'FAIL');
+    
+    const totalEl = document.getElementById('me_total_students');
+    const subjectsEl = document.getElementById('me_total_subjects');
+    const passEl = document.getElementById('me_pass_rate');
+    const avgEl = document.getElementById('me_class_avg');
+    const atRiskEl = document.getElementById('me_at_risk');
+    const publishedEl = document.getElementById('me_published_count');
+    
+    if (totalEl) totalEl.textContent = totalEnrolled;
+    if (subjectsEl) subjectsEl.textContent = marks.length > 0 ? 1 : 0;
+    if (passEl) passEl.textContent = totalEnrolled > 0 ? Math.round((passing.length / totalEnrolled) * 100) + '%' : '0%';
+    if (avgEl) avgEl.textContent = Math.round(avg) + '%';
+    
+    const atRisk = marks.filter(m => {
+        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
+        return total > 0 && total < passingThreshold;
+    });
+    if (atRiskEl) atRiskEl.textContent = atRisk.length;
+    
+    if (publishedEl && marks) {
+        const publishedCount = marks.filter(m => m.published === true).length;
+        publishedEl.textContent = publishedCount;
+    }
+}
+
+// ============================================================
+// SAVE MARKS - WITH AUTO-APPROVE
+// ============================================================
+
+async function saveMarksEntry() {
+    console.log('💾 Saving marks - safe Supabase update mode...');
+
+    const sbClient = getSupabase();
+    const block = me_currentBlock;
+    const unit = me_currentUnit;
+    const year = me_currentYear;
+    const assessmentType = me_currentAssessmentType || 'full';
+
+    if (!sbClient) {
+        showNotification('❌ Database connection is not available', 'error');
+        return;
+    }
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
         return;
     }
 
-    let html='';
+    /*
+     * IMPORTANT FIX:
+     * Never read admission/name from table cell text. The Name cell can contain
+     * retake badges/history, and the Admission cell can contain formatting text.
+     * me_currentMarks is the source of truth populated directly from Supabase.
+     */
+    const rows = document.querySelectorAll('#me_marks_container table tbody tr');
+    if (!rows.length || !Array.isArray(me_currentMarks) || !me_currentMarks.length) {
+        showNotification('No students found to save', 'warning');
+        return;
+    }
 
-    filtered.slice(0,100).forEach(unit=>{
-        const displayName=unit.unit_name||'Untitled Unit';
-        const unitCode=unit.unit_code||'';
-        const programTag=unit.program?`[${unit.program}]`:'';
-        const yearTag=unit.year?` ${unit.year}`:'';
+    const now = new Date().toISOString();
+    const marksData = [];
 
-        const safeId=String(unit.id).replace(/'/g,"\\'");
-        const safeName=escapeHtml(displayName).replace(/'/g,"\\'");
-        const safeCode=escapeHtml(unitCode).replace(/'/g,"\\'");
-        const safeProgram=escapeHtml(programTag).replace(/'/g,"\\'");
+    rows.forEach((row, index) => {
+        const source = me_currentMarks[index];
+        if (!source) return;
 
-        html+=`<div class="dropdown-item"
-            onclick="selectCreateCourse('${safeId}','${safeName}','${safeCode}','${safeProgram}')">
-            <span>
-                <strong>${escapeHtml(displayName)}</strong>
-                ${unitCode?`<small style="display:block;color:#64748b;margin-top:2px;">${escapeHtml(unitCode)}</small>`:''}
-            </span>
-            <span style="display:flex;gap:6px;align-items:center;">
-                ${unit.assessment_type?`<span class="course-code">${escapeHtml(unit.assessment_type)}</span>`:''}
-                ${yearTag?`<span class="program-tag">${escapeHtml(yearTag.trim())}</span>`:''}
-            </span>
-        </div>`;
+        const admission = String(source.admission || '').trim();
+        if (!admission) return;
+
+        const cat1Input = document.getElementById(`me_cat1_${index}`);
+        const cat2Input = document.getElementById(`me_cat2_${index}`);
+        const examInput = document.getElementById(`me_exam_${index}`);
+
+        const cat1 = cat1Input ? (parseFloat(cat1Input.value) || 0) : (parseFloat(source.cat1) || 0);
+        const cat2 = cat2Input ? (parseFloat(cat2Input.value) || 0) : (parseFloat(source.cat2) || 0);
+        const exam = examInput ? (parseFloat(examInput.value) || 0) : (parseFloat(source.exam) || 0);
+
+        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
+        const gradeInfo = getMarksEntryGrade(total);
+
+        marksData.push({
+            id: source.id || null,
+            admission_number: admission,
+            student_name: String(source.name || 'Unknown').trim(),
+            block,
+            subject_name: unit,
+            assessment_type: assessmentType,
+            cat1_score: cat1,
+            cat2_score: cat2,
+            exam_score: exam,
+            final_score: total,
+            grade: gradeInfo.grade,
+            academic_year: year
+        });
     });
 
-    if(filtered.length>100){
-        html+=`<div class="no-results" style="font-size:12px;">
-            And ${filtered.length-100} more
-        </div>`;
+    if (!marksData.length) {
+        showNotification('No valid student marks found to save', 'warning');
+        return;
     }
 
-    list.innerHTML=html;
-    showCourseSearchDropdown(true);
-}
+    console.log(`📋 Preparing ${marksData.length} marks...`);
+    showLoading(`Saving ${marksData.length} marks...`);
 
-function buildExamNameFromCourse(){
-    const titleInput=document.getElementById('exam_title');
-    const courseInput=document.getElementById('createCourseSearchInput');
-    const typeInput=document.getElementById('exam_type');
+    let saved = 0;
+    let errors = 0;
+    const errorDetails = [];
 
-    if(!titleInput)return '';
+    try {
+        for (const mark of marksData) {
+            try {
+                let recordId = mark.id;
 
-    const examType=(typeInput?.value||'').trim().toUpperCase();
-    const courseText=(courseInput?.value||'').trim();
+                // If the row has no ID, resolve it safely. Do NOT use maybeSingle()
+                // because duplicate legacy records can make maybeSingle() fail.
+                if (!recordId) {
+                    const { data: existingRows, error: lookupError } = await sbClient
+                        .from('student_marks')
+                        .select('id')
+                        .eq('admission_number', mark.admission_number)
+                        .eq('subject_name', mark.subject_name)
+                        .eq('block', mark.block)
+                        .eq('academic_year', mark.academic_year)
+                        .order('created_at', { ascending: true })
+                        .limit(1);
 
-    const mainExamTypes=new Set(['EXAM','END_TERM','SUPPLEMENTARY','FINAL_EXAM','FINAL']);
+                    if (lookupError) throw lookupError;
+                    recordId = existingRows?.[0]?.id || null;
+                }
 
-    if(mainExamTypes.has(examType)){
-        const cleanCourse=courseText.replace(/\s+\([^)]*\)\s*$/,'').trim();
-        const generated=cleanCourse?(typeInput?.value?`${cleanCourse} — ${typeInput.value}`:cleanCourse):'';
+                /*
+                 * ROOT-CAUSE FIX FOR THE 400 PATCH:
+                 * Do not send approved_by from the browser. In this portal the
+                 * logged-in admin identifier can be values such as SA-001, while
+                 * student_marks.approved_by may be a UUID/reference column.
+                 * Sending that value causes PostgREST to reject the PATCH with 400.
+                 *
+                 * We therefore update only columns known to belong to the marks
+                 * record and leave approved_by untouched. Auto-approval remains.
+                 */
+                const updateData = {
+                    student_name: mark.student_name || 'Unknown',
+                    assessment_type: mark.assessment_type,
+                    cat1_score: Number(mark.cat1_score),
+                    cat2_score: Number(mark.cat2_score),
+                    exam_score: Number(mark.exam_score),
+                    final_score: Number(mark.final_score),
+                    grade: mark.grade,
+                    approval_status: 'approved',
+                    approved_at: now,
+                    updated_at: now
+                };
 
-        titleInput.value=generated;
-        titleInput.readOnly=true;
-        titleInput.setAttribute('aria-readonly','true');
-        titleInput.title='Automatically generated from the selected Course/Unit and Exam Type';
-        titleInput.dataset.generatedTitle=generated;
+                let result;
 
-        return generated;
+                if (recordId) {
+                    result = await sbClient
+                        .from('student_marks')
+                        .update(updateData)
+                        .eq('id', recordId)
+                        .select('id');
+                } else {
+                    // New records are created without approved_by for the same
+                    // schema-safe reason explained above.
+                    result = await sbClient
+                        .from('student_marks')
+                        .insert({
+                            admission_number: mark.admission_number,
+                            student_name: mark.student_name || 'Unknown',
+                            block: mark.block,
+                            subject_name: mark.subject_name,
+                            assessment_type: mark.assessment_type,
+                            cat1_score: Number(mark.cat1_score),
+                            cat2_score: Number(mark.cat2_score),
+                            exam_score: Number(mark.exam_score),
+                            final_score: Number(mark.final_score),
+                            grade: mark.grade,
+                            academic_year: mark.academic_year,
+                            approval_status: 'approved',
+                            approved_at: now,
+                            created_at: now,
+                            updated_at: now
+                        })
+                        .select('id');
+                }
+
+                if (result.error) throw result.error;
+
+                saved++;
+            } catch (err) {
+                errors++;
+                const detail = {
+                    admission: mark.admission_number,
+                    message: err?.message || 'Unknown database error',
+                    code: err?.code || '',
+                    details: err?.details || '',
+                    hint: err?.hint || ''
+                };
+                errorDetails.push(detail);
+                console.error('❌ Mark save failed:', detail);
+            }
+        }
+    } finally {
+        hideLoading();
     }
 
-    /*
-     * CAT/CAT 1/CAT 2/OSCE/RAT/Practical/Assignment/Quiz/etc.
-     * use a manually entered Exam Name. Course/Unit is optional.
-     */
-    if(titleInput.dataset.generatedTitle &&
-       titleInput.value===titleInput.dataset.generatedTitle){
-        titleInput.value='';
+    console.log(`✅ Marks save complete: ${saved} saved, ${errors} failed`);
+
+    if (errors > 0) {
+        const first = errorDetails[0];
+        console.error('❌ FIRST MARK ERROR:', first);
+        showNotification(
+            `⚠️ Saved ${saved} marks; ${errors} failed. Check console for the exact database error.`,
+            'warning'
+        );
+    } else {
+        showNotification(`✅ ${saved} marks saved and auto-approved!`, 'success');
     }
 
-    titleInput.readOnly=false;
-    titleInput.removeAttribute('aria-readonly');
-    titleInput.title='Enter the assessment name';
-    return titleInput.value.trim();
+    // Keep the locally edited values until the refresh completes.
+    setTimeout(() => {
+        if (typeof loadMarksEntry === 'function') loadMarksEntry();
+    }, 500);
 }
 
-function selectCreateCourse(courseId,courseName,courseCode,programTag){
-    const input=document.getElementById('createCourseSearchInput'),
-          hidden=document.getElementById('exam_course_id'),
-          list=document.getElementById('createCourseDropdownList'),
-          display=document.getElementById('createSelectedCourseDisplay'),
-          nameDisplay=document.getElementById('createSelectedCourseName');
+// ============================================================
+// EXPORT MARKS TO CSV WITH RETAKE DATA
+// ============================================================
 
-    if(input)input.value=courseName+(courseCode?` (${courseCode})`:'');
-
-    /*
-     * Legacy hidden field is retained for HTML compatibility.
-     * Its value is the units_catalog ID during creation.
-     * handleAddExam resolves a matching legacy courses.id only if one exists.
-     */
-    if(hidden)hidden.value=courseId;
-
-    if(list)showCourseSearchDropdown(false);
-
-    if(display&&nameDisplay){
-        display.style.display='inline';
-        nameDisplay.textContent=courseName+(courseCode?` (${courseCode})`:'');
+function exportMarksEntry() {
+    const marks = me_currentMarks;
+    if (!marks || marks.length === 0) {
+        if (typeof showNotification === 'function') showNotification('No data to export', 'warning');
+        return;
     }
+    
+    const assessmentType = me_currentAssessmentType;
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating', 
+                     'Has Retake', 'Retake Count', 'Retake Score', 'Retake Grade', 'Retake Status'];
+    const rows = marks.map(m => {
+        const cat1 = m.cat1 || 0;
+        const cat2 = m.cat2 || 0;
+        const exam = m.exam || 0;
+        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
+        const gradeInfo = getMarksEntryGrade(total);
+        return [
+            m.admission || '',
+            m.name || '',
+            cat1,
+            cat2,
+            exam,
+            total > 0 ? total : '',
+            total > 0 ? gradeInfo.grade : '',
+            total > 0 ? gradeInfo.points : '',
+            total > 0 ? gradeInfo.rating : '',
+            m.hasRetake ? 'Yes' : 'No',
+            m.retakeCount || 0,
+            m.retakeScore || '',
+            m.retakeGrade || '',
+            m.retakeStatus || ''
+        ];
+    });
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    downloadCSV(csv, `marks_${me_currentUnit}_${me_currentBlock}_${me_currentYear}.csv`);
+    if (typeof showNotification === 'function') showNotification('✅ Marks exported!', 'success');
+}
 
-    const selectedUnit=createUnitsData.find(u=>String(u.id)===String(courseId));
-    if(selectedUnit){
-        window.selectedExamUnit=selectedUnit;
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// REFRESH MARKS DATA
+// ============================================================
+
+function refreshMarksData() {
+    loadMarksEntry();
+    if (typeof showNotification === 'function') {
+        showNotification('🔄 Data refreshed!', 'success');
     }
-
-    buildExamNameFromCourse();
 }
 
-async function updateCreateCourseDropdown(){
-    const program=document.getElementById('exam_program')?.value||'';
-    installCourseSearchHandlers();
+// ============================================================
+// COLUMN MANAGEMENT - ADMIN ONLY
+// ============================================================
 
-    /* Course/Unit list is refreshed only by program; block is irrelevant. */
-    await loadCoursesForCreateDropdown(program);
-
-    const input=document.getElementById('createCourseSearchInput'),
-          hidden=document.getElementById('exam_course_id'),
-          display=document.getElementById('createSelectedCourseDisplay'),
-          title=document.getElementById('exam_title');
-
-    if(input)input.value='';
-    if(hidden)hidden.value='';
-    if(display)display.style.display='none';
-
-    window.selectedExamUnit=null;
-
-    if(title){
-        title.value='';
-        title.dataset.generatedTitle='';
-        buildExamNameFromCourse();
+async function loadUnitColumnSettings() {
+    console.log('📋 Loading column settings...');
+    
+    const unit = me_currentUnit;
+    const block = me_currentBlock;
+    const year = me_currentYear;
+    
+    const unitNameEl = document.getElementById('me_column_subject_name');
+    if (unitNameEl) {
+        unitNameEl.textContent = unit || 'Current Unit';
     }
-
-    filterCreateCourseDropdown('');
-}
-
-async function initEditCourseDropdown(program='',selectedId=''){
-    const input=document.getElementById('editCourseSearchInput'),list=document.getElementById('editCourseDropdownList');if(!input||!list)return;await loadCoursesForEditDropdown(program);
-    if(!input.dataset.bound){input.dataset.bound='1';input.addEventListener('input',()=>filterEditCourseDropdown(input.value.toLowerCase().trim()));input.addEventListener('focus',()=>{list.classList.add('show');filterEditCourseDropdown(input.value.toLowerCase().trim())});input.addEventListener('blur',()=>setTimeout(()=>list.classList.remove('show'),200));input.addEventListener('keydown',e=>{if(e.key==='Enter'){const first=list.querySelector('.dropdown-item');if(first)first.click();e.preventDefault();}if(e.key==='Escape')list.classList.remove('show');});}
-    if(selectedId)setEditCourseValue(selectedId);filterEditCourseDropdown('');
-}
-async function loadCoursesForEditDropdown(program=''){
-    try{const supabase=window.sb||window.supabase;if(!supabase){editCoursesData=[];return;}let query=supabase.from('courses').select('id, course_name, unit_code, code, name, target_program');if(program)query=query.eq('target_program',program);const {data,error}=await query.order('course_name',{ascending:true});if(error)throw error;editCoursesData=data||[];filterEditCourseDropdown('');}catch(error){editCoursesData=[];}
-}
-function filterEditCourseDropdown(searchTerm=''){
-    const list=document.getElementById('editCourseDropdownList');if(!list)return;let filtered=editCoursesData;if(searchTerm)filtered=editCoursesData.filter(c=>(c.course_name||c.name||'').toLowerCase().includes(searchTerm)||(c.unit_code||c.code||'').toLowerCase().includes(searchTerm));
-    if(!filtered.length){list.innerHTML='<div class="no-results"><i class="fas fa-search"></i> No courses found</div>';list.classList.add('show');return;}
-    let html='';filtered.slice(0,50).forEach(course=>{const displayName=course.course_name||course.name||'Untitled',unitCode=course.unit_code||course.code||'',programTag=course.target_program?`[${course.target_program}]`:'';html+=`<div class="dropdown-item" onclick="selectEditCourse('${course.id}','${escapeHtml(displayName).replace(/'/g,"\\'")}','${escapeHtml(unitCode).replace(/'/g,"\\'")}','${escapeHtml(programTag).replace(/'/g,"\\'")}')"><span>${escapeHtml(displayName)}</span><span style="display:flex;gap:6px;align-items:center;">${unitCode?`<span class="course-code">${escapeHtml(unitCode)}</span>`:''}${programTag?`<span class="program-tag">${escapeHtml(programTag)}</span>`:''}</span></div>`;});
-    if(filtered.length>50)html+=`<div class="no-results" style="font-size:12px;">And ${filtered.length-50} more</div>`;list.innerHTML=html;list.classList.add('show');
-}
-function selectEditCourse(courseId,courseName,courseCode,programTag){
-    const input=document.getElementById('editCourseSearchInput'),hidden=document.getElementById('edit_exam_course'),list=document.getElementById('editCourseDropdownList'),display=document.getElementById('editSelectedCourseDisplay'),nameDisplay=document.getElementById('editSelectedCourseName');
-    if(input)input.value=courseName+(courseCode?` (${courseCode})`:''),hidden&&(hidden.value=courseId),list&&list.classList.remove('show');if(display&&nameDisplay){display.style.display='inline';nameDisplay.textContent=courseName+(courseCode?` (${courseCode})`:'');}
-}
-function setEditCourseValue(courseId){
-    if(!courseId)return;const course=editCoursesData.find(c=>c.id===courseId);if(!course)return;const input=document.getElementById('editCourseSearchInput'),hidden=document.getElementById('edit_exam_course'),display=document.getElementById('editSelectedCourseDisplay'),nameDisplay=document.getElementById('editSelectedCourseName');if(hidden)hidden.value=courseId;const displayName=course.course_name||course.name||'Untitled',unitCode=course.unit_code||course.code||'';if(input)input.value=displayName+(unitCode?` (${unitCode})`:''),display&&nameDisplay&&(display.style.display='inline',nameDisplay.textContent=displayName+(unitCode?` (${unitCode})`:''));}
-
-async function openGradeModal(examId,examName=''){
-    try{
-        const supabase=window.sb||window.supabase;if(!supabase){showFeedback('❌ Supabase client not available','error');return;}const currentUser=await getCurrentUser();if(!currentUser?.user_id){showFeedback('❌ You must be logged in to grade exams.','error');return;}
-        const {data:exam,error:examError}=await supabase.from('exams').select('*').eq('id',examId).single();if(examError||!exam){showFeedback('❌ Error loading exam details.','error');return;}
-        const programField=exam.target_program||exam.program_type,blockField=exam.block||exam.block_term;let query=supabase.from('consolidated_user_profiles_table').select('user_id, full_name, email, program, intake_year, block').eq('role','student').eq('status','approved');if(programField)query=query.eq('program',programField);if(exam.intake_year)query=query.eq('intake_year',String(exam.intake_year));if(blockField)query=query.eq('block',blockField);
-        const {data:students,error:studentError}=await query.limit(200);if(studentError||!students?.length){showFeedback('⚠️ No students found for this exam criteria.','warning');return;}
-        const {data:existingGrades}=await supabase.from('exam_grades').select('*').eq('exam_id',examId);showGradeModal(buildGradeModalHTML(exam,students,existingGrades||[],currentUser,exam.exam_type||'EXAM'));showFeedback(`✅ Grading modal loaded for ${students.length} students`,'success');
-    }catch(error){showFeedback('❌ Failed to load grading: '+error.message,'error');}
-}
-function buildGradeModalHTML(exam,students,existingGrades,currentUser,examType){
-    const examTypeLabel=getExamTypeLabel(examType),marksOutOf=exam.marks_out_of||exam.total_marks||100,passMark=exam.pass_mark||50,examTitle=exam.title||exam.exam_name||'Assessment';let tableHeaders='',tableRows='';
-    if(examType==='CAT_1'||examType==='CAT_2'){
-        const field=examType==='CAT_1'?'cat_1_score':'cat_2_score',label=examType==='CAT_1'?'CAT 1':'CAT 2';
-        tableHeaders=`<th>Student</th><th>Email</th><th>${label} (max 30)</th><th>Status</th>`;
-        tableRows=students.map(s=>{const grade=existingGrades.find(g=>g.student_id===s.user_id)||{};return `<tr data-name="${escapeHtml((s.full_name||'').toLowerCase())}" data-email="${escapeHtml((s.email||'').toLowerCase())}" data-id="${s.user_id}"><td><strong>${escapeHtml(s.full_name)}</strong></td><td>${escapeHtml(s.email||'')}</td><td><input type="number" min="0" max="30" step="0.5" id="${examType==='CAT_1'?'cat1':'cat2'}-${s.user_id}" value="${grade[field]??''}" class="grade-input"></td><td><select id="status-${s.user_id}" class="status-select"><option value="Scheduled">⏳ Scheduled</option><option value="InProgress">🔄 In Progress</option><option value="Final">✅ Final</option></select></td></tr>`}).join('');
-    }else{
-        tableHeaders=`<th>Student</th><th>Email</th><th>CAT 1 (max 30)</th><th>CAT 2 (max 30)</th><th>Final (max ${marksOutOf})</th><th>Total</th><th>Status</th>`;
-        tableRows=students.map(s=>{const grade=existingGrades.find(g=>g.student_id===s.user_id)||{};return `<tr data-name="${escapeHtml((s.full_name||'').toLowerCase())}" data-email="${escapeHtml((s.email||'').toLowerCase())}" data-id="${s.user_id}"><td><strong>${escapeHtml(s.full_name)}</strong></td><td>${escapeHtml(s.email||'')}</td><td><input type="number" min="0" max="30" step="0.5" id="cat1-${s.user_id}" value="${grade.cat_1_score??''}" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td><td><input type="number" min="0" max="30" step="0.5" id="cat2-${s.user_id}" value="${grade.cat_2_score??''}" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td><td><input type="number" min="0" max="${marksOutOf}" step="0.5" id="final-${s.user_id}" value="${grade.exam_score??''}" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td><td><input type="number" min="0" max="100" step="0.1" id="total-${s.user_id}" value="" readonly class="total-input"></td><td><select id="status-${s.user_id}" class="status-select"><option value="Scheduled">⏳ Scheduled</option><option value="InProgress">🔄 In Progress</option><option value="Final">✅ Final</option></select></td></tr>`}).join('');
+    
+    const container = document.getElementById('me_column_settings');
+    if (!container) return;
+    
+    if (!isUserAdmin()) {
+        container.innerHTML = `
+            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-lock"></i> Column settings are managed by the Administrator
+            </div>
+        `;
+        return;
     }
-    return `<div class="modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;"><div style="background:white;border-radius:16px;max-width:1000px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);"><div style="padding:16px 24px;border-bottom:2px solid #4C1D95;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:white;z-index:10;"><div><h3 style="margin:0;color:#4C1D95;"><i class="fas fa-check-double"></i> ${examTypeLabel}: ${escapeHtml(examTitle)}</h3><p style="margin:2px 0;font-size:12px;color:#94a3b8;">${escapeHtml(exam.program_type||exam.target_program||'N/A')} | Block: ${escapeHtml(exam.block||exam.block_term||'N/A')} | Pass: ${passMark}% | Students: ${students.length}</p></div><button onclick="closeGradeModal()" style="background:none;border:none;font-size:28px;cursor:pointer;color:#6b7280;">&times;</button></div><div style="padding:16px 24px;"><div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;"><input type="text" id="gradeSearch" placeholder="🔍 Search by name or email..." style="flex:1;min-width:200px;padding:8px 14px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;" oninput="filterGradeStudents()"><span style="font-size:12px;color:#94a3b8;display:flex;align-items:center;"><i class="fas fa-users"></i> ${students.length} students</span></div><div style="overflow-x:auto;max-height:50vh;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead style="position:sticky;top:0;z-index:5;"><tr style="background:#f8fafc;border-bottom:2px solid #e5e7eb;">${tableHeaders}</tr></thead><tbody id="gradeTableBody">${tableRows}</tbody></table></div></div><div style="padding:16px 24px;border-top:1px solid #e5e7eb;display:flex;gap:12px;justify-content:flex-end;"><button onclick="saveGrades('${exam.id}')" style="background:#10b981;color:white;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600;"><i class="fas fa-save"></i> Save Grades</button><button onclick="closeGradeModal()" style="background:#e5e7eb;color:#475569;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600;">Cancel</button></div></div></div>`;
+    
+    if (!unit || !block) {
+        container.innerHTML = `
+            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-info-circle"></i> Select a unit to manage columns
+            </div>
+        `;
+        return;
+    }
+    
+    try {
+        const { data, error } = await sb
+            .from('column_settings')
+            .select('*')
+            .eq('block', block)
+            .eq('subject', unit)
+            .eq('year', year)
+            .maybeSingle();
+        
+        if (error) throw error;
+        
+        me_columnSettings = data || { columns: [] };
+        renderUnitColumns();
+        applyColumnVisibility();
+        
+    } catch (error) {
+        console.error('Error loading column settings:', error);
+        container.innerHTML = `
+            <div style="color: #ef4444; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-exclamation-circle"></i> Error loading columns: ${error.message}
+            </div>
+        `;
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading column settings: ' + error.message, 'error');
+        }
+    }
 }
-function showGradeModal(modalHtml){const existing=document.getElementById('gradeModal');if(existing)existing.remove();const modal=document.createElement('div');modal.id='gradeModal';modal.style.cssText='position:fixed;inset:0;z-index:10000;';modal.innerHTML=modalHtml;document.body.appendChild(modal);}
-function closeGradeModal(){document.getElementById('gradeModal')?.remove();}
-function filterGradeStudents(){const search=document.getElementById('gradeSearch')?.value?.toLowerCase()||'';document.querySelectorAll('#gradeTableBody tr').forEach(row=>{const name=row.getAttribute('data-name')||'',email=row.getAttribute('data-email')||'';row.style.display=name.includes(search)||email.includes(search)?'':'none';});}
-function updateGradeTotal(studentId){const cat1=parseFloat(document.getElementById(`cat1-${studentId}`)?.value)||0,cat2=parseFloat(document.getElementById(`cat2-${studentId}`)?.value)||0,finalExam=parseFloat(document.getElementById(`final-${studentId}`)?.value)||0,total=((cat1+cat2+finalExam)/160)*100,totalInput=document.getElementById(`total-${studentId}`);if(totalInput)totalInput.value=total.toFixed(2);}
-async function saveGrades(examId){
-    try{
-        const supabase=window.sb||window.supabase;if(!supabase){showFeedback('❌ Supabase client not available','error');return;}const rows=document.querySelectorAll('#gradeTableBody tr'),currentUser=await getCurrentUser();if(!currentUser){showFeedback('❌ Please login first','error');return;}let saved=0;
-        for(const row of rows){const studentId=row.getAttribute('data-id');if(!studentId)continue;const cat1=parseFloat(document.getElementById(`cat1-${studentId}`)?.value)||null,cat2=parseFloat(document.getElementById(`cat2-${studentId}`)?.value)||null,finalExam=parseFloat(document.getElementById(`final-${studentId}`)?.value)||null,status=document.getElementById(`status-${studentId}`)?.value||'Scheduled';if(!cat1&&!cat2&&!finalExam)continue;const gradeData={exam_id:parseInt(examId),student_id:studentId,cat_1_score:cat1,cat_2_score:cat2,exam_score:finalExam,result_status:status,graded_by:currentUser.user_id,updated_at:new Date().toISOString()};const {data:existing}=await supabase.from('exam_grades').select('id').eq('exam_id',parseInt(examId)).eq('student_id',studentId).maybeSingle();if(existing)await supabase.from('exam_grades').update(gradeData).eq('id',existing.id);else await supabase.from('exam_grades').insert({...gradeData,created_at:new Date().toISOString()});saved++;}
-        showFeedback(`✅ ${saved} grades saved successfully!`,'success');setTimeout(closeGradeModal,1000);
-    }catch(error){showFeedback('❌ Failed to save grades: '+error.message,'error');}
-}
-function getExamTypeLabel(examType){return {'CAT_1':'CAT 1 Assessment','CAT_2':'CAT 2 Assessment','CAT':'Continuous Assessment Test','EXAM':'Final Examination','ASSIGNMENT':'Assignment','END_TERM':'End of Term Exam','SUPPLEMENTARY':'Supplementary Exam','OSCE':'OSCE','RAT':'RAT','PRACTICAL':'Practical Assessment','QUIZ':'Quiz'}[examType]||'Assessment';}
 
-function initExams(){
-    installCourseSearchHandlers();
-    cacheDomElements();const dateInput=document.getElementById('exam_date');if(dateInput)dateInput.value=new Date().toISOString().split('T')[0];populateProgramDropdowns();loadExams();loadAvailableClassesForExam();
-    const program=document.getElementById('exam_program')?.value||'';if(typeof initCreateCourseDropdown==='function')initCreateCourseDropdown(program);
-    if(DOM.examSearch)DOM.examSearch.addEventListener('input',filterExamsTable);if(DOM.programFilter)DOM.programFilter.addEventListener('change',filterExamsTable);if(DOM.statusFilter)DOM.statusFilter.addEventListener('change',filterExamsTable);if(DOM.monthFilter)DOM.monthFilter.addEventListener('change',filterExamsTable);
-    if(!window.__examDelegationBound){
-        window.__examDelegationBound=true;
-        document.addEventListener('change',function(e){
-            if(!e.target)return;
-            if(e.target.id==='exam_program'){console.log('🎯 Program changed via delegation:',e.target.value);updateBlockTermOptions('exam_program','exam_block_term');loadAvailableClassesForExam();selectedStudentsForNotification=[];updateSelectedStudentsDisplay();loadStudentsForNotification();if(typeof updateCreateCourseDropdown==='function')updateCreateCourseDropdown();}
-            if(e.target.id==='exam_block_term'){console.log('🎯 Block changed via delegation:',e.target.value);selectedStudentsForNotification=[];updateSelectedStudentsDisplay();loadStudentsForNotification();if(typeof updateCreateCourseDropdown==='function')updateCreateCourseDropdown();}
-            if(e.target.classList?.contains('exam-class-checkbox')){selectedStudentsForNotification=[];updateSelectedStudentsDisplay();loadStudentsForNotification();}
+function renderUnitColumns() {
+    const container = document.getElementById('me_column_settings');
+    if (!container) return;
+    
+    if (!isUserAdmin()) {
+        container.innerHTML = `
+            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-lock"></i> Column settings are managed by the Administrator
+            </div>
+        `;
+        return;
+    }
+    
+    const defaultColumns = [
+        { id: 'sno', label: '#', required: true },
+        { id: 'admission', label: 'Admission', required: true },
+        { id: 'name', label: 'Name', required: true },
+        { id: 'cat1', label: 'CAT1 (0-30)', required: false },
+        { id: 'cat2', label: 'CAT2 (0-30)', required: false },
+        { id: 'exam', label: 'Exam', required: false },
+        { id: 'total', label: 'Total', required: false },
+        { id: 'grade', label: 'Grade', required: false },
+        { id: 'points', label: 'Points', required: false },
+        { id: 'rating', label: 'Rating', required: false },
+        { id: 'retake', label: 'Retake', required: false },
+        { id: 'approval', label: 'Approval', required: false }
+    ];
+    
+    const savedColumns = me_columnSettings.columns || [];
+    
+    container.innerHTML = `
+        <div style="grid-column: 1 / -1; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="font-size: 12px; color: #6b7280;">
+                <i class="fas fa-globe"></i> These settings apply to ALL users
+            </span>
+            <span style="background: #4C1D95; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
+                <i class="fas fa-shield-alt"></i> ADMIN
+            </span>
+        </div>
+        ${defaultColumns.map(col => {
+            const saved = savedColumns.find(c => c.id === col.id);
+            const isChecked = saved !== undefined ? saved.visible : col.required;
+            const isDisabled = col.required ? 'disabled' : '';
+            
+            return `
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; ${col.required ? 'opacity: 0.7;' : ''}">
+                    <input type="checkbox" id="me_col_${col.id}" ${isChecked ? 'checked' : ''} ${isDisabled} 
+                           style="width: 16px; height: 16px; cursor: ${col.required ? 'not-allowed' : 'pointer'};"
+                           onchange="saveUnitColumnSetting('${col.id}', this.checked)">
+                    <label for="me_col_${col.id}" style="font-size: 13px; cursor: ${col.required ? 'default' : 'pointer'};">
+                        ${col.label}
+                        ${col.required ? ' <span style="color: #94a3b8; font-size: 11px;">(required)</span>' : ''}
+                    </label>
+                </div>
+            `;
+        }).join('')}
+        <div style="grid-column: 1 / -1; margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="resetUnitColumns()" style="padding: 6px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                <i class="fas fa-undo"></i> Reset for This Unit
+            </button>
+        </div>
+    `;
+}
+
+async function saveUnitColumnSetting(columnId, visible) {
+    const unit = me_currentUnit;
+    const block = me_currentBlock;
+    const year = me_currentYear || '2025';
+    
+    if (!unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('No unit selected', 'warning');
+        }
+        return;
+    }
+    
+    if (!isUserAdmin()) {
+        if (typeof showNotification === 'function') {
+            showNotification('Only administrators can change column settings', 'error');
+        }
+        return;
+    }
+    
+    try {
+        let columns = me_columnSettings.columns || [];
+        const colIndex = columns.findIndex(c => c.id === columnId);
+        if (colIndex !== -1) {
+            columns[colIndex].visible = visible;
+        } else {
+            columns.push({ id: columnId, visible: visible });
+        }
+        
+        const { data: existing } = await sb
+            .from('column_settings')
+            .select('id')
+            .eq('block', block)
+            .eq('subject', unit)
+            .eq('year', year)
+            .maybeSingle();
+        
+        let error;
+        if (existing) {
+            const { error: updateError } = await sb
+                .from('column_settings')
+                .update({ columns, updated_at: new Date().toISOString() })
+                .eq('id', existing.id);
+            error = updateError;
+        } else {
+            const { error: insertError } = await sb
+                .from('column_settings')
+                .insert({ block, subject: unit, year, columns, updated_at: new Date().toISOString() });
+            error = insertError;
+        }
+        
+        if (error) throw error;
+        
+        me_columnSettings = { columns };
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'}`, 'success');
+        }
+        applyColumnVisibility();
+        
+    } catch (error) {
+        console.error('❌ Error saving column:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error saving column: ' + error.message, 'error');
+        }
+    }
+}
+
+window.saveUnitColumnSetting = saveUnitColumnSetting;
+
+function applyColumnVisibility() {
+    console.log('📋 Applying column visibility...');
+    
+    const table = document.querySelector('#me_marks_container table');
+    if (!table) {
+        console.warn('⚠️ Table not found');
+        return;
+    }
+    
+    const savedColumns = me_columnSettings.columns || [];
+    
+    const headers = table.querySelectorAll('thead th');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    const columnIndexMap = {};
+    headers.forEach((th, index) => {
+        const text = th.textContent.toLowerCase().trim();
+        if (text.includes('cat1') || text.includes('cat 1')) columnIndexMap['cat1'] = index;
+        else if (text.includes('cat2') || text.includes('cat 2')) columnIndexMap['cat2'] = index;
+        else if (text.includes('exam')) columnIndexMap['exam'] = index;
+        else if (text.includes('total')) columnIndexMap['total'] = index;
+        else if (text.includes('grade')) columnIndexMap['grade'] = index;
+        else if (text.includes('points')) columnIndexMap['points'] = index;
+        else if (text.includes('rating')) columnIndexMap['rating'] = index;
+        else if (text.includes('retake')) columnIndexMap['retake'] = index;
+        else if (text.includes('#')) columnIndexMap['sno'] = index;
+        else if (text.includes('admission')) columnIndexMap['admission'] = index;
+        else if (text.includes('name')) columnIndexMap['name'] = index;
+        else if (text.includes('approval')) columnIndexMap['approval'] = index;
+    });
+    
+    headers.forEach((th) => {
+        const text = th.textContent.toLowerCase().trim();
+        let colId = null;
+        if (text.includes('cat1') || text.includes('cat 1')) colId = 'cat1';
+        else if (text.includes('cat2') || text.includes('cat 2')) colId = 'cat2';
+        else if (text.includes('exam')) colId = 'exam';
+        else if (text.includes('total')) colId = 'total';
+        else if (text.includes('grade')) colId = 'grade';
+        else if (text.includes('points')) colId = 'points';
+        else if (text.includes('rating')) colId = 'rating';
+        else if (text.includes('retake')) colId = 'retake';
+        else if (text.includes('#')) colId = 'sno';
+        else if (text.includes('admission')) colId = 'admission';
+        else if (text.includes('name')) colId = 'name';
+        else if (text.includes('approval')) colId = 'approval';
+        
+        if (colId) {
+            const isRequired = ['sno', 'admission', 'name'].includes(colId);
+            const setting = savedColumns.find(c => c.id === colId);
+            const visible = isRequired ? true : (setting !== undefined ? setting.visible : true);
+            th.style.display = visible ? '' : 'none';
+        }
+    });
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        cells.forEach((td, index) => {
+            let colId = null;
+            for (const [id, idx] of Object.entries(columnIndexMap)) {
+                if (idx === index) { colId = id; break; }
+            }
+            if (colId) {
+                const isRequired = ['sno', 'admission', 'name'].includes(colId);
+                const setting = savedColumns.find(c => c.id === colId);
+                const visible = isRequired ? true : (setting !== undefined ? setting.visible : true);
+                td.style.display = visible ? '' : 'none';
+            }
+        });
+    });
+    
+    const autoAssessmentType = getAutoAssessmentType();
+    if (autoAssessmentType !== me_currentAssessmentType) {
+        me_currentAssessmentType = autoAssessmentType;
+        const assessmentSelect = document.getElementById('me_assessment_type');
+        if (assessmentSelect) assessmentSelect.value = autoAssessmentType;
+        recalculateAllTotals();
+    } else {
+        updateAssessmentTypeDisplay();
+    }
+}
+
+async function resetUnitColumns() {
+    const unit = me_currentUnit;
+    const block = me_currentBlock;
+    const year = me_currentYear;
+    
+    if (!unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('No unit selected', 'warning');
+        }
+        return;
+    }
+    
+    if (!isUserAdmin()) {
+        if (typeof showNotification === 'function') {
+            showNotification('Only administrators can reset column settings', 'error');
+        }
+        return;
+    }
+    
+    if (!confirm(`Reset columns for "${unit}" to default settings?`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('column_settings')
+            .delete()
+            .eq('block', block)
+            .eq('subject', unit)
+            .eq('year', year);
+        
+        if (error) throw error;
+        
+        me_columnSettings = { columns: [] };
+        renderUnitColumns();
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ Columns reset to default for ${unit}`, 'success');
+        }
+        loadMarksEntry();
+        
+    } catch (error) {
+        console.error('Error resetting columns:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error resetting columns: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// LECTURER UNIT ASSIGNMENT MANAGEMENT
+// ============================================================
+
+async function loadLecturerAssignments() {
+    console.log('📋 Loading lecturer unit assignments...');
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    const container = document.getElementById('me_lecturer_assignments');
+    
+    if (!block || !unit) {
+        if (container) {
+            container.innerHTML = `
+                <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                    <i class="fas fa-info-circle"></i> Select a unit to view lecturer assignments
+                </div>
+            `;
+        }
+        return;
+    }
+    
+    if (container) {
+        container.innerHTML = '<div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">Loading assignments...</div>';
+    }
+    
+    try {
+        const { data: lecturers, error: lecturerError } = await sb
+            .from('staff_records')
+            .select('*')
+            .eq('program', program)
+            .in('status', ['active', 'approved'])
+            .order('first_name', { ascending: true });
+        
+        if (lecturerError) throw lecturerError;
+        
+        const { data: assignments, error: assignError } = await sb
+            .from('lecturer_subject_assignments')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('program', program)
+            .eq('academic_year', year);
+        
+        if (assignError) throw assignError;
+        
+        me_currentAssignments = assignments || [];
+        const assignedMap = {};
+        assignments?.forEach(a => { assignedMap[a.lecturer_id] = a; });
+        
+        if (!lecturers || lecturers.length === 0) {
+            container.innerHTML = `
+                <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                    <i class="fas fa-info-circle"></i> No lecturers found for this program
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        lecturers.forEach(lecturer => {
+            const isAssigned = !!assignedMap[lecturer.id];
+            const fullName = lecturer.other_names ? `${lecturer.first_name} ${lecturer.other_names}` : lecturer.first_name;
+            const departmentDisplay = lecturer.department || (lecturer.program === 'KRCHN' ? 'Nursing' : 'TVET Department');
+            const programDisplay = lecturer.program || 'KRCHN';
+            
+            html += `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: ${isAssigned ? '#d1fae5' : '#f8fafc'}; border-radius: 8px; border: 1px solid ${isAssigned ? '#10b981' : '#e2e8f0'};">
+                    <div>
+                        <strong style="font-size: 13px; color: #1e293b;">${fullName}</strong>
+                        <span style="font-size: 11px; color: #64748b; display: block;">${lecturer.email || ''}</span>
+                        <span style="font-size: 10px; color: #94a3b8;">
+                            <span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; padding: 2px 8px; border-radius: 4px;">
+                                ${programDisplay}
+                            </span>
+                            - ${departmentDisplay}
+                        </span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        ${isAssigned ? `
+                            <span style="background: #10b981; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
+                                <i class="fas fa-check"></i> Assigned
+                            </span>
+                            <button onclick="removeLecturerAssignment('${lecturer.id}', '${unit}', '${block}')" style="background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        ` : `
+                            <button onclick="assignLecturerToUnit('${lecturer.id}', '${fullName}', '${unit}', '${block}')" style="background: #4C1D95; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-user-plus"></i> Assign
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        await loadAssignmentHistory();
+        
+    } catch (error) {
+        console.error('Error loading assignments:', error);
+        container.innerHTML = `
+            <div style="color: #ef4444; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <i class="fas fa-exclamation-circle"></i> Error loading assignments: ${error.message}
+            </div>
+        `;
+    }
+}
+
+async function assignLecturerToUnit(lecturerId, lecturerName, unit, block) {
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!lecturerId || !unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Missing required information', 'error');
+        }
+        return;
+    }
+    
+    try {
+        const { error } = await sb
+            .from('lecturer_subject_assignments')
+            .insert({
+                lecturer_id: lecturerId,
+                lecturer_name: lecturerName,
+                program: program,
+                block: block,
+                subject_name: unit,
+                academic_year: year,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+        
+        if (error) throw error;
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ ${lecturerName} assigned to "${unit}"`, 'success');
+        }
+        await loadLecturerAssignments();
+        
+    } catch (error) {
+        console.error('Error assigning lecturer:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error assigning lecturer: ' + error.message, 'error');
+        }
+    }
+}
+
+window.assignLecturerToUnit = assignLecturerToUnit;
+
+async function removeLecturerAssignment(lecturerId, unit, block) {
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!lecturerId || !unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Missing required information', 'error');
+        }
+        return;
+    }
+    
+    let lecturerName = 'this lecturer';
+    try {
+        const { data: lecturer } = await sb
+            .from('staff_records')
+            .select('first_name, other_names')
+            .eq('id', lecturerId)
+            .maybeSingle();
+        if (lecturer) {
+            lecturerName = lecturer.other_names ? `${lecturer.first_name} ${lecturer.other_names}` : lecturer.first_name;
+        }
+    } catch (e) {}
+    
+    if (!confirm(`⚠️ Remove "${lecturerName}" from "${unit}"?\n\nThis will remove their access to enter marks for this unit.`)) {
+        return;
+    }
+    
+    if (typeof showLoading === 'function') showLoading('Removing assignment...');
+    
+    try {
+        const { error } = await sb
+            .from('lecturer_subject_assignments')
+            .delete()
+            .eq('lecturer_id', lecturerId)
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('program', program)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ "${lecturerName}" removed from "${unit}"`, 'success');
+        }
+        await loadLecturerAssignments();
+        await loadAssignmentHistory();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error removing assignment:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error removing assignment: ' + error.message, 'error');
+        }
+    }
+}
+
+window.removeLecturerAssignment = removeLecturerAssignment;
+
+// ============================================================
+// ✅ SHOW LECTURER ASSIGNMENT MODAL - WITH SEARCH
+// ============================================================
+
+async function showLecturerAssignmentModal() {
+    const block = document.getElementById('me_block_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    const unitSelect = document.getElementById('me_subject_select');
+    const currentUnit = unitSelect?.value;
+    
+    if (!block || !program) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a program and block first', 'warning');
+        }
+        return;
+    }
+    
+    const blockEl = document.getElementById('me_assign_block');
+    const yearEl = document.getElementById('me_assign_year');
+    const programEl = document.getElementById('me_assign_program');
+    const programDisplayEl = document.getElementById('me_assign_program_display');
+    
+    if (blockEl) blockEl.value = block.replace(/_/g, ' ');
+    if (yearEl) yearEl.value = year;
+    if (programEl) programEl.value = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET';
+    if (programDisplayEl) programDisplayEl.value = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET';
+    
+    const lecturerSelect = document.getElementById('me_lecturer_select');
+    const searchInput = document.getElementById('me_lecturer_search');
+    
+    // Store all lecturers globally for filtering
+    window._allLecturers = [];
+    
+    if (lecturerSelect) {
+        lecturerSelect.innerHTML = '<option value="">Loading lecturers...</option>';
+        
+        try {
+            // ✅ SUPER ADMIN: Show ALL lecturers
+            let { data: lecturers, error } = await sb
+                .from('staff_records')
+                .select('*')
+                .in('status', ['active', 'approved'])
+                .order('first_name', { ascending: true });
+            
+            if (error) throw error;
+            
+            // Store for search
+            window._allLecturers = lecturers || [];
+            
+            if (lecturerSelect) {
+                if (!lecturers || lecturers.length === 0) {
+                    lecturerSelect.innerHTML = '<option value="">No lecturers found in system</option>';
+                } else {
+                    lecturerSelect.innerHTML = '<option value="">-- Select Lecturer --</option>';
+                    lecturers.forEach(l => {
+                        const option = document.createElement('option');
+                        option.value = l.id;
+                        const fullName = l.other_names ? `${l.first_name} ${l.other_names}` : l.first_name;
+                        const prog = l.program || 'N/A';
+                        option.textContent = `${fullName} (${l.email || 'no email'}) - ${prog}`;
+                        option.dataset.name = fullName.toLowerCase();
+                        option.dataset.email = (l.email || '').toLowerCase();
+                        option.dataset.program = prog.toLowerCase();
+                        lecturerSelect.appendChild(option);
+                    });
+                    console.log(`✅ Loaded ${lecturers.length} lecturers`);
+                }
+            }
+            
+        } catch (error) {
+            console.error('Error loading lecturers:', error);
+            if (lecturerSelect) {
+                lecturerSelect.innerHTML = '<option value="">Error loading lecturers</option>';
+            }
+            if (typeof showNotification === 'function') {
+                showNotification('Error loading lecturers: ' + error.message, 'error');
+            }
+        }
+    }
+    
+    // Load units
+    const assignUnitSelect = document.getElementById('me_assign_subject_select');
+    if (assignUnitSelect) {
+        assignUnitSelect.innerHTML = '<option value="">Loading units...</option>';
+        try {
+            const { data: units, error } = await sb
+                .from('units_catalog')
+                .select('unit_name, unit_code')
+                .eq('program', program)
+                .eq('block', block)
+                .eq('status', 'active')
+                .order('unit_name', { ascending: true });
+            
+            if (error) throw error;
+            
+            assignUnitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+            units?.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.unit_name;
+                option.textContent = `${u.unit_code || ''} - ${u.unit_name}`;
+                if (u.unit_name === currentUnit) {
+                    option.selected = true;
+                }
+                assignUnitSelect.appendChild(option);
+            });
+            
+        } catch (error) {
+            console.error('Error loading units:', error);
+            assignUnitSelect.innerHTML = '<option value="">Error loading units</option>';
+        }
+    }
+    
+    const modal = document.getElementById('lecturerAssignmentModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+// ============================================================
+// ✅ FILTER LECTURERS BY SEARCH
+// ============================================================
+
+function filterLecturers() {
+    const searchInput = document.getElementById('me_lecturer_search');
+    const lecturerSelect = document.getElementById('me_lecturer_select');
+    const searchTerm = searchInput?.value?.toLowerCase() || '';
+    
+    if (!lecturerSelect) return;
+    
+    const options = lecturerSelect.querySelectorAll('option');
+    let hasVisible = false;
+    
+    options.forEach(opt => {
+        // Skip the first "Select Lecturer" option
+        if (opt.value === '') {
+            opt.style.display = '';
+            return;
+        }
+        
+        const name = opt.dataset.name || '';
+        const email = opt.dataset.email || '';
+        const program = opt.dataset.program || '';
+        
+        if (name.includes(searchTerm) || email.includes(searchTerm) || program.includes(searchTerm)) {
+            opt.style.display = '';
+            hasVisible = true;
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+    
+    // Show "No results" message if needed
+    const noResultMsg = document.getElementById('me_lecturer_no_result');
+    if (noResultMsg) {
+        noResultMsg.style.display = (searchTerm && !hasVisible) ? 'block' : 'none';
+    }
+}
+window.showLecturerAssignmentModal = showLecturerAssignmentModal;
+
+function closeLecturerAssignmentModal() {
+    document.getElementById('lecturerAssignmentModal').style.display = 'none';
+}
+
+window.closeLecturerAssignmentModal = closeLecturerAssignmentModal;
+
+async function saveLecturerAssignment() {
+    const lecturerId = document.getElementById('me_lecturer_select')?.value;
+    const unit = document.getElementById('me_assign_subject_select')?.value;
+    const block = document.getElementById('me_block_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!lecturerId) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a lecturer', 'warning');
+        }
+        return;
+    }
+    
+    if (!unit) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit', 'warning');
+        }
+        return;
+    }
+    
+    const lecturerSelect = document.getElementById('me_lecturer_select');
+    const lecturerName = lecturerSelect?.options[lecturerSelect.selectedIndex]?.text?.split(' (')[0] || 'Lecturer';
+    
+    await assignLecturerToUnit(lecturerId, lecturerName, unit, block);
+    closeLecturerAssignmentModal();
+}
+
+window.saveLecturerAssignment = saveLecturerAssignment;
+
+// ============================================================
+// ASSIGNMENT HISTORY
+// ============================================================
+
+async function loadAssignmentHistory() {
+    console.log('📋 Loading assignment history...');
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    const container = document.getElementById('me_assignment_history');
+    
+    if (!block || !unit) {
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: #94a3b8; font-size: 13px;">
+                    <i class="fas fa-info-circle"></i> Select a unit to view assignment history
+                </div>
+            `;
+        }
+        return;
+    }
+    
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                <div class="loading-spinner"></div>
+                Loading assignment history...
+            </div>
+        `;
+    }
+    
+    try {
+        const { data: assignments, error } = await sb
+            .from('lecturer_subject_assignments')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('program', program)
+            .eq('academic_year', year)
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!assignments || assignments.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: #94a3b8; font-size: 13px;">
+                    <i class="fas fa-info-circle"></i> No lecturers assigned to this unit yet
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white;">
+                        <th style="padding: 10px 12px; text-align: left;">#</th>
+                        <th style="padding: 10px 12px; text-align: left;">Lecturer Name</th>
+                        <th style="padding: 10px 12px; text-align: left;">Email</th>
+                        <th style="padding: 10px 12px; text-align: left;">Department</th>
+                        <th style="padding: 10px 12px; text-align: left;">Program</th>
+                        <th style="padding: 10px 12px; text-align: left;">Block</th>
+                        <th style="padding: 10px 12px; text-align: left;">Assigned Date</th>
+                        <th style="padding: 10px 12px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        for (let i = 0; i < assignments.length; i++) {
+            const a = assignments[i];
+            const fullName = a.lecturer_name || 'Unknown';
+            
+            const { data: lecturer } = await sb
+                .from('staff_records')
+                .select('*')
+                .eq('id', a.lecturer_id)
+                .maybeSingle();
+            
+            const email = lecturer?.email || a.lecturer_email || 'N/A';
+            const department = a.department || lecturer?.department || (lecturer?.program === 'KRCHN' ? 'Nursing' : 'TVET Department');
+            const programDisplay = a.program || lecturer?.program || 'KRCHN';
+            const assignedDate = a.created_at ? new Date(a.created_at).toLocaleDateString() : 'N/A';
+            
+            html += `
+                <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                    <td style="padding: 10px 12px;">${i + 1}</td>
+                    <td style="padding: 10px 12px; font-weight: 600;">${escapeHtml(fullName)}</td>
+                    <td style="padding: 10px 12px;">${escapeHtml(email)}</td>
+                    <td style="padding: 10px 12px;">
+                        <span style="background: ${department === 'Nursing' ? '#dbeafe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${escapeHtml(department)}
+                        </span>
+                    </td>
+                    <td style="padding: 10px 12px;">
+                        <span style="background: ${programDisplay === 'KRCHN' ? '#d1fae5' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${escapeHtml(programDisplay)}
+                        </span>
+                    </td>
+                    <td style="padding: 10px 12px;">${escapeHtml(block.replace(/_/g, ' '))}</td>
+                    <td style="padding: 10px 12px; font-size: 12px; color: #64748b;">${assignedDate}</td>
+                    <td style="padding: 10px 12px; text-align: center;">
+                        <button onclick="removeLecturerAssignment('${a.lecturer_id}', '${a.subject_name}', '${a.block}')" 
+                                style="background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-times"></i> Drop
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        html += `
+                </tbody>
+            </table>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; margin-top: 10px; font-size: 12px; color: #64748b;">
+                <span>📊 Total: ${assignments.length} lecturer(s) assigned</span>
+                <span>🔄 Last updated: ${new Date().toLocaleString()}</span>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading assignment history:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 30px; color: #ef4444; font-size: 13px;">
+                <i class="fas fa-exclamation-circle"></i> Error loading assignment history: ${error.message}
+            </div>
+        `;
+    }
+}
+
+window.loadAssignmentHistory = loadAssignmentHistory;
+
+function refreshAssignmentHistory() {
+    loadAssignmentHistory();
+    if (typeof showNotification === 'function') {
+        showNotification('🔄 Assignment history refreshed!', 'success');
+    }
+}
+
+window.refreshAssignmentHistory = refreshAssignmentHistory;
+
+async function clearAllAssignments() {
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!block || !unit) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit first', 'warning');
+        }
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ALL lecturers from "${unit}"?\n\nThis will remove all assignments for this unit.`)) {
+        return;
+    }
+    
+    if (typeof showLoading === 'function') showLoading('Removing all assignments...');
+    
+    try {
+        const { error } = await sb
+            .from('lecturer_subject_assignments')
+            .delete()
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('program', program)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ All assignments removed from "${unit}"`, 'success');
+        }
+        await loadLecturerAssignments();
+        await loadAssignmentHistory();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error clearing assignments:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error clearing assignments: ' + error.message, 'error');
+        }
+    }
+}
+
+window.clearAllAssignments = clearAllAssignments;
+
+// ============================================================
+// STUDENT MANAGER FUNCTIONS
+// ============================================================
+
+async function openMarksStudentManager() {
+    const unit = document.getElementById('me_subject_select')?.value;
+    const block = document.getElementById('me_block_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!unit || !block) {
+        showNotification('Please select a unit and block first', 'warning');
+        return;
+    }
+    
+    // Create modal if it doesn't exist
+    if (!document.getElementById('studentManagerModal')) {
+        createStudentManagerModal();
+    }
+    
+    const modal = document.getElementById('studentManagerModal');
+    modal.style.display = 'flex';
+    
+    // Show loading
+    document.getElementById('studentManagerBody').innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div class="loading-spinner"></div>
+            <p style="color: #64748b; margin-top: 10px;">Loading students...</p>
+        </div>
+    `;
+    
+    try {
+        // ✅ Use sb directly (or window.sb)
+        if (!window.sb) throw new Error('Database not available');
+        const { data: allStudents, error: studentError } = await window.sb
+    .from('consolidated_user_profiles_table')
+    .select('student_id, full_name, block, intake_year, program, status')
+    .eq('role', 'student')
+    .eq('program', program)
+    // ✅ REMOVED: .eq('status', 'active')  ← THIS WAS HIDING 100+ STUDENTS!
+    .order('full_name', { ascending: true });
+        
+        if (studentError) throw studentError;
+        
+        // Get already enrolled students
+        const { data: enrolled, error: enrolledError } = await window.sb
+            .from('student_marks')
+            .select('admission_number')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (enrolledError) throw enrolledError;
+        
+        const enrolledSet = new Set(enrolled.map(e => e.admission_number));
+        
+        // Split into enrolled and available (ALL students)
+        const enrolledStudents = allStudents.filter(s => enrolledSet.has(s.student_id));
+        const availableStudents = allStudents.filter(s => !enrolledSet.has(s.student_id));
+        
+        // Store for later
+        me_studentManagerData = {
+            allStudents: allStudents,
+            enrolledStudents: enrolledStudents,
+            availableStudents: availableStudents,
+            enrolledMap: enrolledSet,
+            block: block,
+            unit: unit,
+            program: program,
+            year: year
+        };
+        
+        // Show warning about different blocks
+        let blockWarning = '';
+        const studentsWithDifferentBlock = availableStudents.filter(s => s.block !== block);
+        if (studentsWithDifferentBlock.length > 0) {
+            blockWarning = `
+                <div style="margin-bottom: 12px; padding: 10px 14px; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px;">
+                    <span style="color: #92400e; font-size: 13px;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>${studentsWithDifferentBlock.length}</strong> students are from different blocks. 
+                        <span style="color: #3b82f6; font-weight: 600;">Super Admin can add them anyway.</span>
+                    </span>
+                </div>
+            `;
+        }
+        
+        // Render the student manager
+        renderStudentManager(blockWarning);
+        
+    } catch (error) {
+        console.error('Error loading student manager:', error);
+        document.getElementById('studentManagerBody').innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc2626;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 36px; display: block; margin-bottom: 12px;"></i>
+                <p>Error loading students: ${error.message}</p>
+                <button onclick="openMarksStudentManager()" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-sync-alt"></i> Retry
+                </button>
+            </div>
+        `;
+    }
+}
+// ============================================================
+// ADD SELECTED STUDENTS TO UNIT - SUPER ADMIN (NO BLOCK CHECK)
+// ============================================================
+async function addSelectedStudentsToUnit() {
+    const selectedCheckboxes = document.querySelectorAll('#availableStudentsList input:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        showNotification('Please select at least one student to add', 'warning');
+        return;
+    }
+    
+    const unit = me_currentUnit || document.getElementById('me_subject_select')?.value;
+    const block = me_currentBlock || document.getElementById('me_block_select')?.value;
+    const year = me_currentYear || document.getElementById('me_year_select')?.value || '2025';
+    const program = me_currentProgram || document.getElementById('me_program_select')?.value;
+    
+    if (!unit || !block) {
+        showNotification('Please select a unit and block first', 'warning');
+        return;
+    }
+    
+    // Check for block mismatches but allow adding
+    let differentBlockCount = 0;
+    let differentBlockNames = [];
+    
+    selectedCheckboxes.forEach(cb => {
+        const studentBlock = cb.dataset.block || '';
+        const studentName = cb.dataset.name || 'Unknown';
+        if (studentBlock && studentBlock !== block) {
+            differentBlockCount++;
+            differentBlockNames.push(studentName);
+        }
+    });
+    
+    let confirmMessage = `⚠️ Add ${selectedCheckboxes.length} student(s) to "${unit}"?`;
+    if (differentBlockCount > 0) {
+        confirmMessage += `\n\n⚠️ ${differentBlockCount} student(s) are from different blocks:\n${differentBlockNames.map(n => `  • ${n}`).join('\n')}\n\n✅ They will be added anyway (Super Admin override).`;
+    }
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    showLoadingScreen(`Adding ${selectedCheckboxes.length} students...`, 'Adding Students');
+    updateLoadingProgress(10, 1, 'Processing...');
+    
+    try {
+        if (!window.sb) throw new Error('Database not available');
+        
+        // ==========================================
+        // STEP 1: Collect student data from checkboxes
+        // ==========================================
+        const studentData = [];
+        selectedCheckboxes.forEach(cb => {
+            studentData.push({
+                uuid: cb.value,
+                name: cb.dataset.name || 'Unknown',
+                block: cb.dataset.block || block
+            });
+        });
+        
+        updateLoadingProgress(30, 1, 'Resolving admission numbers...');
+        
+        // ==========================================
+        // STEP 2: Resolve UUIDs → real admission numbers
+        // ==========================================
+        const uuids = studentData.map(s => s.uuid);
+        
+        const { data: profiles, error: profileErr } = await window.sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, student_id, admission_number, full_name')
+            .in('user_id', uuids);
+        
+        if (profileErr) {
+            console.error('❌ Could not fetch profiles:', profileErr);
+            throw new Error('Could not fetch student profiles');
+        }
+        
+        const profileLookup = {};
+        (profiles || []).forEach(p => {
+            const rawAdmission = p.admission_number || p.student_id;
+            const isUUID = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
+            
+            profileLookup[p.user_id] = {
+                full_name: p.full_name || 'Unknown',
+                admission_number: (!isUUID && rawAdmission) ? rawAdmission : null
+            };
+        });
+        
+        updateLoadingProgress(50, 1, 'Adding students to unit...');
+        
+        // ==========================================
+        // STEP 3: Insert each student with correct admission number
+        // ==========================================
+        let addedCount = 0;
+        let skippedCount = 0;
+        
+        for (const student of studentData) {
+            const profile = profileLookup[student.uuid];
+            
+            if (!profile || !profile.admission_number) {
+                console.warn(`⚠️ Skipping ${student.name}: no valid admission number`);
+                continue;
+            }
+            
+            const realAdmission = profile.admission_number;
+            
+            // Check if already enrolled
+            const { data: existing, error: checkError } = await window.sb
+                .from('student_marks')
+                .select('id')
+                .eq('admission_number', realAdmission)
+                .eq('block', block)
+                .eq('subject_name', unit)
+                .eq('academic_year', year);
+            
+            if (checkError) {
+                console.error('Error checking existing:', checkError);
+                continue;
+            }
+            
+            if (existing && existing.length > 0) {
+                skippedCount++;
+                continue;
+            }
+            
+            const { error: insertError } = await window.sb
+                .from('student_marks')
+                .insert({
+                    admission_number: realAdmission,
+                    student_id: student.uuid,
+                    student_name: profile.full_name,
+                    block: block,
+                    subject_name: unit,
+                    academic_year: year,
+                    cat1_score: 0,
+                    cat2_score: 0,
+                    exam_score: 0,
+                    final_score: 0,
+                    grade: '',
+                    assessment_type: 'full',
+                    approval_status: 'draft',
+                    published: false,
+                    program: program
+                });
+            
+            if (insertError) {
+                console.error('Error adding student:', insertError);
+            } else {
+                addedCount++;
+            }
+        }
+        
+        hideLoadingScreen();
+        
+        let message = `✅ Added ${addedCount} student(s) to "${unit}"`;
+        if (skippedCount > 0) message += ` (${skippedCount} already existed)`;
+        if (differentBlockCount > 0) message += `\n⚠️ ${differentBlockCount} student(s) were from different blocks`;
+        
+        showNotification(message, 'success');
+        
+        // Refresh
+        loadMarksEntry();
+        closeStudentManager();
+        
+    } catch (error) {
+        hideLoadingScreen();
+        console.error('Error adding students:', error);
+        showNotification('Error adding students: ' + error.message, 'error');
+    }
+}
+// ============================================================
+// RENDER STUDENT MANAGER - SUPER ADMIN VIEW
+// ============================================================
+
+function renderStudentManager(blockWarning = '') {
+    const { allStudents, enrolledStudents, availableStudents, block, unit, program, year } = me_studentManagerData;
+    
+    const body = document.getElementById('studentManagerBody');
+    if (!body) return;
+    
+    const totalEnrolled = enrolledStudents?.length || 0;
+    const totalAvailable = availableStudents?.length || 0;
+    const totalStudents = allStudents?.length || 0;
+    const differentBlockCount = availableStudents?.filter(s => s.block !== block).length || 0;
+    
+    // ✅ Get unique intake years from available students
+    const intakeYears = [...new Set(availableStudents.map(s => s.intake_year).filter(y => y))].sort();
+    
+    body.innerHTML = `
+        <div style="padding: 16px;">
+            <!-- SUPER ADMIN INFO -->
+            <div style="margin-bottom: 16px; padding: 12px 16px; background: #ede9fe; border-radius: 8px; border-left: 4px solid #7c3aed;">
+                <span style="color: #4C1D95; font-weight: 600;">
+                    <i class="fas fa-crown"></i> Super Admin Mode
+                </span>
+                <span style="color: #6b7280; font-size: 13px; margin-left: 8px;">
+                    You can add <strong>any student</strong> to this unit, regardless of their block.
+                </span>
+            </div>
+            
+            ${blockWarning || ''}
+            
+            <!-- Stats -->
+            <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+                <div style="background: #e0f2fe; padding: 8px 16px; border-radius: 6px;">
+                    <strong>📚 Unit:</strong> ${escapeHtml(unit)}
+                </div>
+                <div style="background: #e0f2fe; padding: 8px 16px; border-radius: 6px;">
+                    <strong>📦 Block:</strong> ${escapeHtml(block.replace(/_/g, ' '))}
+                </div>
+                <div style="background: #d1fae5; padding: 8px 16px; border-radius: 6px;">
+                    <strong>✅ Enrolled:</strong> ${totalEnrolled}
+                </div>
+                <div style="background: #fef3c7; padding: 8px 16px; border-radius: 6px;">
+                    <strong>📋 Available:</strong> ${totalAvailable}
+                </div>
+                ${differentBlockCount > 0 ? `
+                <div style="background: #fce4ec; padding: 8px 16px; border-radius: 6px;">
+                    <strong>⚠️ Different Block:</strong> ${differentBlockCount}
+                </div>
+                ` : ''}
+            </div>
+            
+            <!-- ============================================================ -->
+            <!-- ENROLLED STUDENTS SECTION -->
+            <!-- ============================================================ -->
+            <div style="margin-top: 16px; border: 1px solid #d1fae5; border-radius: 8px; overflow: hidden;">
+                <div style="background: #d1fae5; padding: 10px 16px; border-bottom: 1px solid #d1fae5; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-weight: 600; color: #065f46;">
+                        <i class="fas fa-user-check"></i> Enrolled Students (${totalEnrolled})
+                    </span>
+                    ${totalEnrolled > 0 ? `
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button onclick="selectAllEnrolledStudents()" style="background: none; border: none; color: #065f46; cursor: pointer; font-size: 12px; font-weight: 500;">
+                            <i class="fas fa-check-square"></i> Select All
+                        </button>
+                        <button onclick="deselectAllEnrolledStudents()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-square"></i> Deselect All
+                        </button>
+                        <button onclick="dropSelectedEnrolledStudents()" id="dropEnrolledBtn" style="display: none; background: #dc2626; color: white; border: none; padding: 4px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                            <i class="fas fa-user-minus"></i> Drop Selected (<span id="dropEnrolledCount">0</span>)
+                        </button>
+                    </div>
+                    ` : ''}
+                </div>
+                <div id="enrolledStudentsList" style="max-height: 300px; overflow-y: auto; padding: 8px; background: #f8fafc;">
+                    ${enrolledStudents.length === 0 ? `
+                        <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                            <i class="fas fa-users" style="font-size: 30px; display: block; margin-bottom: 8px;"></i>
+                            <p>No students enrolled in this unit yet.</p>
+                        </div>
+                    ` : `
+                        ${enrolledStudents.map((s, index) => {
+                            const admission = s.admission_number || s.student_id || 'N/A';
+                            const name = s.student_name || s.full_name || 'Unknown';
+                            const studentBlock = s.block || 'N/A';
+                            const blockMatch = studentBlock === block;
+                            const intakeYear = s.intake_year || s.academic_year || 'N/A';
+                            return `
+                                <div class="enrolled-student-item" data-admission="${admission}" 
+                                     style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #ffffff;' : 'background: #f8fafc;'}">
+                                    <input type="checkbox" class="enrolled-checkbox" data-admission="${admission}" 
+                                           style="margin-right: 12px; width: 15px; height: 15px; cursor: pointer;" 
+                                           onchange="updateEnrolledSelectedCount()">
+                                    <span style="flex: 1;">
+                                        <strong>${escapeHtml(name)}</strong>
+                                        <span style="font-size: 11px; color: #94a3b8; margin-left: 8px;">${escapeHtml(admission)}</span>
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <span style="font-size: 10px; background: #e0e7ff; padding: 2px 8px; border-radius: 10px; color: #3730a3;">
+                                            📅 ${escapeHtml(intakeYear)}
+                                        </span>
+                                        <span style="font-size: 11px; background: ${blockMatch ? '#e0f2fe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px;">
+                                            ${escapeHtml(studentBlock)}
+                                        </span>
+                                        ${!blockMatch ? `<span style="font-size: 10px; color: #f59e0b; font-weight: 600;">⚠️</span>` : ''}
+                                        ${s.cat1_score > 0 || s.cat2_score > 0 || s.exam_score > 0 ? 
+                                            `<span style="font-size: 10px; color: #3b82f6;">📝 Has marks</span>` : 
+                                            `<span style="font-size: 10px; color: #94a3b8;">No marks</span>`}
+                                        <button onclick="dropSingleEnrolledStudent('${admission}')" 
+                                                style="background: #dc2626; color: white; border: none; padding: 3px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                            <i class="fas fa-user-minus"></i> Drop
+                                        </button>
+                                    </span>
+                                </div>
+                            `;
+                        }).join('')}
+                    `}
+                </div>
+                ${enrolledStudents.length > 0 ? `
+                <div style="background: #f1f5f9; padding: 6px 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: #64748b;">
+                    <span><span id="enrolledSelectedCount">0</span> selected</span>
+                    <button onclick="clearAllEnrolledStudents()" style="background: #dc2626; color: white; border: none; padding: 4px 14px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                        <i class="fas fa-trash"></i> Remove All
+                    </button>
+                </div>
+                ` : ''}
+            </div>
+            
+            <!-- ============================================================ -->
+            <!-- AVAILABLE STUDENTS SECTION -->
+            <!-- ============================================================ -->
+            <div style="margin-top: 16px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                <div style="background: #f8fafc; padding: 10px 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-weight: 600;">📋 Available Students (${totalAvailable})</span>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button onclick="selectAllAvailableStudents()" style="background: none; border: none; color: #4C1D95; cursor: pointer; font-size: 12px; font-weight: 500;">
+                            <i class="fas fa-check-square"></i> Select All
+                        </button>
+                        <button onclick="deselectAllAvailableStudents()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-square"></i> Deselect All
+                        </button>
+                        <button onclick="selectDifferentBlockStudents()" style="background: none; border: none; color: #f59e0b; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-exclamation-triangle"></i> Different Block
+                        </button>
+                        <button onclick="selectSameIntakeYear()" style="background: none; border: none; color: #4C1D95; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-calendar"></i> Same Year
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- ✅ YEAR FILTER DROPDOWN -->
+                <div style="padding: 8px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-size: 12px; color: #64748b; font-weight: 500;">
+                        <i class="fas fa-filter"></i> Filter by Intake Year:
+                    </span>
+                    <select id="intakeYearFilter" onchange="filterAvailableStudentsByYear()" style="padding: 5px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; background: white;">
+                        <option value="all">📅 All Years</option>
+                        ${intakeYears.map(y => `<option value="${y}">📅 ${escapeHtml(y)}</option>`).join('')}
+                    </select>
+                    <span style="font-size: 11px; color: #94a3b8; margin-left: 4px;">
+                        Showing <span id="filteredAvailableCount">${totalAvailable}</span> students
+                    </span>
+                    <button onclick="resetYearFilter()" style="background: #e2e8f0; border: none; padding: 3px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; color: #475569;">
+                        Reset
+                    </button>
+                </div>
+                
+                <div id="availableStudentsList" style="max-height: 300px; overflow-y: auto; padding: 8px;">
+                    ${availableStudents.length === 0 ? `
+                        <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                            <i class="fas fa-users" style="font-size: 30px; display: block; margin-bottom: 8px;"></i>
+                            <p>All students are already enrolled in this unit.</p>
+                        </div>
+                    ` : `
+                        ${availableStudents.map(s => {
+                            const blockMatch = s.block === block;
+                            const intakeYear = s.intake_year || 'N/A';
+                            return `
+                                <div class="student-item" data-name="${(s.full_name || '').toLowerCase()}" data-admission="${s.student_id}" data-year="${intakeYear}"
+                                     style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; ${!blockMatch ? 'background: #fffbeb; border-left: 3px solid #f59e0b;' : ''}">
+                                    <input type="checkbox" id="student_${s.student_id}" value="${s.student_id}" 
+                                           data-name="${s.full_name || 'Unknown'}" data-block="${s.block || ''}" data-year="${intakeYear}"
+                                           style="margin-right: 12px; width: 15px; height: 15px; cursor: pointer;">
+                                    <label for="student_${s.student_id}" style="cursor: pointer; flex: 1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+                                        <span>
+                                            <strong>${escapeHtml(s.full_name || 'Unknown')}</strong>
+                                            <span style="font-size: 11px; color: #94a3b8; margin-left: 8px;">${escapeHtml(s.student_id || '')}</span>
+                                        </span>
+                                        <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                            <span style="font-size: 10px; background: #e0e7ff; padding: 2px 8px; border-radius: 10px; color: #3730a3;">
+                                                📅 ${escapeHtml(intakeYear)}
+                                            </span>
+                                            <span style="font-size: 11px; background: ${s.block === block ? '#e0f2fe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px;">
+                                                ${escapeHtml(s.block || 'N/A')}
+                                            </span>
+                                            ${!blockMatch ? `<span style="font-size: 10px; color: #f59e0b; font-weight: 600;">⚠️ Different block</span>` : ''}
+                                        </span>
+                                    </label>
+                                </div>
+                            `;
+                        }).join('')}
+                    `}
+                </div>
+            </div>
+            
+            <!-- Selected Count -->
+            <div style="margin-top: 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span style="font-size: 13px; color: #475569;">
+                    <span id="selectedStudentCount">0</span> students selected to add
+                </span>
+                <span style="font-size: 12px; color: #94a3b8;">
+                    ${differentBlockCount > 0 ? `⚠️ ${differentBlockCount} students from different blocks` : 'All students match the current block'}
+                </span>
+            </div>
+            
+            <!-- Actions -->
+            <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;">
+                <button onclick="closeStudentManager()" style="padding: 10px 24px; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Close
+                </button>
+                <button onclick="addSelectedStudentsToUnit()" id="addStudentsBtn" style="padding: 10px 24px; background: #4C1D95; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-user-plus"></i> Add Selected Students
+                </button>
+            </div>
+        </div>
+    `;
+    
+    updateSelectedCount();
+    updateEnrolledSelectedCount();
+}
+
+// ============================================================
+// ENROLLED STUDENT SELECTION FUNCTIONS
+// ============================================================
+
+function updateEnrolledSelectedCount() {
+    const checkboxes = document.querySelectorAll('.enrolled-checkbox:checked');
+    const count = checkboxes.length;
+    
+    const countEl = document.getElementById('enrolledSelectedCount');
+    if (countEl) countEl.textContent = count;
+    
+    const dropBtn = document.getElementById('dropEnrolledBtn');
+    const dropCount = document.getElementById('dropEnrolledCount');
+    
+    if (dropBtn) {
+        dropBtn.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+    if (dropCount) dropCount.textContent = count;
+}
+
+function selectAllEnrolledStudents() {
+    document.querySelectorAll('.enrolled-checkbox').forEach(cb => {
+        cb.checked = true;
+    });
+    updateEnrolledSelectedCount();
+}
+
+function deselectAllEnrolledStudents() {
+    document.querySelectorAll('.enrolled-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    updateEnrolledSelectedCount();
+}
+
+async function dropSelectedEnrolledStudents() {
+    const checkboxes = document.querySelectorAll('.enrolled-checkbox:checked');
+    const selected = Array.from(checkboxes).map(cb => cb.dataset.admission);
+    
+    if (selected.length === 0) {
+        showNotification('No students selected', 'warning');
+        return;
+    }
+    
+    const unit = me_currentUnit || document.getElementById('me_subject_select')?.value;
+    const block = me_currentBlock || document.getElementById('me_block_select')?.value;
+    const year = me_currentYear || document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!unit || !block) {
+        showNotification('Please select a unit and block first', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ${selected.length} selected student(s) from "${unit}"?\n\nTheir marks will be permanently deleted.`)) {
+        return;
+    }
+    
+    showLoadingScreen(`Removing ${selected.length} students...`, 'Removing Students');
+    updateLoadingProgress(10, 1, 'Processing...');
+    
+    try {
+        if (!window.sb) throw new Error('Database not available');
+        
+        let removed = 0;
+        let errors = 0;
+        
+        updateLoadingProgress(30, 1, 'Removing records...');
+        
+        for (const admission of selected) {
+            const { error } = await window.sb
+                .from('student_marks')
+                .delete()
+                .eq('admission_number', admission)
+                .eq('block', block)
+                .eq('subject_name', unit)
+                .eq('academic_year', year);
+            
+            if (error) {
+                console.error('❌ Error removing:', admission, error);
+                errors++;
+            } else {
+                removed++;
+            }
+        }
+        
+        hideLoadingScreen();
+        
+        if (errors > 0) {
+            showNotification(`⚠️ Removed ${removed} students, ${errors} errors`, 'warning');
+        } else {
+            showNotification(`✅ ${removed} students removed from "${unit}"`, 'success');
+        }
+        
+        // Refresh the student manager
+        openMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        hideLoadingScreen();
+        console.error('❌ Error removing students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+async function dropSingleEnrolledStudent(admission) {
+    const unit = me_currentUnit || document.getElementById('me_subject_select')?.value;
+    const block = me_currentBlock || document.getElementById('me_block_select')?.value;
+    const year = me_currentYear || document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!unit || !block) {
+        showNotification('Please select a unit and block first', 'warning');
+        return;
+    }
+    
+    // Get student name
+    let studentName = 'this student';
+    try {
+        const { data: student } = await window.sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name')
+            .eq('student_id', admission)
+            .single();
+        if (student) studentName = student.full_name;
+    } catch (e) {}
+    
+    if (!confirm(`⚠️ Remove "${studentName}" from "${unit}"?\n\nTheir marks will be permanently deleted.`)) {
+        return;
+    }
+    
+    showLoadingScreen(`Removing ${studentName}...`, 'Removing Student');
+    updateLoadingProgress(10, 1, 'Processing...');
+    
+    try {
+        if (!window.sb) throw new Error('Database not available');
+        
+        const { error } = await window.sb
+            .from('student_marks')
+            .delete()
+            .eq('admission_number', admission)
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        hideLoadingScreen();
+        showNotification(`✅ ${studentName} removed from "${unit}"`, 'success');
+        
+        // Refresh
+        openMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        hideLoadingScreen();
+        console.error('❌ Error removing student:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+async function clearAllEnrolledStudents() {
+    const unit = me_currentUnit || document.getElementById('me_subject_select')?.value;
+    const block = me_currentBlock || document.getElementById('me_block_select')?.value;
+    const year = me_currentYear || document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!unit || !block) {
+        showNotification('Please select a unit and block first', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ALL students from "${unit}"?\n\nThis will delete ALL marks for this unit.`)) {
+        return;
+    }
+    
+    showLoadingScreen('Removing all students...', 'Clearing Unit');
+    updateLoadingProgress(10, 1, 'Processing...');
+    
+    try {
+        if (!window.sb) throw new Error('Database not available');
+        
+        const { error } = await window.sb
+            .from('student_marks')
+            .delete()
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        hideLoadingScreen();
+        showNotification(`✅ All students removed from "${unit}"`, 'success');
+        
+        // Refresh
+        openMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        hideLoadingScreen();
+        console.error('❌ Error clearing students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+// ============================================================
+// INTAKE YEAR FILTER FUNCTIONS
+// ============================================================
+
+function filterAvailableStudentsByYear() {
+    const selectedYear = document.getElementById('intakeYearFilter')?.value || 'all';
+    const items = document.querySelectorAll('#availableStudentsList .student-item');
+    let visibleCount = 0;
+    
+    items.forEach(item => {
+        const year = item.dataset.year || 'N/A';
+        if (selectedYear === 'all' || year === selectedYear) {
+            item.style.display = 'flex';
+            visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    const countEl = document.getElementById('filteredAvailableCount');
+    if (countEl) countEl.textContent = visibleCount;
+}
+
+function resetYearFilter() {
+    const filter = document.getElementById('intakeYearFilter');
+    if (filter) filter.value = 'all';
+    filterAvailableStudentsByYear();
+}
+
+function selectSameIntakeYear() {
+    // Get the current selected year from filter
+    const selectedYear = document.getElementById('intakeYearFilter')?.value || 'all';
+    
+    if (selectedYear === 'all') {
+        showNotification('Please select a specific year from the filter dropdown first', 'info');
+        return;
+    }
+    
+    const items = document.querySelectorAll('#availableStudentsList .student-item');
+    items.forEach(item => {
+        const year = item.dataset.year || 'N/A';
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.checked = (year === selectedYear);
+        }
+    });
+    
+    updateSelectedCount();
+    showNotification(`✅ Selected all students from ${selectedYear}`, 'success');
+}
+// ============================================================
+// STUDENT MANAGER HELPER FUNCTIONS
+// ============================================================
+
+function createStudentManagerModal() {
+    // Check if modal already exists
+    if (document.getElementById('studentManagerModal')) return;
+    
+    const modalHTML = `
+    <div id="studentManagerModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99999; align-items: center; justify-content: center; overflow-y: auto;">
+        <div style="background: white; border-radius: 16px; max-width: 800px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; color: #1e293b;">
+                    <i class="fas fa-users" style="color: #4C1D95;"></i> Manage Students
+                </h3>
+                <button onclick="closeStudentManager()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
+            </div>
+            <div id="studentManagerBody"></div>
+        </div>
+    </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeStudentManager() {
+    const modal = document.getElementById('studentManagerModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function selectAllAvailableStudents() {
+    document.querySelectorAll('#availableStudentsList input[type="checkbox"]').forEach(cb => {
+        cb.checked = true;
+    });
+    updateSelectedCount();
+}
+
+function deselectAllAvailableStudents() {
+    document.querySelectorAll('#availableStudentsList input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+    });
+    updateSelectedCount();
+}
+
+function selectDifferentBlockStudents() {
+    const block = me_currentBlock || document.getElementById('me_block_select')?.value;
+    document.querySelectorAll('#availableStudentsList input[type="checkbox"]').forEach(cb => {
+        const studentBlock = cb.dataset.block || '';
+        if (studentBlock && studentBlock !== block) {
+            cb.checked = true;
+        }
+    });
+    updateSelectedCount();
+}
+
+function filterStudentManagerList() {
+    const searchTerm = document.getElementById('studentSearchInput')?.value?.toLowerCase() || '';
+    const items = document.querySelectorAll('#availableStudentsList .student-item');
+    
+    items.forEach(item => {
+        const name = item.dataset.name || '';
+        const admission = item.dataset.admission || '';
+        const match = name.includes(searchTerm) || admission.includes(searchTerm);
+        item.style.display = match ? 'flex' : 'none';
+    });
+}
+
+function updateSelectedCount() {
+    const count = document.querySelectorAll('#availableStudentsList input[type="checkbox"]:checked').length;
+    const el = document.getElementById('selectedStudentCount');
+    if (el) el.textContent = count;
+}
+// ============================================================
+// LOAD MARKS STUDENT MANAGER DATA
+// ============================================================
+
+async function loadMarksStudentManagerData(block, unit, program, year) {
+    const container = document.getElementById('marksStudentManagerBody');
+    if (!container) return;
+    
+    console.log('📊 Loading student manager data...');
+    
+    try {
+        const { data: enrolledStudents, error: enrolledError } = await sb
+            .from('student_marks')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (enrolledError) throw enrolledError;
+        
+        const enrolledMap = {};
+        enrolledStudents?.forEach(s => {
+            if (s.admission_number) {
+                enrolledMap[s.admission_number] = true;
+            }
+        });
+        
+        let query = sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name, email, program, block, admission_number, status')
+            .eq('role', 'student');
+        
+        if (program) query = query.eq('program', program);
+        if (block) query = query.eq('block', block);
+        
+        const { data: profileStudents, error: profileError } = await query;
+        if (profileError) throw profileError;
+        
+        const { data: allMarksStudents, error: marksError } = await sb
+            .from('student_marks')
+            .select('admission_number, student_name')
+            .eq('block', block)
+            .eq('academic_year', year);
+        
+        if (marksError) throw marksError;
+        
+        const allStudentsMap = {};
+        
+        profileStudents?.forEach(s => {
+            if (s.student_id) {
+                allStudentsMap[s.student_id] = {
+                    student_id: s.student_id,
+                    full_name: s.full_name || 'Unknown',
+                    email: s.email || '',
+                    program: s.program || program,
+                    block: s.block || block,
+                    admission_number: s.admission_number || s.student_id,
+                    status: s.status || 'active',
+                    source: 'profile'
+                };
+            }
+        });
+        
+        allMarksStudents?.forEach(s => {
+            if (s.admission_number && !allStudentsMap[s.admission_number]) {
+                allStudentsMap[s.admission_number] = {
+                    student_id: s.admission_number,
+                    full_name: s.student_name || 'Unknown',
+                    email: '',
+                    program: program,
+                    block: block,
+                    admission_number: s.admission_number,
+                    status: 'active',
+                    source: 'marks'
+                };
+            }
+        });
+        
+        const allStudents = Object.values(allStudentsMap);
+        const availableStudents = allStudents.filter(s => {
+            return !enrolledMap[s.student_id] && !enrolledMap[s.admission_number];
+        });
+        
+        me_studentManagerData = {
+            allStudents: allStudents,
+            enrolledStudents: enrolledStudents || [],
+            availableStudents: availableStudents,
+            enrolledMap: enrolledMap,
+            block: block,
+            unit: unit,
+            program: program,
+            year: year
+        };
+        
+        renderMarksStudentManager();
+        
+    } catch (error) {
+        console.error('❌ Error loading marks student data:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #ef4444;">
+                <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
+                Error: ${error.message}
+            </div>
+        `;
+    }
+}
+
+window.loadMarksStudentManagerData = loadMarksStudentManagerData;
+
+// ============================================================
+// RENDER STUDENT MANAGER
+// ============================================================
+
+function renderMarksStudentManager() {
+    const container = document.getElementById('marksStudentManagerBody');
+    if (!container) return;
+    
+    const { allStudents, enrolledStudents, availableStudents, block, unit, program, year } = me_studentManagerData;
+    
+    const totalEnrolled = enrolledStudents?.length || 0;
+    const totalAvailable = availableStudents?.length || 0;
+    const totalStudents = allStudents?.length || 0;
+    
+    let studentOptions = '<option value="">-- Select Student to Add --</option>';
+    
+    if (availableStudents && availableStudents.length > 0) {
+        availableStudents.forEach(s => {
+            const displayName = s.full_name || 'Unknown';
+            const displayId = s.student_id || s.admission_number || 'N/A';
+            studentOptions += `<option value="${s.student_id || s.admission_number}">${displayName} (${displayId})</option>`;
+        });
+    } else {
+        studentOptions = '<option value="">No available students</option>';
+    }
+    
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+            <div>
+                <h4 style="margin: 0; color: #1e293b;">${escapeHtml(unit)}</h4>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    ${escapeHtml(program)} | ${escapeHtml(block)} | ${escapeHtml(year)}
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                    📚 ${totalEnrolled} Enrolled
+                </span>
+                <span style="background: #f3f4f6; color: #6b7280; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                    👥 ${totalAvailable} Available
+                </span>
+                <span style="background: #e5e7eb; color: #475569; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                    📊 ${totalStudents} Total
+                </span>
+            </div>
+        </div>
+        
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #86efac;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <select id="studentToAddMarks" style="flex: 1; min-width: 200px; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
+                    ${studentOptions}
+                </select>
+                <button onclick="addStudentToMarksUnit()" style="background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                    <i class="fas fa-plus"></i> Add Student
+                </button>
+                ${totalAvailable > 0 ? `
+                <button onclick="addAllAvailableStudentsToMarksUnit()" style="background: #059669; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                    <i class="fas fa-users"></i> Add All (${totalAvailable})
+                </button>
+                ` : ''}
+            </div>
+            ${totalAvailable === 0 && totalStudents > 0 ? `
+            <div style="margin-top: 10px; padding: 8px 12px; background: #fef3c7; border-radius: 6px; color: #92400e; font-size: 12px;">
+                <i class="fas fa-info-circle"></i> All available students are already enrolled in this unit.
+            </div>
+            ` : ''}
+            ${totalStudents === 0 ? `
+            <div style="margin-top: 10px; padding: 8px 12px; background: #fee2e2; border-radius: 6px; color: #991b1b; font-size: 12px;">
+                <i class="fas fa-exclamation-circle"></i> No students found. Please check the program and block selection.
+            </div>
+            ` : ''}
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; padding: 10px 14px; background: #f1f5f9; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">
+                    <input type="checkbox" id="selectAllStudents" onchange="toggleAllStudents()" style="width: 16px; height: 16px; cursor: pointer;">
+                    Select All
+                </label>
+                <span style="font-size: 12px; color: #64748b;">
+                    <span id="selectedStudentCount">0</span> selected
+                </span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="dropSelectedStudents()" id="dropSelectedBtn" style="display: none; background: #dc2626; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                    <i class="fas fa-user-minus"></i> Drop Selected (<span id="dropSelectedCount">0</span>)
+                </button>
+            </div>
+        </div>
+        
+        <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="position: sticky; top: 0; z-index: 10;">
+                    <tr style="background: #1e293b; color: white;">
+                        <th style="padding: 8px; text-align: center; width: 35px;">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllStudentsCheckbox()" style="width: 14px; height: 14px; cursor: pointer;">
+                        </th>
+                        <th style="padding: 8px; text-align: center;">#</th>
+                        <th style="padding: 8px; text-align: left;">Student Name</th>
+                        <th style="padding: 8px; text-align: left;">Admission</th>
+                        <th style="padding: 8px; text-align: left;">Program</th>
+                        <th style="padding: 8px; text-align: left;">Block</th>
+                        <th style="padding: 8px; text-align: center;">CAT1</th>
+                        <th style="padding: 8px; text-align: center;">CAT2</th>
+                        <th style="padding: 8px; text-align: center;">Exam</th>
+                        <th style="padding: 8px; text-align: center;">Total</th>
+                        <th style="padding: 8px; text-align: center;">Grade</th>
+                        <th style="padding: 8px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+    
+    if (!enrolledStudents || enrolledStudents.length === 0) {
+        html += `
+            <tr>
+                <td colspan="12" style="padding: 30px; text-align: center; color: #94a3b8;">
+                    <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                    No students enrolled in this unit yet
+                </td>
+            </tr>
+        `;
+    } else {
+        enrolledStudents.forEach((s, i) => {
+            const admission = s.admission_number || 'N/A';
+            const name = s.student_name || 'Unknown';
+            const cat1 = s.cat1_score || 0;
+            const cat2 = s.cat2_score || 0;
+            const exam = s.exam_score || 0;
+            const total = s.final_score || 0;
+            const grade = s.grade || '-';
+            const hasMarks = cat1 > 0 || cat2 > 0 || exam > 0;
+            const isPassing = total >= getPassingThreshold();
+            
+            html += `
+                <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                    <td style="padding: 8px; text-align: center;">
+                        <input type="checkbox" class="student-checkbox" data-admission="${admission}" onchange="updateSelectedCount()" style="width: 14px; height: 14px; cursor: pointer;">
+                    </td>
+                    <td style="padding: 8px; text-align: center;">${i + 1}</td>
+                    <td style="padding: 8px; font-weight: 500;">${escapeHtml(name)}</td>
+                    <td style="padding: 8px;">${escapeHtml(admission)}</td>
+                    <td style="padding: 8px;">${escapeHtml(program)}</td>
+                    <td style="padding: 8px;">${escapeHtml(block)}</td>
+                    <td style="padding: 8px; text-align: center;">${cat1 || '-'}</td>
+                    <td style="padding: 8px; text-align: center;">${cat2 || '-'}</td>
+                    <td style="padding: 8px; text-align: center;">${exam || '-'}</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : (hasMarks ? '#991b1b' : '#94a3b8')};">${hasMarks ? total : '-'}</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : (hasMarks ? '#991b1b' : '#94a3b8')};">${hasMarks ? grade : '-'}</td>
+                    <td style="padding: 8px; text-align: center;">
+                        <button onclick="removeStudentFromMarksUnit('${admission}')" 
+                                style="background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-user-minus"></i> Drop
+                        </button>
+                    </td>
+                </tr>
+            `;
         });
     }
-    setTimeout(()=>{const ps=document.getElementById('exam_program');if(ps?.value){updateBlockTermOptions('exam_program','exam_block_term');loadAvailableClassesForExam();}loadStudentsForNotification();},500);
-    console.log('🚀 Exams/CATS initialized (delegated events)');
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        
+        ${enrolledStudents && enrolledStudents.length > 0 ? `
+        <div style="display: flex; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
+            <button onclick="dropSelectedStudents()" id="dropSelectedBtnBottom" style="display: none; background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-user-minus"></i> Drop Selected (<span id="dropSelectedCountBottom">0</span>)
+            </button>
+            <button onclick="clearAllStudentsFromMarksUnit()" style="background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-trash"></i> Remove All Students
+            </button>
+            <button onclick="reloadMarksStudentManager()" style="background: #6b7280; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        ` : ''}
+    `;
+    
+    container.innerHTML = html;
 }
 
-window.filterExamsTable=filterExamsTable;window.buildExamNameFromCourse=buildExamNameFromCourse;window.updateCreateCourseDropdown=updateCreateCourseDropdown;window.initCreateCourseDropdown=initCreateCourseDropdown;window.createUnitsData=createUnitsData;window.loadCoursesForCreateDropdown=loadCoursesForCreateDropdown;window.filterCreateCourseDropdown=filterCreateCourseDropdown;window.selectCreateCourse=selectCreateCourse;window.initEditCourseDropdown=initEditCourseDropdown;window.selectEditCourse=selectEditCourse;window.setEditCourseValue=setEditCourseValue;
-window.sendEmailWithBrevo=sendEmailWithBrevo;window.sendEmailWithEdgeFunctionFallback=sendEmailWithEdgeFunctionFallback;window.sendExamNotificationEmail=sendExamNotificationEmail;window.loadStudentsForNotification=loadStudentsForNotification;window.searchStudentsForNotification=searchStudentsForNotification;window.toggleStudentForNotification=toggleStudentForNotification;window.updateSelectedStudentsDisplay=updateSelectedStudentsDisplay;window.debounce=debounce;
-window.loadExams=loadExams;window.showExamTab=showExamTab;window.deleteExam=deleteExam;window.closeExam=closeExam;window.openEditExamModal=openEditExamModal;window.saveEditedExam=saveEditedExam;window.exportExamsToCSV=exportExamsToCSV;window.handleAddExam=handleAddExam;window.addCustomBlocks=addCustomBlocks;window.addClass=addClass;window.removeClass=removeClass;window.closeEditModal=closeEditModal;window.getSelectedClasses=getSelectedClasses;window.loadAvailableClassesForExam=loadAvailableClassesForExam;window.populateProgramDropdowns=populateProgramDropdowns;window.escapeHtml=window.escapeHtml||escapeHtml;window.getCurrentUser=getCurrentUser;window.ExamCache=ExamCache;window.initExams=initExams;window.openGradeModal=openGradeModal;window.closeGradeModal=closeGradeModal;window.saveGrades=saveGrades;window.filterGradeStudents=filterGradeStudents;window.updateGradeTotal=updateGradeTotal;window.getExamTypeLabel=getExamTypeLabel;window.updateBlockTermOptions=updateBlockTermOptions;window.DOM=window.DOM||DOM;
+window.renderMarksStudentManager = renderMarksStudentManager;
 
-console.log('✅ CATS/Exams loaded — delegated events, unified student source, no race conditions.');
+// ============================================================
+// ADD STUDENT TO MARKS UNIT
+// ============================================================
+
+async function addStudentToMarksUnit() {
+    const select = document.getElementById('studentToAddMarks');
+    const studentId = select?.value;
+    
+    if (!studentId) {
+        showNotification('Please select a student to add', 'warning');
+        return;
+    }
+    
+    const { block, unit, program, year } = me_studentManagerData;
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    const student = me_studentManagerData.availableStudents.find(s => 
+        s.student_id === studentId || s.admission_number === studentId
+    );
+    
+    if (!student) {
+        showNotification('Student not found in available list', 'error');
+        return;
+    }
+    
+    const studentName = student.full_name || 'Unknown';
+    const studentAdmission = student.student_id || student.admission_number || studentId;
+    
+    if (!confirm(`Add ${studentName} to "${unit}"?`)) return;
+    
+    try {
+        const markData = {
+            admission_number: studentAdmission,
+            student_name: studentName,
+            block: block,
+            subject_name: unit,
+            assessment_type: 'full',
+            cat1_score: 0,
+            cat2_score: 0,
+            exam_score: 0,
+            final_score: 0,
+            grade: null,
+            academic_year: year,
+            approval_status: 'draft',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        const { error } = await sb
+            .from('student_marks')
+            .insert(markData);
+        
+        if (error) throw error;
+        
+        showNotification(`✅ ${studentName} added to "${unit}"!`, 'success');
+        await reloadMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        console.error('❌ Error adding student:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+window.addStudentToMarksUnit = addStudentToMarksUnit;
+
+// ============================================================
+// ADD ALL AVAILABLE STUDENTS
+// ============================================================
+
+async function addAllAvailableStudentsToMarksUnit() {
+    const { availableStudents, block, unit, program, year } = me_studentManagerData;
+    
+    if (availableStudents.length === 0) {
+        showNotification('No available students to add', 'info');
+        return;
+    }
+    
+    if (!confirm(`Add ${availableStudents.length} students to "${unit}"?`)) return;
+    
+    try {
+        const inserts = availableStudents.map(s => ({
+            admission_number: s.student_id || s.admission_number,
+            student_name: s.full_name || 'Unknown',
+            block: block,
+            subject_name: unit,
+            assessment_type: 'full',
+            cat1_score: 0,
+            cat2_score: 0,
+            exam_score: 0,
+            final_score: 0,
+            grade: null,
+            academic_year: year,
+            approval_status: 'draft',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        }));
+        
+        const { error } = await sb
+            .from('student_marks')
+            .insert(inserts);
+        
+        if (error) throw error;
+        
+        showNotification(`✅ ${availableStudents.length} students added to "${unit}"!`, 'success');
+        await reloadMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        console.error('❌ Error adding students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
+
+// ============================================================
+// RELOAD STUDENT MANAGER
+// ============================================================
+
+async function reloadMarksStudentManager() {
+    const { block, unit, program, year } = me_studentManagerData;
+    await loadMarksStudentManagerData(block, unit, program, year);
+}
+
+window.reloadMarksStudentManager = reloadMarksStudentManager;
+
+// ============================================================
+// TOGGLE ALL STUDENTS
+// ============================================================
+
+function toggleAllStudents() {
+    const selectAll = document.getElementById('selectAllStudents');
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const isChecked = selectAll?.checked || false;
+    checkboxes.forEach(cb => cb.checked = isChecked);
+    updateSelectedCount();
+}
+
+window.toggleAllStudents = toggleAllStudents;
+
+function toggleAllStudentsCheckbox() {
+    const selectAll = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const isChecked = selectAll?.checked || false;
+    checkboxes.forEach(cb => cb.checked = isChecked);
+    updateSelectedCount();
+}
+
+window.toggleAllStudentsCheckbox = toggleAllStudentsCheckbox;
+
+// ============================================================
+// UPDATE SELECTED COUNT
+// ============================================================
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+    const count = checkboxes.length;
+    
+    document.getElementById('selectedStudentCount').textContent = count;
+    document.getElementById('dropSelectedCount').textContent = count;
+    document.getElementById('dropSelectedCountBottom').textContent = count;
+    
+    const dropBtn = document.getElementById('dropSelectedBtn');
+    const dropBtnBottom = document.getElementById('dropSelectedBtnBottom');
+    
+    if (dropBtn) dropBtn.style.display = count > 0 ? 'inline-block' : 'none';
+    if (dropBtnBottom) dropBtnBottom.style.display = count > 0 ? 'inline-block' : 'none';
+}
+
+window.updateSelectedCount = updateSelectedCount;
+
+// ============================================================
+// DROP SELECTED STUDENTS
+// ============================================================
+
+async function dropSelectedStudents() {
+    const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+    const selected = Array.from(checkboxes).map(cb => cb.dataset.admission);
+    
+    if (selected.length === 0) {
+        showNotification('No students selected', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ${selected.length} selected students from "${me_studentManagerData.unit}"?\n\nTheir marks will be permanently deleted.`)) return;
+    
+    if (typeof showLoading === 'function') showLoading(`Removing ${selected.length} students...`);
+    
+    try {
+        let removed = 0;
+        let errors = 0;
+        
+        for (const admission of selected) {
+            const { error } = await sb
+                .from('student_marks')
+                .delete()
+                .eq('admission_number', admission)
+                .eq('block', me_studentManagerData.block)
+                .eq('subject_name', me_studentManagerData.unit)
+                .eq('academic_year', me_studentManagerData.year);
+            
+            if (error) {
+                console.error('❌ Error removing:', admission, error);
+                errors++;
+            } else {
+                removed++;
+            }
+        }
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        
+        if (errors > 0) {
+            showNotification(`⚠️ Removed ${removed} students, ${errors} errors`, 'warning');
+        } else {
+            showNotification(`✅ ${removed} students removed from "${me_studentManagerData.unit}"`, 'success');
+        }
+        
+        await reloadMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('❌ Error removing students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+window.dropSelectedStudents = dropSelectedStudents;
+
+// ============================================================
+// REMOVE SINGLE STUDENT
+// ============================================================
+
+async function removeStudentFromMarksUnit(admission) {
+    const { block, unit, year } = me_studentManagerData;
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    let studentName = 'this student';
+    try {
+        const { data: student } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name')
+            .eq('student_id', admission)
+            .single();
+        if (student) studentName = student.full_name;
+    } catch (e) {}
+    
+    if (!confirm(`⚠️ Remove "${studentName}" from "${unit}"?\n\nTheir marks will be permanently deleted.`)) return;
+    
+    if (typeof showLoading === 'function') showLoading('Removing student...');
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .delete()
+            .eq('admission_number', admission)
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        showNotification(`✅ ${studentName} removed from "${unit}"`, 'success');
+        await reloadMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('❌ Error removing student:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
+
+// ============================================================
+// CLEAR ALL STUDENTS
+// ============================================================
+
+async function clearAllStudentsFromMarksUnit() {
+    const { block, unit, year } = me_studentManagerData;
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ALL students from "${unit}"?\n\nThis will delete ALL marks for this unit.`)) return;
+    
+    if (typeof showLoading === 'function') showLoading('Removing all students...');
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .delete()
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        showNotification(`✅ All students removed from "${unit}"`, 'success');
+        await reloadMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('❌ Error clearing students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+window.escapeHtml = escapeHtml;
+
+// ============================================================
+// NOTIFICATION FUNCTIONS
+// ============================================================
+
+if (typeof showNotification === 'undefined') {
+    window.showNotification = function(message, type) {
+        console.log(`[${type || 'info'}] ${message}`);
+        const toast = document.createElement('div');
+        const colors = {
+            success: '#059669',
+            error: '#dc2626',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        toast.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
+            background: ${colors[type] || '#3b82f6'}; color: white;
+            border-radius: 8px; font-weight: 500; z-index: 100000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            max-width: 400px;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    };
+}
+
+if (typeof showLoading === 'undefined') {
+    window.showLoading = function(message) {
+        console.log(`⏳ ${message}`);
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            const msg = document.getElementById('loadingMessage');
+            if (msg) msg.textContent = message;
+            overlay.style.display = 'flex';
+        }
+    };
+}
+
+if (typeof hideLoading === 'undefined') {
+    window.hideLoading = function() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.display = 'none';
+    };
+}
+
+// ============================================================
+// PUBLISH FUNCTIONS
+// ============================================================
+
+async function publishCurrentUnitMarks() {
+    const unit = me_currentUnit;
+    const block = me_currentBlock;
+    const program = me_currentProgram;
+    const year = me_currentYear;
+    const assessmentType = me_currentAssessmentType || 'full';
+    
+    if (!unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit first', 'warning');
+        }
+        return;
+    }
+    
+    const totalMarks = me_currentMarks?.length || 0;
+    if (totalMarks === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No marks found for this unit', 'warning');
+        }
+        return;
+    }
+    
+    const programLabel = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET Programs';
+    const confirmMsg = `⚠️ Publish ALL marks for "${unit}"?\n\n` +
+        `Program: ${programLabel}\n` +
+        `Block: ${block}\n` +
+        `Year: ${year}\n` +
+        `Students: ${totalMarks}\n\n` +
+        `This will make marks visible to ALL students in this unit.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    if (typeof showLoading === 'function') {
+        showLoading(`Publishing ${totalMarks} marks...`);
+    }
+    
+    try {
+        let query = sb
+            .from('student_marks')
+            .update({
+                published: true,
+                published_at: new Date().toISOString(),
+                published_by: window.currentUser?.id || null
+            })
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('academic_year', year);
+        
+        if (program) {
+            query = query.eq('program', program);
+        }
+        
+        if (assessmentType && assessmentType !== 'full') {
+            query = query.eq('assessment_type', assessmentType);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        const count = data?.length || 0;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ Published ${count} marks for "${unit}"!`, 'success');
+        }
+        
+        loadMarksEntry();
+        
+        if (typeof window.loadPublishedMarks === 'function') {
+            setTimeout(window.loadPublishedMarks, 500);
+        }
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error publishing marks:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error publishing marks: ' + error.message, 'error');
+        }
+    }
+}
+
+window.publishCurrentUnitMarks = publishCurrentUnitMarks;
+
+// ============================================================
+// STUDENT PUBLISH MODAL FUNCTIONS
+// ============================================================
+
+let sp_students = [];
+let sp_selected = new Set();
+
+function openStudentPublishModal() {
+    const modal = document.getElementById('studentPublishModal');
+    if (!modal) {
+        if (typeof showNotification === 'function') {
+            showNotification('Modal not found', 'error');
+        }
+        return;
+    }
+    
+    document.getElementById('sp_unit_display').textContent = `Unit: ${me_currentUnit || 'Not selected'}`;
+    document.getElementById('sp_block_display').textContent = `Block: ${me_currentBlock || 'Not selected'}`;
+    
+    loadStudentPublishList();
+    modal.style.display = 'flex';
+}
+
+window.openStudentPublishModal = openStudentPublishModal;
+
+function closeStudentPublishModal() {
+    document.getElementById('studentPublishModal').style.display = 'none';
+}
+
+window.closeStudentPublishModal = closeStudentPublishModal;
+
+function loadStudentPublishList() {
+    const container = document.getElementById('sp_student_list');
+    if (!container) return;
+    
+    const marks = me_currentMarks || [];
+    sp_students = marks;
+    sp_selected = new Set();
+    
+    if (marks.length === 0) {
+        container.innerHTML = `
+            <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
+                <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                No students found for this unit
+            </td></tr>
+        `;
+        updateStudentPublishStats();
+        return;
+    }
+    
+    renderStudentPublishList(marks);
+    updateStudentPublishStats();
+}
+
+window.loadStudentPublishList = loadStudentPublishList;
+
+function renderStudentPublishList(marks) {
+    const container = document.getElementById('sp_student_list');
+    if (!container) return;
+    
+    const searchTerm = document.getElementById('sp_search')?.value?.toLowerCase() || '';
+    
+    let filteredMarks = marks;
+    if (searchTerm) {
+        filteredMarks = marks.filter(m => 
+            (m.name || m.student_name || '').toLowerCase().includes(searchTerm) ||
+            (m.admission || m.admission_number || '').toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    let html = '';
+    filteredMarks.forEach((mark, index) => {
+        const admission = mark.admission || mark.admission_number || 'N/A';
+        const name = mark.name || mark.student_name || 'Unknown';
+        const total = mark.final || mark.final_score || 0;
+        const grade = mark.grade || '-';
+        const isPublished = mark.published === true;
+        const isPassing = total >= getPassingThreshold();
+        const isSelected = sp_selected.has(admission);
+        const gradeInfo = getMarksEntryGrade(total);
+        const gradeColor = gradeInfo.color;
+        const hasRetake = mark.hasRetake || false;
+        const retakeStatus = mark.retakeStatus || '';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                <td style="padding: 8px 12px; text-align: center;">
+                    <input type="checkbox" class="sp-student-checkbox" data-admission="${admission}" 
+                           ${isSelected ? 'checked' : ''} ${isPublished ? 'disabled' : ''}
+                           onchange="toggleStudentSelection('${admission}', this.checked)" 
+                           style="width: 16px; height: 16px; cursor: ${isPublished ? 'not-allowed' : 'pointer'};">
+                </td>
+                <td style="padding: 8px 12px; font-weight: 500;">
+                    ${escapeHtml(name)}
+                    ${hasRetake ? `<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 8px; padding: 1px 8px; border-radius: 10px; font-weight: 700;">⭐ R</span>` : ''}
+                </td>
+                <td style="padding: 8px 12px; font-size: 12px; color: #64748b;">${escapeHtml(admission)}</td>
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${isPassing ? '#10b981' : '#dc2626'};">${total}</td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${escapeHtml(grade)}</span>
+                </td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="color: ${isPassing ? '#10b981' : '#dc2626'}; font-weight: 600; font-size: 12px;">
+                        ${isPassing ? '✅ Pass' : '❌ Fail'}
+                    </span>
+                    ${retakeStatus ? `<br><span style="font-size: 9px; color: ${retakeStatus === 'PASS' ? '#059669' : '#dc2626'};">Retake: ${retakeStatus}</span>` : ''}
+                </td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="color: ${isPublished ? '#10b981' : '#94a3b8'}; font-weight: 600; font-size: 12px;">
+                        ${isPublished ? '✅ Published' : '📝 Draft'}
+                    </span>
+                    ${isPublished ? `<br><span style="font-size: 10px; color: #94a3b8;">Already published</span>` : ''}
+                </td>
+            </tr>
+        `;
+    });
+    
+    container.innerHTML = html;
+    updateStudentPublishStats();
+}
+
+window.renderStudentPublishList = renderStudentPublishList;
+
+function toggleStudentSelection(admission, checked) {
+    // ✅ FIX: Handle case where admission is undefined or from event
+    if (!admission) {
+        console.warn('⚠️ toggleStudentSelection: admission is undefined, trying to get from event...');
+        
+        // Try to get from the calling element
+        const caller = document.activeElement;
+        if (caller && caller.tagName === 'INPUT') {
+            admission = caller.dataset.admission || caller.value;
+            checked = caller.checked;
+            console.log(`📋 Retrieved admission from element: ${admission}`);
+        }
+    }
+    
+    // ✅ If still undefined, try to find from checkbox
+    if (!admission) {
+        const checkboxes = document.querySelectorAll('.sp-student-checkbox:checked');
+        if (checkboxes.length > 0) {
+            // If multiple, use the first one (should be the one just clicked)
+            const cb = checkboxes[0];
+            admission = cb.dataset.admission || cb.value;
+            checked = cb.checked;
+            console.log(`📋 Retrieved admission from checked checkbox: ${admission}`);
+        }
+    }
+    
+    // ✅ Final validation
+    if (!admission || typeof admission !== 'string') {
+        console.error('❌ toggleStudentSelection: Still cannot find admission');
+        return;
+    }
+    
+    // ✅ Ensure sp_selected exists
+    if (typeof sp_selected === 'undefined') {
+        console.warn('⚠️ sp_selected not defined, initializing...');
+        window.sp_selected = new Set();
+    }
+    
+    // ✅ Convert to string and toggle
+    const admissionStr = String(admission);
+    
+    if (checked) {
+        sp_selected.add(admissionStr);
+        console.log(`✅ Selected: ${admissionStr}`);
+    } else {
+        sp_selected.delete(admissionStr);
+        console.log(`❌ Deselected: ${admissionStr}`);
+    }
+    
+    // ✅ Safely call update function
+    if (typeof updateStudentPublishStats === 'function') {
+        updateStudentPublishStats();
+    } else {
+        console.warn('⚠️ updateStudentPublishStats not found');
+    }
+}
+
+// Make sure it's globally accessible
+window.toggleStudentSelection = toggleStudentSelection;
+
+console.log('✅ toggleStudentSelection fixed!');
+
+function selectAllStudents() {
+    const checkboxes = document.querySelectorAll('.sp-student-checkbox:not([disabled])');
+    checkboxes.forEach(cb => {
+        cb.checked = true;
+        sp_selected.add(cb.dataset.admission);
+    });
+    updateStudentPublishStats();
+}
+
+window.selectAllStudents = selectAllStudents;
+
+function deselectAllStudents() {
+    const checkboxes = document.querySelectorAll('.sp-student-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+        sp_selected.delete(cb.dataset.admission);
+    });
+    updateStudentPublishStats();
+}
+
+window.deselectAllStudents = deselectAllStudents;
+
+function selectPassingStudents() {
+    const marks = sp_students;
+    marks.forEach(m => {
+        const total = m.final || m.final_score || 0;
+        const admission = m.admission || m.admission_number || '';
+        if (total >= getPassingThreshold() && !m.published) {
+            sp_selected.add(admission);
+        }
+    });
+    renderStudentPublishList(sp_students);
+    updateStudentPublishStats();
+}
+
+window.selectPassingStudents = selectPassingStudents;
+
+function selectFailingStudents() {
+    const marks = sp_students;
+    marks.forEach(m => {
+        const total = m.final || m.final_score || 0;
+        const admission = m.admission || m.admission_number || '';
+        if (total > 0 && total < getPassingThreshold() && !m.published) {
+            sp_selected.add(admission);
+        }
+    });
+    renderStudentPublishList(sp_students);
+    updateStudentPublishStats();
+}
+
+window.selectFailingStudents = selectFailingStudents;
+
+function toggleAllStudentCheckboxes() {
+    const selectAll = document.getElementById('sp_select_all');
+    const checkboxes = document.querySelectorAll('.sp-student-checkbox:not([disabled])');
+    const isChecked = selectAll?.checked || false;
+    
+    checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+        if (isChecked) {
+            sp_selected.add(cb.dataset.admission);
+        } else {
+            sp_selected.delete(cb.dataset.admission);
+        }
+    });
+    updateStudentPublishStats();
+}
+
+window.toggleAllStudentCheckboxes = toggleAllStudentCheckboxes;
+
+function filterStudentPublishList() {
+    renderStudentPublishList(sp_students);
+}
+
+window.filterStudentPublishList = filterStudentPublishList;
+
+function updateStudentPublishStats() {
+    const total = sp_students.length;
+    const alreadyPublished = sp_students.filter(m => m.published === true).length;
+    const selectedCount = sp_selected.size;
+    const toPublish = selectedCount;
+    
+    document.getElementById('sp_total_count').textContent = total;
+    document.getElementById('sp_selected_count').textContent = selectedCount;
+    document.getElementById('sp_already_published').textContent = alreadyPublished;
+    document.getElementById('sp_to_publish').textContent = toPublish;
+    document.getElementById('sp_publish_summary').textContent = `${toPublish} students selected for publishing`;
+    document.getElementById('sp_publish_btn_count').textContent = toPublish;
+    
+    const publishBtn = document.getElementById('sp_publish_btn');
+    if (publishBtn) {
+        publishBtn.disabled = toPublish === 0;
+        publishBtn.style.opacity = toPublish === 0 ? '0.5' : '1';
+        publishBtn.style.cursor = toPublish === 0 ? 'not-allowed' : 'pointer';
+    }
+}
+
+window.updateStudentPublishStats = updateStudentPublishStats;
+
+async function publishSelectedStudents() {
+    const selectedAdmissions = Array.from(sp_selected);
+    
+    if (selectedAdmissions.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No students selected to publish', 'warning');
+        }
+        return;
+    }
+    
+    const unit = me_currentUnit;
+    const block = me_currentBlock;
+    const program = me_currentProgram;
+    const year = me_currentYear;
+    
+    if (!unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit first', 'warning');
+        }
+        return;
+    }
+    
+    const confirmMsg = `⚠️ Publish marks for ${selectedAdmissions.length} selected students?\n\n` +
+        `Unit: ${unit}\n` +
+        `Block: ${block}\n` +
+        `Program: ${program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET Programs'}\n` +
+        `Year: ${year}\n\n` +
+        `Only selected students will see their marks.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    if (typeof showLoading === 'function') {
+        showLoading(`Publishing ${selectedAdmissions.length} students...`);
+    }
+    
+    try {
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const admission of selectedAdmissions) {
+            try {
+                const { error } = await sb
+                    .from('student_marks')
+                    .update({
+                        published: true,
+                        published_at: new Date().toISOString(),
+                        published_by: window.currentUser?.id || null
+                    })
+                    .eq('admission_number', admission)
+                    .eq('subject_name', unit)
+                    .eq('block', block)
+                    .eq('academic_year', year);
+                
+                if (error) {
+                    console.error(`❌ Error publishing ${admission}:`, error);
+                    errorCount++;
+                } else {
+                    successCount++;
+                }
+            } catch (err) {
+                console.error(`❌ Error publishing ${admission}:`, err);
+                errorCount++;
+            }
+        }
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        closeStudentPublishModal();
+        
+        if (typeof showNotification === 'function') {
+            if (errorCount === 0) {
+                showNotification(`✅ Published ${successCount} students successfully!`, 'success');
+            } else {
+                showNotification(`⚠️ Published ${successCount} students, ${errorCount} errors`, 'warning');
+            }
+        }
+        
+        loadMarksEntry();
+        
+        if (typeof window.loadPublishedMarks === 'function') {
+            setTimeout(window.loadPublishedMarks, 500);
+        }
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error publishing selected students:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error publishing students: ' + error.message, 'error');
+        }
+    }
+}
+
+window.publishSelectedStudents = publishSelectedStudents;
+
+// ============================================================
+// GLOBAL REGISTRATION
+// ============================================================
+
+// Program detection
+window.isTVETProgram = isTVETProgram;
+window.isNursingProgram = isNursingProgram;
+window.getExamMax = getExamMax;
+window.getTotalMax = getTotalMax;
+window.getPassingThreshold = getPassingThreshold;
+window.getProgramTypeLabel = getProgramTypeLabel;
+
+// Calculations
+window.calculateNursingTotal = calculateNursingTotal;
+window.calculateTVETTotal = calculateTVETTotal;
+window.calculateMarksEntryTotal = calculateMarksEntryTotal;
+
+// Grading
+window.getNursingGrade = getNursingGrade;
+window.getTVETGrade = getTVETGrade;
+window.getMarksEntryGrade = getMarksEntryGrade;
+
+// Retake functions
+window.loadRetakeData = loadRetakeData;
+window.recordRetakeExam = recordRetakeExam;
+window.openRetakeModal = openRetakeModal;
+window.closeRetakeModal = closeRetakeModal;
+window.saveRetakeExam = saveRetakeExam;
+window.createRetakeModal = createRetakeModal;
+
+// Main functions
+window.loadMEBlocks = loadMEBlocks;
+window.loadMEUnits = loadMEUnits;
+window.loadMarksEntry = loadMarksEntry;
+window.renderMarksEntryTable = renderMarksEntryTable;
+window.updateMarksEntryRow = updateMarksEntryRow;
+window.saveMarksEntry = saveMarksEntry;
+window.exportMarksEntry = exportMarksEntry;
+window.refreshMarksData = refreshMarksData;
+window.updateMarksEntryStats = updateMarksEntryStats;
+window.downloadCSV = downloadCSV;
+window.recalculateAllTotals = recalculateAllTotals;
+
+// Column management
+window.loadUnitColumnSettings = loadUnitColumnSettings;
+window.renderUnitColumns = renderUnitColumns;
+window.saveUnitColumnSetting = saveUnitColumnSetting;
+window.applyColumnVisibility = applyColumnVisibility;
+window.resetUnitColumns = resetUnitColumns;
+window.isUserAdmin = isUserAdmin;
+
+// Lecturer assignment
+window.loadLecturerAssignments = loadLecturerAssignments;
+window.assignLecturerToUnit = assignLecturerToUnit;
+window.removeLecturerAssignment = removeLecturerAssignment;
+window.showLecturerAssignmentModal = showLecturerAssignmentModal;
+window.closeLecturerAssignmentModal = closeLecturerAssignmentModal;
+window.saveLecturerAssignment = saveLecturerAssignment;
+
+// Assignment history
+window.loadAssignmentHistory = loadAssignmentHistory;
+window.refreshAssignmentHistory = refreshAssignmentHistory;
+window.clearAllAssignments = clearAllAssignments;
+
+// Student management
+window.openMarksStudentManager = openMarksStudentManager;
+window.loadMarksStudentManagerData = loadMarksStudentManagerData;
+window.reloadMarksStudentManager = reloadMarksStudentManager;
+window.renderMarksStudentManager = renderMarksStudentManager;
+window.addStudentToMarksUnit = addStudentToMarksUnit;
+window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
+window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
+window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
+window.dropSelectedStudents = dropSelectedStudents;
+window.toggleAllStudents = toggleAllStudents;
+window.toggleAllStudentsCheckbox = toggleAllStudentsCheckbox;
+window.updateSelectedCount = updateSelectedCount;
+
+// Auto-detect functions
+window.detectVisibleColumns = detectVisibleColumns;
+window.getAutoAssessmentType = getAutoAssessmentType;
+window.updateAssessmentTypeDisplay = updateAssessmentTypeDisplay;
+
+// Publish functions
+window.publishCurrentUnitMarks = publishCurrentUnitMarks;
+window.openStudentPublishModal = openStudentPublishModal;
+window.closeStudentPublishModal = closeStudentPublishModal;
+window.loadStudentPublishList = loadStudentPublishList;
+window.renderStudentPublishList = renderStudentPublishList;
+window.toggleStudentSelection = toggleStudentSelection;
+window.selectAllStudents = selectAllStudents;
+window.deselectAllStudents = deselectAllStudents;
+window.selectPassingStudents = selectPassingStudents;
+window.selectFailingStudents = selectFailingStudents;
+window.toggleAllStudentCheckboxes = toggleAllStudentCheckboxes;
+window.filterStudentPublishList = filterStudentPublishList;
+window.updateStudentPublishStats = updateStudentPublishStats;
+window.publishSelectedStudents = publishSelectedStudents;
+// Registration-aware marks entry
+window.loadFromApprovedRegistrations = loadFromApprovedRegistrations;
+window.approveRegistrationsForUnit = approveRegistrationsForUnit;
+window.refreshMarksTable = refreshMarksTable;
+// Utility
+window.escapeHtml = escapeHtml;
+
+console.log('✅ Marks Entry System Fully Loaded!');
+console.log('📋 Features:');
+console.log('   - ✅ Nursing calculation (CAT1+CAT2=60%, Exam=40%)');
+console.log('   - ✅ TVET calculation (CAT1+CAT2+Exam=160 total)');
+console.log('   - ✅ Nursing grading (A,B,C,D with points)');
+console.log('   - ✅ TVET competency grading (A,B,C,E with points)');
+console.log('   - ✅ Auto-assessment type detection');
+console.log('   - ✅ Column management (Admin only)');
+console.log('   - ✅ Lecturer assignment management');
+console.log('   - ✅ Assignment history');
+console.log('   - ✅ Student management with select all');
+console.log('   - ✅ Auto-approve on save for Admin');
+console.log('   - ✅ Export to CSV');
+console.log('   - ✅ Publish marks (all or selected students)');
+console.log('   - ✅ ⭐ RETAKE/SUPPLEMENTARY EXAM SUPPORT');
+console.log('   - ✅ Retake history tracking');
+console.log('   - ✅ Retake attempt limits (max 2)');
+console.log('   - ✅ Visual retake indicators on report cards');
+// ============================================================
+// ✅ FORCE OVERRIDE - Fight back against script.js
+// ============================================================
+
+// This runs AFTER everything else to ensure our version wins
+(function forceOverride() {
+    console.log('🛡️ FORCE OVERRIDE: Ensuring isTVETProgram is correct...');
+    
+    // Define the correct version
+    const correctIsTVET = function() {
+        const program = window.me_currentProgram || 
+                        me_currentProgram || 
+                        document.getElementById('me_program_select')?.value || 
+                        '';
+        return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+    };
+    
+    // Force override everything
+    window.isTVETProgram = correctIsTVET;
+    
+    // Also override the global reference if it exists
+    if (typeof isTVETProgram !== 'undefined') {
+        isTVETProgram = correctIsTVET;
+    }
+    
+    // Also override any other references
+    if (typeof window.__isTVETProgram !== 'undefined') {
+        window.__isTVETProgram = correctIsTVET;
+    }
+    
+    console.log('✅ isTVETProgram FORCE OVERRIDDEN!');
+    console.log('   Source:', correctIsTVET.toString());
+    console.log('   Test with CCA:', correctIsTVET());
+})();
+
+// Also run after a short delay to catch any late overrides
+setTimeout(function() {
+    console.log('🛡️ SECONDARY OVERRIDE: Double-checking isTVETProgram...');
+    
+    const correctIsTVET = function() {
+        const program = window.me_currentProgram || 
+                        me_currentProgram || 
+                        document.getElementById('me_program_select')?.value || 
+                        '';
+        return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+    };
+    
+    // Check if someone overwrote us
+    const currentSrc = (window.isTVETProgram || function(){}).toString();
+    if (currentSrc.includes('getProgramType(program)') || currentSrc.includes('function isTVETProgram(program)')) {
+        console.warn('⚠️ isTVETProgram was overwritten! Overriding again...');
+        window.isTVETProgram = correctIsTVET;
+        if (typeof isTVETProgram !== 'undefined') {
+            isTVETProgram = correctIsTVET;
+        }
+        console.log('✅ isTVETProgram restored!');
+    } else {
+        console.log('✅ isTVETProgram is still correct!');
+    }
+}, 500);
