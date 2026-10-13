@@ -10,6 +10,7 @@ const LecturerCalendar = {
     currentMonth: new Date().getMonth(),
     currentYear: new Date().getFullYear(),
     events: [],
+    loadError: null,
     currentView: 'month',
     lecturerAssignmentId: null,
     lecturerUuid: null,
@@ -100,8 +101,9 @@ const LecturerCalendar = {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (!profile) {
-                console.warn('No lecturer profile found');
-                this.events = this.getMockEvents();
+                this.loadError = 'Lecturer profile is unavailable. Sign in again or contact the administrator.';
+                this.events = [];
+                console.warn(this.loadError);
                 return;
             }
             
@@ -109,13 +111,16 @@ const LecturerCalendar = {
             const supabase = window.lecturerDB?.supabase;
             
             if (!supabase) {
-                this.events = this.getMockEvents();
+                this.loadError = 'Calendar data service is unavailable. Please refresh or contact the administrator.';
+                this.events = [];
+                console.error(this.loadError);
                 return;
             }
             
             console.log('📅 Loading events for program:', program);
             
             this.events = [];
+            this.loadError = null;
             
             // ============================================
             // 1. LOAD SESSIONS FROM scheduled_sessions
@@ -130,7 +135,11 @@ const LecturerCalendar = {
             } else if (sessions) {
                 console.log(`📚 Found ${sessions.length} sessions`);
                 sessions.forEach(s => {
-                    const date = s.session_date ? new Date(s.session_date) : new Date();
+                    if (!s.session_date || Number.isNaN(new Date(s.session_date).getTime())) {
+                        console.warn('Skipping session with missing/invalid session_date:', s.id);
+                        return;
+                    }
+                    const date = new Date(s.session_date);
                     this.events.push({
                         id: s.id || `session-${Date.now()}`,
                         title: s.session_title || s.title || 'Session',
@@ -162,7 +171,11 @@ const LecturerCalendar = {
             } else if (exams) {
                 console.log(`📝 Found ${exams.length} exams`);
                 exams.forEach(e => {
-                    const date = e.exam_date ? new Date(e.exam_date) : new Date();
+                    if (!e.exam_date || Number.isNaN(new Date(e.exam_date).getTime())) {
+                        console.warn('Skipping exam with missing/invalid exam_date:', e.id);
+                        return;
+                    }
+                    const date = new Date(e.exam_date);
                     this.events.push({
                         id: e.id || `exam-${Date.now()}`,
                         title: e.exam_name || e.title || 'Exam',
@@ -194,7 +207,11 @@ const LecturerCalendar = {
             } else if (calendarEvents) {
                 console.log(`📅 Found ${calendarEvents.length} calendar events`);
                 calendarEvents.forEach(e => {
-                    const date = e.event_date ? new Date(e.event_date) : new Date();
+                    if (!e.event_date || Number.isNaN(new Date(e.event_date).getTime())) {
+                        console.warn('Skipping calendar event with missing/invalid event_date:', e.id);
+                        return;
+                    }
+                    const date = new Date(e.event_date);
                     this.events.push({
                         id: e.id || `calendar-${Date.now()}`,
                         title: e.event_name || e.title || 'Event',
@@ -221,33 +238,9 @@ const LecturerCalendar = {
             
         } catch (error) {
             console.error('Failed to load events:', error);
-            this.events = this.getMockEvents();
+            this.loadError = 'Calendar events could not be loaded. Please refresh and try again.';
+            this.events = [];
         }
-    },
-    
-    getMockEvents() {
-        const today = new Date();
-        const events = [];
-        
-        for (let i = 1; i <= 5; i++) {
-            const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i * 2);
-            events.push({
-                id: `mock-${i}`,
-                title: i % 2 === 0 ? 'Maternal Health Lecture' : 'Clinical Skills Session',
-                description: `Event ${i}`,
-                date: date,
-                time: i % 2 === 0 ? '09:00' : '14:00',
-                endTime: i % 2 === 0 ? '10:00' : '15:00',
-                location: i % 2 === 0 ? 'Lecture Hall A' : 'Clinical Lab 2',
-                type: i % 2 === 0 ? 'session' : 'exam',
-                program: 'KRCHN',
-                block: `Block ${Math.ceil(i/2)}`,
-                color: i % 2 === 0 ? '#3b82f6' : '#10b981',
-                icon: i % 2 === 0 ? '📚' : '📝'
-            });
-        }
-        
-        return events;
     },
     
     renderCalendar() {
