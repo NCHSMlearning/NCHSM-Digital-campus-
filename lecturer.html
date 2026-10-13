@@ -9750,9 +9750,43 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
     const toggle=document.getElementById('mobileNavToggle');
     const sidebar=document.getElementById('sidebar');
     if(!toggle||!sidebar) return;
-    toggle.addEventListener('click',()=>{
-      const open=sidebar.classList.toggle('mobile-open');
+
+    const isMobile=()=>window.matchMedia('(max-width: 768px)').matches;
+    const setOpen=(open)=>{
+      sidebar.classList.toggle('mobile-open',open);
+      // Keep legacy CSS selectors in sync: the stylesheet positions the drawer
+      // with .sidebar.active, while the previous handler only toggled mobile-open.
+      sidebar.classList.toggle('active',open);
+      toggle.classList.toggle('active',open);
       toggle.setAttribute('aria-expanded',String(open));
+      document.body.classList.toggle('mobile-sidebar-open',open && isMobile());
+    };
+
+    toggle.addEventListener('click',(event)=>{
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(!sidebar.classList.contains('active'));
+    });
+
+    sidebar.querySelectorAll('a[data-tab]').forEach(link=>{
+      link.addEventListener('click',()=>{
+        if(isMobile()) setOpen(false);
+      });
+    });
+
+    document.addEventListener('keydown',(event)=>{
+      if(event.key==='Escape' && sidebar.classList.contains('active')) setOpen(false);
+    });
+
+    document.addEventListener('click',(event)=>{
+      if(isMobile() && sidebar.classList.contains('active') &&
+         !sidebar.contains(event.target) && !toggle.contains(event.target)){
+        setOpen(false);
+      }
+    });
+
+    window.addEventListener('resize',()=>{
+      if(!isMobile()) setOpen(false);
     });
   }
 
