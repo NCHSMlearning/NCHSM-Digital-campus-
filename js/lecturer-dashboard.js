@@ -556,6 +556,12 @@ const LecturerDashboard = {
 
     // ─── INIT ───
     async init() {
+        // Avoid overlapping bootstraps from duplicate tab/orchestrator handlers.
+        if (this._initialized || this._initializing) {
+            console.debug('Lecturer dashboard init skipped: already initialized or in progress.');
+            return;
+        }
+        this._initializing = true;
         console.log('📊 Initializing Lecturer Dashboard...');
         const program = this.getCurrentProgram();
         const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
@@ -586,7 +592,8 @@ const LecturerDashboard = {
             await this.loadRecentActivity();
             await this.loadCharts();
             this.setupEventListeners();
-        setInterval(() => {
+        if (this.liveClockInterval) clearInterval(this.liveClockInterval);
+        this.liveClockInterval = setInterval(() => {
             const now = new Date();
             const hour = now.getHours();
             let greeting = 'Good Morning', icon = '🌅';
@@ -616,6 +623,9 @@ const LecturerDashboard = {
             console.log(`📊 Grading: ${this.isTVET ? 'TVET (Pass: 50%)' : 'Nursing (Pass: 60%)'}`);
         } catch (error) {
             console.error('❌ Dashboard initialization error:', error);
+        } finally {
+            // Let a later attempt recover from a failed initialization.
+            this._initializing = false;
         }
     },
 
