@@ -87,6 +87,29 @@ const LecturerDashboard = {
         ) || null;
     },
 
+    async withTimeout(promise, timeoutMs = 12000, label = 'Dashboard request') {
+        let timeoutId;
+        try {
+            return await Promise.race([
+                Promise.resolve(promise),
+                new Promise((_, reject) => {
+                    timeoutId = setTimeout(() => reject(new Error(label + ' timed out after ' + timeoutMs + 'ms')), timeoutMs);
+                })
+            ]);
+        } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+        }
+    },
+
+    async runDashboardTask(task, timeoutMs = 10000, label = 'Dashboard section') {
+        try {
+            return await this.withTimeout(task(), timeoutMs, label);
+        } catch (error) {
+            console.warn('⚠️ ' + label + ' did not finish; continuing with the remaining dashboard sections:', error?.message || error);
+            return null;
+        }
+    },
+
     async ensureSupabaseSession() {
         const client = this.getSupabaseClient();
         if (!client) throw new Error('Lecturer dashboard Supabase client is unavailable.');
@@ -94,7 +117,7 @@ const LecturerDashboard = {
         let lastError = null;
         for (let attempt = 0; attempt < 6; attempt++) {
             try {
-                const result = await client.auth.getSession();
+                const result = await this.withTimeout(client.auth.getSession(), 8000, 'Supabase session check');
                 if (result?.error) throw result.error;
                 if (result?.data?.session?.user?.id) {
                     return { client, session: result.data.session };
@@ -574,23 +597,23 @@ const LecturerDashboard = {
 
             // Wait for the same authenticated session layer used by the
             // student dashboard before making lecturer data requests.
-            await this.ensureSupabaseSession();
-            await this.resolveLecturerId();
-            await this.loadAssignedUnits();
-            await this.loadNextClassAndExam();
-            await this.loadAssignedStudents();
-            await this.loadMetrics();
-            await this.loadAttendanceMetrics();
-            await this.loadClinicalHours();
-            await this.loadRiskData();
+            await this.withTimeout(this.ensureSupabaseSession(), 10000, 'Lecturer session initialization');
+            await this.withTimeout(this.resolveLecturerId(), 10000, 'Lecturer profile resolution');
+            await this.withTimeout(this.loadAssignedUnits(), 10000, 'Assigned units loading');
+            await this.runDashboardTask(() => this.loadNextClassAndExam(), 10000, 'Next class and exam loading');
+            await this.withTimeout(this.loadAssignedStudents(), 12000, 'Assigned students loading');
+            await this.runDashboardTask(() => this.loadMetrics(), 10000, 'Dashboard metrics loading');
+            await this.runDashboardTask(() => this.loadAttendanceMetrics(), 10000, 'Attendance metrics loading');
+            await this.runDashboardTask(() => this.loadClinicalHours(), 10000, 'Clinical hours loading');
+            await this.runDashboardTask(() => this.loadRiskData(), 10000, 'Student risk data loading');
             this.updateWelcomeBanner();
             this.loadQuickStats();
-            await this.loadCourseProgress();
-            await this.loadTopStudents();
-            await this.loadAttendanceAlerts();
-            await this.loadIntelligentAlerts();
-            await this.loadRecentActivity();
-            await this.loadCharts();
+            await this.runDashboardTask(() => this.loadCourseProgress(), 10000, 'Course progress loading');
+            await this.runDashboardTask(() => this.loadTopStudents(), 10000, 'Top students loading');
+            await this.runDashboardTask(() => this.loadAttendanceAlerts(), 10000, 'Attendance alerts loading');
+            await this.runDashboardTask(() => this.loadIntelligentAlerts(), 10000, 'Intelligent alerts loading');
+            await this.runDashboardTask(() => this.loadRecentActivity(), 10000, 'Recent activity loading');
+            await this.runDashboardTask(() => this.loadCharts(), 10000, 'Dashboard charts loading');
             this.setupEventListeners();
         if (this.liveClockInterval) clearInterval(this.liveClockInterval);
         this.liveClockInterval = setInterval(() => {
