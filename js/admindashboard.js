@@ -4899,7 +4899,7 @@ window.displayLiveFeed = function() {
         const examId = log.exam_id || 0;
         
         return `
-            <div class="${cardClass}">
+            <div class="${cardClass}" data-nchsm-live-card="${!item.isPast ? 'true' : 'false'}" data-student-id="${String(userId).replace(/"/g, '&quot;')}" data-exam-id="${String(examId)}">
                 <div class="card-header">
                     <div class="student-info">
                         <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
@@ -5438,10 +5438,11 @@ function renderLiveFeedCards(grid, pageData) {
             `;
         } else {
             cameraContent = `
-                <div class="no-camera">
+                <div class="no-camera nchsm-card-camera-placeholder" style="position:absolute;inset:0;z-index:0;">
                     <i class="fas fa-user-slash"></i>
-                    <p>${item.isPast ? 'No snapshot available' : 'No camera feed'}</p>
+                    <p>${item.isPast ? 'No snapshot available' : 'Connecting to camera…'}</p>
                 </div>
+                <video class="nchsm-card-live-video" autoplay muted playsinline style="position:relative;z-index:1;display:none;width:100%;height:250px;object-fit:cover;background:#101827;" aria-label="Live camera preview for ${studentName}"></video>
             `;
         }
         
@@ -9740,3 +9741,116 @@ window.openCameraView = async function(studentId, examId, studentName, examName)
     }
 };
 window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
+
+/* NCHSM LIVE CAMERA THUMBNAILS: independent WebRTC viewer per active card. */
+(function initNchsmCardLivePreviews() {
+    const peers = new Map(), channels = new Map(), pendingIce = new Map(), timers = new Map();
+    const prefix = 'nchsm-proctor-live';
+    const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+
+    function stop(key) {
+        if (timers.has(key)) clearTimeout(timers.get(key));
+        timers.delete(key);
+        const pc = peers.get(key);
+        if (pc) { try { pc.close(); } catch (_) {} }
+        peers.delete(key);
+        const channel = channels.get(key);
+        if (channel) { try { sb.removeChannel(channel); } catch (_) {} }
+        channels.delete(key);
+        pendingIce.delete(key);
+    }
+
+    function start(card) {
+        if (!card || card.dataset.nchsmPreviewStarted === 'true' || card.dataset.nchsmLiveCard !== 'true') return;
+        const studentId = card.dataset.studentId, examId = card.dataset.examId;
+        const video = card.querySelector('.nchsm-card-live-video');
+        if (!studentId || !examId || !video) return;
+        const key = String(examId) + ':' + String(studentId);
+        const viewerId = 'admin-card-' + key;
+        card.dataset.nchsmPreviewStarted = 'true';
+        const channel = sb.channel(prefix + ':' + examId + ':' + studentId, {
+            config: { broadcast: { self: false, ack: false } }
+        });
+        channels.set(key, channel);
+
+        function request() {
+            if (channels.get(key) !== channel) return;
+            channel.send({ type: 'broadcast', event: 'viewer-request',
+                payload: { studentId: String(studentId), examId: String(examId), viewerId: viewerId, requestedAt: new Date().toISOString() }
+            }).catch(error => console.warn('Card camera request failed:', error));
+        }
+
+        channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
+            if (!payload || String(payload.studentId) !== String(studentId) || String(payload.examId) !== String(examId) || payload.viewerId !== viewerId || !payload.offer) return;
+            try {
+                const old = peers.get(key);
+                if (old) { try { old.close(); } catch (_) {} }
+                pendingIce.set(key, []);
+                const pc = new RTCPeerConnection({ iceServers: iceServers });
+                peers.set(key, pc);
+                pc.ontrack = async event => {
+                    const stream = event.streams && event.streams[0];
+                    if (!stream || !card.isConnected || peers.get(key) !== pc) return;
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    const placeholder = card.querySelector('.nchsm-card-camera-placeholder');
+                    if (placeholder) placeholder.style.display = 'none';
+                    const badge = card.querySelector('.overlay-badge.camera-off');
+                    if (badge) { badge.className = 'overlay-badge camera-on'; badge.textContent = '🟢 Live'; }
+                    try { await video.play(); } catch (error) { console.warn('Card preview autoplay blocked:', error); }
+                };
+                pc.onicecandidate = event => {
+                    if (!event.candidate || channels.get(key) !== channel) return;
+                    channel.send({ type: 'broadcast', event: 'ice-candidate',
+                        payload: { studentId: String(studentId), examId: String(examId), viewerId: viewerId, candidate: event.candidate.toJSON() }
+                    }).catch(() => {});
+                };
+                pc.onconnectionstatechange = () => {
+                    if (pc.connectionState === 'failed') {
+                        const placeholder = card.querySelector('.nchsm-card-camera-placeholder');
+                        if (placeholder) { placeholder.style.display = 'flex'; const p = placeholder.querySelector('p'); if (p) p.textContent = 'Live preview unavailable'; }
+                    }
+                };
+                await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+                for (const candidate of pendingIce.get(key) || []) {
+                    try { await pc.addIceCandidate(candidate); } catch (error) { console.warn('Card ICE candidate failed:', error); }
+                }
+                pendingIce.set(key, []);
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                await channel.send({ type: 'broadcast', event: 'answer',
+                    payload: { studentId: String(studentId), examId: String(examId), viewerId: viewerId, answer: pc.localDescription }
+                });
+            } catch (error) { console.warn('Card live preview handshake failed:', error); }
+        }).on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+            if (!payload || payload.viewerId !== viewerId || !payload.candidate) return;
+            const pc = peers.get(key);
+            try {
+                const candidate = new RTCIceCandidate(payload.candidate);
+                if (!pc || !pc.remoteDescription) {
+                    const list = pendingIce.get(key) || [];
+                    list.push(candidate); pendingIce.set(key, list);
+                } else await pc.addIceCandidate(candidate);
+            } catch (error) { console.warn('Card ICE candidate error:', error); }
+        }).subscribe(status => {
+            if (status !== 'SUBSCRIBED') return;
+            request();
+            let attempt = 0;
+            const retry = () => {
+                if (channels.get(key) !== channel || peers.get(key)?.connectionState === 'connected' || attempt >= 5) return;
+                attempt++;
+                timers.set(key, setTimeout(() => { request(); retry(); }, 2500));
+            };
+            retry();
+        });
+    }
+
+    function scan() {
+        document.querySelectorAll('.live-feed-card[data-nchsm-live-card="true"]').forEach(start);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scan, { once: true });
+    else scan();
+    const observer = new MutationObserver(scan);
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('beforeunload', () => { observer.disconnect(); Array.from(channels.keys()).forEach(stop); });
+})();
