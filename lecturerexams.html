@@ -1449,6 +1449,17 @@ if (window.location.pathname.endsWith('.html')) {
         setupNotifications();
         switchTab('dashboard');
 
+        // Refresh the live roster while the lecturer keeps that tab open.
+        // The roster itself filters to heartbeats received within the last 2 minutes.
+        if (!window.nchsmLiveStudentsRefreshTimer) {
+            window.nchsmLiveStudentsRefreshTimer = setInterval(() => {
+                const liveTab = document.getElementById('liveStudents');
+                if (liveTab && liveTab.classList.contains('active')) {
+                    loadLiveStudents();
+                }
+            }, 15000);
+        }
+
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('modal')) e.target.style.display = 'none';
         });
