@@ -4857,9 +4857,13 @@ window.displayLiveFeed = function() {
         // Camera status badge
         let cameraBadge = '';
         if (imageUrl) {
-            cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
+            cameraBadge = item.isPast
+                ? `<span class="overlay-badge camera-on">📁 Saved snapshot</span>`
+                : `<span class="overlay-badge camera-on">📷 Snapshot available</span>`;
         } else {
-            cameraBadge = `<span class="overlay-badge camera-off">📷 No Camera</span>`;
+            cameraBadge = item.isPast
+                ? `<span class="overlay-badge camera-off">📁 No saved snapshot</span>`
+                : `<span class="overlay-badge camera-off">📷 Preview on request</span>`;
         }
         
         // Violation badge
@@ -4929,10 +4933,10 @@ window.displayLiveFeed = function() {
                         <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${examName}</span>
                     </div>
                     <div class="actions">
-                        <button class="btn-view-cam" onclick="openCameraView('${userId}', ${examId}, '${safeName}', '${safeExam}')">
-                            <i class="fas fa-expand"></i> View
-                        </button>
-                        ${item.hasViolations ? `<button class="btn-alert" onclick="viewViolations('${userId}', ${examId})">🚨</button>` : ''}
+                        ${item.isPast
+                            ? `<button class="btn-view-cam" onclick="viewPastSnapshot('${userId}', ${examId})" ${imageUrl ? '' : 'disabled'} title="${imageUrl ? 'Open saved snapshot' : 'No saved snapshot available'}"><i class="fas fa-image"></i> View Evidence</button>`
+                            : `<button class="btn-view-cam" onclick="openCameraView('${userId}', ${examId}, '${safeName}', '${safeExam}')"><i class="fas fa-expand"></i> Request Live Preview</button>`}
+                        ${item.hasViolations ? `<button class="btn-alert" onclick="viewViolations('${userId}', ${examId})">🚨 Review alert</button>` : ''}
                     </div>
                 </div>
             </div>
@@ -5202,6 +5206,82 @@ window.loadPastStudents = async function() {
         loadingDiv.style.color = '#DC2626';
         loadingDiv.textContent = 'Could not load previous camera records: ' + String(error.message || error);
     }
+};
+
+// Open saved historical evidence without attempting a live WebRTC connection.
+window.viewPastSnapshot = function(studentId, examId) {
+    const item = (liveFeedData || []).find(entry =>
+        entry.isPast &&
+        String(entry.user_id) === String(studentId) &&
+        String(entry.exam_id) === String(examId)
+    );
+    if (!item) {
+        showToast('This historical evidence is no longer in the current list. Refresh Past view.', 'warning');
+        return;
+    }
+
+    const log = item.log || {};
+    let imageUrl = log.snapshot_url || log.screenshot_data || null;
+    if (imageUrl && !/^https?:\/\//i.test(imageUrl) && !/^data:image\//i.test(imageUrl)) {
+        imageUrl = 'data:image/jpeg;base64,' + imageUrl;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'pastEvidenceViewer';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(2,6,23,.88);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'width:min(100%,1000px);max-height:95vh;overflow:auto;background:#fff;border-radius:16px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.4);';
+    const top = document.createElement('div');
+    top.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px;';
+    const heading = document.createElement('div');
+    const title = document.createElement('h2');
+    title.textContent = item.studentName || 'Saved exam evidence';
+    title.style.cssText = 'margin:0 0 5px;color:#0f172a;font-size:1.2rem;';
+    const subtitle = document.createElement('p');
+    subtitle.textContent = (item.examName || 'Exam') + ' · ' + (item.studentRegNumber || studentId);
+    subtitle.style.cssText = 'margin:0;color:#64748b;font-size:.9rem;';
+    heading.append(title, subtitle);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = 'Close ✕';
+    close.style.cssText = 'border:0;border-radius:8px;padding:9px 12px;background:#e2e8f0;color:#0f172a;cursor:pointer;font-weight:600;';
+    close.onclick = () => overlay.remove();
+    top.append(heading, close);
+    panel.append(top);
+
+    if (imageUrl) {
+        const image = document.createElement('img');
+        image.src = imageUrl;
+        image.alt = 'Saved examination snapshot';
+        image.style.cssText = 'display:block;max-width:100%;max-height:65vh;margin:0 auto;border-radius:10px;background:#0f172a;object-fit:contain;';
+        image.onerror = () => {
+            image.remove();
+            const error = document.createElement('p');
+            error.textContent = 'The saved image could not be loaded. The evidence URL may have expired or access may be restricted.';
+            error.style.cssText = 'padding:24px;background:#fff7ed;color:#9a3412;border-radius:8px;';
+            panel.append(error);
+        };
+        panel.append(image);
+    } else {
+        const note = document.createElement('p');
+        note.textContent = 'No image snapshot is attached to this record. This entry is an exam history record, not a saved video recording.';
+        note.style.cssText = 'padding:24px;background:#f8fafc;color:#475569;border-radius:8px;';
+        panel.append(note);
+    }
+
+    const timestamp = document.createElement('p');
+    timestamp.textContent = 'Evidence timestamp: ' + (item.timestamp || item.log?.timestamp || 'Not recorded');
+    timestamp.style.cssText = 'margin:14px 0 0;color:#64748b;font-size:.85rem;';
+    panel.append(timestamp);
+    overlay.append(panel);
+    overlay.addEventListener('click', event => { if (event.target === overlay) overlay.remove(); });
+    document.addEventListener('keydown', function closeOnEscape(event) {
+        if (event.key === 'Escape' && document.getElementById('pastEvidenceViewer')) {
+            overlay.remove();
+            document.removeEventListener('keydown', closeOnEscape);
+        }
+    });
+    document.body.append(overlay);
 };
 
 // ========== POPULATE EXAM FILTER ==========
