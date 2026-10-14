@@ -138,6 +138,29 @@ const LecturerProfile = {
         }
     },
     
+    showProfileUnavailable() {
+        const nameEl = document.getElementById('profileNameDisplay');
+        if (nameEl) nameEl.textContent = 'Profile unavailable';
+        const avatar = document.getElementById('profileImg');
+        if (avatar) {
+            avatar.onerror = null;
+            avatar.src = 'https://ui-avatars.com/api/?name=Lecturer&background=4C1D95&color=fff&size=120';
+        }
+        ['profileEmail','profilePhone','profileDept'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '—';
+        });
+        ['profileId','profileJoinDate'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '—';
+        });
+        ['editFullName','editEmail','editPhone','editDepartment'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        this.showReadOnly();
+    },
+
     getMockProfile() {
         const isTVET = this.isTVETProgram();
         const programType = this.getProgramTypeLabel();
@@ -597,8 +620,8 @@ const LecturerProfile = {
             const editFields = {
                 'editFullName': p.full_name || '',
                 'editEmail': p.email || '',
-                'editPhone': p.phone || '',
-                'editDepartment': p.department || ''
+                'editPhone': p.phone || p.phone_number || '',
+                'editDepartment': p.department || p.program || ''
             };
             
             Object.keys(editFields).forEach(id => {
@@ -640,18 +663,22 @@ const LecturerProfile = {
         }
         
         try {
-            window.showLoading('Saving profile...');
-            
             const supabase = window.lecturerDB?.supabase;
-            if (supabase && this.profile) {
-                const { error } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .update(updates)
-                    .eq('user_id', this.profile.user_id);
-                
-                if (error) throw error;
+            if (!supabase || !this.profile?.user_id || this.profile.user_id === 'mock-user-1') {
+                throw new Error('Your authenticated profile is not ready. Refresh the page and try again.');
             }
-            
+            window.showLoading('Saving profile...');
+
+            const { data, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .update(updates)
+                .eq('user_id', this.profile.user_id)
+                .select('*')
+                .maybeSingle();
+
+            if (error) throw error;
+            if (!data) throw new Error('No profile record was updated. Check your access permissions and try again.');
+
             // Update local profile
             this.profile = { ...this.profile, ...updates };
             this.renderProfile();
