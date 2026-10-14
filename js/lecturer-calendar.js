@@ -277,42 +277,102 @@ const LecturerCalendar = {
             panel.style.cssText = 'margin-top:24px;padding:20px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;color:#1e293b;';
             calendarDays.parentElement.insertAdjacentElement('afterend', panel);
         }
-        const blocks = [...new Set(this.timetableRows.map(r => String(this.timetableValue(r,['block','student_block','class_block','block_term'],'')).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
-        const selected = this.selectedBlock;
-        const rows = this.timetableRows.filter(r => selected === 'all' || String(this.timetableValue(r,['block','student_block','class_block','block_term'],'')).trim() === selected);
         const esc = value => this.escapeHtml(String(value ?? ''));
-        const upcoming = this.events.filter(e => e.type === 'session' || e.type === 'exam').filter(e => selected === 'all' || String(e.block || '').trim() === selected).filter(e => e.date >= new Date()).sort((a,b)=>a.date-b.date).slice(0,8);
+        const dateKeys = ['class_date','session_date','scheduled_date','timetable_date','date','start_date','event_date'];
+        const dateOf = row => {
+            const raw = this.timetableValue(row, dateKeys, '');
+            if (!raw) return null;
+            const d = new Date(raw);
+            return Number.isNaN(d.getTime()) ? null : d;
+        };
+        const isoWeek = date => {
+            if (!date) return '';
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return d.getUTCFullYear() + '-W' + String(Math.ceil((((d - yearStart) / 86400000) + 1) / 7)).padStart(2, '0');
+        };
+        const blockOf = row => String(this.timetableValue(row, ['block','student_block','class_block','block_term'], '')).trim();
+        const dayOf = row => String(this.timetableValue(row, ['day_of_week','day','week_day','weekday'], '')).trim();
+        const weekOf = row => {
+            const named = this.timetableValue(row, ['week_number','academic_week','week','week_no','week_label'], '');
+            if (named !== '') return String(named).trim();
+            const d = dateOf(row);
+            return d ? isoWeek(d) : '';
+        };
+        const blocks = [...new Set(this.timetableRows.map(blockOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+        const weeks = [...new Set(this.timetableRows.map(weekOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+        const days = [...new Set(this.timetableRows.map(dayOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+        const filters = this.timetableFilters || (this.timetableFilters = {block:'all',week:'all',day:'all'});
+        const rows = this.timetableRows.filter(r =>
+            (filters.block === 'all' || blockOf(r) === filters.block) &&
+            (filters.week === 'all' || weekOf(r) === filters.week) &&
+            (filters.day === 'all' || dayOf(r).toLowerCase() === filters.day.toLowerCase())
+        );
+        const selectedBlock = filters.block;
+        const upcoming = this.events.filter(e => e.type === 'session' || e.type === 'exam')
+            .filter(e => selectedBlock === 'all' || String(e.block || '').trim() === selectedBlock)
+            .filter(e => e.date >= new Date()).sort((a,b)=>a.date-b.date).slice(0,8);
+        const dateText = row => {
+            const d = dateOf(row);
+            return d ? d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}) : 'Not scheduled (weekly timetable)';
+        };
+        const sortedRows = rows.slice().sort((a,b) => {
+            const da = dateOf(a), db = dateOf(b);
+            if (da && db && da.getTime() !== db.getTime()) return da - db;
+            if (da && !db) return -1;
+            if (!da && db) return 1;
+            return dayOf(a).localeCompare(dayOf(b)) ||
+                String(this.timetableValue(a,['start_time','start'],'')).localeCompare(String(this.timetableValue(b,['start_time','start'],''));
+        });
         panel.innerHTML = `
           <div style="display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-            <div><h3 style="margin:0 0 4px;font-size:20px">Block Timetable & Upcoming Assessments</h3><p style="margin:0;color:#64748b;font-size:13px">Published student timetable plus scheduled sessions and exams.</p></div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <label for="lecturer-timetable-block" style="font-weight:600;font-size:13px">Filter block</label>
-              <select id="lecturer-timetable-block" style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;max-width:220px">
-                <option value="all">All blocks</option>
-                ${blocks.map(b=>`<option value="${esc(b)}" ${b===selected?'selected':''}>${esc(b)}</option>`).join('')}
-              </select>
-              <button type="button" id="lecturer-timetable-refresh" style="padding:9px 12px;border:0;border-radius:8px;background:#4c1d95;color:#fff;font-weight:600">Refresh</button>
-            </div>
+            <div><h3 style="margin:0 0 4px;font-size:20px">Block Timetable & Upcoming Assessments</h3><p style="margin:0;color:#64748b;font-size:13px">Filter published classes by block, academic week, and day. Scheduled dates are shown when present in the timetable data.</p></div>
+            <button type="button" id="lecturer-timetable-refresh" style="padding:9px 12px;border:0;border-radius:8px;background:#4c1d95;color:#fff;font-weight:600">Refresh</button>
+          </div>
+          <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">
+            <div style="display:grid;gap:5px"><label for="lecturer-timetable-block" style="font-weight:600;font-size:13px">Block</label><select id="lecturer-timetable-block" style="min-width:150px;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px"><option value="all">All blocks</option>${blocks.map(b=>`<option value="${esc(b)}" ${b===filters.block?'selected':''}>${esc(b)}</option>`).join('')}</select></div>
+            <div style="display:grid;gap:5px"><label for="lecturer-timetable-week" style="font-weight:600;font-size:13px">Week</label><select id="lecturer-timetable-week" style="min-width:160px;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px"><option value="all">All weeks</option>${weeks.map(w=>`<option value="${esc(w)}" ${w===filters.week?'selected':''}>${esc(/^\\d{4}-W\\d{2}$/.test(w)?w.replace('-W',' · Week '):w)}</option>`).join('')}</select></div>
+            <div style="display:grid;gap:5px"><label for="lecturer-timetable-day" style="font-weight:600;font-size:13px">Day</label><select id="lecturer-timetable-day" style="min-width:150px;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px"><option value="all">All days</option>${days.map(d=>`<option value="${esc(d)}" ${d.toLowerCase()===filters.day.toLowerCase()?'selected':''}>${esc(d)}</option>`).join('')}</select></div>
+            <button type="button" id="lecturer-timetable-clear" style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;font-weight:600">Clear filters</button>
           </div>
           ${this.timetableError ? `<p role="alert" style="padding:12px;background:#fff7ed;color:#9a3412;border-radius:8px">${esc(this.timetableError)}</p>` : ''}
           <div style="font-weight:700;margin:14px 0 8px">Published block timetable <span style="font-weight:400;color:#64748b">(${rows.length} classes)</span></div>
-          ${rows.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:780px"><thead><tr>${['Day','Time','Unit Code','Unit / Session','Type','Block','Venue','Lecturer'].map(h=>`<th style="padding:10px;text-align:left;background:#f8fafc;border-bottom:1px solid #e2e8f0">${h}</th>`).join('')}</tr></thead><tbody>${rows.slice().sort((a,b)=>String(this.timetableValue(a,['day_of_week','day','week_day'],'')).localeCompare(String(this.timetableValue(b,['day_of_week','day','week_day'],''))) || String(this.timetableValue(a,['start_time','start'],'')).localeCompare(String(this.timetableValue(b,['start_time','start'],'')))).map(r=>`<tr>${[
-            this.timetableValue(r,['day_of_week','day','week_day','weekday'],'—'),
+          ${rows.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:980px"><thead><tr>${['Date','Week','Day','Time','Unit Code','Unit / Session','Type','Block','Venue','Lecturer'].map(h=>`<th style="padding:10px;text-align:left;background:#f8fafc;border-bottom:1px solid #e2e8f0;white-space:nowrap">${h}</th>`).join('')}</tr></thead><tbody>${sortedRows.map(r=>`<tr>${[
+            dateText(r),
+            weekOf(r) || '—',
+            dayOf(r) || '—',
             [this.timetableValue(r,['start_time','start'],'—'),this.timetableValue(r,['end_time','end'],'')].filter(Boolean).join(' - '),
             this.timetableValue(r,['unit_code','course_code','code'],'—'),
             this.timetableValue(r,['unit_name','course_name','session_name','title'],'—'),
             this.timetableValue(r,['class_type','session_type','type'],'Lecture'),
-            this.timetableValue(r,['block','student_block','class_block','block_term'],'—'),
+            blockOf(r) || '—',
             this.timetableValue(r,['venue','room','location','classroom'],'—'),
             this.timetableValue(r,['lecturer_name','lecturer','teacher_name','instructor'],'—')
-          ].map(v=>`<td style="padding:10px;border-bottom:1px solid #e2e8f0;vertical-align:top">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : `<p style="padding:18px;text-align:center;background:#f8fafc;border-radius:8px;color:#64748b">${this.timetableError ? 'Timetable unavailable until the data service is restored.' : 'No published timetable rows found for this block/program.'}</p>`}
+          ].map(v=>`<td style="padding:10px;border-bottom:1px solid #e2e8f0;vertical-align:top">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : `<p style="padding:18px;text-align:center;background:#f8fafc;border-radius:8px;color:#64748b">${this.timetableError ? 'Timetable unavailable until the data service is restored.' : 'No timetable rows match these filters.'}</p>`}
           <div style="font-weight:700;margin:20px 0 8px">Upcoming sessions & exams <span style="font-weight:400;color:#64748b">(${upcoming.length})</span></div>
-          ${upcoming.length ? upcoming.map(e=>`<div style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #e2e8f0"><div style="font-size:22px">${e.type==='exam'?'📝':'📚'}</div><div style="flex:1"><strong>${esc(e.title)}</strong><div style="font-size:13px;color:#64748b;margin-top:3px">${esc(e.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}))} · ${esc(e.time||'Time TBC')} · ${esc(e.location||'Venue TBC')} · ${esc(e.block||'Block not specified')}</div>${e.description?`<div style="font-size:13px;margin-top:4px">${esc(e.description)}</div>`:''}</div><span style="font-size:12px;font-weight:700;color:${e.type==='exam'?'#047857':'#1d4ed8'}">${e.type==='exam'?'EXAM':'SESSION'}</span></div>`).join('') : '<p style="color:#64748b;padding:12px 0">No upcoming sessions or exams found for this filter.</p>'}
+          ${upcoming.length ? upcoming.map(e=>`<div style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #e2e8f0"><div style="font-size:22px">${e.type==='exam'?'📝':'📚'}</div><div style="flex:1"><strong>${esc(e.title)}</strong><div style="font-size:13px;color:#64748b;margin-top:3px">${esc(e.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}))} · ${esc(e.time||'Time TBC')} · ${esc(e.location||'Venue TBC')} · ${esc(e.block||'Block not specified')}</div>${e.description?`<div style="font-size:13px;margin-top:4px">${esc(e.description)}</div>`:''}</div><span style="font-size:12px;font-weight:700;color:${e.type==='exam'?'#047857':'#1d4ed8'}">${e.type==='exam'?'EXAM':'SESSION'}</span></div>`).join('') : '<p style="color:#64748b;padding:12px 0">No upcoming sessions or exams found for this block filter.</p>'}
         `;
-        const select = document.getElementById('lecturer-timetable-block');
-        if (select) select.onchange = () => { this.selectedBlock = select.value; this.renderBlockTimetablePanel(); };
+        const blockSelect = document.getElementById('lecturer-timetable-block');
+        const weekSelect = document.getElementById('lecturer-timetable-week');
+        const daySelect = document.getElementById('lecturer-timetable-day');
+        const rerender = () => {
+            this.timetableFilters = {
+                block: blockSelect?.value || 'all',
+                week: weekSelect?.value || 'all',
+                day: daySelect?.value || 'all'
+            };
+            this.renderBlockTimetablePanel();
+        };
+        [blockSelect, weekSelect, daySelect].forEach(el => { if (el) el.onchange = rerender; });
+        const clear = document.getElementById('lecturer-timetable-clear');
+        if (clear) clear.onclick = () => { this.timetableFilters = {block:'all',week:'all',day:'all'}; this.renderBlockTimetablePanel(); };
         const refresh = document.getElementById('lecturer-timetable-refresh');
-        if (refresh) refresh.onclick = async () => { refresh.disabled = true; refresh.textContent = 'Loading…'; await this.loadEvents(); await this.loadBlockTimetable(); this.renderBlockTimetablePanel(); this.renderCalendar(); this.updateStats(); this.renderUpcomingEvents(); };
+        if (refresh) refresh.onclick = async () => {
+            refresh.disabled = true; refresh.textContent = 'Loading…';
+            await this.loadEvents(); await this.loadBlockTimetable();
+            this.renderBlockTimetablePanel(); this.renderCalendar(); this.updateStats(); this.renderUpcomingEvents();
+        };
     },
 
     renderCalendar() {
