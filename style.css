@@ -2585,3 +2585,45 @@ a:focus-visible {
         transform: none !important;
     }
 }
+
+
+/* Lecturer mobile hamburger: keep it above all dashboard layers and tappable. */
+@media (max-width: 768px) {
+    #mobileNavToggle.mobile-nav-toggle {
+        display: flex !important;
+        position: fixed !important;
+        top: max(12px, env(safe-area-inset-top)) !important;
+        left: 12px !important;
+        z-index: 10050 !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    #mobileNavToggle.mobile-nav-toggle span {
+        background: #4C1D95 !important;
+        pointer-events: none !important;
+    }
+
+    #sidebar.sidebar {
+        z-index: 10040 !important;
+        pointer-events: auto !important;
+    }
+
+    #sidebar.sidebar.active,
+    #sidebar.sidebar.mobile-open {
+        left: 0 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+
+    #sidebar.sidebar:not(.active):not(.mobile-open) {
+        left: -280px !important;
+    }
+
+    body.mobile-sidebar-open {
+        overflow: hidden !important;
+    }
+}
