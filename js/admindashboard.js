@@ -9453,6 +9453,7 @@ const NCHSM_ADMIN_WEBRTC_CONFIG = {
 
 let nchsmAdminWebRTCChannel = null;
 let nchsmAdminWebRTCPeer = null;
+let nchsmAdminPendingIceCandidates = [];
 let nchsmAdminWebRTCStudent = null;
 let nchsmAdminWebRTCExam = null;
 let nchsmAdminViewerId = `admin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -9542,7 +9543,7 @@ async function startNchsmAdminWebRTC(studentId, examId) {
         .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
             if (!payload || payload.viewerId !== nchsmAdminViewerId || !payload.candidate) return;
             if (!nchsmAdminWebRTCPeer) return;
-            try { await nchsmAdminWebRTCPeer.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (e) { console.warn('🎥 Admin ICE error:', e); }
+            try { const candidate = new RTCIceCandidate(payload.candidate); if (!nchsmAdminWebRTCPeer.remoteDescription) { nchsmAdminPendingIceCandidates.push(candidate); return; } await nchsmAdminWebRTCPeer.addIceCandidate(candidate); } catch (e) { console.warn('🎥 Admin ICE error:', e); }
         })
         .subscribe(async (status) => {
             console.log('🎥 Admin WebRTC signaling:', status, channelName);
@@ -9638,6 +9639,8 @@ async function nchsmHandleStudentOffer(payload) {
         };
 
         await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+        const queuedCandidates = nchsmAdminPendingIceCandidates.splice(0);
+        for (const candidate of queuedCandidates) { try { await pc.addIceCandidate(candidate); } catch (iceError) { console.warn('Queued admin ICE candidate failed:', iceError); } }
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
