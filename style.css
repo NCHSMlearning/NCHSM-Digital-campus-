@@ -2692,3 +2692,190 @@ a:focus-visible {
 @media(prefers-reduced-motion:reduce) {
  .lecturer-timetable-panel * {transition:none!important}
 }
+
+
+/* =========================================================
+   NCHSM LECTURER DASHBOARD — PREMIUM VISUAL REFINEMENT
+   Presentation-only layer: preserves all existing dashboard IDs,
+   data bindings, tab links, charts and lecturer workflows.
+   ========================================================= */
+#dashboard-content .nchsm-reference-dashboard {
+  --dash-ink:#172554;
+  --dash-muted:#64748b;
+  --dash-border:#e4e8f1;
+  --dash-purple:#4c1d95;
+  max-width:1680px;
+  margin:0 auto;
+  padding:clamp(12px,1.7vw,24px);
+  color:var(--dash-ink);
+}
+#dashboard-content .nrd-hero {
+  isolation:isolate;
+  min-height:255px;
+  margin:0 0 18px;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:24px;
+  box-shadow:0 18px 42px rgba(42,24,91,.20);
+}
+#dashboard-content .nrd-hero-image {filter:saturate(.88);transform:scale(1.015)}
+#dashboard-content .nrd-hero-overlay {
+  background:linear-gradient(105deg,rgba(27,17,65,.94) 0%,rgba(59,32,122,.86) 54%,rgba(76,29,149,.57) 100%);
+}
+#dashboard-content .nrd-hero-content {
+  padding:clamp(22px,3vw,38px)!important;
+  gap:24px;
+}
+#dashboard-content .nrd-hero-identity {gap:19px;min-width:0}
+#dashboard-content .nrd-avatar {
+  width:66px;height:66px;flex:0 0 66px;
+  border:1px solid rgba(255,255,255,.4);
+  box-shadow:0 8px 24px rgba(0,0,0,.16);
+  background:rgba(255,255,255,.13);
+  backdrop-filter:blur(8px);
+}
+#dashboard-content .nrd-kicker {
+  display:inline-flex;align-items:center;gap:7px;
+  padding:6px 10px;margin-bottom:7px;
+  border:1px solid rgba(255,255,255,.22);border-radius:999px;
+  background:rgba(255,255,255,.10);
+  letter-spacing:.12em;font-size:10px;font-weight:850;
+}
+#dashboard-content .nrd-hero-copy h1 {
+  margin:0 0 9px;font-size:clamp(24px,3vw,36px);
+  font-weight:850;letter-spacing:-.045em;line-height:1.16;
+  text-wrap:balance;
+}
+#dashboard-content .nrd-hero-copy p {font-size:14px;line-height:1.6;color:rgba(255,255,255,.84)}
+#dashboard-content .nrd-meta {display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+#dashboard-content .nrd-meta>span {
+  display:inline-flex;align-items:center;gap:7px;
+  padding:7px 10px;border-radius:9px;
+  background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.14);
+  font-size:11px;font-weight:650;color:#fff;
+}
+#dashboard-content .nrd-hero-time {
+  min-width:205px;padding:16px 18px;border-radius:17px;
+  background:rgba(20,12,53,.25);border:1px solid rgba(255,255,255,.2);
+  backdrop-filter:blur(12px);
+}
+#dashboard-content #currentDateTime {font-size:11px;color:rgba(255,255,255,.82);margin:12px 0 3px}
+#dashboard-content #nrdClock {font-size:clamp(29px,3vw,40px);font-weight:850;letter-spacing:-.04em;line-height:1.15}
+#dashboard-content .nrd-hero-time em {display:block;margin-top:13px;font-size:10px;line-height:1.5;color:rgba(255,255,255,.75)}
+#dashboard-content .nrd-refresh-btn {
+  border:1px solid rgba(255,255,255,.35);border-radius:9px;
+  background:rgba(255,255,255,.13);padding:8px 10px;
+  color:#fff;font-size:11px;font-weight:750;
+}
+#dashboard-content .nrd-refresh-btn:hover {background:rgba(255,255,255,.23)}
+#dashboard-content .nrd-metrics {
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:13px;margin:0 0 20px;
+}
+#dashboard-content .nrd-metric {
+  min-width:0;min-height:105px;display:flex;align-items:center;gap:14px;
+  padding:18px;border:1px solid var(--dash-border);border-radius:17px;
+  background:#fff;box-shadow:0 5px 18px rgba(15,23,42,.045);
+  text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+#dashboard-content .nrd-metric:hover {
+  transform:translateY(-3px);border-color:#c4b5fd;
+  box-shadow:0 13px 28px rgba(76,29,149,.10);
+}
+#dashboard-content .nrd-metric-icon {
+  width:48px;height:48px;flex:0 0 48px;border-radius:14px;
+  display:grid;place-items:center;font-size:18px;
+}
+#dashboard-content .nrd-metric small {display:block;font-size:10px;letter-spacing:.065em;font-weight:850;color:#64748b;line-height:1.4}
+#dashboard-content .nrd-metric b {display:block;margin:5px 0 2px;font-size:28px;line-height:1.05;font-weight:850;letter-spacing:-.04em;color:#172554}
+#dashboard-content .nrd-metric em {display:block;font-size:11px;font-style:normal;color:#94a3b8;line-height:1.45}
+#dashboard-content .metric-blue .nrd-metric-icon{background:#eff6ff;color:#2563eb}
+#dashboard-content .metric-purple .nrd-metric-icon{background:#f5f3ff;color:#7c3aed}
+#dashboard-content .metric-red .nrd-metric-icon{background:#fef2f2;color:#dc2626}
+#dashboard-content .metric-amber .nrd-metric-icon{background:#fffbeb;color:#d97706}
+#dashboard-content .metric-green .nrd-metric-icon{background:#ecfdf5;color:#059669}
+#dashboard-content .metric-sky .nrd-metric-icon{background:#f0f9ff;color:#0284c7}
+#dashboard-content .nrd-three-column,#dashboard-content .nrd-secondary-grid {
+  gap:15px;margin-bottom:15px;
+}
+#dashboard-content .nrd-card {
+  border:1px solid var(--dash-border);border-radius:17px;
+  box-shadow:0 5px 20px rgba(15,23,42,.045);
+  transition:box-shadow .18s ease,border-color .18s ease;
+}
+#dashboard-content .nrd-card:hover {border-color:#d7d4ed;box-shadow:0 10px 26px rgba(15,23,42,.075)}
+#dashboard-content .nrd-card header {
+  min-height:62px;padding:13px 16px;background:linear-gradient(180deg,#fff,#fcfcff);
+  border-bottom:1px solid #edf0f6;
+}
+#dashboard-content .nrd-card header>div>i {width:34px;height:34px;display:grid;place-items:center;border-radius:11px;background:#f3f0ff;color:#6d28d9;font-size:14px}
+#dashboard-content .nrd-card header h2 {font-size:12px;letter-spacing:-.01em;color:#1e293b;white-space:normal}
+#dashboard-content .nrd-card header small {font-size:10px;line-height:1.5;color:#94a3b8}
+#dashboard-content .nrd-card header button {padding:7px 9px;border-radius:8px;background:#f5f3ff;color:#5b21b6;font-size:10px}
+#dashboard-content .nrd-card header button:hover {background:#ede9fe}
+#dashboard-content .nrd-class-exam-row .nrd-next-class,
+#dashboard-content .nrd-class-exam-row .nrd-next-exam {border-radius:18px;box-shadow:0 9px 24px rgba(15,23,42,.09)}
+#dashboard-content .nrd-quick-actions {margin-bottom:15px}
+#dashboard-content .nrd-actions {gap:10px;padding:14px}
+#dashboard-content .nrd-actions button {
+  min-height:62px;border-radius:12px;padding:12px 9px;
+  font-size:11px;line-height:1.35;box-shadow:0 5px 12px rgba(15,23,42,.07);
+}
+#dashboard-content .nrd-actions button:hover {transform:translateY(-3px);box-shadow:0 10px 18px rgba(15,23,42,.14)}
+#dashboard-content .nrd-actions i {font-size:16px}
+#dashboard-content .nrd-chart-card .nrd-chart {height:220px;padding:13px 14px 15px}
+#dashboard-content .nrd-attendance-summary {gap:9px;padding:16px 14px 9px}
+#dashboard-content .nrd-attendance-summary div {border:1px solid #eef2f7;border-radius:12px;padding:13px 5px}
+#dashboard-content .nrd-attendance-summary b {font-size:23px;font-weight:850}
+#dashboard-content .nrd-attendance-summary span {font-size:10px;font-weight:650}
+#dashboard-content .nrd-attendance-foot {gap:12px;flex-wrap:wrap;padding:9px 14px 14px;font-size:10px}
+#dashboard-content .nrd-risk-bars {padding:17px}
+#dashboard-content .nrd-risk-bars>div {grid-template-columns:84px 30px minmax(45px,1fr);gap:9px;margin-bottom:16px}
+#dashboard-content .nrd-risk-bars span {font-size:10px}
+#dashboard-content .nrd-risk-bars i {height:10px}
+#dashboard-content .nrd-insights .nrd-card>div:last-child {padding:13px;min-height:170px}
+#dashboard-content .nrd-empty {padding:22px 12px!important;text-align:center;color:#94a3b8;font-size:12px;line-height:1.6}
+#dashboard-content .nrd-clinical {gap:18px;padding:17px}
+#dashboard-content .nrd-clinical>div:last-child strong {font-size:12px}
+#dashboard-content .nrd-clinical>div:last-child span {font-size:10px}
+#dashboard-content .nrd-footer {padding:17px 10px;color:#94a3b8;font-size:10px}
+@media(min-width:1450px) {
+ #dashboard-content .nrd-metrics {grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+@media(max-width:1000px) {
+ #dashboard-content .nrd-hero-content {align-items:stretch;flex-direction:column}
+ #dashboard-content .nrd-hero-time {display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 12px;min-width:0}
+ #dashboard-content .nrd-hero-time .nrd-live-row {grid-column:1/-1}
+ #dashboard-content .nrd-hero-time em {margin-top:0}
+ #dashboard-content .nrd-metrics {grid-template-columns:repeat(2,minmax(0,1fr))}
+ #dashboard-content .nrd-actions {grid-template-columns:repeat(3,minmax(0,1fr))}
+ #dashboard-content .nrd-three-column,#dashboard-content .nrd-secondary-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px) {
+ #dashboard-content .nchsm-reference-dashboard {padding:10px}
+ #dashboard-content .nrd-hero {border-radius:18px;min-height:0}
+ #dashboard-content .nrd-hero-content {padding:19px!important;gap:17px}
+ #dashboard-content .nrd-hero-identity {align-items:flex-start;gap:12px}
+ #dashboard-content .nrd-avatar {width:46px;height:46px;flex-basis:46px;font-size:17px}
+ #dashboard-content .nrd-hero-copy h1 {font-size:23px;line-height:1.25}
+ #dashboard-content .nrd-hero-copy p {font-size:12px}
+ #dashboard-content .nrd-meta>span {font-size:10px;padding:6px 8px}
+ #dashboard-content .nrd-hero-time {padding:13px;border-radius:13px}
+ #dashboard-content .nrd-metrics {grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ #dashboard-content .nrd-metric {min-height:98px;padding:12px;gap:9px;border-radius:13px}
+ #dashboard-content .nrd-metric-icon {width:37px;height:37px;flex-basis:37px;border-radius:11px;font-size:14px}
+ #dashboard-content .nrd-metric small {font-size:8px}
+ #dashboard-content .nrd-metric b {font-size:23px}
+ #dashboard-content .nrd-metric em {font-size:9px}
+ #dashboard-content .nrd-three-column,#dashboard-content .nrd-secondary-grid {grid-template-columns:minmax(0,1fr);gap:11px}
+ #dashboard-content .nrd-card {border-radius:14px}
+ #dashboard-content .nrd-card header {padding:11px;gap:8px}
+ #dashboard-content .nrd-actions {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}
+ #dashboard-content .nrd-actions button {min-height:55px;font-size:10px}
+ #dashboard-content .nrd-chart-card .nrd-chart {height:210px}
+ #dashboard-content .nrd-attendance-foot {gap:7px;font-size:9px}
+}
+@media(prefers-reduced-motion:reduce) {
+ #dashboard-content .nchsm-reference-dashboard *,
+ #dashboard-content .nchsm-reference-dashboard *:before,
+ #dashboard-content .nchsm-reference-dashboard *:after {transition:none!important;animation:none!important;scroll-behavior:auto!important}
+}
