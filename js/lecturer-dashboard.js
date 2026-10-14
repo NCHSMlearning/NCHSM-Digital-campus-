@@ -805,8 +805,19 @@ const LecturerDashboard = {
                 return;
             }
 
-            const programUnits = assignments?.filter(u => u.program === program) || [];
-            this.assignedUnits = programUnits.length > 0 ? programUnits : (assignments || []);
+            // Never fall back to another program's assignments. Dashboard student
+            // totals must be derived only from this lecturer's own assigned units
+            // in the lecturer's active program.
+            const normalize = value => String(value || '').trim().toLowerCase();
+            const programUnits = (assignments || []).filter(u =>
+                normalize(u.program) === normalize(program)
+            );
+            const uniqueUnits = new Map();
+            programUnits.forEach(unit => {
+                const key = normalize(unit.subject_code || unit.subject_name) + '|' + normalize(unit.block);
+                if (!uniqueUnits.has(key)) uniqueUnits.set(key, unit);
+            });
+            this.assignedUnits = [...uniqueUnits.values()];
 
             console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for program ${program}`);
             console.log(`📚 TVET Mode: ${this.isTVET}`);
@@ -824,10 +835,16 @@ const LecturerDashboard = {
             if (!supabase) return;
 
             const program = this.getCurrentProgram();
-            const unitNames = this.assignedUnits.map(u => u.subject_name);
+            const unitNames = [...new Set(this.assignedUnits
+                .map(u => String(u.subject_name || '').trim())
+                .filter(Boolean))];
 
+            // Empty assignments mean zero assigned students; do not query the
+            // whole program as a fallback.
             if (unitNames.length === 0) {
                 this.assignedStudents = [];
+                this.metrics.totalStudents = 0;
+                this.updateMetricCards();
                 return;
             }
 
@@ -844,7 +861,11 @@ const LecturerDashboard = {
                 return;
             }
 
-            const studentIds = [...new Set(enrollments?.map(e => e.student_id) || [])];
+            // Count unique students enrolled in at least one of this lecturer's
+            // assigned units, not enrollment rows (a student may take many units).
+            const studentIds = [...new Set((enrollments || [])
+                .map(e => String(e.student_id || '').trim())
+                .filter(Boolean))];
 
             if (studentIds.length === 0) {
                 this.assignedStudents = [];
@@ -874,9 +895,14 @@ const LecturerDashboard = {
 
             this.assignedStudents = (students || []).map(s => ({
                 ...s,
-                units_enrolled: enrollmentMap[s.user_id] || [],
-                unit_count: (enrollmentMap[s.user_id] || []).length
+                units_enrolled: enrollmentMap[String(s.user_id)] || enrollmentMap[String(s.student_id)] || [],
+                unit_count: (enrollmentMap[String(s.user_id)] || enrollmentMap[String(s.student_id)] || []).length
             }));
+
+            // The headline count is a unique-student count, independent of how
+            // many assigned units each student is registered for.
+            this.metrics.totalStudents = this.assignedStudents.length;
+            this.updateMetricCards();
 
             console.log(`👨‍🎓 Loaded ${this.assignedStudents.length} assigned students for program ${program}`);
 
