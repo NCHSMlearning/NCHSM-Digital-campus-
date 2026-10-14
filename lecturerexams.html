@@ -953,47 +953,105 @@ if (window.location.pathname.endsWith('.html')) {
     async function loadLiveStudents() {
         const loading = document.getElementById('liveStudentsLoading');
         const tbody = document.getElementById('liveStudentsBody');
+        const badge = document.getElementById('liveBadge');
+        if (!loading || !tbody) return;
+
         loading.style.display = 'block';
+        loading.textContent = 'Checking live exam activity...';
+
         try {
-            let q = sb.from('exams').select('id').order('id', { ascending: false });
-            if (lecturerProgram) q = q.eq('target_program', lecturerProgram);
-            const { data: exams } = await q;
-            const examIds = exams?.map(e => e.id) || [];
-            if (!examIds.length) { loading.innerHTML = 'No active exams'; return; }
+            let examQuery = sb.from('exams').select('id, exam_name, target_program').order('id', { ascending: false });
+            if (lecturerProgram) examQuery = examQuery.eq('target_program', lecturerProgram);
 
-            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-            const { data: logs } = await sb
-                .from('exam_proctoring_logs')
-                .select('*')
+            const { data: exams, error: examsError } = await examQuery;
+            if (examsError) throw examsError;
+
+            const examIds = (exams || []).map(exam => exam.id).filter(id => id != null);
+            if (!examIds.length) {
+                liveStudentsData = [];
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#94A3B8;">No exams are assigned to this programme</td></tr>';
+                loading.style.display = 'none';
+                if (badge) badge.textContent = '0';
+                const stat = document.getElementById('statLiveStudents');
+                if (stat) stat.textContent = '0';
+                return;
+            }
+
+            // A recent heartbeat is the live signal. "exam_started" logs are
+            // historical events and can remain after a student closes the exam.
+            const liveSince = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+            const { data: heartbeats, error: heartbeatError } = await sb
+                .from('exam_heartbeats')
+                .select('student_id, exam_id, timestamp, current_question, answered_count, total_questions, face_detected')
                 .in('exam_id', examIds)
-                .eq('event_type', 'exam_started')
-                .gte('timestamp', fiveMinutesAgo);
+                .gte('timestamp', liveSince)
+                .order('timestamp', { ascending: false });
 
-            const studentIds = [...new Set(logs?.map(l => l.student_id).filter(Boolean))];
+            if (heartbeatError) throw heartbeatError;
+
+            // Keep only the newest heartbeat for each student + exam pair.
+            const latestBySession = new Map();
+            (heartbeats || []).forEach(row => {
+                if (!row.student_id || row.exam_id == null || !row.timestamp) return;
+                const key = String(row.exam_id) + ':' + String(row.student_id);
+                if (!latestBySession.has(key)) latestBySession.set(key, row);
+            });
+            const sessions = [...latestBySession.values()];
+            const studentIds = [...new Set(sessions.map(row => String(row.student_id)))];
+
             let profiles = [];
             if (studentIds.length) {
-                const { data: p } = await sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id').in('user_id', studentIds);
-                profiles = p || [];
+                const { data, error: profileError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, student_id, full_name, program')
+                    .in('user_id', studentIds);
+                if (profileError) throw profileError;
+                profiles = data || [];
             }
-            const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
-            const examMap = Object.fromEntries((await sb.from('exams').select('id, exam_name').in('id', examIds))?.data?.map(e => [e.id, e]) || []);
 
-            liveStudentsData = logs?.map(l => ({ ...l, student: profileMap[l.student_id] || {}, exam_name: examMap[l.exam_id]?.exam_name || 'Exam' })) || [];
+            const profileMap = new Map();
+            profiles.forEach(profile => {
+                if (profile.user_id != null) profileMap.set(String(profile.user_id), profile);
+                if (profile.student_id != null) profileMap.set(String(profile.student_id), profile);
+            });
+            const examMap = new Map((exams || []).map(exam => [String(exam.id), exam]));
 
-            tbody.innerHTML = liveStudentsData.slice(0, 50).map(l => `
-                <tr>
-                    <td style="text-align:center;"><span class="live-dot"></span></td>
-                    <td><span class="student-id-badge">${l.student?.student_id || 'N/A'}</span></td>
-                    <td><strong>${l.student?.full_name || 'Unknown'}</strong></td>
-                    <td>${l.exam_name}</td>
-                    <td style="text-align:center;"><span class="status-badge active">🟢 Active</span></td>
-                </tr>
-            `).join('') || '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94A3B8;">No students currently taking exams</td></tr>';
+            liveStudentsData = sessions.map(row => ({
+                ...row,
+                student: profileMap.get(String(row.student_id)) || {},
+                exam_name: examMap.get(String(row.exam_id))?.exam_name || 'Exam'
+            })).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            tbody.innerHTML = liveStudentsData.slice(0, 100).map(row => {
+                const student = row.student || {};
+                const lastSeenSeconds = Math.max(0, Math.floor((Date.now() - new Date(row.timestamp).getTime()) / 1000));
+                const lastSeen = lastSeenSeconds < 60 ? 'just now' : Math.floor(lastSeenSeconds / 60) + ' min ago';
+                const progress = Number(row.total_questions) > 0
+                    ? Math.round((Number(row.answered_count || 0) / Number(row.total_questions)) * 100)
+                    : 0;
+                const faceLabel = row.face_detected === false ? 'Face check paused' : 'Connected';
+                const faceColor = row.face_detected === false ? '#b45309' : '#15803d';
+                return `
+                    <tr>
+                        <td style="text-align:center;"><span class="live-dot"></span></td>
+                        <td><span class="student-id-badge">${student.student_id || 'N/A'}</span></td>
+                        <td><strong>${student.full_name || 'Student ' + String(row.student_id).slice(0, 8)}</strong><div style="font-size:11px;color:#64748b;margin-top:3px;">Last heartbeat: ${lastSeen}</div></td>
+                        <td>${row.exam_name}<div style="font-size:11px;color:#64748b;margin-top:3px;">Progress: ${progress}% · Q${Number(row.current_question || 0)}/${Number(row.total_questions || 0)}</div></td>
+                        <td style="text-align:center;"><span class="status-badge active" title="${faceLabel}" style="color:${faceColor};">● Live</span></td>
+                    </tr>`;
+            }).join('') || '<tr><td colspan="5" style="text-align:center;padding:30px;color:#94A3B8;">No students have sent a heartbeat in the last 2 minutes</td></tr>';
+
             loading.style.display = 'none';
-            document.getElementById('liveBadge').textContent = liveStudentsData.length;
-        } catch (e) { console.error(e); loading.innerHTML = 'Error loading live students'; }
+            if (badge) badge.textContent = String(liveStudentsData.length);
+            const stat = document.getElementById('statLiveStudents');
+            if (stat) stat.textContent = String(liveStudentsData.length);
+        } catch (error) {
+            console.error('Could not load live exam students:', error);
+            loading.style.display = 'block';
+            loading.textContent = 'Unable to load live students. Check exam_heartbeats access and try again.';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#b91c1c;">Live student data could not be loaded. Please refresh or contact the administrator.</td></tr>';
+        }
     }
-
     // ============================================================
     // RESET STUDENT EXAM
     // ============================================================
