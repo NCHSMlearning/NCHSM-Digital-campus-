@@ -4661,233 +4661,143 @@ window.loadLiveFeed = async function() {
     const loadingDiv = document.getElementById('liveFeedLoading');
     const gridDiv = document.getElementById('liveFeedGrid');
     const statsDiv = document.getElementById('liveFeedStats');
-    
-    if (!loadingDiv) return;
-    
-    // ✅ Check if this is an auto-refresh (data already exists)
+    if (!loadingDiv || !gridDiv || !statsDiv) return;
+
     const isAutoRefresh = liveFeedData.length > 0;
-    
-    // ✅ Only show loading on manual refresh
     if (!isAutoRefresh) {
         loadingDiv.style.display = 'block';
-        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading camera feeds...';
+        loadingDiv.style.color = '#475569';
+        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking active exam heartbeats...';
         gridDiv.innerHTML = '';
         statsDiv.style.display = 'none';
     }
-    
+
     try {
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        
-        const { data: activeLogs, error } = await sb
-            .from('exam_proctoring_logs')
-            .select('*')
-            .gte('timestamp', fiveMinutesAgo)
-            .order('timestamp', { ascending: false });
-        
-        if (error) throw error;
-        
-        if (!activeLogs || activeLogs.length === 0) {
-            // ✅ On auto-refresh, keep existing data
-            if (!isAutoRefresh) {
-                loadingDiv.innerHTML = '🟢 No students currently active';
-                loadingDiv.style.color = '#38A169';
-                loadingDiv.style.display = 'block';
-                gridDiv.innerHTML = `
-                    <div style="grid-column:1/-1; text-align:center; padding:60px; color:#94A3B8;">
-                        <i class="fas fa-video-slash fa-3x" style="display:block; margin-bottom:16px;"></i>
-                        <p>No students are currently taking exams</p>
-                    </div>
-                `;
-                document.getElementById('liveFeedBadge').textContent = '0';
-            }
+        const cutoff = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        const [heartbeatResult, logsResult] = await Promise.all([
+            sb.from('exam_heartbeats')
+                .select('student_id, exam_id, current_question, answered_count, total_questions, face_detected, timestamp')
+                .gte('timestamp', cutoff)
+                .order('timestamp', { ascending: false })
+                .limit(1500),
+            sb.from('exam_proctoring_logs')
+                .select('student_id, exam_id, event_type, timestamp, snapshot_url, screenshot_data, details, severity')
+                .gte('timestamp', new Date(Date.now() - 30 * 60 * 1000).toISOString())
+                .order('timestamp', { ascending: false })
+                .limit(2000)
+        ]);
+
+        if (heartbeatResult.error) throw new Error('Could not read live exam heartbeats: ' + heartbeatResult.error.message);
+        if (logsResult.error) console.warn('Live feed audit logs unavailable:', logsResult.error.message);
+
+        const heartbeats = heartbeatResult.data || [];
+        const recentLogs = logsResult.data || [];
+        const latestByPair = new Map();
+        heartbeats.forEach(row => {
+            if (!row.student_id || !row.exam_id || !row.timestamp) return;
+            const key = String(row.student_id) + '_' + String(row.exam_id);
+            const previous = latestByPair.get(key);
+            if (!previous || new Date(row.timestamp) > new Date(previous.timestamp)) latestByPair.set(key, row);
+        });
+
+        if (latestByPair.size === 0) {
+            liveFeedData = [];
+            gridDiv.innerHTML = '<div class="no-results" style="grid-column:1/-1;text-align:center;padding:55px 20px;color:#64748b;"><i class="fas fa-video-slash" style="font-size:2.4rem;display:block;margin-bottom:14px;"></i><p style="font-weight:700;">No students currently active</p><p style="font-size:.9rem;">A student appears here while their exam page is sending a heartbeat. Check the database permissions if a student is currently sitting an exam.</p></div>';
+            loadingDiv.style.display = 'none';
+            statsDiv.style.display = 'flex';
+            ['liveFeedCount','liveFeedWithCamera','liveFeedNoCamera','liveFeedViolations','liveFeedBadge'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='0'; });
+            const label=document.getElementById('liveFeedViewLabel'); if(label) label.textContent='active';
+            populateExamFilter();
             return;
         }
-        
-        // Get unique student IDs for profile lookup
-        const studentIds = [...new Set(activeLogs.map(l => l.student_id).filter(id => id))];
-        
-        // FETCH STUDENT PROFILES
-        let profileMap = {};
-        if (studentIds.length > 0) {
-            const { data: profiles } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id, email, program, block')
-                .in('user_id', studentIds);
-            
-            profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-            console.log('📋 Profiles found:', profiles?.length || 0);
+
+        const studentIds = [...new Set([...latestByPair.values()].map(x => String(x.student_id)))];
+        const profileMap = {};
+        if (studentIds.length) {
+            const [byUser, byStudent] = await Promise.all([
+                sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, email, program, block').in('user_id', studentIds),
+                sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, email, program, block').in('student_id', studentIds)
+            ]);
+            (byUser.data || []).concat(byStudent.data || []).forEach(profile => {
+                if (profile.user_id) profileMap[String(profile.user_id)] = profile;
+                if (profile.student_id) profileMap[String(profile.student_id)] = profile;
+            });
+            if (byUser.error && byStudent.error) console.warn('Live feed profile lookup failed:', byUser.error, byStudent.error);
         }
-        
-        // FETCH EXAM DETAILS
-        const examIds = [...new Set(activeLogs.map(l => l.exam_id).filter(id => id))];
+
+        const examIds = [...new Set([...latestByPair.values()].map(x => x.exam_id).filter(Boolean).map(String))];
         let examMap = {};
-        if (examIds.length > 0) {
-            const { data: exams } = await sb
-                .from('exams')
-                .select('id, exam_name, duration_minutes, total_marks')
-                .in('id', examIds);
-            
-            examMap = Object.fromEntries((exams || []).map(e => [e.id, e]));
-            console.log('📋 Exams found:', exams?.length || 0);
+        if (examIds.length) {
+            const { data: exams, error: examError } = await sb.from('exams').select('id, exam_name, duration_minutes, total_marks').in('id', examIds);
+            if (examError) console.warn('Live feed exam lookup failed:', examError.message);
+            examMap = Object.fromEntries((exams || []).map(exam => [String(exam.id), exam]));
         }
-        
-        // Get unique student-exam pairs (most recent per pair)
-        const uniqueStudents = new Map();
-        activeLogs.forEach(log => {
-            const key = `${log.student_id}_${log.exam_id}`;
-            if (!uniqueStudents.has(key) || new Date(log.timestamp) > new Date(uniqueStudents.get(key).timestamp)) {
-                uniqueStudents.set(key, log);
-            }
-        });
-        
-        const students = Array.from(uniqueStudents.values());
-        console.log('📹 Found', students.length, 'active students');
-        
-        // Build feed data
+
         liveFeedData = [];
-        let withCamera = 0;
-        let noCamera = 0;
-        let violations = 0;
-        
-        for (const log of students) {
-            const profile = profileMap[log.student_id] || {};
-            
-            const studentName = profile.full_name || log.student_name || 'Unknown Student';
-            const studentRegNumber = profile.student_id || log.student_reg_number || 'N/A';
-            const program = profile.program || '';
-            
-            const exam = examMap[log.exam_id] || {};
-            const examName = exam.exam_name || log.exam_name || 'Exam ' + log.exam_id;
-            
-            const hasCamera = !!(log.snapshot_url || log.screenshot_data);
-            if (hasCamera) withCamera++;
-            else noCamera++;
-            
-            const isViolation = log.event_type === 'multiple_faces_detected' || 
-                                log.event_type === 'face_missing' ||
-                                log.event_type === 'tab_switched' ||
-                                log.event_type === 'fullscreen_exit_attempt';
-            if (isViolation) violations++;
-            
-            // Get progress
-            let progress = 0;
-            let answered = 0;
-            let total = 0;
-            
-            if (log.student_id && log.exam_id) {
-                try {
-                    const { data: answers } = await sb
-                        .from('exam_grades')
-                        .select('id')
-                        .eq('student_id', log.student_id)
-                        .eq('exam_id', log.exam_id)
-                        .neq('question_id', '00000000-0000-0000-0000-000000000000');
-                    
-                    const { data: questions } = await sb
-                        .from('exam_questions')
-                        .select('id')
-                        .eq('exam_id', log.exam_id);
-                    
-                    answered = answers?.length || 0;
-                    total = questions?.length || 0;
-                    progress = total > 0 ? Math.round((answered / total) * 100) : 0;
-                } catch (e) {
-                    console.warn('Could not get progress for student:', log.student_id);
-                }
-            }
-            
-            // Calculate time remaining
-            const startedAt = new Date(log.timestamp);
-            const duration = exam.duration_minutes || 30;
-            const endTime = new Date(startedAt.getTime() + duration * 60000);
-            const now = new Date();
-            const timeLeftMs = endTime - now;
-            
-            let timeDisplay = '--';
-            if (timeLeftMs > 0) {
-                const mins = Math.floor(timeLeftMs / 60000);
-                const secs = Math.floor((timeLeftMs % 60000) / 1000);
-                timeDisplay = `${mins}m ${secs}s`;
-            } else {
-                timeDisplay = '⏰ Time Up';
-            }
-            
-            // Determine status
-            let status = 'active';
-            let statusLabel = '🟢 Active';
-            let statusClass = 'status-active';
-            
-            if (log.event_type === 'multiple_faces_detected') {
-                status = 'violation';
-                statusLabel = '🚨 Violation';
-                statusClass = 'status-critical';
-            } else if (log.event_type === 'face_missing') {
-                status = 'warning';
-                statusLabel = '😞 No Face';
-                statusClass = 'status-pending';
-            } else if (!hasCamera) {
-                status = 'no-camera';
-                statusLabel = '📷 No Camera';
-                statusClass = 'status-pending';
-            }
-            
+        for (const heartbeat of latestByPair.values()) {
+            const key = String(heartbeat.student_id) + '_' + String(heartbeat.exam_id);
+            const auditLogs = recentLogs.filter(log => String(log.student_id) === String(heartbeat.student_id) && String(log.exam_id) === String(heartbeat.exam_id));
+            const latestAudit = auditLogs[0] || {};
+            const snapshotLog = auditLogs.find(log => log.snapshot_url || log.screenshot_data) || null;
+            const profile = profileMap[String(heartbeat.student_id)] || {};
+            const exam = examMap[String(heartbeat.exam_id)] || {};
+            const isViolation = auditLogs.some(log => ['multiple_faces_detected','face_missing','tab_switched','fullscreen_exit_attempt'].includes(log.event_type));
+            const hasCamera = !!(snapshotLog && (snapshotLog.snapshot_url || snapshotLog.screenshot_data));
+            const answered = Number(heartbeat.answered_count || 0);
+            const total = Number(heartbeat.total_questions || 0);
+            const progress = total > 0 ? Math.min(100, Math.round(answered / total * 100)) : 0;
+            const log = {
+                ...heartbeat,
+                event_type: latestAudit.event_type || 'exam_active',
+                snapshot_url: snapshotLog?.snapshot_url || null,
+                screenshot_data: snapshotLog?.screenshot_data || null,
+                details: latestAudit.details || null,
+                severity: latestAudit.severity || 'info'
+            };
             liveFeedData.push({
-                log: log,
-                profile: profile,
-                exam: exam,
-                studentName: studentName,
-                studentRegNumber: studentRegNumber,
-                program: program,
-                examName: examName,
-                hasCamera: hasCamera,
-                snapshot: hasCamera ? log : null,
-                hasViolations: isViolation,
-                progress: progress,
-                answered: answered,
-                total: total,
-                timeDisplay: timeDisplay,
-                timeLeftMs: timeLeftMs,
-                status: status,
-                statusLabel: statusLabel,
-                statusClass: statusClass,
-                startedAt: startedAt,
-                user_id: log.student_id,
-                exam_id: log.exam_id,
-                isPast: false
+                log, profile, exam,
+                studentName: profile.full_name || 'Student ' + String(heartbeat.student_id).slice(0, 8),
+                studentRegNumber: profile.student_id || String(heartbeat.student_id),
+                program: profile.program || '',
+                examName: exam.exam_name || 'Exam ' + heartbeat.exam_id,
+                hasCamera, snapshot: snapshotLog || log, hasViolations: isViolation,
+                progress, answered, total, timeDisplay: 'Live heartbeat',
+                timeLeftMs: 0, status: isViolation ? 'violation' : (!heartbeat.face_detected ? 'warning' : (hasCamera ? 'active' : 'no-camera')),
+                statusLabel: isViolation ? '🚨 Violation' : (!heartbeat.face_detected ? '⚠️ Face check' : (hasCamera ? '🟢 Active' : '🟢 Active · no snapshot')),
+                statusClass: isViolation ? 'status-critical' : (!heartbeat.face_detected ? 'status-pending' : 'status-active'),
+                startedAt: new Date(heartbeat.timestamp), user_id: heartbeat.student_id,
+                exam_id: heartbeat.exam_id, isPast: false, lastHeartbeat: heartbeat.timestamp
             });
         }
-        
-        // Sort by status (violations first)
-        liveFeedData.sort((a, b) => {
-            const order = { violation: 0, warning: 1, 'no-camera': 2, active: 3 };
-            return (order[a.status] || 4) - (order[b.status] || 4);
-        });
-        
-        // Update stats
-        document.getElementById('liveFeedCount').textContent = liveFeedData.length;
-        document.getElementById('liveFeedWithCamera').textContent = withCamera;
-        document.getElementById('liveFeedNoCamera').textContent = noCamera;
-        document.getElementById('liveFeedViolations').textContent = violations;
-        document.getElementById('liveFeedBadge').textContent = liveFeedData.length;
-        
-        // Populate exam filter
+
+        liveFeedData.sort((a,b) => new Date(b.lastHeartbeat) - new Date(a.lastHeartbeat));
+        const withCamera = liveFeedData.filter(x => x.hasCamera).length;
+        const violations = liveFeedData.filter(x => x.hasViolations).length;
+        const setText = (id, value) => { const el=document.getElementById(id); if(el) el.textContent=String(value); };
+        setText('liveFeedCount', liveFeedData.length);
+        setText('liveFeedWithCamera', withCamera);
+        setText('liveFeedNoCamera', liveFeedData.length - withCamera);
+        setText('liveFeedViolations', violations);
+        setText('liveFeedBadge', liveFeedData.length);
+        const label=document.getElementById('liveFeedViewLabel'); if(label) label.textContent='active';
         populateExamFilter();
-        
-        // Render
         displayLiveFeed();
-        
         loadingDiv.style.display = 'none';
-        statsDiv.style.display = 'block';
-        
-        console.log('📹 Live Feed loaded:', liveFeedData.length, 'students');
-        
+        statsDiv.style.display = 'flex';
+        console.log('📹 Live feed loaded from exam_heartbeats:', liveFeedData.length, 'active student-exam sessions');
     } catch (error) {
         console.error('❌ Error loading live feed:', error);
-        loadingDiv.innerHTML = '❌ Error loading camera feeds: ' + error.message;
+        loadingDiv.style.display = 'block';
         loadingDiv.style.color = '#DC2626';
+        loadingDiv.innerHTML = '❌ ' + String(error.message || error) + '<br><small>Live camera list requires readable exam_heartbeats rows and current student sessions.</small>';
+        if (!isAutoRefresh) {
+            liveFeedData = [];
+            gridDiv.innerHTML = '';
+        }
     }
 };
-    window.refreshLiveFeed = function() {
+
+window.refreshLiveFeed = function() {
         loadLiveFeed();
         showToast('Refreshing camera feeds...', 'info');
     };
@@ -5194,171 +5104,103 @@ window.loadPastStudents = async function() {
     const loadingDiv = document.getElementById('liveFeedLoading');
     const gridDiv = document.getElementById('liveFeedGrid');
     const statsDiv = document.getElementById('liveFeedStats');
-    
-    if (!loadingDiv) return;
-    
+    if (!loadingDiv || !gridDiv || !statsDiv) return;
+
     loadingDiv.style.display = 'block';
-    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading past students...';
+    loadingDiv.style.color = '#475569';
+    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading previous camera snapshots and exam records...';
     gridDiv.innerHTML = '';
     statsDiv.style.display = 'none';
-    
+
     try {
-        // Get students who completed exams in the last 24 hours
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        
-        // Get logs with exam_completed or exam_submitted events
-        const { data: pastLogs, error } = await sb
-            .from('exam_proctoring_logs')
-            .select('*')
-            .in('event_type', ['exam_submitted', 'exam_auto_submitted', 'exam_completed'])
-            .gte('timestamp', twentyFourHoursAgo)
-            .order('timestamp', { ascending: false });
-        
-        if (error) throw error;
-        
-        if (!pastLogs || pastLogs.length === 0) {
-            loadingDiv.innerHTML = '📭 No students have completed exams in the last 24 hours';
-            loadingDiv.style.color = '#64748B';
-            loadingDiv.style.display = 'block';
-            gridDiv.innerHTML = `
-                <div class="no-results">
-                    <i class="fas fa-history"></i>
-                    <p>No past exam records found</p>
-                    <p style="font-size:0.85rem;">Students who completed exams will appear here</p>
-                </div>
-            `;
-            document.getElementById('liveFeedBadge').textContent = '0';
-            return;
-        }
-        
-        // Get unique students
-        const uniqueStudents = new Map();
-        pastLogs.forEach(log => {
-            const key = `${log.student_id}_${log.exam_id}`;
-            if (!uniqueStudents.has(key) || new Date(log.timestamp) > new Date(uniqueStudents.get(key).timestamp)) {
-                uniqueStudents.set(key, log);
-            }
+        const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: logs, error } = await sb.from('exam_proctoring_logs')
+            .select('student_id, exam_id, event_type, timestamp, snapshot_url, screenshot_data, details, severity')
+            .gte('timestamp', since)
+            .order('timestamp', { ascending: false })
+            .limit(3000);
+        if (error) throw new Error('Could not load previous camera records: ' + error.message);
+
+        const relevant = (logs || []).filter(log => log.student_id && log.exam_id &&
+            (log.snapshot_url || log.screenshot_data ||
+             ['exam_submitted','exam_auto_submitted','exam_completed'].includes(log.event_type)));
+        const byPair = new Map();
+        relevant.forEach(log => {
+            const key = String(log.student_id) + '_' + String(log.exam_id);
+            let entry = byPair.get(key);
+            if (!entry) entry = { latest: log, snapshot: null, completed: null };
+            if (!entry.latest || new Date(log.timestamp) > new Date(entry.latest.timestamp)) entry.latest = log;
+            if ((log.snapshot_url || log.screenshot_data) && (!entry.snapshot || new Date(log.timestamp) > new Date(entry.snapshot.timestamp))) entry.snapshot = log;
+            if (['exam_submitted','exam_auto_submitted','exam_completed'].includes(log.event_type) && (!entry.completed || new Date(log.timestamp) > new Date(entry.completed.timestamp))) entry.completed = log;
+            byPair.set(key, entry);
         });
-        
-        const students = Array.from(uniqueStudents.values());
-        
-        // Get student profiles
-        const studentIds = students.map(s => s.student_id).filter(id => id);
-        let profileMap = {};
-        if (studentIds.length > 0) {
-            const { data: profiles } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id, email, program, block')
-                .in('user_id', studentIds);
-            profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        }
-        
-        // Get exam details
-        const examIds = students.map(s => s.exam_id).filter(id => id);
-        let examMap = {};
-        if (examIds.length > 0) {
-            const { data: exams } = await sb
-                .from('exams')
-                .select('id, exam_name')
-                .in('id', examIds);
-            examMap = Object.fromEntries((exams || []).map(e => [e.id, e]));
-        }
-        
-        // Build past data
-        const pastData = [];
-        let withCamera = 0;
-        let noCamera = 0;
-        
-        for (const log of students) {
-            const profile = profileMap[log.student_id] || {};
-            const exam = examMap[log.exam_id] || {};
-            
-            const studentName = profile.full_name || log.student_name || 'Unknown';
-            const studentReg = profile.student_id || log.student_reg_number || 'N/A';
-            const program = profile.program || '';
-            const examName = exam.exam_name || log.exam_name || 'Exam';
-            
-            const hasCamera = !!(log.snapshot_url || log.screenshot_data);
-            if (hasCamera) withCamera++;
-            else noCamera++;
-            
-            // Get the last snapshot for this student
-            let lastSnapshot = null;
-            if (log.snapshot_url || log.screenshot_data) {
-                lastSnapshot = log;
-            } else {
-                // Try to get a snapshot from their logs
-                const { data: snapshots } = await sb
-                    .from('exam_proctoring_logs')
-                    .select('snapshot_url, screenshot_data, timestamp')
-                    .eq('student_id', log.student_id)
-                    .eq('exam_id', log.exam_id)
-                    .or('snapshot_url.not.is.null,screenshot_data.not.is.null')
-                    .order('timestamp', { ascending: false })
-                    .limit(1);
-                
-                if (snapshots && snapshots.length > 0) {
-                    lastSnapshot = snapshots[0];
-                }
-            }
-            
-            // Get exam result
-            let result = null;
-            try {
-                const { data: grade } = await sb
-                    .from('exam_grades')
-                    .select('marks, total_score, percentage, result_status')
-                    .eq('student_id', log.student_id)
-                    .eq('exam_id', log.exam_id)
-                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
-                    .maybeSingle();
-                result = grade;
-            } catch (e) { /* ignore */ }
-            
-            pastData.push({
-                log: log,
-                profile: profile,
-                exam: exam,
-                studentName: studentName,
-                studentRegNumber: studentReg,
-                program: program,
-                examName: examName,
-                hasCamera: hasCamera,
-                snapshot: lastSnapshot || log,
-                isPast: true,
-                timestamp: log.timestamp,
-                result: result
+
+        const entries = [...byPair.values()];
+        const ids = [...new Set(entries.map(e => String(e.latest.student_id)))];
+        const profileMap = {};
+        if (ids.length) {
+            const [byUser, byStudent] = await Promise.all([
+                sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, email, program, block').in('user_id', ids),
+                sb.from('consolidated_user_profiles_table').select('user_id, full_name, student_id, email, program, block').in('student_id', ids)
+            ]);
+            (byUser.data || []).concat(byStudent.data || []).forEach(profile => {
+                if (profile.user_id) profileMap[String(profile.user_id)] = profile;
+                if (profile.student_id) profileMap[String(profile.student_id)] = profile;
             });
         }
-        
-        // Sort by most recent
-        pastData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        // Store in liveFeedData for display
-        liveFeedData = pastData;
-        
-        // Update stats
-        document.getElementById('liveFeedCount').textContent = liveFeedData.length;
-        document.getElementById('liveFeedWithCamera').textContent = withCamera;
-        document.getElementById('liveFeedNoCamera').textContent = noCamera;
-        document.getElementById('liveFeedViolations').textContent = 0;
-        document.getElementById('liveFeedBadge').textContent = liveFeedData.length;
-        
-        // Populate exam filter
+
+        const examIds = [...new Set(entries.map(e => String(e.latest.exam_id)))];
+        let examMap = {};
+        if (examIds.length) {
+            const { data: exams } = await sb.from('exams').select('id, exam_name').in('id', examIds);
+            examMap = Object.fromEntries((exams || []).map(e => [String(e.id), e]));
+        }
+
+        liveFeedData = entries.map(entry => {
+            const log = entry.latest;
+            const snapshot = entry.snapshot || entry.latest;
+            const profile = profileMap[String(log.student_id)] || {};
+            const exam = examMap[String(log.exam_id)] || {};
+            const hasCamera = !!(snapshot.snapshot_url || snapshot.screenshot_data);
+            return {
+                log: { ...log, snapshot_url: snapshot.snapshot_url || null, screenshot_data: snapshot.screenshot_data || null },
+                profile, exam,
+                studentName: profile.full_name || 'Student ' + String(log.student_id).slice(0,8),
+                studentRegNumber: profile.student_id || String(log.student_id),
+                program: profile.program || '',
+                examName: exam.exam_name || 'Exam ' + log.exam_id,
+                hasCamera, snapshot, hasViolations: false,
+                progress: 0, answered: 0, total: 0,
+                timeDisplay: entry.completed ? '✅ Completed' : '📷 Previous snapshot',
+                status: 'active', statusLabel: entry.completed ? '✅ Completed' : '📷 Snapshot saved',
+                statusClass: 'status-active', startedAt: new Date(log.timestamp),
+                user_id: log.student_id, exam_id: log.exam_id, isPast: true,
+                timestamp: (entry.completed || snapshot || log).timestamp,
+                result: null
+            };
+        }).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        const withCamera = liveFeedData.filter(x => x.hasCamera).length;
+        const setText = (id, value) => { const el=document.getElementById(id); if(el) el.textContent=String(value); };
+        setText('liveFeedCount', liveFeedData.length);
+        setText('liveFeedWithCamera', withCamera);
+        setText('liveFeedNoCamera', liveFeedData.length - withCamera);
+        setText('liveFeedViolations', 0);
+        setText('liveFeedBadge', liveFeedData.length);
+        const label=document.getElementById('liveFeedViewLabel'); if(label) label.textContent='previous';
         populateExamFilter();
-        
-        // Render
         displayLiveFeed();
-        
         loadingDiv.style.display = 'none';
-        statsDiv.style.display = 'block';
-        
-        console.log('📹 Past students loaded:', liveFeedData.length);
-        
+        statsDiv.style.display = 'flex';
+        if (!liveFeedData.length) {
+            gridDiv.innerHTML = '<div class="no-results" style="grid-column:1/-1;text-align:center;padding:55px 20px;color:#64748b;"><i class="fas fa-history" style="font-size:2.4rem;display:block;margin-bottom:14px;"></i><p style="font-weight:700;">No previous snapshots or exam records found in the last 7 days</p><p style="font-size:.9rem;">Past previews are available only when the exam page has saved a snapshot or proctoring event.</p></div>';
+        }
+        console.log('📷 Previous camera records loaded:', liveFeedData.length);
     } catch (error) {
-        console.error('❌ Error loading past students:', error);
-        loadingDiv.innerHTML = '❌ Error loading past students: ' + error.message;
+        console.error('❌ Error loading previous camera records:', error);
+        loadingDiv.style.display = 'block';
         loadingDiv.style.color = '#DC2626';
+        loadingDiv.textContent = 'Could not load previous camera records: ' + String(error.message || error);
     }
 };
 
