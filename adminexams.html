@@ -67,6 +67,37 @@
 }
 </style>
 
+
+    <!-- Live camera feed responsive dashboard improvements -->
+    <style id="nchsm-live-feed-enhancements">
+      #livefeed { color:#0f172a; }
+      #livefeed .live-feed-card { min-width:0; overflow:hidden; border:1px solid #e2e8f0; border-radius:16px; box-shadow:0 8px 24px rgba(15,23,42,.07); background:#fff; transition:transform .18s ease,box-shadow .18s ease; }
+      #livefeed .live-feed-card:hover { transform:translateY(-2px); box-shadow:0 14px 30px rgba(15,23,42,.12); }
+      #livefeed .card-header { gap:12px; flex-wrap:wrap; }
+      #livefeed .card-body { position:relative; overflow:hidden; background:#0f172a; min-height:220px; }
+      #livefeed .card-body img { display:block; width:100%; max-height:320px; object-fit:cover; }
+      #livefeed .no-camera { min-height:220px; padding:24px; box-sizing:border-box; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; text-align:center; color:#cbd5e1; background:radial-gradient(circle at top,#1e3a5f,#0f172a 75%); }
+      #livefeed .no-camera i { font-size:2.5rem; opacity:.75; }
+      #livefeed .overlay-badge { z-index:2; }
+      #livefeed .progress-bar-container { padding:14px 16px; }
+      #livefeed .card-footer { gap:12px; flex-wrap:wrap; }
+      #livefeed .card-footer .actions { display:flex; gap:8px; flex-wrap:wrap; }
+      #livefeed .btn-view-cam,#livefeed .btn-alert { min-height:38px; cursor:pointer; }
+      #livefeed .btn-view-cam:focus-visible,#livefeed button:focus-visible,#livefeed input:focus-visible,#livefeed select:focus-visible { outline:3px solid #fbbf24; outline-offset:2px; }
+      #livefeed #liveFeedStats { align-items:center; }
+      #livefeed #liveFeedStats > span { padding:5px 8px; border-radius:7px; background:rgba(255,255,255,.65); }
+      #livefeed #liveFeedGrid { grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)) !important; }
+      #livefeed .no-results { background:#fff; border:1px dashed #cbd5e1; border-radius:14px; }
+      @media(max-width:640px) {
+        #livefeed > div[style*="linear-gradient"] { padding:17px !important; align-items:flex-start !important; }
+        #livefeed > div[style*="linear-gradient"] > div:last-child { width:100%; }
+        #livefeed > div[style*="linear-gradient"] button { flex:1; min-width:90px; }
+        #livefeed > div[style*="background: white"] { padding:12px !important; }
+        #livefeed #liveFeedGrid { grid-template-columns:minmax(0,1fr) !important; gap:14px !important; }
+      }
+      @media(prefers-reduced-motion:reduce) { #livefeed .live-feed-card { transition:none; } #livefeed .live-feed-card:hover { transform:none; } }
+    </style>
+
 </head>
 <body>
 
@@ -378,7 +409,7 @@
                         <i class="fas fa-video" style="color: #FDB913;"></i> 📹 Live Camera Feed
                     </h2>
                     <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-                        <i class="fas fa-broadcast"></i> Real-time camera monitoring
+                        <i class="fas fa-broadcast"></i> Live session status, camera previews, alerts and saved evidence
                     </p>
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -433,7 +464,7 @@
                 </span>
             </div>
 
-            <div id="liveFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; padding:0;"></div>
+            <div id="liveFeedGrid" aria-live="polite" aria-busy="false" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px; padding:0;"></div>
             <div class="pagination" id="liveFeedPagination"></div>
         </section>
 
