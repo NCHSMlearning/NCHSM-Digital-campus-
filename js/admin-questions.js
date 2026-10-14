@@ -11,6 +11,13 @@
 let currentQuestions = [];
 let currentQuestionExamId = null;
 
+// Escape database/user-supplied text before inserting it into admin HTML.
+function escapeAdminQuestionHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[character]));
+}
+
 // ============================================================
 // LOAD EXAMS FOR QUESTIONS
 // ============================================================
@@ -160,8 +167,9 @@ function renderQuestionsTable(questions) {
     questions.forEach((q, index) => {
         const isMcq = q.question_type === 'mcq' || q.question_type === 'multiple_choice';
         const type = isMcq ? 'Multiple Choice' : 'Short Answer';
-        const correct = isMcq ? (q.correct_answer || 'N/A') : '—';
-        const questionText = q.question_text.length > 60 ? q.question_text.substring(0, 60) + '...' : q.question_text;
+        const correct = isMcq ? escapeAdminQuestionHtml(q.correct_answer || 'N/A') : '—';
+        const rawQuestionText = String(q.question_text || '');
+        const questionText = escapeAdminQuestionHtml(rawQuestionText.length > 60 ? rawQuestionText.substring(0, 60) + '...' : rawQuestionText);
 
         html += `
             <tr style="border-bottom: 1px solid #e5e7eb;">
@@ -172,7 +180,7 @@ function renderQuestionsTable(questions) {
                         ${type}
                     </span>
                 </td>
-                <td style="padding: 8px 12px; text-align: center; font-weight: 600;">${q.marks || 1}</td>
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600;">${Number(q.marks) || 1}</td>
                 <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${isMcq ? '#059669' : '#94a3b8'};">
                     ${correct}
                 </td>
@@ -656,15 +664,15 @@ function renderLecturerGroups(groups) {
                 <div style="padding: 16px 20px; background: ${hasPending ? '#fffbeb' : '#f8fafc'}; border-bottom: 1px solid ${hasPending ? '#fde68a' : '#e5e7eb'}; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; cursor: pointer;" onclick="toggleLecturer('${group.lecturer_id}')">
                     <div style="display: flex; align-items: center; gap: 14px;">
                         <div style="width: 44px; height: 44px; border-radius: 50%; background: ${hasPending ? '#f59e0b' : '#4C1D95'}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px;">
-                            ${group.lecturer_name.charAt(0).toUpperCase()}
+                            ${escapeAdminQuestionHtml(String(group.lecturer_name || 'L').charAt(0).toUpperCase())}
                         </div>
                         <div>
                             <div style="font-weight: 700; color: #0A3D62; font-size: 16px;">
-                                ${group.lecturer_name}
+                                ${escapeAdminQuestionHtml(group.lecturer_name || 'Unknown Lecturer')}
                                 ${group.lecturer_id === 'superadmin' ? ' 👑' : ' 👨‍🏫'}
                             </div>
                             <div style="font-size: 12px; color: #64748b;">
-                                ${group.lecturer_email || ''} ${group.lecturer_program ? '| ' + group.lecturer_program : ''}
+                                ${escapeAdminQuestionHtml(group.lecturer_email || '')} ${group.lecturer_program ? '| ' + escapeAdminQuestionHtml(group.lecturer_program) : ''}
                             </div>
                         </div>
                     </div>
@@ -727,7 +735,7 @@ function renderPendingQuestionsTable(questions) {
 
     questions.forEach((q, index) => {
         const isMcq = q.question_type === 'mcq' || q.question_type === 'multiple_choice';
-        const examTitle = q.exams?.title || q.exams?.exam_name || 'Exam ' + q.exam_id;
+        const examTitle = escapeAdminQuestionHtml(q.exams?.title || q.exams?.exam_name || 'Exam ' + q.exam_id);
         const statusColors = {
             'pending': 'background: #fef3c7; color: #92400e;',
             'approved': 'background: #d1fae5; color: #065f46;',
@@ -743,7 +751,7 @@ function renderPendingQuestionsTable(questions) {
         html += `
             <tr style="border-bottom: 1px solid #e5e7eb; ${isPending ? 'background: #fffbeb;' : ''}">
                 <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: #94a3b8;">${index + 1}</td>
-                <td style="padding: 8px 12px; color: #1e293b; max-width: 300px; word-wrap: break-word;">${q.question_text || 'No text'}</td>
+                <td style="padding: 8px 12px; color: #1e293b; max-width: 300px; word-wrap: break-word;">${escapeAdminQuestionHtml(q.question_text || 'No text')}</td>
                 <td style="padding: 8px 12px; font-size: 12px; color: #475569;">${examTitle}</td>
                 <td style="padding: 8px 12px; text-align: center;">
                     <span style="padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; background: ${isMcq ? '#DBEAFE' : '#FEF3C7'}; color: ${isMcq ? '#1E40AF' : '#92400E'};">
