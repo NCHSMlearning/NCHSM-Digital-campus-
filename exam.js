@@ -4942,7 +4942,6 @@ const NCHSM_WEBRTC_CONFIG = {
 
 let nchsmWebRTCChannel = null;
 let nchsmWebRTCPeers = new Map();
-let nchsmPendingIceCandidates = new Map();
 
 function getNchsmWebRTCChannelName() {
     if (!AppState.studentId || !AppState.examId) return null;
@@ -4992,8 +4991,6 @@ nchsmWebRTCChannel = sb.channel(channelName, {
             try {
                 if (pc.signalingState !== 'stable') {
                     await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
-                    const q = nchsmPendingIceCandidates.get(viewerId) || []; nchsmPendingIceCandidates.delete(viewerId);
-                    for (const candidate of q) { try { await pc.addIceCandidate(candidate); } catch (iceError) { console.warn('Queued student ICE candidate failed:', iceError); } }
                 }
             } catch (e) {
                 console.warn('🎥 WebRTC answer error:', e);
@@ -5004,9 +5001,7 @@ nchsmWebRTCChannel = sb.channel(channelName, {
             const pc = nchsmWebRTCPeers.get(viewerId);
             if (!pc || !payload?.candidate) return;
             try {
-                const candidate = new RTCIceCandidate(payload.candidate);
-                if (!pc.remoteDescription) { const q = nchsmPendingIceCandidates.get(viewerId) || []; q.push(candidate); nchsmPendingIceCandidates.set(viewerId, q); return; }
-                await pc.addIceCandidate(candidate);
+                await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
             } catch (e) {
                 console.warn('🎥 WebRTC ICE error:', e);
             }
