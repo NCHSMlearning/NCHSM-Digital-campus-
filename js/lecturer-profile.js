@@ -116,8 +116,9 @@ const LecturerProfile = {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (!profile) {
-                console.warn('No profile found');
-                this.profile = this.getMockProfile();
+                console.warn('No authenticated lecturer profile is available yet.');
+                this.profile = null;
+                this.showProfileUnavailable();
                 return;
             }
             
@@ -133,11 +134,34 @@ const LecturerProfile = {
             
         } catch (error) {
             console.error('Failed to load profile:', error);
-            this.profile = this.getMockProfile();
-            this.renderProfile();
+            this.profile = null;
+            this.showProfileUnavailable();
         }
     },
     
+    showProfileUnavailable() {
+        const nameEl = document.getElementById('profileNameDisplay');
+        if (nameEl) nameEl.textContent = 'Profile unavailable';
+        const avatar = document.getElementById('profileImg');
+        if (avatar) {
+            avatar.onerror = null;
+            avatar.src = 'https://ui-avatars.com/api/?name=Lecturer&background=4C1D95&color=fff&size=120';
+        }
+        ['profileEmail','profilePhone','profileDept'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '—';
+        });
+        ['profileId','profileJoinDate'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '—';
+        });
+        ['editFullName','editEmail','editPhone','editDepartment'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        this.showReadOnly();
+    },
+
     getMockProfile() {
         const isTVET = this.isTVETProgram();
         const programType = this.getProgramTypeLabel();
@@ -180,8 +204,12 @@ const LecturerProfile = {
         const avatar = document.getElementById('profileImg');
         if (avatar) {
             const name = p.full_name || 'Lecturer';
-            const url = p.avatar_url || p.passport_url || 
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${this.isTVET ? '8b5cf6' : '4C1D95'}&color=fff&size=120`;
+            const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${this.isTVET ? '8b5cf6' : '4C1D95'}&color=fff&size=120`;
+            const url = p.avatar_url || p.profile_photo_url || p.passport_url || fallbackUrl;
+            avatar.onerror = () => {
+                avatar.onerror = null;
+                avatar.src = fallbackUrl;
+            };
             avatar.src = url;
         }
         
@@ -220,16 +248,17 @@ const LecturerProfile = {
         
         Object.keys(fields).forEach(id => {
             const el = document.getElementById(id);
-            if (el) {
-                el.textContent = fields[id];
-            }
+            if (!el) return;
+            // Inputs display their content through value, not textContent.
+            if (el.matches('input, textarea, select')) el.value = fields[id];
+            else el.textContent = fields[id];
         });
         
         // Editable fields (for inline editing)
         const editFields = {
             'editFullName': p.full_name || '',
             'editEmail': p.email || '',
-            'editPhone': p.phone || '',
+            'editPhone': p.phone || p.phone_number || '',
             // ✅ FIX: Show program in edit department field
             'editDepartment': displayDepartment || p.department || ''
         };
@@ -597,8 +626,8 @@ const LecturerProfile = {
             const editFields = {
                 'editFullName': p.full_name || '',
                 'editEmail': p.email || '',
-                'editPhone': p.phone || '',
-                'editDepartment': p.department || ''
+                'editPhone': p.phone || p.phone_number || '',
+                'editDepartment': p.department || p.program || ''
             };
             
             Object.keys(editFields).forEach(id => {
@@ -640,18 +669,22 @@ const LecturerProfile = {
         }
         
         try {
-            window.showLoading('Saving profile...');
-            
             const supabase = window.lecturerDB?.supabase;
-            if (supabase && this.profile) {
-                const { error } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .update(updates)
-                    .eq('user_id', this.profile.user_id);
-                
-                if (error) throw error;
+            if (!supabase || !this.profile?.user_id || this.profile.user_id === 'mock-user-1') {
+                throw new Error('Your authenticated profile is not ready. Refresh the page and try again.');
             }
-            
+            window.showLoading('Saving profile...');
+
+            const { data, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .update(updates)
+                .eq('user_id', this.profile.user_id)
+                .select('*')
+                .maybeSingle();
+
+            if (error) throw error;
+            if (!data) throw new Error('No profile record was updated. Check your access permissions and try again.');
+
             // Update local profile
             this.profile = { ...this.profile, ...updates };
             this.renderProfile();
@@ -767,14 +800,18 @@ const LecturerProfile = {
                 
                 const { error: updateError } = await supabase
                     .from('consolidated_user_profiles_table')
-                    .update({ avatar_url: urlData.publicUrl })
+                    .update({ avatar_url: urlData.publicUrl, profile_photo_url: urlData.publicUrl })
                     .eq('user_id', this.profile.user_id);
-                
+
                 if (updateError) throw updateError;
-                
+
                 this.profile.avatar_url = urlData.publicUrl;
+                this.profile.profile_photo_url = urlData.publicUrl;
+                this.renderProfile();
                 window.hideLoading();
                 window.showNotification('✅ Photo updated successfully!', 'success');
+            } else {
+                throw new Error('Your authenticated profile is not ready. Refresh the page and try again.');
             }
         } catch (error) {
             window.hideLoading();
