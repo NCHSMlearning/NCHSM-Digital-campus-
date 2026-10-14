@@ -323,7 +323,7 @@ const LecturerCalendar = {
             if (da && !db) return -1;
             if (!da && db) return 1;
             return dayOf(a).localeCompare(dayOf(b)) ||
-                String(this.timetableValue(a,['start_time','start'],'')).localeCompare(String(this.timetableValue(b,['start_time','start'],''));
+                String(this.timetableValue(a,['start_time','start'],'')).localeCompare(String(this.timetableValue(b,['start_time','start'],'')));
         });
         panel.innerHTML = `
           <div style="display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:16px">
