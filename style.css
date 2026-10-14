@@ -2633,3 +2633,62 @@ a:focus-visible {
         overflow: hidden !important;
     }
 }
+
+
+/* =========================================================
+   Lecturer calendar — refined timetable and filter styling
+   ========================================================= */
+.lecturer-timetable-panel {
+  --lt-ink: #172554;
+  --lt-muted: #64748b;
+  --lt-border: #e2e8f0;
+  margin-top: 26px;
+  padding: clamp(16px, 2.2vw, 28px);
+  border: 1px solid #e0e7ff;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fff 0%, #fbfcff 100%);
+  color: var(--lt-ink);
+  box-shadow: 0 12px 34px rgba(30, 41, 59, .07);
+  overflow: hidden;
+}
+.lecturer-timetable-panel .lt-panel-header {display:flex;gap:16px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:22px}
+.lecturer-timetable-panel .lt-panel-title {margin:0 0 6px;font-size:clamp(19px,2vw,24px);font-weight:800;letter-spacing:-.035em;color:#1e1b4b}
+.lecturer-timetable-panel .lt-panel-subtitle {margin:0;color:#64748b;font-size:13px;line-height:1.6;max-width:680px}
+.lecturer-timetable-panel .lt-filters {display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-bottom:22px;padding:18px;background:linear-gradient(135deg,#f8faff,#f5f3ff);border:1px solid #e5e7eb;border-radius:15px}
+.lecturer-timetable-panel .lt-filters > div {display:grid;gap:7px;min-width:145px;flex:1}
+.lecturer-timetable-panel .lt-filter-label {font-weight:750;font-size:12px;letter-spacing:.045em;text-transform:uppercase;color:#475569}
+.lecturer-timetable-panel .lt-select {width:100%;min-height:43px;padding:10px 36px 10px 12px;border:1px solid #cbd5e1;border-radius:10px;background-color:#fff;color:#1e293b;font:inherit;font-size:14px;box-shadow:0 1px 2px rgba(15,23,42,.03);transition:border-color .18s,box-shadow .18s}
+.lecturer-timetable-panel .lt-select:focus {outline:none;border-color:#6d4bc3;box-shadow:0 0 0 3px rgba(109,75,195,.14)}
+.lecturer-timetable-panel .lt-btn {min-height:42px;padding:10px 15px;border-radius:10px;font-size:13px;font-weight:750;cursor:pointer;transition:transform .16s,box-shadow .16s,background .16s}
+.lecturer-timetable-panel .lt-btn:hover {transform:translateY(-1px);box-shadow:0 5px 12px rgba(30,27,75,.12)}
+.lecturer-timetable-panel .lt-btn-primary {border:1px solid #4c1d95;background:linear-gradient(135deg,#4c1d95,#6d4bc3);color:#fff}
+.lecturer-timetable-panel .lt-btn-secondary {border:1px solid #d7dce7;background:#fff;color:#334155}
+.lecturer-timetable-panel .lt-section-label {display:flex;align-items:center;gap:8px;margin:22px 0 12px;font-size:15px;font-weight:800;color:#1e1b4b}
+.lecturer-timetable-panel .lt-section-label:before {content:"";display:block;width:4px;height:19px;border-radius:4px;background:#f4b942}
+.lecturer-timetable-panel .lt-table {width:100%;border-collapse:separate;border-spacing:0;min-width:1000px;font-size:13px}
+.lecturer-timetable-panel .lt-table thead th {padding:13px 14px;text-align:left;white-space:nowrap;background:#f3f4fb;border-bottom:1px solid #e0e7ff;color:#475569;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.055em}
+.lecturer-timetable-panel .lt-table thead th:first-child {border-radius:10px 0 0 0}
+.lecturer-timetable-panel .lt-table thead th:last-child {border-radius:0 10px 0 0}
+.lecturer-timetable-panel .lt-table tbody tr {transition:background .15s}
+.lecturer-timetable-panel .lt-table tbody tr:hover {background:#f8faff}
+.lecturer-timetable-panel .lt-table .lt-td {padding:13px 14px;border-bottom:1px solid #edf0f7;vertical-align:top;color:#334155;line-height:1.55}
+.lecturer-timetable-panel .lt-table tbody tr:last-child .lt-td {border-bottom:0}
+.lecturer-timetable-panel .lt-table tbody td:first-child {font-weight:750;color:#4c1d95;white-space:nowrap}
+.lecturer-timetable-panel .lt-empty,.lecturer-timetable-panel .lt-empty-inline {padding:22px;text-align:center;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;color:#64748b;line-height:1.6}
+.lecturer-timetable-panel .lt-upcoming-heading {margin-top:28px}
+.lecturer-timetable-panel .lt-upcoming-item {display:flex;gap:14px;align-items:flex-start;padding:15px 12px;border-bottom:1px solid #edf0f7;border-radius:10px;transition:background .16s}
+.lecturer-timetable-panel .lt-upcoming-item:hover {background:#f8faff}
+.lecturer-timetable-panel .lt-upcoming-meta {font-size:12px;color:#64748b;margin-top:5px;line-height:1.6}
+.lecturer-timetable-panel .lt-upcoming-description {font-size:13px;color:#475569;margin-top:6px;line-height:1.6}
+@media(max-width:700px) {
+ .lecturer-timetable-panel {padding:15px;border-radius:15px}
+ .lecturer-timetable-panel .lt-filters {display:grid;grid-template-columns:1fr;gap:12px;padding:13px}
+ .lecturer-timetable-panel .lt-filters > div {min-width:0}
+ .lecturer-timetable-panel .lt-btn {width:100%}
+ .lecturer-timetable-panel .lt-panel-header {align-items:stretch}
+ .lecturer-timetable-panel .lt-panel-header > .lt-btn {width:auto}
+ .lecturer-timetable-panel .lt-table {min-width:1000px}
+}
+@media(prefers-reduced-motion:reduce) {
+ .lecturer-timetable-panel * {transition:none!important}
+}
