@@ -9789,7 +9789,12 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                 const pc = new RTCPeerConnection({ iceServers: iceServers });
                 peers.set(key, pc);
                 pc.ontrack = async event => {
-                    const stream = event.streams && event.streams[0];
+                    // Some browsers deliver an empty event.streams array; build a stream from the track in that case.
+                    let stream = event.streams && event.streams[0];
+                    if (!stream && event.track) {
+                        stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
+                        if (!stream.getTracks().some(track => track.id === event.track.id)) stream.addTrack(event.track);
+                    }
                     if (!stream || !card.isConnected || peers.get(key) !== pc) return;
                     video.srcObject = stream;
                     video.style.display = 'block';
