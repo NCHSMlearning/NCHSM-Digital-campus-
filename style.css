@@ -2521,3 +2521,67 @@ a:focus-visible {
 .nav-dropdown > a i.fa-chevron-down {
     transition: transform 0.3s ease;
 }
+
+
+/* ============================================================
+   LECTURER MOBILE TOUCH-SCROLL STABILITY
+   Keep the document as the primary vertical scroll container.
+   The desktop .main overflow:auto creates a nested scroll area
+   that can trap touch gestures on mobile after dashboard render.
+   ============================================================ */
+@media (max-width: 768px) {
+    html {
+        height: auto !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body {
+        height: auto !important;
+        min-height: 100% !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        position: relative !important;
+        touch-action: pan-y;
+    }
+
+    .container {
+        display: block !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow: visible !important;
+    }
+
+    .main {
+        display: block !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        max-height: none !important;
+        overflow: visible !important;
+        overflow-y: visible !important;
+        overscroll-behavior-y: auto;
+        touch-action: pan-y;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #main-content,
+    .tab-content.active {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        touch-action: pan-y;
+    }
+
+    /* Avoid expensive hover transforms while touch-scrolling. */
+    .card,
+    .nav a,
+    .quick-actions button {
+        transition: none !important;
+    }
+
+    .card:hover,
+    .nav a:hover,
+    .quick-actions button:hover {
+        transform: none !important;
+    }
+}
