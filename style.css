@@ -2612,15 +2612,21 @@ a:focus-visible {
         pointer-events: auto !important;
     }
 
+    /* The base mobile rule uses transform: translateX(-100%). Reset it
+       explicitly when open; changing left alone cannot reveal the drawer. */
     #sidebar.sidebar.active,
     #sidebar.sidebar.mobile-open {
         left: 0 !important;
+        transform: translateX(0) !important;
         visibility: visible !important;
+        opacity: 1 !important;
         pointer-events: auto !important;
     }
 
     #sidebar.sidebar:not(.active):not(.mobile-open) {
         left: -280px !important;
+        transform: translateX(0) !important;
+        pointer-events: none !important;
     }
 
     body.mobile-sidebar-open {
