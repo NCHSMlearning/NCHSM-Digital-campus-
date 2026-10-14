@@ -13,6 +13,18 @@
  */
 
 console.log('🚀 Lecturer Main loading...');
+// Bound critical startup operations so a stalled auth/database request cannot
+// leave the lecturer portal waiting forever.
+function lecturerStartupTimeout(promise, timeoutMs, label) {
+    let timer;
+    return Promise.race([
+        Promise.resolve().then(() => promise),
+        new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error(label + ' timed out after ' + timeoutMs + 'ms')), timeoutMs);
+        })
+    ]).finally(() => clearTimeout(timer));
+}
+
 
 // ============================================================
 // PROGRAM TYPE DETECTION & HELPERS
@@ -293,7 +305,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // ==========================================
         if (!window.lecturerDB.isInitialized) {
             console.log('📦 Initializing lecturer database...');
-            await window.lecturerDB.initialize();
+            await lecturerStartupTimeout(window.lecturerDB.initialize(), 12000, 'Lecturer database initialization');
         }
         console.log('✅ lecturerDB initialized:', window.lecturerDB.isInitialized);
 
@@ -301,7 +313,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // 3. Check authentication
         // ==========================================
         console.log('🔐 Checking authentication...');
-        const isAuthenticated = await window.lecturerDB.checkAuth();
+        const isAuthenticated = await lecturerStartupTimeout(window.lecturerDB.checkAuth(), 10000, 'Lecturer authentication check');
 
         if (!isAuthenticated) {
             console.warn('⚠️ Not authenticated, redirecting to login...');
