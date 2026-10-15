@@ -561,8 +561,13 @@ window.logout = function() {
         const { data: exams } = await sb.from('exams').select('id, exam_name').order('exam_name');
         const select = document.getElementById('resetExamSelect');
         if (select && exams) {
-            select.innerHTML = '<option value="">-- ALL EXAMS (Reset everything) --</option>' + 
-                exams.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('');
+            select.innerHTML = '<option value="">-- SELECT AN EXAM --</option>' +
+                exams.map(e => {
+                    const option = document.createElement('option');
+                    option.value = String(e.id);
+                    option.textContent = e.exam_name || ('Exam ' + e.id);
+                    return option.outerHTML;
+                }).join('');
         }
     }
 
@@ -570,49 +575,65 @@ window.logout = function() {
     // 🔍 SEARCH STUDENT BY EMAIL
     // ============================================
     async function searchStudentByEmail(email) {
+        const normalizedEmail = String(email || '').trim().toLowerCase();
+        const infoDiv = document.getElementById('resetStudentInfo');
+        const errorDiv = document.getElementById('resetErrorInfo');
+        const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+        window.resetTargetStudent = null;
+        if (confirmBtn) confirmBtn.disabled = true;
+        if (infoDiv) infoDiv.style.display = 'none';
+        if (errorDiv) errorDiv.style.display = 'none';
+
+        if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+            if (errorDiv) {
+                errorDiv.textContent = '⚠️ Enter a valid registered student email address.';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
+
         try {
             const { data: student, error } = await sb
                 .from('consolidated_user_profiles_table')
                 .select('user_id, student_id, full_name, email, program')
-                .eq('email', email)
-                .single();
-            
-            if (error || !student) {
-                document.getElementById('resetStudentInfo').style.display = 'none';
-                const errorDiv = document.getElementById('resetErrorInfo');
-                errorDiv.style.display = 'block';
-                errorDiv.innerHTML = `⚠️ No student found with email: ${email}`;
-                document.getElementById('confirmResetByEmailBtn').disabled = true;
-                window.resetTargetStudent = null;
+                .ilike('email', normalizedEmail)
+                .maybeSingle();
+
+            if (error) throw error;
+            if (!student || !student.user_id) {
+                if (errorDiv) {
+                    errorDiv.textContent = '⚠️ No student found with that email address.';
+                    errorDiv.style.display = 'block';
+                }
                 return;
             }
-            
-            window.resetTargetStudent = { 
-                user_id: student.user_id, 
+
+            window.resetTargetStudent = {
+                user_id: student.user_id,
                 student_id: student.student_id,
-                full_name: student.full_name, 
-                email: student.email, 
-                program: student.program 
+                full_name: student.full_name || 'Student',
+                email: student.email || normalizedEmail,
+                program: student.program || ''
             };
-            
-            const infoDiv = document.getElementById('resetStudentInfo');
-            infoDiv.style.display = 'block';
-            infoDiv.innerHTML = `
-                <p><strong>📧 Student Found:</strong> ${student.full_name} ✓</p>
-                <p><strong>🆔 Student ID:</strong> ${student.student_id || 'N/A'}</p>
-                <p><strong>📚 Program:</strong> ${student.program || 'N/A'}</p>
-            `;
-            document.getElementById('resetErrorInfo').style.display = 'none';
-            document.getElementById('confirmResetByEmailBtn').disabled = false;
+
+            if (infoDiv) {
+                infoDiv.textContent = '📧 Student found: ' + window.resetTargetStudent.full_name +
+                    ' ✓\n🆔 Student ID: ' + (student.student_id || 'N/A') +
+                    '\n📚 Program: ' + (student.program || 'N/A');
+                infoDiv.style.whiteSpace = 'pre-line';
+                infoDiv.style.display = 'block';
+            }
+            if (confirmBtn) confirmBtn.disabled = false;
         } catch (err) {
-            console.error(err);
-            document.getElementById('resetStudentInfo').style.display = 'none';
-            const errorDiv = document.getElementById('resetErrorInfo');
-            errorDiv.style.display = 'block';
-            errorDiv.innerHTML = '⚠️ Error searching for student';
-            document.getElementById('confirmResetByEmailBtn').disabled = true;
+            console.error('Student lookup failed:', err);
+            if (errorDiv) {
+                errorDiv.textContent = '⚠️ Unable to search for this student. Please try again.';
+                errorDiv.style.display = 'block';
+            }
         }
     }
+
+    window.searchStudentByEmail = searchStudentByEmail;
 
 // ============================================
 // 🔒 RELEASE LOOKUP HELPER — avoids oversized Supabase .in() URLs
@@ -4450,6 +4471,11 @@ window.closeCameraModal = function() {
     };
 
    // ✅ FIXED: Display live students with proper null checks
+// Compatibility handler used by the Live Students Refresh button.
+window.refreshLiveStudents = function() {
+    return window.loadLiveStudents();
+};
+
 window.displayLiveStudents = function() {
     const tbody = document.getElementById('liveStudentsBody');
     
@@ -6052,6 +6078,63 @@ window.displayLiveFeed = function() {
     window.closeAssignExamModal = function() {
         const modal = document.getElementById('assignExamModal');
         if (modal) modal.style.display = 'none';
+    };
+
+    window.openResetByEmailModal = async function() {
+        const modal = document.getElementById('resetByEmailModal');
+        const emailInput = document.getElementById('resetEmailInput');
+        const infoDiv = document.getElementById('resetStudentInfo');
+        const errorDiv = document.getElementById('resetErrorInfo');
+        const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+        window.resetTargetStudent = null;
+        if (emailInput) emailInput.value = '';
+        if (infoDiv) infoDiv.style.display = 'none';
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (confirmBtn) confirmBtn.disabled = true;
+        await loadExamsForResetDropdown();
+        if (modal) modal.style.display = 'flex';
+        if (emailInput) emailInput.focus();
+    };
+
+    window.confirmResetByEmail = async function() {
+        const student = window.resetTargetStudent;
+        const email = String(document.getElementById('resetEmailInput')?.value || '').trim().toLowerCase();
+        const examId = parseInt(document.getElementById('resetExamSelect')?.value, 10);
+        const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+
+        if (!student || !student.user_id || !email || email !== String(student.email || '').trim().toLowerCase()) {
+            showToast('Search for the student again before authorizing a retake.', 'warning');
+            if (confirmBtn) confirmBtn.disabled = true;
+            return;
+        }
+        if (!examId) {
+            showToast('Select the exam for this student.', 'warning');
+            document.getElementById('resetExamSelect')?.focus();
+            return;
+        }
+        const examSelect = document.getElementById('resetExamSelect');
+        const examName = examSelect?.selectedOptions?.[0]?.textContent || ('Exam ' + examId);
+        if (!confirm('Authorize continuation for ' + student.full_name + ' (' + student.email + ')?\n\nExam: ' + examName + '\n\nThe secure server action will preserve the existing attempt and saved progress.')) return;
+
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authorizing...';
+        }
+        try {
+            await authorizeRetakeForStudent(student.user_id, examId, student.full_name || 'Student', 'Admin Retake by Email');
+            showToast('Retake continuation authorized for ' + student.full_name + '.', 'success');
+            window.closeResetByEmailModal();
+            await Promise.allSettled([loadStudentsWithResults(), loadAllExams(), loadAllStudents()]);
+            updateStats();
+        } catch (error) {
+            console.error('Retake authorization failed:', error);
+            showToast('Unable to authorize retake: ' + (error?.message || 'Unknown error'), 'error');
+        } finally {
+            if (confirmBtn) {
+                confirmBtn.disabled = !window.resetTargetStudent;
+                confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Authorize Retake';
+            }
+        }
     };
 
     window.closeResetByEmailModal = function() {
