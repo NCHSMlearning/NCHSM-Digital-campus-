@@ -10061,23 +10061,42 @@ async function nchsmHandleStudentOffer(payload) {
         nchsmAdminWebRTCPeer = pc;
 
         pc.ontrack = async (event) => {
-            const stream = event.streams?.[0];
-            if (!stream) return;
-            const video = nchsmEnsureLiveVideoElement();
-            if (!video) return;
-            video.srcObject = stream;
-            video.style.display = 'block';
-            video.muted = true;
-            try { await video.play(); } catch (e) { console.warn('🎥 Live video play blocked:', e); }
-            const loading = document.getElementById('cameraLoading');
-            if (loading) loading.style.display = 'none';
-            const snapshot = document.getElementById('cameraFeed');
-            if (snapshot) snapshot.style.display = 'none';
-            const overlay = document.getElementById('cameraOverlay');
-            if (overlay) overlay.style.display = 'block';
-            nchsmSetLiveStatus('🟢 LIVE', 'status-active');
-            const ts = document.getElementById('cameraTimestamp');
-            if (ts) ts.textContent = formatKenyaTime(new Date().toISOString());
+            // Handle browsers that deliver a track without event.streams[0].
+            let stream = event.streams && event.streams[0];
+            if (!stream && event.track) {
+                stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
+                if (!stream.getTracks().some(track => track.id === event.track.id)) stream.addTrack(event.track);
+            }
+            const liveVideo = nchsmEnsureLiveVideoElement();
+            if (!liveVideo || !stream) return;
+            liveVideo.srcObject = stream;
+            liveVideo.style.display = 'block';
+            liveVideo.muted = true;
+            liveVideo.autoplay = true;
+            liveVideo.playsInline = true;
+            try {
+                await liveVideo.play();
+                const loading = document.getElementById('cameraLoading');
+                if (loading) loading.style.display = 'none';
+                const snapshot = document.getElementById('cameraFeed');
+                if (snapshot) snapshot.style.display = 'none';
+                const overlay = document.getElementById('cameraOverlay');
+                if (overlay) overlay.style.display = 'block';
+                nchsmSetLiveStatus('🟢 LIVE', 'status-active');
+                const ts = document.getElementById('cameraTimestamp');
+                if (ts) ts.textContent = formatKenyaTime(new Date().toISOString());
+            } catch (error) {
+                console.warn('🎥 Live video play blocked:', error);
+                nchsmSetLiveStatus('🟡 Camera connected — retry playback', 'status-active');
+            }
+        };
+
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'connected') {
+                nchsmSetLiveStatus('🟢 LIVE', 'status-active');
+            } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+                nchsmSetLiveStatus('🟠 Connection interrupted — retry', 'status-pending');
+            }
         };
 
         pc.onicecandidate = async (event) => {
