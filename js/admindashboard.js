@@ -6732,7 +6732,7 @@ window.confirmReleaseResults = async function() {
         // Enforce this policy in the release handler as well as the preview UI.
         const { data: exam, error: examError } = await sb
             .from('exams')
-            .select('id, exam_name, exam_type, pass_mark, total_marks')
+            .select('id, exam_name, exam_type, title, pass_mark, total_marks')
             .eq('id', examId)
             .single();
         if (examError) throw examError;
