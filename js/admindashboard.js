@@ -1320,7 +1320,10 @@ function displayAllExams(exams, countMap, hasResultsMap) {
             const passMark = e.pass_mark || getPassMark(totalMarks) || 60;
             const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
             const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
-            const examDisplayName = e.title || e.exam_name || 'Unnamed Exam';
+            const examDisplayName = String(e.title || e.exam_name || 'Unnamed Exam');
+            const safeExamDisplayName = escapeAdminHtml(examDisplayName);
+            const safeCourseDisplay = escapeAdminHtml(e.course_code || e.course || '-');
+            const safeExamNameArgument = escapeAdminHtml(JSON.stringify(examDisplayName));
 
             let timerData;
             try {
@@ -1367,13 +1370,13 @@ function displayAllExams(exams, countMap, hasResultsMap) {
 
             return `<tr>
                 <!-- Column 1: Exam Name -->
-                <td><strong>${examDisplayName}</strong></td>
+                <td><strong>${safeExamDisplayName}</strong></td>
                 
                 <!-- Column 2: Type -->
                 <td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td>
                 
                 <!-- Column 3: Course -->
-                <td>${e.course_code || e.course || '-'}</td>
+                <td>${safeCourseDisplay}</td>
                 
                 <!-- Column 4: Total Marks -->
                 <td>
@@ -1409,7 +1412,7 @@ function displayAllExams(exams, countMap, hasResultsMap) {
                 <td style="text-align:center;">
                     <label class="publish-toggle">
                         <input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} 
-                               onchange="togglePublish(${e.id}, '${publishStatus}')">
+                               onchange="togglePublish(${Number(e.id)}, ${escapeAdminHtml(JSON.stringify(String(publishStatus)))})">
                         <span style="margin-left:8px; font-size:0.7rem; font-weight:500; ${publishStatus === 'published' ? 'color:#059669;' : 'color:#94A3B8;'}">
                             ${publishStatus === 'published' ? '✅ Published' : '📝 Draft'}
                         </span>
@@ -1425,10 +1428,10 @@ function displayAllExams(exams, countMap, hasResultsMap) {
                         <button class="action-btn btn-assign" onclick="openAssignExamModal()" title="Assign to Students">
                             <i class="fas fa-user-plus"></i>
                         </button>
-                        <button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')" title="Reset All Students">
+                        <button class="action-btn btn-reset" onclick="openResetModal(${Number(e.id)}, ${safeExamNameArgument})" title="Reset All Students">
                             <i class="fas fa-undo"></i>
                         </button>
-                        <button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')" title="Delete Exam">
+                        <button class="action-btn btn-delete" onclick="deleteExam(${Number(e.id)}, ${safeExamNameArgument})" title="Delete Exam">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -3996,23 +3999,29 @@ window.deleteSnapshot = async function(index, snapshotId) {
 /**
  * Clear all snapshots
  */
-window.clearAllSnapshots = function() {
+window.clearAllSnapshots = async function() {
     if (!confirm('Delete all snapshots for this student?')) return;
-    
-    // Delete from database
-    snapshotCache.forEach(async (snapshot) => {
-        if (snapshot.id) {
-            await sb
-                .from('exam_proctoring_logs')
-                .update({ snapshot_url: null, screenshot_data: null })
-                .eq('id', snapshot.id);
+    const snapshotsToClear = snapshotCache.filter(snapshot => snapshot.id);
+    if (!snapshotsToClear.length) {
+        snapshotCache = [];
+        renderSnapshotGallery();
+        showToast('No saved snapshots to clear', 'info');
+        return;
+    }
+    try {
+        for (const snapshot of snapshotsToClear) {
+            const { error } = await sb.from('exam_proctoring_logs')
+                .update({ snapshot_url: null, screenshot_data: null }).eq('id', snapshot.id);
+            if (error) throw error;
         }
-    });
-    
-    // Clear cache
-    snapshotCache = [];
-    renderSnapshotGallery();
-    showToast('All snapshots cleared', 'info');
+        snapshotCache = [];
+        renderSnapshotGallery();
+        showToast('All snapshots cleared', 'success');
+    } catch (error) {
+        console.error('Failed to clear snapshots:', error);
+        showToast('Some snapshots could not be cleared: ' + error.message, 'error');
+        await loadSnapshots(currentCameraStudent, currentCameraExam);
+    }
 };
 
 /**
@@ -4178,7 +4187,7 @@ window.openCameraView = async function(studentId, examId, studentName, examName)
     // ---- Title (may not exist, safe check) ----
     const title = document.getElementById('cameraModalTitle');
     if (title) {
-        title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${currentCameraStudentName}`;
+        title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${escapeAdminHtml(currentCameraStudentName)}`;
     }
 
     // ---- Show modal FIRST so its children are in the DOM ----
@@ -4532,7 +4541,7 @@ window.displayLiveStudents = function() {
         const statusText = isActive ? 'Active' : `Inactive (${inactiveMinutes}m ago)`;
         
         // Progress bar
-        const progress = item.progress || 0;
+        const progress = Math.max(0, Math.min(100, Number(item.progress) || 0));
         const progressBar = `
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="flex:1; background:#E2E8F0; border-radius:10px; height:8px; overflow:hidden; width:80px;">
@@ -4918,8 +4927,8 @@ window.displayLiveFeed = function() {
         let cameraContent = '';
         if (imageUrl) {
             cameraContent = `
-                <img src="${imageUrl}" 
-                     alt="Camera feed for ${studentName}" 
+                <img src="${escapeAdminHtml(imageUrl)}" 
+                     alt="Camera feed for ${safeStudentName}" 
                      style="width:100%; height:250px; object-fit:cover;"
                      onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\' style=\\'display:flex; align-items:center; justify-content:center; height:250px; color:white; flex-direction:column; gap:12px; background:#1a1a2e;\\'><i class=\\'fas fa-camera-slash\\' style=\\'font-size:3rem; opacity:0.5;\\'></i><p>Image failed to load</p><p style=\\'font-size:0.8rem; opacity:0.6;\\'>Please check the URL</p></div>'">
             `;
@@ -4934,19 +4943,20 @@ window.displayLiveFeed = function() {
         }
         
         // Actions
-        const safeName = studentName.replace(/'/g, "\\'");
-        const safeExam = examName.replace(/'/g, "\\'");
-        const userId = log.student_id || '';
-        const examId = log.exam_id || 0;
+        const userId = String(log.student_id || '');
+        const examId = Number(log.exam_id) || 0;
+        const openCameraHandler = escapeAdminHtml(`openCameraView(${JSON.stringify(userId)}, ${examId}, ${JSON.stringify(studentName)}, ${JSON.stringify(examName)})`);
+        const pastResultHandler = escapeAdminHtml(`viewPastResult(${JSON.stringify(userId)}, ${examId})`);
+        const violationsHandler = escapeAdminHtml(`viewViolations(${JSON.stringify(userId)}, ${examId})`);
         
         return `
             <div class="${cardClass}" data-nchsm-live-card="${!item.isPast ? 'true' : 'false'}" data-student-id="${String(userId).replace(/"/g, '&quot;')}" data-exam-id="${String(examId)}">
                 <div class="card-header">
                     <div class="student-info">
-                        <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
+                        <div class="avatar">${escapeAdminHtml(studentName.charAt(0).toUpperCase())}</div>
                         <div>
-                            <div class="name">${studentName}</div>
-                            <div class="details">${studentId} • ${program}</div>
+                            <div class="name">${safeStudentName}</div>
+                            <div class="details">${safeStudentId} • ${safeProgram}</div>
                         </div>
                     </div>
                     <span class="status-badge ${item.statusClass}">${item.statusLabel}</span>
@@ -4976,8 +4986,8 @@ window.displayLiveFeed = function() {
                     <div class="actions">
                         ${item.isPast
                             ? `<button class="btn-view-cam" onclick="viewPastSnapshot('${userId}', ${examId})" ${imageUrl ? '' : 'disabled'} title="${imageUrl ? 'Open saved snapshot' : 'No saved snapshot available'}"><i class="fas fa-image"></i> View Evidence</button>`
-                            : `<button class="btn-view-cam" onclick="openCameraView('${userId}', ${examId}, '${safeName}', '${safeExam}')"><i class="fas fa-expand"></i> Request Live Preview</button>`}
-                        ${item.hasViolations ? `<button class="btn-alert" onclick="viewViolations('${userId}', ${examId})">🚨 Review alert</button>` : ''}
+                            : `<button class="btn-view-cam" onclick="${openCameraHandler}"><i class="fas fa-expand"></i> Request Live Preview</button>`}
+                        ${item.hasViolations ? `<button class="btn-alert" onclick="${violationsHandler}">🚨 Review alert</button>` : ''}
                     </div>
                 </div>
             </div>
@@ -5427,10 +5437,14 @@ function renderLiveFeedCards(grid, pageData) {
                 'data:image/jpeg;base64,' + snapshot.screenshot_data;
         }
         
-        const studentName = item.studentName || 'Unknown';
+        const studentName = String(item.studentName || 'Unknown');
         const studentId = item.studentRegNumber || 'N/A';
         const examName = item.examName || 'Exam';
         const program = item.program || '';
+        const safeStudentName = escapeAdminHtml(studentName);
+        const safeStudentId = escapeAdminHtml(studentId);
+        const safeExamName = escapeAdminHtml(examName);
+        const safeProgram = escapeAdminHtml(program);
         
         // Status
         let statusClass = 'status-active';
@@ -5483,7 +5497,7 @@ function renderLiveFeedCards(grid, pageData) {
                     <i class="fas fa-user-slash"></i>
                     <p>${item.isPast ? 'No snapshot available' : 'Connecting to camera…'}</p>
                 </div>
-                <video class="nchsm-card-live-video" autoplay muted playsinline style="position:relative;z-index:1;display:none;width:100%;height:250px;object-fit:cover;background:#101827;" aria-label="Live camera preview for ${studentName}"></video>
+                <video class="nchsm-card-live-video" autoplay muted playsinline style="position:relative;z-index:1;display:none;width:100%;height:250px;object-fit:cover;background:#101827;" aria-label="Live camera preview for ${safeStudentName}"></video>
             `;
         }
         
@@ -5496,11 +5510,11 @@ function renderLiveFeedCards(grid, pageData) {
         // Result badge for past students
         let resultBadge = '';
         if (item.isPast && item.result) {
-            const status = item.result.result_status || 'PENDING';
-            const percentage = item.result.percentage || 0;
+            const status = String(item.result.result_status || 'PENDING');
+            const percentage = Number(item.result.percentage) || 0;
             resultBadge = `
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <span class="${status === 'PASS' ? 'status-pass' : 'status-fail'}">${status}</span>
+                    <span class="${status === 'PASS' ? 'status-pass' : 'status-fail'}">${escapeAdminHtml(status)}</span>
                     <span style="font-size:0.7rem; font-weight:600; color:#0A3D62;">${percentage.toFixed(0)}%</span>
                 </div>
             `;
@@ -5544,7 +5558,7 @@ function renderLiveFeedCards(grid, pageData) {
                 <div class="card-footer">
                     <div>
                         <span class="info-item"><i class="fas fa-clock"></i> ${timeDisplay}</span>
-                        <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${examName}</span>
+                        <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${safeExamName}</span>
                         ${resultBadge}
                     </div>
                     <div class="actions">
@@ -5553,7 +5567,7 @@ function renderLiveFeedCards(grid, pageData) {
                                 <i class="fas fa-expand"></i> View
                             </button>
                         ` : `
-                            <button class="btn-view-cam" onclick="viewPastResult('${userId}', ${examId})" style="background:#38A169;">
+                            <button class="btn-view-cam" onclick="${pastResultHandler}" style="background:#38A169;">
                                 <i class="fas fa-chart-bar"></i> Results
                             </button>
                         `}
@@ -7529,10 +7543,11 @@ window.batchResendReleaseEmails = async function(examId) {
     // ============================================
     // 📝 EXAM MANAGEMENT FUNCTIONS
     // ============================================
-    window.filterExamsByStatus = function(status) {
+    window.filterExamsByStatus = function(status, trigger) {
         currentExamFilter = status;
         document.querySelectorAll('.status-toggle-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+        const activeButton = trigger instanceof Element ? trigger : document.querySelector(`.status-toggle-btn[data-status="${String(status).replace(/["\\]/g, '')}"]`);
+        if (activeButton) activeButton.classList.add('active');
         loadAllExams();
     };
 
