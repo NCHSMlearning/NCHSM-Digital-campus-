@@ -10089,7 +10089,7 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
 
 /* NCHSM LIVE CAMERA THUMBNAILS: independent WebRTC viewer per active card. */
 (function initNchsmCardLivePreviews() {
-    const peers = new Map(), channels = new Map(), pendingIce = new Map(), timers = new Map();
+    const peers = new Map(), channels = new Map(), pendingIce = new Map(), timers = new Map(), previewTimers = new Map();
     const prefix = 'nchsm-proctor-live';
     const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -10097,6 +10097,9 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
         const timer = timers.get(key);
         if (timer) clearTimeout(timer);
         timers.delete(key);
+        const previewTimer = previewTimers.get(key);
+        if (previewTimer) clearTimeout(previewTimer);
+        previewTimers.delete(key);
         const pc = peers.get(key);
         if (pc) { try { pc.close(); } catch (_) {} }
         peers.delete(key);
@@ -10129,7 +10132,7 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                 setPlaceholder('Camera unavailable — check student camera');
             }
         }, 18000);
-        timers.set(key, previewTimeout);
+        previewTimers.set(key, previewTimeout);
         const channel = sb.channel(prefix + ':' + examId + ':' + studentId, {
             config: { broadcast: { self: false, ack: false } }
         });
@@ -10160,9 +10163,9 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                     if (!stream || !card.isConnected || peers.get(key) !== pc) return;
                     video.srcObject = stream;
                     video.style.display = 'block';
-                    const timeout = timers.get(key);
+                    const timeout = previewTimers.get(key);
                     if (timeout) clearTimeout(timeout);
-                    timers.delete(key);
+                    previewTimers.delete(key);
                     if (placeholder) placeholder.style.display = 'none';
                     const badge = card.querySelector('.overlay-badge.camera-off');
                     if (badge) { badge.className = 'overlay-badge camera-on'; badge.textContent = '🟢 Live'; }
