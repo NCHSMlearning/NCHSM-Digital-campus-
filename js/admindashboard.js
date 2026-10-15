@@ -7587,7 +7587,7 @@ window.batchResendReleaseEmails = async function(examId) {
         try {
             const { data: exam, error: examError } = await sb
                 .from('exams')
-                .select('pass_mark, total_marks, exam_type, exam_name')
+                .select('pass_mark, total_marks, exam_type, exam_name, title')
                 .eq('id', parseInt(examId))
                 .single();
             
