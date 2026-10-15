@@ -7514,7 +7514,6 @@ window.batchResendReleaseEmails = async function(examId) {
         `This will reopen the SAME current attempt so students can continue from saved progress. No new final result row will be created.\n` +
         `• Previous attempts remain preserved\n` +
         `• Previous answers/results are not deleted\n` +
-        `• Each student gets a new attempt number\n` +
         `• Students currently in progress are NOT reset\n\n` +
         `Continue?`
     )) return;
