@@ -4438,7 +4438,9 @@ window.closeCameraModal = function() {
         if (attemptResult.error) console.warn('Live Students active-attempt lookup failed:', attemptResult.error.message);
         if (logsResult.error) console.warn('Live Students recent-log lookup failed:', logsResult.error.message);
 
-        const activeStatuses = new Set(['IN_PROGRESS', 'STARTED', 'ACTIVE', 'INPROGRESS', 'IN PROGRESS']);
+        const activeStatuses = new Set(['IN_PROGRESS', 'STARTED', 'ACTIVE', 'INPROGRESS', 'IN_PROGRESS_EXAM', 'IN_EXAM', 'TAKING_EXAM', 'ONGOING', 'RESUMED', 'ATTEMPTING']);
+        const terminalAttemptStatuses = new Set(['SUBMITTED', 'COMPLETED', 'FINISHED', 'GRADED', 'PASSED', 'FAILED', 'CANCELLED', 'CANCELED', 'ABANDONED', 'EXPIRED']);
+        const normalizeAttemptStatus = value => String(value || '').trim().toUpperCase().replace(/[\\s-]+/g, '_');
         const sessions = new Map();
         const sessionKey = (studentId, examId) => String(studentId) + '_' + String(examId);
         const upsertSession = (studentId, examId, patch, activityTime) => {
@@ -4461,8 +4463,11 @@ window.closeCameraModal = function() {
         });
 
         attemptRows.forEach(attempt => {
-            const status = String(attempt.status || '').trim().toUpperCase().replace(/[_-]+/g, ' ');
-            if (!attempt.student_id || !attempt.exam_id || attempt.submitted_at || !activeStatuses.has(status.replace(/\s+/g, '_')) && !activeStatuses.has(status)) return;
+            const status = normalizeAttemptStatus(attempt.status);
+            if (!attempt.student_id || !attempt.exam_id || attempt.submitted_at || terminalAttemptStatuses.has(status)) return;
+            // Older exam pages use variants such as "ongoing", "in-progress",
+            // "taking exam", or custom non-terminal values. Keep these attempts
+            // visible; camera/heartbeat availability is shown separately.
             const key = sessionKey(attempt.student_id, attempt.exam_id);
             const existing = sessions.get(key);
             upsertSession(attempt.student_id, attempt.exam_id, { attempt, source: existing?.heartbeat ? 'heartbeat+attempt' : 'attempt' }, attempt.updated_at || attempt.started_at);
@@ -4536,13 +4541,31 @@ window.closeCameraModal = function() {
         const alertEvents = new Set(['multiple_faces_detected', 'tab_switched', 'fullscreen_exit_attempt']);
         const progressData = [];
         for (const session of sessionRows) {
-            const student = profileMap[String(session.student_id)];
-            const exam = examMap[String(session.exam_id)];
-            if (!student || !exam) {
-                console.warn('Live Students: profile or exam metadata unavailable for session', session.student_id, session.exam_id);
-                continue;
+            const studentRecord = profileMap[String(session.student_id)];
+            const examRecord = examMap[String(session.exam_id)];
+            // Never hide a detected attempt because profile/exam metadata is missing
+            // or a lookup is blocked. Show a fallback row so admins can still see it.
+            const resolvedStudent = studentRecord || {
+                user_id: session.student_id,
+                student_id: String(session.student_id),
+                full_name: 'Student profile unavailable',
+                email: '',
+                program: '',
+                block: ''
+            };
+            const resolvedExam = examRecord || {
+                id: session.exam_id,
+                exam_name: 'Exam ' + String(session.exam_id),
+                title: 'Exam ' + String(session.exam_id),
+                duration_minutes: 30,
+                total_marks: null
+            };
+            if (!studentRecord || !examRecord) {
+                console.warn('Live Students: displaying fallback metadata for session', session.student_id, session.exam_id);
             }
 
+            const student = resolvedStudent;
+            const exam = resolvedExam;
             const key = sessionKey(session.student_id, session.exam_id);
             const heartbeat = session.heartbeat || {};
             const latestLog = latestLogByPair.get(key);
@@ -4885,7 +4908,7 @@ window.loadLiveFeed = async function() {
         } else {
             (activeAttempts || []).forEach(attempt => {
                 if (!attempt.student_id || !attempt.exam_id || !attempt.started_at || attempt.submitted_at) return;
-                const status = String(attempt.status || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
+                const status = String(attempt.status || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
                 const terminalStatuses = new Set(['submitted', 'completed', 'finished', 'graded', 'passed', 'failed', 'cancelled', 'canceled', 'abandoned', 'expired']);
                 if (terminalStatuses.has(status)) return;
                 const key = String(attempt.student_id) + '_' + String(attempt.exam_id);
