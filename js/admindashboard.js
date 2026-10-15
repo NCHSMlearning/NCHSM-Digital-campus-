@@ -1196,13 +1196,13 @@ function displayAllStudents() {
     
     tbody.innerHTML = page.map(s => {
         // ✅ Safe data with fallbacks
-        const studentId = s.student_id || 'N/A';
-        const studentName = s.full_name || 'Unknown';
-        const studentEmail = s.email || '-';
-        const studentProgram = s.program || '-';
-        const studentBlock = s.block || '-';
-        const examsTaken = s.examsTaken || 0;
-        const userId = s.id || s.user_id || '';
+        const studentId = escapeAdminHtml(s.student_id || 'N/A');
+        const studentName = escapeAdminHtml(s.full_name || 'Unknown');
+        const studentEmail = escapeAdminHtml(s.email || '-');
+        const studentProgram = escapeAdminHtml(s.program || '-');
+        const studentBlock = escapeAdminHtml(s.block || '-');
+        const examsTaken = Math.max(0, Number(s.examsTaken) || 0);
+        const userId = escapeAdminHtml(JSON.stringify(String(s.id || s.user_id || '')));
         
         return `<tr>
             <!-- Column 1: Student ID -->
@@ -1230,7 +1230,7 @@ function displayAllStudents() {
             <!-- Column 7: Actions -->
             <td style="text-align:center;">
                 <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
-                    <button class="action-btn btn-view" onclick="viewStudentProfile('${userId}')" title="View Profile">
+                    <button class="action-btn btn-view" onclick="viewStudentProfile(${userId})" title="View Profile">
                         <i class="fas fa-user"></i> Profile
                     </button>
                     <button class="action-btn btn-assign" onclick="openAssignExamModal()" title="Assign Exam">
@@ -5430,7 +5430,7 @@ function renderLiveFeedCards(grid, pageData) {
         const snapshot = item.snapshot || log;
         
         if (snapshot.snapshot_url) {
-            imageUrl = snapshot.snapshot_url + '?t=' + Date.now();
+            imageUrl = snapshot.snapshot_url + (snapshot.snapshot_url.includes('?') ? '&' : '?') + 't=' + Date.now();
         } else if (snapshot.screenshot_data) {
             imageUrl = snapshot.screenshot_data.startsWith('data:') ? 
                 snapshot.screenshot_data : 
@@ -7545,9 +7545,21 @@ window.batchResendReleaseEmails = async function(examId) {
     // ============================================
     window.filterExamsByStatus = function(status, trigger) {
         currentExamFilter = status;
-        document.querySelectorAll('.status-toggle-btn').forEach(btn => btn.classList.remove('active'));
-        const activeButton = trigger instanceof Element ? trigger : document.querySelector(`.status-toggle-btn[data-status="${String(status).replace(/["\\]/g, '')}"]`);
-        if (activeButton) activeButton.classList.add('active');
+        const buttons = Array.from(document.querySelectorAll('.status-toggle-btn'));
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = 'transparent';
+            btn.style.color = 'rgba(255,255,255,0.7)';
+        });
+        const activeButton = trigger instanceof Element ? trigger : buttons.find(btn => {
+            const handler = btn.getAttribute('onclick') || '';
+            return handler.includes(`'${String(status)}'`) || handler.includes(`\"${String(status)}\"`);
+        });
+        if (activeButton) {
+            activeButton.classList.add('active');
+            activeButton.style.background = '#FDB913';
+            activeButton.style.color = '#0A3D62';
+        }
         loadAllExams();
     };
 
@@ -7773,13 +7785,24 @@ window.batchResendReleaseEmails = async function(examId) {
     };
 
     window.openAssignExamModal = async function() {
-        const { data: students } = await sb.from('consolidated_user_profiles_table').select('id, full_name, student_id');
-        const { data: exams } = await sb.from('exams').select('id, exam_name');
-        document.getElementById('assignStudentSelect').innerHTML = students.map(s =>
-            `<option value="${s.id}">${s.full_name} (${s.student_id || 'N/A'})</option>`).join('');
-        document.getElementById('assignExamSelect').innerHTML = exams.map(e =>
-            `<option value="${e.id}">${e.exam_name}</option>`).join('');
-        document.getElementById('assignExamModal').style.display = 'flex';
+        const [{ data: students, error: studentsError }, { data: exams, error: examsError }] = await Promise.all([
+            sb.from('consolidated_user_profiles_table').select('id, full_name, student_id').order('full_name'),
+            sb.from('exams').select('id, exam_name').order('exam_name')
+        ]);
+        if (studentsError) throw studentsError;
+        if (examsError) throw examsError;
+        const studentSelect = document.getElementById('assignStudentSelect');
+        const examSelect = document.getElementById('assignExamSelect');
+        if (!studentSelect || !examSelect) throw new Error('Assignment form controls are missing.');
+        studentSelect.replaceChildren(new Option('-- Select student --', ''));
+        (students || []).forEach(student => {
+            const option = new Option(`${student.full_name || 'Unknown'} (${student.student_id || 'N/A'})`, String(student.id));
+            studentSelect.add(option);
+        });
+        examSelect.replaceChildren(new Option('-- Select exam --', ''));
+        (exams || []).forEach(exam => examSelect.add(new Option(exam.exam_name || 'Untitled exam', String(exam.id))));
+        const modal = document.getElementById('assignExamModal');
+        if (modal) modal.style.display = 'flex';
     };
 
     window.confirmAssignExam = async function() {
