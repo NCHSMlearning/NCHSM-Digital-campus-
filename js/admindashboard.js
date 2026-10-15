@@ -6588,7 +6588,8 @@ window.confirmReleaseResults = async function() {
             .select('result_id, released_at')
             .in('result_id', selectedGrades.map(g => g.id));
         if (existingReleaseError) throw existingReleaseError;
-        const alreadyReleased = new Set((existingReleases || []).map(r => String(r.result_id)));
+        const existingReleaseMap = new Map((existingReleases || []).map(r => [String(r.result_id), r.released_at || null]));
+        const alreadyReleased = new Set(existingReleaseMap.keys());
 
         const releaseData = [];
         let releasedCount = 0;
@@ -6631,17 +6632,57 @@ window.confirmReleaseResults = async function() {
                 );
             }
 
-            if (alreadyReleased.has(gradeId) || grade.released === true) {
-                skippedCount++;
-                continue;
-            }
-
             // marks/total_score may legitimately be 0. Never use truthiness here.
             const score = grade.marks !== null && grade.marks !== undefined
                 ? Number(grade.marks)
                 : (grade.total_score !== null && grade.total_score !== undefined ? Number(grade.total_score) : 0);
             const safeScore = Number.isFinite(score) ? score : 0;
             const resultStatus = safeScore >= passMark ? 'PASS' : 'FAIL';
+
+            // Recover partial releases safely: a previous run may have inserted the
+            // release ledger row but failed to update exam_grades (or vice versa).
+            if (alreadyReleased.has(gradeId) || grade.released === true) {
+                const releasedAt = existingReleaseMap.get(gradeId) || grade.released_at || new Date().toISOString();
+
+                if (!alreadyReleased.has(gradeId)) {
+                    const { error: recoveryInsertError } = await sb
+                        .from('released_exam_results')
+                        .insert({
+                            result_id: grade.id,
+                            student_id: String(grade.student_id),
+                            exam_id: examId
+                        });
+                    if (recoveryInsertError &&
+                        String(recoveryInsertError.code || '') !== '23505' &&
+                        !String(recoveryInsertError.message || '').toLowerCase().includes('duplicate')) {
+                        failedCount++;
+                        errorMessages.push('Release ledger recovery failed for ' + grade.student_id + ': ' + recoveryInsertError.message);
+                        continue;
+                    }
+                    alreadyReleased.add(gradeId);
+                    existingReleaseMap.set(gradeId, releasedAt);
+                }
+
+                if (grade.released !== true || !grade.released_at || grade.result_status !== resultStatus) {
+                    const { error: repairError } = await sb
+                        .from('exam_grades')
+                        .update({
+                            result_status: resultStatus,
+                            released: true,
+                            released_at: releasedAt
+                        })
+                        .eq('id', grade.id);
+                    if (repairError) {
+                        failedCount++;
+                        errorMessages.push('Release state repair failed for ' + grade.student_id + ': ' + repairError.message);
+                        continue;
+                    }
+                }
+
+                skippedCount++;
+                continue;
+            }
+
             const now = new Date().toISOString();
 
             const { error: releaseError } = await sb
