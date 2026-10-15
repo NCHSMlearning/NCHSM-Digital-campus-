@@ -10094,7 +10094,8 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
     const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
 
     function stop(key) {
-        if (timers.has(key)) clearTimeout(timers.get(key));
+        const timer = timers.get(key);
+        if (timer) clearTimeout(timer);
         timers.delete(key);
         const pc = peers.get(key);
         if (pc) { try { pc.close(); } catch (_) {} }
@@ -10111,8 +10112,24 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
         const video = card.querySelector('.nchsm-card-live-video');
         if (!studentId || !examId || !video) return;
         const key = String(examId) + ':' + String(studentId);
-        const viewerId = 'admin-card-' + key;
+        // Use a unique viewer ID per browser tab/card instance so the student
+        // can maintain separate peer connections for the modal and each thumbnail.
+        const viewerId = 'admin-card-' + key + '-' + Math.random().toString(36).slice(2, 8);
         card.dataset.nchsmPreviewStarted = 'true';
+        const placeholder = card.querySelector('.nchsm-card-camera-placeholder');
+        const setPlaceholder = message => {
+            if (!placeholder || !card.isConnected || video.srcObject) return;
+            placeholder.style.display = 'flex';
+            const label = placeholder.querySelector('p');
+            if (label) label.textContent = message;
+        };
+        setPlaceholder('Connecting to camera…');
+        const previewTimeout = setTimeout(() => {
+            if (!video.srcObject && card.isConnected) {
+                setPlaceholder('Camera unavailable — check student camera');
+            }
+        }, 18000);
+        timers.set(key, previewTimeout);
         const channel = sb.channel(prefix + ':' + examId + ':' + studentId, {
             config: { broadcast: { self: false, ack: false } }
         });
@@ -10143,7 +10160,9 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                     if (!stream || !card.isConnected || peers.get(key) !== pc) return;
                     video.srcObject = stream;
                     video.style.display = 'block';
-                    const placeholder = card.querySelector('.nchsm-card-camera-placeholder');
+                    const timeout = timers.get(key);
+                    if (timeout) clearTimeout(timeout);
+                    timers.delete(key);
                     if (placeholder) placeholder.style.display = 'none';
                     const badge = card.querySelector('.overlay-badge.camera-off');
                     if (badge) { badge.className = 'overlay-badge camera-on'; badge.textContent = '🟢 Live'; }
@@ -10189,7 +10208,12 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
             const retry = () => {
                 if (channels.get(key) !== channel || peers.get(key)?.connectionState === 'connected' || attempt >= 5) return;
                 attempt++;
-                timers.set(key, setTimeout(() => { request(); retry(); }, 2500));
+                const timer = setTimeout(() => {
+                    if (channels.get(key) !== channel) return;
+                    request();
+                    retry();
+                }, 2500);
+                timers.set(key, timer);
             };
             retry();
         });
