@@ -6333,7 +6333,9 @@ function isRestrictedExamForStudentRelease(exam) {
             /(^|_)END_?TERM(_|$)/.test(normalized) ||
             /(^|_)END_?OF_?TERM(_|$)/.test(normalized);
     };
-    return isRestricted(exam?.exam_type) || isRestricted(exam?.exam_name || exam?.title);
+    // Check every available label: some legacy rows have a generic exam_name
+    // but store "Final/End of Block" in title, or vice versa.
+    return [exam?.exam_type, exam?.exam_name, exam?.title].some(isRestricted);
 }
 
 function showRestrictedReleaseMessage(exam, button) {
@@ -6351,7 +6353,7 @@ function showRestrictedReleaseMessage(exam, button) {
 }
 
 window.openReleaseModal = async function() {
-        const { data: exams } = await sb.from('exams').select('id, exam_name, exam_type').order('id', { ascending: false });
+        const { data: exams } = await sb.from('exams').select('id, exam_name, exam_type, title').order('id', { ascending: false });
         const selectEl = document.getElementById('releaseExamFilter');
         if (selectEl) {
             selectEl.innerHTML = '<option value="">-- Select Exam --</option>' + 
@@ -6398,7 +6400,7 @@ window.openReleaseModal = async function() {
     try {
         const { data: exam, error: examError } = await sb
             .from('exams')
-            .select('id, exam_name, exam_type, pass_mark, total_marks')
+            .select('id, exam_name, exam_type, title, pass_mark, total_marks')
             .eq('id', examId)
             .single();
         if (examError) throw examError;
