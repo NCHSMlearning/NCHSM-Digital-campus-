@@ -4440,7 +4440,7 @@ window.closeCameraModal = function() {
 
         const activeStatuses = new Set(['IN_PROGRESS', 'STARTED', 'ACTIVE', 'INPROGRESS', 'IN_PROGRESS_EXAM', 'IN_EXAM', 'TAKING_EXAM', 'ONGOING', 'RESUMED', 'ATTEMPTING']);
         const terminalAttemptStatuses = new Set(['SUBMITTED', 'COMPLETED', 'FINISHED', 'GRADED', 'PASSED', 'FAILED', 'CANCELLED', 'CANCELED', 'ABANDONED', 'EXPIRED']);
-        const normalizeAttemptStatus = value => String(value || '').trim().toUpperCase().replace(/[\\s-]+/g, '_');
+        const normalizeAttemptStatus = value => String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
         const sessions = new Map();
         const sessionKey = (studentId, examId) => String(studentId) + '_' + String(examId);
         const upsertSession = (studentId, examId, patch, activityTime) => {
