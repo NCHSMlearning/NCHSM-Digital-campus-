@@ -5567,7 +5567,7 @@ function renderLiveFeedCards(grid, pageData) {
         const examId = log.exam_id || 0;
         
         return `
-            <div class="${cardClass}">
+            <div class="${cardClass}" data-nchsm-live-card="${!item.isPast ? 'true' : 'false'}" data-student-id="${String(userId).replace(/"/g, '&quot;')}" data-exam-id="${String(examId)}">
                 <div class="card-header">
                     <div class="student-info">
                         <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
