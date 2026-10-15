@@ -3121,7 +3121,7 @@ window.viewStudentProfile = async function(pid) {
         modalContent.innerHTML = `
             <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);color:white;padding:18px;border-radius:14px;margin-bottom:16px;">
                 <div style="font-size:18px;font-weight:800;">${escapeAdminHtml(profile?.full_name || 'Student')}</div>
-                <div style="font-size:12px;opacity:.85;margin-top:3px;">${exam?.exam_name || 'Exam ' + examId} · Current final record only</div>
+                <div style="font-size:12px;opacity:.85;margin-top:3px;">${escapeAdminHtml(exam?.exam_name || 'Exam ' + examId)} · Current final record only</div>
             </div>
             <div style="border:1px solid #E2E8F0;border-radius:14px;padding:18px;background:#fff;">
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
@@ -3133,7 +3133,7 @@ window.viewStudentProfile = async function(pid) {
                     <strong>Current attempt:</strong> #${attempt?.attempt_number || grade?.attempt_number || 1}
                     ${attempt?.is_retake ? ' · continuation/reset' : ''}
                     · <strong>Submission:</strong> ${formatKenyaDateTime(attempt?.submitted_at)}
-                    · <strong>Result:</strong> ${status.replaceAll('_',' ')}
+                    · <strong>Result:</strong> ${escapeAdminHtml(status.replaceAll('_',' '))}
                     · <strong>Release:</strong> ${released ? 'Released' : 'Not released'}
                 </div>
                 <div style="margin-top:14px;padding:10px 12px;background:#EFF6FF;border-left:4px solid #2563EB;border-radius:8px;color:#1E3A8A;font-size:12px;">
@@ -9256,7 +9256,8 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
     const record = records[0] || {};
 
     // ✅ Get exam name from record or fetch it
-    const examName = record.exam_name || 'Exam ' + record.exam_id;
+    const examName = escapeAdminHtml(record.exam_name || 'Exam ' + record.exam_id);
+    const safeStudentId = escapeAdminHtml(studentId || 'N/A');
 
     // Build snapshots HTML with Kenya time
     let snapshotsHtml = '';
@@ -9264,16 +9265,22 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
         snapshotsHtml = `
             <h3 style="color:#0A3D62; margin:16px 0 12px;">📸 Snapshots (${snapshots.length})</h3>
             <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px; max-height:400px; overflow-y:auto; padding:4px;">
-                ${snapshots.map((s, i) => `
+                ${snapshots.map((s, i) => {
+                    const rawImage = String(s.screenshot_data || '');
+                    const safeImage = /^https?:\/\//i.test(rawImage) ? escapeAdminHtml(rawImage) : /^data:image\/(?:png|jpeg|webp);base64,/i.test(rawImage) ? escapeAdminHtml(rawImage) : /^[A-Za-z0-9+/=]+$/.test(rawImage) ? 'data:image/jpeg;base64,' + rawImage : '';
+                    const safeEvent = escapeAdminHtml(s.event_type || 'Snapshot');
+                    const safeTime = escapeAdminHtml(formatKenyaTime(s.timestamp));
+                    const openImageHandler = escapeAdminHtml(`window.open(${JSON.stringify(rawImage)}, '_blank')`);
+                    return `
                     <div style="background:#F8FAFC; border-radius:8px; overflow:hidden; border:1px solid #E2E8F0; position:relative;">
-                        <img src="${s.screenshot_data}" 
+                        <img src="${safeImage}" 
                              alt="Snapshot ${i+1}" 
                              style="width:100%; height:150px; object-fit:cover; cursor:pointer;"
-                             onclick="window.open('${s.screenshot_data}', '_blank')"
+                             onclick="${openImageHandler}"
                              onerror="this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:#94A3B8;\\'><i class=\\'fas fa-image\\' style=\\'font-size:2rem;display:block;\\'></i>No image</div>'">
                         <div style="padding:6px 10px; font-size:0.7rem; background:white; display:flex; justify-content:space-between; align-items:center;">
-                            <span>${s.event_type || 'Snapshot'}</span>
-                            <span style="color:#64748B;">${formatKenyaTime(s.timestamp)}</span>
+                            <span>${safeEvent}</span>
+                            <span style="color:#64748B;">${safeTime}</span>
                         </div>
                         ${s.event_type === 'multiple_faces_detected' ? 
                             '<div style="position:absolute; top:4px; right:4px; background:#DC2626; color:white; padding:2px 8px; border-radius:4px; font-size:0.6rem; font-weight:600;">🚨 VIOLATION</div>' : 
@@ -9282,7 +9289,8 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
                             ''
                         }
                     </div>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
             <div style="margin-top:8px; font-size:0.7rem; color:#64748B; text-align:center;">
                 <i class="fas fa-info-circle"></i> Click any snapshot to view full size
@@ -9310,9 +9318,9 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
             </div>
 
             <div style="background: #F8FAFC; padding: 16px; border-radius: 12px; margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div><strong>👤 Student ID:</strong> ${studentId}</div>
-                <div><strong>📛 Name:</strong> ${record.student_name || 'Unknown'}</div>
-                <div><strong>🆔 Registration:</strong> ${record.student_reg_number || 'N/A'}</div>
+                <div><strong>👤 Student ID:</strong> ${safeStudentId}</div>
+                <div><strong>📛 Name:</strong> ${escapeAdminHtml(record.student_name || 'Unknown')}</div>
+                <div><strong>🆔 Registration:</strong> ${escapeAdminHtml(record.student_reg_number || 'N/A')}</div>
                 <div><strong>📝 Exam:</strong> ${examName}</div>
             </div>
 
@@ -9332,14 +9340,14 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
                         <tbody>
                             ${records.map(r => `
                                 <tr style="border-bottom:1px solid #E2E8F0;">
-                                    <td style="padding:8px 12px;">${r.date || '--'}</td>
+                                    <td style="padding:8px 12px;">${escapeAdminHtml(r.date || '--')}</td>
                                     <td style="padding:8px 12px;">
                                         <span class="status-badge-attendance ${r.status === 'present' || r.status === 'completed' ? 'present' : r.status === 'signed_in' ? 'signed-in' : r.status === 'in_progress' ? 'in-progress' : 'absent'}">
-                                            ${r.status || 'Unknown'}
+                                            ${escapeAdminHtml(r.status || 'Unknown')}
                                         </span>
                                     </td>
-                                    <td style="padding:8px 12px;">${r.sign_in_time ? formatKenyaTime(r.sign_in_time) : '--'}</td>
-                                    <td style="padding:8px 12px;">${r.submission_time ? formatKenyaTime(r.submission_time) : '--'}</td>
+                                    <td style="padding:8px 12px;">${escapeAdminHtml(r.sign_in_time ? formatKenyaTime(r.sign_in_time) : '--')}</td>
+                                    <td style="padding:8px 12px;">${escapeAdminHtml(r.submission_time ? formatKenyaTime(r.submission_time) : '--')}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
