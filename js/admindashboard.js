@@ -4335,8 +4335,8 @@ window.closeCameraModal = function() {
         
         loadingDiv.style.display = 'block';
         loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning for active students...';
-        table.style.display = 'none';
-        statsDiv.style.display = 'none';
+        if (table) table.style.display = 'none';
+        if (statsDiv) statsDiv.style.display = 'none';
         
         try {
             const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -4358,7 +4358,8 @@ window.closeCameraModal = function() {
                 loadingDiv.style.display = 'block';
                 table.style.display = 'none';
                 statsDiv.style.display = 'none';
-                document.getElementById('liveBadge').textContent = '0';
+                const liveBadge = document.getElementById('liveBadge');
+                if (liveBadge) liveBadge.textContent = '0';
                 window.liveStudentsData = [];
                 return;
             }
@@ -4482,17 +4483,19 @@ window.closeCameraModal = function() {
             });
             
             window.liveStudentsData = progressData;
-            document.getElementById('liveBadge').textContent = progressData.length;
+            const liveBadge = document.getElementById('liveBadge');
+            if (liveBadge) liveBadge.textContent = progressData.length;
             window.displayLiveStudents();
             
             loadingDiv.style.display = 'none';
-            table.style.display = 'table';
-            statsDiv.style.display = 'block';
-            document.getElementById('liveCountDisplay').textContent = progressData.length;
+            if (table) table.style.display = 'table';
+            if (statsDiv) statsDiv.style.display = 'block';
+            const liveCountDisplay = document.getElementById('liveCountDisplay');
+            if (liveCountDisplay) liveCountDisplay.textContent = progressData.length;
             
         } catch (error) {
             console.error('❌ Error loading live students:', error);
-            loadingDiv.innerHTML = '❌ Error loading live students: ' + error.message;
+            loadingDiv.textContent = '❌ Error loading live students: ' + error.message;
             loadingDiv.style.color = '#DC2626';
             loadingDiv.style.display = 'block';
             window.liveStudentsData = [];
@@ -4579,30 +4582,32 @@ window.displayLiveStudents = function() {
         }
         
         // Student info
-        const studentName = student.full_name || 'Unknown';
-        const studentId = student.student_id || 'N/A';
-        const studentUserId = student.user_id || '';
-        const examName = exam.exam_name || 'Unknown Exam';
-        const examId = exam.id || 0;
-        const program = student.program || '';
-        
-        // Escape for onclick
-        const safeName = studentName.replace(/'/g, "\\'");
-        const safeExam = examName.replace(/'/g, "\\'");
+        const studentNameRaw = String(student.full_name || 'Unknown');
+        const studentName = escapeAdminHtml(studentNameRaw);
+        const studentId = escapeAdminHtml(student.student_id || 'N/A');
+        const studentUserId = String(student.user_id || '');
+        const examNameRaw = String(exam.exam_name || 'Unknown Exam');
+        const examName = escapeAdminHtml(examNameRaw);
+        const examId = Number(exam.id) || 0;
+        const program = escapeAdminHtml(student.program || '');
+        const safeStudentArgument = escapeAdminHtml(JSON.stringify(studentUserId));
+        const progressHandler = escapeAdminHtml(`viewStudentProgress(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId})`);
+        const timerHandler = escapeAdminHtml(`openTimerModal(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId}, ${JSON.stringify(examNameRaw)})`);
+        const submitHandler = escapeAdminHtml(`forceSubmitStudent(${JSON.stringify(studentUserId)}, ${examId})`);
         
         // Actions
         let actions = '';
         if (studentUserId && examId) {
             actions = `
-                <button class="action-btn btn-view" onclick="viewStudentProgress('${studentUserId}', '${safeName}', ${examId})" 
+                <button class="action-btn btn-view" onclick="${progressHandler}" 
                         style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
                     <i class="fas fa-chart-line"></i> Progress
                 </button>
-                <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${safeName}', ${examId}, '${safeExam}')" 
+                <button class="action-btn btn-warning" onclick="${timerHandler}" 
                         style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
                     <i class="fas fa-clock"></i> Timer
                 </button>
-                <button class="action-btn btn-danger" onclick="forceSubmitStudent('${studentUserId}', ${examId})" 
+                <button class="action-btn btn-danger" onclick="${submitHandler}" 
                         style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
                     <i class="fas fa-paper-plane"></i> Submit
                 </button>
@@ -4633,10 +4638,10 @@ window.displayLiveStudents = function() {
             </td>
             <td style="padding:10px 12px; text-align:center; font-size:1.2rem;">
                 ${item.cameraIcon || '⚪'}
-                <div style="font-size:0.55rem; color:#64748B;">${item.cameraStatus || 'unknown'}</div>
+                <div style="font-size:0.55rem; color:#64748B;">${escapeAdminHtml(item.cameraStatus || 'unknown')}</div>
             </td>
             <td style="padding:10px 12px; font-size:0.7rem; color:#64748B;">
-                ${formattedTime}
+                ${escapeAdminHtml(formattedTime)}
                 <div style="font-size:0.6rem;">${alertIcon}</div>
             </td>
             <td style="padding:10px 12px;">
