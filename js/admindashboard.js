@@ -10193,7 +10193,7 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
         const existingPeer = peers.get(key);
         const existingChannel = channels.get(key);
         if (card.dataset.nchsmPreviewStarted === 'true') return;
-        if (existingStream && existingPeer?.connectionState === 'connected') {
+        if (existingStream && existingPeer && !['failed', 'closed'].includes(existingPeer.connectionState)) {
             video.srcObject = existingStream;
             video.style.display = 'block';
             if (placeholder) placeholder.style.display = 'none';
