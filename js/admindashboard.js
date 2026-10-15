@@ -6217,8 +6217,30 @@ window.displayLiveFeed = function() {
     // ============================================
     // 📝 RELEASE MODAL
     // ============================================
-    window.openReleaseModal = async function() {
-        const { data: exams } = await sb.from('exams').select('id, exam_name').order('id', { ascending: false });
+    // Final and End-of-Block assessments must remain internal until formally authorized.
+function isRestrictedExamForStudentRelease(exam) {
+    const type = String(exam?.exam_type || '').trim().toUpperCase().replace(/[\\s-]+/g, '_');
+    const name = String(exam?.exam_name || exam?.title || '').trim().toUpperCase().replace(/[\\s-]+/g, '_');
+    const restricted = value => value === 'FINAL' || value === 'FINAL_EXAM' || value.includes('END_OF_BLOCK') || value.includes('END_TERM') || value.includes('END_OF_TERM');
+    return restricted(type) || restricted(name);
+}
+
+function showRestrictedReleaseMessage(exam, button) {
+    const label = String(exam?.exam_name || exam?.title || 'This exam');
+    const message = label + ' is a Final/End-of-Block assessment. Its results cannot be released to students through this release tool.';
+    if (button) {
+        button.disabled = true;
+        button.textContent = '🔒 Release Disabled for Final/End-of-Block';
+    }
+    const body = document.getElementById('releasePreviewBody');
+    if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#92400e;background:#fffbeb;">🔒 ' + message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td></tr>';
+    const summary = document.getElementById('releaseSummary');
+    if (summary) summary.textContent = message;
+    alert(message);
+}
+
+window.openReleaseModal = async function() {
+        const { data: exams } = await sb.from('exams').select('id, exam_name, exam_type').order('id', { ascending: false });
         const selectEl = document.getElementById('releaseExamFilter');
         if (selectEl) {
             selectEl.innerHTML = '<option value="">-- Select Exam --</option>' + 
@@ -6257,6 +6279,20 @@ window.displayLiveFeed = function() {
     if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">⏳ Loading submitted and graded students...</td></tr>';
 
     try {
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('id, exam_name, exam_type, pass_mark, total_marks')
+            .eq('id', examId)
+            .single();
+        if (examError) throw examError;
+        if (isRestrictedExamForStudentRelease(exam)) {
+            selectedStudentIds.clear();
+            if (selectAllBox) selectAllBox.checked = false;
+            if (preview) preview.style.display = 'block';
+            showRestrictedReleaseMessage(exam, releaseBtn);
+            return;
+        }
+
         // ============================================================
         // RELEASE RESULT RULE — STRICT AND DATABASE-AWARE
         // ============================================================
@@ -6368,13 +6404,6 @@ completedSentinelGrades.forEach(grade => {
             updateSelectedCount();
             return;
         }
-
-        const { data: exam, error: examError } = await sb
-            .from('exams')
-            .select('pass_mark, total_marks, exam_name, exam_type')
-            .eq('id', examId)
-            .single();
-        if (examError) throw examError;
 
         const passMark = Number(exam?.pass_mark ?? Math.round(Number(exam?.total_marks || 100) * 0.6));
         const examName = String(exam?.exam_name || 'Exam');
@@ -6581,6 +6610,19 @@ window.confirmReleaseResults = async function() {
     }
 
     try {
+        // Enforce this policy in the release handler as well as the preview UI.
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('id, exam_name, exam_type, pass_mark, total_marks')
+            .eq('id', examId)
+            .single();
+        if (examError) throw examError;
+        if (isRestrictedExamForStudentRelease(exam)) {
+            selectedStudentIds.clear();
+            showRestrictedReleaseMessage(exam, confirmBtn);
+            return;
+        }
+
         // Re-query the selected records before releasing. This prevents stale
         // checkboxes from releasing an ungraded, changed or already released row.
         const { data: grades, error: gradesError } = await sb
@@ -6637,13 +6679,6 @@ window.confirmReleaseResults = async function() {
         let skippedCount = 0;
         let failedCount = 0;
         const errorMessages = [];
-
-        const { data: exam, error: examError } = await sb
-            .from('exams')
-            .select('*')
-            .eq('id', examId)
-            .single();
-        if (examError) throw examError;
 
         const passMark = Number(exam?.pass_mark ?? Math.round(Number(exam?.total_marks || 100) * 0.6));
 
@@ -7438,6 +7473,10 @@ window.batchResendReleaseEmails = async function(examId) {
                 .single();
             
             if (examError) throw examError;
+            if (isRestrictedExamForStudentRelease(exam)) {
+                showRestrictedReleaseMessage(exam, document.getElementById('confirmReleaseBtn'));
+                return;
+            }
             
             const passMark = exam?.pass_mark || 18;
             const totalMarks = exam?.total_marks || 30;
