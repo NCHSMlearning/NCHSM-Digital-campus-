@@ -4807,9 +4807,42 @@ window.loadLiveFeed = async function() {
             if (!previous || new Date(row.timestamp) > new Date(previous.timestamp)) latestByPair.set(key, row);
         });
 
+        // Heartbeats are sent every 15 seconds, but network/RLS failures can
+        // temporarily hide an otherwise active attempt. Keep those attempts
+        // visible as "heartbeat missing" instead of silently omitting students.
+        const activeAttemptCutoff = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+        const { data: activeAttempts, error: activeAttemptsError } = await sb
+            .from('exam_attempts')
+            .select('id, student_id, exam_id, status, started_at, submitted_at, updated_at')
+            .in('status', ['IN_PROGRESS', 'in_progress', 'STARTED', 'started', 'ACTIVE', 'active'])
+            .is('submitted_at', null)
+            .gte('started_at', activeAttemptCutoff)
+            .order('started_at', { ascending: false })
+            .limit(1500);
+
+        if (activeAttemptsError) {
+            console.warn('Live feed active-attempt fallback unavailable:', activeAttemptsError.message);
+        } else {
+            (activeAttempts || []).forEach(attempt => {
+                if (!attempt.student_id || !attempt.exam_id || !attempt.started_at) return;
+                const key = String(attempt.student_id) + '_' + String(attempt.exam_id);
+                if (latestByPair.has(key)) return;
+                latestByPair.set(key, {
+                    student_id: attempt.student_id,
+                    exam_id: attempt.exam_id,
+                    current_question: 0,
+                    answered_count: 0,
+                    total_questions: 0,
+                    face_detected: false,
+                    timestamp: attempt.updated_at || attempt.started_at,
+                    heartbeatMissing: true
+                });
+            });
+        }
+
         if (latestByPair.size === 0) {
             liveFeedData = [];
-            gridDiv.innerHTML = '<div class="no-results" style="grid-column:1/-1;text-align:center;padding:55px 20px;color:#64748b;"><i class="fas fa-video-slash" style="font-size:2.4rem;display:block;margin-bottom:14px;"></i><p style="font-weight:700;">No students currently active</p><p style="font-size:.9rem;">A student appears here while their exam page is sending a heartbeat. Check the database permissions if a student is currently sitting an exam.</p></div>';
+            gridDiv.innerHTML = '<div class="no-results" style="grid-column:1/-1;text-align:center;padding:55px 20px;color:#64748b;"><i class="fas fa-video-slash" style="font-size:2.4rem;display:block;margin-bottom:14px;"></i><p style="font-weight:700;">No students currently active</p><p style="font-size:.9rem;">No recent heartbeat or active attempt was found. If a student is sitting an exam, check the exam session and database permissions.</p></div>';
             loadingDiv.style.display = 'none';
             statsDiv.style.display = 'flex';
             ['liveFeedCount','liveFeedWithCamera','liveFeedNoCamera','liveFeedViolations','liveFeedBadge'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='0'; });
@@ -4868,10 +4901,10 @@ window.loadLiveFeed = async function() {
                 program: profile.program || '',
                 examName: exam.exam_name || 'Exam ' + heartbeat.exam_id,
                 hasCamera, snapshot: snapshotLog || log, hasViolations: isViolation,
-                progress, answered, total, timeDisplay: 'Live heartbeat',
-                timeLeftMs: 0, status: isViolation ? 'violation' : (!heartbeat.face_detected ? 'warning' : (hasCamera ? 'active' : 'no-camera')),
-                statusLabel: isViolation ? '🚨 Violation' : (!heartbeat.face_detected ? '⚠️ Face check' : (hasCamera ? '🟢 Active' : '🟢 Active · no snapshot')),
-                statusClass: isViolation ? 'status-critical' : (!heartbeat.face_detected ? 'status-pending' : 'status-active'),
+                progress, answered, total, timeDisplay: heartbeat.heartbeatMissing ? 'No recent heartbeat' : 'Live heartbeat',
+                timeLeftMs: 0, status: isViolation ? 'violation' : (heartbeat.heartbeatMissing ? 'heartbeat-missing' : (!heartbeat.face_detected ? 'warning' : (hasCamera ? 'active' : 'no-camera'))),
+                statusLabel: isViolation ? '🚨 Violation' : (heartbeat.heartbeatMissing ? '⚠️ Attempt found · heartbeat missing' : (!heartbeat.face_detected ? '⚠️ Face check' : (hasCamera ? '🟢 Active' : '🟢 Active · no snapshot'))),
+                statusClass: isViolation ? 'status-critical' : ((heartbeat.heartbeatMissing || !heartbeat.face_detected) ? 'status-pending' : 'status-active'),
                 startedAt: new Date(heartbeat.timestamp), user_id: heartbeat.student_id,
                 exam_id: heartbeat.exam_id, isPast: false, lastHeartbeat: heartbeat.timestamp
             });
@@ -6249,7 +6282,7 @@ window.displayLiveFeed = function() {
     // Final and End-of-Block assessments must remain internal until formally authorized.
 function isRestrictedExamForStudentRelease(exam) {
     const normalize = value => String(value || '').trim().toUpperCase()
-        .replace(/[\\s-]+/g, '_').replace(/[^A-Z0-9_]/g, '_').replace(/_+/g, '_');
+        .replace(/[\s-]+/g, '_').replace(/[^A-Z0-9_]/g, '_').replace(/_+/g, '_');
     const isRestricted = value => {
         const normalized = normalize(value);
         return normalized.includes('FINAL') ||
