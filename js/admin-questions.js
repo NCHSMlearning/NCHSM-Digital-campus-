@@ -599,7 +599,7 @@ async function loadPendingQuestions() {
         console.error('Error loading pending questions:', error);
         container.innerHTML = `
             <div style="background: #fee2e2; padding: 20px; border-radius: 12px; color: #991b1b; text-align: center;">
-                ❌ Error loading questions: ${error.message}
+                ❌ Error loading questions: ${escapeAdminQuestionHtml(error?.message || 'Unknown error')}
             </div>
         `;
     }
