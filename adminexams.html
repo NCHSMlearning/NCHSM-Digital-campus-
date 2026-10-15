@@ -322,6 +322,9 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
                     <button onclick="exportMarksOnly()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-file-csv"></i> Export Marks
                     </button>
+                    <button onclick="openResetByEmailModal()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-user-check"></i> Authorize Single Retake
+                    </button>
                     <button onclick="openReleaseModal()" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
                         <i class="fas fa-share-alt"></i> Release Results
                     </button>
@@ -1916,7 +1919,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
                         <i class="fas fa-user-check"></i> Authorize Student Retake
                     </h3>
                     <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
-                        <i class="fas fa-shield-alt"></i> Create permission for one fresh exam attempt
+                        <i class="fas fa-shield-alt"></i> Authorize continuation of one existing exam attempt
                     </p>
                 </div>
                 <button onclick="closeResetByEmailModal()" 
@@ -1931,7 +1934,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
                     <small style="color: #64748B; display: block; margin-top: 4px;">Enter the student's registered email address</small>
                 </div>
                 <div>
-                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Select Exam (Optional)</label>
+                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Select Exam *</label>
                     <select id="resetExamSelect" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
                         <option value="">-- SELECT AN EXAM --</option>
                     </select>
