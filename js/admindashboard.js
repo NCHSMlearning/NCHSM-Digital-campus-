@@ -8194,7 +8194,9 @@ function renderAttendanceTable(data) {
         
         // ✅ Use exam_name from the record (already fetched)
         const examName = escapeAdminHtml(record.exam_name || 'Exam ' + record.exam_id);
-        const studentName = escapeAdminHtml(record.student_name || 'Unknown');
+        const studentNameRaw = String(record.student_name || 'Student');
+        const studentName = escapeAdminHtml(studentNameRaw);
+        const safeStudentName = escapeAdminHtml(studentNameRaw.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\\r\\n]/g, ' '));
         const studentRegNumber = escapeAdminHtml(record.student_reg_number || 'N/A');
         
         // Video feed HTML
@@ -8214,7 +8216,7 @@ function renderAttendanceTable(data) {
                         <button onclick="toggleVideoMute('${record.student_id}')" title="Mute">
                             <i class="fas fa-volume-up"></i>
                         </button>
-                        <button onclick="openFullVideo('${record.student_id}', '${record.student_name || 'Student'}', '${record.exam_id}')" title="Full Screen">
+                        <button onclick="openFullVideo('${record.student_id}', '${safeStudentName}', '${record.exam_id}')" title="Full Screen">
                             <i class="fas fa-expand"></i>
                         </button>
                     </div>
