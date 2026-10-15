@@ -3319,7 +3319,7 @@ window.viewStudentProfile = async function(pid) {
                 </div>
             `;
             
-            document.getElementById('modalTitle').innerHTML = `<i class="fas fa-edit"></i> Edit Marks - ${studentName}`;
+            document.getElementById('modalTitle').innerHTML = `<i class="fas fa-edit"></i> Edit Marks - ${escapeAdminHtml(studentName)}`;
             document.getElementById('modalContent').innerHTML = editHtml;
             
             setTimeout(() => {
@@ -5652,7 +5652,7 @@ window.viewPastResult = async function(studentId, examId) {
         document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-bar"></i> Exam Results - ${escapeAdminHtml(profile?.full_name || 'Student')}`;
         document.getElementById('modalContent').innerHTML = `
             <div style="background:#F8FAFC; padding:20px; border-radius:16px;">
-                <p><strong>📝 Exam:</strong> ${exam?.exam_name || 'Exam ' + examId}</p>
+                <p><strong>📝 Exam:</strong> ${escapeAdminHtml(exam?.exam_name || 'Exam ' + examId)}</p>
                 <p><strong>📊 Score:</strong> ${result.marks || 0} / ${exam?.total_marks || result.total_score || 0}</p>
                 <p><strong>📈 Percentage:</strong> ${result.percentage || 0}%</p>
                 <p><strong>📋 Status:</strong> <span class="${result.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${result.result_status || 'PENDING'}</span></p>
@@ -8683,8 +8683,8 @@ function showVideoModal(studentId, examId, student, exam, logs, files, folderPat
         `;
     }
     
-    const studentName = student?.full_name || 'Unknown Student';
-    const studentIdDisplay = student?.student_id || 'N/A';
+    const studentName = escapeAdminHtml(student?.full_name || 'Unknown Student');
+    const studentIdDisplay = escapeAdminHtml(student?.student_id || 'N/A');
     const examName = escapeAdminHtml(exam?.exam_name || 'Exam ' + examId);
     
     modal.innerHTML = `
@@ -8885,7 +8885,7 @@ async function startVideoStream(studentId) {
             errorDiv.innerHTML = `
                 <i class="fas fa-camera-slash fa-2x" style="color:#DC2626;"></i>
                 <span style="font-size:0.75rem; font-weight:600;">Camera unavailable</span>
-                <span style="font-size:0.6rem; opacity:0.6;">${error.message || 'Please check camera permissions'}</span>
+                <span style="font-size:0.6rem; opacity:0.6;">${escapeAdminHtml(error.message || 'Please check camera permissions')}</span>
             `;
             container.appendChild(errorDiv);
         }
