@@ -2438,7 +2438,7 @@ window.viewExamResult = async function(sid, eid) {
         const borderColor = displayStatus === 'PASS' ? '#059669' : (displayStatus === 'FAIL' ? '#DC2626' : '#F59E0B');
         
         if (modalTitle) {
-            modalTitle.innerHTML = `<i class="fas fa-file-alt"></i> Exam Result - ${profile?.full_name || 'Student'}`;
+            modalTitle.innerHTML = `<i class="fas fa-file-alt"></i> Exam Result - ${escapeAdminHtml(profile?.full_name || 'Student')}`;
         }
         
         if (modalContent) {
@@ -2449,14 +2449,14 @@ window.viewExamResult = async function(sid, eid) {
                         <div>
                             <h3 style="margin:0; color:#0A3D62; display:flex; align-items:center; gap:10px;">
                                 <span style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#0A3D62,#1a5a7a); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.9rem;">
-                                    ${profile?.full_name?.charAt(0) || 'S'}
+                                    ${escapeAdminHtml(profile?.full_name?.charAt(0) || 'S')}
                                 </span>
-                                ${profile?.full_name || 'Unknown Student'}
+                                ${escapeAdminHtml(profile?.full_name || 'Unknown Student')}
                             </h3>
                             <p style="margin:4px 0 0 0; color:#64748B; font-size:0.85rem;">
-                                <i class="fas fa-id-card"></i> ${profile?.student_id || 'N/A'} 
+                                <i class="fas fa-id-card"></i> ${escapeAdminHtml(profile?.student_id || 'N/A')} 
                                 <span style="margin:0 8px;">|</span>
-                                <i class="fas fa-envelope"></i> ${profile?.email || 'No email'}
+                                <i class="fas fa-envelope"></i> ${escapeAdminHtml(profile?.email || 'No email')}
                             </p>
                         </div>
                         <span class="exam-type-badge ${typeBadgeClass}" style="font-size:0.75rem; padding:4px 16px;">
@@ -2469,11 +2469,11 @@ window.viewExamResult = async function(sid, eid) {
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                             <div>
                                 <span style="color:#64748B; font-size:0.7rem; display:block;">Exam</span>
-                                <strong style="color:#0A3D62;">${exam?.exam_name || 'Unknown Exam'}</strong>
+                                <strong style="color:#0A3D62;">${escapeAdminHtml(exam?.exam_name || 'Unknown Exam')}</strong>
                             </div>
                             <div>
                                 <span style="color:#64748B; font-size:0.7rem; display:block;">Course</span>
-                                <strong style="color:#0A3D62;">${exam?.course_code || exam?.course || '-'}</strong>
+                                <strong style="color:#0A3D62;">${escapeAdminHtml(exam?.course_code || exam?.course || '-')}</strong>
                             </div>
                             <div>
                                 <span style="color:#64748B; font-size:0.7rem; display:block;">Duration</span>
@@ -2751,7 +2751,7 @@ window.viewStudentProfile = async function(pid) {
         }
         
         if (modalTitle) {
-            modalTitle.innerHTML = `<i class="fas fa-user-graduate"></i> Student Profile - ${student.full_name || 'Student'}`;
+            modalTitle.innerHTML = `<i class="fas fa-user-graduate"></i> Student Profile - ${escapeAdminHtml(student.full_name || 'Student')}`;
         }
         
         if (modalContent) {
@@ -2760,12 +2760,12 @@ window.viewStudentProfile = async function(pid) {
                     <!-- Header with Avatar -->
                     <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb;">
                         <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #0A3D62, #1a5a7a); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: white; flex-shrink: 0;">
-                            ${student.full_name?.charAt(0) || 'S'}
+                            ${escapeAdminHtml(student.full_name?.charAt(0) || 'S')}
                         </div>
                         <div>
-                            <h3 style="margin: 0; color: #0A3D62; font-size: 1.2rem;">${student.full_name || 'Unknown'}</h3>
+                            <h3 style="margin: 0; color: #0A3D62; font-size: 1.2rem;">${escapeAdminHtml(student.full_name || 'Unknown')}</h3>
                             <p style="margin: 2px 0 0 0; color: #64748B; font-size: 0.85rem;">
-                                <i class="fas fa-id-card"></i> ${student.student_id || 'N/A'}
+                                <i class="fas fa-id-card"></i> ${escapeAdminHtml(student.student_id || 'N/A')}
                             </p>
                         </div>
                         <div style="margin-left: auto; text-align: right;">
@@ -2781,35 +2781,35 @@ window.viewStudentProfile = async function(pid) {
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Email</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-envelope" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.email || 'N/A'}
+                                ${escapeAdminHtml(student.email || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Phone</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-phone" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.phone || 'N/A'}
+                                ${escapeAdminHtml(student.phone || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Program</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-graduation-cap" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.program || 'N/A'}
+                                ${escapeAdminHtml(student.program || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Block / Term</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-layer-group" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.block || student.block_term || 'N/A'}
+                                ${escapeAdminHtml(student.block || student.block_term || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Intake Year</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-calendar" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.intake_year || 'N/A'}
+                                ${escapeAdminHtml(student.intake_year || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
@@ -2838,7 +2838,7 @@ window.viewStudentProfile = async function(pid) {
                             <div>
                                 <div style="font-size: 0.6rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.3px;">Latest Exam</div>
                                 <div style="font-size: 0.8rem; font-weight: 600; color: #0A3D62; margin-top: 2px;">
-                                    ${latestExam ? latestExam.exam_name : 'N/A'}
+                                    ${escapeAdminHtml(latestExam ? latestExam.exam_name : 'N/A')}
                                 </div>
                             </div>
                         </div>
@@ -2851,9 +2851,9 @@ window.viewStudentProfile = async function(pid) {
                                 <i class="fas fa-users" style="margin-right:6px;"></i> Guardian / Parent Information
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <div><span style="color:#64748B;">Name:</span> <strong>${student.guardian_name || student.parent_name || 'N/A'}</strong></div>
-                                <div><span style="color:#64748B;">Phone:</span> <strong>${student.guardian_phone || student.parent_phone || 'N/A'}</strong></div>
-                                <div style="grid-column: span 2;"><span style="color:#64748B;">Email:</span> <strong>${student.parent_email || 'N/A'}</strong></div>
+                                <div><span style="color:#64748B;">Name:</span> <strong>${escapeAdminHtml(student.guardian_name || student.parent_name || 'N/A')}</strong></div>
+                                <div><span style="color:#64748B;">Phone:</span> <strong>${escapeAdminHtml(student.guardian_phone || student.parent_phone || 'N/A')}</strong></div>
+                                <div style="grid-column: span 2;"><span style="color:#64748B;">Email:</span> <strong>${escapeAdminHtml(student.parent_email || 'N/A')}</strong></div>
                             </div>
                         </div>
                     ` : ''}
@@ -2939,14 +2939,14 @@ window.viewStudentProfile = async function(pid) {
         document.getElementById('modalTitle').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Proctoring Alert Details';
         document.getElementById('modalContent').innerHTML = `
             <div style="background:${bgColor};padding:20px;border-radius:16px;">
-                <p><strong>👤 Student:</strong> ${student.full_name || 'Unknown'} (${student.student_id || log.student_id || 'N/A'})</p>
+                <p><strong>👤 Student:</strong> ${escapeAdminHtml(student.full_name || 'Unknown')} (${student.student_id || log.student_id || 'N/A'})</p>
                 <p><strong>📝 Exam:</strong> ${examName}</p>
                 <p><strong>⏰ Time:</strong> ${formatKenyaTime(log.timestamp)}</p>
-                <p><strong>📹 Alert Type:</strong> ${log.event_type}</p>
-                <p><strong>📋 Details:</strong> ${log.details || 'No details'}</p>
+                <p><strong>📹 Alert Type:</strong> ${escapeAdminHtml(log.event_type || 'Unknown event')}</p>
+                <p><strong>📋 Details:</strong> ${escapeAdminHtml(log.details || 'No details')}</p>
                 <p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></p>
-                <p><strong>🌐 IP Address:</strong> ${log.ip_address || 'N/A'}</p>
-                <p><strong>💻 Device:</strong> ${log.device_info || 'N/A'}</p>
+                <p><strong>🌐 IP Address:</strong> ${escapeAdminHtml(log.ip_address || 'N/A')}</p>
+                <p><strong>💻 Device:</strong> ${escapeAdminHtml(log.device_info || 'N/A')}</p>
             </div>${snapshotHtml}`;
         document.getElementById('studentModal').style.display = 'flex';
     };
@@ -3028,9 +3028,9 @@ window.viewStudentProfile = async function(pid) {
                 html += `
                     <tr style="border-bottom:1px solid #E2E8F0;">
                         <td style="padding:8px;">${index + 1}</td>
-                        <td style="padding:8px;">${q.question_text.substring(0, 60)}...</td>
-                        <td style="padding:8px;text-align:center;">${answer?.selected_answer || '-'}</td>
-                        <td style="padding:8px;text-align:center;">${q.correct_answer}</td>
+                        <td style="padding:8px;">${escapeAdminHtml(q.question_text.substring(0, 60))}...</td>
+                        <td style="padding:8px;text-align:center;">${escapeAdminHtml(answer?.selected_answer || '-')}</td>
+                        <td style="padding:8px;text-align:center;">${escapeAdminHtml(q.correct_answer || '')}</td>
                         <td style="padding:8px;text-align:center;color:${statusColor};font-weight:600;">${statusIcon} ${statusText}</td>
                     </tr>
                 `;
@@ -3040,7 +3040,7 @@ window.viewStudentProfile = async function(pid) {
             document.getElementById('modalContent').innerHTML = html;
             
         } catch (error) {
-            document.getElementById('modalContent').innerHTML = `<div style="color:#DC2626;padding:20px;">Error: ${error.message}</div>`;
+            document.getElementById('modalContent').innerHTML = `<div style="color:#DC2626;padding:20px;">Error: ${escapeAdminHtml(error.message)}</div>`;
         }
     };
 
@@ -3101,7 +3101,7 @@ window.viewStudentProfile = async function(pid) {
 
         modalContent.innerHTML = `
             <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);color:white;padding:18px;border-radius:14px;margin-bottom:16px;">
-                <div style="font-size:18px;font-weight:800;">${profile?.full_name || 'Student'}</div>
+                <div style="font-size:18px;font-weight:800;">${escapeAdminHtml(profile?.full_name || 'Student')}</div>
                 <div style="font-size:12px;opacity:.85;margin-top:3px;">${exam?.exam_name || 'Exam ' + examId} · Current final record only</div>
             </div>
             <div style="border:1px solid #E2E8F0;border-radius:14px;padding:18px;background:#fff;">
@@ -3299,7 +3299,7 @@ window.viewStudentProfile = async function(pid) {
             document.getElementById('modalContent').innerHTML = `
                 <div style="color:#DC2626;padding:20px;text-align:center;">
                     <i class="fas fa-exclamation-circle fa-2x"></i>
-                    <p>Error: ${error.message}</p>
+                    <p>Error: ${escapeAdminHtml(error.message)}</p>
                     <button class="btn btn-primary" onclick="closeModal()">Close</button>
                 </div>
             `;
@@ -3670,7 +3670,7 @@ window.viewStudentProfile = async function(pid) {
             document.getElementById('cameraLoading').innerHTML = `
                 <div style="text-align:center; color:#DC2626;">
                     <i class="fas fa-exclamation-triangle fa-3x"></i>
-                    <p style="margin-top:16px;">Error: ${error.message}</p>
+                    <p style="margin-top:16px;">Error: ${escapeAdminHtml(error.message)}</p>
                     <button class="btn btn-primary" onclick="refreshCameraFeed()" style="margin-top:12px;">
                         <i class="fas fa-sync"></i> Retry
                     </button>
@@ -5595,7 +5595,7 @@ window.viewPastResult = async function(studentId, examId) {
             .eq('id', parseInt(examId))
             .single();
         
-        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-bar"></i> Exam Results - ${profile?.full_name || 'Student'}`;
+        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-bar"></i> Exam Results - ${escapeAdminHtml(profile?.full_name || 'Student')}`;
         document.getElementById('modalContent').innerHTML = `
             <div style="background:#F8FAFC; padding:20px; border-radius:16px;">
                 <p><strong>📝 Exam:</strong> ${exam?.exam_name || 'Exam ' + examId}</p>
@@ -6874,8 +6874,8 @@ async function sendSimpleReleaseNotification(studentId, examId, grade) {
                     <p><span class="label">📋 Exam</span> <span class="value">${exam.exam_name}</span></p>
                     <p><span class="label">📊 Type</span> <span class="value">${exam.exam_type || 'Exam'}</span></p>
                     <p><span class="label">👤 Student</span> <span class="value">${student.full_name}</span></p>
-                    <p><span class="label">🆔 ID</span> <span class="value">${student.student_id || 'N/A'}</span></p>
-                    <p><span class="label">📚 Program</span> <span class="value">${student.program || 'N/A'}</span></p>
+                    <p><span class="label">🆔 ID</span> <span class="value">${escapeAdminHtml(student.student_id || 'N/A')}</span></p>
+                    <p><span class="label">📚 Program</span> <span class="value">${escapeAdminHtml(student.program || 'N/A')}</span></p>
                 </div>
                 
                 <!-- Call to Action -->
@@ -7189,8 +7189,8 @@ window.batchResendReleaseEmails = async function(examId) {
                     <p><span class="label">📅 Date</span> <span class="value">${examDate}</span></p>
                     <p><span class="label">📊 Type</span> <span class="value">${exam.exam_type || 'Exam'}</span></p>
                     <p><span class="label">👤 Student</span> <span class="value">${student.full_name}</span></p>
-                    <p><span class="label">🆔 ID</span> <span class="value">${student.student_id || 'N/A'}</span></p>
-                    <p><span class="label">📚 Program</span> <span class="value">${student.program || 'N/A'}</span></p>
+                    <p><span class="label">🆔 ID</span> <span class="value">${escapeAdminHtml(student.student_id || 'N/A')}</span></p>
+                    <p><span class="label">📚 Program</span> <span class="value">${escapeAdminHtml(student.program || 'N/A')}</span></p>
                 </div>
                 
                 <!-- Call to Action -->
