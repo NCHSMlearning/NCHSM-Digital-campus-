@@ -1099,7 +1099,7 @@ window.loadStudentsWithResults = async function(options = {}) {
                 </span>
             </td>
             <td style="text-align:center;">
-                <span class="clickable-percentage" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')">
+                <span class="clickable-percentage" onclick="${editMarksHandler}">
                     ${percentage}% ✏️
                 </span>
             </td>
