@@ -7634,6 +7634,9 @@ window.batchResendReleaseEmails = async function(examId) {
                     .from('exam_grades')
                     .select('id, student_id, marks, total_score, result_status')
                     .eq('id', gradeId)
+                    .eq('exam_id', parseInt(examId, 10))
+                    .eq('question_id', ZERO_QUESTION_ID)
+                    .eq('completed', true)
                     .single();
                 
                 if (gradeError || !grade) {
