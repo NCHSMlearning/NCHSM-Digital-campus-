@@ -584,7 +584,7 @@ window.logout = function() {
         if (infoDiv) infoDiv.style.display = 'none';
         if (errorDiv) errorDiv.style.display = 'none';
 
-        if (!normalizedEmail || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)) {
+        if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
             if (errorDiv) {
                 errorDiv.textContent = '⚠️ Enter a valid registered student email address.';
                 errorDiv.style.display = 'block';
@@ -618,8 +618,8 @@ window.logout = function() {
 
             if (infoDiv) {
                 infoDiv.textContent = '📧 Student found: ' + window.resetTargetStudent.full_name +
-                    ' ✓\\n🆔 Student ID: ' + (student.student_id || 'N/A') +
-                    '\\n📚 Program: ' + (student.program || 'N/A');
+                    ' ✓\n🆔 Student ID: ' + (student.student_id || 'N/A') +
+                    '\n📚 Program: ' + (student.program || 'N/A');
                 infoDiv.style.whiteSpace = 'pre-line';
                 infoDiv.style.display = 'block';
             }
@@ -6109,7 +6109,7 @@ window.displayLiveFeed = function() {
         }
         const examSelect = document.getElementById('resetExamSelect');
         const examName = examSelect?.selectedOptions?.[0]?.textContent || ('Exam ' + examId);
-        if (!confirm('Authorize continuation for ' + student.full_name + ' (' + student.email + ')?\\n\\nExam: ' + examName + '\\n\\nThe secure server action will preserve the existing attempt and saved progress.')) return;
+        if (!confirm('Authorize continuation for ' + student.full_name + ' (' + student.email + ')?\n\nExam: ' + examName + '\n\nThe secure server action will preserve the existing attempt and saved progress.')) return;
 
         if (confirmBtn) {
             confirmBtn.disabled = true;
