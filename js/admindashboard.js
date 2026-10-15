@@ -56,7 +56,7 @@ window.sb = sb;
     let liveFeedAutoRefresh = true;
     let liveFeedData = [];
     let liveFeedPage = 1;
-    const LIVE_FEED_PER_PAGE = 12;
+    const LIVE_FEED_PER_PAGE = 24;
 
     // Camera Variables
     let cameraInterval = null;
@@ -5518,7 +5518,8 @@ function populateExamFilter() {
 
 // ========== FILTER LIVE FEED ==========
 window.filterLiveFeed = function() {
-    const searchTerm = document.getElementById('liveFeedSearch')?.value?.toLowerCase() || '';
+    liveFeedPage = 1;
+    const searchTerm = document.getElementById('liveFeedSearch')?.value?.trim().toLowerCase() || '';
     const examFilter = document.getElementById('liveFeedExamFilter')?.value || '';
     const statusFilter = document.getElementById('liveFeedStatusFilter')?.value || '';
     
@@ -5555,7 +5556,7 @@ function displayFilteredLiveFeed() {
     const grid = document.getElementById('liveFeedGrid');
     if (!grid) return;
     
-    const data = filteredLiveFeedData.length > 0 ? filteredLiveFeedData : liveFeedData;
+    const data = filteredLiveFeedData;
     const start = (liveFeedPage - 1) * LIVE_FEED_PER_PAGE;
     const pageData = data.slice(start, start + LIVE_FEED_PER_PAGE);
     
@@ -5810,7 +5811,7 @@ window.displayLiveFeed = function() {
     filterLiveFeed();
 };
     function renderLiveFeedPagination() {
-        const totalPages = Math.ceil(liveFeedData.length / LIVE_FEED_PER_PAGE);
+        const totalPages = Math.ceil(filteredLiveFeedData.length / LIVE_FEED_PER_PAGE);
         const container = document.getElementById('liveFeedPagination');
         if (!container) return;
         
@@ -5837,11 +5838,11 @@ window.displayLiveFeed = function() {
     }
 
     window.changeLiveFeedPage = function(page) {
-        const totalPages = Math.ceil(liveFeedData.length / LIVE_FEED_PER_PAGE);
+        const totalPages = Math.ceil(filteredLiveFeedData.length / LIVE_FEED_PER_PAGE);
         if (page < 1 || page > totalPages) return;
         liveFeedPage = page;
-        displayLiveFeed();
-        document.getElementById('liveFeedGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        displayFilteredLiveFeed();
+        document.getElementById('liveFeedGrid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
     // ============================================================
