@@ -3151,23 +3151,27 @@ window.viewStudentProfile = async function(pid) {
                 .eq('user_id', studentId)
                 .single();
             
-            document.getElementById('modalTitle').innerHTML = `🚨 Violations - ${profile?.full_name || 'Student'}`;
+            document.getElementById('modalTitle').innerHTML = `🚨 Violations - ${escapeAdminHtml(profile?.full_name || 'Student')}`;
+            const snapshotUrl = String(violations[0]?.snapshot_url || '');
+            const safeSnapshotUrl = (/^https?:\/\//i.test(snapshotUrl) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=\s]+$/i.test(snapshotUrl))
+                ? escapeAdminHtml(snapshotUrl)
+                : '';
             document.getElementById('modalContent').innerHTML = `
                 <div style="max-height:400px; overflow-y:auto;">
                     ${violations.map(v => `
                         <div style="padding:10px; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center;">
                             <div>
-                                <span style="font-weight:600;">${v.event_type}</span>
-                                <div style="font-size:0.8rem; color:#64748B;">${v.details || ''}</div>
+                                <span style="font-weight:600;">${escapeAdminHtml(v.event_type || 'Unknown event')}</span>
+                                <div style="font-size:0.8rem; color:#64748B;">${escapeAdminHtml(v.details || '')}</div>
                             </div>
-                            <span style="font-size:0.7rem; color:#64748B;">${formatKenyaTime(v.timestamp)}</span>
+                            <span style="font-size:0.7rem; color:#64748B;">${escapeAdminHtml(formatKenyaTime(v.timestamp))}</span>
                         </div>
                     `).join('')}
                 </div>
-                ${violations[0]?.snapshot_url ? `
+                ${safeSnapshotUrl ? `
                     <div style="margin-top:16px; border-top:1px solid #E2E8F0; padding-top:16px;">
                         <h4>Latest Snapshot</h4>
-                        <img src="${violations[0].snapshot_url}" style="max-width:100%; max-height:300px; border-radius:8px;">
+                        <img src="${safeSnapshotUrl}" alt="Latest proctoring snapshot" style="max-width:100%; max-height:300px; border-radius:8px;">
                     </div>
                 ` : ''}
             `;
