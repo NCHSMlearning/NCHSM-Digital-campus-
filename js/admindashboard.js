@@ -4471,6 +4471,11 @@ window.closeCameraModal = function() {
     };
 
    // ✅ FIXED: Display live students with proper null checks
+// Compatibility handler used by the Live Students Refresh button.
+window.refreshLiveStudents = function() {
+    return window.loadLiveStudents();
+};
+
 window.displayLiveStudents = function() {
     const tbody = document.getElementById('liveStudentsBody');
     
