@@ -1523,9 +1523,15 @@ function displayProctoringLogs() {
     
     tbody.innerHTML = page.map(log => {
         const student = log.student_profile || {};
-        const studentName = student.full_name || 'Unknown';
-        const studentIdDisplay = student.student_id || log.student_id || 'N/A';
-        const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
+        const studentName = escapeAdminHtml(student.full_name || 'Unknown');
+        const studentIdDisplay = escapeAdminHtml(student.student_id || log.student_id || 'N/A');
+        const examName = escapeAdminHtml(examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id);
+        const studentProgram = escapeAdminHtml(student.program || 'No program');
+        const eventType = escapeAdminHtml(String(log.event_type || 'unknown').replace(/_/g, ' '));
+        const details = escapeAdminHtml(log.details || '-');
+        const severityTextSafe = escapeAdminHtml(log.severity || 'info');
+        const viewAlertHandler = escapeAdminHtml(`viewAlertDetails(${JSON.stringify(String(log.id || ''))})`);
+        const resolveAlertHandler = escapeAdminHtml(`markAlertResolved(${JSON.stringify(String(log.id || ''))})`);
         
         // Severity styling
         let severityClass = 'status-pending';
@@ -1571,8 +1577,9 @@ function displayProctoringLogs() {
         
         const hasSnapshot = log.snapshot_url || log.screenshot_data;
         const snapshotUrl = log.snapshot_url || log.screenshot_data;
-        const snapshotHtml = hasSnapshot ?
-            `<a href="${snapshotUrl}" target="_blank" style="padding:2px 10px; font-size:0.6rem; margin-left:3px; background:linear-gradient(135deg,#10B981,#059669); color:white; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="View Snapshot">
+        const safeSnapshotUrl = typeof snapshotUrl === 'string' && (/^https?:\/\//i.test(snapshotUrl) || /^data:image\/(?:png|jpeg|webp);base64,/i.test(snapshotUrl)) ? escapeAdminHtml(snapshotUrl) : '';
+        const snapshotHtml = hasSnapshot && safeSnapshotUrl ?
+            `<a href="${safeSnapshotUrl}" target="_blank" style="padding:2px 10px; font-size:0.6rem; margin-left:3px; background:linear-gradient(135deg,#10B981,#059669); color:white; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="View Snapshot">
                 <i class="fas fa-camera"></i> Snapshot
             </a>` :
             '';
@@ -1584,7 +1591,7 @@ function displayProctoringLogs() {
             <!-- Column 1: Time -->
             <td style="font-size:0.75rem; white-space:nowrap; padding:12px 14px;">
                 <i class="far fa-clock" style="color:#94A3B8; margin-right:4px;"></i>
-                ${formatKenyaTime(log.timestamp)}
+                ${escapeAdminHtml(formatKenyaTime(log.timestamp))}
             </td>
             
             <!-- Column 2: Student ID -->
@@ -1596,7 +1603,7 @@ function displayProctoringLogs() {
             <td style="padding:12px 14px;">
                 <strong>${studentName}</strong>
                 <div style="font-size:0.65rem; color:#64748B; margin-top:2px;">
-                    <i class="fas fa-graduation-cap" style="margin-right:4px;"></i>${student.program || 'No program'}
+                    <i class="fas fa-graduation-cap" style="margin-right:4px;"></i>${studentProgram}
                 </div>
             </td>
             
@@ -1608,31 +1615,31 @@ function displayProctoringLogs() {
             <!-- Column 5: Alert Type -->
             <td style="padding:12px 14px;">
                 <span class="status-badge ${alertClass}" style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.7rem;">
-                    ${alertIcon} ${log.event_type.replace(/_/g, ' ')}
+                    ${alertIcon} ${eventType}
                 </span>
             </td>
             
             <!-- Column 6: Details -->
             <td style="padding:12px 14px; font-size:0.75rem; color:#475569; max-width:200px; word-wrap:break-word;">
-                ${log.details || '-'}
+                ${details}
             </td>
             
             <!-- Column 7: Severity -->
             <td style="padding:12px 14px; text-align:center;">
                 <span class="status-badge ${severityClass}" style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.7rem; text-transform:capitalize;">
-                    ${severityIcon} ${severityText}
+                    ${severityIcon} ${severityTextSafe}
                 </span>
             </td>
             
             <!-- Column 8: Actions -->
             <td style="padding:12px 14px; text-align:center;">
                 <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center; align-items:center;">
-                    <button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')" title="View Details" style="background:linear-gradient(135deg,#4299E1,#3182CE); color:white; border:none; padding:5px 12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
+                    <button class="action-btn btn-view" onclick="${viewAlertHandler}" title="View Details" style="background:linear-gradient(135deg,#4299E1,#3182CE); color:white; border:none; padding:5px 12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
                         <i class="fas fa-eye"></i> View
                     </button>
                     ${snapshotHtml}
                     ${severityText === 'critical' ? 
-                        `<button class="action-btn btn-danger" onclick="markAlertResolved('${log.id}')" title="Mark Resolved" style="background:linear-gradient(135deg,#DC2626,#B91C1C); color:white; border:none; padding:5px 10px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
+                        `<button class="action-btn btn-danger" onclick="${resolveAlertHandler}" title="Mark Resolved" style="background:linear-gradient(135deg,#DC2626,#B91C1C); color:white; border:none; padding:5px 10px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
                             <i class="fas fa-check"></i>
                         </button>` : 
                         ''
@@ -2930,15 +2937,16 @@ window.viewStudentProfile = async function(pid) {
         }
         
         const student = log.student_profile || {};
-        const examName = examsMap[log.exam_id]?.exam_name || 'Unknown Exam';
+        const examName = escapeAdminHtml(examsMap[log.exam_id]?.exam_name || 'Unknown Exam');
         const snapshotUrl = log.snapshot_url;
-        const snapshotHtml = snapshotUrl ?
+        const safeSnapshotUrl = typeof snapshotUrl === 'string' && (/^https?:\/\//i.test(snapshotUrl) || /^data:image\/(?:png|jpeg|webp);base64,/i.test(snapshotUrl)) ? escapeAdminHtml(snapshotUrl) : '';
+        const snapshotHtml = safeSnapshotUrl ?
             `<div style="margin-top:15px;border-top:1px solid #e5e7eb;padding-top:15px;">
                 <h4>📸 Camera Snapshot</h4>
                 <div style="background:#000;border-radius:8px;overflow:hidden;max-width:100%;">
-                    <img src="${snapshotUrl}" style="width:100%;max-height:400px;object-fit:contain;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+                    <img src="${safeSnapshotUrl}" style="width:100%;max-height:400px;object-fit:contain;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'">
                 </div>
-                <a href="${snapshotUrl}" target="_blank" style="margin-top:10px;display:inline-block;padding:8px 16px;background:#4C1D95;color:white;border-radius:6px;text-decoration:none;">View Full Image</a>
+                <a href="${safeSnapshotUrl}" target="_blank" style="margin-top:10px;display:inline-block;padding:8px 16px;background:#4C1D95;color:white;border-radius:6px;text-decoration:none;">View Full Image</a>
             </div>` :
             '<p style="color:#6b7280;margin-top:10px;">📷 No camera snapshot captured</p>';
         
@@ -2949,12 +2957,12 @@ window.viewStudentProfile = async function(pid) {
         document.getElementById('modalTitle').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Proctoring Alert Details';
         document.getElementById('modalContent').innerHTML = `
             <div style="background:${bgColor};padding:20px;border-radius:16px;">
-                <p><strong>👤 Student:</strong> ${escapeAdminHtml(student.full_name || 'Unknown')} (${student.student_id || log.student_id || 'N/A'})</p>
+                <p><strong>👤 Student:</strong> ${escapeAdminHtml(student.full_name || 'Unknown')} (${escapeAdminHtml(student.student_id || log.student_id || 'N/A')})</p>
                 <p><strong>📝 Exam:</strong> ${examName}</p>
                 <p><strong>⏰ Time:</strong> ${formatKenyaTime(log.timestamp)}</p>
                 <p><strong>📹 Alert Type:</strong> ${escapeAdminHtml(log.event_type || 'Unknown event')}</p>
                 <p><strong>📋 Details:</strong> ${escapeAdminHtml(log.details || 'No details')}</p>
-                <p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></p>
+                <p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${escapeAdminHtml(log.severity || 'info')}</span></p>
                 <p><strong>🌐 IP Address:</strong> ${escapeAdminHtml(log.ip_address || 'N/A')}</p>
                 <p><strong>💻 Device:</strong> ${escapeAdminHtml(log.device_info || 'N/A')}</p>
             </div>${snapshotHtml}`;
@@ -2966,6 +2974,7 @@ window.viewStudentProfile = async function(pid) {
     // ============================================
     window.viewStudentProgress = async function(studentId, studentName, examId) {
         try {
+            const studentNameSafe = escapeAdminHtml(studentName || 'Unknown');
             document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-line"></i> Student Progress`;
             document.getElementById('modalContent').innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading...</div>';
             document.getElementById('studentModal').style.display = 'flex';
@@ -2989,14 +2998,14 @@ window.viewStudentProfile = async function(pid) {
                 .eq('id', parseInt(examId))
                 .single();
             
-            const examName = exam?.exam_name || 'Exam ' + examId;
+            const examName = escapeAdminHtml(exam?.exam_name || 'Exam ' + examId);
             const answeredCount = answers?.length || 0;
             const totalQuestions = questions?.length || 0;
             const correctCount = answers?.filter(a => a.selected_answer && a.marks > 0).length || 0;
             
             let html = `
                 <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
-                    <h3>${studentName}</h3>
+                    <h3>${escapeAdminHtml(studentName)}</h3>
                     <p style="color:#64748B;">${examName}</p>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
                         <div style="background:white;padding:10px;border-radius:8px;text-align:center;">
@@ -3197,6 +3206,8 @@ window.viewStudentProfile = async function(pid) {
     // ============================================
     window.openEditMarksModal = async function(studentId, examId, studentName, examName) {
         try {
+            const studentNameSafe = escapeAdminHtml(studentName || 'Unknown');
+            const examNameSafe = escapeAdminHtml(examName || 'Exam');
             document.getElementById('modalTitle').innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading...`;
             document.getElementById('modalContent').innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading student data...</div>';
             document.getElementById('studentModal').style.display = 'flex';
@@ -3238,8 +3249,8 @@ window.viewStudentProfile = async function(pid) {
             
             let editHtml = `
                 <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
-                    <h3 style="margin-bottom:8px;">${studentName}</h3>
-                    <p style="color:#64748B;font-size:0.85rem;">${examName} (${isCatExam ? 'CAT' : 'Final Exam'})</p>
+                    <h3 style="margin-bottom:8px;">${escapeAdminHtml(studentName)}</h3>
+                    <p style="color:#64748B;font-size:0.85rem;">${examNameSafe} (${isCatExam ? 'CAT' : 'Final Exam'})</p>
                     <p style="color:#64748B;font-size:0.8rem;">Total Marks: ${totalMarks} | Pass Mark: ${passMark} (60%)</p>
                     <p><strong>Current Score:</strong> ${currentTotal} / ${totalMarks} (${currentPercentage}%)</p>
                     <p><strong>Current Status:</strong> <span class="${parseFloat(currentPercentage) >= passMark ? 'status-pass' : 'status-fail'}">${parseFloat(currentPercentage) >= passMark ? 'PASS' : 'FAIL'}</span></p>
@@ -3758,8 +3769,8 @@ window.viewStudentProfile = async function(pid) {
             }
             list.innerHTML = alerts.map(a => `
                 <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #E2E8F0;">
-                    <span>${a.event_type === 'multiple_faces_detected' ? '🚨' : '⚠️'} ${a.event_type}</span>
-                    <span style="color:#64748B; font-size:0.7rem;">${formatKenyaTime(a.timestamp)}</span>
+                    <span>${a.event_type === 'multiple_faces_detected' ? '🚨' : '⚠️'} ${escapeAdminHtml(a.event_type || 'unknown')}</span>
+                    <span style="color:#64748B; font-size:0.7rem;">${escapeAdminHtml(formatKenyaTime(a.timestamp))}</span>
                 </div>
             `).join('');
         } catch (error) {
@@ -8305,15 +8316,23 @@ function renderAttendanceTable(data) {
         const examName = escapeAdminHtml(record.exam_name || 'Exam ' + record.exam_id);
         const studentNameRaw = String(record.student_name || 'Student');
         const studentName = escapeAdminHtml(studentNameRaw);
-        const safeStudentName = escapeAdminHtml(studentNameRaw.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\\r\\n]/g, ' '));
         const studentRegNumber = escapeAdminHtml(record.student_reg_number || 'N/A');
+        const studentArgument = escapeAdminHtml(JSON.stringify(String(record.student_id || '')));
+        const examArgument = escapeAdminHtml(JSON.stringify(String(record.exam_id || '')));
+        const studentNameArgument = escapeAdminHtml(JSON.stringify(studentNameRaw));
+        const toggleMuteHandler = escapeAdminHtml(`toggleVideoMute(${JSON.stringify(String(record.student_id || ''))})`);
+        const openFullVideoHandler = escapeAdminHtml(`openFullVideo(${JSON.stringify(String(record.student_id || ''))}, ${JSON.stringify(studentNameRaw)}, ${JSON.stringify(String(record.exam_id || ''))})`);
+        const requestLiveFeedHandler = escapeAdminHtml(`requestLiveFeed(${JSON.stringify(String(record.student_id || ''))}, ${JSON.stringify(String(record.exam_id || ''))})`);
+        const viewAttendanceHandler = escapeAdminHtml(`viewStudentAttendance(${JSON.stringify(String(record.student_id || ''))}, ${JSON.stringify(String(record.exam_id || ''))})`);
+        const recordingsHandler = escapeAdminHtml(`viewStudentRecordings(${JSON.stringify(String(record.student_id || ''))}, ${JSON.stringify(String(record.exam_id || ''))})`);
+        const stopLiveFeedHandler = escapeAdminHtml(`stopLiveFeed(${JSON.stringify(String(record.student_id || ''))})`);
         
         // Video feed HTML
         let videoHtml = '';
         if (isLive) {
             videoHtml = `
                 <div class="live-video-container">
-                    <video id="liveVideo_${record.student_id}" 
+                    <video id="liveVideo_${escapeAdminHtml(record.student_id)}" 
                            autoplay muted playsinline
                            style="width:100%; height:100%; object-fit:cover; background:#1a1a2e;">
                         <source src="" type="video/webm">
@@ -8322,10 +8341,10 @@ function renderAttendanceTable(data) {
                         <span class="dot"></span> LIVE
                     </div>
                     <div class="video-controls">
-                        <button onclick="toggleVideoMute('${record.student_id}')" title="Mute">
+                        <button onclick="${toggleMuteHandler}" title="Mute">
                             <i class="fas fa-volume-up"></i>
                         </button>
-                        <button onclick="openFullVideo('${record.student_id}', '${safeStudentName}', '${record.exam_id}')" title="Full Screen">
+                        <button onclick="${openFullVideoHandler}" title="Full Screen">
                             <i class="fas fa-expand"></i>
                         </button>
                     </div>
@@ -8336,7 +8355,7 @@ function renderAttendanceTable(data) {
                 <div class="video-placeholder">
                     <i class="fas fa-video-slash"></i>
                     <span>Not live</span>
-                    <button onclick="requestLiveFeed('${record.student_id}', '${record.exam_id}')" 
+                    <button onclick="${requestLiveFeedHandler}" 
                             style="padding:2px 12px; background:#3B82F6; color:white; border:none; border-radius:4px; font-size:0.6rem; cursor:pointer;">
                         <i class="fas fa-play"></i> Request
                     </button>
@@ -8351,18 +8370,18 @@ function renderAttendanceTable(data) {
                 <td>${studentRegNumber}</td>
                 <td><strong>${examName}</strong></td>
                 <td><span class="status-badge-attendance ${statusClass}">${statusDisplay}</span></td>
-                <td>${signInTime}</td>
+                <td>${escapeAdminHtml(signInTime)}</td>
                 <td>${videoHtml}</td>
                 <td>
                     <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                        <button class="btn-sm btn-info" onclick="viewStudentAttendance('${record.student_id}', '${record.exam_id}')">
+                        <button class="btn-sm btn-info" onclick="${viewAttendanceHandler}">
                             <i class="fas fa-eye"></i> Details
                         </button>
-                        <button class="btn-sm btn-success" onclick="viewStudentRecordings('${record.student_id}', '${record.exam_id}')" title="View Recordings">
+                        <button class="btn-sm btn-success" onclick="${recordingsHandler}" title="View Recordings">
                             <i class="fas fa-video"></i> Recordings
                         </button>
                         ${isLive ? `
-                            <button class="btn-sm btn-danger" onclick="stopLiveFeed('${record.student_id}')">
+                            <button class="btn-sm btn-danger" onclick="${stopLiveFeedHandler}">
                                 <i class="fas fa-stop"></i>
                             </button>
                         ` : ''}
@@ -8604,7 +8623,7 @@ function showVideoModal(studentId, examId, student, exam, logs, files, folderPat
     
     const studentName = student?.full_name || 'Unknown Student';
     const studentIdDisplay = student?.student_id || 'N/A';
-    const examName = exam?.exam_name || 'Exam ' + examId;
+    const examName = escapeAdminHtml(exam?.exam_name || 'Exam ' + examId);
     
     modal.innerHTML = `
         <div style="max-width:900px; width:100%; max-height:90vh; overflow-y:auto;">
