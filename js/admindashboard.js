@@ -17,6 +17,12 @@ if (window.location.pathname.endsWith('.html')) {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const ZERO_QUESTION_ID = '00000000-0000-0000-0000-000000000000';
 
+    function escapeAdminHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, character => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[character]));
+    }
+
     // Initialize Supabase
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     window.supabase = sb;
@@ -156,9 +162,12 @@ let isVideoAutoRefresh = true;
         
         toast.innerHTML = `
             <i class="fas ${icons[type] || 'fa-info-circle'}" style="font-size:1.2rem;"></i>
-            <span>${message}</span>
+            <span></span>
             <i class="fas fa-times" style="margin-left: auto; opacity: 0.7; font-size: 0.8rem; cursor:pointer;"></i>
         `;
+        // Toast messages often contain names or backend errors; render as text, not HTML.
+        const toastMessage = toast.querySelector('span');
+        if (toastMessage) toastMessage.textContent = String(message ?? '');
         
         document.body.appendChild(toast);
         
@@ -561,58 +570,96 @@ window.logout = function() {
         const { data: exams } = await sb.from('exams').select('id, exam_name').order('exam_name');
         const select = document.getElementById('resetExamSelect');
         if (select && exams) {
-            select.innerHTML = '<option value="">-- ALL EXAMS (Reset everything) --</option>' + 
-                exams.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('');
+            select.innerHTML = '<option value="">-- SELECT AN EXAM --</option>' +
+                exams.map(e => {
+                    const option = document.createElement('option');
+                    option.value = String(e.id);
+                    option.textContent = e.exam_name || ('Exam ' + e.id);
+                    return option.outerHTML;
+                }).join('');
         }
     }
 
     // ============================================
     // 🔍 SEARCH STUDENT BY EMAIL
     // ============================================
-    async function searchStudentByEmail(email) {
+    async function searchStudentByNameOrEmail(searchValue) {
+        const searchTerm = String(searchValue || '').trim();
+        const normalized = searchTerm.toLowerCase();
+        const infoDiv = document.getElementById('resetStudentInfo');
+        const errorDiv = document.getElementById('resetErrorInfo');
+        const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+        window.resetTargetStudent = null;
+        window.resetTargetSearchTerm = '';
+        if (confirmBtn) confirmBtn.disabled = true;
+        if (infoDiv) { infoDiv.replaceChildren(); infoDiv.style.display = 'none'; }
+        if (errorDiv) { errorDiv.textContent = ''; errorDiv.style.display = 'none'; }
+        if (searchTerm.length < 2) {
+            if (errorDiv) { errorDiv.textContent = 'Enter at least 2 characters of the student name or email address.'; errorDiv.style.display = 'block'; }
+            return;
+        }
         try {
-            const { data: student, error } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, full_name, email, program')
-                .eq('email', email)
-                .single();
-            
-            if (error || !student) {
-                document.getElementById('resetStudentInfo').style.display = 'none';
-                const errorDiv = document.getElementById('resetErrorInfo');
-                errorDiv.style.display = 'block';
-                errorDiv.innerHTML = `⚠️ No student found with email: ${email}`;
-                document.getElementById('confirmResetByEmailBtn').disabled = true;
-                window.resetTargetStudent = null;
+            const isEmailSearch = normalized.includes('@');
+            const safeTerm = searchTerm.replace(/[%_\\\\]/g, '');
+            let query = sb.from('consolidated_user_profiles_table')
+                .select('user_id, student_id, full_name, email, program').limit(10);
+            query = isEmailSearch
+                ? query.ilike('email', '%' + safeTerm + '%')
+                : query.ilike('full_name', '%' + safeTerm + '%');
+            const { data, error } = await query;
+            if (error) throw error;
+            const students = (data || []).filter(student => student?.user_id);
+            if (!students.length) {
+                if (errorDiv) { errorDiv.textContent = isEmailSearch ? 'No student found matching that email address.' : 'No student found matching that name.'; errorDiv.style.display = 'block'; }
                 return;
             }
-            
-            window.resetTargetStudent = { 
-                user_id: student.user_id, 
-                student_id: student.student_id,
-                full_name: student.full_name, 
-                email: student.email, 
-                program: student.program 
+            const selectStudent = student => {
+                window.resetTargetStudent = {
+                    user_id: student.user_id, student_id: student.student_id,
+                    full_name: student.full_name || 'Student', email: student.email || '',
+                    program: student.program || ''
+                };
+                window.resetTargetSearchTerm = normalized;
+                if (infoDiv) {
+                    infoDiv.replaceChildren();
+                    const title = document.createElement('strong');
+                    title.textContent = '✓ Student selected: ' + window.resetTargetStudent.full_name;
+                    const details = document.createElement('div');
+                    details.style.whiteSpace = 'pre-line';
+                    details.textContent = 'Email: ' + (student.email || 'N/A') +
+                        '\\nStudent ID: ' + (student.student_id || 'N/A') +
+                        '\\nProgram: ' + (student.program || 'N/A');
+                    infoDiv.append(title, details);
+                    infoDiv.style.display = 'block';
+                }
+                if (confirmBtn) confirmBtn.disabled = false;
             };
-            
-            const infoDiv = document.getElementById('resetStudentInfo');
-            infoDiv.style.display = 'block';
-            infoDiv.innerHTML = `
-                <p><strong>📧 Student Found:</strong> ${student.full_name} ✓</p>
-                <p><strong>🆔 Student ID:</strong> ${student.student_id || 'N/A'}</p>
-                <p><strong>📚 Program:</strong> ${student.program || 'N/A'}</p>
-            `;
-            document.getElementById('resetErrorInfo').style.display = 'none';
-            document.getElementById('confirmResetByEmailBtn').disabled = false;
+            if (students.length === 1) { selectStudent(students[0]); return; }
+            if (infoDiv) {
+                infoDiv.replaceChildren();
+                const heading = document.createElement('div');
+                heading.textContent = 'Multiple students match. Select the correct student:';
+                heading.style.fontWeight = '700';
+                heading.style.marginBottom = '8px';
+                infoDiv.appendChild(heading);
+                students.forEach(student => {
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.style.cssText = 'display:block;width:100%;text-align:left;padding:9px 10px;margin:5px 0;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;';
+                    option.textContent = (student.full_name || 'Student') + ' — ' +
+                        (student.student_id || 'No student ID') + ' — ' + (student.email || 'No email');
+                    option.addEventListener('click', () => selectStudent(student));
+                    infoDiv.appendChild(option);
+                });
+                infoDiv.style.display = 'block';
+            }
         } catch (err) {
-            console.error(err);
-            document.getElementById('resetStudentInfo').style.display = 'none';
-            const errorDiv = document.getElementById('resetErrorInfo');
-            errorDiv.style.display = 'block';
-            errorDiv.innerHTML = '⚠️ Error searching for student';
-            document.getElementById('confirmResetByEmailBtn').disabled = true;
+            console.error('Student lookup failed:', err);
+            if (errorDiv) { errorDiv.textContent = 'Unable to search for this student. Please try again.'; errorDiv.style.display = 'block'; }
         }
     }
+    window.searchStudentByNameOrEmail = searchStudentByNameOrEmail;
+    window.searchStudentByEmail = searchStudentByNameOrEmail;
 
 // ============================================
 // 🔒 RELEASE LOOKUP HELPER — avoids oversized Supabase .in() URLs
@@ -969,11 +1016,13 @@ window.loadStudentsWithResults = async function(options = {}) {
         const student = r.student_profile || {};
         const exam = r.exam_info || {};
         
-        const studentId = student.student_id || 'N/A';
-        const studentName = student.full_name || 'Unknown';
-        const studentEmail = student.email || '-';
-        const studentProgram = student.program || '-';
-        const examName = exam.exam_name || 'Exam ' + r.exam_id;
+        const studentId = escapeAdminHtml(student.student_id || 'N/A');
+        const studentNameRaw = String(student.full_name || 'Unknown');
+        const studentName = escapeAdminHtml(studentNameRaw);
+        const studentEmail = escapeAdminHtml(student.email || '-');
+        const studentProgram = escapeAdminHtml(student.program || '-');
+        const examNameRaw = String(exam.exam_name || 'Exam ' + r.exam_id);
+        const examName = escapeAdminHtml(examNameRaw);
         const typeLabel = exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
         const typeBadgeClass = exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
         
@@ -1026,10 +1075,15 @@ window.loadStudentsWithResults = async function(options = {}) {
         const retakeBadge = (r.result_status === 'RESET_FOR_RETAKE' && r.allow_retake === true && r.retake_unlocked === true) ? 
             `<span class="badge-retake"><i class="fas fa-undo"></i> Retake</span>` : '';
         
-        const studentUserId = r.student_id || '';
-        const examId = r.exam_id || 0;
-        const safeName = studentName.replace(/'/g, "\\'");
-        const safeExam = examName.replace(/'/g, "\\'");
+        const studentUserId = String(r.student_id || '');
+        const examId = Number(r.exam_id) || 0;
+        const safeStudentArgument = escapeAdminHtml(JSON.stringify(studentUserId));
+        const safeNameArgument = escapeAdminHtml(JSON.stringify(studentNameRaw));
+        const safeExamArgument = escapeAdminHtml(JSON.stringify(examNameRaw));
+        const editMarksHandler = escapeAdminHtml(`openEditMarksModal(${JSON.stringify(studentUserId)}, ${examId}, ${JSON.stringify(studentNameRaw)}, ${JSON.stringify(examNameRaw)})`);
+        const viewProgressHandler = escapeAdminHtml(`viewStudentProgress(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId})`);
+        const timerHandler = escapeAdminHtml(`openTimerModal(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId}, ${JSON.stringify(examNameRaw)})`);
+        const resetHandler = escapeAdminHtml(`resetSingleStudent(${JSON.stringify(studentUserId)}, ${examId}, ${JSON.stringify(studentNameRaw)}, ${JSON.stringify(examNameRaw)})`);
         
         return `<tr>
             <td style="padding:10px 14px; vertical-align:middle;">
@@ -1057,12 +1111,12 @@ window.loadStudentsWithResults = async function(options = {}) {
                 ${r.attempt_info?.is_retake ? '<span class="attempt-retake-label">Retake</span>' : '<span class="attempt-original-label">Original</span>'}
             </td>
             <td style="text-align:center;">
-                <span class="clickable-score" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')">
+                <span class="clickable-score" onclick="${editMarksHandler}">
                     ${score} / ${totalMarks} ✏️
                 </span>
             </td>
             <td style="text-align:center;">
-                <span class="clickable-percentage" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')">
+                <span class="clickable-percentage" onclick="${editMarksHandler}">
                     ${percentage}% ✏️
                 </span>
             </td>
@@ -1071,19 +1125,19 @@ window.loadStudentsWithResults = async function(options = {}) {
             <td style="text-align:center;">
                 <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
                     ${retakeBadge}
-                    <button class="action-btn btn-view" onclick="viewExamResult('${studentUserId}',${examId})" title="View Details">
+                    <button class="action-btn btn-view" onclick="viewExamResult(${safeStudentArgument},${examId})" title="View Details">
                         <i class="fas fa-eye"></i> View
                     </button>
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentUserId}', '${safeName}', ${examId})" title="View Progress">
+                    <button class="action-btn btn-info" onclick="${viewProgressHandler}" title="View Progress">
                         <i class="fas fa-chart-line"></i> Progress
                     </button>
-                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${safeName}', ${examId}, '${safeExam}')" title="Manage Timer">
+                    <button class="action-btn btn-warning" onclick="${timerHandler}" title="Manage Timer">
                         <i class="fas fa-clock"></i> Timer
                     </button>
-                    <button class="action-btn btn-info exam-attempt-history-btn" onclick="viewAttemptHistory('${studentUserId}', ${examId})" title="View current final result">
+                    <button class="action-btn btn-info exam-attempt-history-btn" onclick="viewAttemptHistory(${safeStudentArgument}, ${examId})" title="View current final result">
                         <i class="fas fa-history"></i> Current
                     </button>
-                    <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')" title="Reset exam and continue from saved progress">
+                    <button class="action-btn btn-reset-student" onclick="${resetHandler}" title="Reset exam and continue from saved progress">
                         <i class="fas fa-redo"></i> Retake
                     </button>
                 </div>
@@ -1166,13 +1220,13 @@ function displayAllStudents() {
     
     tbody.innerHTML = page.map(s => {
         // ✅ Safe data with fallbacks
-        const studentId = s.student_id || 'N/A';
-        const studentName = s.full_name || 'Unknown';
-        const studentEmail = s.email || '-';
-        const studentProgram = s.program || '-';
-        const studentBlock = s.block || '-';
-        const examsTaken = s.examsTaken || 0;
-        const userId = s.id || s.user_id || '';
+        const studentId = escapeAdminHtml(s.student_id || 'N/A');
+        const studentName = escapeAdminHtml(s.full_name || 'Unknown');
+        const studentEmail = escapeAdminHtml(s.email || '-');
+        const studentProgram = escapeAdminHtml(s.program || '-');
+        const studentBlock = escapeAdminHtml(s.block || '-');
+        const examsTaken = Math.max(0, Number(s.examsTaken) || 0);
+        const userId = escapeAdminHtml(JSON.stringify(String(s.id || s.user_id || '')));
         
         return `<tr>
             <!-- Column 1: Student ID -->
@@ -1200,7 +1254,7 @@ function displayAllStudents() {
             <!-- Column 7: Actions -->
             <td style="text-align:center;">
                 <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
-                    <button class="action-btn btn-view" onclick="viewStudentProfile('${userId}')" title="View Profile">
+                    <button class="action-btn btn-view" onclick="viewStudentProfile(${userId})" title="View Profile">
                         <i class="fas fa-user"></i> Profile
                     </button>
                     <button class="action-btn btn-assign" onclick="openAssignExamModal()" title="Assign Exam">
@@ -1290,7 +1344,10 @@ function displayAllExams(exams, countMap, hasResultsMap) {
             const passMark = e.pass_mark || getPassMark(totalMarks) || 60;
             const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
             const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
-            const examDisplayName = e.title || e.exam_name || 'Unnamed Exam';
+            const examDisplayName = String(e.title || e.exam_name || 'Unnamed Exam');
+            const safeExamDisplayName = escapeAdminHtml(examDisplayName);
+            const safeCourseDisplay = escapeAdminHtml(e.course_code || e.course || '-');
+            const safeExamNameArgument = escapeAdminHtml(JSON.stringify(examDisplayName));
 
             let timerData;
             try {
@@ -1337,13 +1394,13 @@ function displayAllExams(exams, countMap, hasResultsMap) {
 
             return `<tr>
                 <!-- Column 1: Exam Name -->
-                <td><strong>${examDisplayName}</strong></td>
+                <td><strong>${safeExamDisplayName}</strong></td>
                 
                 <!-- Column 2: Type -->
                 <td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td>
                 
                 <!-- Column 3: Course -->
-                <td>${e.course_code || e.course || '-'}</td>
+                <td>${safeCourseDisplay}</td>
                 
                 <!-- Column 4: Total Marks -->
                 <td>
@@ -1379,7 +1436,7 @@ function displayAllExams(exams, countMap, hasResultsMap) {
                 <td style="text-align:center;">
                     <label class="publish-toggle">
                         <input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} 
-                               onchange="togglePublish(${e.id}, '${publishStatus}')">
+                               onchange="togglePublish(${Number(e.id)}, ${escapeAdminHtml(JSON.stringify(String(publishStatus)))})">
                         <span style="margin-left:8px; font-size:0.7rem; font-weight:500; ${publishStatus === 'published' ? 'color:#059669;' : 'color:#94A3B8;'}">
                             ${publishStatus === 'published' ? '✅ Published' : '📝 Draft'}
                         </span>
@@ -1395,10 +1452,10 @@ function displayAllExams(exams, countMap, hasResultsMap) {
                         <button class="action-btn btn-assign" onclick="openAssignExamModal()" title="Assign to Students">
                             <i class="fas fa-user-plus"></i>
                         </button>
-                        <button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')" title="Reset All Students">
+                        <button class="action-btn btn-reset" onclick="openResetModal(${Number(e.id)}, ${safeExamNameArgument})" title="Reset All Students">
                             <i class="fas fa-undo"></i>
                         </button>
-                        <button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')" title="Delete Exam">
+                        <button class="action-btn btn-delete" onclick="deleteExam(${Number(e.id)}, ${safeExamNameArgument})" title="Delete Exam">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -1483,9 +1540,15 @@ function displayProctoringLogs() {
     
     tbody.innerHTML = page.map(log => {
         const student = log.student_profile || {};
-        const studentName = student.full_name || 'Unknown';
-        const studentIdDisplay = student.student_id || log.student_id || 'N/A';
-        const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
+        const studentName = escapeAdminHtml(student.full_name || 'Unknown');
+        const studentIdDisplay = escapeAdminHtml(student.student_id || log.student_id || 'N/A');
+        const examName = escapeAdminHtml(examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id);
+        const studentProgram = escapeAdminHtml(student.program || 'No program');
+        const eventType = escapeAdminHtml(String(log.event_type || 'unknown').replace(/_/g, ' '));
+        const details = escapeAdminHtml(log.details || '-');
+        const severityTextSafe = escapeAdminHtml(log.severity || 'info');
+        const viewAlertHandler = escapeAdminHtml(`viewAlertDetails(${JSON.stringify(String(log.id || ''))})`);
+        const resolveAlertHandler = escapeAdminHtml(`markAlertResolved(${JSON.stringify(String(log.id || ''))})`);
         
         // Severity styling
         let severityClass = 'status-pending';
@@ -1531,8 +1594,9 @@ function displayProctoringLogs() {
         
         const hasSnapshot = log.snapshot_url || log.screenshot_data;
         const snapshotUrl = log.snapshot_url || log.screenshot_data;
-        const snapshotHtml = hasSnapshot ?
-            `<a href="${snapshotUrl}" target="_blank" style="padding:2px 10px; font-size:0.6rem; margin-left:3px; background:linear-gradient(135deg,#10B981,#059669); color:white; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="View Snapshot">
+        const safeSnapshotUrl = typeof snapshotUrl === 'string' && (/^https?:\/\//i.test(snapshotUrl) || /^data:image\/(?:png|jpeg|webp);base64,/i.test(snapshotUrl)) ? escapeAdminHtml(snapshotUrl) : '';
+        const snapshotHtml = hasSnapshot && safeSnapshotUrl ?
+            `<a href="${safeSnapshotUrl}" target="_blank" style="padding:2px 10px; font-size:0.6rem; margin-left:3px; background:linear-gradient(135deg,#10B981,#059669); color:white; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="View Snapshot">
                 <i class="fas fa-camera"></i> Snapshot
             </a>` :
             '';
@@ -1544,7 +1608,7 @@ function displayProctoringLogs() {
             <!-- Column 1: Time -->
             <td style="font-size:0.75rem; white-space:nowrap; padding:12px 14px;">
                 <i class="far fa-clock" style="color:#94A3B8; margin-right:4px;"></i>
-                ${formatKenyaTime(log.timestamp)}
+                ${escapeAdminHtml(formatKenyaTime(log.timestamp))}
             </td>
             
             <!-- Column 2: Student ID -->
@@ -1556,7 +1620,7 @@ function displayProctoringLogs() {
             <td style="padding:12px 14px;">
                 <strong>${studentName}</strong>
                 <div style="font-size:0.65rem; color:#64748B; margin-top:2px;">
-                    <i class="fas fa-graduation-cap" style="margin-right:4px;"></i>${student.program || 'No program'}
+                    <i class="fas fa-graduation-cap" style="margin-right:4px;"></i>${studentProgram}
                 </div>
             </td>
             
@@ -1568,31 +1632,31 @@ function displayProctoringLogs() {
             <!-- Column 5: Alert Type -->
             <td style="padding:12px 14px;">
                 <span class="status-badge ${alertClass}" style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.7rem;">
-                    ${alertIcon} ${log.event_type.replace(/_/g, ' ')}
+                    ${alertIcon} ${eventType}
                 </span>
             </td>
             
             <!-- Column 6: Details -->
             <td style="padding:12px 14px; font-size:0.75rem; color:#475569; max-width:200px; word-wrap:break-word;">
-                ${log.details || '-'}
+                ${details}
             </td>
             
             <!-- Column 7: Severity -->
             <td style="padding:12px 14px; text-align:center;">
                 <span class="status-badge ${severityClass}" style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.7rem; text-transform:capitalize;">
-                    ${severityIcon} ${severityText}
+                    ${severityIcon} ${severityTextSafe}
                 </span>
             </td>
             
             <!-- Column 8: Actions -->
             <td style="padding:12px 14px; text-align:center;">
                 <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center; align-items:center;">
-                    <button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')" title="View Details" style="background:linear-gradient(135deg,#4299E1,#3182CE); color:white; border:none; padding:5px 12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
+                    <button class="action-btn btn-view" onclick="${viewAlertHandler}" title="View Details" style="background:linear-gradient(135deg,#4299E1,#3182CE); color:white; border:none; padding:5px 12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
                         <i class="fas fa-eye"></i> View
                     </button>
                     ${snapshotHtml}
                     ${severityText === 'critical' ? 
-                        `<button class="action-btn btn-danger" onclick="markAlertResolved('${log.id}')" title="Mark Resolved" style="background:linear-gradient(135deg,#DC2626,#B91C1C); color:white; border:none; padding:5px 10px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
+                        `<button class="action-btn btn-danger" onclick="${resolveAlertHandler}" title="Mark Resolved" style="background:linear-gradient(135deg,#DC2626,#B91C1C); color:white; border:none; padding:5px 10px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
                             <i class="fas fa-check"></i>
                         </button>` : 
                         ''
@@ -2408,7 +2472,7 @@ window.viewExamResult = async function(sid, eid) {
         const borderColor = displayStatus === 'PASS' ? '#059669' : (displayStatus === 'FAIL' ? '#DC2626' : '#F59E0B');
         
         if (modalTitle) {
-            modalTitle.innerHTML = `<i class="fas fa-file-alt"></i> Exam Result - ${profile?.full_name || 'Student'}`;
+            modalTitle.innerHTML = `<i class="fas fa-file-alt"></i> Exam Result - ${escapeAdminHtml(profile?.full_name || 'Student')}`;
         }
         
         if (modalContent) {
@@ -2419,14 +2483,14 @@ window.viewExamResult = async function(sid, eid) {
                         <div>
                             <h3 style="margin:0; color:#0A3D62; display:flex; align-items:center; gap:10px;">
                                 <span style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#0A3D62,#1a5a7a); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.9rem;">
-                                    ${profile?.full_name?.charAt(0) || 'S'}
+                                    ${escapeAdminHtml(profile?.full_name?.charAt(0) || 'S')}
                                 </span>
-                                ${profile?.full_name || 'Unknown Student'}
+                                ${escapeAdminHtml(profile?.full_name || 'Unknown Student')}
                             </h3>
                             <p style="margin:4px 0 0 0; color:#64748B; font-size:0.85rem;">
-                                <i class="fas fa-id-card"></i> ${profile?.student_id || 'N/A'} 
+                                <i class="fas fa-id-card"></i> ${escapeAdminHtml(profile?.student_id || 'N/A')} 
                                 <span style="margin:0 8px;">|</span>
-                                <i class="fas fa-envelope"></i> ${profile?.email || 'No email'}
+                                <i class="fas fa-envelope"></i> ${escapeAdminHtml(profile?.email || 'No email')}
                             </p>
                         </div>
                         <span class="exam-type-badge ${typeBadgeClass}" style="font-size:0.75rem; padding:4px 16px;">
@@ -2439,11 +2503,11 @@ window.viewExamResult = async function(sid, eid) {
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                             <div>
                                 <span style="color:#64748B; font-size:0.7rem; display:block;">Exam</span>
-                                <strong style="color:#0A3D62;">${exam?.exam_name || 'Unknown Exam'}</strong>
+                                <strong style="color:#0A3D62;">${escapeAdminHtml(exam?.exam_name || 'Unknown Exam')}</strong>
                             </div>
                             <div>
                                 <span style="color:#64748B; font-size:0.7rem; display:block;">Course</span>
-                                <strong style="color:#0A3D62;">${exam?.course_code || exam?.course || '-'}</strong>
+                                <strong style="color:#0A3D62;">${escapeAdminHtml(exam?.course_code || exam?.course || '-')}</strong>
                             </div>
                             <div>
                                 <span style="color:#64748B; font-size:0.7rem; display:block;">Duration</span>
@@ -2721,7 +2785,7 @@ window.viewStudentProfile = async function(pid) {
         }
         
         if (modalTitle) {
-            modalTitle.innerHTML = `<i class="fas fa-user-graduate"></i> Student Profile - ${student.full_name || 'Student'}`;
+            modalTitle.innerHTML = `<i class="fas fa-user-graduate"></i> Student Profile - ${escapeAdminHtml(student.full_name || 'Student')}`;
         }
         
         if (modalContent) {
@@ -2730,12 +2794,12 @@ window.viewStudentProfile = async function(pid) {
                     <!-- Header with Avatar -->
                     <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb;">
                         <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #0A3D62, #1a5a7a); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: white; flex-shrink: 0;">
-                            ${student.full_name?.charAt(0) || 'S'}
+                            ${escapeAdminHtml(student.full_name?.charAt(0) || 'S')}
                         </div>
                         <div>
-                            <h3 style="margin: 0; color: #0A3D62; font-size: 1.2rem;">${student.full_name || 'Unknown'}</h3>
+                            <h3 style="margin: 0; color: #0A3D62; font-size: 1.2rem;">${escapeAdminHtml(student.full_name || 'Unknown')}</h3>
                             <p style="margin: 2px 0 0 0; color: #64748B; font-size: 0.85rem;">
-                                <i class="fas fa-id-card"></i> ${student.student_id || 'N/A'}
+                                <i class="fas fa-id-card"></i> ${escapeAdminHtml(student.student_id || 'N/A')}
                             </p>
                         </div>
                         <div style="margin-left: auto; text-align: right;">
@@ -2751,35 +2815,35 @@ window.viewStudentProfile = async function(pid) {
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Email</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-envelope" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.email || 'N/A'}
+                                ${escapeAdminHtml(student.email || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Phone</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-phone" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.phone || 'N/A'}
+                                ${escapeAdminHtml(student.phone || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Program</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-graduation-cap" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.program || 'N/A'}
+                                ${escapeAdminHtml(student.program || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Block / Term</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-layer-group" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.block || student.block_term || 'N/A'}
+                                ${escapeAdminHtml(student.block || student.block_term || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
                             <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Intake Year</span>
                             <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
                                 <i class="fas fa-calendar" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
-                                ${student.intake_year || 'N/A'}
+                                ${escapeAdminHtml(student.intake_year || 'N/A')}
                             </span>
                         </div>
                         <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
@@ -2808,7 +2872,7 @@ window.viewStudentProfile = async function(pid) {
                             <div>
                                 <div style="font-size: 0.6rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.3px;">Latest Exam</div>
                                 <div style="font-size: 0.8rem; font-weight: 600; color: #0A3D62; margin-top: 2px;">
-                                    ${latestExam ? latestExam.exam_name : 'N/A'}
+                                    ${escapeAdminHtml(latestExam ? latestExam.exam_name : 'N/A')}
                                 </div>
                             </div>
                         </div>
@@ -2821,9 +2885,9 @@ window.viewStudentProfile = async function(pid) {
                                 <i class="fas fa-users" style="margin-right:6px;"></i> Guardian / Parent Information
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <div><span style="color:#64748B;">Name:</span> <strong>${student.guardian_name || student.parent_name || 'N/A'}</strong></div>
-                                <div><span style="color:#64748B;">Phone:</span> <strong>${student.guardian_phone || student.parent_phone || 'N/A'}</strong></div>
-                                <div style="grid-column: span 2;"><span style="color:#64748B;">Email:</span> <strong>${student.parent_email || 'N/A'}</strong></div>
+                                <div><span style="color:#64748B;">Name:</span> <strong>${escapeAdminHtml(student.guardian_name || student.parent_name || 'N/A')}</strong></div>
+                                <div><span style="color:#64748B;">Phone:</span> <strong>${escapeAdminHtml(student.guardian_phone || student.parent_phone || 'N/A')}</strong></div>
+                                <div style="grid-column: span 2;"><span style="color:#64748B;">Email:</span> <strong>${escapeAdminHtml(student.parent_email || 'N/A')}</strong></div>
                             </div>
                         </div>
                     ` : ''}
@@ -2890,15 +2954,16 @@ window.viewStudentProfile = async function(pid) {
         }
         
         const student = log.student_profile || {};
-        const examName = examsMap[log.exam_id]?.exam_name || 'Unknown Exam';
+        const examName = escapeAdminHtml(examsMap[log.exam_id]?.exam_name || 'Unknown Exam');
         const snapshotUrl = log.snapshot_url;
-        const snapshotHtml = snapshotUrl ?
+        const safeSnapshotUrl = typeof snapshotUrl === 'string' && (/^https?:\/\//i.test(snapshotUrl) || /^data:image\/(?:png|jpeg|webp);base64,/i.test(snapshotUrl)) ? escapeAdminHtml(snapshotUrl) : '';
+        const snapshotHtml = safeSnapshotUrl ?
             `<div style="margin-top:15px;border-top:1px solid #e5e7eb;padding-top:15px;">
                 <h4>📸 Camera Snapshot</h4>
                 <div style="background:#000;border-radius:8px;overflow:hidden;max-width:100%;">
-                    <img src="${snapshotUrl}" style="width:100%;max-height:400px;object-fit:contain;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+                    <img src="${safeSnapshotUrl}" style="width:100%;max-height:400px;object-fit:contain;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23333%22 width=%22200%22 height=%22150%22/%3E%3Ctext x=%2250%22 y=%2275%22 fill=%22%23666%22 font-family=%22Arial%22 font-size=%2214%22%3ENo Image%3C/text%3E%3C/svg%3E'">
                 </div>
-                <a href="${snapshotUrl}" target="_blank" style="margin-top:10px;display:inline-block;padding:8px 16px;background:#4C1D95;color:white;border-radius:6px;text-decoration:none;">View Full Image</a>
+                <a href="${safeSnapshotUrl}" target="_blank" style="margin-top:10px;display:inline-block;padding:8px 16px;background:#4C1D95;color:white;border-radius:6px;text-decoration:none;">View Full Image</a>
             </div>` :
             '<p style="color:#6b7280;margin-top:10px;">📷 No camera snapshot captured</p>';
         
@@ -2909,14 +2974,14 @@ window.viewStudentProfile = async function(pid) {
         document.getElementById('modalTitle').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Proctoring Alert Details';
         document.getElementById('modalContent').innerHTML = `
             <div style="background:${bgColor};padding:20px;border-radius:16px;">
-                <p><strong>👤 Student:</strong> ${student.full_name || 'Unknown'} (${student.student_id || log.student_id || 'N/A'})</p>
+                <p><strong>👤 Student:</strong> ${escapeAdminHtml(student.full_name || 'Unknown')} (${escapeAdminHtml(student.student_id || log.student_id || 'N/A')})</p>
                 <p><strong>📝 Exam:</strong> ${examName}</p>
                 <p><strong>⏰ Time:</strong> ${formatKenyaTime(log.timestamp)}</p>
-                <p><strong>📹 Alert Type:</strong> ${log.event_type}</p>
-                <p><strong>📋 Details:</strong> ${log.details || 'No details'}</p>
-                <p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${log.severity || 'info'}</span></p>
-                <p><strong>🌐 IP Address:</strong> ${log.ip_address || 'N/A'}</p>
-                <p><strong>💻 Device:</strong> ${log.device_info || 'N/A'}</p>
+                <p><strong>📹 Alert Type:</strong> ${escapeAdminHtml(log.event_type || 'Unknown event')}</p>
+                <p><strong>📋 Details:</strong> ${escapeAdminHtml(log.details || 'No details')}</p>
+                <p><strong>⚠️ Severity:</strong> <span class="${log.severity === 'critical' ? 'status-critical' : 'status-pending'}">${escapeAdminHtml(log.severity || 'info')}</span></p>
+                <p><strong>🌐 IP Address:</strong> ${escapeAdminHtml(log.ip_address || 'N/A')}</p>
+                <p><strong>💻 Device:</strong> ${escapeAdminHtml(log.device_info || 'N/A')}</p>
             </div>${snapshotHtml}`;
         document.getElementById('studentModal').style.display = 'flex';
     };
@@ -2926,6 +2991,7 @@ window.viewStudentProfile = async function(pid) {
     // ============================================
     window.viewStudentProgress = async function(studentId, studentName, examId) {
         try {
+            const studentNameSafe = escapeAdminHtml(studentName || 'Unknown');
             document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-line"></i> Student Progress`;
             document.getElementById('modalContent').innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading...</div>';
             document.getElementById('studentModal').style.display = 'flex';
@@ -2949,14 +3015,14 @@ window.viewStudentProfile = async function(pid) {
                 .eq('id', parseInt(examId))
                 .single();
             
-            const examName = exam?.exam_name || 'Exam ' + examId;
+            const examName = escapeAdminHtml(exam?.exam_name || 'Exam ' + examId);
             const answeredCount = answers?.length || 0;
             const totalQuestions = questions?.length || 0;
             const correctCount = answers?.filter(a => a.selected_answer && a.marks > 0).length || 0;
             
             let html = `
                 <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
-                    <h3>${studentName}</h3>
+                    <h3>${escapeAdminHtml(studentName)}</h3>
                     <p style="color:#64748B;">${examName}</p>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
                         <div style="background:white;padding:10px;border-radius:8px;text-align:center;">
@@ -2998,9 +3064,9 @@ window.viewStudentProfile = async function(pid) {
                 html += `
                     <tr style="border-bottom:1px solid #E2E8F0;">
                         <td style="padding:8px;">${index + 1}</td>
-                        <td style="padding:8px;">${q.question_text.substring(0, 60)}...</td>
-                        <td style="padding:8px;text-align:center;">${answer?.selected_answer || '-'}</td>
-                        <td style="padding:8px;text-align:center;">${q.correct_answer}</td>
+                        <td style="padding:8px;">${escapeAdminHtml(q.question_text.substring(0, 60))}...</td>
+                        <td style="padding:8px;text-align:center;">${escapeAdminHtml(answer?.selected_answer || '-')}</td>
+                        <td style="padding:8px;text-align:center;">${escapeAdminHtml(q.correct_answer || '')}</td>
                         <td style="padding:8px;text-align:center;color:${statusColor};font-weight:600;">${statusIcon} ${statusText}</td>
                     </tr>
                 `;
@@ -3010,7 +3076,7 @@ window.viewStudentProfile = async function(pid) {
             document.getElementById('modalContent').innerHTML = html;
             
         } catch (error) {
-            document.getElementById('modalContent').innerHTML = `<div style="color:#DC2626;padding:20px;">Error: ${error.message}</div>`;
+            document.getElementById('modalContent').innerHTML = `<div style="color:#DC2626;padding:20px;">Error: ${escapeAdminHtml(error.message)}</div>`;
         }
     };
 
@@ -3071,8 +3137,8 @@ window.viewStudentProfile = async function(pid) {
 
         modalContent.innerHTML = `
             <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);color:white;padding:18px;border-radius:14px;margin-bottom:16px;">
-                <div style="font-size:18px;font-weight:800;">${profile?.full_name || 'Student'}</div>
-                <div style="font-size:12px;opacity:.85;margin-top:3px;">${exam?.exam_name || 'Exam ' + examId} · Current final record only</div>
+                <div style="font-size:18px;font-weight:800;">${escapeAdminHtml(profile?.full_name || 'Student')}</div>
+                <div style="font-size:12px;opacity:.85;margin-top:3px;">${escapeAdminHtml(exam?.exam_name || 'Exam ' + examId)} · Current final record only</div>
             </div>
             <div style="border:1px solid #E2E8F0;border-radius:14px;padding:18px;background:#fff;">
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
@@ -3084,7 +3150,7 @@ window.viewStudentProfile = async function(pid) {
                     <strong>Current attempt:</strong> #${attempt?.attempt_number || grade?.attempt_number || 1}
                     ${attempt?.is_retake ? ' · continuation/reset' : ''}
                     · <strong>Submission:</strong> ${formatKenyaDateTime(attempt?.submitted_at)}
-                    · <strong>Result:</strong> ${status.replaceAll('_',' ')}
+                    · <strong>Result:</strong> ${escapeAdminHtml(status.replaceAll('_',' '))}
                     · <strong>Release:</strong> ${released ? 'Released' : 'Not released'}
                 </div>
                 <div style="margin-top:14px;padding:10px 12px;background:#EFF6FF;border-left:4px solid #2563EB;border-radius:8px;color:#1E3A8A;font-size:12px;">
@@ -3121,23 +3187,27 @@ window.viewStudentProfile = async function(pid) {
                 .eq('user_id', studentId)
                 .single();
             
-            document.getElementById('modalTitle').innerHTML = `🚨 Violations - ${profile?.full_name || 'Student'}`;
+            document.getElementById('modalTitle').innerHTML = `🚨 Violations - ${escapeAdminHtml(profile?.full_name || 'Student')}`;
+            const snapshotUrl = String(violations[0]?.snapshot_url || '');
+            const safeSnapshotUrl = (/^https?:\/\//i.test(snapshotUrl) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=\s]+$/i.test(snapshotUrl))
+                ? escapeAdminHtml(snapshotUrl)
+                : '';
             document.getElementById('modalContent').innerHTML = `
                 <div style="max-height:400px; overflow-y:auto;">
                     ${violations.map(v => `
                         <div style="padding:10px; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center;">
                             <div>
-                                <span style="font-weight:600;">${v.event_type}</span>
-                                <div style="font-size:0.8rem; color:#64748B;">${v.details || ''}</div>
+                                <span style="font-weight:600;">${escapeAdminHtml(v.event_type || 'Unknown event')}</span>
+                                <div style="font-size:0.8rem; color:#64748B;">${escapeAdminHtml(v.details || '')}</div>
                             </div>
-                            <span style="font-size:0.7rem; color:#64748B;">${formatKenyaTime(v.timestamp)}</span>
+                            <span style="font-size:0.7rem; color:#64748B;">${escapeAdminHtml(formatKenyaTime(v.timestamp))}</span>
                         </div>
                     `).join('')}
                 </div>
-                ${violations[0]?.snapshot_url ? `
+                ${safeSnapshotUrl ? `
                     <div style="margin-top:16px; border-top:1px solid #E2E8F0; padding-top:16px;">
                         <h4>Latest Snapshot</h4>
-                        <img src="${violations[0].snapshot_url}" style="max-width:100%; max-height:300px; border-radius:8px;">
+                        <img src="${safeSnapshotUrl}" alt="Latest proctoring snapshot" style="max-width:100%; max-height:300px; border-radius:8px;">
                     </div>
                 ` : ''}
             `;
@@ -3153,6 +3223,8 @@ window.viewStudentProfile = async function(pid) {
     // ============================================
     window.openEditMarksModal = async function(studentId, examId, studentName, examName) {
         try {
+            const studentNameSafe = escapeAdminHtml(studentName || 'Unknown');
+            const examNameSafe = escapeAdminHtml(examName || 'Exam');
             document.getElementById('modalTitle').innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading...`;
             document.getElementById('modalContent').innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading student data...</div>';
             document.getElementById('studentModal').style.display = 'flex';
@@ -3194,8 +3266,8 @@ window.viewStudentProfile = async function(pid) {
             
             let editHtml = `
                 <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
-                    <h3 style="margin-bottom:8px;">${studentName}</h3>
-                    <p style="color:#64748B;font-size:0.85rem;">${examName} (${isCatExam ? 'CAT' : 'Final Exam'})</p>
+                    <h3 style="margin-bottom:8px;">${escapeAdminHtml(studentName)}</h3>
+                    <p style="color:#64748B;font-size:0.85rem;">${examNameSafe} (${isCatExam ? 'CAT' : 'Final Exam'})</p>
                     <p style="color:#64748B;font-size:0.8rem;">Total Marks: ${totalMarks} | Pass Mark: ${passMark} (60%)</p>
                     <p><strong>Current Score:</strong> ${currentTotal} / ${totalMarks} (${currentPercentage}%)</p>
                     <p><strong>Current Status:</strong> <span class="${parseFloat(currentPercentage) >= passMark ? 'status-pass' : 'status-fail'}">${parseFloat(currentPercentage) >= passMark ? 'PASS' : 'FAIL'}</span></p>
@@ -3247,7 +3319,7 @@ window.viewStudentProfile = async function(pid) {
                 </div>
             `;
             
-            document.getElementById('modalTitle').innerHTML = `<i class="fas fa-edit"></i> Edit Marks - ${studentName}`;
+            document.getElementById('modalTitle').innerHTML = `<i class="fas fa-edit"></i> Edit Marks - ${escapeAdminHtml(studentName)}`;
             document.getElementById('modalContent').innerHTML = editHtml;
             
             setTimeout(() => {
@@ -3265,7 +3337,7 @@ window.viewStudentProfile = async function(pid) {
             document.getElementById('modalContent').innerHTML = `
                 <div style="color:#DC2626;padding:20px;text-align:center;">
                     <i class="fas fa-exclamation-circle fa-2x"></i>
-                    <p>Error: ${error.message}</p>
+                    <p>Error: ${escapeAdminHtml(error.message)}</p>
                     <button class="btn btn-primary" onclick="closeModal()">Close</button>
                 </div>
             `;
@@ -3636,7 +3708,7 @@ window.viewStudentProfile = async function(pid) {
             document.getElementById('cameraLoading').innerHTML = `
                 <div style="text-align:center; color:#DC2626;">
                     <i class="fas fa-exclamation-triangle fa-3x"></i>
-                    <p style="margin-top:16px;">Error: ${error.message}</p>
+                    <p style="margin-top:16px;">Error: ${escapeAdminHtml(error.message)}</p>
                     <button class="btn btn-primary" onclick="refreshCameraFeed()" style="margin-top:12px;">
                         <i class="fas fa-sync"></i> Retry
                     </button>
@@ -3714,8 +3786,8 @@ window.viewStudentProfile = async function(pid) {
             }
             list.innerHTML = alerts.map(a => `
                 <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #E2E8F0;">
-                    <span>${a.event_type === 'multiple_faces_detected' ? '🚨' : '⚠️'} ${a.event_type}</span>
-                    <span style="color:#64748B; font-size:0.7rem;">${formatKenyaTime(a.timestamp)}</span>
+                    <span>${a.event_type === 'multiple_faces_detected' ? '🚨' : '⚠️'} ${escapeAdminHtml(a.event_type || 'unknown')}</span>
+                    <span style="color:#64748B; font-size:0.7rem;">${escapeAdminHtml(formatKenyaTime(a.timestamp))}</span>
                 </div>
             `).join('');
         } catch (error) {
@@ -3962,23 +4034,29 @@ window.deleteSnapshot = async function(index, snapshotId) {
 /**
  * Clear all snapshots
  */
-window.clearAllSnapshots = function() {
+window.clearAllSnapshots = async function() {
     if (!confirm('Delete all snapshots for this student?')) return;
-    
-    // Delete from database
-    snapshotCache.forEach(async (snapshot) => {
-        if (snapshot.id) {
-            await sb
-                .from('exam_proctoring_logs')
-                .update({ snapshot_url: null, screenshot_data: null })
-                .eq('id', snapshot.id);
+    const snapshotsToClear = snapshotCache.filter(snapshot => snapshot.id);
+    if (!snapshotsToClear.length) {
+        snapshotCache = [];
+        renderSnapshotGallery();
+        showToast('No saved snapshots to clear', 'info');
+        return;
+    }
+    try {
+        for (const snapshot of snapshotsToClear) {
+            const { error } = await sb.from('exam_proctoring_logs')
+                .update({ snapshot_url: null, screenshot_data: null }).eq('id', snapshot.id);
+            if (error) throw error;
         }
-    });
-    
-    // Clear cache
-    snapshotCache = [];
-    renderSnapshotGallery();
-    showToast('All snapshots cleared', 'info');
+        snapshotCache = [];
+        renderSnapshotGallery();
+        showToast('All snapshots cleared', 'success');
+    } catch (error) {
+        console.error('Failed to clear snapshots:', error);
+        showToast('Some snapshots could not be cleared: ' + error.message, 'error');
+        await loadSnapshots(currentCameraStudent, currentCameraExam);
+    }
 };
 
 /**
@@ -4144,7 +4222,7 @@ window.openCameraView = async function(studentId, examId, studentName, examName)
     // ---- Title (may not exist, safe check) ----
     const title = document.getElementById('cameraModalTitle');
     if (title) {
-        title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${currentCameraStudentName}`;
+        title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${escapeAdminHtml(currentCameraStudentName)}`;
     }
 
     // ---- Show modal FIRST so its children are in the DOM ----
@@ -4285,8 +4363,8 @@ window.closeCameraModal = function() {
         
         loadingDiv.style.display = 'block';
         loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning for active students...';
-        table.style.display = 'none';
-        statsDiv.style.display = 'none';
+        if (table) table.style.display = 'none';
+        if (statsDiv) statsDiv.style.display = 'none';
         
         try {
             const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -4308,7 +4386,8 @@ window.closeCameraModal = function() {
                 loadingDiv.style.display = 'block';
                 table.style.display = 'none';
                 statsDiv.style.display = 'none';
-                document.getElementById('liveBadge').textContent = '0';
+                const liveBadge = document.getElementById('liveBadge');
+                if (liveBadge) liveBadge.textContent = '0';
                 window.liveStudentsData = [];
                 return;
             }
@@ -4432,17 +4511,19 @@ window.closeCameraModal = function() {
             });
             
             window.liveStudentsData = progressData;
-            document.getElementById('liveBadge').textContent = progressData.length;
+            const liveBadge = document.getElementById('liveBadge');
+            if (liveBadge) liveBadge.textContent = progressData.length;
             window.displayLiveStudents();
             
             loadingDiv.style.display = 'none';
-            table.style.display = 'table';
-            statsDiv.style.display = 'block';
-            document.getElementById('liveCountDisplay').textContent = progressData.length;
+            if (table) table.style.display = 'table';
+            if (statsDiv) statsDiv.style.display = 'block';
+            const liveCountDisplay = document.getElementById('liveCountDisplay');
+            if (liveCountDisplay) liveCountDisplay.textContent = progressData.length;
             
         } catch (error) {
             console.error('❌ Error loading live students:', error);
-            loadingDiv.innerHTML = '❌ Error loading live students: ' + error.message;
+            loadingDiv.textContent = '❌ Error loading live students: ' + error.message;
             loadingDiv.style.color = '#DC2626';
             loadingDiv.style.display = 'block';
             window.liveStudentsData = [];
@@ -4450,6 +4531,11 @@ window.closeCameraModal = function() {
     };
 
    // ✅ FIXED: Display live students with proper null checks
+// Compatibility handler used by the Live Students Refresh button.
+window.refreshLiveStudents = function() {
+    return window.loadLiveStudents();
+};
+
 window.displayLiveStudents = function() {
     const tbody = document.getElementById('liveStudentsBody');
     
@@ -4493,7 +4579,7 @@ window.displayLiveStudents = function() {
         const statusText = isActive ? 'Active' : `Inactive (${inactiveMinutes}m ago)`;
         
         // Progress bar
-        const progress = item.progress || 0;
+        const progress = Math.max(0, Math.min(100, Number(item.progress) || 0));
         const progressBar = `
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="flex:1; background:#E2E8F0; border-radius:10px; height:8px; overflow:hidden; width:80px;">
@@ -4524,30 +4610,32 @@ window.displayLiveStudents = function() {
         }
         
         // Student info
-        const studentName = student.full_name || 'Unknown';
-        const studentId = student.student_id || 'N/A';
-        const studentUserId = student.user_id || '';
-        const examName = exam.exam_name || 'Unknown Exam';
-        const examId = exam.id || 0;
-        const program = student.program || '';
-        
-        // Escape for onclick
-        const safeName = studentName.replace(/'/g, "\\'");
-        const safeExam = examName.replace(/'/g, "\\'");
+        const studentNameRaw = String(student.full_name || 'Unknown');
+        const studentName = escapeAdminHtml(studentNameRaw);
+        const studentId = escapeAdminHtml(student.student_id || 'N/A');
+        const studentUserId = String(student.user_id || '');
+        const examNameRaw = String(exam.exam_name || 'Unknown Exam');
+        const examName = escapeAdminHtml(examNameRaw);
+        const examId = Number(exam.id) || 0;
+        const program = escapeAdminHtml(student.program || '');
+        const safeStudentArgument = escapeAdminHtml(JSON.stringify(studentUserId));
+        const progressHandler = escapeAdminHtml(`viewStudentProgress(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId})`);
+        const timerHandler = escapeAdminHtml(`openTimerModal(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId}, ${JSON.stringify(examNameRaw)})`);
+        const submitHandler = escapeAdminHtml(`forceSubmitStudent(${JSON.stringify(studentUserId)}, ${examId})`);
         
         // Actions
         let actions = '';
         if (studentUserId && examId) {
             actions = `
-                <button class="action-btn btn-view" onclick="viewStudentProgress('${studentUserId}', '${safeName}', ${examId})" 
+                <button class="action-btn btn-view" onclick="${progressHandler}" 
                         style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
                     <i class="fas fa-chart-line"></i> Progress
                 </button>
-                <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${safeName}', ${examId}, '${safeExam}')" 
+                <button class="action-btn btn-warning" onclick="${timerHandler}" 
                         style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
                     <i class="fas fa-clock"></i> Timer
                 </button>
-                <button class="action-btn btn-danger" onclick="forceSubmitStudent('${studentUserId}', ${examId})" 
+                <button class="action-btn btn-danger" onclick="${submitHandler}" 
                         style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;">
                     <i class="fas fa-paper-plane"></i> Submit
                 </button>
@@ -4578,10 +4666,10 @@ window.displayLiveStudents = function() {
             </td>
             <td style="padding:10px 12px; text-align:center; font-size:1.2rem;">
                 ${item.cameraIcon || '⚪'}
-                <div style="font-size:0.55rem; color:#64748B;">${item.cameraStatus || 'unknown'}</div>
+                <div style="font-size:0.55rem; color:#64748B;">${escapeAdminHtml(item.cameraStatus || 'unknown')}</div>
             </td>
             <td style="padding:10px 12px; font-size:0.7rem; color:#64748B;">
-                ${formattedTime}
+                ${escapeAdminHtml(formattedTime)}
                 <div style="font-size:0.6rem;">${alertIcon}</div>
             </td>
             <td style="padding:10px 12px;">
@@ -4831,18 +4919,20 @@ window.displayLiveFeed = function() {
         // Get image URL
         let imageUrl = null;
         if (log.snapshot_url) {
-            imageUrl = log.snapshot_url;
+            imageUrl = String(log.snapshot_url);
         } else if (log.screenshot_data) {
-            imageUrl = log.screenshot_data.startsWith('data:') ? 
-                log.screenshot_data : 
-                'data:image/jpeg;base64,' + log.screenshot_data;
+            imageUrl = String(log.screenshot_data).startsWith('data:') ?
+                String(log.screenshot_data) :
+                'data:image/jpeg;base64,' + String(log.screenshot_data);
         }
+        if (imageUrl && !(/^https?:\/\//i.test(imageUrl) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=\s]+$/i.test(imageUrl))) imageUrl = null;
+        if (imageUrl) imageUrl = escapeAdminHtml(imageUrl);
         
         // Use the data from the item object
-        const studentName = item.studentName || 'Unknown Student';
-        const studentId = item.studentRegNumber || 'N/A';
-        const examName = item.examName || 'Exam';
-        const program = item.program || '';
+        const studentName = escapeAdminHtml(item.studentName || 'Unknown Student');
+        const studentId = escapeAdminHtml(item.studentRegNumber || 'N/A');
+        const examName = escapeAdminHtml(item.examName || 'Exam');
+        const program = escapeAdminHtml(item.program || '');
         
         // Status color for progress bar
         let progressColor = '#38A169';
@@ -4877,8 +4967,8 @@ window.displayLiveFeed = function() {
         let cameraContent = '';
         if (imageUrl) {
             cameraContent = `
-                <img src="${imageUrl}" 
-                     alt="Camera feed for ${studentName}" 
+                <img src="${escapeAdminHtml(imageUrl)}" 
+                     alt="Camera feed for ${safeStudentName}" 
                      style="width:100%; height:250px; object-fit:cover;"
                      onerror="this.parentElement.innerHTML='<div class=\\'no-camera\\' style=\\'display:flex; align-items:center; justify-content:center; height:250px; color:white; flex-direction:column; gap:12px; background:#1a1a2e;\\'><i class=\\'fas fa-camera-slash\\' style=\\'font-size:3rem; opacity:0.5;\\'></i><p>Image failed to load</p><p style=\\'font-size:0.8rem; opacity:0.6;\\'>Please check the URL</p></div>'">
             `;
@@ -4893,19 +4983,20 @@ window.displayLiveFeed = function() {
         }
         
         // Actions
-        const safeName = studentName.replace(/'/g, "\\'");
-        const safeExam = examName.replace(/'/g, "\\'");
-        const userId = log.student_id || '';
-        const examId = log.exam_id || 0;
+        const userId = String(log.student_id || '');
+        const examId = Number(log.exam_id) || 0;
+        const openCameraHandler = escapeAdminHtml(`openCameraView(${JSON.stringify(userId)}, ${examId}, ${JSON.stringify(studentName)}, ${JSON.stringify(examName)})`);
+        const pastResultHandler = escapeAdminHtml(`viewPastResult(${JSON.stringify(userId)}, ${examId})`);
+        const violationsHandler = escapeAdminHtml(`viewViolations(${JSON.stringify(userId)}, ${examId})`);
         
         return `
             <div class="${cardClass}" data-nchsm-live-card="${!item.isPast ? 'true' : 'false'}" data-student-id="${String(userId).replace(/"/g, '&quot;')}" data-exam-id="${String(examId)}">
                 <div class="card-header">
                     <div class="student-info">
-                        <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
+                        <div class="avatar">${escapeAdminHtml(studentName.charAt(0).toUpperCase())}</div>
                         <div>
-                            <div class="name">${studentName}</div>
-                            <div class="details">${studentId} • ${program}</div>
+                            <div class="name">${safeStudentName}</div>
+                            <div class="details">${safeStudentId} • ${safeProgram}</div>
                         </div>
                     </div>
                     <span class="status-badge ${item.statusClass}">${item.statusLabel}</span>
@@ -4935,8 +5026,8 @@ window.displayLiveFeed = function() {
                     <div class="actions">
                         ${item.isPast
                             ? `<button class="btn-view-cam" onclick="viewPastSnapshot('${userId}', ${examId})" ${imageUrl ? '' : 'disabled'} title="${imageUrl ? 'Open saved snapshot' : 'No saved snapshot available'}"><i class="fas fa-image"></i> View Evidence</button>`
-                            : `<button class="btn-view-cam" onclick="openCameraView('${userId}', ${examId}, '${safeName}', '${safeExam}')"><i class="fas fa-expand"></i> Request Live Preview</button>`}
-                        ${item.hasViolations ? `<button class="btn-alert" onclick="viewViolations('${userId}', ${examId})">🚨 Review alert</button>` : ''}
+                            : `<button class="btn-view-cam" onclick="${openCameraHandler}"><i class="fas fa-expand"></i> Request Live Preview</button>`}
+                        ${item.hasViolations ? `<button class="btn-alert" onclick="${violationsHandler}">🚨 Review alert</button>` : ''}
                     </div>
                 </div>
             </div>
@@ -5379,17 +5470,21 @@ function renderLiveFeedCards(grid, pageData) {
         const snapshot = item.snapshot || log;
         
         if (snapshot.snapshot_url) {
-            imageUrl = snapshot.snapshot_url + '?t=' + Date.now();
+            imageUrl = snapshot.snapshot_url + (snapshot.snapshot_url.includes('?') ? '&' : '?') + 't=' + Date.now();
         } else if (snapshot.screenshot_data) {
             imageUrl = snapshot.screenshot_data.startsWith('data:') ? 
                 snapshot.screenshot_data : 
                 'data:image/jpeg;base64,' + snapshot.screenshot_data;
         }
         
-        const studentName = item.studentName || 'Unknown';
+        const studentName = String(item.studentName || 'Unknown');
         const studentId = item.studentRegNumber || 'N/A';
         const examName = item.examName || 'Exam';
         const program = item.program || '';
+        const safeStudentName = escapeAdminHtml(studentName);
+        const safeStudentId = escapeAdminHtml(studentId);
+        const safeExamName = escapeAdminHtml(examName);
+        const safeProgram = escapeAdminHtml(program);
         
         // Status
         let statusClass = 'status-active';
@@ -5442,7 +5537,7 @@ function renderLiveFeedCards(grid, pageData) {
                     <i class="fas fa-user-slash"></i>
                     <p>${item.isPast ? 'No snapshot available' : 'Connecting to camera…'}</p>
                 </div>
-                <video class="nchsm-card-live-video" autoplay muted playsinline style="position:relative;z-index:1;display:none;width:100%;height:250px;object-fit:cover;background:#101827;" aria-label="Live camera preview for ${studentName}"></video>
+                <video class="nchsm-card-live-video" autoplay muted playsinline style="position:relative;z-index:1;display:none;width:100%;height:250px;object-fit:cover;background:#101827;" aria-label="Live camera preview for ${safeStudentName}"></video>
             `;
         }
         
@@ -5455,11 +5550,11 @@ function renderLiveFeedCards(grid, pageData) {
         // Result badge for past students
         let resultBadge = '';
         if (item.isPast && item.result) {
-            const status = item.result.result_status || 'PENDING';
-            const percentage = item.result.percentage || 0;
+            const status = String(item.result.result_status || 'PENDING');
+            const percentage = Number(item.result.percentage) || 0;
             resultBadge = `
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <span class="${status === 'PASS' ? 'status-pass' : 'status-fail'}">${status}</span>
+                    <span class="${status === 'PASS' ? 'status-pass' : 'status-fail'}">${escapeAdminHtml(status)}</span>
                     <span style="font-size:0.7rem; font-weight:600; color:#0A3D62;">${percentage.toFixed(0)}%</span>
                 </div>
             `;
@@ -5472,7 +5567,7 @@ function renderLiveFeedCards(grid, pageData) {
         const examId = log.exam_id || 0;
         
         return `
-            <div class="${cardClass}">
+            <div class="${cardClass}" data-nchsm-live-card="${!item.isPast ? 'true' : 'false'}" data-student-id="${String(userId).replace(/"/g, '&quot;')}" data-exam-id="${String(examId)}">
                 <div class="card-header">
                     <div class="student-info">
                         <div class="avatar">${studentName.charAt(0).toUpperCase()}</div>
@@ -5503,7 +5598,7 @@ function renderLiveFeedCards(grid, pageData) {
                 <div class="card-footer">
                     <div>
                         <span class="info-item"><i class="fas fa-clock"></i> ${timeDisplay}</span>
-                        <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${examName}</span>
+                        <span class="info-item" style="margin-left:12px;"><i class="fas fa-book"></i> ${safeExamName}</span>
                         ${resultBadge}
                     </div>
                     <div class="actions">
@@ -5512,7 +5607,7 @@ function renderLiveFeedCards(grid, pageData) {
                                 <i class="fas fa-expand"></i> View
                             </button>
                         ` : `
-                            <button class="btn-view-cam" onclick="viewPastResult('${userId}', ${examId})" style="background:#38A169;">
+                            <button class="btn-view-cam" onclick="${pastResultHandler}" style="background:#38A169;">
                                 <i class="fas fa-chart-bar"></i> Results
                             </button>
                         `}
@@ -5554,10 +5649,10 @@ window.viewPastResult = async function(studentId, examId) {
             .eq('id', parseInt(examId))
             .single();
         
-        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-bar"></i> Exam Results - ${profile?.full_name || 'Student'}`;
+        document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-bar"></i> Exam Results - ${escapeAdminHtml(profile?.full_name || 'Student')}`;
         document.getElementById('modalContent').innerHTML = `
             <div style="background:#F8FAFC; padding:20px; border-radius:16px;">
-                <p><strong>📝 Exam:</strong> ${exam?.exam_name || 'Exam ' + examId}</p>
+                <p><strong>📝 Exam:</strong> ${escapeAdminHtml(exam?.exam_name || 'Exam ' + examId)}</p>
                 <p><strong>📊 Score:</strong> ${result.marks || 0} / ${exam?.total_marks || result.total_score || 0}</p>
                 <p><strong>📈 Percentage:</strong> ${result.percentage || 0}%</p>
                 <p><strong>📋 Status:</strong> <span class="${result.result_status === 'PASS' ? 'status-pass' : 'status-fail'}">${result.result_status || 'PENDING'}</span></p>
@@ -6054,10 +6149,60 @@ window.displayLiveFeed = function() {
         if (modal) modal.style.display = 'none';
     };
 
+    window.openResetByEmailModal = async function() {
+        const modal = document.getElementById('resetByEmailModal');
+        const emailInput = document.getElementById('resetEmailInput');
+        const infoDiv = document.getElementById('resetStudentInfo');
+        const errorDiv = document.getElementById('resetErrorInfo');
+        const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+        window.resetTargetStudent = null;
+        window.resetTargetSearchTerm = '';
+        if (emailInput) emailInput.value = '';
+        if (infoDiv) infoDiv.style.display = 'none';
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (confirmBtn) confirmBtn.disabled = true;
+        await loadExamsForResetDropdown();
+        if (modal) modal.style.display = 'flex';
+        if (emailInput) emailInput.focus();
+    };
+
+    window.confirmResetByEmail = async function() {
+        const student = window.resetTargetStudent;
+        const currentSearch = String(document.getElementById('resetEmailInput')?.value || '').trim().toLowerCase();
+        const examId = parseInt(document.getElementById('resetExamSelect')?.value, 10);
+        const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+        if (!student || !student.user_id || !currentSearch || currentSearch !== window.resetTargetSearchTerm) {
+            showToast('Search for and select the student again before authorizing a retake.', 'warning');
+            if (confirmBtn) confirmBtn.disabled = true;
+            return;
+        }
+        if (!examId) {
+            showToast('Select the exam for this student.', 'warning');
+            document.getElementById('resetExamSelect')?.focus();
+            return;
+        }
+        const examName = document.getElementById('resetExamSelect')?.selectedOptions?.[0]?.textContent || ('Exam ' + examId);
+        if (!confirm('Authorize continuation for ' + student.full_name + ' (' + (student.email || 'no email') + ')?\\n\\nExam: ' + examName + '\\n\\nThe secure server action will preserve the existing attempt and saved progress.')) return;
+        if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authorizing...'; }
+        try {
+            await authorizeRetakeForStudent(student.user_id, examId, student.full_name || 'Student', 'Admin Retake by Name or Email');
+            showToast('Retake continuation authorized for ' + student.full_name + '.', 'success');
+            window.closeResetByEmailModal();
+            await Promise.allSettled([loadStudentsWithResults(), loadAllExams(), loadAllStudents()]);
+            updateStats();
+        } catch (error) {
+            console.error('Retake authorization failed:', error);
+            showToast('Unable to authorize retake: ' + (error?.message || 'Unknown error'), 'error');
+        } finally {
+            if (confirmBtn) { confirmBtn.disabled = !window.resetTargetStudent; confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Authorize Retake'; }
+        }
+    };
+
     window.closeResetByEmailModal = function() {
         const modal = document.getElementById('resetByEmailModal');
         if (modal) modal.style.display = 'none';
         window.resetTargetStudent = null;
+        window.resetTargetSearchTerm = '';
         const emailInput = document.getElementById('resetEmailInput');
         if (emailInput) emailInput.value = '';
         const infoDiv = document.getElementById('resetStudentInfo');
@@ -6082,12 +6227,47 @@ window.displayLiveFeed = function() {
     // ============================================
     // 📝 RELEASE MODAL
     // ============================================
-    window.openReleaseModal = async function() {
-        const { data: exams } = await sb.from('exams').select('id, exam_name').order('id', { ascending: false });
+    // Final and End-of-Block assessments must remain internal until formally authorized.
+function isRestrictedExamForStudentRelease(exam) {
+    const normalize = value => String(value || '').trim().toUpperCase()
+        .replace(/[\\s-]+/g, '_').replace(/[^A-Z0-9_]/g, '_').replace(/_+/g, '_');
+    const isRestricted = value => {
+        const normalized = normalize(value);
+        return normalized.includes('FINAL') ||
+            /(^|_)END_?OF_?BLOCK(_|$)/.test(normalized) ||
+            /(^|_)END_?BLOCK(_|$)/.test(normalized) ||
+            /(^|_)END_?TERM(_|$)/.test(normalized) ||
+            /(^|_)END_?OF_?TERM(_|$)/.test(normalized);
+    };
+    return isRestricted(exam?.exam_type) || isRestricted(exam?.exam_name || exam?.title);
+}
+
+function showRestrictedReleaseMessage(exam, button) {
+    const label = String(exam?.exam_name || exam?.title || 'This exam');
+    const message = label + ' is a Final/End-of-Block assessment. Its results cannot be released to students through this release tool.';
+    if (button) {
+        button.disabled = true;
+        button.textContent = '🔒 Release Disabled for Final/End-of-Block';
+    }
+    const body = document.getElementById('releasePreviewBody');
+    if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#92400e;background:#fffbeb;">🔒 ' + message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td></tr>';
+    const summary = document.getElementById('releaseSummary');
+    if (summary) summary.textContent = message;
+    alert(message);
+}
+
+window.openReleaseModal = async function() {
+        const { data: exams } = await sb.from('exams').select('id, exam_name, exam_type').order('id', { ascending: false });
         const selectEl = document.getElementById('releaseExamFilter');
         if (selectEl) {
             selectEl.innerHTML = '<option value="">-- Select Exam --</option>' + 
-                (exams || []).map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('');
+                (exams || []).map(e => {
+                    const restricted = isRestrictedExamForStudentRelease(e);
+                    const label = escapeAdminHtml(e.exam_name || 'Unnamed exam') +
+                        (restricted ? ' — RELEASE DISABLED (Final/End-of-Block)' : '');
+                    return '<option value="' + escapeAdminHtml(e.id) + '"' +
+                        (restricted ? ' disabled' : '') + '>' + label + '</option>';
+                }).join('');
         }
         document.getElementById('releasePreview').style.display = 'none';
         selectedStudentIds.clear();
@@ -6122,6 +6302,20 @@ window.displayLiveFeed = function() {
     if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">⏳ Loading submitted and graded students...</td></tr>';
 
     try {
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('id, exam_name, exam_type, pass_mark, total_marks')
+            .eq('id', examId)
+            .single();
+        if (examError) throw examError;
+        if (isRestrictedExamForStudentRelease(exam)) {
+            selectedStudentIds.clear();
+            if (selectAllBox) selectAllBox.checked = false;
+            if (preview) preview.style.display = 'block';
+            showRestrictedReleaseMessage(exam, releaseBtn);
+            return;
+        }
+
         // ============================================================
         // RELEASE RESULT RULE — STRICT AND DATABASE-AWARE
         // ============================================================
@@ -6233,13 +6427,6 @@ completedSentinelGrades.forEach(grade => {
             updateSelectedCount();
             return;
         }
-
-        const { data: exam, error: examError } = await sb
-            .from('exams')
-            .select('pass_mark, total_marks, exam_name, exam_type')
-            .eq('id', examId)
-            .single();
-        if (examError) throw examError;
 
         const passMark = Number(exam?.pass_mark ?? Math.round(Number(exam?.total_marks || 100) * 0.6));
         const examName = String(exam?.exam_name || 'Exam');
@@ -6446,6 +6633,19 @@ window.confirmReleaseResults = async function() {
     }
 
     try {
+        // Enforce this policy in the release handler as well as the preview UI.
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('id, exam_name, exam_type, pass_mark, total_marks')
+            .eq('id', examId)
+            .single();
+        if (examError) throw examError;
+        if (isRestrictedExamForStudentRelease(exam)) {
+            selectedStudentIds.clear();
+            showRestrictedReleaseMessage(exam, confirmBtn);
+            return;
+        }
+
         // Re-query the selected records before releasing. This prevents stale
         // checkboxes from releasing an ungraded, changed or already released row.
         const { data: grades, error: gradesError } = await sb
@@ -6494,20 +6694,14 @@ window.confirmReleaseResults = async function() {
             .select('result_id, released_at')
             .in('result_id', selectedGrades.map(g => g.id));
         if (existingReleaseError) throw existingReleaseError;
-        const alreadyReleased = new Set((existingReleases || []).map(r => String(r.result_id)));
+        const existingReleaseMap = new Map((existingReleases || []).map(r => [String(r.result_id), r.released_at || null]));
+        const alreadyReleased = new Set(existingReleaseMap.keys());
 
         const releaseData = [];
         let releasedCount = 0;
         let skippedCount = 0;
         let failedCount = 0;
         const errorMessages = [];
-
-        const { data: exam, error: examError } = await sb
-            .from('exams')
-            .select('*')
-            .eq('id', examId)
-            .single();
-        if (examError) throw examError;
 
         const passMark = Number(exam?.pass_mark ?? Math.round(Number(exam?.total_marks || 100) * 0.6));
 
@@ -6537,17 +6731,57 @@ window.confirmReleaseResults = async function() {
                 );
             }
 
-            if (alreadyReleased.has(gradeId) || grade.released === true) {
-                skippedCount++;
-                continue;
-            }
-
             // marks/total_score may legitimately be 0. Never use truthiness here.
             const score = grade.marks !== null && grade.marks !== undefined
                 ? Number(grade.marks)
                 : (grade.total_score !== null && grade.total_score !== undefined ? Number(grade.total_score) : 0);
             const safeScore = Number.isFinite(score) ? score : 0;
             const resultStatus = safeScore >= passMark ? 'PASS' : 'FAIL';
+
+            // Recover partial releases safely: a previous run may have inserted the
+            // release ledger row but failed to update exam_grades (or vice versa).
+            if (alreadyReleased.has(gradeId) || grade.released === true) {
+                const releasedAt = existingReleaseMap.get(gradeId) || grade.released_at || new Date().toISOString();
+
+                if (!alreadyReleased.has(gradeId)) {
+                    const { error: recoveryInsertError } = await sb
+                        .from('released_exam_results')
+                        .insert({
+                            result_id: grade.id,
+                            student_id: String(grade.student_id),
+                            exam_id: examId
+                        });
+                    if (recoveryInsertError &&
+                        String(recoveryInsertError.code || '') !== '23505' &&
+                        !String(recoveryInsertError.message || '').toLowerCase().includes('duplicate')) {
+                        failedCount++;
+                        errorMessages.push('Release ledger recovery failed for ' + grade.student_id + ': ' + recoveryInsertError.message);
+                        continue;
+                    }
+                    alreadyReleased.add(gradeId);
+                    existingReleaseMap.set(gradeId, releasedAt);
+                }
+
+                if (grade.released !== true || !grade.released_at || grade.result_status !== resultStatus) {
+                    const { error: repairError } = await sb
+                        .from('exam_grades')
+                        .update({
+                            result_status: resultStatus,
+                            released: true,
+                            released_at: releasedAt
+                        })
+                        .eq('id', grade.id);
+                    if (repairError) {
+                        failedCount++;
+                        errorMessages.push('Release state repair failed for ' + grade.student_id + ': ' + repairError.message);
+                        continue;
+                    }
+                }
+
+                skippedCount++;
+                continue;
+            }
+
             const now = new Date().toISOString();
 
             const { error: releaseError } = await sb
@@ -6735,8 +6969,8 @@ async function sendSimpleReleaseNotification(studentId, examId, grade) {
                     <p><span class="label">📋 Exam</span> <span class="value">${exam.exam_name}</span></p>
                     <p><span class="label">📊 Type</span> <span class="value">${exam.exam_type || 'Exam'}</span></p>
                     <p><span class="label">👤 Student</span> <span class="value">${student.full_name}</span></p>
-                    <p><span class="label">🆔 ID</span> <span class="value">${student.student_id || 'N/A'}</span></p>
-                    <p><span class="label">📚 Program</span> <span class="value">${student.program || 'N/A'}</span></p>
+                    <p><span class="label">🆔 ID</span> <span class="value">${escapeAdminHtml(student.student_id || 'N/A')}</span></p>
+                    <p><span class="label">📚 Program</span> <span class="value">${escapeAdminHtml(student.program || 'N/A')}</span></p>
                 </div>
                 
                 <!-- Call to Action -->
@@ -7050,8 +7284,8 @@ window.batchResendReleaseEmails = async function(examId) {
                     <p><span class="label">📅 Date</span> <span class="value">${examDate}</span></p>
                     <p><span class="label">📊 Type</span> <span class="value">${exam.exam_type || 'Exam'}</span></p>
                     <p><span class="label">👤 Student</span> <span class="value">${student.full_name}</span></p>
-                    <p><span class="label">🆔 ID</span> <span class="value">${student.student_id || 'N/A'}</span></p>
-                    <p><span class="label">📚 Program</span> <span class="value">${student.program || 'N/A'}</span></p>
+                    <p><span class="label">🆔 ID</span> <span class="value">${escapeAdminHtml(student.student_id || 'N/A')}</span></p>
+                    <p><span class="label">📚 Program</span> <span class="value">${escapeAdminHtml(student.program || 'N/A')}</span></p>
                 </div>
                 
                 <!-- Call to Action -->
@@ -7262,6 +7496,10 @@ window.batchResendReleaseEmails = async function(examId) {
                 .single();
             
             if (examError) throw examError;
+            if (isRestrictedExamForStudentRelease(exam)) {
+                showRestrictedReleaseMessage(exam, document.getElementById('confirmReleaseBtn'));
+                return;
+            }
             
             const passMark = exam?.pass_mark || 18;
             const totalMarks = exam?.total_marks || 30;
@@ -7390,10 +7628,23 @@ window.batchResendReleaseEmails = async function(examId) {
     // ============================================
     // 📝 EXAM MANAGEMENT FUNCTIONS
     // ============================================
-    window.filterExamsByStatus = function(status) {
+    window.filterExamsByStatus = function(status, trigger) {
         currentExamFilter = status;
-        document.querySelectorAll('.status-toggle-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+        const buttons = Array.from(document.querySelectorAll('.status-toggle-btn'));
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = 'transparent';
+            btn.style.color = 'rgba(255,255,255,0.7)';
+        });
+        const activeButton = trigger instanceof Element ? trigger : buttons.find(btn => {
+            const handler = btn.getAttribute('onclick') || '';
+            return handler.includes(`'${String(status)}'`) || handler.includes(`\"${String(status)}\"`);
+        });
+        if (activeButton) {
+            activeButton.classList.add('active');
+            activeButton.style.background = '#FDB913';
+            activeButton.style.color = '#0A3D62';
+        }
         loadAllExams();
     };
 
@@ -7423,7 +7674,6 @@ window.batchResendReleaseEmails = async function(examId) {
         `This will reopen the SAME current attempt so students can continue from saved progress. No new final result row will be created.\n` +
         `• Previous attempts remain preserved\n` +
         `• Previous answers/results are not deleted\n` +
-        `• Each student gets a new attempt number\n` +
         `• Students currently in progress are NOT reset\n\n` +
         `Continue?`
     )) return;
@@ -7542,10 +7792,13 @@ window.batchResendReleaseEmails = async function(examId) {
     const examId = document.getElementById('editingExamId').value;
     const examType = document.getElementById('examType').value;
     
-    // ✅ FIX: Get values from the form inputs, not hardcoded defaults
-    const totalMarks = parseInt(document.getElementById('examTotalMarks').value) || 100;
-    const passMark = parseInt(document.getElementById('examPassMark').value) || Math.round(totalMarks * 0.6);
-    const duration = parseInt(document.getElementById('examDuration').value) || 30;
+    // Read form values without treating a deliberate zero as an empty value.
+    const totalMarksRaw = document.getElementById('examTotalMarks').value.trim();
+    const passMarkRaw = document.getElementById('examPassMark').value.trim();
+    const durationRaw = document.getElementById('examDuration').value.trim();
+    const totalMarks = totalMarksRaw === '' ? 100 : Number.parseInt(totalMarksRaw, 10);
+    const passMark = passMarkRaw === '' ? Math.round(totalMarks * 0.6) : Number.parseInt(passMarkRaw, 10);
+    const duration = durationRaw === '' ? 30 : Number.parseInt(durationRaw, 10);
     
     const examData = {
         title: document.getElementById('examName').value,
@@ -7573,12 +7826,16 @@ window.batchResendReleaseEmails = async function(examId) {
         alert('Please enter an exam link.');
         return;
     }
-    if (examData.duration_minutes < 1) {
-        alert('Duration must be at least 1 minute.');
+    if (!Number.isFinite(examData.duration_minutes) || examData.duration_minutes < 1) {
+        alert('Duration must be a whole number of at least 1 minute.');
         return;
     }
-    if (examData.total_marks < 1) {
-        alert('Total marks must be at least 1.');
+    if (!Number.isFinite(examData.total_marks) || examData.total_marks < 1) {
+        alert('Total marks must be a whole number of at least 1.');
+        return;
+    }
+    if (!Number.isFinite(examData.pass_mark) || examData.pass_mark < 0 || examData.pass_mark > examData.total_marks) {
+        alert('Pass mark must be between 0 and the total marks.');
         return;
     }
     
@@ -7613,13 +7870,29 @@ window.batchResendReleaseEmails = async function(examId) {
     };
 
     window.openAssignExamModal = async function() {
-        const { data: students } = await sb.from('consolidated_user_profiles_table').select('id, full_name, student_id');
-        const { data: exams } = await sb.from('exams').select('id, exam_name');
-        document.getElementById('assignStudentSelect').innerHTML = students.map(s =>
-            `<option value="${s.id}">${s.full_name} (${s.student_id || 'N/A'})</option>`).join('');
-        document.getElementById('assignExamSelect').innerHTML = exams.map(e =>
-            `<option value="${e.id}">${e.exam_name}</option>`).join('');
-        document.getElementById('assignExamModal').style.display = 'flex';
+      try {
+        const [{ data: students, error: studentsError }, { data: exams, error: examsError }] = await Promise.all([
+            sb.from('consolidated_user_profiles_table').select('id, full_name, student_id').order('full_name'),
+            sb.from('exams').select('id, exam_name').order('exam_name')
+        ]);
+        if (studentsError) throw studentsError;
+        if (examsError) throw examsError;
+        const studentSelect = document.getElementById('assignStudentSelect');
+        const examSelect = document.getElementById('assignExamSelect');
+        if (!studentSelect || !examSelect) throw new Error('Assignment form controls are missing.');
+        studentSelect.replaceChildren(new Option('-- Select student --', ''));
+        (students || []).forEach(student => {
+            const option = new Option(`${student.full_name || 'Unknown'} (${student.student_id || 'N/A'})`, String(student.id));
+            studentSelect.add(option);
+        });
+        examSelect.replaceChildren(new Option('-- Select exam --', ''));
+        (exams || []).forEach(exam => examSelect.add(new Option(exam.exam_name || 'Untitled exam', String(exam.id))));
+        const modal = document.getElementById('assignExamModal');
+        if (modal) modal.style.display = 'flex';
+      } catch (error) {
+        console.error('Unable to load exam assignment options:', error);
+        showToast('Unable to load students/exams for assignment: ' + error.message, 'error');
+      }
     };
 
     window.confirmAssignExam = async function() {
@@ -8102,14 +8375,26 @@ function renderAttendanceTable(data) {
         const signInTime = record.sign_in_time ? formatKenyaTime(record.sign_in_time) : '--';
         
         // ✅ Use exam_name from the record (already fetched)
-        const examName = record.exam_name || 'Exam ' + record.exam_id;
+        const examName = escapeAdminHtml(record.exam_name || 'Exam ' + record.exam_id);
+        const studentNameRaw = String(record.student_name || 'Student');
+        const studentName = escapeAdminHtml(studentNameRaw);
+        const studentRegNumber = escapeAdminHtml(record.student_reg_number || 'N/A');
+        const studentArgument = escapeAdminHtml(JSON.stringify(String(record.student_id || '')));
+        const examArgument = escapeAdminHtml(JSON.stringify(String(record.exam_id || '')));
+        const studentNameArgument = escapeAdminHtml(JSON.stringify(studentNameRaw));
+        const toggleMuteHandler = escapeAdminHtml(`toggleVideoMute(${JSON.stringify(String(record.student_id || ''))})`);
+        const openFullVideoHandler = escapeAdminHtml(`openFullVideo(${JSON.stringify(String(record.student_id || ''))}, ${JSON.stringify(studentNameRaw)}, ${JSON.stringify(String(record.exam_id || ''))})`);
+        const requestLiveFeedHandler = escapeAdminHtml(`requestLiveFeed(${JSON.stringify(String(record.student_id || ''))}, ${JSON.stringify(String(record.exam_id || ''))})`);
+        const viewAttendanceHandler = escapeAdminHtml(`viewStudentAttendance(${JSON.stringify(String(record.student_id || ''))}, ${JSON.stringify(String(record.exam_id || ''))})`);
+        const recordingsHandler = escapeAdminHtml(`viewStudentRecordings(${JSON.stringify(String(record.student_id || ''))}, ${JSON.stringify(String(record.exam_id || ''))})`);
+        const stopLiveFeedHandler = escapeAdminHtml(`stopLiveFeed(${JSON.stringify(String(record.student_id || ''))})`);
         
         // Video feed HTML
         let videoHtml = '';
         if (isLive) {
             videoHtml = `
                 <div class="live-video-container">
-                    <video id="liveVideo_${record.student_id}" 
+                    <video id="liveVideo_${escapeAdminHtml(record.student_id)}" 
                            autoplay muted playsinline
                            style="width:100%; height:100%; object-fit:cover; background:#1a1a2e;">
                         <source src="" type="video/webm">
@@ -8118,10 +8403,10 @@ function renderAttendanceTable(data) {
                         <span class="dot"></span> LIVE
                     </div>
                     <div class="video-controls">
-                        <button onclick="toggleVideoMute('${record.student_id}')" title="Mute">
+                        <button onclick="${toggleMuteHandler}" title="Mute">
                             <i class="fas fa-volume-up"></i>
                         </button>
-                        <button onclick="openFullVideo('${record.student_id}', '${record.student_name || 'Student'}', '${record.exam_id}')" title="Full Screen">
+                        <button onclick="${openFullVideoHandler}" title="Full Screen">
                             <i class="fas fa-expand"></i>
                         </button>
                     </div>
@@ -8132,7 +8417,7 @@ function renderAttendanceTable(data) {
                 <div class="video-placeholder">
                     <i class="fas fa-video-slash"></i>
                     <span>Not live</span>
-                    <button onclick="requestLiveFeed('${record.student_id}', '${record.exam_id}')" 
+                    <button onclick="${requestLiveFeedHandler}" 
                             style="padding:2px 12px; background:#3B82F6; color:white; border:none; border-radius:4px; font-size:0.6rem; cursor:pointer;">
                         <i class="fas fa-play"></i> Request
                     </button>
@@ -8143,22 +8428,22 @@ function renderAttendanceTable(data) {
         html += `
             <tr>
                 <td>${index + 1}</td>
-                <td><strong>${record.student_name || 'Unknown'}</strong></td>
-                <td>${record.student_reg_number || 'N/A'}</td>
+                <td><strong>${studentName}</strong></td>
+                <td>${studentRegNumber}</td>
                 <td><strong>${examName}</strong></td>
                 <td><span class="status-badge-attendance ${statusClass}">${statusDisplay}</span></td>
-                <td>${signInTime}</td>
+                <td>${escapeAdminHtml(signInTime)}</td>
                 <td>${videoHtml}</td>
                 <td>
                     <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                        <button class="btn-sm btn-info" onclick="viewStudentAttendance('${record.student_id}', '${record.exam_id}')">
+                        <button class="btn-sm btn-info" onclick="${viewAttendanceHandler}">
                             <i class="fas fa-eye"></i> Details
                         </button>
-                        <button class="btn-sm btn-success" onclick="viewStudentRecordings('${record.student_id}', '${record.exam_id}')" title="View Recordings">
+                        <button class="btn-sm btn-success" onclick="${recordingsHandler}" title="View Recordings">
                             <i class="fas fa-video"></i> Recordings
                         </button>
                         ${isLive ? `
-                            <button class="btn-sm btn-danger" onclick="stopLiveFeed('${record.student_id}')">
+                            <button class="btn-sm btn-danger" onclick="${stopLiveFeedHandler}">
                                 <i class="fas fa-stop"></i>
                             </button>
                         ` : ''}
@@ -8398,9 +8683,9 @@ function showVideoModal(studentId, examId, student, exam, logs, files, folderPat
         `;
     }
     
-    const studentName = student?.full_name || 'Unknown Student';
-    const studentIdDisplay = student?.student_id || 'N/A';
-    const examName = exam?.exam_name || 'Exam ' + examId;
+    const studentName = escapeAdminHtml(student?.full_name || 'Unknown Student');
+    const studentIdDisplay = escapeAdminHtml(student?.student_id || 'N/A');
+    const examName = escapeAdminHtml(exam?.exam_name || 'Exam ' + examId);
     
     modal.innerHTML = `
         <div style="max-width:900px; width:100%; max-height:90vh; overflow-y:auto;">
@@ -8600,7 +8885,7 @@ async function startVideoStream(studentId) {
             errorDiv.innerHTML = `
                 <i class="fas fa-camera-slash fa-2x" style="color:#DC2626;"></i>
                 <span style="font-size:0.75rem; font-weight:600;">Camera unavailable</span>
-                <span style="font-size:0.6rem; opacity:0.6;">${error.message || 'Please check camera permissions'}</span>
+                <span style="font-size:0.6rem; opacity:0.6;">${escapeAdminHtml(error.message || 'Please check camera permissions')}</span>
             `;
             container.appendChild(errorDiv);
         }
@@ -9033,7 +9318,8 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
     const record = records[0] || {};
 
     // ✅ Get exam name from record or fetch it
-    const examName = record.exam_name || 'Exam ' + record.exam_id;
+    const examName = escapeAdminHtml(record.exam_name || 'Exam ' + record.exam_id);
+    const safeStudentId = escapeAdminHtml(studentId || 'N/A');
 
     // Build snapshots HTML with Kenya time
     let snapshotsHtml = '';
@@ -9041,16 +9327,22 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
         snapshotsHtml = `
             <h3 style="color:#0A3D62; margin:16px 0 12px;">📸 Snapshots (${snapshots.length})</h3>
             <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px; max-height:400px; overflow-y:auto; padding:4px;">
-                ${snapshots.map((s, i) => `
+                ${snapshots.map((s, i) => {
+                    const rawImage = String(s.screenshot_data || '');
+                    const safeImage = /^https?:\/\//i.test(rawImage) ? escapeAdminHtml(rawImage) : /^data:image\/(?:png|jpeg|webp);base64,/i.test(rawImage) ? escapeAdminHtml(rawImage) : /^[A-Za-z0-9+/=]+$/.test(rawImage) ? 'data:image/jpeg;base64,' + rawImage : '';
+                    const safeEvent = escapeAdminHtml(s.event_type || 'Snapshot');
+                    const safeTime = escapeAdminHtml(formatKenyaTime(s.timestamp));
+                    const openImageHandler = escapeAdminHtml(`window.open(${JSON.stringify(rawImage)}, '_blank')`);
+                    return `
                     <div style="background:#F8FAFC; border-radius:8px; overflow:hidden; border:1px solid #E2E8F0; position:relative;">
-                        <img src="${s.screenshot_data}" 
+                        <img src="${safeImage}" 
                              alt="Snapshot ${i+1}" 
                              style="width:100%; height:150px; object-fit:cover; cursor:pointer;"
-                             onclick="window.open('${s.screenshot_data}', '_blank')"
+                             onclick="${openImageHandler}"
                              onerror="this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:#94A3B8;\\'><i class=\\'fas fa-image\\' style=\\'font-size:2rem;display:block;\\'></i>No image</div>'">
                         <div style="padding:6px 10px; font-size:0.7rem; background:white; display:flex; justify-content:space-between; align-items:center;">
-                            <span>${s.event_type || 'Snapshot'}</span>
-                            <span style="color:#64748B;">${formatKenyaTime(s.timestamp)}</span>
+                            <span>${safeEvent}</span>
+                            <span style="color:#64748B;">${safeTime}</span>
                         </div>
                         ${s.event_type === 'multiple_faces_detected' ? 
                             '<div style="position:absolute; top:4px; right:4px; background:#DC2626; color:white; padding:2px 8px; border-radius:4px; font-size:0.6rem; font-weight:600;">🚨 VIOLATION</div>' : 
@@ -9059,7 +9351,8 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
                             ''
                         }
                     </div>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
             <div style="margin-top:8px; font-size:0.7rem; color:#64748B; text-align:center;">
                 <i class="fas fa-info-circle"></i> Click any snapshot to view full size
@@ -9087,9 +9380,9 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
             </div>
 
             <div style="background: #F8FAFC; padding: 16px; border-radius: 12px; margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div><strong>👤 Student ID:</strong> ${studentId}</div>
-                <div><strong>📛 Name:</strong> ${record.student_name || 'Unknown'}</div>
-                <div><strong>🆔 Registration:</strong> ${record.student_reg_number || 'N/A'}</div>
+                <div><strong>👤 Student ID:</strong> ${safeStudentId}</div>
+                <div><strong>📛 Name:</strong> ${escapeAdminHtml(record.student_name || 'Unknown')}</div>
+                <div><strong>🆔 Registration:</strong> ${escapeAdminHtml(record.student_reg_number || 'N/A')}</div>
                 <div><strong>📝 Exam:</strong> ${examName}</div>
             </div>
 
@@ -9109,14 +9402,14 @@ function showAttendanceDetailModal(studentId, records, snapshots) {
                         <tbody>
                             ${records.map(r => `
                                 <tr style="border-bottom:1px solid #E2E8F0;">
-                                    <td style="padding:8px 12px;">${r.date || '--'}</td>
+                                    <td style="padding:8px 12px;">${escapeAdminHtml(r.date || '--')}</td>
                                     <td style="padding:8px 12px;">
                                         <span class="status-badge-attendance ${r.status === 'present' || r.status === 'completed' ? 'present' : r.status === 'signed_in' ? 'signed-in' : r.status === 'in_progress' ? 'in-progress' : 'absent'}">
-                                            ${r.status || 'Unknown'}
+                                            ${escapeAdminHtml(r.status || 'Unknown')}
                                         </span>
                                     </td>
-                                    <td style="padding:8px 12px;">${r.sign_in_time ? formatKenyaTime(r.sign_in_time) : '--'}</td>
-                                    <td style="padding:8px 12px;">${r.submission_time ? formatKenyaTime(r.submission_time) : '--'}</td>
+                                    <td style="padding:8px 12px;">${escapeAdminHtml(r.sign_in_time ? formatKenyaTime(r.sign_in_time) : '--')}</td>
+                                    <td style="padding:8px 12px;">${escapeAdminHtml(r.submission_time ? formatKenyaTime(r.submission_time) : '--')}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -9671,7 +9964,7 @@ window.openCameraView = async function(studentId, examId, studentName, examName)
 
     // ---- Title (optional element) ----
     const title = document.getElementById('cameraModalTitle');
-    if (title) title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${currentCameraStudentName}`;
+    if (title) title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${escapeAdminHtml(currentCameraStudentName)}`;
 
     // ---- Header spans (top of modal, inside the <p> tag) ----
     const studentEl = document.getElementById('cameraStudentName');
