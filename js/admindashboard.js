@@ -7680,10 +7680,13 @@ window.batchResendReleaseEmails = async function(examId) {
     const examId = document.getElementById('editingExamId').value;
     const examType = document.getElementById('examType').value;
     
-    // ✅ FIX: Get values from the form inputs, not hardcoded defaults
-    const totalMarks = parseInt(document.getElementById('examTotalMarks').value) || 100;
-    const passMark = parseInt(document.getElementById('examPassMark').value) || Math.round(totalMarks * 0.6);
-    const duration = parseInt(document.getElementById('examDuration').value) || 30;
+    // Read form values without treating a deliberate zero as an empty value.
+    const totalMarksRaw = document.getElementById('examTotalMarks').value.trim();
+    const passMarkRaw = document.getElementById('examPassMark').value.trim();
+    const durationRaw = document.getElementById('examDuration').value.trim();
+    const totalMarks = totalMarksRaw === '' ? 100 : Number.parseInt(totalMarksRaw, 10);
+    const passMark = passMarkRaw === '' ? Math.round(totalMarks * 0.6) : Number.parseInt(passMarkRaw, 10);
+    const duration = durationRaw === '' ? 30 : Number.parseInt(durationRaw, 10);
     
     const examData = {
         title: document.getElementById('examName').value,
@@ -7711,12 +7714,16 @@ window.batchResendReleaseEmails = async function(examId) {
         alert('Please enter an exam link.');
         return;
     }
-    if (examData.duration_minutes < 1) {
-        alert('Duration must be at least 1 minute.');
+    if (!Number.isFinite(examData.duration_minutes) || examData.duration_minutes < 1) {
+        alert('Duration must be a whole number of at least 1 minute.');
         return;
     }
-    if (examData.total_marks < 1) {
-        alert('Total marks must be at least 1.');
+    if (!Number.isFinite(examData.total_marks) || examData.total_marks < 1) {
+        alert('Total marks must be a whole number of at least 1.');
+        return;
+    }
+    if (!Number.isFinite(examData.pass_mark) || examData.pass_mark < 0 || examData.pass_mark > examData.total_marks) {
+        alert('Pass mark must be between 0 and the total marks.');
         return;
     }
     
