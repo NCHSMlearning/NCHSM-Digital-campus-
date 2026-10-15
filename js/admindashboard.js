@@ -999,11 +999,13 @@ window.loadStudentsWithResults = async function(options = {}) {
         const student = r.student_profile || {};
         const exam = r.exam_info || {};
         
-        const studentId = student.student_id || 'N/A';
-        const studentName = student.full_name || 'Unknown';
-        const studentEmail = student.email || '-';
-        const studentProgram = student.program || '-';
-        const examName = exam.exam_name || 'Exam ' + r.exam_id;
+        const studentId = escapeAdminHtml(student.student_id || 'N/A');
+        const studentNameRaw = String(student.full_name || 'Unknown');
+        const studentName = escapeAdminHtml(studentNameRaw);
+        const studentEmail = escapeAdminHtml(student.email || '-');
+        const studentProgram = escapeAdminHtml(student.program || '-');
+        const examNameRaw = String(exam.exam_name || 'Exam ' + r.exam_id);
+        const examName = escapeAdminHtml(examNameRaw);
         const typeLabel = exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
         const typeBadgeClass = exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
         
@@ -1056,10 +1058,15 @@ window.loadStudentsWithResults = async function(options = {}) {
         const retakeBadge = (r.result_status === 'RESET_FOR_RETAKE' && r.allow_retake === true && r.retake_unlocked === true) ? 
             `<span class="badge-retake"><i class="fas fa-undo"></i> Retake</span>` : '';
         
-        const studentUserId = r.student_id || '';
-        const examId = r.exam_id || 0;
-        const safeName = studentName.replace(/'/g, "\\'");
-        const safeExam = examName.replace(/'/g, "\\'");
+        const studentUserId = String(r.student_id || '');
+        const examId = Number(r.exam_id) || 0;
+        const safeStudentArgument = escapeAdminHtml(JSON.stringify(studentUserId));
+        const safeNameArgument = escapeAdminHtml(JSON.stringify(studentNameRaw));
+        const safeExamArgument = escapeAdminHtml(JSON.stringify(examNameRaw));
+        const editMarksHandler = escapeAdminHtml(`openEditMarksModal(${JSON.stringify(studentUserId)}, ${examId}, ${JSON.stringify(studentNameRaw)}, ${JSON.stringify(examNameRaw)})`);
+        const viewProgressHandler = escapeAdminHtml(`viewStudentProgress(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId})`);
+        const timerHandler = escapeAdminHtml(`openTimerModal(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId}, ${JSON.stringify(examNameRaw)})`);
+        const resetHandler = escapeAdminHtml(`resetSingleStudent(${JSON.stringify(studentUserId)}, ${examId}, ${JSON.stringify(studentNameRaw)}, ${JSON.stringify(examNameRaw)})`);
         
         return `<tr>
             <td style="padding:10px 14px; vertical-align:middle;">
@@ -1087,7 +1094,7 @@ window.loadStudentsWithResults = async function(options = {}) {
                 ${r.attempt_info?.is_retake ? '<span class="attempt-retake-label">Retake</span>' : '<span class="attempt-original-label">Original</span>'}
             </td>
             <td style="text-align:center;">
-                <span class="clickable-score" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')">
+                <span class="clickable-score" onclick="${editMarksHandler}">
                     ${score} / ${totalMarks} ✏️
                 </span>
             </td>
@@ -1101,19 +1108,19 @@ window.loadStudentsWithResults = async function(options = {}) {
             <td style="text-align:center;">
                 <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
                     ${retakeBadge}
-                    <button class="action-btn btn-view" onclick="viewExamResult('${studentUserId}',${examId})" title="View Details">
+                    <button class="action-btn btn-view" onclick="viewExamResult(${safeStudentArgument},${examId})" title="View Details">
                         <i class="fas fa-eye"></i> View
                     </button>
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentUserId}', '${safeName}', ${examId})" title="View Progress">
+                    <button class="action-btn btn-info" onclick="${viewProgressHandler}" title="View Progress">
                         <i class="fas fa-chart-line"></i> Progress
                     </button>
-                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${safeName}', ${examId}, '${safeExam}')" title="Manage Timer">
+                    <button class="action-btn btn-warning" onclick="${timerHandler}" title="Manage Timer">
                         <i class="fas fa-clock"></i> Timer
                     </button>
-                    <button class="action-btn btn-info exam-attempt-history-btn" onclick="viewAttemptHistory('${studentUserId}', ${examId})" title="View current final result">
+                    <button class="action-btn btn-info exam-attempt-history-btn" onclick="viewAttemptHistory(${safeStudentArgument}, ${examId})" title="View current final result">
                         <i class="fas fa-history"></i> Current
                     </button>
-                    <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')" title="Reset exam and continue from saved progress">
+                    <button class="action-btn btn-reset-student" onclick="${resetHandler}" title="Reset exam and continue from saved progress">
                         <i class="fas fa-redo"></i> Retake
                     </button>
                 </div>
@@ -7785,6 +7792,7 @@ window.batchResendReleaseEmails = async function(examId) {
     };
 
     window.openAssignExamModal = async function() {
+      try {
         const [{ data: students, error: studentsError }, { data: exams, error: examsError }] = await Promise.all([
             sb.from('consolidated_user_profiles_table').select('id, full_name, student_id').order('full_name'),
             sb.from('exams').select('id, exam_name').order('exam_name')
@@ -7803,6 +7811,10 @@ window.batchResendReleaseEmails = async function(examId) {
         (exams || []).forEach(exam => examSelect.add(new Option(exam.exam_name || 'Untitled exam', String(exam.id))));
         const modal = document.getElementById('assignExamModal');
         if (modal) modal.style.display = 'flex';
+      } catch (error) {
+        console.error('Unable to load exam assignment options:', error);
+        showToast('Unable to load students/exams for assignment: ' + error.message, 'error');
+      }
     };
 
     window.confirmAssignExam = async function() {
