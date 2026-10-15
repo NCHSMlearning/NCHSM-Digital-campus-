@@ -1929,8 +1929,11 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
             <div style="display: grid; gap: 16px;">
                 <div>
                     <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Student Email Address *</label>
-                    <input type="email" id="resetEmailInput" placeholder="e.g., student@example.com" 
-                           style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <input type="email" id="resetEmailInput" placeholder="e.g., student@example.com" autocomplete="off"
+                               style="flex: 1; min-width: 220px; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                        <button type="button" onclick="searchStudentByEmail(document.getElementById('resetEmailInput').value)" style="padding: 8px 14px; border: 0; border-radius: 6px; background: #4C1D95; color: white; cursor: pointer; font-weight: 600;">Find Student</button>
+                    </div>
                     <small style="color: #64748B; display: block; margin-top: 4px;">Enter the student's registered email address</small>
                 </div>
                 <div>
