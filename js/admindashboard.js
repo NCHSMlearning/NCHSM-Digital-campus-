@@ -1523,9 +1523,15 @@ function displayProctoringLogs() {
     
     tbody.innerHTML = page.map(log => {
         const student = log.student_profile || {};
-        const studentName = student.full_name || 'Unknown';
-        const studentIdDisplay = student.student_id || log.student_id || 'N/A';
-        const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
+        const studentName = escapeAdminHtml(student.full_name || 'Unknown');
+        const studentIdDisplay = escapeAdminHtml(student.student_id || log.student_id || 'N/A');
+        const examName = escapeAdminHtml(examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id);
+        const studentProgram = escapeAdminHtml(student.program || 'No program');
+        const eventType = escapeAdminHtml(String(log.event_type || 'unknown').replace(/_/g, ' '));
+        const details = escapeAdminHtml(log.details || '-');
+        const severityTextSafe = escapeAdminHtml(log.severity || 'info');
+        const viewAlertHandler = escapeAdminHtml(`viewAlertDetails(${JSON.stringify(String(log.id || ''))})`);
+        const resolveAlertHandler = escapeAdminHtml(`markAlertResolved(${JSON.stringify(String(log.id || ''))})`);
         
         // Severity styling
         let severityClass = 'status-pending';
@@ -1571,8 +1577,9 @@ function displayProctoringLogs() {
         
         const hasSnapshot = log.snapshot_url || log.screenshot_data;
         const snapshotUrl = log.snapshot_url || log.screenshot_data;
-        const snapshotHtml = hasSnapshot ?
-            `<a href="${snapshotUrl}" target="_blank" style="padding:2px 10px; font-size:0.6rem; margin-left:3px; background:linear-gradient(135deg,#10B981,#059669); color:white; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="View Snapshot">
+        const safeSnapshotUrl = typeof snapshotUrl === 'string' && (/^https?:\/\//i.test(snapshotUrl) || /^data:image\/(?:png|jpeg|webp);base64,/i.test(snapshotUrl)) ? escapeAdminHtml(snapshotUrl) : '';
+        const snapshotHtml = hasSnapshot && safeSnapshotUrl ?
+            `<a href="${safeSnapshotUrl}" target="_blank" style="padding:2px 10px; font-size:0.6rem; margin-left:3px; background:linear-gradient(135deg,#10B981,#059669); color:white; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="View Snapshot">
                 <i class="fas fa-camera"></i> Snapshot
             </a>` :
             '';
@@ -1596,7 +1603,7 @@ function displayProctoringLogs() {
             <td style="padding:12px 14px;">
                 <strong>${studentName}</strong>
                 <div style="font-size:0.65rem; color:#64748B; margin-top:2px;">
-                    <i class="fas fa-graduation-cap" style="margin-right:4px;"></i>${student.program || 'No program'}
+                    <i class="fas fa-graduation-cap" style="margin-right:4px;"></i>${studentProgram}
                 </div>
             </td>
             
@@ -1608,31 +1615,31 @@ function displayProctoringLogs() {
             <!-- Column 5: Alert Type -->
             <td style="padding:12px 14px;">
                 <span class="status-badge ${alertClass}" style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.7rem;">
-                    ${alertIcon} ${log.event_type.replace(/_/g, ' ')}
+                    ${alertIcon} ${eventType}
                 </span>
             </td>
             
             <!-- Column 6: Details -->
             <td style="padding:12px 14px; font-size:0.75rem; color:#475569; max-width:200px; word-wrap:break-word;">
-                ${log.details || '-'}
+                ${details}
             </td>
             
             <!-- Column 7: Severity -->
             <td style="padding:12px 14px; text-align:center;">
                 <span class="status-badge ${severityClass}" style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.7rem; text-transform:capitalize;">
-                    ${severityIcon} ${severityText}
+                    ${severityIcon} ${severityTextSafe}
                 </span>
             </td>
             
             <!-- Column 8: Actions -->
             <td style="padding:12px 14px; text-align:center;">
                 <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center; align-items:center;">
-                    <button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')" title="View Details" style="background:linear-gradient(135deg,#4299E1,#3182CE); color:white; border:none; padding:5px 12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
+                    <button class="action-btn btn-view" onclick="${viewAlertHandler}" title="View Details" style="background:linear-gradient(135deg,#4299E1,#3182CE); color:white; border:none; padding:5px 12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
                         <i class="fas fa-eye"></i> View
                     </button>
                     ${snapshotHtml}
                     ${severityText === 'critical' ? 
-                        `<button class="action-btn btn-danger" onclick="markAlertResolved('${log.id}')" title="Mark Resolved" style="background:linear-gradient(135deg,#DC2626,#B91C1C); color:white; border:none; padding:5px 10px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
+                        `<button class="action-btn btn-danger" onclick="${resolveAlertHandler}" title="Mark Resolved" style="background:linear-gradient(135deg,#DC2626,#B91C1C); color:white; border:none; padding:5px 10px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
                             <i class="fas fa-check"></i>
                         </button>` : 
                         ''
@@ -2989,14 +2996,14 @@ window.viewStudentProfile = async function(pid) {
                 .eq('id', parseInt(examId))
                 .single();
             
-            const examName = exam?.exam_name || 'Exam ' + examId;
+            const examName = escapeAdminHtml(exam?.exam_name || 'Exam ' + examId);
             const answeredCount = answers?.length || 0;
             const totalQuestions = questions?.length || 0;
             const correctCount = answers?.filter(a => a.selected_answer && a.marks > 0).length || 0;
             
             let html = `
                 <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
-                    <h3>${studentName}</h3>
+                    <h3>${escapeAdminHtml(studentName)}</h3>
                     <p style="color:#64748B;">${examName}</p>
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
                         <div style="background:white;padding:10px;border-radius:8px;text-align:center;">
@@ -3238,7 +3245,7 @@ window.viewStudentProfile = async function(pid) {
             
             let editHtml = `
                 <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
-                    <h3 style="margin-bottom:8px;">${studentName}</h3>
+                    <h3 style="margin-bottom:8px;">${escapeAdminHtml(studentName)}</h3>
                     <p style="color:#64748B;font-size:0.85rem;">${examName} (${isCatExam ? 'CAT' : 'Final Exam'})</p>
                     <p style="color:#64748B;font-size:0.8rem;">Total Marks: ${totalMarks} | Pass Mark: ${passMark} (60%)</p>
                     <p><strong>Current Score:</strong> ${currentTotal} / ${totalMarks} (${currentPercentage}%)</p>
@@ -3758,8 +3765,8 @@ window.viewStudentProfile = async function(pid) {
             }
             list.innerHTML = alerts.map(a => `
                 <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #E2E8F0;">
-                    <span>${a.event_type === 'multiple_faces_detected' ? '🚨' : '⚠️'} ${a.event_type}</span>
-                    <span style="color:#64748B; font-size:0.7rem;">${formatKenyaTime(a.timestamp)}</span>
+                    <span>${a.event_type === 'multiple_faces_detected' ? '🚨' : '⚠️'} ${escapeAdminHtml(a.event_type || 'unknown')}</span>
+                    <span style="color:#64748B; font-size:0.7rem;">${escapeAdminHtml(formatKenyaTime(a.timestamp))}</span>
                 </div>
             `).join('');
         } catch (error) {
