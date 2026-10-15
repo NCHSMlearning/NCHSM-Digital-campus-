@@ -9964,7 +9964,7 @@ window.openCameraView = async function(studentId, examId, studentName, examName)
 
     // ---- Title (optional element) ----
     const title = document.getElementById('cameraModalTitle');
-    if (title) title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${currentCameraStudentName}`;
+    if (title) title.innerHTML = `<i class="fas fa-video"></i> Live Camera - ${escapeAdminHtml(currentCameraStudentName)}`;
 
     // ---- Header spans (top of modal, inside the <p> tag) ----
     const studentEl = document.getElementById('cameraStudentName');
