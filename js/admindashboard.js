@@ -7251,6 +7251,17 @@ window.batchResendReleaseEmails = async function(examId) {
     }
     
     try {
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('id, exam_name, exam_type, title')
+            .eq('id', parseInt(examId))
+            .single();
+        if (examError) throw examError;
+        if (isRestrictedExamForStudentRelease(exam)) {
+            showRestrictedReleaseMessage(exam, null);
+            return;
+        }
+
         // Get all released results for this exam
         const { data: releasedResults, error } = await sb
             .from('released_exam_results')
@@ -7332,12 +7343,18 @@ window.batchResendReleaseEmails = async function(examId) {
         // Get exam details
         const { data: exam, error: examError } = await sb
             .from('exams')
-            .select('exam_name, exam_type, exam_date')
+            .select('id, exam_name, exam_type, title, exam_date')
             .eq('id', parseInt(examId))
             .single();
-        
+
         if (examError || !exam) {
             console.log('⚠️ Exam not found:', examId);
+            return false;
+        }
+        // Central guard: every manual/bulk/retry email path must obey the
+        // same Final/End-of-Block student-release restriction.
+        if (isRestrictedExamForStudentRelease(exam)) {
+            showToast('🔒 Final/End-of-Block results cannot be emailed to students.', 'warning');
             return false;
         }
         
@@ -7548,6 +7565,17 @@ window.batchResendReleaseEmails = async function(examId) {
         }
         
         try {
+            const { data: exam, error: examError } = await sb
+                .from('exams')
+                .select('id, exam_name, exam_type, title')
+                .eq('id', parseInt(examId))
+                .single();
+            if (examError) throw examError;
+            if (isRestrictedExamForStudentRelease(exam)) {
+                showRestrictedReleaseMessage(exam, null);
+                return;
+            }
+
             const { data: grades, error } = await sb
                 .from('exam_grades')
                 .select('*')
