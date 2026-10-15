@@ -4374,180 +4374,222 @@ window.closeCameraModal = function() {
     // 🟢 LIVE STUDENTS
     // ============================================
     window.loadLiveStudents = async function() {
-        const loadingDiv = document.getElementById('liveStudentsLoading');
-        const table = document.getElementById('liveStudentsTable');
-        const statsDiv = document.getElementById('liveStudentsStats');
-        
-        if (!loadingDiv) return;
-        
-        loadingDiv.style.display = 'block';
-        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning for active students...';
-        if (table) table.style.display = 'none';
-        if (statsDiv) statsDiv.style.display = 'none';
-        
-        try {
-            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-            
-            const { data: activeLogs, error: logsError } = await window.supabase
-                .from('exam_proctoring_logs')
+    const loadingDiv = document.getElementById('liveStudentsLoading');
+    const table = document.getElementById('liveStudentsTable');
+    const statsDiv = document.getElementById('liveStudentsStats');
+    const liveBadge = document.getElementById('liveBadge');
+    const liveCountDisplay = document.getElementById('liveCountDisplay');
+    if (!loadingDiv) return;
+
+    loadingDiv.style.display = 'block';
+    loadingDiv.style.color = '#475569';
+    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking heartbeats, active attempts and recent activity...';
+    if (table) table.style.display = 'none';
+    if (statsDiv) statsDiv.style.display = 'none';
+
+    try {
+        const now = Date.now();
+        const heartbeatCutoff = new Date(now - 3 * 60 * 1000).toISOString();
+        const activityCutoff = new Date(now - 3 * 60 * 1000).toISOString();
+        const attemptCutoff = new Date(now - 12 * 60 * 60 * 1000).toISOString();
+
+        // Do not rely on proctoring logs alone: heartbeat writes can succeed
+        // while an audit-log insert fails, which previously hid active students.
+        const [heartbeatResult, attemptResult, logsResult] = await Promise.all([
+            sb.from('exam_heartbeats')
+                .select('student_id, exam_id, current_question, answered_count, total_questions, face_detected, timestamp')
+                .gte('timestamp', heartbeatCutoff)
+                .order('timestamp', { ascending: false })
+                .limit(2000),
+            sb.from('exam_attempts')
+                .select('id, student_id, exam_id, status, started_at, submitted_at, updated_at, attempt_number')
+                .gte('started_at', attemptCutoff)
+                .is('submitted_at', null)
+                .order('updated_at', { ascending: false })
+                .limit(2000),
+            sb.from('exam_proctoring_logs')
                 .select('student_id, exam_id, timestamp, event_type, details')
-                .gte('timestamp', fiveMinutesAgo)
-                .order('timestamp', { ascending: false });
-            
-            if (logsError) {
-                console.error('❌ Logs error:', logsError);
-                throw logsError;
+                .gte('timestamp', activityCutoff)
+                .order('timestamp', { ascending: false })
+                .limit(2000)
+        ]);
+
+        const heartbeatRows = heartbeatResult.error ? [] : (heartbeatResult.data || []);
+        const attemptRows = attemptResult.error ? [] : (attemptResult.data || []);
+        const logRows = logsResult.error ? [] : (logsResult.data || []);
+        if (heartbeatResult.error) console.warn('Live Students heartbeat lookup failed:', heartbeatResult.error.message);
+        if (attemptResult.error) console.warn('Live Students active-attempt lookup failed:', attemptResult.error.message);
+        if (logsResult.error) console.warn('Live Students recent-log lookup failed:', logsResult.error.message);
+
+        const activeStatuses = new Set(['IN_PROGRESS', 'STARTED', 'ACTIVE', 'INPROGRESS', 'IN PROGRESS']);
+        const sessions = new Map();
+        const sessionKey = (studentId, examId) => String(studentId) + '_' + String(examId);
+        const upsertSession = (studentId, examId, patch, activityTime) => {
+            if (studentId == null || examId == null) return;
+            const key = sessionKey(studentId, examId);
+            const existing = sessions.get(key);
+            const incomingTime = new Date(activityTime || 0).getTime();
+            const existingTime = existing ? new Date(existing.lastActivity || 0).getTime() : -1;
+            if (!existing) {
+                sessions.set(key, { student_id: studentId, exam_id: examId, ...patch, lastActivity: activityTime || null });
+            } else {
+                Object.assign(existing, patch);
+                if (incomingTime >= existingTime) existing.lastActivity = activityTime || existing.lastActivity;
             }
-            
-            if (!activeLogs || activeLogs.length === 0) {
-                loadingDiv.innerHTML = '🟢 No students currently taking exams';
-                loadingDiv.style.color = '#38A169';
-                loadingDiv.style.display = 'block';
-                table.style.display = 'none';
-                statsDiv.style.display = 'none';
-                const liveBadge = document.getElementById('liveBadge');
-                if (liveBadge) liveBadge.textContent = '0';
-                window.liveStudentsData = [];
-                return;
-            }
-            
-            const activePairs = new Map();
-            activeLogs.forEach(log => {
-                const key = `${log.student_id}_${log.exam_id}`;
-                if (!activePairs.has(key) || new Date(log.timestamp) > new Date(activePairs.get(key).timestamp)) {
-                    activePairs.set(key, log);
-                }
-            });
-            
-            const studentIds = [...activePairs.values()].map(p => p.student_id).filter(id => id);
-            
-            const { data: profiles } = await window.supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id, email, program, block')
-                .in('user_id', studentIds);
-            
-            const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-            
-            const examIds = [...activePairs.values()].map(p => p.exam_id).filter(id => id);
-            const { data: exams } = await window.supabase
-                .from('exams')
-                .select('id, exam_name, duration_minutes, total_marks')
-                .in('id', examIds);
-            const examMap = Object.fromEntries((exams || []).map(e => [e.id, e]));
-            
-            const progressData = [];
-            for (const [key, log] of activePairs) {
-                const student = profileMap[log.student_id];
-                const exam = examMap[log.exam_id];
-                
-                if (!student || !exam) continue;
-                
-                const { data: answers } = await window.supabase
-                    .from('exam_grades')
-                    .select('id, question_id, marks, selected_answer')
-                    .eq('student_id', log.student_id)
-                    .eq('exam_id', log.exam_id)
-                    .neq('question_id', '00000000-0000-0000-0000-000000000000');
-                
-                const { data: questions } = await window.supabase
-                    .from('exam_questions')
-                    .select('id')
-                    .eq('exam_id', log.exam_id);
-                
-                const answeredCount = answers?.length || 0;
-                const totalQuestions = questions?.length || 0;
-                const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
-                
-                const { data: cameraLogs } = await window.supabase
-                    .from('exam_proctoring_logs')
-                    .select('event_type, timestamp')
-                    .eq('student_id', log.student_id)
-                    .eq('exam_id', log.exam_id)
-                    .in('event_type', ['face_detected', 'face_missing', 'multiple_faces_detected'])
-                    .order('timestamp', { ascending: false })
-                    .limit(1);
-                
-                const cameraStatus = cameraLogs?.[0]?.event_type || 'unknown';
-                const cameraIcon = cameraStatus === 'face_detected' ? '🟢' : 
-                                  cameraStatus === 'face_missing' ? '🔴' : 
-                                  cameraStatus === 'multiple_faces_detected' ? '🚨' : '⚪';
-                
-                const startedAt = new Date(log.timestamp);
-                const durationMinutes = exam?.duration_minutes || 30;
-                const endTime = new Date(startedAt.getTime() + durationMinutes * 60000);
-                const now = new Date();
-                const timeLeftMs = endTime - now;
-                
-                let timeDisplay = '--';
-                let statusClass = 'status-active';
-                
-                if (timeLeftMs > 0) {
-                    const minutes = Math.floor(timeLeftMs / 60000);
-                    const seconds = Math.floor((timeLeftMs % 60000) / 1000);
-                    timeDisplay = `${minutes}m ${seconds}s`;
-                    statusClass = minutes < 5 ? 'status-critical' : 'status-active';
-                } else {
-                    timeDisplay = '⏰ Time Up';
-                    statusClass = 'status-fail';
-                }
-                
-                const { data: alerts } = await window.supabase
-                    .from('exam_proctoring_logs')
-                    .select('event_type')
-                    .eq('student_id', log.student_id)
-                    .eq('exam_id', log.exam_id)
-                    .in('event_type', ['multiple_faces_detected', 'tab_switched', 'fullscreen_exit_attempt'])
-                    .gte('timestamp', new Date(Date.now() - 60000).toISOString());
-                
-                const alertCount = alerts?.length || 0;
-                
-                progressData.push({
-                    key: key,
-                    student: student,
-                    exam: exam,
-                    log: log,
-                    answeredCount: answeredCount,
-                    totalQuestions: totalQuestions,
-                    progress: progress,
-                    timeDisplay: timeDisplay,
-                    statusClass: statusClass,
-                    cameraIcon: cameraIcon,
-                    cameraStatus: cameraStatus,
-                    alertCount: alertCount,
-                    lastActivity: log.timestamp,
-                    startedAt: startedAt,
-                    studentId: student.student_id || 'N/A',
-                    studentName: student.full_name || 'Unknown',
-                    examName: exam.exam_name || 'Unknown Exam',
-                    examId: exam.id
-                });
-            }
-            
-            progressData.sort((a, b) => {
-                const timeA = new Date(a.log.timestamp);
-                const timeB = new Date(b.log.timestamp);
-                return timeA - timeB;
-            });
-            
-            window.liveStudentsData = progressData;
-            const liveBadge = document.getElementById('liveBadge');
-            if (liveBadge) liveBadge.textContent = progressData.length;
-            window.displayLiveStudents();
-            
-            loadingDiv.style.display = 'none';
-            if (table) table.style.display = 'table';
-            if (statsDiv) statsDiv.style.display = 'block';
-            const liveCountDisplay = document.getElementById('liveCountDisplay');
-            if (liveCountDisplay) liveCountDisplay.textContent = progressData.length;
-            
-        } catch (error) {
-            console.error('❌ Error loading live students:', error);
-            loadingDiv.textContent = '❌ Error loading live students: ' + error.message;
-            loadingDiv.style.color = '#DC2626';
-            loadingDiv.style.display = 'block';
+        };
+
+        heartbeatRows.forEach(row => {
+            if (!row.student_id || !row.exam_id || !row.timestamp) return;
+            upsertSession(row.student_id, row.exam_id, { heartbeat: row, source: 'heartbeat' }, row.timestamp);
+        });
+
+        attemptRows.forEach(attempt => {
+            const status = String(attempt.status || '').trim().toUpperCase().replace(/[_-]+/g, ' ');
+            if (!attempt.student_id || !attempt.exam_id || attempt.submitted_at || !activeStatuses.has(status.replace(/\s+/g, '_')) && !activeStatuses.has(status)) return;
+            const key = sessionKey(attempt.student_id, attempt.exam_id);
+            const existing = sessions.get(key);
+            upsertSession(attempt.student_id, attempt.exam_id, { attempt, source: existing?.heartbeat ? 'heartbeat+attempt' : 'attempt' }, attempt.updated_at || attempt.started_at);
+        });
+
+        const latestLogByPair = new Map();
+        logRows.forEach(log => {
+            if (!log.student_id || !log.exam_id || !log.timestamp) return;
+            const key = sessionKey(log.student_id, log.exam_id);
+            if (!latestLogByPair.has(key)) latestLogByPair.set(key, log);
+            // Logs supplement a live session; they do not independently make an
+            // old exam look active after its heartbeat/attempt has gone stale.
+        });
+
+        if (sessions.size === 0) {
             window.liveStudentsData = [];
+            if (liveBadge) liveBadge.textContent = '0';
+            if (liveCountDisplay) liveCountDisplay.textContent = '0';
+            if (table) table.style.display = 'none';
+            if (statsDiv) statsDiv.style.display = 'none';
+            loadingDiv.innerHTML = heartbeatResult.error && attemptResult.error
+                ? '⚠️ Could not read heartbeats or active attempts. Check Supabase permissions and table availability.'
+                : '🟢 No active exam sessions found in the last 3 minutes. In-progress attempts without recent heartbeats are still included when available.';
+            loadingDiv.style.color = '#64748b';
+            loadingDiv.style.display = 'block';
+            return;
         }
-    };
+
+        const sessionRows = [...sessions.values()];
+        const studentIds = [...new Set(sessionRows.map(row => String(row.student_id)))];
+        const examIds = [...new Set(sessionRows.map(row => String(row.exam_id)))];
+        const [profilesByUser, profilesByStudent, examsResult, questionResult, answerResult] = await Promise.all([
+            sb.from('consolidated_user_profiles_table')
+                .select('user_id, full_name, student_id, email, program, block')
+                .in('user_id', studentIds),
+            sb.from('consolidated_user_profiles_table')
+                .select('user_id, full_name, student_id, email, program, block')
+                .in('student_id', studentIds),
+            sb.from('exams')
+                .select('id, exam_name, title, duration_minutes, total_marks')
+                .in('id', examIds),
+            sb.from('exam_questions')
+                .select('id, exam_id')
+                .in('exam_id', examIds),
+            sb.from('exam_grades')
+                .select('student_id, exam_id, question_id, selected_answer, marks')
+                .in('exam_id', examIds)
+                .neq('question_id', ZERO_QUESTION_ID)
+        ]);
+
+        const profileMap = {};
+        [...(profilesByUser.data || []), ...(profilesByStudent.data || [])].forEach(profile => {
+            if (profile.user_id != null) profileMap[String(profile.user_id)] = profile;
+            if (profile.student_id != null) profileMap[String(profile.student_id)] = profile;
+        });
+        const examMap = Object.fromEntries((examsResult.data || []).map(exam => [String(exam.id), exam]));
+        const questionCounts = {};
+        (questionResult.data || []).forEach(question => {
+            const key = String(question.exam_id);
+            questionCounts[key] = (questionCounts[key] || 0) + 1;
+        });
+        const answeredCounts = {};
+        (answerResult.data || []).forEach(answer => {
+            const key = sessionKey(answer.student_id, answer.exam_id);
+            const hasAnswer = answer.selected_answer != null && String(answer.selected_answer).trim() !== '';
+            const hasMark = answer.marks != null;
+            if (hasAnswer || hasMark) answeredCounts[key] = (answeredCounts[key] || 0) + 1;
+        });
+
+        const cameraEvents = new Set(['face_detected', 'face_missing', 'multiple_faces_detected']);
+        const alertEvents = new Set(['multiple_faces_detected', 'tab_switched', 'fullscreen_exit_attempt']);
+        const progressData = [];
+        for (const session of sessionRows) {
+            const student = profileMap[String(session.student_id)];
+            const exam = examMap[String(session.exam_id)];
+            if (!student || !exam) {
+                console.warn('Live Students: profile or exam metadata unavailable for session', session.student_id, session.exam_id);
+                continue;
+            }
+
+            const key = sessionKey(session.student_id, session.exam_id);
+            const heartbeat = session.heartbeat || {};
+            const latestLog = latestLogByPair.get(key);
+            const answeredCount = Math.max(Number(heartbeat.answered_count || 0), answeredCounts[key] || 0);
+            const totalQuestions = Number(heartbeat.total_questions || questionCounts[String(session.exam_id)] || 0);
+            const progress = totalQuestions > 0 ? Math.min(100, Math.round(answeredCount / totalQuestions * 100)) : 0;
+            const cameraLog = logRows.find(log => String(log.student_id) === String(session.student_id) &&
+                String(log.exam_id) === String(session.exam_id) && cameraEvents.has(log.event_type));
+            const cameraStatus = heartbeat.face_detected === true ? 'face_detected' : (cameraLog?.event_type || 'unknown');
+            const alertCount = logRows.filter(log => String(log.student_id) === String(session.student_id) &&
+                String(log.exam_id) === String(session.exam_id) && alertEvents.has(log.event_type)).length;
+            const startedAtValue = session.attempt?.started_at || heartbeat.timestamp || latestLog?.timestamp || session.lastActivity;
+            const startedAt = startedAtValue ? new Date(startedAtValue) : new Date();
+            const durationMinutes = Number(exam.duration_minutes || 30);
+            const timeLeftMs = startedAt.getTime() + durationMinutes * 60000 - now;
+            let timeDisplay = '—';
+            let statusClass = 'status-active';
+            if (timeLeftMs > 0) {
+                const minutes = Math.floor(timeLeftMs / 60000);
+                const seconds = Math.floor((timeLeftMs % 60000) / 1000);
+                timeDisplay = minutes + 'm ' + seconds + 's';
+                if (minutes < 5) statusClass = 'status-critical';
+            } else {
+                timeDisplay = '⏰ Check timer';
+                statusClass = 'status-pending';
+            }
+
+            progressData.push({
+                key, student, exam,
+                log: latestLog || { timestamp: session.lastActivity },
+                attempt: session.attempt || null,
+                heartbeat: session.heartbeat || null,
+                answeredCount, totalQuestions, progress, timeDisplay, statusClass,
+                cameraIcon: cameraStatus === 'face_detected' ? '🟢' : cameraStatus === 'face_missing' ? '🔴' : cameraStatus === 'multiple_faces_detected' ? '🚨' : '⚪',
+                cameraStatus, alertCount, lastActivity: session.lastActivity,
+                startedAt, studentId: student.student_id || 'N/A',
+                studentName: student.full_name || 'Unknown',
+                examName: exam.exam_name || exam.title || 'Unknown Exam',
+                examId: exam.id,
+                activitySource: session.source || 'attempt'
+            });
+        }
+
+        progressData.sort((a, b) => new Date(b.lastActivity || 0) - new Date(a.lastActivity || 0));
+        window.liveStudentsData = progressData;
+        if (liveBadge) liveBadge.textContent = String(progressData.length);
+        if (liveCountDisplay) liveCountDisplay.textContent = String(progressData.length);
+        window.displayLiveStudents();
+        loadingDiv.style.display = progressData.length ? 'none' : 'block';
+        if (!progressData.length) {
+            loadingDiv.textContent = '⚠️ Active sessions were found, but student/exam details could not be resolved. Check profile and exam table permissions.';
+        }
+        if (table) table.style.display = progressData.length ? 'table' : 'none';
+        if (statsDiv) statsDiv.style.display = progressData.length ? 'block' : 'none';
+    } catch (error) {
+        console.error('❌ Error loading live students:', error);
+        loadingDiv.textContent = '❌ Error loading live students: ' + String(error.message || error);
+        loadingDiv.style.color = '#DC2626';
+        loadingDiv.style.display = 'block';
+        window.liveStudentsData = [];
+        if (liveBadge) liveBadge.textContent = '0';
+        if (liveCountDisplay) liveCountDisplay.textContent = '0';
+    }
+};
 
    // ✅ FIXED: Display live students with proper null checks
 // Compatibility handler used by the Live Students Refresh button.
