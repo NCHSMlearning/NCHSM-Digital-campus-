@@ -17,6 +17,12 @@ if (window.location.pathname.endsWith('.html')) {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 const ZERO_QUESTION_ID = '00000000-0000-0000-0000-000000000000';
 
+    function escapeAdminHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, character => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[character]));
+    }
+
     // Initialize Supabase
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     window.supabase = sb;
@@ -4857,18 +4863,20 @@ window.displayLiveFeed = function() {
         // Get image URL
         let imageUrl = null;
         if (log.snapshot_url) {
-            imageUrl = log.snapshot_url;
+            imageUrl = String(log.snapshot_url);
         } else if (log.screenshot_data) {
-            imageUrl = log.screenshot_data.startsWith('data:') ? 
-                log.screenshot_data : 
-                'data:image/jpeg;base64,' + log.screenshot_data;
+            imageUrl = String(log.screenshot_data).startsWith('data:') ?
+                String(log.screenshot_data) :
+                'data:image/jpeg;base64,' + String(log.screenshot_data);
         }
+        if (imageUrl && !(/^https?:\/\//i.test(imageUrl) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=\s]+$/i.test(imageUrl))) imageUrl = null;
+        if (imageUrl) imageUrl = escapeAdminHtml(imageUrl);
         
         // Use the data from the item object
-        const studentName = item.studentName || 'Unknown Student';
-        const studentId = item.studentRegNumber || 'N/A';
-        const examName = item.examName || 'Exam';
-        const program = item.program || '';
+        const studentName = escapeAdminHtml(item.studentName || 'Unknown Student');
+        const studentId = escapeAdminHtml(item.studentRegNumber || 'N/A');
+        const examName = escapeAdminHtml(item.examName || 'Exam');
+        const program = escapeAdminHtml(item.program || '');
         
         // Status color for progress bar
         let progressColor = '#38A169';
@@ -8185,7 +8193,11 @@ function renderAttendanceTable(data) {
         const signInTime = record.sign_in_time ? formatKenyaTime(record.sign_in_time) : '--';
         
         // ✅ Use exam_name from the record (already fetched)
-        const examName = record.exam_name || 'Exam ' + record.exam_id;
+        const examName = escapeAdminHtml(record.exam_name || 'Exam ' + record.exam_id);
+        const studentNameRaw = String(record.student_name || 'Student');
+        const studentName = escapeAdminHtml(studentNameRaw);
+        const safeStudentName = escapeAdminHtml(studentNameRaw.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\\r\\n]/g, ' '));
+        const studentRegNumber = escapeAdminHtml(record.student_reg_number || 'N/A');
         
         // Video feed HTML
         let videoHtml = '';
@@ -8204,7 +8216,7 @@ function renderAttendanceTable(data) {
                         <button onclick="toggleVideoMute('${record.student_id}')" title="Mute">
                             <i class="fas fa-volume-up"></i>
                         </button>
-                        <button onclick="openFullVideo('${record.student_id}', '${record.student_name || 'Student'}', '${record.exam_id}')" title="Full Screen">
+                        <button onclick="openFullVideo('${record.student_id}', '${safeStudentName}', '${record.exam_id}')" title="Full Screen">
                             <i class="fas fa-expand"></i>
                         </button>
                     </div>
@@ -8226,8 +8238,8 @@ function renderAttendanceTable(data) {
         html += `
             <tr>
                 <td>${index + 1}</td>
-                <td><strong>${record.student_name || 'Unknown'}</strong></td>
-                <td>${record.student_reg_number || 'N/A'}</td>
+                <td><strong>${studentName}</strong></td>
+                <td>${studentRegNumber}</td>
                 <td><strong>${examName}</strong></td>
                 <td><span class="status-badge-attendance ${statusClass}">${statusDisplay}</span></td>
                 <td>${signInTime}</td>
