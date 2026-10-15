@@ -4362,12 +4362,29 @@ window.closeCameraModal = function() {
     };
 
     window.closeCameraModal = function() {
-        document.getElementById('cameraModal').style.display = 'none';
+        const modal = document.getElementById('cameraModal');
+        if (modal) modal.style.display = 'none';
+
         if (cameraInterval) {
             clearInterval(cameraInterval);
             cameraInterval = null;
         }
         cameraAutoRefresh = true;
+        if (typeof snapshotCache !== 'undefined') snapshotCache = [];
+
+        // Release the modal's WebRTC peer/channel when the modal closes.
+        // Card previews use independent peer connections and remain unaffected.
+        if (typeof nchsmCloseAdminWebRTC === 'function') {
+            try { nchsmCloseAdminWebRTC(true); } catch (error) {
+                console.warn('Could not close admin camera signaling cleanly:', error);
+            }
+        }
+        const liveVideo = document.getElementById('cameraLiveVideo');
+        if (liveVideo) {
+            try { liveVideo.pause(); } catch (_) {}
+            liveVideo.srcObject = null;
+            liveVideo.style.display = 'none';
+        }
     };
 
     // ============================================
