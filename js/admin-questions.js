@@ -763,7 +763,7 @@ function renderPendingQuestionsTable(questions) {
                     <span style="padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; ${statusColors[q.status] || statusColors.pending}">
                         ${statusIcons[q.status] || '⏳'} ${q.status || 'pending'}
                     </span>
-                    ${q.rejection_reason ? `<br><small style="color:#dc2626; font-size:9px;">${q.rejection_reason}</small>` : ''}
+                    ${q.rejection_reason ? `<br><small style="color:#dc2626; font-size:9px;">${escapeAdminQuestionHtml(q.rejection_reason)}</small>` : ''}
                 </td>
                 <td style="padding: 8px 12px; text-align: center;">
                     ${isPending ? `
