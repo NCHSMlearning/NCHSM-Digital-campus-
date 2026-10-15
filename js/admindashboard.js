@@ -162,9 +162,12 @@ let isVideoAutoRefresh = true;
         
         toast.innerHTML = `
             <i class="fas ${icons[type] || 'fa-info-circle'}" style="font-size:1.2rem;"></i>
-            <span>${message}</span>
+            <span></span>
             <i class="fas fa-times" style="margin-left: auto; opacity: 0.7; font-size: 0.8rem; cursor:pointer;"></i>
         `;
+        // Toast messages often contain names or backend errors; render as text, not HTML.
+        const toastMessage = toast.querySelector('span');
+        if (toastMessage) toastMessage.textContent = String(message ?? '');
         
         document.body.appendChild(toast);
         
