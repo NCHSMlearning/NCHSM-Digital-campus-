@@ -2593,7 +2593,26 @@ window.viewExamResult = async function(sid, eid) {
 // 📤 RELEASE SINGLE RESULT - UPDATED
 // ============================================
 async function releaseSingleResult(studentId, examId) {
-    if (!confirm('📤 Release this current final result for the student?\n\nOnly the current canonical result for this student/exam will be released.')) return;
+    // Enforce the same no-student-release policy used by the bulk release flow.
+    // This guard must run in the handler, not only in the UI.
+    try {
+        const { data: releaseExam, error: releaseExamError } = await sb
+            .from('exams')
+            .select('id, exam_name, exam_type, title')
+            .eq('id', parseInt(examId, 10))
+            .single();
+        if (releaseExamError) throw releaseExamError;
+        if (isRestrictedExamForStudentRelease(releaseExam)) {
+            showRestrictedReleaseMessage(releaseExam, null);
+            return;
+        }
+    } catch (error) {
+        console.error('Unable to verify exam release eligibility:', error);
+        showToast('❌ Could not verify exam type. Result was NOT released. Please try again.', 'error');
+        return;
+    }
+
+    if (!confirm('📤 Release this current result for the student?\n\nOnly the current canonical result for this student/exam will be released.')) return;
 
     const confirmBtn = document.querySelector(`button[onclick*="releaseSingleResult('${studentId}', ${examId})"]`);
     if (confirmBtn) {
