@@ -4856,17 +4856,21 @@ window.loadLiveFeed = async function() {
         const { data: activeAttempts, error: activeAttemptsError } = await sb
             .from('exam_attempts')
             .select('id, student_id, exam_id, status, started_at, submitted_at, updated_at')
-            .in('status', ['IN_PROGRESS', 'in_progress', 'STARTED', 'started', 'ACTIVE', 'active'])
+            // Query broadly, then normalize status in JavaScript. Exact .in()
+            // filters missed legacy values such as "in-progress" and "ongoing".
             .is('submitted_at', null)
             .gte('started_at', activeAttemptCutoff)
             .order('started_at', { ascending: false })
-            .limit(1500);
+            .limit(2000);
 
         if (activeAttemptsError) {
             console.warn('Live feed active-attempt fallback unavailable:', activeAttemptsError.message);
         } else {
             (activeAttempts || []).forEach(attempt => {
-                if (!attempt.student_id || !attempt.exam_id || !attempt.started_at) return;
+                if (!attempt.student_id || !attempt.exam_id || !attempt.started_at || attempt.submitted_at) return;
+                const status = String(attempt.status || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
+                const terminalStatuses = new Set(['submitted', 'completed', 'finished', 'graded', 'passed', 'failed', 'cancelled', 'canceled', 'abandoned', 'expired']);
+                if (terminalStatuses.has(status)) return;
                 const key = String(attempt.student_id) + '_' + String(attempt.exam_id);
                 if (latestByPair.has(key)) return;
                 latestByPair.set(key, {
@@ -4877,7 +4881,8 @@ window.loadLiveFeed = async function() {
                     total_questions: 0,
                     face_detected: false,
                     timestamp: attempt.updated_at || attempt.started_at,
-                    heartbeatMissing: true
+                    heartbeatMissing: true,
+                    attemptStatus: attempt.status || 'unknown'
                 });
             });
         }
@@ -10134,6 +10139,7 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
 /* NCHSM LIVE CAMERA THUMBNAILS: independent WebRTC viewer per active card. */
 (function initNchsmCardLivePreviews() {
     const peers = new Map(), channels = new Map(), pendingIce = new Map(), timers = new Map(), previewTimers = new Map();
+    const streams = new Map(), activeCards = new Map();
     const prefix = 'nchsm-proctor-live';
     const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -10151,18 +10157,17 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
         if (channel) { try { sb.removeChannel(channel); } catch (_) {} }
         channels.delete(key);
         pendingIce.delete(key);
+        streams.delete(key);
+        activeCards.delete(key);
     }
 
     function start(card) {
-        if (!card || card.dataset.nchsmPreviewStarted === 'true' || card.dataset.nchsmLiveCard !== 'true') return;
+        if (!card || card.dataset.nchsmLiveCard !== 'true') return;
         const studentId = card.dataset.studentId, examId = card.dataset.examId;
         const video = card.querySelector('.nchsm-card-live-video');
         if (!studentId || !examId || !video) return;
         const key = String(examId) + ':' + String(studentId);
-        // Use a unique viewer ID per browser tab/card instance so the student
-        // can maintain separate peer connections for the modal and each thumbnail.
-        const viewerId = 'admin-card-' + key + '-' + Math.random().toString(36).slice(2, 8);
-        card.dataset.nchsmPreviewStarted = 'true';
+        activeCards.set(key, card);
         const placeholder = card.querySelector('.nchsm-card-camera-placeholder');
         const setPlaceholder = message => {
             if (!placeholder || !card.isConnected || video.srcObject) return;
@@ -10170,13 +10175,51 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
             const label = placeholder.querySelector('p');
             if (label) label.textContent = message;
         };
+        const setPreviewTimeout = () => {
+            const oldTimer = previewTimers.get(key);
+            if (oldTimer) clearTimeout(oldTimer);
+            const timeout = setTimeout(() => {
+                if (!video.srcObject && card.isConnected) {
+                    setPlaceholder('Camera unavailable — check student camera');
+                }
+            }, 18000);
+            previewTimers.set(key, timeout);
+        };
+
+        // Auto-refresh replaces card DOM. Reattach an existing stream to the
+        // new video element instead of opening a second peer connection every
+        // refresh (which left cards stuck on "Connecting to camera…").
+        const existingStream = streams.get(key);
+        const existingPeer = peers.get(key);
+        const existingChannel = channels.get(key);
+        if (card.dataset.nchsmPreviewStarted === 'true') return;
+        if (existingStream && existingPeer && !['failed', 'closed'].includes(existingPeer.connectionState)) {
+            video.srcObject = existingStream;
+            video.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+            const cameraBadge = card.querySelector('.overlay-badge.camera-off');
+            if (cameraBadge) { cameraBadge.className = 'overlay-badge camera-on'; cameraBadge.textContent = '🟢 Live'; }
+            card.dataset.nchsmPreviewStarted = 'true';
+            const oldTimer = previewTimers.get(key);
+            if (oldTimer) clearTimeout(oldTimer);
+            previewTimers.delete(key);
+            try { video.play().catch(() => {}); } catch (_) {}
+            return;
+        }
+        if (existingPeer && existingChannel && !['failed', 'closed'].includes(existingPeer.connectionState)) {
+            card.dataset.nchsmPreviewStarted = 'true';
+            setPlaceholder('Connecting to camera…');
+            setPreviewTimeout();
+            return;
+        }
+        if (existingPeer || existingChannel) stop(key);
+        activeCards.set(key, card);
+        // Use a unique viewer ID per student/exam session; reuse it across
+        // DOM refreshes while this connection remains active.
+        const viewerId = 'admin-card-' + key.replace(/[^a-zA-Z0-9:_-]/g, '') + '-' + Math.random().toString(36).slice(2, 8);
+        card.dataset.nchsmPreviewStarted = 'true';
         setPlaceholder('Connecting to camera…');
-        const previewTimeout = setTimeout(() => {
-            if (!video.srcObject && card.isConnected) {
-                setPlaceholder('Camera unavailable — check student camera');
-            }
-        }, 18000);
-        previewTimers.set(key, previewTimeout);
+        setPreviewTimeout();
         const channel = sb.channel(prefix + ':' + examId + ':' + studentId, {
             config: { broadcast: { self: false, ack: false } }
         });
@@ -10204,16 +10247,21 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                         stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
                         if (!stream.getTracks().some(track => track.id === event.track.id)) stream.addTrack(event.track);
                     }
-                    if (!stream || !card.isConnected || peers.get(key) !== pc) return;
-                    video.srcObject = stream;
-                    video.style.display = 'block';
+                    if (!stream || peers.get(key) !== pc) return;
+                    streams.set(key, stream);
+                    const targetCard = activeCards.get(key) || card;
+                    const targetVideo = targetCard?.querySelector('.nchsm-card-live-video');
+                    if (!targetCard?.isConnected || !targetVideo) return;
+                    targetVideo.srcObject = stream;
+                    targetVideo.style.display = 'block';
                     const timeout = previewTimers.get(key);
                     if (timeout) clearTimeout(timeout);
                     previewTimers.delete(key);
-                    if (placeholder) placeholder.style.display = 'none';
-                    const badge = card.querySelector('.overlay-badge.camera-off');
+                    const targetPlaceholder = targetCard.querySelector('.nchsm-card-camera-placeholder');
+                    if (targetPlaceholder) targetPlaceholder.style.display = 'none';
+                    const badge = targetCard.querySelector('.overlay-badge.camera-off');
                     if (badge) { badge.className = 'overlay-badge camera-on'; badge.textContent = '🟢 Live'; }
-                    try { await video.play(); } catch (error) { console.warn('Card preview autoplay blocked:', error); }
+                    try { await targetVideo.play(); } catch (error) { console.warn('Card preview autoplay blocked:', error); }
                 };
                 pc.onicecandidate = event => {
                     if (!event.candidate || channels.get(key) !== channel) return;
@@ -10267,7 +10315,17 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
     }
 
     function scan() {
-        document.querySelectorAll('.live-feed-card[data-nchsm-live-card="true"]').forEach(start);
+        const cards = [...document.querySelectorAll('.live-feed-card[data-nchsm-live-card="true"]')];
+        const visibleKeys = new Set();
+        cards.forEach(card => {
+            const studentId = card.dataset.studentId, examId = card.dataset.examId;
+            if (studentId && examId) visibleKeys.add(String(examId) + ':' + String(studentId));
+            start(card);
+        });
+        // Release peers for sessions that disappeared from the active view.
+        for (const key of Array.from(activeCards.keys())) {
+            if (!visibleKeys.has(key)) stop(key);
+        }
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scan, { once: true });
     else scan();
