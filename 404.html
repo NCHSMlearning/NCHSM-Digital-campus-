@@ -23,35 +23,35 @@
 
     <!-- NCHSM FAVICON & APP ICONS -->
     <link
-        href="images/Logo_NCHSM.png"
+        href="/images/Logo_NCHSM.png"
         rel="icon"
         type="image/png"
         sizes="16x16"
     >
 
     <link
-        href="images/Logo_NCHSM.png"
+        href="/images/Logo_NCHSM.png"
         rel="icon"
         type="image/png"
         sizes="32x32"
     >
 
     <link
-        href="images/Logo_NCHSM.png"
+        href="/images/Logo_NCHSM.png"
         rel="icon"
         type="image/png"
         sizes="192x192"
     >
 
     <link
-        href="images/Logo_NCHSM.png"
+        href="/images/Logo_NCHSM.png"
         rel="icon"
         type="image/png"
         sizes="512x512"
     >
 
     <link
-        href="images/Logo_NCHSM.png"
+        href="/images/Logo_NCHSM.png"
         rel="apple-touch-icon"
         sizes="180x180"
     >
@@ -642,7 +642,7 @@
         // Only intercept Student Portal SPA routes.
         if (path === "/student" || path === "/student/" || path.indexOf("/student/") === 0) {
             var route = path.replace(/^\/student\/?/, "");
-            var target = "/student.html";
+            var target = "/login.html";
 
             if (route) {
                 target += "?route=" + encodeURIComponent("/student/" + route);
@@ -677,7 +677,7 @@
         >
 
             <img
-                src="images/Logo_NCHSM.png"
+                src="/images/Logo_NCHSM.png"
                 alt="Nakuru College of Health Sciences and Management logo"
             >
 
@@ -707,11 +707,11 @@
                 About
             </a>
 
-            <a href="/nursing.html">
+            <a href="/nursing/">
                 Programmes
             </a>
 
-            <a href="/admission.html">
+            <a href="/admissions/">
                 Admissions
             </a>
 
@@ -720,7 +720,7 @@
             </a>
 
             <a
-                href="/student.html"
+                href="/login.html"
                 class="apply-btn"
             >
                 Student Portal
@@ -774,7 +774,7 @@
 
 
                 <a
-                    href="/admission.html"
+                    href="/admissions/"
                     class="btn btn-outline"
                 >
                     Admissions
@@ -789,11 +789,11 @@
                     About NCHSM
                 </a>
 
-                <a href="/nursing.html">
+                <a href="/nursing/">
                     Programmes
                 </a>
 
-                <a href="/admission.html">
+                <a href="/admissions/">
                     Apply
                 </a>
 
@@ -801,7 +801,7 @@
                     Contact
                 </a>
 
-                <a href="/student.html">
+                <a href="/login.html">
                     Student Portal
                 </a>
 
