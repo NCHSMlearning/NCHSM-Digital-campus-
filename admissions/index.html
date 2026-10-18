@@ -1460,6 +1460,65 @@ body{overflow-x:hidden!important;background:#f5f9fd!important}
 #admissionApp.nchsm-locked{display:none !important;}
 </style>
     <link rel="canonical" href="https://nchsm.co.ke/admissions/">
+
+<style id="nchsm-mobile-hero-overlap-fix">
+/* Mobile admissions hero: keep content in normal flow so buttons, stats and feature cards never overlap. */
+@media (max-width: 600px) {
+  .hero-v4 {
+    min-height: 0 !important;
+    padding: 42px 18px 0 !important;
+    background-position: center center !important;
+    overflow: hidden !important;
+  }
+  .hero-v4-overlay {
+    background: linear-gradient(180deg, rgba(2,37,67,.91) 0%, rgba(3,49,83,.82) 60%, rgba(3,53,88,.70) 100%) !important;
+  }
+  .hero-v4-content {
+    min-height: 0 !important;
+    display: block !important;
+    margin: 0 !important;
+  }
+  .hero-v4-copy { max-width: none !important; }
+  .hero-kicker { font-size: .62rem !important; letter-spacing: .16em !important; line-height: 1.5 !important; }
+  .hero-v4-copy h1 { font-size: clamp(2.25rem, 11vw, 3.2rem) !important; line-height: .98 !important; overflow-wrap: anywhere; }
+  .hero-v4-copy h2 { font-size: 1.18rem !important; line-height: 1.4 !important; margin-top: 16px !important; }
+  .hero-v4-copy p { font-size: .96rem !important; line-height: 1.55 !important; }
+  .hero-actions-v4 { display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 10px !important; max-width: none !important; margin: 20px 0 0 !important; }
+  .hero-actions-v4 button { width: 100% !important; justify-content: center !important; min-height: 48px !important; }
+  .hero-student-badge, .hero-side-values { display: none !important; }
+  .hero-mini-stats {
+    position: relative !important; inset: auto !important;
+    display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 14px 10px !important; margin: 26px 0 22px !important; max-width: none !important;
+  }
+  .hero-mini-stats > div { min-width: 0 !important; padding: 0 !important; border: 0 !important; align-items: flex-start !important; gap: 8px !important; }
+  .hero-mini-stats i { flex: 0 0 auto !important; font-size: 1.35rem !important; }
+  .hero-mini-stats strong { font-size: .84rem !important; line-height: 1.25 !important; }
+  .hero-mini-stats small { font-size: .72rem !important; line-height: 1.35 !important; }
+  .feature-row-v4 {
+    position: relative !important; inset: auto !important;
+    display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 10px !important; margin: 0 -18px !important; padding: 14px !important;
+    background: rgba(2,47,78,.92) !important;
+  }
+  .feature-v4 { min-width: 0 !important; min-height: 110px !important; height: auto !important; padding: 12px !important; border-radius: 12px !important; gap: 9px !important; align-items: flex-start !important; }
+  .feature-v4 > i { flex: 0 0 25px !important; min-width: 25px !important; font-size: 1.25rem !important; margin-top: 2px !important; }
+  .feature-v4 strong { font-size: .78rem !important; line-height: 1.35 !important; overflow-wrap: anywhere; }
+  .feature-v4 span { font-size: .68rem !important; line-height: 1.4 !important; overflow-wrap: anywhere; }
+  .value-strip-v4 { grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 12px !important; padding: 20px 16px !important; }
+  .value-strip-v4 > div { min-width: 0 !important; padding: 6px 0 !important; gap: 9px !important; }
+  .value-strip-v4 > div:first-child { padding-left: 0 !important; }
+  .value-strip-v4 i { flex: 0 0 auto !important; font-size: 1.45rem !important; }
+  .value-strip-v4 span { font-size: .82rem !important; line-height: 1.4 !important; }
+  .value-strip-v4 small { font-size: .72rem !important; line-height: 1.4 !important; }
+  .value-strip-v4 em { min-width: 0 !important; font-size: .92rem !important; padding: 12px 0 0 !important; overflow-wrap: anywhere; }
+}
+@media (max-width: 360px) {
+  .hero-v4 { padding-left: 14px !important; padding-right: 14px !important; }
+  .feature-row-v4 { margin-left: -14px !important; margin-right: -14px !important; padding: 10px !important; gap: 8px !important; }
+  .feature-v4 { padding: 10px !important; }
+}
+</style>
 </head>
 <body>
 
