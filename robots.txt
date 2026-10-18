@@ -1,10 +1,9 @@
 User-agent: *
 Allow: /
 
-# Private/authenticated areas
+# Authenticated portals are not public search landing pages.
 Disallow: /admin.html
 Disallow: /admin-login
-Disallow: /admin-login%20(1).html
 Disallow: /adminlogin.html
 Disallow: /adminexams.html
 Disallow: /superadmin.html
@@ -31,9 +30,7 @@ Disallow: /nurseiq-admin-login.html
 Disallow: /parents.html
 Disallow: /reports.html
 Disallow: /classroom.html
-Disallow: /demo.html
 Disallow: /forgot-password.html
-Disallow: /register.html
 Disallow: /redirect.html
 Disallow: /icon-generator.html
 Disallow: /indexx.html
