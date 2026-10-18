@@ -4526,7 +4526,7 @@ async function submitAdmission() {
         const successOverlay = document.getElementById('successOverlay');
         const refNumber = document.getElementById('refNumber');
         if (successOverlay) successOverlay.classList.add('show');
-        if (refNumber) refNumber.textContent = `ADM-${Date.now().toString().slice(-6)}`;
+        if (refNumber) refNumber.textContent = applicationId ? `ADM-${String(applicationId).slice(0, 8).toUpperCase()}` : 'Submitted';
 
     } catch (error) {
         console.error('Submit error:', error);
