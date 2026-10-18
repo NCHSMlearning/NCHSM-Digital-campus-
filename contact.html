@@ -491,9 +491,9 @@
 
             <!-- ===== CTA BOX ===== -->
             <div class="cta-box">
-                <h2>📅 September 2026 Intake Now Open!</h2>
-                <p>Applications are ongoing at Nakuru College of Health Sciences & Management for Nursing and TVET courses.</p>
-                <a href="/login.html" class="btn"><i class="fas fa-graduation-cap"></i> Apply Now</a>
+                <h2>Interested in Joining NCHSM?</h2>
+                <p>Contact Admissions to confirm available programmes, current intake dates, entry requirements and application steps.</p>
+                <a href="/admissions/" class="btn"><i class="fas fa-graduation-cap"></i> Admissions Information</a>
             </div>
         </div>
     </div>
@@ -535,30 +535,33 @@
                 return;
             }
 
-            // Show success message
+            // This static website has no configured message-delivery backend.
+            // Open the visitor's email application instead of falsely claiming the message was sent.
+            const recipient = 'info@nakurucollegeofhealth.ac.ke';
+            const emailSubject = encodeURIComponent('NCHSM Website Inquiry: ' + subject);
+            const emailBody = encodeURIComponent(
+                'Name: ' + name + '\\n' +
+                'Email: ' + email + '\\n' +
+                'Phone: ' + (phone || 'Not provided') + '\\n' +
+                'Subject: ' + subject + '\\n\\n' +
+                'Message:\\n' + message
+            );
             document.getElementById('formSuccess').style.display = 'block';
-
-            // Reset form
-            this.reset();
-
-            // Scroll to success message
+            document.getElementById('formSuccess').innerHTML =
+                '<i class="fas fa-envelope-open-text"></i>' +
+                '<h3>Email draft prepared</h3>' +
+                '<p>Your email application should open with your inquiry. Please review and send the email to complete submission. If it does not open, email ' +
+                '<a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a> directly.</p>';
             document.getElementById('formSuccess').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            window.location.href = 'mailto:' + recipient + '?subject=' + emailSubject + '&body=' + emailBody;
 
-            // Hide success after 6 seconds
-            setTimeout(() => {
-                document.getElementById('formSuccess').style.display = 'none';
-            }, 6000);
-
-            // ===== Track with Google Analytics =====
             if (typeof gtag !== 'undefined') {
-                gtag('event', 'form_submission', {
+                gtag('event', 'contact_email_draft', {
                     'event_category': 'Contact',
                     'event_label': subject,
                     'value': 1
                 });
             }
-
-            console.log('📝 Contact form submitted:', { name, email, phone, subject, message });
         });
     </script>
 
