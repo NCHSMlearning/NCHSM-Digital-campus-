@@ -109,5 +109,7 @@
 <script>
 (function(){var btn=document.getElementById("menuBtn"),nav=document.getElementById("navLinks");if(btn&&nav){btn.addEventListener("click",function(){var open=nav.classList.toggle("open");btn.setAttribute("aria-expanded",String(open));btn.textContent=open?"✕":"☰"});nav.querySelectorAll("a").forEach(function(a){a.addEventListener("click",function(){nav.classList.remove("open");btn.setAttribute("aria-expanded","false");btn.textContent="☰"})})}var y=document.getElementById("year");if(y)y.textContent=new Date().getFullYear()})();
 </script>
+<!-- Jotform AI Agent embed -->
+<script src="https://cdn.jotfor.ms/agent/embedjs/01a14ecc0d307000875aa3918a1654f3304a/embed.js.add"></script>
 </body>
 </html>
