@@ -1519,6 +1519,82 @@ body{overflow-x:hidden!important;background:#f5f9fd!important}
   .feature-v4 { padding: 10px !important; }
 }
 </style>
+
+<style id="nchsm-desktop-hero-overlap-fix">
+/* Desktop/tablet landscape: stack hero layers in flow so stats and feature cards cannot cover the CTA buttons. */
+@media (min-width: 601px) {
+  .hero-v4 {
+    min-height: 0 !important;
+    padding: clamp(72px, 8vw, 112px) 3.5vw 0 !important;
+    overflow: hidden !important;
+  }
+  .hero-v4-content {
+    min-height: 0 !important;
+    align-items: flex-start !important;
+    gap: 28px !important;
+  }
+  .hero-v4-copy {
+    flex: 1 1 62% !important;
+    min-width: 0 !important;
+    padding-bottom: 12px !important;
+  }
+  .hero-student-badge {
+    flex: 0 1 34% !important;
+    min-width: 0 !important;
+  }
+  .hero-mini-stats {
+    position: relative !important;
+    inset: auto !important;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 20px 0 22px !important;
+    display: grid !important;
+    grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+    gap: 14px !important;
+  }
+  .hero-mini-stats > div {
+    min-width: 0 !important;
+    padding: 0 12px !important;
+    border-right: 1px solid rgba(255,255,255,.28) !important;
+    align-items: center !important;
+  }
+  .hero-mini-stats > div:first-child { padding-left: 0 !important; }
+  .hero-mini-stats > div:last-child { border-right: 0 !important; }
+  .hero-mini-stats strong { line-height: 1.3 !important; }
+  .hero-mini-stats small { line-height: 1.35 !important; }
+  .feature-row-v4 {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 0 0 !important;
+    grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+  }
+  .feature-v4 {
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 94px !important;
+    padding: 16px !important;
+    border-radius: 13px 13px 0 0 !important;
+    align-items: flex-start !important;
+  }
+  .feature-v4 > i { flex: 0 0 30px !important; min-width: 30px !important; }
+  .feature-v4 strong, .feature-v4 span { overflow-wrap: anywhere !important; }
+}
+@media (min-width: 601px) and (max-width: 900px) {
+  .hero-v4 { padding-top: 58px !important; }
+  .hero-v4-copy h1 { font-size: clamp(2.4rem, 5.3vw, 3.6rem) !important; }
+  .hero-student-badge { display: none !important; }
+  .hero-v4-copy { flex-basis: 100% !important; }
+  .hero-side-values { display: none !important; }
+  .hero-mini-stats { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  .hero-mini-stats > div:nth-child(2) { border-right: 0 !important; }
+  .feature-row-v4 { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  .feature-v4 { min-height: 88px !important; }
+}
+</style>
 </head>
 <body>
 
