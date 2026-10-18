@@ -861,6 +861,17 @@
 
 
 <script>
+    // Keep legacy admission URLs with an accidental trailing slash working.
+    // Canonical application URL: https://nchsm.co.ke/admissions/
+    (function () {
+        var path = window.location.pathname.replace(/\\/+$/, "");
+        if (path.toLowerCase() === "/admission.html") {
+            window.location.replace("/admissions/" + window.location.search + window.location.hash);
+        }
+    })();
+</script>
+
+<script>
 
     document.getElementById("year").textContent =
         new Date().getFullYear();
