@@ -861,12 +861,29 @@
 
 
 <script>
-    // Keep legacy admission URLs with an accidental trailing slash working.
-    // Canonical application URL: https://nchsm.co.ke/admissions/
+    // Redirect known legacy public URLs to their current pages.
     (function () {
-        var path = window.location.pathname.replace(/\\/+$/, "");
-        if (path.toLowerCase() === "/admission.html") {
-            window.location.replace("/admissions/" + window.location.search + window.location.hash);
+        var path = window.location.pathname.replace(/\/+$/, "").toLowerCase() || "/";
+        var destinations = {
+            "/admission.html": "/admissions/",
+            "/admission": "/admissions/",
+            "/apply": "/admissions/",
+            "/privacy-policy": "/privacy.html",
+            "/privacy-policy.html": "/privacy.html",
+            "/terms": "/terms.html",
+            "/terms-of-use": "/terms.html",
+            "/about": "/about.html",
+            "/contact": "/contact.html",
+            "/login": "/login.html",
+            "/login/": "/login.html",
+            "/resources": "/downloads/",
+            "/resources/": "/downloads/",
+            "/nursing.html": "/nursing/",
+            "/blog.html": "/blog/"
+        };
+        var destination = destinations[path];
+        if (destination) {
+            window.location.replace(destination + window.location.search + window.location.hash);
         }
     })();
 </script>
