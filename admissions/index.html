@@ -1678,20 +1678,37 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
 </style>
 
 <style id="nchsm-mobile-sidebar-hamburger">
-/* Mobile applicant navigation: collapsible left drawer controlled by a hamburger button. */
+/* Match the student portal: mobile navigation is an overlay drawer, not content in the page flow. */
 .nchsm-mobile-menu-toggle{display:none}
+#nchsmAdmissionsNavOverlay{display:none}
 @media(max-width:700px){
  #admissionApp .nchsm-mobile-menu-toggle{
-  display:flex!important;grid-column:1/-1!important;align-items:center!important;justify-content:flex-start!important;gap:10px!important;
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:10px!important;
   width:100%!important;min-height:46px!important;padding:10px 14px!important;border:1px solid #cbdde8!important;border-radius:12px!important;
   background:#fff!important;color:#073b5c!important;font:800 .92rem Inter,sans-serif!important;box-shadow:0 4px 14px rgba(6,47,74,.07)!important;cursor:pointer!important;
  }
  #admissionApp .nchsm-mobile-menu-toggle .menu-icon{font-size:1.15rem!important;width:22px!important;text-align:center!important}
  #admissionApp .nchsm-mobile-menu-toggle .menu-state{margin-left:auto!important;font-size:.72rem!important;color:#55758a!important;font-weight:700!important}
- #admissionApp .nchsm-dashboard-sidebar{display:none!important;position:relative!important;top:auto!important;grid-column:1/-1!important;grid-row:auto!important;width:100%!important;max-height:none!important;overflow:visible!important}
- #admissionApp.nchsm-mobile-nav-open .nchsm-dashboard-sidebar{display:flex!important;flex-direction:column!important}
- #admissionApp .dashboard-header,#admissionApp .app-steps,#admissionApp .application-completion,#admissionApp .panel{grid-column:1/-1!important;grid-row:auto!important}
+ #nchsmAdmissionsNavOverlay{display:block;position:fixed;inset:0;background:rgba(3,22,38,.52);z-index:9998;opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}
+ body.nchsm-admissions-nav-open #nchsmAdmissionsNavOverlay{opacity:1;visibility:visible}
+ body.nchsm-admissions-nav-open{overflow:hidden!important}
+ #admissionApp .nchsm-dashboard-sidebar{
+  display:flex!important;flex-direction:column!important;position:fixed!important;left:0!important;top:0!important;bottom:0!important;
+  width:min(85vw,320px)!important;height:100dvh!important;max-height:100dvh!important;overflow:hidden!important;
+  box-sizing:border-box!important;z-index:9999!important;border-radius:0 16px 16px 0!important;
+  padding:18px 12px!important;transform:translateX(-105%)!important;transition:transform .25s ease!important;
+  box-shadow:8px 0 30px rgba(0,0,0,.2)!important;grid-column:auto!important;grid-row:auto!important;
+ }
+ body.nchsm-admissions-nav-open #admissionApp .nchsm-dashboard-sidebar{transform:translateX(0)!important}
+ #admissionApp .nchsm-side-brand{display:flex!important;flex-direction:row!important;align-items:center!important;gap:10px!important;padding:8px 6px 14px!important}
+ #admissionApp .nchsm-side-brand img{width:38px!important;height:38px!important}
+ #admissionApp .nchsm-side-brand strong{font-size:1rem!important}
+ #admissionApp .nchsm-side-brand span{font-size:.72rem!important}
+ #admissionApp .nchsm-dashboard-sidebar .nchsm-side-link{display:flex!important;width:100%!important;min-height:44px!important;box-sizing:border-box!important;justify-content:flex-start!important;align-items:center!important;gap:10px!important;margin:3px 0!important;padding:11px 12px!important;font-size:.84rem!important;line-height:1.3!important;white-space:normal!important;border-radius:10px!important;flex-shrink:0!important}
+ #admissionApp .nchsm-side-help{display:block!important;margin:12px 0 0!important;padding:10px!important;flex-shrink:0!important}
+ #admissionApp .dashboard-header,#admissionApp .app-steps,#admissionApp .application-completion,#admissionApp .panel{grid-column:1/-1!important;grid-row:auto!important;width:100%!important;min-width:0!important}
 }
+@media(min-width:701px){#nchsmAdmissionsNavOverlay{display:none!important}}
 </style>
 </head>
 <body>
@@ -5979,40 +5996,34 @@ body{font-family:Inter,system-ui,sans-serif!important;background:var(--n2-soft)!
 </script>
 
 <script id="nchsm-mobile-sidebar-toggle-script">
-function toggleNchsmApplicantSidebar(){
- const app=document.getElementById('admissionApp');
- const button=app&&app.querySelector('.nchsm-mobile-menu-toggle');
- if(!app||!button)return;
- const open=app.classList.toggle('nchsm-mobile-nav-open');
- button.setAttribute('aria-expanded',String(open));
- const icon=button.querySelector('.menu-icon');
- const state=button.querySelector('.menu-state');
- if(icon)icon.className='fas '+(open?'fa-times':'fa-bars')+' menu-icon';
- if(state)state.textContent=open?'Hide menu':'Show menu';
-}
 (function(){
- function initMobileMenu(){
-  const app=document.getElementById('admissionApp');
-  const button=app&&app.querySelector('.nchsm-mobile-menu-toggle');
-  if(!app||!button)return;
-  if(window.matchMedia('(min-width: 701px)').matches){
-   app.classList.remove('nchsm-mobile-nav-open');
-   button.setAttribute('aria-expanded','false');
-  }
-  app.querySelectorAll('.nchsm-dashboard-sidebar .nchsm-side-link').forEach(function(link){
-   link.addEventListener('click',function(){
-    if(window.matchMedia('(max-width: 700px)').matches){
-     app.classList.remove('nchsm-mobile-nav-open');
-     button.setAttribute('aria-expanded','false');
-     const icon=button.querySelector('.menu-icon'),state=button.querySelector('.menu-state');
-     if(icon)icon.className='fas fa-bars menu-icon';
-     if(state)state.textContent='Show menu';
-    }
-   });
-  });
+ function getApp(){return document.getElementById('admissionApp')}
+ function getButton(){const app=getApp();return app&&app.querySelector('.nchsm-mobile-menu-toggle')}
+ function ensureOverlay(){
+  let overlay=document.getElementById('nchsmAdmissionsNavOverlay');
+  if(!overlay){overlay=document.createElement('div');overlay.id='nchsmAdmissionsNavOverlay';overlay.setAttribute('aria-hidden','true');document.body.appendChild(overlay);overlay.addEventListener('click',()=>toggleNchsmApplicantSidebar(false));}
+  return overlay;
  }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initMobileMenu);else initMobileMenu();
- window.addEventListener('resize',initMobileMenu);
+ window.toggleNchsmApplicantSidebar=function(force){
+  const app=getApp(),button=getButton();if(!app||!button)return;
+  const open=typeof force==='boolean'?force:!document.body.classList.contains('nchsm-admissions-nav-open');
+  document.body.classList.toggle('nchsm-admissions-nav-open',open);
+  app.classList.toggle('nchsm-mobile-nav-open',open);
+  button.setAttribute('aria-expanded',String(open));
+  const icon=button.querySelector('.menu-icon'),state=button.querySelector('.menu-state');
+  if(icon)icon.className='fas '+(open?'fa-times':'fa-bars')+' menu-icon';
+  if(state)state.textContent=open?'Hide menu':'Show menu';
+ };
+ function init(){
+  const app=getApp();if(!app)return;
+  ensureOverlay();
+  app.querySelectorAll('.nchsm-dashboard-sidebar .nchsm-side-link').forEach(link=>{
+   link.addEventListener('click',()=>{if(window.matchMedia('(max-width:700px)').matches)window.toggleNchsmApplicantSidebar(false)});
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')window.toggleNchsmApplicantSidebar(false)});
+  window.addEventListener('resize',()=>{if(window.matchMedia('(min-width:701px)').matches)window.toggleNchsmApplicantSidebar(false)});
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
 </body>
