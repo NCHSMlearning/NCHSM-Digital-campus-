@@ -2660,9 +2660,9 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
                                 <div class="grid-row">
                                     <div class="col col-2">
                                         <div class="form-group">
-                                            <label>Passport Size Photo <span class="required">\*</span> <span class="hint">(jpg, png, jpeg · Max 4MB)</span></label>
+                                            <label>Passport Size Photo <span class="required">\*</span> <span class="hint">(jpg, png, webp · Max 8MB)</span></label>
                                             <div class="file-upload" id="photoUpload">
-                                                <input type="file" id="passportPhoto" accept=".jpg,.png,.jpeg" onchange="handlePassportPhoto(event)" required />
+                                                <input type="file" id="passportPhoto" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onchange="handlePassportPhoto(event)" required />
                                                 <div class="icon"><i class="fas fa-camera"></i></div>
                                                 <div class="text">Click to upload or drag &amp; drop</div>
                                                 <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="photoFileName">No file chosen</div>
@@ -3565,9 +3565,14 @@ function validateStepWithModal(from, to) {
         }
 
         // Photo
-        const photo = document.getElementById('passportPhoto')?.files?.[0];
-        if (!photo) {
-            missingFields.push({ field: 'Passport Photo', section: 'Personal Details', hint: 'Upload a clear photo' });
+        const photoInput = document.getElementById('passportPhoto');
+        // The handler normalizes the selected photo into a new JPEG File, but browsers
+        // do not let script assign that File back to input.files. Validate the accepted
+        // normalized file as well as a still-selected original file.
+        const photo = photoInput?.files?.[0] || window.passportPhotoNormalizedFile || null;
+        const photoPreviewReady = Boolean(document.querySelector('#photoPreview img'));
+        if (!photo && !photoPreviewReady) {
+            missingFields.push({ field: 'Passport Photo', section: 'Personal Details', hint: 'Upload a clear photo and wait for its preview' });
         }
 
         if (missingFields.length > 0) {
@@ -4987,6 +4992,15 @@ async function handlePassportPhoto(event) {
 
 function removeDocument(docKey) {
     delete uploadedDocs[docKey];
+    if (docKey === 'passport') {
+        window.passportPhotoNormalizedFile = null;
+        const photoInput = document.getElementById('passportPhoto');
+        if (photoInput) photoInput.value = '';
+        const photoPreview = document.getElementById('photoPreview');
+        if (photoPreview) { photoPreview.innerHTML = '<span class="placeholder"><i class="fas fa-user"></i></span>'; photoPreview.classList.remove('has-image'); }
+        const photoFileName = document.getElementById('photoFileName');
+        if (photoFileName) photoFileName.textContent = 'No file chosen';
+    }
     const card = document.getElementById(`doc_${docKey}`);
     const statusEl = document.getElementById(`doc_${docKey}_status`);
     const fnameEl = document.getElementById(`doc_${docKey}_filename`);
