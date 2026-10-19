@@ -1773,6 +1773,25 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
  #admissionApp #admissionForm{grid-column:1/-1!important;grid-row:auto!important}
 }
 </style>
+
+<style id="nchsm-dashboard-overview-order">
+/* Put the overview cards directly under the welcome header, matching the approved dashboard hierarchy. */
+@media(min-width:701px){
+ #admissionApp .nchsm-dashboard-cards{grid-row:2!important}
+ #admissionApp .app-steps{grid-column:2!important;grid-row:3!important}
+ #admissionApp .application-completion{grid-column:2!important;grid-row:4!important}
+ #admissionApp .nchsm-status-panel{grid-column:2!important;grid-row:5!important}
+ #admissionApp #admissionForm{grid-column:2!important;grid-row:6!important}
+}
+@media(max-width:700px){
+ #admissionApp .dashboard-header{grid-column:1/-1!important;grid-row:1!important}
+ #admissionApp .nchsm-dashboard-cards{grid-column:1/-1!important;grid-row:2!important}
+ #admissionApp .app-steps{grid-column:1/-1!important;grid-row:3!important}
+ #admissionApp .application-completion{grid-column:1/-1!important;grid-row:4!important}
+ #admissionApp .nchsm-status-panel{grid-column:1/-1!important;grid-row:5!important}
+ #admissionApp #admissionForm{grid-column:1/-1!important;grid-row:6!important}
+}
+</style>
 </head>
 <body>
 
