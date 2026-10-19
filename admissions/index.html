@@ -4394,7 +4394,7 @@ async function handleKCSEDocument(event) {
             const pageTexts = [];
             // First use the PDF's embedded text layer when available; this is usually much
             // more accurate than OCR on digitally generated KCSE slips.
-            for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 4); pageNo++) {
+            for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 2); pageNo++) {
                 const page = await pdf.getPage(pageNo);
                 const content = await page.getTextContent();
                 // Keep the document's row structure; flattening PDF text destroys grade columns.
@@ -4410,7 +4410,8 @@ async function handleKCSEDocument(event) {
                 const embedded = rows.sort((a,b)=>b.y-a.y)
                     .map(row=>row.items.sort((a,b)=>a.x-b.x).map(item=>item.text).join('  '))
                     .join('\n').trim();
-                if (embedded.length > 80) pageTexts.push(embedded);
+                // Only treat this as useful embedded text if it resembles a results slip.
+                if (embedded.length > 80 && /KCSE|KENYA NATIONAL EXAMINATIONS|INDEX|CANDIDATE|MEAN GRADE|ENGLISH|KISWAHILI|MATHEMATICS/i.test(embedded)) pageTexts.push(embedded);
             }
             text = pageTexts.join('\n');
             if (text.replace(/\s/g,'').length < 100) {
@@ -4419,7 +4420,8 @@ async function handleKCSEDocument(event) {
                 for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 2); pageNo++) {
                     if (ocrStatus) ocrStatus.textContent = `⏳ Scanning PDF page ${pageNo} of ${Math.min(pdf.numPages,2)}...`;
                     const page = await pdf.getPage(pageNo);
-                    const viewport = page.getViewport({ scale: 2.2 });
+                    // Moderate resolution keeps mobile processing responsive while retaining readable text.
+                    const viewport = page.getViewport({ scale: 1.65 });
                     const canvas = document.createElement('canvas');
                     canvas.width = Math.ceil(viewport.width);
                     canvas.height = Math.ceil(viewport.height);
@@ -4431,7 +4433,7 @@ async function handleKCSEDocument(event) {
                     ocrPages.push(result.data.text || '');
                     canvas.width = 0; canvas.height = 0;
                 }
-                text = ocrPages.join('\\n');
+                text = ocrPages.join('\n');
             }
         } else {
             if (ocrStatus) ocrStatus.textContent = '⏳ Scanning image with OCR...';
