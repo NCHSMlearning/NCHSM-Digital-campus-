@@ -4546,34 +4546,38 @@ async function handleKCSEDocument(event) {
                 if (embedded.length > 80 && /KCSE|KENYA NATIONAL EXAMINATIONS|INDEX|CANDIDATE|MEAN GRADE|ENGLISH|KISWAHILI|MATHEMATICS/i.test(embedded)) pageTexts.push(embedded);
             }
             text = pageTexts.join('\n');
-            // Embedded text can be plentiful but still omit the KCSE table grades.
-            // Check extraction quality, not just text length, before deciding to skip OCR.
-            let embeddedData = text.trim() ? parseKCSEData(text) : null;
-            const embeddedIsComplete = embeddedData &&
-                embeddedData.indexNumber && embeddedData.year &&
-                embeddedData.overallGrade && embeddedData.subjects.length >= 5 &&
-                embeddedData.subjects.filter(s => embeddedData.grades[s]).length >= 5;
-            if (!embeddedIsComplete) {
-                const ocrPages = [];
-                for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 2); pageNo++) {
-                    if (ocrStatus) ocrStatus.textContent = `⏳ Scanning PDF page ${pageNo} of ${Math.min(pdf.numPages,2)} for missing results...`;
-                    const page = await pdf.getPage(pageNo);
-                    const viewport = page.getViewport({ scale: 1.85 });
-                    const canvas = document.createElement('canvas');
-                    canvas.width = Math.ceil(viewport.width);
-                    canvas.height = Math.ceil(viewport.height);
-                    const context = canvas.getContext('2d',{willReadFrequently:true});
-                    await page.render({canvasContext:context,viewport}).promise;
-                    const result = await Tesseract.recognize(canvas,'eng', {
-                        logger: m => { if(m.status==='recognizing text' && ocrStatus) ocrStatus.textContent = `⏳ Page ${pageNo}: OCR ${Math.round(m.progress*100)}%`; }
-                    });
-                    ocrPages.push(result.data.text || '');
-                    canvas.width = 0; canvas.height = 0;
-                }
-                const ocrText = ocrPages.join('\n');
+            // Fast path: use the PDF's embedded text first. Many scanned KNEC PDFs
+            // already include a text layer. Do not spend 20–60 seconds OCR-scanning
+            // both pages just because one field is missing; show review-required instead.
+            const embeddedData = text.trim() ? parseKCSEData(text) : null;
+            const embeddedHasUsefulData = embeddedData &&
+                (embeddedData.subjects.length >= 3 || embeddedData.overallGrade || embeddedData.indexNumber);
+            if (!embeddedHasUsefulData) {
+                // Only rasterize and OCR page 2 (the detailed subject/grade table) when
+                // the PDF has no usable text layer. This is the expensive fallback.
+                const pageNo = Math.min(2, pdf.numPages);
+                if (ocrStatus) ocrStatus.textContent = '⏳ Scanning the results table…';
+                const page = await pdf.getPage(pageNo);
+                const viewport = page.getViewport({ scale: 1.35 });
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.ceil(viewport.width);
+                canvas.height = Math.ceil(viewport.height);
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                await page.render({ canvasContext: context, viewport }).promise;
+                const result = await Tesseract.recognize(canvas, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text' && ocrStatus)
+                            ocrStatus.textContent = '⏳ Reading results table: ' + Math.round(m.progress * 100) + '%';
+                    }
+                });
+                const ocrText = result.data.text || '';
                 const ocrData = parseKCSEData(ocrText);
-                const quality = d => (d ? (d.name?1:0)+(d.indexNumber?2:0)+(d.year?1:0)+(d.overallGrade?2:0)+d.subjects.filter(s=>d.grades[s]).length : 0);
+                const quality = d => d ? (d.name ? 1 : 0) + (d.indexNumber ? 2 : 0) +
+                    (d.year ? 1 : 0) + (d.overallGrade ? 2 : 0) +
+                    d.subjects.filter(subject => d.grades[subject]).length : 0;
                 if (quality(ocrData) > quality(embeddedData)) text = ocrText;
+                canvas.width = 0;
+                canvas.height = 0;
             }
         } else {
             if (ocrStatus) ocrStatus.textContent = '⏳ Scanning image with OCR...';
