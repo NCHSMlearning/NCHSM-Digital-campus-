@@ -4414,14 +4414,19 @@ async function handleKCSEDocument(event) {
                 if (embedded.length > 80 && /KCSE|KENYA NATIONAL EXAMINATIONS|INDEX|CANDIDATE|MEAN GRADE|ENGLISH|KISWAHILI|MATHEMATICS/i.test(embedded)) pageTexts.push(embedded);
             }
             text = pageTexts.join('\n');
-            if (text.replace(/\s/g,'').length < 100) {
-                // Scanned PDF: OCR only the first two pages needed for the KCSE result slip; keep this fast.
+            // Embedded text can be plentiful but still omit the KCSE table grades.
+            // Check extraction quality, not just text length, before deciding to skip OCR.
+            let embeddedData = text.trim() ? parseKCSEData(text) : null;
+            const embeddedIsComplete = embeddedData &&
+                embeddedData.indexNumber && embeddedData.year &&
+                embeddedData.overallGrade && embeddedData.subjects.length >= 5 &&
+                embeddedData.subjects.filter(s => embeddedData.grades[s]).length >= 5;
+            if (!embeddedIsComplete) {
                 const ocrPages = [];
                 for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 2); pageNo++) {
-                    if (ocrStatus) ocrStatus.textContent = `⏳ Scanning PDF page ${pageNo} of ${Math.min(pdf.numPages,2)}...`;
+                    if (ocrStatus) ocrStatus.textContent = `⏳ Scanning PDF page ${pageNo} of ${Math.min(pdf.numPages,2)} for missing results...`;
                     const page = await pdf.getPage(pageNo);
-                    // Moderate resolution keeps mobile processing responsive while retaining readable text.
-                    const viewport = page.getViewport({ scale: 1.65 });
+                    const viewport = page.getViewport({ scale: 1.85 });
                     const canvas = document.createElement('canvas');
                     canvas.width = Math.ceil(viewport.width);
                     canvas.height = Math.ceil(viewport.height);
@@ -4433,7 +4438,10 @@ async function handleKCSEDocument(event) {
                     ocrPages.push(result.data.text || '');
                     canvas.width = 0; canvas.height = 0;
                 }
-                text = ocrPages.join('\n');
+                const ocrText = ocrPages.join('\n');
+                const ocrData = parseKCSEData(ocrText);
+                const quality = d => (d ? (d.name?1:0)+(d.indexNumber?2:0)+(d.year?1:0)+(d.overallGrade?2:0)+d.subjects.filter(s=>d.grades[s]).length : 0);
+                if (quality(ocrData) > quality(embeddedData)) text = ocrText;
             }
         } else {
             if (ocrStatus) ocrStatus.textContent = '⏳ Scanning image with OCR...';
@@ -4583,6 +4591,29 @@ function parseKCSEData(text) {
         if(!gm)continue;
         const grade=normGrade(gm[1]);
         if(!seen.has(subject)){seen.add(subject);data.subjects.push(subject);data.grades[subject]=grade;}
+      }
+    }
+    // KCSE PDF text layers sometimes put subject labels and grades in separate columns
+    // on the same row. Use positioned-row text and nearby grade tokens as a conservative fallback.
+    if(data.subjects.filter(s=>data.grades[s]).length < 5){
+      const rowCandidates = lines.map((line,index)=>({line,index,upper:line.toUpperCase()}));
+      for(let i=0;i<rowCandidates.length;i++){
+        const {line,upper}=rowCandidates[i];
+        if(/MEAN|OVERALL|AGGREGATE|GRADE SUMMARY|SUBJECTS? RECORDED/i.test(upper))continue;
+        for(const [pattern,subject] of subjectAliases){
+          if(!pattern.test(upper))continue;
+          const subjectMatch=upper.match(pattern);
+          const rest=upper.slice((subjectMatch?.index||0)+(subjectMatch?.[0]?.length||0));
+          let gm=rest.match(/(?:^|\\s{1,})(A|B|C|D|E)\\s*([+\\-])?(?=\\s|$)/i);
+          if(!gm){
+            const before=upper.slice(0,subjectMatch.index);
+            gm=before.match(/\\b(A|B|C|D|E)\\s*([+\\-])?\\s*$/i);
+          }
+          if(!gm && rowCandidates[i+1] && /^\\s*(A|B|C|D|E)\\s*([+\\-])?\\s*$/i.test(rowCandidates[i+1].line)){
+            gm=rowCandidates[i+1].line.match(/^\\s*(A|B|C|D|E)\\s*([+\\-])?\\s*$/i);
+          }
+          if(gm){data.grades[subject]=(gm[1]+(gm[2]||'')).toUpperCase();if(!data.subjects.includes(subject))data.subjects.push(subject);}
+        }
       }
     }
     // Fallback for table OCR where subject and grade were joined across adjacent lines.
