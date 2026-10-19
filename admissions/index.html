@@ -4382,37 +4382,48 @@ async function handleKCSEDocument(event) {
     try {
         let imageUrl = URL.createObjectURL(file);
         
-        // Handle PDF files
+        let text = '';
         if (file.type === 'application/pdf') {
-            if (ocrStatus) ocrStatus.textContent = '⏳ Converting PDF to image...';
-            try {
-                const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-                const page = await pdf.getPage(1);
-                const viewport = page.getViewport({ scale: 2.0 });
-                const canvas = document.createElement('canvas');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                const context = canvas.getContext('2d');
-                await page.render({ canvasContext: context, viewport: viewport }).promise;
-                imageUrl = canvas.toDataURL('image/png');
-                console.log('✅ PDF converted to image successfully');
-            } catch (pdfError) {
-                console.warn('PDF conversion failed, trying as image:', pdfError);
+            if (ocrStatus) ocrStatus.textContent = '⏳ Reading PDF text and scanning pages...';
+            const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+            const pageTexts = [];
+            // First use the PDF's embedded text layer when available; this is usually much
+            // more accurate than OCR on digitally generated KCSE slips.
+            for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 4); pageNo++) {
+                const page = await pdf.getPage(pageNo);
+                const content = await page.getTextContent();
+                const embedded = content.items.map(item => item.str || '').join(' ').replace(/\\s+/g,' ').trim();
+                if (embedded.length > 80) pageTexts.push(embedded);
             }
-        }
-
-        if (ocrStatus) ocrStatus.textContent = '⏳ Scanning with OCR (Tesseract)...';
-        
-        // Run OCR
-        const result = await Tesseract.recognize(imageUrl, 'eng', {
-            logger: (m) => {
-                if (m.status === 'recognizing text') {
-                    if (ocrStatus) ocrStatus.textContent = `⏳ OCR: ${Math.round(m.progress * 100)}%`;
+            text = pageTexts.join('\\n');
+            if (text.replace(/\\s/g,'').length < 100) {
+                // Scanned PDF: OCR up to the first four pages at high resolution.
+                const ocrPages = [];
+                for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 4); pageNo++) {
+                    if (ocrStatus) ocrStatus.textContent = `⏳ Scanning PDF page ${pageNo} of ${Math.min(pdf.numPages,4)}...`;
+                    const page = await pdf.getPage(pageNo);
+                    const viewport = page.getViewport({ scale: 3.0 });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.ceil(viewport.width);
+                    canvas.height = Math.ceil(viewport.height);
+                    const context = canvas.getContext('2d',{willReadFrequently:true});
+                    await page.render({canvasContext:context,viewport}).promise;
+                    const result = await Tesseract.recognize(canvas,'eng', {
+                        logger: m => { if(m.status==='recognizing text' && ocrStatus) ocrStatus.textContent = `⏳ Page ${pageNo}: OCR ${Math.round(m.progress*100)}%`; }
+                    });
+                    ocrPages.push(result.data.text || '');
+                    canvas.width = 0; canvas.height = 0;
                 }
+                text = ocrPages.join('\\n');
             }
-        });
-        
-        const text = result.data.text;
+        } else {
+            if (ocrStatus) ocrStatus.textContent = '⏳ Scanning image with OCR...';
+            const result = await Tesseract.recognize(imageUrl, 'eng', {
+                logger: m => { if(m.status==='recognizing text' && ocrStatus) ocrStatus.textContent = `⏳ OCR: ${Math.round(m.progress*100)}%`; }
+            });
+            text = result.data.text || '';
+        }
+        if (!text.trim()) throw new Error('No readable text found in document.');
         console.log('✅ OCR Complete. Text length:', text.length);
 
         // Parse the extracted text
@@ -4447,7 +4458,8 @@ async function handleKCSEDocument(event) {
             resultBox.style.animation = 'fadeIn 0.4s ease';
         }
 
-        kcseValidated = true;
+        // A successful OCR run is not proof that the required KCSE fields were read.
+        kcseValidated = Boolean(extractedData.overallGrade && extractedData.subjects.length >= 5);
 
         // Auto-fill name if empty
         if (extractedData.name && !document.getElementById('fullName')?.value) {
@@ -4486,211 +4498,89 @@ async function handleKCSEDocument(event) {
 // ================================================================
 
 function parseKCSEData(text) {
-    const data = { 
-        name: '', 
-        indexNumber: '', 
-        school: '',
-        year: '', 
-        subjects: [], 
-        grades: {}, 
-        overallGrade: '' 
+    const data = { name:'', indexNumber:'', school:'', year:'', subjects:[], grades:{}, overallGrade:'' };
+    const raw = String(text || '').replace(/\r/g,'\n');
+    const lines = raw.split('\n').map(s=>s.replace(/[|]/g,'I').replace(/[ \t]+/g,' ').trim()).filter(Boolean);
+    const cleanText = lines.join('\n');
+    const gradeRe = /\b(A|A-|A\+|B\+|B-|B|C\+|C-|C|D\+|D-|D|E)\b/i;
+    const normGrade = g => String(g||'').toUpperCase().replace(/\s/g,'');
+    const subjectAliases = [
+      [/\bENGLISH\b|\bENG\b/,'English'],
+      [/\bMATHEMATICS\b|\bMATHS?\b|\bMTC\b/,'Mathematics'],
+      [/\bKISWAHILI\b|\bKISW\b|\bKSW\b/,'Kiswahili'],
+      [/\bBIOLOGY\b|\bBIO\b/,'Biology'],
+      [/\bCHEMISTRY\b|\bCHEM\b/,'Chemistry'],
+      [/\bPHYSICS\b|\bPHYS\b/,'Physics'],
+      [/\bGEOGRAPHY\b|\bGEO\b/,'Geography'],
+      [/\bHISTORY\s*(?:&|AND)\s*GOVERNMENT\b|\bHIST\b/,'History & Government'],
+      [/\bCRE\b|\bCHRISTIAN RELIGIOUS EDUCATION\b/,'CRE'],
+      [/\bIRE\b|\bISLAMIC RELIGIOUS EDUCATION\b/,'IRE'],
+      [/\bHRE\b|\bHINDU RELIGIOUS EDUCATION\b/,'HRE'],
+      [/\bBUSINESS STUDIES\b|\bBUS\b/,'Business Studies'],
+      [/\bAGRICULTURE\b|\bAGRIC\b/,'Agriculture'],
+      [/\bCOMPUTER STUDIES\b|\bCOMPUTER\b|\bCOMP\b/,'Computer Studies'],
+      [/\bHOME SCIENCE\b/,'Home Science'],
+      [/\bART AND DESIGN\b|\bART\b/,'Art & Design'],
+      [/\bMUSIC\b/,'Music'],
+      [/\bAVIATION\b/,'Aviation'],
+      [/\bFRENCH\b/,'French'],
+      [/\bGERMAN\b/,'German'],
+      [/\bWOODWORK\b/,'Woodwork'],
+      [/\bMETALWORK\b/,'Metalwork'],
+      [/\bPOWER MECHANICS\b/,'Power Mechanics'],
+      [/\bELECTRICITY\b/,'Electricity'],
+      [/\bBUILDING CONSTRUCTION\b/,'Building Construction'],
+      [/\bDRAWING AND DESIGN\b/,'Drawing & Design']
+    ];
+    const pickField = (patterns) => {
+      for(const p of patterns){const m=cleanText.match(p);if(m&&m[1])return m[1].trim().replace(/[,:;]+$/,'');}
+      return '';
     };
-    
-    // Clean text - normalize spaces and newlines
-    const cleanText = text.replace(/\s+/g, ' ').trim();
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    
-    console.log('📄 OCR Text:', cleanText);
-    console.log('📄 Lines:', lines);
-
-    // ============================================================
-    // 1. EXTRACT STUDENT NAME - Look for NAME: pattern
-    // ============================================================
-    const nameMatch = cleanText.match(/NAME\s*:?\s*([A-Za-z\s.]+?)(?=\s+(?:INDEX|SCHOOL|ADM|CANDIDATE|YEAR|SUBJECT))/i) ||
-                      cleanText.match(/CANDIDATE\s*NAME\s*:?\s*([A-Za-z\s.]+?)(?=\s+INDEX)/i) ||
-                      cleanText.match(/^([A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+)/);
-    
-    if (nameMatch) {
-        data.name = nameMatch[1].trim();
-        console.log('✅ Name found:', data.name);
+    data.name = pickField([
+      /(?:CANDIDATE|STUDENT)\s*NAME\s*[:\-]?\s*([A-Z][A-Z .'-]{3,60}?)(?=\s+(?:INDEX|EXAM|SCHOOL|YEAR|KCSE|SUBJECT|SIGNATURE)\b|\n|$)/i,
+      /\bNAME\s*[:\-]\s*([A-Z][A-Z .'-]{3,60}?)(?=\s+(?:INDEX|EXAM|SCHOOL|YEAR|KCSE|SUBJECT)\b|\n|$)/i
+    ]);
+    data.indexNumber = pickField([/(?:INDEX|CANDIDATE)\s*(?:NO\.?|NUMBER)?\s*[:\-]?\s*(\d{4,12}\s*\/\s*\d{2,4}|\d{8,12})/i]);
+    data.school = pickField([/SCHOOL\s*[:\-]?\s*([A-Z][A-Z0-9 &'().-]{3,80}?)(?=\s+(?:YEAR|INDEX|CANDIDATE|SUBJECT|KCSE)\b|\n|$)/i]);
+    data.year = pickField([/(?:EXAMINATION\s+YEAR|YEAR)\s*[:\-]?\s*((?:19|20)\d{2})/i, /\b((?:19|20)\d{2})\b/]);
+    const overall = pickField([/(?:MEAN|OVERALL|AGGREGATE)\s*(?:GRADE|GRD)?\s*[:\-]?\s*(A\s*\+?|B\s*\+?\s*-?|C\s*\+?\s*-?|D\s*\+?\s*-?|E)\b/i]);
+    data.overallGrade = normGrade(overall);
+    // Parse line-by-line so a grade is tied to the subject on the same row, not
+    // arbitrary words from the entire flattened OCR result.
+    const seen = new Set();
+    for(const line of lines){
+      const upper=line.toUpperCase().replace(/[|]/g,'I');
+      if(/\b(?:MEAN|OVERALL|AGGREGATE)\b/.test(upper))continue;
+      for(const [pattern,subject] of subjectAliases){
+        if(!pattern.test(upper))continue;
+        const subjectIndex=upper.search(pattern);
+        const after=upper.slice(subjectIndex + (upper.match(pattern)?.[0]?.length||0));
+        const before=upper.slice(0,subjectIndex);
+        let gm=after.match(/^[\s:;,.\-]*(A\s*\+?|B\s*[+\-]?|C\s*[+\-]?|D\s*[+\-]?|E)\b/i);
+        if(!gm)gm=before.match(/\b(A\s*\+?|B\s*[+\-]?|C\s*[+\-]?|D\s*[+\-]?|E)\s*[:;,.\-]*$/i);
+        if(!gm)continue;
+        const grade=normGrade(gm[1]);
+        if(!seen.has(subject)){seen.add(subject);data.subjects.push(subject);data.grades[subject]=grade;}
+      }
     }
-
-    // ============================================================
-    // 2. EXTRACT INDEX NUMBER - Look for INDEX: pattern
-    // ============================================================
-    const indexMatch = cleanText.match(/INDEX\s*(?:NO|NUMBER)?\s*:?\s*([0-9]{8,12})/i) ||
-                       cleanText.match(/ADM\s*(?:NO|NUMBER)?\s*:?\s*([0-9]{8,12})/i) ||
-                       cleanText.match(/([0-9]{8,12})/);
-    
-    if (indexMatch) {
-        data.indexNumber = indexMatch[1].trim();
-        console.log('✅ Index Number found:', data.indexNumber);
+    // Fallback for table OCR where subject and grade were joined across adjacent lines.
+    if(data.subjects.length===0){
+      const joined=cleanText.toUpperCase();
+      for(const [pattern,subject] of subjectAliases){
+        const m=joined.match(new RegExp(pattern.source+'[\\s:;,.\\-]{0,20}(A\\s*\\+?|B\\s*[+\\-]?|C\\s*[+\\-]?|D\\s*[+\\-]?|E)\\b','i'));
+        if(m&&!seen.has(subject)){seen.add(subject);data.subjects.push(subject);data.grades[subject]=normGrade(m[1]);}
+      }
     }
-
-    // ============================================================
-    // 3. EXTRACT SCHOOL NAME
-    // ============================================================
-    const schoolMatch = cleanText.match(/SCHOOL\s*:?\s*([A-Za-z\s.]+?)(?=\s+(?:YEAR|SUBJECT|CANDIDATE|INDEX))/i);
-    if (schoolMatch) {
-        data.school = schoolMatch[1].trim();
-        console.log('✅ School found:', data.school);
+    if(!data.overallGrade && data.subjects.length>=5){
+      const points=data.subjects.map(s=>gradePoints[data.grades[s]]).filter(v=>Number.isFinite(v));
+      if(points.length>=5){
+        const avg=points.reduce((a,b)=>a+b,0)/points.length;
+        data.overallGrade=avg>=11?'A':avg>=10?'A-':avg>=9?'B+':avg>=8?'B':avg>=7?'B-':avg>=6?'C+':avg>=5?'C':avg>=4?'C-':avg>=3?'D+':avg>=2?'D':'E';
+      }
     }
-
-    // ============================================================
-    // 4. EXTRACT YEAR
-    // ============================================================
-    const yearMatch = cleanText.match(/YEAR\s*:?\s*(20[0-9]{2})/i) ||
-                      cleanText.match(/(20[0-9]{2})/);
-    if (yearMatch) {
-        data.year = yearMatch[1].trim();
-        console.log('✅ Year found:', data.year);
-    }
-
-    // ============================================================
-    // 5. EXTRACT OVERALL GRADE - Look for OVERALL GRADE: pattern
-    // ============================================================
-    const overallMatch = cleanText.match(/OVERALL\s*GRADE\s*:?\s*([A-E][+-]?)/i) ||
-                         cleanText.match(/MEAN\s*GRADE\s*:?\s*([A-E][+-]?)/i) ||
-                         cleanText.match(/AGGREGATE\s*:?\s*([A-E][+-]?)/i);
-    
-    if (overallMatch) {
-        data.overallGrade = overallMatch[1].trim();
-        console.log('✅ Overall Grade found:', data.overallGrade);
-    }
-
-    // ============================================================
-    // 6. EXTRACT SUBJECTS AND GRADES
-    // ============================================================
-    // Common subject abbreviations mapping
-    const subjectMap = {
-        // Full names
-        'ENGLISH': 'English',
-        'MATHEMATICS': 'Mathematics',
-        'BIO': 'Biology',
-        'BIOLOGY': 'Biology',
-        'CHEM': 'Chemistry',
-        'CHEMISTRY': 'Chemistry',
-        'PHYS': 'Physics',
-        'PHYSICS': 'Physics',
-        'KISW': 'Kiswahili',
-        'KISWAHILI': 'Kiswahili',
-        'GEO': 'Geography',
-        'GEOGRAPHY': 'Geography',
-        'HIST': 'History',
-        'HISTORY': 'History',
-        'CRE': 'CRE',
-        'IRE': 'IRE',
-        'BUS': 'Business Studies',
-        'BUSINESS STUDIES': 'Business Studies',
-        'BUSINESS': 'Business Studies',
-        'COMP': 'Computer Studies',
-        'COMPUTER': 'Computer Studies',
-        'AGRIC': 'Agriculture',
-        'AGRICULTURE': 'Agriculture',
-        'HOME SCIENCE': 'Home Science',
-        'ART': 'Art',
-        'MUSIC': 'Music',
-        'PE': 'Physical Education'
-    };
-
-    // Find the subjects section - usually after "SUBJECTS" or in the middle
-    let subjectsText = cleanText;
-    
-    // Try to extract the section containing subjects
-    const subjectsSectionMatch = cleanText.match(/SUBJECTS?\s*(?::)?\s*([\s\S]+?)(?:OVERALL|MEAN|TOTAL|GRADE|SIGNATURE|END|$)/i);
-    if (subjectsSectionMatch) {
-        subjectsText = subjectsSectionMatch[1];
-        console.log('📄 Subjects section found');
-    } else {
-        // If no "SUBJECTS" header, try to find subject-grade pairs
-        // Look for lines that look like "ENGLISH B" pattern
-        const lines = cleanText.split(/\n/);
-        let foundSubjects = false;
-        for (let line of lines) {
-            const trimmed = line.trim();
-            // Check if line matches "SUBJECT GRADE" pattern
-            if (trimmed.match(/^[A-Z][A-Za-z\s]+?\s+[A-E][+-]?$/)) {
-                if (!foundSubjects) {
-                    subjectsText = trimmed;
-                    foundSubjects = true;
-                } else {
-                    subjectsText += ' ' + trimmed;
-                }
-            }
-        }
-    }
-
-    console.log('📄 Subjects text to parse:', subjectsText);
-
-    // Parse subject-grade pairs
-    const subjectGradePattern = /([A-Za-z\s&]+?)\s+([A-E][+-]?)(?=\s+|$)/g;
-    let match;
-    const seenSubjects = new Set();
-
-    while ((match = subjectGradePattern.exec(subjectsText)) !== null) {
-        const rawSubject = match[1].trim();
-        const grade = match[2].trim();
-        
-        // Skip common headers that aren't subjects
-        const skipPatterns = [
-            /^SUBJECT$/i, /^GRADE$/i, /^TOTAL$/i, /^OVERALL$/i, /^MEAN$/i,
-            /^NAME$/i, /^INDEX$/i, /^SCHOOL$/i, /^YEAR$/i, /^CANDIDATE$/i,
-            /^KCSE$/i, /^EXAM$/i, /^RESULT$/i, /^SLIP$/i, /^CERTIFICATE$/i,
-            /^NATIONAL$/i, /^ID$/i, /^BIRTH$/i, /^CERT$/i, /^DIPLOMA$/i,
-            /^MODULE$/i, /^LEVEL$/i, /^TVET$/i, /^CDACC$/i
-        ];
-        
-        let skip = false;
-        for (let pattern of skipPatterns) {
-            if (rawSubject.match(pattern)) {
-                skip = true;
-                break;
-            }
-        }
-        
-        if (skip || rawSubject.length < 2 || rawSubject.length > 40) continue;
-        
-        // Map to standard subject name
-        const upperSubject = rawSubject.toUpperCase();
-        const mappedSubject = subjectMap[upperSubject] || rawSubject;
-        
-        // Avoid duplicates
-        const key = mappedSubject;
-        if (!seenSubjects.has(key)) {
-            seenSubjects.add(key);
-            data.subjects.push(mappedSubject);
-            data.grades[mappedSubject] = grade;
-            console.log(`📚 Subject found: ${mappedSubject} = ${grade}`);
-        }
-    }
-
-    // ============================================================
-    // 7. FALLBACK: Calculate Overall Grade if not found
-    // ============================================================
-    if (!data.overallGrade && Object.keys(data.grades).length > 0) {
-        const grades = Object.values(data.grades);
-        const points = grades.map(g => gradePoints[g] || 0);
-        const avg = points.reduce((a, b) => a + b, 0) / points.length;
-        
-        if (avg >= 11) data.overallGrade = 'A';
-        else if (avg >= 9.5) data.overallGrade = 'A-';
-        else if (avg >= 8.5) data.overallGrade = 'B+';
-        else if (avg >= 7.5) data.overallGrade = 'B';
-        else if (avg >= 6.5) data.overallGrade = 'B-';
-        else if (avg >= 5.5) data.overallGrade = 'C+';
-        else if (avg >= 4.5) data.overallGrade = 'C';
-        else if (avg >= 3.5) data.overallGrade = 'C-';
-        else if (avg >= 2.5) data.overallGrade = 'D+';
-        else if (avg >= 1.5) data.overallGrade = 'D';
-        else data.overallGrade = 'E';
-        
-        console.log('✅ Overall Grade calculated from subjects:', data.overallGrade);
-    }
-
-    console.log('📊 Final extracted data:', data);
+    console.log('📊 KCSE OCR parsed fields:', {name:data.name,indexNumber:data.indexNumber,year:data.year,overallGrade:data.overallGrade,subjects:data.subjects.length});
     return data;
 }
-
 function displayKCSEData(data) {
     const container = document.getElementById('kcse_extracted_data');
     if (!container) return;
