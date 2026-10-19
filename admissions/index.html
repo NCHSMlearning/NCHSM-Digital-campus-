@@ -1930,6 +1930,42 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
  #admissionApp.nchsm-status-view .nchsm-status-panel{grid-column:1!important;grid-row:2!important}
 }
 </style>
+<style id="nchsm-strict-applicant-module-isolation">
+/* Each sidebar destination is a standalone page view. Hide unrelated direct
+   children so dashboard summaries or adjacent modules can never leak below it. */
+#admissionApp.nchsm-step-view > :not(.nchsm-dashboard-sidebar):not(.nchsm-mobile-menu-toggle):not(#admissionForm) {
+  display:none!important;
+}
+#admissionApp.nchsm-step-view #admissionForm {
+  display:block!important;
+  grid-column:2!important;
+  grid-row:1!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+}
+#admissionApp.nchsm-step-view #admissionForm > .form-section {display:none!important}
+#admissionApp.nchsm-step-view #admissionForm > .form-section.active {display:block!important}
+#admissionApp.nchsm-status-view > :not(.nchsm-dashboard-sidebar):not(.nchsm-mobile-menu-toggle):not(.nchsm-status-panel) {
+  display:none!important;
+}
+#admissionApp.nchsm-status-view > .nchsm-status-panel {
+  display:block!important;
+  grid-column:2!important;
+  grid-row:1!important;
+  width:100%!important;
+  margin:0!important;
+}
+#admissionApp.nchsm-dashboard-view > #admissionForm {display:none!important}
+@media(max-width:700px) {
+  #admissionApp.nchsm-step-view #admissionForm,
+  #admissionApp.nchsm-status-view > .nchsm-status-panel {
+    grid-column:1!important;
+    grid-row:2!important;
+    width:100%!important;
+  }
+}
+</style>
 <style id="nchsm-dashboard-remove-duplicate-summary">
 /* Avoid repeating application status and completion already shown in the welcome/progress panels. */
 @media(min-width:701px){
