@@ -1676,6 +1676,23 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
   #admissionApp .panel{grid-row:auto!important}
 }
 </style>
+
+<style id="nchsm-mobile-sidebar-hamburger">
+/* Mobile applicant navigation: collapsible left drawer controlled by a hamburger button. */
+.nchsm-mobile-menu-toggle{display:none}
+@media(max-width:700px){
+ #admissionApp .nchsm-mobile-menu-toggle{
+  display:flex!important;grid-column:1/-1!important;align-items:center!important;justify-content:flex-start!important;gap:10px!important;
+  width:100%!important;min-height:46px!important;padding:10px 14px!important;border:1px solid #cbdde8!important;border-radius:12px!important;
+  background:#fff!important;color:#073b5c!important;font:800 .92rem Inter,sans-serif!important;box-shadow:0 4px 14px rgba(6,47,74,.07)!important;cursor:pointer!important;
+ }
+ #admissionApp .nchsm-mobile-menu-toggle .menu-icon{font-size:1.15rem!important;width:22px!important;text-align:center!important}
+ #admissionApp .nchsm-mobile-menu-toggle .menu-state{margin-left:auto!important;font-size:.72rem!important;color:#55758a!important;font-weight:700!important}
+ #admissionApp .nchsm-dashboard-sidebar{display:none!important;position:relative!important;top:auto!important;grid-column:1/-1!important;grid-row:auto!important;width:100%!important;max-height:none!important;overflow:visible!important}
+ #admissionApp.nchsm-mobile-nav-open .nchsm-dashboard-sidebar{display:flex!important;flex-direction:column!important}
+ #admissionApp .dashboard-header,#admissionApp .app-steps,#admissionApp .application-completion,#admissionApp .panel{grid-column:1/-1!important;grid-row:auto!important}
+}
+</style>
 </head>
 <body>
 
@@ -5957,6 +5974,44 @@ body{font-family:Inter,system-ui,sans-serif!important;background:var(--n2-soft)!
   setInterval(updatePortalShell,1200);
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
+</script>
+
+<script id="nchsm-mobile-sidebar-toggle-script">
+function toggleNchsmApplicantSidebar(){
+ const app=document.getElementById('admissionApp');
+ const button=app&&app.querySelector('.nchsm-mobile-menu-toggle');
+ if(!app||!button)return;
+ const open=app.classList.toggle('nchsm-mobile-nav-open');
+ button.setAttribute('aria-expanded',String(open));
+ const icon=button.querySelector('.menu-icon');
+ const state=button.querySelector('.menu-state');
+ if(icon)icon.className='fas '+(open?'fa-times':'fa-bars')+' menu-icon';
+ if(state)state.textContent=open?'Hide menu':'Show menu';
+}
+(function(){
+ function initMobileMenu(){
+  const app=document.getElementById('admissionApp');
+  const button=app&&app.querySelector('.nchsm-mobile-menu-toggle');
+  if(!app||!button)return;
+  if(window.matchMedia('(min-width: 701px)').matches){
+   app.classList.remove('nchsm-mobile-nav-open');
+   button.setAttribute('aria-expanded','false');
+  }
+  app.querySelectorAll('.nchsm-dashboard-sidebar .nchsm-side-link').forEach(function(link){
+   link.addEventListener('click',function(){
+    if(window.matchMedia('(max-width: 700px)').matches){
+     app.classList.remove('nchsm-mobile-nav-open');
+     button.setAttribute('aria-expanded','false');
+     const icon=button.querySelector('.menu-icon'),state=button.querySelector('.menu-state');
+     if(icon)icon.className='fas fa-bars menu-icon';
+     if(state)state.textContent='Show menu';
+    }
+   });
+  });
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initMobileMenu);else initMobileMenu();
+ window.addEventListener('resize',initMobileMenu);
 })();
 </script>
 </body>
