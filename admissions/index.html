@@ -5032,38 +5032,80 @@ function displayIDData(data) {
 // ================================================================
 // GENERAL DOCUMENT UPLOAD WITH PROTECTION
 // ================================================================
-function handleDocUpload(event, docKey) {
-    const file = event.target.files[0];
+async function handleDocUpload(event, docKey) {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log(`📎 ${docKey} file selected:`, file.name);
-    console.log('📊 File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+    const input = event.target;
+    const statusEl = document.getElementById(`doc_${docKey}_status`);
+    const fnameEl = document.getElementById(`doc_${docKey}_filename`);
+    const card = document.getElementById(`doc_${docKey}`);
+    const client = getSupabase();
 
-    // ============================================================
-    // 📏 FILE VALIDATION - PROTECTION
-    // ============================================================
     const validation = validateFile(file, 'DOCUMENT');
     if (!validation.valid) {
         alert(`❌ ${validation.message}`);
-        event.target.value = '';
+        input.value = '';
+        return;
+    }
+    if (!client || !currentUser) {
+        alert('Please sign in again before uploading documents.');
+        input.value = '';
         return;
     }
 
-    const card = document.getElementById(`doc_${docKey}`);
-    const statusEl = document.getElementById(`doc_${docKey}_status`);
-    const fnameEl = document.getElementById(`doc_${docKey}_filename`);
-
-    uploadedDocs[docKey] = true;
     if (statusEl) {
-        statusEl.textContent = `✅ ${file.name}`;
-        statusEl.style.color = 'var(--success)';
-        statusEl.style.fontWeight = '600';
+        statusEl.textContent = 'Uploading securely…';
+        statusEl.style.color = '#2563eb';
     }
-    if (fnameEl) fnameEl.textContent = file.name;
-    if (card) card.classList.add('uploaded');
-    updateSummary();
-    updateDocumentStatus();
-    saveApplication(currentStep);
+    try {
+        // Ensure the application row exists before attaching a document to it.
+        const saved = await saveApplication(currentStep);
+        if (!saved || !applicationId) throw new Error('Your application draft could not be saved. Please try again.');
+
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120) || 'document';
+        const storagePath = currentUser.id + '/' + applicationId + '/' + docKey + '-' + Date.now() + '-' + safeName;
+        const { data: uploaded, error: uploadError } = await client.storage
+            .from('application-documents')
+            .upload(storagePath, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+        if (uploadError) throw uploadError;
+
+        const metadata = {
+            application_id: applicationId,
+            user_id: currentUser.id,
+            document_type: docKey,
+            storage_path: uploaded?.path || storagePath,
+            file_name: file.name,
+            mime_type: file.type || null,
+            file_size: file.size,
+            updated_at: new Date().toISOString()
+        };
+        const { error: metadataError } = await client.from('application_documents')
+            .upsert(metadata, { onConflict: 'application_id,document_type' });
+        if (metadataError) throw metadataError;
+
+        // Keep the existing UI contract, but only mark complete after server upload + metadata succeed.
+        uploadedDocs[docKey] = true;
+        if (statusEl) {
+            statusEl.textContent = `✓ Saved: ${file.name}`;
+            statusEl.style.color = 'var(--success)';
+            statusEl.style.fontWeight = '600';
+        }
+        if (fnameEl) fnameEl.textContent = file.name;
+        if (card) card.classList.add('uploaded');
+        await saveApplication(currentStep);
+        updateSummary();
+        updateDocumentStatus();
+    } catch (error) {
+        console.error('Admissions document upload failed:', error);
+        uploadedDocs[docKey] = false;
+        if (statusEl) {
+            statusEl.textContent = 'Upload failed — please retry';
+            statusEl.style.color = '#b91c1c';
+        }
+        alert('The document was not saved. ' + (error.message || 'Please try again.'));
+        updateDocumentStatus();
+    }
 }
 
 // ================================================================
