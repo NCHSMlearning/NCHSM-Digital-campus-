@@ -1620,6 +1620,22 @@ body{overflow-x:hidden!important;background:#f5f9fd!important}
  #admissionApp .dashboard-header,#admissionApp .app-steps,#admissionApp .application-completion,#admissionApp .panel{width:100%!important;order:1!important}
 }
 </style>
+
+<style id="nchsm-mobile-applicant-dashboard-layout">
+/* Logged-in portal: remove the public landing navigation that overlays the applicant workspace. */
+body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!important}
+@media(max-width:700px){
+ #admissionApp{display:flex!important;flex-direction:column!important;gap:12px!important;padding:12px!important}
+ #admissionApp .dashboard-header{order:0!important;width:100%!important;margin:0!important}
+ #admissionApp .nchsm-dashboard-sidebar{order:1!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;width:100%!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:14px!important;margin:0!important;border-radius:16px!important}
+ #admissionApp .nchsm-side-brand{width:100%!important;box-sizing:border-box!important}
+ #admissionApp .nchsm-dashboard-sidebar .nchsm-side-link{display:flex!important;width:100%!important;max-width:none!important;box-sizing:border-box!important;justify-content:flex-start!important;min-height:44px!important;margin:3px 0!important;padding:11px 12px!important;font-size:.84rem!important;white-space:normal!important;border-radius:10px!important}
+ #admissionApp .nchsm-side-help{width:100%!important;box-sizing:border-box!important}
+ #admissionApp .app-steps{order:2!important;width:100%!important}
+ #admissionApp .application-completion{order:3!important;width:100%!important}
+ #admissionApp .panel{order:4!important;width:100%!important}
+}
+</style>
 </head>
 <body>
 
@@ -5879,6 +5895,28 @@ body{font-family:Inter,system-ui,sans-serif!important;background:var(--n2-soft)!
   });
   document.addEventListener('DOMContentLoaded',function(){syncSidebar(window.currentStep||1)});
   setTimeout(function(){syncSidebar(window.currentStep||1)},700);
+})();
+</script>
+
+<script id="nchsm-applicant-dashboard-header-toggle">
+(function(){
+ function updatePortalShell(){
+  var app=document.getElementById('admissionApp');
+  var open=!!app && getComputedStyle(app).display!=='none';
+  document.body.classList.toggle('nchsm-applicant-dashboard-open',open);
+ }
+ function start(){
+  updatePortalShell();
+  var app=document.getElementById('admissionApp');
+  if(app && window.MutationObserver){
+   new MutationObserver(updatePortalShell).observe(app,{attributes:true,attributeFilter:['style','class']});
+  }
+  document.addEventListener('click',function(){setTimeout(updatePortalShell,80)});
+  window.addEventListener('pageshow',updatePortalShell);
+  window.addEventListener('resize',updatePortalShell);
+  setInterval(updatePortalShell,1200);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
 </body>
