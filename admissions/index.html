@@ -1908,7 +1908,19 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
 #admissionApp.nchsm-status-view #admissionForm{display:none!important}
 #admissionApp.nchsm-status-view .nchsm-status-panel{display:block!important}
 #admissionApp .nchsm-dashboard-sidebar .nchsm-side-link.active{background:#ffc51b!important;color:#073b5c!important}
-</style></head>
+</style>
+<style id="nchsm-dashboard-remove-duplicate-summary">
+/* Avoid repeating application status and completion already shown in the welcome/progress panels. */
+@media(min-width:701px){
+ #admissionApp .nchsm-dashboard-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #admissionApp .dashboard-activity-card,#admissionApp .dashboard-next-card{grid-column:span 1!important}
+}
+@media(max-width:700px){
+ #admissionApp .nchsm-dashboard-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #admissionApp .dashboard-activity-card,#admissionApp .dashboard-next-card{grid-column:1/-1!important}
+}
+</style>
+</head>
 <body>
 
     <!-- ============================================================ -->
@@ -2369,17 +2381,6 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
   <strong id="completionPercent">25%</strong>
 </div>
                 <div class="nchsm-dashboard-cards" id="nchsmDashboardOverview">
-  <div class="nchsm-dash-card dashboard-stat-card">
-    <div class="dashboard-stat-icon"><i class="fas fa-file-alt"></i></div>
-    <h3>Application Status</h3><div class="dashboard-stat-value"><span class="nchsm-status-pill" id="dashboardStatusValue">Draft</span></div>
-    <p>Your application is saved as a draft.</p>
-  </div>
-  <div class="nchsm-dash-card dashboard-stat-card">
-    <div class="dashboard-stat-icon"><i class="fas fa-chart-pie"></i></div>
-    <h3>Completion</h3><div class="dashboard-stat-value"><strong id="mockCompletionPercent">25%</strong><span class="dashboard-stat-muted"> complete</span></div>
-    <div class="dashboard-stat-track"><span id="dashboardStatProgress"></span></div>
-    <p>Complete each section to progress.</p>
-  </div>
   <div class="nchsm-dash-card dashboard-stat-card">
     <div class="dashboard-stat-icon"><i class="fas fa-calendar-alt"></i></div>
     <h3>Selected Intake</h3><div class="dashboard-stat-value" id="dashboardIntakeValue">Not selected</div>
