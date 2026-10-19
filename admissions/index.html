@@ -1710,6 +1710,69 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
 }
 @media(min-width:701px){#nchsmAdmissionsNavOverlay{display:none!important}}
 </style>
+
+<style id="nchsm-dashboard-design-refresh">
+/* Dashboard layout inspired by the approved NCHSM portal mockup. */
+#admissionApp .nchsm-dashboard-cards{grid-column:2;grid-row:4;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 18px}
+#admissionApp .dashboard-stat-card{position:relative;min-width:0;min-height:175px;padding:18px;overflow:hidden}
+#admissionApp .dashboard-stat-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#e5f4ff;color:#0877c9;font-size:1.1rem;margin-bottom:12px}
+#admissionApp .dashboard-stat-card h3{font-size:.82rem;margin:0 0 9px}
+#admissionApp .dashboard-stat-value{font-size:1.05rem;font-weight:900;color:#0a3150;overflow-wrap:anywhere;min-height:28px}
+#admissionApp .dashboard-stat-value strong{font-size:1.45rem}
+#admissionApp .dashboard-stat-muted{font-size:.72rem;color:#71859a;font-weight:600}
+#admissionApp .nchsm-status-pill{display:inline-flex;padding:6px 12px;border-radius:999px;background:#fff0b6;color:#805a00;font-size:.75rem}
+#admissionApp .dashboard-stat-card>p{font-size:.72rem;line-height:1.45;color:#72879a;margin:8px 0 0}
+#admissionApp .dashboard-stat-track{height:7px;background:#e3ebf2;border-radius:99px;overflow:hidden;margin-top:10px}
+#admissionApp .dashboard-stat-track span{display:block;width:25%;height:100%;border-radius:99px;background:linear-gradient(90deg,#0a79c6,#128b72);transition:width .2s ease}
+#admissionApp .dashboard-programme-value{font-size:.9rem}
+#admissionApp .dashboard-activity-card{grid-column:span 3;min-width:0;padding:20px}
+#admissionApp .dashboard-card-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+#admissionApp .dashboard-card-heading h3{margin:0;font-size:1rem}
+#admissionApp .dashboard-card-heading h3 i{color:#0877c9;margin-right:7px}
+#admissionApp .dashboard-card-heading>span{font-size:.72rem;color:#607b90}
+#admissionApp .dashboard-activity-item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #edf2f6}
+#admissionApp .dashboard-activity-item:last-child{border-bottom:0}
+#admissionApp .dashboard-activity-icon{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#eef3f7;color:#8093a4;font-size:.75rem}
+#admissionApp .dashboard-activity-icon.done{background:#ddf7e9;color:#0c8a58}
+#admissionApp .dashboard-activity-icon.current{background:#e2f1ff;color:#0877c9}
+#admissionApp .dashboard-activity-item b{display:block;font-size:.78rem;color:#183e5a}
+#admissionApp .dashboard-activity-item small{display:block;margin-top:3px;color:#778da0;font-size:.68rem}
+#admissionApp .dashboard-activity-status{font-size:.68rem;color:#6c8294;text-align:right}
+#admissionApp .dashboard-next-card{grid-column:span 1;min-width:0;padding:20px}
+#admissionApp .dashboard-next-card>h3{font-size:1rem}
+#admissionApp .dashboard-next-card>h3 i{color:#0877c9;margin-right:7px}
+#admissionApp .dashboard-next-content{display:flex;align-items:flex-start;gap:10px;margin:15px 0}
+#admissionApp .dashboard-next-icon{width:38px;height:38px;flex:0 0 38px;border-radius:12px;display:grid;place-items:center;background:#e2f1ff;color:#0877c9}
+#admissionApp .dashboard-next-content b{font-size:.8rem;line-height:1.4;color:#123956}
+#admissionApp .dashboard-next-content p{font-size:.72rem;line-height:1.5;color:#71859a;margin:6px 0 0}
+#admissionApp .dashboard-continue-btn{width:100%;display:flex;justify-content:center;align-items:center;gap:9px;padding:12px;border:0;border-radius:11px;background:#ffc21a;color:#073b5c;font-weight:900;cursor:pointer}
+#admissionApp .dashboard-help-callout{display:flex;align-items:flex-start;gap:9px;padding:12px;margin-top:14px;border-radius:12px;background:#eaf6ff;color:#0877c9}
+#admissionApp .dashboard-help-callout>i{margin-top:3px}
+#admissionApp .dashboard-help-callout b{font-size:.75rem;color:#123956}
+#admissionApp .dashboard-help-callout p{font-size:.68rem;line-height:1.45;color:#58758b;margin:4px 0 8px}
+#admissionApp .dashboard-help-callout button{border:1px solid #1682ce;border-radius:8px;background:#fff;color:#0877c9;padding:7px 9px;font-size:.68rem;font-weight:800;cursor:pointer}
+#admissionApp .nchsm-status-panel{grid-column:2;grid-row:5;margin:0 0 18px}
+#admissionApp #admissionForm{grid-column:2;grid-row:6}
+@media(min-width:701px) and (max-width:1100px){
+ #admissionApp .nchsm-dashboard-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #admissionApp .dashboard-activity-card,#admissionApp .dashboard-next-card{grid-column:span 1}
+}
+@media(max-width:700px){
+ #admissionApp .nchsm-dashboard-cards{grid-column:1/-1!important;grid-row:auto!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 12px}
+ #admissionApp .dashboard-stat-card{min-height:155px;padding:13px}
+ #admissionApp .dashboard-stat-icon{width:34px;height:34px;font-size:.95rem;margin-bottom:9px}
+ #admissionApp .dashboard-stat-card h3{font-size:.73rem}
+ #admissionApp .dashboard-stat-value{font-size:.88rem}
+ #admissionApp .dashboard-stat-value strong{font-size:1.2rem}
+ #admissionApp .dashboard-stat-card>p{font-size:.65rem}
+ #admissionApp .dashboard-activity-card,#admissionApp .dashboard-next-card{grid-column:1/-1}
+ #admissionApp .dashboard-activity-card,#admissionApp .dashboard-next-card{padding:15px}
+ #admissionApp .dashboard-activity-item{grid-template-columns:30px minmax(0,1fr) auto;gap:8px}
+ #admissionApp .dashboard-activity-status{font-size:.62rem}
+ #admissionApp .nchsm-status-panel{grid-column:1/-1!important;grid-row:auto!important}
+ #admissionApp #admissionForm{grid-column:1/-1!important;grid-row:auto!important}
+}
+</style>
 </head>
 <body>
 
@@ -2170,12 +2233,45 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
   <div class="completion-track"><div class="completion-fill" id="completionFill"></div></div>
   <strong id="completionPercent">25%</strong>
 </div>
-                <div class="nchsm-dashboard-cards">
-                    <div class="nchsm-dash-card completion-card"><h3>Application Progress</h3><div class="nchsm-progress-ring"><span id="mockCompletionPercent">25%</span></div><div class="nchsm-mini-status"><span>✓</span> Personal Information <small>In Progress</small></div><div class="nchsm-mini-status pending"><span>○</span> Programme Selection <small>Pending</small></div><div class="nchsm-mini-status pending"><span>○</span> Documents Upload <small>Pending</small></div></div>
-                    <div class="nchsm-dash-card"><h3><i class="far fa-file-alt"></i> Application Details</h3><div class="nchsm-detail"><span>Application Number</span><b id="mockAppNumber">ADM-2026-001</b></div><div class="nchsm-detail"><span>Application Date</span><b>10 Sep 2026</b></div><div class="nchsm-detail"><span>Application Status</span><mark>In Progress</mark></div></div>
-                    <div class="nchsm-dash-card"><h3><i class="fas fa-headset"></i> Need Assistance?</h3><p>Our admissions team is here to help you through the application process.</p><div class="nchsm-help-line"><i class="fas fa-phone"></i> 0790 969 743</div><div class="nchsm-help-line"><i class="fas fa-envelope"></i> admissions@nchsm.ac.ke</div><button class="nchsm-contact-btn" onclick="navigateTo('enquiry')">Contact Us</button></div>
-                </div>
-                <section class="nchsm-status-panel" aria-label="Application status and actions">
+                <div class="nchsm-dashboard-cards" id="nchsmDashboardOverview">
+  <div class="nchsm-dash-card dashboard-stat-card">
+    <div class="dashboard-stat-icon"><i class="fas fa-file-alt"></i></div>
+    <h3>Application Status</h3><div class="dashboard-stat-value"><span class="nchsm-status-pill" id="dashboardStatusValue">Draft</span></div>
+    <p>Your application is saved as a draft.</p>
+  </div>
+  <div class="nchsm-dash-card dashboard-stat-card">
+    <div class="dashboard-stat-icon"><i class="fas fa-chart-pie"></i></div>
+    <h3>Completion</h3><div class="dashboard-stat-value"><strong id="mockCompletionPercent">25%</strong><span class="dashboard-stat-muted"> complete</span></div>
+    <div class="dashboard-stat-track"><span id="dashboardStatProgress"></span></div>
+    <p>Complete each section to progress.</p>
+  </div>
+  <div class="nchsm-dash-card dashboard-stat-card">
+    <div class="dashboard-stat-icon"><i class="fas fa-calendar-alt"></i></div>
+    <h3>Selected Intake</h3><div class="dashboard-stat-value" id="dashboardIntakeValue">Not selected</div>
+    <p>Choose an intake in Programme Selection.</p>
+  </div>
+  <div class="nchsm-dash-card dashboard-stat-card">
+    <div class="dashboard-stat-icon"><i class="fas fa-graduation-cap"></i></div>
+    <h3>Programme</h3><div class="dashboard-stat-value dashboard-programme-value" id="dashboardProgrammeValue">Not selected</div>
+    <p>Your chosen course will appear here.</p>
+  </div>
+  <div class="nchsm-dash-card dashboard-activity-card">
+    <div class="dashboard-card-heading"><h3><i class="fas fa-history"></i> Application Progress</h3><span id="dashboardProgressCount">1 of 4 steps</span></div>
+    <div class="dashboard-activity-list">
+      <div class="dashboard-activity-item"><span class="dashboard-activity-icon done"><i class="fas fa-check"></i></span><div><b>Account created</b><small>Your applicant account is active.</small></div><span class="dashboard-activity-status">Done</span></div>
+      <div class="dashboard-activity-item"><span class="dashboard-activity-icon current"><i class="fas fa-user-edit"></i></span><div><b>Personal information</b><small>Review your personal details.</small></div><span class="dashboard-activity-status">In progress</span></div>
+      <div class="dashboard-activity-item"><span class="dashboard-activity-icon"><i class="fas fa-graduation-cap"></i></span><div><b>Programme selection</b><small>Select your course and intake.</small></div><span class="dashboard-activity-status">Pending</span></div>
+      <div class="dashboard-activity-item"><span class="dashboard-activity-icon"><i class="fas fa-file-upload"></i></span><div><b>Documents &amp; submission</b><small>Upload required documents and review.</small></div><span class="dashboard-activity-status">Pending</span></div>
+    </div>
+  </div>
+  <div class="nchsm-dash-card dashboard-next-card">
+    <h3><i class="fas fa-arrow-right"></i> Next Step</h3>
+    <div class="dashboard-next-content"><span class="dashboard-next-icon"><i class="fas fa-user"></i></span><div><b>Complete your personal information</b><p>Fill in required details to continue your application.</p></div></div>
+    <button type="button" class="dashboard-continue-btn" onclick="goToStep(1)">Continue <i class="fas fa-arrow-right"></i></button>
+    <div class="dashboard-help-callout"><i class="fas fa-headset"></i><div><b>Need help?</b><p>Contact Admissions if you need assistance completing your application.</p><button type="button" onclick="navigateTo('enquiry')">Contact Admissions</button></div></div>
+  </div>
+</div>
+<section class="nchsm-status-panel" aria-label="Application status and actions">
                   <div class="nchsm-status-head">
                     <div><span class="nchsm-eyebrow">APPLICATION JOURNEY</span><h3>Track your application</h3><p id="nchsmStatusText">Your application is currently saved as a draft.</p></div>
                     <div class="nchsm-status-actions"><button type="button" class="nchsm-action-secondary" onclick="nchsmPrintSummary()"><i class="fas fa-print"></i> Print Summary</button><button type="button" class="nchsm-action-primary" onclick="nchsmSaveDraft(true)"><i class="fas fa-cloud-arrow-up"></i> Save Progress</button></div>
@@ -6024,6 +6120,28 @@ body{font-family:Inter,system-ui,sans-serif!important;background:var(--n2-soft)!
   window.addEventListener('resize',()=>{if(window.matchMedia('(min-width:701px)').matches)window.toggleNchsmApplicantSidebar(false)});
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
+<script id="nchsm-dashboard-summary-sync">
+(function(){
+ function sync(){
+  const program=document.getElementById('program'),intake=document.getElementById('intake');
+  const programValue=document.getElementById('dashboardProgrammeValue'),intakeValue=document.getElementById('dashboardIntakeValue');
+  if(programValue)programValue.textContent=program&&program.value?(program.options[program.selectedIndex]?.textContent||program.value):'Not selected';
+  if(intakeValue)intakeValue.textContent=intake&&intake.value?intake.value:'Not selected';
+  const percentEl=document.getElementById('completionPercent'),mock=document.getElementById('mockCompletionPercent'),bar=document.getElementById('dashboardStatProgress');
+  const percent=parseInt((percentEl&&percentEl.textContent)||(mock&&mock.textContent)||'25',10)||0;
+  if(bar)bar.style.width=Math.max(0,Math.min(100,percent))+'%';
+  const status=document.getElementById('dashStatus'),statusValue=document.getElementById('dashboardStatusValue');
+  if(statusValue&&status)statusValue.textContent=status.textContent.trim().replace(/\s+/g,' ')||'Draft';
+ }
+ document.addEventListener('DOMContentLoaded',function(){
+  sync();
+  ['program','intake','school'].forEach(id=>{const e=document.getElementById(id);if(e){e.addEventListener('change',sync);e.addEventListener('input',sync)}});
+  const form=document.getElementById('admissionForm');if(form)form.addEventListener('input',sync);
+  setInterval(sync,1500);
+ });
 })();
 </script>
 </body>
