@@ -4147,8 +4147,19 @@ async function loadUserApplication(userId) {
             if (app.full_name) document.getElementById('fullName').value = app.full_name;
             if (app.phone) document.getElementById('phone').value = app.phone;
             if (app.alt_phone) document.getElementById('altPhone').value = app.alt_phone;
+            if (app.passport_photo_path) {
+                window.passportPhotoStoragePath = app.passport_photo_path;
+                const { data: urlData } = supabaseClient.storage.from('application-documents').getPublicUrl(app.passport_photo_path);
+                if (urlData?.publicUrl) {
+                    const preview = document.getElementById('photoPreview');
+                    if (preview) { preview.innerHTML = ''; const img = document.createElement('img'); img.src = urlData.publicUrl; img.alt = 'Saved passport photo'; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover'; preview.appendChild(img); preview.classList.add('has-image'); }
+                    uploadedDocs.passport = true;
+                }
+            }
             if (app.national_id) document.getElementById('nationalId').value = app.national_id;
             if (app.dob) document.getElementById('dob').value = app.dob;
+            if (app.nationality && document.getElementById('nationality')) document.getElementById('nationality').value = app.nationality;
+            if (app.county && document.getElementById('county')) document.getElementById('county').value = app.county;
             if (app.gender) document.getElementById('gender').value = app.gender;
             if (app.address) document.getElementById('address').value = app.address;
             if (app.guardian_name) document.getElementById('guardianName').value = app.guardian_name;
@@ -4204,6 +4215,8 @@ async function saveApplication(step) {
         phone: document.getElementById('phone')?.value || '',
         alt_phone: document.getElementById('altPhone')?.value || '',
         national_id: document.getElementById('nationalId')?.value || '',
+        nationality: document.getElementById('nationality')?.value || '',
+        county: document.getElementById('county')?.value || '',
         dob: document.getElementById('dob')?.value || '',
         gender: document.getElementById('gender')?.value || '',
         address: document.getElementById('address')?.value || '',
@@ -4224,6 +4237,7 @@ async function saveApplication(step) {
         kcse_data: kcseDataExtracted,
         id_data: idDataExtracted,
         documents_uploaded: Object.keys(uploadedDocs).filter(k => uploadedDocs[k]),
+        passport_photo_path: window.passportPhotoStoragePath || null,
         current_step: step || currentStep,
         updated_at: new Date().toISOString()
     };
@@ -5019,6 +5033,16 @@ async function handlePassportPhoto(event) {
         URL.revokeObjectURL(sourceUrl);
         if (!normalizedBlob) throw new Error('Could not prepare the selected photo. Please try another image.');
         const normalizedFile = new File([normalizedBlob],(file.name.replace(/\\.[^.]+$/,'')||'passport-photo')+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+
+        // Persist the image to Supabase Storage; a local preview alone is not a saved upload.
+        const supabaseClient = getSupabase();
+        if (!supabaseClient || !currentUser) throw new Error('Please sign in again before uploading your passport photo.');
+        const storagePath = currentUser.id + '/passport-' + Date.now() + '.jpg';
+        const { data: storedPhoto, error: storageError } = await supabaseClient.storage
+            .from('application-documents')
+            .upload(storagePath, normalizedFile, { contentType: 'image/jpeg', upsert: true });
+        if (storageError) throw new Error('Passport photo was not saved to the server: ' + storageError.message);
+        window.passportPhotoStoragePath = storedPhoto?.path || storagePath;
 
         const reader = new FileReader();
         const dataUrl = await new Promise((resolve,reject)=>{
