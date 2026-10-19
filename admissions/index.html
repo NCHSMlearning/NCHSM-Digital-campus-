@@ -3045,10 +3045,10 @@ const UPLOAD_LIMITS = {
         allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
     },
     PASSPORT: {
-        maxSize: 4 * 1024 * 1024, // 4MB
-        maxSizeMB: 4,
-        allowedTypes: ['image/jpeg', 'image/png', 'image/jpg'],
-        allowedExtensions: ['.jpg', '.jpeg', '.png']
+        maxSize: 8 * 1024 * 1024, // 8MB for modern phone cameras
+        maxSizeMB: 8,
+        allowedTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
+        allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp']
     }
 };
 
@@ -4899,43 +4899,90 @@ function handleDocUpload(event, docKey) {
 // ================================================================
 // PASSPORT PHOTO UPLOAD WITH PROTECTION
 // ================================================================
-function handlePassportPhoto(event) {
-    const file = event.target.files[0];
+async function handlePassportPhoto(event) {
+    const file = event.target.files?.[0];
     if (!file) return;
-
-    console.log('📸 Passport photo selected:', file.name);
-    console.log('📊 File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
-
-    // ============================================================
-    // 📏 FILE VALIDATION - PROTECTION
-    // ============================================================
-    const validation = validateFile(file, 'PASSPORT');
-    if (!validation.valid) {
-        alert(`❌ ${validation.message}`);
-        event.target.value = '';
-        return;
-    }
-
-    // Preview the photo
+    const input = event.target;
     const preview = document.getElementById('photoPreview');
     const fileName = document.getElementById('photoFileName');
     const upload = document.getElementById('photoUpload');
 
-    if (preview) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.innerHTML = `<img src="${e.target.result}" alt="Passport" />`;
-            preview.classList.add('has-image');
-            if (fileName) fileName.textContent = file.name;
-            if (upload) upload.classList.add('uploaded');
-        };
-        reader.readAsDataURL(file);
+    const validation = validateFile(file, 'PASSPORT');
+    if (!validation.valid) {
+        alert(`❌ ${validation.message}`);
+        input.value = '';
+        return;
+    }
+    if (!file.type.startsWith('image/')) {
+        alert('Please choose a JPG, PNG or WebP image.');
+        input.value = '';
+        return;
     }
 
-    // Mark as uploaded
-    uploadedDocs['passport'] = true;
-    updateDocumentStatus();
-    saveApplication(currentStep);
+    try {
+        // Decode before marking uploaded so corrupt/unsupported images never pass silently.
+        const sourceUrl = URL.createObjectURL(file);
+        const image = new Image();
+        await new Promise((resolve,reject) => {
+            image.onload = resolve;
+            image.onerror = () => reject(new Error('This image could not be opened. Please use a clear JPG or PNG photo.'));
+            image.src = sourceUrl;
+        });
+        if (!image.naturalWidth || !image.naturalHeight) throw new Error('The selected photo has no readable image data.');
+
+        // Re-encode to a standard JPEG to normalize phone-camera orientation and image format.
+        const maxSide = 1600;
+        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth,image.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1,Math.round(image.naturalWidth*scale));
+        canvas.height = Math.max(1,Math.round(image.naturalHeight*scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Photo processing is unavailable in this browser.');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(image,0,0,canvas.width,canvas.height);
+        const normalizedBlob = await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.88));
+        URL.revokeObjectURL(sourceUrl);
+        if (!normalizedBlob) throw new Error('Could not prepare the selected photo. Please try another image.');
+        const normalizedFile = new File([normalizedBlob],(file.name.replace(/\\.[^.]+$/,'')||'passport-photo')+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+
+        const reader = new FileReader();
+        const dataUrl = await new Promise((resolve,reject)=>{
+            reader.onload=()=>resolve(reader.result);
+            reader.onerror=()=>reject(new Error('Could not preview the selected photo.'));
+            reader.readAsDataURL(normalizedFile);
+        });
+        if (preview) {
+            preview.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.alt = 'Applicant passport photo';
+            img.loading = 'lazy';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            preview.appendChild(img);
+            preview.classList.add('has-image');
+        }
+        if (fileName) fileName.textContent = normalizedFile.name;
+        if (upload) upload.classList.add('uploaded');
+        uploadedDocs['passport'] = true;
+        window.passportPhotoNormalizedFile = normalizedFile;
+        updateDocumentStatus();
+        await saveApplication(currentStep);
+    } catch (error) {
+        console.error('Passport photo processing failed:',error);
+        input.value = '';
+        if (preview) {
+            preview.innerHTML = '<span class="placeholder"><i class="fas fa-user"></i></span>';
+            preview.classList.remove('has-image');
+        }
+        if (upload) upload.classList.remove('uploaded');
+        if (fileName) fileName.textContent = 'No file chosen';
+        uploadedDocs['passport'] = false;
+        alert(error.message || 'Could not process this passport photo. Please try a clear JPG or PNG image.');
+        updateDocumentStatus();
+    }
 }
 
 function removeDocument(docKey) {
