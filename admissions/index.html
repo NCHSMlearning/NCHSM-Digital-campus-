@@ -4448,9 +4448,12 @@ async function handleKCSEDocument(event) {
 
         // Update status
         if (ocrStatus) {
-            ocrStatus.textContent = '✅ OCR Complete - Data extracted successfully';
-            ocrStatus.className = 'ocr-status success';
-            ocrStatus.style.color = 'var(--success)';
+            const hasUsefulKCSEData = Boolean(extractedData.overallGrade && extractedData.subjects.length >= 5);
+            ocrStatus.textContent = hasUsefulKCSEData
+                ? '✅ OCR complete — review the extracted details below'
+                : '⚠️ Document read, but key KCSE details were not detected. Try a clearer full-page scan or correct the fields manually.';
+            ocrStatus.className = hasUsefulKCSEData ? 'ocr-status success' : 'ocr-status pending';
+            ocrStatus.style.color = hasUsefulKCSEData ? 'var(--success)' : '#b45309';
             ocrStatus.style.fontWeight = '600';
         }
         if (resultBox) {
