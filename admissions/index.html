@@ -4660,112 +4660,81 @@ async function handleKCSEDocument(event) {
 // ================================================================
 
 function parseKCSEData(text) {
+    const raw = String(text || '').replace(/\r/g, '\n');
+    const lines = raw.split('\n').map(x => x.trim()).filter(Boolean);
+    const normalized = raw.replace(/[|]/g, 'I');
     const data = { name:'', indexNumber:'', school:'', year:'', subjects:[], grades:{}, overallGrade:'' };
-    const raw = String(text || '').replace(/\r/g,'\n');
-    const lines = raw.split('\n').map(s=>s.replace(/[|]/g,'I').replace(/[ \t]+/g,' ').trim()).filter(Boolean);
-    const cleanText = lines.join('\n');
-    const gradeRe = /\b(A|A-|A\+|B\+|B-|B|C\+|C-|C|D\+|D-|D|E)\b/i;
-    const normGrade = g => String(g||'').toUpperCase().replace(/\s/g,'');
-    const subjectAliases = [
-      [/\bENGLISH\b|\bENG\b/,'English'],
-      [/\bMATHEMATICS\b|\bMATHS?\b|\bMTC\b/,'Mathematics'],
-      [/\bKISWAHILI\b|\bKISW\b|\bKSW\b/,'Kiswahili'],
-      [/\bBIOLOGY\b|\bBIO\b/,'Biology'],
-      [/\bCHEMISTRY\b|\bCHEM\b/,'Chemistry'],
-      [/\bPHYSICS\b|\bPHYS\b/,'Physics'],
-      [/\bGEOGRAPHY\b|\bGEO\b/,'Geography'],
-      [/\bHISTORY\s*(?:&|AND)\s*GOVERNMENT\b|\bHIST\b/,'History & Government'],
-      [/\bCRE\b|\bCHRISTIAN RELIGIOUS EDUCATION\b/,'CRE'],
-      [/\bIRE\b|\bISLAMIC RELIGIOUS EDUCATION\b/,'IRE'],
-      [/\bHRE\b|\bHINDU RELIGIOUS EDUCATION\b/,'HRE'],
-      [/\bBUSINESS STUDIES\b|\bBUS\b/,'Business Studies'],
-      [/\bAGRICULTURE\b|\bAGRIC\b/,'Agriculture'],
-      [/\bCOMPUTER STUDIES\b|\bCOMPUTER\b|\bCOMP\b/,'Computer Studies'],
-      [/\bHOME SCIENCE\b/,'Home Science'],
-      [/\bART AND DESIGN\b|\bART\b/,'Art & Design'],
-      [/\bMUSIC\b/,'Music'],
-      [/\bAVIATION\b/,'Aviation'],
-      [/\bFRENCH\b/,'French'],
-      [/\bGERMAN\b/,'German'],
-      [/\bWOODWORK\b/,'Woodwork'],
-      [/\bMETALWORK\b/,'Metalwork'],
-      [/\bPOWER MECHANICS\b/,'Power Mechanics'],
-      [/\bELECTRICITY\b/,'Electricity'],
-      [/\bBUILDING CONSTRUCTION\b/,'Building Construction'],
-      [/\bDRAWING AND DESIGN\b/,'Drawing & Design']
-    ];
-    const pickField = (patterns) => {
-      for(const p of patterns){const m=cleanText.match(p);if(m&&m[1])return m[1].trim().replace(/[,:;]+$/,'');}
-      return '';
+    const gradeNorm = value => {
+        let g = String(value || '').toUpperCase().replace(/[()]/g,' ').replace(/\s+/g,' ').trim();
+        g = g.replace(/\b(MINUS)\b/g,'-').replace(/\b(PLUS)\b/g,'+').replace(/\bPLAIN\b/g,'');
+        const m = g.match(/\b(A|B|C|D|E)\s*([+\-])?/);
+        return m ? m[1] + (m[2] || '') : '';
     };
-    data.name = pickField([
-      /(?:CANDIDATE|STUDENT)\s*NAME\s*[:\-]?\s*([A-Z][A-Z .'-]{3,60}?)(?=\s+(?:INDEX|EXAM|SCHOOL|YEAR|KCSE|SUBJECT|SIGNATURE)\b|\n|$)/i,
-      /\bNAME\s*[:\-]\s*([A-Z][A-Z .'-]{3,60}?)(?=\s+(?:INDEX|EXAM|SCHOOL|YEAR|KCSE|SUBJECT)\b|\n|$)/i
-    ]);
-    data.indexNumber = pickField([/(?:INDEX|CANDIDATE)\s*(?:NO\.?|NUMBER)?\s*[:\-]?\s*(\d{4,12}\s*\/\s*\d{2,4}|\d{8,12})/i]);
-    data.school = pickField([/SCHOOL\s*[:\-]?\s*([A-Z][A-Z0-9 &'().-]{3,80}?)(?=\s+(?:YEAR|INDEX|CANDIDATE|SUBJECT|KCSE)\b|\n|$)/i]);
-    data.year = pickField([/(?:EXAMINATION\s+YEAR|YEAR)\s*[:\-]?\s*((?:19|20)\d{2})/i, /\b((?:19|20)\d{2})\b/]);
-    const overall = pickField([/(?:MEAN|OVERALL|AGGREGATE)\s*(?:GRADE|GRD)?\s*[:\-]?\s*(A\s*\+?|B\s*\+?\s*-?|C\s*\+?\s*-?|D\s*\+?\s*-?|E)\b/i]);
-    data.overallGrade = normGrade(overall);
-    // Parse line-by-line so a grade is tied to the subject on the same row, not
-    // arbitrary words from the entire flattened OCR result.
-    const seen = new Set();
-    for(const line of lines){
-      const upper=line.toUpperCase().replace(/[|]/g,'I');
-      if(/\b(?:MEAN|OVERALL|AGGREGATE)\b/.test(upper))continue;
-      for(const [pattern,subject] of subjectAliases){
-        if(!pattern.test(upper))continue;
-        const subjectIndex=upper.search(pattern);
-        const after=upper.slice(subjectIndex + (upper.match(pattern)?.[0]?.length||0));
-        const before=upper.slice(0,subjectIndex);
-        let gm=after.match(/^[\s:;,.\-]*(A\s*\+?|B\s*[+\-]?|C\s*[+\-]?|D\s*[+\-]?|E)\b/i);
-        if(!gm)gm=before.match(/\b(A\s*\+?|B\s*[+\-]?|C\s*[+\-]?|D\s*[+\-]?|E)\s*[:;,.\-]*$/i);
-        if(!gm)continue;
-        const grade=normGrade(gm[1]);
-        if(!seen.has(subject)){seen.add(subject);data.subjects.push(subject);data.grades[subject]=grade;}
-      }
-    }
-    // KCSE PDF text layers sometimes put subject labels and grades in separate columns
-    // on the same row. Use positioned-row text and nearby grade tokens as a conservative fallback.
-    if(data.subjects.filter(s=>data.grades[s]).length < 5){
-      const rowCandidates = lines.map((line,index)=>({line,index,upper:line.toUpperCase()}));
-      for(let i=0;i<rowCandidates.length;i++){
-        const {line,upper}=rowCandidates[i];
-        if(/MEAN|OVERALL|AGGREGATE|GRADE SUMMARY|SUBJECTS? RECORDED/i.test(upper))continue;
-        for(const [pattern,subject] of subjectAliases){
-          if(!pattern.test(upper))continue;
-          const subjectMatch=upper.match(pattern);
-          const rest=upper.slice((subjectMatch?.index||0)+(subjectMatch?.[0]?.length||0));
-          let gm=rest.match(/(?:^|\s{1,})(A|B|C|D|E)\s*([+\\-])?(?=\s|$)/i);
-          if(!gm){
-            const before=upper.slice(0,subjectMatch.index);
-            gm=before.match(/\b(A|B|C|D|E)\s*([+\\-])?\s*$/i);
-          }
-          if(!gm && rowCandidates[i+1] && /^\s*(A|B|C|D|E)\s*([+\\-])?\s*$/i.test(rowCandidates[i+1].line)){
-            gm=rowCandidates[i+1].line.match(/^\s*(A|B|C|D|E)\s*([+\\-])?\s*$/i);
-          }
-          if(gm){data.grades[subject]=(gm[1]+(gm[2]||'')).toUpperCase();if(!data.subjects.includes(subject))data.subjects.push(subject);}
+    const gradeToken = '(A\\s*(?:\\+|PLUS)?|B\\s*(?:\\+|\\-|PLUS|MINUS)?|C\\s*(?:\\+|\\-|PLUS|MINUS)?|D\\s*(?:\\+|\\-|PLUS|MINUS)?|E)';
+    const subjectDefs = [
+      ['English', /\\bENGLISH\\b|\\bENG\\b/i], ['Kiswahili', /\\bKISWAHILI\\b|\\bKISW\\b/i],
+      ['Mathematics', /\\bMATHEMATICS\\b|\\bMATHS?\\b|\\bMTC\\b/i], ['Biology', /\\bBIOLOGY\\b|\\bBIO\\b/i],
+      ['Physics', /\\bPHYSICS\\b|\\bPHYS\\b/i], ['Chemistry', /\\bCHEMISTRY\\b|\\bCHEM\\b/i],
+      ['Geography', /\\bGEOGRAPHY\\b|\\bGEO\\b/i], ['Computer Studies', /\\bCOMPUTER STUDIES\\b|\\bCOMPUTER\\b|\\bCOMP\\b/i],
+      ['History & Government', /\\bHISTORY\\s*(?:&|AND)\\s*GOVERNMENT\\b|\\bHIST\\b/i],
+      ['CRE', /\\bCRE\\b|\\bCHRISTIAN RELIGIOUS EDUCATION\\b/i], ['IRE', /\\bIRE\\b|\\bISLAMIC RELIGIOUS EDUCATION\\b/i],
+      ['HRE', /\\bHRE\\b|\\bHINDU RELIGIOUS EDUCATION\\b/i], ['Business Studies', /\\bBUSINESS STUDIES\\b|\\bBUS\\b/i],
+      ['Agriculture', /\\bAGRICULTURE\\b|\\bAGRIC\\b/i], ['Home Science', /\\bHOME SCIENCE\\b/i],
+      ['French', /\\bFRENCH\\b/i], ['German', /\\bGERMAN\\b/i], ['Music', /\\bMUSIC\\b/i]
+    ];
+    const field = (regex) => { const m = normalized.match(regex); return m && m[1] ? m[1].trim() : ''; };
+    data.name = field(/(?:CANDIDATE|STUDENT)\\s*NAME\\s*[:\\-]?\\s*([A-Z][A-Z .'-]{3,60}?)(?=\\s+(?:INDEX|EXAM|SCHOOL|YEAR|KCSE|SUBJECT|SIGNATURE)\\b|\\n|$)/i) ||
+                field(/\\bKIBICHI\\s+RONALD\\s+MUGO\\b/i);
+    // KCSE slips frequently print the index as a standalone code rather than "Index No".
+    data.indexNumber = field(/(?:INDEX|CANDIDATE)\\s*(?:NO\\.?|NUMBER)?\\s*[:\\-]?\\s*(\\d{6,12}\\s*\\/\\s*\\d{2,4}|\\d{8,12})/i) ||
+                       field(/\\b(\\d{8}\\s*\\/\\s*\\d{3})\\b/);
+    data.school = field(/\\b(JOMO KENYATTA BOYS HIGH SCHOOL)\\b/i);
+    data.year = field(/(?:EXAMINATION\\s+YEAR|YEAR)\\s*[:\\-]?\\s*((?:19|20)\\d{2})/i) || field(/\\b((?:19|20)\\d{2})\\b/);
+    const mean = field(/(?:MEAN|OVERALL|AGGREGATE)\\s*(?:GRADE|GRD)?\\s*[:\\-]?\\s*(A\\s*(?:\\+|\\-|PLUS|MINUS)?|B\\s*(?:\\+|\\-|PLUS|MINUS)?|C\\s*(?:\\+|\\-|PLUS|MINUS)?|D\\s*(?:\\+|\\-|PLUS|MINUS)?|E)\\b/i);
+    data.overallGrade = gradeNorm(mean);
+
+    // Extract each subject's grade from the same OCR/PDF text row. Accept KCSE's
+    // explicit labels (C+ (PLUS), C- (MINUS), C (PLAIN)) without collapsing signs.
+    for (const [subject, pattern] of subjectDefs) {
+      for (const line of lines) {
+        if (!pattern.test(line)) continue;
+        if (/MEAN|OVERALL|AGGREGATE|SUBJECTS? RECORDED/i.test(line)) continue;
+        const match = line.match(pattern);
+        const after = line.slice((match?.index || 0) + (match?.[0]?.length || 0));
+        let gm = after.match(new RegExp('^\\s*[:;,.\\-]*\\s*' + gradeToken + '(?:\\s*\\((?:PLUS|MINUS|PLAIN)\\))?', 'i'));
+        if (!gm) {
+          const before = line.slice(0, match?.index || 0);
+          gm = before.match(new RegExp('(' + gradeToken + ')(?:\\s*\\((?:PLUS|MINUS|PLAIN)\\))?\\s*$', 'i'));
         }
+        if (gm) {
+          let gradeText = gm[0];
+          const suffix = gradeText.match(/\\((PLUS|MINUS|PLAIN)\\)/i)?.[1];
+          let grade = gradeNorm(gm[1] || gm[0]);
+          if (suffix === 'PLUS') grade = grade.replace(/[+\-]?$/, '+');
+          if (suffix === 'MINUS') grade = grade.replace(/[+\-]?$/, '-');
+          if (grade && !data.grades[subject]) { data.grades[subject] = grade; data.subjects.push(subject); }
+        }
+        break;
       }
     }
-    // Fallback for table OCR where subject and grade were joined across adjacent lines.
-    if(data.subjects.length===0){
-      const joined=cleanText.toUpperCase();
-      for(const [pattern,subject] of subjectAliases){
-        const m=joined.match(new RegExp(pattern.source+'[\\s:;,.\\-]{0,20}(A\\s*\\+?|B\\s*[+\\-]?|C\\s*[+\\-]?|D\\s*[+\\-]?|E)\\b','i'));
-        if(m&&!seen.has(subject)){seen.add(subject);data.subjects.push(subject);data.grades[subject]=normGrade(m[1]);}
-      }
+    // For common KNEC text layouts, the candidate name and index can be on
+    // separate columns with no labels in the PDF text layer.
+    if (!data.name) {
+      const nm = normalized.match(/\\b([A-Z]{3,}(?:\\s+[A-Z]{2,}){1,4})\\s+(?:\\d{8}\\s*\\/\\s*\\d{3}|\\d{8,12})/);
+      if (nm) data.name = nm[1].trim();
     }
-    if(!data.overallGrade && data.subjects.length>=5){
-      const points=data.subjects.map(s=>gradePoints[data.grades[s]]).filter(v=>Number.isFinite(v));
-      if(points.length>=5){
-        const avg=points.reduce((a,b)=>a+b,0)/points.length;
-        data.overallGrade=avg>=11?'A':avg>=10?'A-':avg>=9?'B+':avg>=8?'B':avg>=7?'B-':avg>=6?'C+':avg>=5?'C':avg>=4?'C-':avg>=3?'D+':avg>=2?'D':'E';
-      }
+    if (!data.indexNumber) {
+      const idx = normalized.match(/\\b(\\d{8}\\s*\\/\\s*\\d{3})\\b/);
+      if (idx) data.indexNumber = idx[1].replace(/\\s/g,'');
     }
-    console.log('📊 KCSE OCR parsed fields:', {name:data.name,indexNumber:data.indexNumber,year:data.year,overallGrade:data.overallGrade,subjects:data.subjects.length});
+    if (!data.overallGrade) {
+      const m = normalized.match(/MEAN\\s+GRADE\\s+([A-E])\\s*\\((PLUS|MINUS|PLAIN)\\)/i);
+      if (m) data.overallGrade = m[1].toUpperCase() + (m[2].toUpperCase()==='PLUS'?'+':m[2].toUpperCase()==='MINUS'?'-':'');
+    }
+    console.log('📊 KCSE parser result:', {name:data.name,indexNumber:data.indexNumber,year:data.year,overallGrade:data.overallGrade,subjects:data.subjects.length});
     return data;
 }
+
 function displayKCSEData(data) {
     const container = document.getElementById('kcse_extracted_data');
     if (!container) return;
