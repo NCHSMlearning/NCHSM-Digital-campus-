@@ -1792,6 +1792,52 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
  #admissionApp #admissionForm{grid-column:1/-1!important;grid-row:6!important}
 }
 </style>
+
+<style id="nchsm-final-dashboard-layout-override">
+/* FINAL layout override: desktop = fixed left sidebar + right workspace; mobile = hamburger drawer. */
+@media (min-width: 701px) {
+  #admissionApp {
+    display:grid!important;
+    position:relative!important;inset:auto!important;
+    width:min(100% - 32px,1600px)!important;max-width:1600px!important;
+    margin:24px auto!important;padding:0 0 40px!important;
+    box-sizing:border-box!important;
+    grid-template-columns:270px minmax(0,1fr)!important;
+    grid-template-rows:auto auto auto auto auto auto!important;
+    align-items:start!important;gap:16px 22px!important;
+  }
+  #admissionApp > .nchsm-mobile-menu-toggle {display:none!important}
+  #admissionApp > .nchsm-dashboard-sidebar {
+    display:flex!important;position:sticky!important;top:18px!important;
+    grid-column:1!important;grid-row:1 / span 10!important;
+    width:100%!important;max-width:none!important;height:auto!important;max-height:calc(100vh - 36px)!important;
+    overflow-y:auto!important;box-sizing:border-box!important;align-self:start!important;
+    transform:none!important;visibility:visible!important;
+    flex-direction:column!important;border-radius:18px!important;
+  }
+  #admissionApp > .dashboard-header {grid-column:2!important;grid-row:1!important;width:100%!important;min-width:0!important;margin:0!important}
+  #admissionApp > .app-steps {grid-column:2!important;grid-row:2!important;width:100%!important;margin:0!important}
+  #admissionApp > .application-completion {grid-column:2!important;grid-row:3!important;width:100%!important;margin:0!important}
+  #admissionApp > .nchsm-dashboard-cards {grid-column:2!important;grid-row:4!important;width:100%!important;min-width:0!important}
+  #admissionApp > .nchsm-status-panel {grid-column:2!important;grid-row:5!important;width:100%!important}
+  #admissionApp > #admissionForm {grid-column:2!important;grid-row:6!important;width:100%!important;min-width:0!important}
+}
+@media (max-width: 700px) {
+  #admissionApp {
+    display:grid!important;position:relative!important;inset:auto!important;
+    width:100%!important;max-width:100%!important;margin:0!important;padding:10px 8px 30px!important;
+    box-sizing:border-box!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important;
+  }
+  #admissionApp > .nchsm-mobile-menu-toggle {display:flex!important;grid-column:1!important;grid-row:1!important;width:100%!important}
+  #admissionApp > .nchsm-dashboard-sidebar {grid-column:1!important;grid-row:1!important}
+  #admissionApp > .dashboard-header {grid-column:1!important;grid-row:2!important;width:100%!important;margin:0!important}
+  #admissionApp > .app-steps {grid-column:1!important;grid-row:3!important;width:100%!important;margin:0!important}
+  #admissionApp > .application-completion {grid-column:1!important;grid-row:4!important;width:100%!important;margin:0!important}
+  #admissionApp > .nchsm-dashboard-cards {grid-column:1!important;grid-row:5!important;width:100%!important}
+  #admissionApp > .nchsm-status-panel {grid-column:1!important;grid-row:6!important;width:100%!important}
+  #admissionApp > #admissionForm {grid-column:1!important;grid-row:7!important;width:100%!important}
+}
+</style>
 </head>
 <body>
 
