@@ -1930,6 +1930,42 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
  #admissionApp.nchsm-status-view .nchsm-status-panel{grid-column:1!important;grid-row:2!important}
 }
 </style>
+<style id="nchsm-applicant-responsive-layout-fix">
+/* Clean, single-column form layout on mobile; preserve desktop sidebar workspace. */
+#admissionApp{box-sizing:border-box;width:100%;min-width:0}
+#admissionApp *,#admissionApp *::before,#admissionApp *::after{box-sizing:border-box;min-width:0}
+#admissionApp #admissionForm{width:100%;max-width:100%;min-width:0}
+#admissionApp #admissionForm .form-section.active{width:100%;max-width:100%;min-width:0}
+#admissionApp #admissionForm .panel{width:100%;max-width:100%;min-width:0;overflow:hidden}
+#admissionApp #admissionForm .grid-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#admissionApp #admissionForm .grid-row>.col{width:auto;max-width:100%;min-width:0}
+#admissionApp input:not([type=checkbox]):not([type=radio]):not([type=file]),
+#admissionApp select,#admissionApp textarea{width:100%;max-width:100%;min-width:0}
+#admissionApp .photo-upload-container,#admissionApp .photo-preview,#admissionApp .file-upload{max-width:100%;min-width:0}
+#admissionApp .file-upload{overflow-wrap:anywhere}
+#admissionApp .panel-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#admissionApp .panel-heading h3,#admissionApp .panel-heading h4{min-width:0;overflow-wrap:anywhere}
+#admissionApp .nchsm-dashboard-sidebar{min-width:0}
+@media(max-width:700px){
+ #admissionApp{padding:12px 12px 32px!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
+ #admissionApp #admissionForm{grid-column:1!important;grid-row:2!important;margin:0!important}
+ #admissionApp.nchsm-step-view #admissionForm{grid-column:1!important;grid-row:2!important}
+ #admissionApp #admissionForm .grid-row{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
+ #admissionApp #admissionForm .col,#admissionApp #admissionForm .col-2{grid-column:1!important;width:100%!important;max-width:100%!important}
+ #admissionApp #admissionForm .panel{margin:0 0 14px!important;border-radius:16px!important}
+ #admissionApp #admissionForm .panel-heading{padding:14px!important;align-items:flex-start!important}
+ #admissionApp #admissionForm .panel-heading h3,#admissionApp #admissionForm .panel-heading h4{font-size:1rem!important;line-height:1.35!important}
+ #admissionApp #admissionForm .form-section.active{padding:0!important}
+ #admissionApp .nchsm-dashboard-cards{grid-template-columns:minmax(0,1fr)!important}
+ #admissionApp .app-steps{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}
+ #admissionApp .dashboard-header .user-details h2{overflow-wrap:anywhere}
+ #admissionApp .nchsm-save-bar{position:relative!important;top:auto!important}
+ #admissionApp.nchsm-status-view>.nchsm-status-panel{grid-column:1!important;grid-row:2!important}
+}
+@media(min-width:701px){
+ #admissionApp.nchsm-step-view #admissionForm{grid-column:2!important;grid-row:1!important}
+}
+</style>
 <style id="nchsm-strict-applicant-module-isolation">
 /* Each sidebar destination is a standalone page view. Hide unrelated direct
    children so dashboard summaries or adjacent modules can never leak below it. */
