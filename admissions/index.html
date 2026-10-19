@@ -3707,11 +3707,16 @@ async function checkAuthForRegisterPage() {
             const email = document.getElementById('dashEmail');
             const appNo = document.getElementById('dashAppNo');
             
-            if (avatar) avatar.textContent = currentUser.email.charAt(0).toUpperCase();
-            if (name) name.textContent = 'Welcome, ' + (currentUser.user_metadata?.full_name || 'User') + '!';
-            if (email) email.textContent = currentUser.email;
-            
+            if (avatar) avatar.textContent = (currentUser.email || 'U').charAt(0).toUpperCase();
+            if (email) email.textContent = currentUser.email || '';
+
+            // The saved application name is authoritative. Auth metadata can contain
+            // an intake label (for example, "MARCH 2025") rather than the applicant's name.
             await loadUserApplication(currentUser.id);
+            const savedApplicantName = document.getElementById('fullName')?.value?.trim();
+            const metadataApplicantName = currentUser.user_metadata?.full_name?.trim();
+            const displayApplicantName = savedApplicantName || (metadataApplicantName && !/^(MARCH|JANUARY|SEPTEMBER|MAY|JULY|NOVEMBER|INTAKE)\\b/i.test(metadataApplicantName) ? metadataApplicantName : '') || 'Applicant';
+            if (name) name.textContent = 'Welcome, ' + displayApplicantName + '!';
         } else {
             console.log('📝 User is NOT logged in - showing register form');
             authContainer.style.display = 'block';
@@ -5278,15 +5283,18 @@ async function loginUser2() {
             dashboardApp.style.display = 'block';
         }
 
-        // Load the applicant's saved application/draft before finishing the route.
+        // Load the saved application first; its full_name is the display-name source of truth.
         await loadUserApplication(currentUser.id);
 
         const avatar = document.getElementById('dashAvatar');
         const name = document.getElementById('dashName');
         const emailEl = document.getElementById('dashEmail');
         if (avatar) avatar.textContent = (currentUser.email || 'U').charAt(0).toUpperCase();
-        if (name) name.textContent = 'Welcome, ' + (currentUser.user_metadata?.full_name || 'Applicant') + '!';
         if (emailEl) emailEl.textContent = currentUser.email || '';
+        const savedApplicantName = document.getElementById('fullName')?.value?.trim();
+        const metadataApplicantName = currentUser.user_metadata?.full_name?.trim();
+        const displayApplicantName = savedApplicantName || (metadataApplicantName && !/^(MARCH|JANUARY|SEPTEMBER|MAY|JULY|NOVEMBER|INTAKE)\\b/i.test(metadataApplicantName) ? metadataApplicantName : '') || 'Applicant';
+        if (name) name.textContent = 'Welcome, ' + displayApplicantName + '!';
 
         try {
             localStorage.setItem('nchsm_authenticated_user', JSON.stringify({
