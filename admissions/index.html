@@ -2101,7 +2101,8 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
 
             <!-- Dashboard App (shown when logged in) - SINGLE INSTANCE -->
             <div id="admissionApp" style="display:none;">
-                <aside class="nchsm-dashboard-sidebar">
+                <button type="button" class="nchsm-mobile-menu-toggle" aria-controls="nchsmApplicantSidebar" aria-expanded="false" onclick="toggleNchsmApplicantSidebar()"><i class="fas fa-bars menu-icon" aria-hidden="true"></i><span>Application Menu</span><span class="menu-state">Show menu</span></button>
+                <aside class="nchsm-dashboard-sidebar" id="nchsmApplicantSidebar">
                     <div class="nchsm-side-brand"><img src="/images/Logo_NCHSM.png" alt="NCHSM"><div><strong>NCHSM</strong><span>Digital Admissions</span></div></div>
                     <button class="nchsm-side-link active" onclick="goToStep(1)"><i class="fas fa-home"></i> Dashboard</button>
                     <button class="nchsm-side-link" onclick="goToStep(1)"><i class="fas fa-user"></i> Personal Information</button>
