@@ -2093,6 +2093,17 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
   body #app #admissionApp > .dashboard-header .header-right{grid-template-columns:minmax(0,1fr)!important}
   body #app #admissionApp > .dashboard-header .app-no{grid-column:1!important}
 }
+
+/* Account actions belong in the sidebar, never in the welcome header. */
+#admissionApp .nchsm-side-account{display:flex;flex-direction:column;gap:7px;margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,.2)}
+#admissionApp .nchsm-side-account .nchsm-side-link{display:flex!important;align-items:center!important;gap:12px!important;width:100%!important;min-height:46px!important;padding:12px 14px!important;border:0!important;border-radius:12px!important;background:transparent!important;color:#fff!important;text-align:left!important;font:inherit!important;cursor:pointer}
+#admissionApp .nchsm-side-account .nchsm-side-link:hover{background:rgba(255,255,255,.1)!important}
+#admissionApp .nchsm-side-account .nchsm-side-draft{background:rgba(255,255,255,.09)!important}
+#admissionApp .nchsm-side-status-dot{width:8px;height:8px;margin-left:auto;border-radius:50%;background:#ffc51b;box-shadow:0 0 0 3px rgba(255,197,27,.15)}
+#admissionApp .nchsm-side-account .nchsm-side-logout{color:#fff!important}
+#admissionApp .dashboard-header .header-right{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important}
+@media(min-width:701px){#admissionApp .nchsm-dashboard-sidebar{display:flex!important;flex-direction:column!important}#admissionApp .nchsm-side-account{margin-top:auto!important}}
+@media(max-width:700px){#admissionApp .nchsm-side-account{margin-top:18px!important;padding-top:14px!important}}
 </style>
 </head>
 <body>
@@ -2513,6 +2524,10 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
                     <button class="nchsm-side-link" data-app-step="4" onclick="openApplicantStep(4)"><i class="fas fa-check-circle"></i> Review &amp; Submit</button>
                     <button class="nchsm-side-link" data-app-view="status" onclick="showApplicantStatus()"><i class="fas fa-clipboard-check"></i> Application Status</button>
                     <div class="nchsm-side-help"><i class="fas fa-headset"></i><div><b>Need Help?</b><small>Call: 0790 969 743<br>admissions@nchsm.ac.ke</small></div></div>
+                    <div class="nchsm-side-account" aria-label="Account actions">
+                        <button type="button" class="nchsm-side-link nchsm-side-draft" data-app-view="dashboard" onclick="showApplicantDashboard()"><i class="fas fa-clock"></i><span>Draft</span><span class="nchsm-side-status-dot" aria-hidden="true"></span></button>
+                        <button type="button" class="nchsm-side-link nchsm-side-logout" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+                    </div>
                 </aside>
                 <div class="dashboard-header">
                     <div class="user-info">
@@ -2524,8 +2539,6 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
                     </div>
                     <div class="header-right">
                         <div class="app-no"><span>Application No:</span> <strong id="dashAppNo">ADM-2026-001</strong></div>
-                        <span class="status-badge" id="dashStatus"><i class="fas fa-clock"></i> Draft</span>
-                        <button class="btn btn-secondary btn-sm" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> Logout</button>
                     </div>
                 </div>
 
