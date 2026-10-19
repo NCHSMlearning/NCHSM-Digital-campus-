@@ -1622,18 +1622,58 @@ body{overflow-x:hidden!important;background:#f5f9fd!important}
 </style>
 
 <style id="nchsm-mobile-applicant-dashboard-layout">
-/* Logged-in portal: remove the public landing navigation that overlays the applicant workspace. */
+/* Keep applicant navigation as a LEFT SIDEBAR on mobile, beside the workspace. */
 body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!important}
-@media(max-width:700px){
- #admissionApp{display:flex!important;flex-direction:column!important;gap:12px!important;padding:12px!important}
- #admissionApp .dashboard-header{order:0!important;width:100%!important;margin:0!important}
- #admissionApp .nchsm-dashboard-sidebar{order:1!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;width:100%!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:14px!important;margin:0!important;border-radius:16px!important}
- #admissionApp .nchsm-side-brand{width:100%!important;box-sizing:border-box!important}
- #admissionApp .nchsm-dashboard-sidebar .nchsm-side-link{display:flex!important;width:100%!important;max-width:none!important;box-sizing:border-box!important;justify-content:flex-start!important;min-height:44px!important;margin:3px 0!important;padding:11px 12px!important;font-size:.84rem!important;white-space:normal!important;border-radius:10px!important}
- #admissionApp .nchsm-side-help{width:100%!important;box-sizing:border-box!important}
- #admissionApp .app-steps{order:2!important;width:100%!important}
- #admissionApp .application-completion{order:3!important;width:100%!important}
- #admissionApp .panel{order:4!important;width:100%!important}
+@media (min-width: 701px) {
+  #admissionApp{display:grid!important;grid-template-columns:235px minmax(0,1fr)!important;gap:20px!important;align-items:start!important}
+  #admissionApp .nchsm-dashboard-sidebar{grid-column:1!important;grid-row:1 / span 8!important}
+  #admissionApp .dashboard-header,#admissionApp .app-steps,#admissionApp .application-completion,#admissionApp .panel{grid-column:2!important;min-width:0!important}
+}
+@media (min-width: 451px) and (max-width: 700px) {
+  #admissionApp{display:grid!important;grid-template-columns:145px minmax(0,1fr)!important;gap:10px!important;padding:10px!important;align-items:start!important}
+  #admissionApp .nchsm-dashboard-sidebar{grid-column:1!important;grid-row:1 / span 8!important;position:sticky!important;top:10px!important;min-height:0!important;max-height:calc(100vh - 20px)!important;overflow-y:auto!important;padding:10px 7px!important;border-radius:14px!important}
+  #admissionApp .nchsm-side-brand{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:5px!important;padding:4px 4px 10px!important;margin-bottom:8px!important}
+  #admissionApp .nchsm-side-brand img{width:30px!important;height:30px!important}
+  #admissionApp .nchsm-side-brand strong{font-size:.82rem!important}
+  #admissionApp .nchsm-side-brand span{font-size:.58rem!important}
+  #admissionApp .nchsm-dashboard-sidebar .nchsm-side-link{display:flex!important;width:100%!important;min-height:42px!important;box-sizing:border-box!important;justify-content:flex-start!important;align-items:flex-start!important;gap:6px!important;margin:3px 0!important;padding:9px 7px!important;font-size:.67rem!important;line-height:1.3!important;white-space:normal!important}
+  #admissionApp .nchsm-side-link i{flex:0 0 14px!important;width:14px!important;margin-top:1px!important}
+  #admissionApp .nchsm-side-help{display:block!important;margin:12px 0 0!important;padding:8px!important}
+  #admissionApp .nchsm-side-help>i{display:none!important}
+  #admissionApp .nchsm-side-help b{font-size:.65rem!important}
+  #admissionApp .nchsm-side-help small{font-size:.56rem!important;overflow-wrap:anywhere!important}
+  #admissionApp .dashboard-header,#admissionApp .app-steps,#admissionApp .application-completion,#admissionApp .panel{grid-column:2!important;width:100%!important;min-width:0!important;margin:0 0 10px!important}
+  #admissionApp .dashboard-header{grid-row:1!important;padding:12px!important}
+  #admissionApp .app-steps{grid-row:2!important}
+  #admissionApp .application-completion{grid-row:3!important}
+  #admissionApp .panel{grid-row:auto!important}
+}
+@media (max-width: 450px) {
+  #admissionApp{display:grid!important;grid-template-columns:112px minmax(0,1fr)!important;gap:8px!important;padding:8px!important;align-items:start!important}
+  #admissionApp .nchsm-dashboard-sidebar{grid-column:1!important;grid-row:1 / span 8!important;position:sticky!important;top:8px!important;min-height:0!important;max-height:calc(100vh - 16px)!important;overflow-y:auto!important;padding:9px 5px!important;border-radius:12px!important}
+  #admissionApp .nchsm-side-brand{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:4px!important;padding:3px 3px 8px!important;margin-bottom:7px!important}
+  #admissionApp .nchsm-side-brand img{width:27px!important;height:27px!important}
+  #admissionApp .nchsm-side-brand strong{font-size:.76rem!important}
+  #admissionApp .nchsm-side-brand span{font-size:.52rem!important;line-height:1.25!important}
+  #admissionApp .nchsm-dashboard-sidebar .nchsm-side-link{display:flex!important;width:100%!important;min-height:39px!important;box-sizing:border-box!important;justify-content:flex-start!important;align-items:flex-start!important;gap:5px!important;margin:2px 0!important;padding:8px 5px!important;font-size:.61rem!important;line-height:1.28!important;white-space:normal!important;border-radius:7px!important}
+  #admissionApp .nchsm-side-link i{flex:0 0 12px!important;width:12px!important;font-size:.72rem!important;margin-top:1px!important}
+  #admissionApp .nchsm-side-help{display:block!important;margin:10px 0 0!important;padding:7px!important}
+  #admissionApp .nchsm-side-help>i{display:none!important}
+  #admissionApp .nchsm-side-help b{font-size:.6rem!important}
+  #admissionApp .nchsm-side-help small{font-size:.51rem!important;line-height:1.35!important;overflow-wrap:anywhere!important}
+  #admissionApp .dashboard-header,#admissionApp .app-steps,#admissionApp .application-completion,#admissionApp .panel{grid-column:2!important;width:100%!important;min-width:0!important;margin:0 0 8px!important}
+  #admissionApp .dashboard-header{grid-row:1!important;padding:10px!important}
+  #admissionApp .dashboard-header .user-info{gap:8px!important;align-items:center!important}
+  #admissionApp .dashboard-header .avatar{width:34px!important;height:34px!important;min-width:34px!important;font-size:.9rem!important}
+  #admissionApp .dashboard-header .user-details h2{font-size:.88rem!important;line-height:1.25!important}
+  #admissionApp .dashboard-header .user-details p{font-size:.65rem!important;overflow-wrap:anywhere!important}
+  #admissionApp .dashboard-header .header-right{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:7px!important;width:100%!important;margin-top:9px!important}
+  #admissionApp .dashboard-header .app-no{font-size:.62rem!important;padding:8px!important;overflow-wrap:anywhere!important}
+  #admissionApp .dashboard-header .status-badge,#admissionApp .dashboard-header button{width:100%!important;justify-content:center!important}
+  #admissionApp .app-steps{grid-row:2!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;padding:7px 3px!important}
+  #admissionApp .app-steps .step-name{font-size:.52rem!important}
+  #admissionApp .application-completion{grid-row:3!important}
+  #admissionApp .panel{grid-row:auto!important}
 }
 </style>
 </head>
