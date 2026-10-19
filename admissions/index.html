@@ -1897,17 +1897,38 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
 }
 </style>
 <style id="nchsm-applicant-page-specific-views">
-/* Show dashboard overview only on Dashboard; show the selected form/status view after navigation. */
+/* Dashboard overview and form modules are separate views, not stacked pages. */
 #admissionApp.nchsm-dashboard-view .nchsm-dashboard-cards{display:grid!important}
+#admissionApp.nchsm-dashboard-view .dashboard-header,
+#admissionApp.nchsm-dashboard-view .app-steps,
+#admissionApp.nchsm-dashboard-view .application-completion{display:block}
+#admissionApp.nchsm-step-view .dashboard-header,
+#admissionApp.nchsm-step-view .app-steps,
+#admissionApp.nchsm-step-view .application-completion,
 #admissionApp.nchsm-step-view .nchsm-dashboard-cards,
 #admissionApp.nchsm-step-view .nchsm-status-panel,
-#admissionApp.nchsm-step-view .application-completion{display:none!important}
+#admissionApp.nchsm-step-view .nchsm-status-overview,
+#admissionApp.nchsm-step-view .nchsm-next-step,
+#admissionApp.nchsm-step-view .nchsm-admissions-help,
+#admissionApp.nchsm-step-view .nchsm-autosave-notice,
+#admissionApp.nchsm-step-view .nchsm-save-progress-panel{display:none!important}
+#admissionApp.nchsm-step-view #admissionForm{display:block!important;grid-column:2!important;grid-row:1!important;width:100%!important;max-width:none!important;margin:0!important}
+#admissionApp.nchsm-step-view #admissionForm .form-section{display:none!important}
+#admissionApp.nchsm-step-view #admissionForm .form-section.active{display:block!important}
+#admissionApp.nchsm-status-view .dashboard-header,
 #admissionApp.nchsm-status-view .nchsm-dashboard-cards,
 #admissionApp.nchsm-status-view .app-steps,
 #admissionApp.nchsm-status-view .application-completion,
-#admissionApp.nchsm-status-view #admissionForm{display:none!important}
-#admissionApp.nchsm-status-view .nchsm-status-panel{display:block!important}
+#admissionApp.nchsm-status-view #admissionForm,
+#admissionApp.nchsm-status-view .nchsm-status-overview,
+#admissionApp.nchsm-status-view .nchsm-next-step,
+#admissionApp.nchsm-status-view .nchsm-admissions-help{display:none!important}
+#admissionApp.nchsm-status-view .nchsm-status-panel{display:block!important;grid-column:2!important;grid-row:1!important;width:100%!important;margin:0!important}
 #admissionApp .nchsm-dashboard-sidebar .nchsm-side-link.active{background:#ffc51b!important;color:#073b5c!important}
+@media(max-width:700px){
+ #admissionApp.nchsm-step-view #admissionForm,
+ #admissionApp.nchsm-status-view .nchsm-status-panel{grid-column:1!important;grid-row:2!important}
+}
 </style>
 <style id="nchsm-dashboard-remove-duplicate-summary">
 /* Avoid repeating application status and completion already shown in the welcome/progress panels. */
