@@ -4185,10 +4185,25 @@ async function loadUserApplication(userId) {
             if (app.alt_phone) document.getElementById('altPhone').value = app.alt_phone;
             if (app.passport_photo_path) {
                 window.passportPhotoStoragePath = app.passport_photo_path;
-                const { data: urlData } = supabaseClient.storage.from('application-documents').getPublicUrl(app.passport_photo_path);
-                if (urlData?.publicUrl) {
+                // application-documents is private: use a short-lived signed URL, never getPublicUrl().
+                const { data: urlData, error: signedUrlError } = await supabaseClient.storage
+                    .from('application-documents')
+                    .createSignedUrl(app.passport_photo_path, 300);
+                if (signedUrlError) {
+                    console.warn('Saved passport photo could not be previewed:', signedUrlError.message);
+                } else if (urlData?.signedUrl) {
                     const preview = document.getElementById('photoPreview');
-                    if (preview) { preview.innerHTML = ''; const img = document.createElement('img'); img.src = urlData.publicUrl; img.alt = 'Saved passport photo'; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover'; preview.appendChild(img); preview.classList.add('has-image'); }
+                    if (preview) {
+                        preview.innerHTML = '';
+                        const img = document.createElement('img');
+                        img.src = urlData.signedUrl;
+                        img.alt = 'Saved passport photo';
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'cover';
+                        preview.appendChild(img);
+                        preview.classList.add('has-image');
+                    }
                     uploadedDocs.passport = true;
                 }
             }
@@ -4242,56 +4257,87 @@ async function loadUserApplication(userId) {
 // ================================================================
 async function saveApplication(step) {
     const supabaseClient = getSupabase();
-    if (!supabaseClient || !currentUser) return;
+    if (!supabaseClient || !currentUser) {
+        console.error('Application save blocked: no authenticated Supabase user/client.');
+        return false;
+    }
 
+    const read = (id) => document.getElementById(id)?.value?.trim() || '';
+    const programValue = read('program');
+    const intakeValue = read('intake');
     const data = {
         user_id: currentUser.id,
-        user_email: currentUser.email,
-        full_name: document.getElementById('fullName')?.value || '',
-        phone: document.getElementById('phone')?.value || '',
-        alt_phone: document.getElementById('altPhone')?.value || '',
-        national_id: document.getElementById('nationalId')?.value || '',
-        nationality: document.getElementById('nationality')?.value || '',
-        county: document.getElementById('county')?.value || '',
-        dob: document.getElementById('dob')?.value || '',
-        gender: document.getElementById('gender')?.value || '',
-        address: document.getElementById('address')?.value || '',
-        guardian_name: document.getElementById('guardianName')?.value || '',
-        guardian_phone: document.getElementById('guardianPhone')?.value || '',
-        hear_about: document.getElementById('hearAbout')?.value || '',
-        program: document.getElementById('program')?.value || '',
-        program_name: programNames[document.getElementById('program')?.value] || '',
-        intake: document.getElementById('intake')?.value || '',
-        mode_of_study: document.getElementById('modeOfStudy')?.value || '',
-        campus: document.getElementById('campus')?.value || '',
-        prev_institution: document.getElementById('prevInstitution')?.value || '',
-        prev_year: document.getElementById('prevYear')?.value || '',
-        transfer_reason: document.getElementById('transferReason')?.value || '',
+        user_email: currentUser.email || read('email'),
+        email: currentUser.email || read('email'),
+        full_name: read('fullName'),
+        phone: read('phone'),
+        alt_phone: read('altPhone'),
+        national_id: read('nationalId'),
+        nationality: read('nationality'),
+        county: read('county'),
+        dob: read('dob') || null,
+        gender: read('gender'),
+        address: read('address'),
+        guardian_name: read('guardianName'),
+        guardian_phone: read('guardianPhone'),
+        hear_about: read('hearAbout'),
+        program: programValue,
+        program_name: programNames[programValue] || '',
+        intake: intakeValue,
+        mode_of_study: read('modeOfStudy'),
+        campus: read('campus'),
+        prev_institution: read('prevInstitution'),
+        prev_year: read('prevYear'),
+        transfer_reason: read('transferReason'),
         student_type: studentType,
-        eligibility_passed: eligibilityPassed || false,
-        kcse_validated: kcseValidated || false,
-        kcse_data: kcseDataExtracted,
-        id_data: idDataExtracted,
+        eligibility_passed: Boolean(eligibilityPassed),
+        kcse_validated: Boolean(kcseValidated),
+        kcse_data: kcseDataExtracted || {},
+        id_data: idDataExtracted || {},
         documents_uploaded: Object.keys(uploadedDocs).filter(k => uploadedDocs[k]),
         passport_photo_path: window.passportPhotoStoragePath || null,
-        current_step: step || currentStep,
+        current_step: Number(step || currentStep || 1),
         updated_at: new Date().toISOString()
     };
 
     try {
+        // Load the existing record for this authenticated user to avoid creating
+        // duplicate draft applications when applicationId was not restored yet.
+        if (!applicationId) {
+            const existing = await supabaseClient.from('applications')
+                .select('id')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (existing.error) throw existing.error;
+            if (existing.data?.id) applicationId = existing.data.id;
+        }
+
         let result;
         if (applicationId) {
-            result = await supabaseClient.from('applications').update(data).eq('id', applicationId);
+            result = await supabaseClient.from('applications')
+                .update(data)
+                .eq('id', applicationId)
+                .eq('user_id', currentUser.id)
+                .select('id')
+                .single();
         } else {
-            result = await supabaseClient.from('applications').insert([data]).select();
-            if (result.data && result.data.length > 0) {
-                applicationId = result.data[0].id;
-            }
+            result = await supabaseClient.from('applications')
+                .insert([{ ...data, status: 'draft', created_at: new Date().toISOString() }])
+                .select('id')
+                .single();
         }
         if (result.error) throw result.error;
+        if (result.data?.id) applicationId = result.data.id;
         return true;
     } catch (error) {
-        console.error('Save error:', error);
+        console.error('Save application failed:', error);
+        const message = document.getElementById('submitMessage');
+        if (message) {
+            message.className = 'auth-message error';
+            message.textContent = 'Your application could not be saved. Please check your connection and sign-in, then try again.';
+        }
         return false;
     }
 }
