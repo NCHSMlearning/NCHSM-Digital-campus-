@@ -4791,59 +4791,85 @@ function validateKCSEAgainstProgram(data) {
     const program = document.getElementById('program')?.value;
     const criteria = programCriteria[program];
     const validationResult = document.getElementById('kcse_validation_result');
-
     if (!validationResult) return;
 
-    if (!criteria || !data.overallGrade) {
-        validationResult.innerHTML = `<span style="color:var(--warning);">⚠️ Complete data not extracted. Ensure document is clear.</span>`;
+    const subjects = Array.isArray(data?.subjects) ? data.subjects : [];
+    const grades = data?.grades && typeof data.grades === 'object' ? data.grades : {};
+    const requiredSubjects = criteria?.subjects || [];
+    const missingFields = [];
+    if (!data?.overallGrade) missingFields.push('overall grade');
+    if (requiredSubjects.some(subject => !Object.entries(grades).some(([key,value]) =>
+        value && key.toLowerCase().includes(subject.toLowerCase()) ||
+        value && subject.toLowerCase().includes(key.toLowerCase())
+    ))) missingFields.push('required subject grades');
+    if (!data?.name) missingFields.push('candidate name');
+    if (!data?.indexNumber) missingFields.push('index number');
+    if (!data?.year) missingFields.push('examination year');
+
+    // Missing OCR fields are unknown, not proof of ineligibility.
+    if (!criteria || missingFields.length) {
+        validationResult.innerHTML =
+          '<div style="color:#92400e;font-weight:700;">⚠️ REVIEW REQUIRED — OCR did not extract all required details.</div>' +
+          '<div style="margin-top:6px;font-size:.78rem;color:#64748b;">Missing: ' +
+          missingFields.map(x => x.replace(/[&<>"]/g, '')).join(', ') +
+          '. Please verify the original certificate and enter/correct the details manually. Eligibility has not been determined.</div>';
+        eligibilityPassed = false;
+        updateSummary();
         return;
     }
 
-    const studentPoints = gradePoints[data.overallGrade] || 0;
-    const minPoints = gradePoints[criteria.minGrade] || 0;
-    let allPass = true;
+    const studentPoints = gradePoints[data.overallGrade] ?? null;
+    const minPoints = criteria.minGrade === 'None' ? null : (gradePoints[criteria.minGrade] ?? null);
+    let failures = [];
     let messages = [];
 
     if (criteria.minGrade === 'None') {
-        messages.push('✅ No minimum grade requirement');
+        messages.push('No minimum overall grade requirement configured.');
+    } else if (studentPoints === null || minPoints === null) {
+        messages.push('Overall grade could not be compared; manual review required.');
+        missingFields.push('comparable overall grade');
     } else if (studentPoints >= minPoints) {
-        messages.push(`✅ Overall ${data.overallGrade} meets ${criteria.minGrade}`);
+        messages.push('Overall ' + data.overallGrade + ' meets ' + criteria.minGrade + '.');
     } else {
-        messages.push(`❌ Overall ${data.overallGrade} below ${criteria.minGrade}`);
-        allPass = false;
+        messages.push('Overall ' + data.overallGrade + ' is below ' + criteria.minGrade + '.');
+        failures.push('overall grade');
     }
 
-    if (criteria.subjects && criteria.subjects.length > 0) {
-        criteria.subjects.forEach(subject => {
-            let foundGrade = null;
-            for (const [key, value] of Object.entries(data.grades)) {
-                if (key.toLowerCase().includes(subject.toLowerCase()) ||
-                    subject.toLowerCase().includes(key.toLowerCase())) {
-                    foundGrade = value;
-                    break;
-                }
-            }
-            const requiredGrade = criteria.minSubjectGrades[subject] || 'D';
-            if (foundGrade) {
-                if ((gradePoints[foundGrade] || 0) >= (gradePoints[requiredGrade] || 0)) {
-                    messages.push(`✅ ${subject}: ${foundGrade} meets ${requiredGrade}`);
-                } else {
-                    messages.push(`❌ ${subject}: ${foundGrade} below ${requiredGrade}`);
-                    allPass = false;
-                }
-            } else {
-                messages.push(`⚠️ ${subject}: Not found in document`);
-                allPass = false;
-            }
-        });
-    }
+    requiredSubjects.forEach(subject => {
+        const found = Object.entries(grades).find(([key,value]) => value &&
+            (key.toLowerCase().includes(subject.toLowerCase()) ||
+             subject.toLowerCase().includes(key.toLowerCase())));
+        const requiredGrade = criteria.minSubjectGrades?.[subject] || 'D';
+        if (!found) {
+            missingFields.push(subject + ' grade');
+            return;
+        }
+        const points = gradePoints[found[1]];
+        const requiredPoints = gradePoints[requiredGrade];
+        if (points === undefined || requiredPoints === undefined) {
+            missingFields.push(subject + ' grade comparison');
+        } else if (points >= requiredPoints) {
+            messages.push(subject + ': ' + found[1] + ' meets ' + requiredGrade + '.');
+        } else {
+            messages.push(subject + ': ' + found[1] + ' is below ' + requiredGrade + '.');
+            failures.push(subject);
+        }
+    });
 
-    let html = allPass ?
-        `<span class="validation-pass">✅ ELIGIBLE - You meet all requirements!</span>` :
-        `<span class="validation-fail">❌ NOT ELIGIBLE - You do not meet all requirements.</span>`;
-    html += `<div style="margin-top:6px;font-size:0.7rem;color:var(--gray-500);">${messages.map(m => `• ${m}`).join('<br>')}</div>`;
-    validationResult.innerHTML = html;
-    eligibilityPassed = allPass;
+    if (missingFields.length) {
+        validationResult.innerHTML = '<div style="color:#92400e;font-weight:700;">⚠️ REVIEW REQUIRED — some grades could not be verified.</div>' +
+          '<div style="margin-top:6px;font-size:.78rem;color:#64748b;">Missing: ' +
+          missingFields.map(x => x.replace(/[&<>"]/g, '')).join(', ') +
+          '. Check the original document before deciding eligibility.</div>';
+        eligibilityPassed = false;
+    } else {
+        validationResult.innerHTML = failures.length
+          ? '<div class="validation-fail">❌ REQUIREMENTS NOT MET — ' + failures.length + ' verified requirement(s) below the configured minimum.</div>'
+          : '<div class="validation-pass">✅ ELIGIBILITY CHECK PASSED — based on the extracted fields. Confirm against the original certificate.</div>';
+    }
+    validationResult.innerHTML += '<div style="margin-top:6px;font-size:.78rem;color:#64748b;">' +
+      messages.map(m => '• ' + m.replace(/[&<>"]/g, '')).join('<br>') + '</div>';
+    eligibilityPassed = !missingFields.length && failures.length === 0;
     updateSummary();
 }
 
