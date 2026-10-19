@@ -4392,7 +4392,19 @@ async function handleKCSEDocument(event) {
             for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 4); pageNo++) {
                 const page = await pdf.getPage(pageNo);
                 const content = await page.getTextContent();
-                const embedded = content.items.map(item => item.str || '').join(' ').replace(/\\s+/g,' ').trim();
+                // Keep the document's row structure; flattening PDF text destroys grade columns.
+                const items = content.items.filter(item => item.str && item.str.trim()).map(item => ({
+                    text: item.str.trim(), x: item.transform?.[4] || 0, y: item.transform?.[5] || 0
+                })).sort((a,b) => b.y-a.y || a.x-b.x);
+                const rows = [];
+                for (const item of items) {
+                    let row = rows.find(r => Math.abs(r.y-item.y) <= 3);
+                    if (!row) { row = { y:item.y, items:[] }; rows.push(row); }
+                    row.items.push(item);
+                }
+                const embedded = rows.sort((a,b)=>b.y-a.y)
+                    .map(row=>row.items.sort((a,b)=>a.x-b.x).map(item=>item.text).join('  '))
+                    .join('\\n').trim();
                 if (embedded.length > 80) pageTexts.push(embedded);
             }
             text = pageTexts.join('\\n');
