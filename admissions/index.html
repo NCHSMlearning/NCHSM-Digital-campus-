@@ -4404,17 +4404,17 @@ async function handleKCSEDocument(event) {
                 }
                 const embedded = rows.sort((a,b)=>b.y-a.y)
                     .map(row=>row.items.sort((a,b)=>a.x-b.x).map(item=>item.text).join('  '))
-                    .join('\\n').trim();
+                    .join('\n').trim();
                 if (embedded.length > 80) pageTexts.push(embedded);
             }
-            text = pageTexts.join('\\n');
-            if (text.replace(/\\s/g,'').length < 100) {
-                // Scanned PDF: OCR up to the first four pages at high resolution.
+            text = pageTexts.join('\n');
+            if (text.replace(/\s/g,'').length < 100) {
+                // Scanned PDF: OCR only the first two pages needed for the KCSE result slip; keep this fast.
                 const ocrPages = [];
-                for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 4); pageNo++) {
-                    if (ocrStatus) ocrStatus.textContent = `⏳ Scanning PDF page ${pageNo} of ${Math.min(pdf.numPages,4)}...`;
+                for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 2); pageNo++) {
+                    if (ocrStatus) ocrStatus.textContent = `⏳ Scanning PDF page ${pageNo} of ${Math.min(pdf.numPages,2)}...`;
                     const page = await pdf.getPage(pageNo);
-                    const viewport = page.getViewport({ scale: 3.0 });
+                    const viewport = page.getViewport({ scale: 2.2 });
                     const canvas = document.createElement('canvas');
                     canvas.width = Math.ceil(viewport.width);
                     canvas.height = Math.ceil(viewport.height);
