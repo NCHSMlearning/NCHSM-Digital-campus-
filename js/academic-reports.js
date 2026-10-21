@@ -1079,20 +1079,23 @@
             const avgScore = grades.reduce((s,g) => s + (Number(g.final_score) || 0), 0) / grades.length;
             setAcademicSummary(gpa, calculateGrade(avgScore, program), earnedCredits);
 
+            // Keep the Course Grades table focused on published outcomes, not CAT/exam components.
+            const gradesTable = tbody.closest('table');
+            if (gradesTable) {
+                const header = gradesTable.querySelector('thead tr');
+                if (header) header.innerHTML = '<th>Course Code</th><th>Course Name</th><th>Credits</th><th>Score</th><th>Grade</th><th>Rate</th>';
+            }
             tbody.innerHTML = grades.map(g => {
-                const a = getAssessmentValues(g);
                 const gradeColor = getGradeColor(g.grade);
-                const statusColor = getStatusColor(g.status);
+                const score = Number(g.final_score || 0);
+                const passed = score >= passMark;
                 return `<tr style="border-bottom:1px solid #e2e8f0;">
                     <td style="padding:12px;white-space:nowrap;">${escapeHtml(g.unit_code || 'N/A')}</td>
                     <td style="padding:12px;">${escapeHtml(g.subject_name || 'N/A')}</td>
-                    <td style="padding:12px;text-align:center;">${g.credits || 3}</td>
-                    <td style="padding:12px;text-align:center;">${a.cat1 !== null ? a.cat1 : '—'}</td>
-                    <td style="padding:12px;text-align:center;">${a.cat2 !== null ? a.cat2 : '—'}</td>
-                    <td style="padding:12px;text-align:center;">${a.finalExam !== null ? a.finalExam : '—'}</td>
-                    <td style="padding:12px;text-align:center;font-weight:700;">${Number(g.final_score || 0).toFixed(1)}</td>
+                    <td style="padding:12px;text-align:center;">${Number(g.credits) || 3}</td>
+                    <td style="padding:12px;text-align:center;font-weight:700;">${score.toFixed(1)}%</td>
                     <td style="padding:12px;text-align:center;"><span style="background:${gradeColor};color:white;padding:2px 10px;border-radius:12px;font-weight:700;font-size:12px;">${escapeHtml(g.grade || '-')}</span></td>
-                    <td style="padding:12px;text-align:center;"><span style="background:${statusColor};color:white;padding:2px 10px;border-radius:12px;font-weight:600;font-size:10px;">${escapeHtml(g.status || 'PENDING')}</span></td>
+                    <td style="padding:12px;text-align:center;"><span style="background:${passed ? '#10b981' : '#ef4444'};color:white;padding:2px 10px;border-radius:12px;font-weight:600;font-size:10px;">${passed ? 'PASS' : 'NOT PASSED'}</span></td>
                 </tr>`;
             }).join('');
 
