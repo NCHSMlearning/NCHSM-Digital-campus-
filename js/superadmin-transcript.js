@@ -112,8 +112,31 @@ const TVET_PROGRAMS = {
     artisan: ['ACH', 'AAG', 'ASW']
 };
 
-// KRCHN Blocks
-const KRCHN_BLOCKS = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'];
+// KRCHN study-year structure (study year is determined by block, not calendar year).
+const KRCHN_BLOCKS = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'FQE'];
+
+function normalizeKRCHNBlock(value) {
+    const raw = String(value || '').trim();
+    const normalized = raw.toLowerCase().replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ').trim();
+    if (/\\bfqe\\b|final qualifying examination|qualifying examination/.test(normalized)) return 'FQE';
+    if (/introductory/.test(normalized)) return 'Introductory';
+    const match = normalized.match(/\\bblock\\s*([1-6])\\b/);
+    if (match) return 'Block ' + match[1];
+    if (/^final$/.test(normalized)) return 'FQE';
+    return raw || 'General';
+}
+
+function getKRCHNStudyYear(value) {
+    const block = normalizeKRCHNBlock(value);
+    if (block === 'Introductory' || block === 'Block 1') return 1;
+    if (block === 'Block 2' || block === 'Block 3') return 2;
+    if (['Block 4', 'Block 5', 'Block 6', 'FQE'].includes(block)) return 3;
+    return 0;
+}
+
+function filterKRCHNMarksByStudyYear(marks, studyYear) {
+    return (marks || []).filter(mark => getKRCHNStudyYear(mark.block || mark.unit_name || mark.assessment_name || mark.exam_title) === Number(studyYear));
+}
 
 // TVET Terms
 const TVET_TERMS_CERTIFICATE = ['Year 1 Term 1', 'Year 1 Term 2', 'Year 1 Term 3'];
@@ -769,8 +792,9 @@ window.generateSelectedTranscriptBatch = async function() {
     if (selectedIds.length > 50 && !confirm(`Generate ${selectedIds.length} transcripts? This may take a few minutes.`)) return;
 
     const year = document.getElementById('transcript_year_select')?.value || String(new Date().getFullYear());
-    const mode = document.getElementById('transcript_scope_select')?.value || 'yearly';
-    const scopeLabel = mode === 'cumulative' ? 'Cumulative' : `Academic Year ${year}`;
+    const mode = document.getElementById('transcript_scope_select')?.value || 'cumulative';
+    const scopeLabels = { study_year_1: 'KRCHN Study Year 1', study_year_2: 'KRCHN Study Year 2', study_year_3: 'KRCHN Study Year 3', cumulative: 'Cumulative' };
+    const scopeLabel = scopeLabels[mode] || `Academic Year ${year}`;
     const content = document.getElementById('transcriptPreviewContent');
     const container = document.getElementById('transcriptPreviewContainer');
     if (!content || !container) {
@@ -803,18 +827,32 @@ window.generateSelectedTranscriptBatch = async function() {
                 }
                 if (!student) throw new Error('Student record not found');
 
-                let query = sb.from('student_marks').select('*').eq('admission_number', studentId);
-                if (mode !== 'cumulative' && year && year !== 'all') query = query.eq('academic_year', year);
-                const mr = await query;
+                const mr = await sb.from('student_marks').select('*').eq('admission_number', studentId);
                 if (mr.error) throw mr.error;
-                const marks = mr.data || [];
+                let marks = mr.data || [];
+                const isKRCHN = isNursingProgram(student.program || 'KRCHN') && !isTVETProgram(student.program || 'KRCHN');
+                if (isKRCHN && mode.startsWith('study_year_')) {
+                    marks = filterKRCHNMarksByStudyYear(marks, Number(mode.slice(-1)));
+                } else if (!isKRCHN && mode !== 'cumulative' && year && year !== 'all') {
+                    marks = marks.filter(mark => String(mark.academic_year) === String(year));
+                }
                 if (!marks.length) {
                     failures.push(`${studentId}: no marks found for ${scopeLabel}`);
                     continue;
                 }
 
-                window.showTranscriptPreview(student, marks, mode === 'cumulative' ? 'Cumulative' : year);
-                const html = content.innerHTML;
+                window.showTranscriptPreview(student, marks, scopeLabel);
+                const transcriptState = window._transcriptData;
+                const renderedBlocks = [];
+                // The preview normally shows one block at a time. Bulk output must
+                // include every block in the selected scope, not only the first.
+                (transcriptState?.blockNames || []).forEach((blockName, blockIndex) => {
+                    if (typeof window.renderTranscriptBlock === 'function') window.renderTranscriptBlock(blockIndex);
+                    else if (typeof renderBlock === 'function') renderBlock(blockIndex);
+                    const blockHtml = content.innerHTML;
+                    if (blockHtml.trim()) renderedBlocks.push(`<div class="bulk-block"><h3>${String(blockName).replace(/[<>&"]/g, '')}</h3>${blockHtml}</div>`);
+                });
+                const html = renderedBlocks.join('');
                 if (!html.trim()) throw new Error('Transcript content was empty');
                 const safeName = String(student.full_name || student.student_id || studentId).replace(/[<>&"]/g, '');
                 pages.push({name:safeName, id:String(student.student_id || studentId), html});
@@ -915,7 +953,7 @@ window.showTranscriptPreview = function(student, marks, year) {
     };
 
     // Render the first block
-    renderBlock(0);
+    window.renderTranscriptBlock(0);
     container.style.display = 'block';
 };
 
@@ -1146,7 +1184,7 @@ function getProgramBlocks(programCode) {
 // Clean header with proper spacing
 // ============================================================
 
-function renderBlock(index) {
+window.renderTranscriptBlock = function(index) {
     const content = document.getElementById('transcriptPreviewContent');
     const data = window._transcriptData;
     if (!content || !data) return;
