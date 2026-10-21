@@ -1200,7 +1200,7 @@
     // 16. YEARLY REPORT
     // ============================================================
     function loadYearlyReport() {
-        const user = window.currentUserProfile || {};
+        const user = window.currentUserProfile || window.db?.currentUserProfile || {};
         const program = user.program || '';
         const selectedYear = document.getElementById('year-filter')?.value || '';
         let grades = (currentGrades.length ? currentGrades : myMarksData)
@@ -1211,10 +1211,38 @@
             if (matched.length) grades = matched;
         }
 
-        const gpa = calculateGPA(grades);
+        // Yearly report is a summary, not an assessment breakdown. Hide CAT and
+        // exam columns from any detailed table rendered inside this tab, keeping
+        // only Credit, Score, Grade and Rate columns where those headers exist.
+        const yearlyPanel = document.getElementById('yearly-report');
+        if (yearlyPanel) {
+            yearlyPanel.querySelectorAll('table').forEach(table => {
+                const headerRows = Array.from(table.querySelectorAll('thead tr'));
+                const headerRow = headerRows[headerRows.length - 1];
+                if (!headerRow) return;
+                const headers = Array.from(headerRow.children);
+                const keepIndexes = [];
+                headers.forEach((cell, index) => {
+                    const label = (cell.textContent || '').trim().toLowerCase().replace(/\\s+/g, ' ');
+                    const keep = /^(credit|credits|credit score|score|grade|rate|pass rate|pass %|pass percentage)$/.test(label);
+                    cell.style.display = keep ? '' : 'none';
+                    if (keep) keepIndexes.push(index);
+                });
+                if (!keepIndexes.length) return;
+                table.querySelectorAll('tr').forEach(row => {
+                    Array.from(row.children).forEach((cell, index) => {
+                        cell.style.display = keepIndexes.includes(index) ? '' : 'none';
+                    });
+                });
+            });
+        }
+
         const passMark = PROGRAM.isTVET(program) ? 50 : 60;
         const credits = grades.filter(g => Number(g.final_score) >= passMark)
-            .reduce((s,g) => s + (Number(g.credits) || 3), 0);
+            .reduce((sum, g) => sum + (Number(g.credits) || 3), 0);
+        const gpa = calculateGPA(grades);
+        const passed = grades.filter(g => Number(g.final_score) >= passMark).length;
+        const rate = grades.length ? Math.round((passed / grades.length) * 100) : 0;
 
         const set = (id, value) => {
             const el = document.getElementById(id);
@@ -1225,6 +1253,11 @@
         set('year-credits', credits);
         set('year-courses', grades.length);
         set('year-awards', Number.isFinite(Number(user.year_awards)) ? Number(user.year_awards) : 0);
+        set('year-grade', calculateGrade(
+            grades.length ? grades.reduce((sum, g) => sum + (Number(g.final_score) || 0), 0) / grades.length : 0,
+            program
+        ));
+        set('year-rate', rate + '%');
     }
 
     // 17. FULL TRANSCRIPT WITH "PROCEED TO NEXT BLOCK" MESSAGE
