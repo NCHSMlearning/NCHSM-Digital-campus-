@@ -8,7 +8,11 @@
   let refreshInProgress = false;
 
   function client() {
-    return window.sb || window.supabase || null;
+    // The Supabase CDN exposes window.supabase.createClient; that namespace is
+    // not itself a database client. Prefer initialized clients used elsewhere
+    // in this app and only return an object that supports .from().
+    const candidates = [window.sb, window.supabaseClient, window.supabase];
+    return candidates.find(candidate => candidate && typeof candidate.from === 'function') || null;
   }
 
   function setText(id, value) {
@@ -58,7 +62,7 @@
 
     try {
       const sb = client();
-      if (!sb) throw new Error('Database connection is not ready');
+      if (!sb || typeof sb.from !== 'function') throw new Error('Initialized Supabase database client is not ready');
 
       const jobs = [
         ['totalUsers', () => countRows('consolidated_user_profiles_table')],
