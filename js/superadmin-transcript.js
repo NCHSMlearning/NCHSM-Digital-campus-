@@ -567,15 +567,18 @@ window.filterTranscriptStudents = function() {
 // ============================================================
 
 window.toggleTranscriptStudent = function(studentId) {
-    const index = window.transcriptData.selectedStudents.indexOf(studentId);
-    if (index > -1) {
-        window.transcriptData.selectedStudents.splice(index, 1);
-    } else {
-        window.transcriptData.selectedStudents.push(studentId);
-    }
-    
+    const id = String(studentId);
+    const selected = Array.isArray(window.transcriptData.selectedStudents)
+        ? window.transcriptData.selectedStudents.map(String)
+        : [];
+    const index = selected.indexOf(id);
+    if (index > -1) selected.splice(index, 1);
+    else selected.push(id);
+    window.transcriptData.selectedStudents = [...new Set(selected)];
+
     const students = window.transcriptData.filteredStudents || window.transcriptData.students;
     window.renderTranscriptStudentList(students, window.transcriptData.marks);
+    window.updateTranscriptSelectedCount();
 };
 
 // ============================================================
@@ -741,66 +744,94 @@ window.generateSelectedTranscript = async function() {
 // ============================================================
 
 window.generateSelectedTranscripts = async function() {
-    const selectedIds = window.transcriptData.selectedStudents;
-    
+    // Reconcile app state with the rendered checked boxes; this prevents a stale
+    // selection array from disagreeing with the visible "Selected: N" counter.
+    const checkedIds = Array.from(document.querySelectorAll('#transcriptStudentList input[type="checkbox"]:checked'))
+        .map(box => {
+            const card = box.closest('[onclick*="toggleTranscriptStudent"]');
+            const match = card?.getAttribute('onclick')?.match(/toggleTranscriptStudent\(['"]([^'"]+)['"]\)/);
+            return match ? match[1] : null;
+        }).filter(Boolean);
+
+    let selectedIds = Array.isArray(window.transcriptData?.selectedStudents)
+        ? window.transcriptData.selectedStudents.map(String)
+        : [];
+    if (checkedIds.length) selectedIds = [...new Set(checkedIds)];
+    else selectedIds = [...new Set(selectedIds)];
+
+    // If the state and visible count drifted, rebuild state from the checked cards.
+    window.transcriptData.selectedStudents = selectedIds;
+
     if (selectedIds.length === 0) {
         if (typeof window.showNotification === 'function') {
-            window.showNotification('Please select at least one student', 'warning');
+            window.showNotification('Select at least one student using the checkbox or student card.', 'warning');
         }
         return;
     }
-    
-    if (selectedIds.length > 10) {
-        if (!confirm(`Generate transcripts for ${selectedIds.length} students? This may take a moment.`)) {
-            return;
-        }
+
+    if (selectedIds.length > 10 && !confirm(`Generate transcripts for ${selectedIds.length} students? This may take a moment.`)) return;
+
+    const year = document.getElementById('transcript_year_select')?.value || String(new Date().getFullYear());
+    const sb = window.sb || window.supabaseClient ||
+        (window.supabase && typeof window.supabase.from === 'function' ? window.supabase : null);
+    const notify = (message, type = 'info') => {
+        if (typeof window.showNotification === 'function') window.showNotification(message, type);
+    };
+
+    if (!sb || typeof sb.from !== 'function') {
+        notify('Database connection is not ready. Refresh and try again.', 'error');
+        return;
     }
-    
-    const year = document.getElementById('transcript_year_select')?.value || '2025';
-    
-    if (typeof window.showLoading === 'function') {
-        window.showLoading(`Generating ${selectedIds.length} transcripts...`);
+
+    if (typeof window.showLoading === 'function') window.showLoading(`Generating ${selectedIds.length} transcript(s)…`);
+
+    const generateButton = document.querySelector('button[onclick="generateSelectedTranscripts()"]');
+    const originalButtonHtml = generateButton?.innerHTML;
+    if (generateButton) {
+        generateButton.disabled = true;
+        generateButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating…';
     }
-    
+
     try {
         let successCount = 0;
-        let failCount = 0;
-        
+        const failures = [];
+
         for (const studentId of selectedIds) {
-            const student = window.transcriptData.students.find(s => s.student_id === studentId);
-            if (!student) {
-                failCount++;
-                continue;
+            try {
+                let student = (window.transcriptData.students || []).find(s => String(s.student_id) === String(studentId));
+                if (!student) {
+                    const studentResult = await sb.from('consolidated_user_profiles_table')
+                        .select('*').eq('student_id', studentId).eq('role', 'student').maybeSingle();
+                    if (studentResult.error) throw studentResult.error;
+                    student = studentResult.data;
+                }
+                if (!student) throw new Error('Student record not found');
+
+                const marksResult = await sb.from('student_marks')
+                    .select('*').eq('admission_number', studentId);
+                if (marksResult.error) throw marksResult.error;
+                const studentMarks = marksResult.data || [];
+
+                // Open each generated document in its own tab/window to avoid
+                // repeatedly replacing the previous student's preview in the same container.
+                window.showTranscriptPreview(student, studentMarks, year);
+                successCount++;
+                await new Promise(resolve => setTimeout(resolve, 150));
+            } catch (error) {
+                console.error('[Transcript Generator] Failed for student', studentId, error);
+                failures.push(`${studentId}: ${error?.message || 'generation failed'}`);
             }
-            
-            const studentMarks = window.transcriptData.marks.filter(m => m.admission_number === studentId);
-            
-            if (studentMarks.length === 0) {
-                failCount++;
-                continue;
-            }
-            
-            window.showTranscriptPreview(student, studentMarks, year);
-            successCount++;
-            
-            await new Promise(resolve => setTimeout(resolve, 300));
         }
-        
-        if (typeof window.hideLoading === 'function') {
-            window.hideLoading();
-        }
-        
-        if (typeof window.showNotification === 'function') {
-            window.showNotification(`✅ ${successCount} transcripts generated, ${failCount} failed`, successCount > 0 ? 'success' : 'error');
-        }
-        
+
+        notify(`${successCount} transcript(s) generated; ${failures.length} failed.${failures.length ? ' First error: ' + failures[0] : ''}`, failures.length ? 'warning' : 'success');
     } catch (error) {
-        if (typeof window.hideLoading === 'function') {
-            window.hideLoading();
-        }
-        console.error('❌ Error generating transcripts:', error);
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('Error: ' + error.message, 'error');
+        console.error('[Transcript Generator] Bulk generation failed:', error);
+        notify('Transcript generation failed: ' + (error?.message || 'Unknown error'), 'error');
+    } finally {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+        if (generateButton) {
+            generateButton.disabled = false;
+            generateButton.innerHTML = originalButtonHtml || '<i class="fas fa-file-pdf"></i> Generate Selected';
         }
     }
 };
