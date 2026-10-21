@@ -642,34 +642,98 @@ window.populateTranscriptStudentDropdown = function(students) {
 // ============================================================
 
 window.generateSelectedTranscript = async function() {
-    const studentId = document.getElementById('transcript_student_select')?.value;
-    const year = document.getElementById('transcript_year_select')?.value || '2025';
-    
+    const studentSelect = document.getElementById('transcript_student_select');
+    const studentId = String(studentSelect?.value || '').trim();
+    const year = document.getElementById('transcript_year_select')?.value || String(new Date().getFullYear());
+
+    const notify = (message, type = 'warning') => {
+        if (typeof window.showNotification === 'function') window.showNotification(message, type);
+        else console.info('[Transcript Generator]', message);
+    };
+
     if (!studentId) {
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('Please select a student first', 'warning');
-        }
+        notify('Please select a student first.');
+        studentSelect?.focus();
         return;
     }
-    
-    const student = window.transcriptData.students.find(s => s.student_id === studentId);
-    if (!student) {
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('Student not found', 'error');
-        }
+
+    const sb = window.sb || window.supabaseClient ||
+        (window.supabase && typeof window.supabase.from === 'function' ? window.supabase : null);
+    if (!sb || typeof sb.from !== 'function') {
+        notify('Database connection is not ready. Refresh the page and try again.', 'error');
         return;
     }
-    
-    const studentMarks = window.transcriptData.marks.filter(m => m.admission_number === studentId);
-    
-    if (studentMarks.length === 0) {
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('No marks found for this student', 'warning');
-        }
-        return;
+
+    const generateButton = document.querySelector('button[onclick="generateSelectedTranscript()"]');
+    const originalButtonHtml = generateButton?.innerHTML;
+    if (generateButton) {
+        generateButton.disabled = true;
+        generateButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating…';
     }
-    
-    window.showTranscriptPreview(student, studentMarks, year);
+
+    try {
+        // Resolve the student from the loaded list first, then query by admission ID.
+        // This prevents stale filters or an outdated student cache blocking generation.
+        let student = (window.transcriptData?.students || []).find(s =>
+            String(s.student_id || '').trim() === studentId
+        );
+
+        if (!student) {
+            const { data, error } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('student_id', studentId)
+                .eq('role', 'student')
+                .maybeSingle();
+            if (error) throw error;
+            student = data;
+        }
+
+        if (!student) {
+            notify('The selected student could not be found. Click Load and select the student again.', 'error');
+            return;
+        }
+
+        // Fetch marks for the selected student at generation time rather than relying
+        // on a potentially stale list loaded for a different year/block filter.
+        let marksQuery = sb
+            .from('student_marks')
+            .select('*')
+            .eq('admission_number', studentId);
+
+        if (year && year !== 'all') marksQuery = marksQuery.eq('academic_year', year);
+
+        let { data: studentMarks, error: marksError } = await marksQuery;
+        if (marksError) throw marksError;
+
+        // If no marks exist for the selected academic year, retrieve all years so
+        // the generator can explain/show available records instead of silently failing.
+        if ((!studentMarks || studentMarks.length === 0) && year && year !== 'all') {
+            const fallback = await sb
+                .from('student_marks')
+                .select('*')
+                .eq('admission_number', studentId);
+            if (fallback.error) throw fallback.error;
+            studentMarks = fallback.data || [];
+        }
+
+        studentMarks = studentMarks || [];
+        window.showTranscriptPreview(student, studentMarks, year);
+
+        if (studentMarks.length === 0) {
+            notify('Transcript preview opened, but no marks are recorded for this student yet. Enter/release marks to complete it.', 'warning');
+        } else {
+            notify('Transcript generated successfully.', 'success');
+        }
+    } catch (error) {
+        console.error('[Transcript Generator] Generation failed:', error);
+        notify('Transcript generation failed: ' + (error?.message || 'Unknown database error'), 'error');
+    } finally {
+        if (generateButton) {
+            generateButton.disabled = false;
+            generateButton.innerHTML = originalButtonHtml || '<i class="fas fa-file-pdf"></i> Generate';
+        }
+    }
 };
 
 // ============================================================
