@@ -832,83 +832,110 @@ const LecturerDashboard = {
     async loadAssignedStudents() {
         try {
             const supabase = this.getSupabaseClient();
-            if (!supabase) return;
+            if (!supabase) throw new Error('Supabase client is unavailable.');
 
             const program = this.getCurrentProgram();
-            const unitNames = [...new Set(this.assignedUnits
-                .map(u => String(u.subject_name || '').trim())
-                .filter(Boolean))];
+            const normalize = value => String(value || '').trim().toLowerCase();
+            const assignedUnitKeys = new Set(this.assignedUnits.map(unit =>
+                normalize(unit.subject_name) + '|' + normalize(unit.block)
+            ).filter(key => key !== '|'));
 
-            // Empty assignments mean zero assigned students; do not query the
-            // whole program as a fallback.
-            if (unitNames.length === 0) {
+            // A lecturer with no assigned units must not be shown the whole programme.
+            if (assignedUnitKeys.size === 0) {
                 this.assignedStudents = [];
                 this.metrics.totalStudents = 0;
                 this.updateMetricCards();
                 return;
             }
 
-            const { data: enrollments, error: enrollError } = await supabase
+            const unitNames = [...new Set(this.assignedUnits
+                .map(unit => String(unit.subject_name || '').trim())
+                .filter(Boolean))];
+
+            const { data: registrationRows, error: enrollError } = await supabase
                 .from('student_unit_registrations')
-                .select('student_id, unit_name, status')
+                .select('student_id, unit_name, block, status, program')
                 .in('unit_name', unitNames)
                 .eq('program', program)
                 .eq('status', 'approved');
 
-            if (enrollError) {
-                console.error('Error loading enrollments:', enrollError);
-                this.assignedStudents = [];
-                return;
-            }
+            if (enrollError) throw enrollError;
 
-            // Count unique students enrolled in at least one of this lecturer's
-            // assigned units, not enrollment rows (a student may take many units).
-            const studentIds = [...new Set((enrollments || [])
-                .map(e => String(e.student_id || '').trim())
+            // Match both unit AND block: the same unit can be taught in several blocks.
+            const enrollments = (registrationRows || []).filter(enrollment =>
+                assignedUnitKeys.has(normalize(enrollment.unit_name) + '|' + normalize(enrollment.block))
+            );
+
+            const studentIds = [...new Set(enrollments
+                .map(enrollment => String(enrollment.student_id || '').trim())
                 .filter(Boolean))];
 
             if (studentIds.length === 0) {
                 this.assignedStudents = [];
+                this.metrics.totalStudents = 0;
+                this.updateMetricCards();
+                console.log('No approved registrations found for lecturer-assigned units/blocks.');
                 return;
             }
 
-            const { data: students, error: studentError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, full_name, program, block, intake_year, email, phone, gender')
-                .in('user_id', studentIds)
-                .eq('role', 'student')
-                .eq('program', program);
+            // Registration student_id may store either the profile UUID or the
+            // college student/admission ID. Query both keys so valid students aren't lost.
+            const profileFields = 'user_id, student_id, full_name, program, block, intake_year, email, phone, gender';
+            const profileQueries = await Promise.all([
+                supabase.from('consolidated_user_profiles_table')
+                    .select(profileFields)
+                    .in('user_id', studentIds)
+                    .eq('role', 'student')
+                    .eq('program', program),
+                supabase.from('consolidated_user_profiles_table')
+                    .select(profileFields)
+                    .in('student_id', studentIds)
+                    .eq('role', 'student')
+                    .eq('program', program)
+            ]);
 
-            if (studentError) {
-                console.error('Error loading student profiles:', studentError);
-                this.assignedStudents = [];
-                return;
-            }
+            const profileError = profileQueries.find(result => result.error)?.error;
+            if (profileError) throw profileError;
 
-            const enrollmentMap = {};
-            enrollments?.forEach(e => {
-                if (!enrollmentMap[e.student_id]) {
-                    enrollmentMap[e.student_id] = [];
-                }
-                enrollmentMap[e.student_id].push(e.unit_name);
-            });
-
-            this.assignedStudents = (students || []).map(s => ({
-                ...s,
-                units_enrolled: enrollmentMap[String(s.user_id)] || enrollmentMap[String(s.student_id)] || [],
-                unit_count: (enrollmentMap[String(s.user_id)] || enrollmentMap[String(s.student_id)] || []).length
+            const profileMap = new Map();
+            profileQueries.forEach(result => (result.data || []).forEach(student => {
+                if (student.user_id) profileMap.set(String(student.user_id), student);
+                if (student.student_id) profileMap.set(String(student.student_id), student);
             }));
 
-            // The headline count is a unique-student count, independent of how
-            // many assigned units each student is registered for.
+            const enrollmentMap = new Map();
+            enrollments.forEach(enrollment => {
+                const id = String(enrollment.student_id || '').trim();
+                const student = profileMap.get(id);
+                if (!student) return;
+
+                const canonicalId = String(student.user_id || student.student_id || id);
+                if (!enrollmentMap.has(canonicalId)) enrollmentMap.set(canonicalId, new Set());
+                enrollmentMap.get(canonicalId).add(String(enrollment.unit_name || '').trim());
+            });
+
+            this.assignedStudents = [...enrollmentMap.entries()]
+                .map(([id, units]) => {
+                    const student = profileMap.get(id);
+                    return student ? {
+                        ...student,
+                        units_enrolled: [...units],
+                        unit_count: units.size
+                    } : null;
+                })
+                .filter(Boolean)
+                .sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || '')));
+
+            // One student is counted once, even when enrolled in several assigned units.
             this.metrics.totalStudents = this.assignedStudents.length;
             this.updateMetricCards();
-
-            console.log(`👨‍🎓 Loaded ${this.assignedStudents.length} assigned students for program ${program}`);
-
+            console.log(`👨‍🎓 Loaded ${this.assignedStudents.length} unique assigned students for program ${program}`);
         } catch (error) {
             console.error('Failed to load assigned students:', error);
             this.assignedStudents = [];
+            // Do not silently turn a failed database request into a valid-looking zero.
+            this.metrics.totalStudents = null;
+            this.updateMetricCards();
         }
     },
 
@@ -1005,7 +1032,7 @@ const LecturerDashboard = {
         Object.keys(elements).forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-                el.textContent = elements[id];
+                el.textContent = elements[id] === null || elements[id] === undefined ? '—' : elements[id];
             }
         });
     },
