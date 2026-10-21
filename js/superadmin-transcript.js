@@ -745,93 +745,126 @@ window.generateSelectedTranscript = async function() {
 // ============================================================
 
 window.generateSelectedTranscriptBatch = async function() {
-    // Reconcile app state with the rendered checked boxes; this prevents a stale
-    // selection array from disagreeing with the visible "Selected: N" counter.
-    const checkedIds = Array.from(document.querySelectorAll('#transcriptStudentList input[type="checkbox"]:checked'))
-        .map(box => box.dataset.transcriptStudentId || box.value || '')
-        .map(id => String(id).trim())
-        .filter(Boolean);
-
-    let selectedIds = Array.isArray(window.transcriptData?.selectedStudents)
-        ? window.transcriptData.selectedStudents.map(String)
-        : [];
-    if (checkedIds.length) selectedIds = [...new Set(checkedIds)];
-    else selectedIds = [...new Set(selectedIds)];
-
-    // If the state and visible count drifted, rebuild state from the checked cards.
-    window.transcriptData.selectedStudents = selectedIds;
-
-    if (selectedIds.length === 0) {
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('Select at least one student using the checkbox or student card.', 'warning');
-        }
-        return;
-    }
-
-    if (selectedIds.length > 10 && !confirm(`Generate transcripts for ${selectedIds.length} students? This may take a moment.`)) return;
-
-    const year = document.getElementById('transcript_year_select')?.value || String(new Date().getFullYear());
-    const sb = window.sb || window.supabaseClient ||
-        (window.supabase && typeof window.supabase.from === 'function' ? window.supabase : null);
     const notify = (message, type = 'info') => {
         if (typeof window.showNotification === 'function') window.showNotification(message, type);
+        else console.info('[Transcript Generator]', message);
     };
-
+    const sb = window.sb || window.supabaseClient ||
+        (window.supabase && typeof window.supabase.from === 'function' ? window.supabase : null);
     if (!sb || typeof sb.from !== 'function') {
         notify('Database connection is not ready. Refresh and try again.', 'error');
         return;
     }
 
-    if (typeof window.showLoading === 'function') window.showLoading(`Generating ${selectedIds.length} transcript(s)…`);
+    const checkedIds = Array.from(document.querySelectorAll('#transcriptStudentList input[type="checkbox"]:checked'))
+        .map(box => box.dataset.transcriptStudentId || box.value || '')
+        .map(id => String(id).trim()).filter(Boolean);
+    const selectedIds = [...new Set(checkedIds.length ? checkedIds : (window.transcriptData?.selectedStudents || []).map(String))];
+    window.transcriptData.selectedStudents = selectedIds;
 
-    const generateButton = document.querySelector('button[onclick="generateSelectedTranscripts()"]');
-    const originalButtonHtml = generateButton?.innerHTML;
-    if (generateButton) {
-        generateButton.disabled = true;
-        generateButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating…';
+    if (!selectedIds.length) {
+        notify('Select at least one student using the checkbox or student card.', 'warning');
+        return;
+    }
+    if (selectedIds.length > 50 && !confirm(`Generate ${selectedIds.length} transcripts? This may take a few minutes.`)) return;
+
+    const year = document.getElementById('transcript_year_select')?.value || String(new Date().getFullYear());
+    const mode = document.getElementById('transcript_scope_select')?.value || 'yearly';
+    const scopeLabel = mode === 'cumulative' ? 'Cumulative' : `Academic Year ${year}`;
+    const content = document.getElementById('transcriptPreviewContent');
+    const container = document.getElementById('transcriptPreviewContainer');
+    if (!content || !container) {
+        notify('Transcript preview area is missing. Reload the page and try again.', 'error');
+        return;
     }
 
-    try {
-        let successCount = 0;
-        const failures = [];
+    const generateButton = document.querySelector('button[onclick="generateSelectedTranscriptBatch()"]');
+    const originalButtonHtml = generateButton?.innerHTML;
+    if (generateButton) { generateButton.disabled = true; generateButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing PDFs…'; }
+    if (typeof window.showLoading === 'function') window.showLoading(`Preparing ${selectedIds.length} ${scopeLabel.toLowerCase()} transcript(s)…`);
 
-        for (const studentId of selectedIds) {
+    const originalHtml = content.innerHTML;
+    const wasContainerVisible = container.style.display;
+    const originalTranscriptData = window._transcriptData;
+    const originalCurrentStudent = window.transcriptData.currentStudent;
+    const pages = [];
+    const failures = [];
+
+    try {
+        for (let index = 0; index < selectedIds.length; index++) {
+            const studentId = selectedIds[index];
             try {
-                let student = (window.transcriptData.students || []).find(s => String(s.student_id) === String(studentId));
+                let student = (window.transcriptData.students || []).find(s => String(s.student_id) === studentId);
                 if (!student) {
-                    const studentResult = await sb.from('consolidated_user_profiles_table')
-                        .select('*').eq('student_id', studentId).eq('role', 'student').maybeSingle();
-                    if (studentResult.error) throw studentResult.error;
-                    student = studentResult.data;
+                    const sr = await sb.from('consolidated_user_profiles_table').select('*')
+                        .eq('student_id', studentId).eq('role', 'student').maybeSingle();
+                    if (sr.error) throw sr.error;
+                    student = sr.data;
                 }
                 if (!student) throw new Error('Student record not found');
 
-                const marksResult = await sb.from('student_marks')
-                    .select('*').eq('admission_number', studentId);
-                if (marksResult.error) throw marksResult.error;
-                const studentMarks = marksResult.data || [];
+                let query = sb.from('student_marks').select('*').eq('admission_number', studentId);
+                if (mode !== 'cumulative' && year && year !== 'all') query = query.eq('academic_year', year);
+                const mr = await query;
+                if (mr.error) throw mr.error;
+                const marks = mr.data || [];
+                if (!marks.length) {
+                    failures.push(`${studentId}: no marks found for ${scopeLabel}`);
+                    continue;
+                }
 
-                // Open each generated document in its own tab/window to avoid
-                // repeatedly replacing the previous student's preview in the same container.
-                window.showTranscriptPreview(student, studentMarks, year);
-                successCount++;
-                await new Promise(resolve => setTimeout(resolve, 150));
+                window.showTranscriptPreview(student, marks, mode === 'cumulative' ? 'Cumulative' : year);
+                const html = content.innerHTML;
+                if (!html.trim()) throw new Error('Transcript content was empty');
+                const safeName = String(student.full_name || student.student_id || studentId).replace(/[<>&"]/g, '');
+                pages.push({name:safeName, id:String(student.student_id || studentId), html});
             } catch (error) {
                 console.error('[Transcript Generator] Failed for student', studentId, error);
                 failures.push(`${studentId}: ${error?.message || 'generation failed'}`);
             }
         }
 
-        notify(`${successCount} transcript(s) generated; ${failures.length} failed.${failures.length ? ' First error: ' + failures[0] : ''}`, failures.length ? 'warning' : 'success');
+        if (!pages.length) {
+            notify(`No transcripts were generated. ${failures[0] || 'Check that marks exist for the selected year.'}`, 'warning');
+            return;
+        }
+
+        // One print-ready document, with a page break per student. Users can choose
+        // Save as PDF in the browser print dialog, producing a single combined PDF.
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            notify('Allow pop-ups for this site to create the combined PDF.', 'error');
+            return;
+        }
+        printWindow.document.open();
+        printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8">
+          <title>NCHSM ${scopeLabel} Transcripts</title>
+          <style>
+            @page{size:A4 portrait;margin:10mm}
+            body{font-family:Arial,sans-serif;color:#172033;margin:0}
+            .bulk-transcript{page-break-after:always;break-after:page;padding:0}
+            .bulk-transcript:last-child{page-break-after:auto;break-after:auto}
+            .bulk-label{font-size:10px;color:#64748b;text-align:right;margin-bottom:5px}
+            button,.no-print{display:none!important}
+            table{page-break-inside:auto} tr{page-break-inside:avoid;page-break-after:auto}
+          </style></head><body>
+          <h2 style="font-size:16px;margin:0 0 12px">NCHSM — ${scopeLabel} Transcripts</h2>
+          <p style="font-size:11px;margin:0 0 18px">Generated ${new Date().toLocaleString()} · ${pages.length} student(s)</p>
+          ${pages.map((p,i)=>`<section class="bulk-transcript"><div class="bulk-label">${i+1} of ${pages.length} · ${p.name} · ${p.id}</div>${p.html}</section>`).join('')}
+          <script>window.onload=function(){setTimeout(function(){window.print()},700)};<\/script>
+          </body></html>`);
+        printWindow.document.close();
+        notify(`Prepared ${pages.length} transcript(s) in one print-ready document.${failures.length ? ' Skipped ' + failures.length + ' student(s); see console for details.' : ''} Choose “Save as PDF” in the print dialog.`, failures.length ? 'warning' : 'success');
     } catch (error) {
         console.error('[Transcript Generator] Bulk generation failed:', error);
-        notify('Transcript generation failed: ' + (error?.message || 'Unknown error'), 'error');
+        notify('Bulk transcript generation failed: ' + (error?.message || 'Unknown error'), 'error');
     } finally {
+        content.innerHTML = originalHtml;
+        container.style.display = wasContainerVisible;
+        window._transcriptData = originalTranscriptData;
+        window.transcriptData.currentStudent = originalCurrentStudent;
         if (typeof window.hideLoading === 'function') window.hideLoading();
-        if (generateButton) {
-            generateButton.disabled = false;
-            generateButton.innerHTML = originalButtonHtml || '<i class="fas fa-file-pdf"></i> Generate Selected';
-        }
+        if (generateButton) { generateButton.disabled = false; generateButton.innerHTML = originalButtonHtml || '<i class="fas fa-file-pdf"></i> Generate Selected'; }
     }
 };
 
