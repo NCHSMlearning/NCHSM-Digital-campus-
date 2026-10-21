@@ -43,6 +43,7 @@ var state = {
     currentUser: null,
     currentUserId: null,
     program: null,
+    studentCount: null,
     allStudents: [],
     allCourses: [],
     allExams: [],
@@ -352,17 +353,37 @@ async function loadAllData() {
 
 async function loadStudents() {
     try {
-        var query = state.sb.from(TABLES.USERS).select('*').eq('role', 'student');
+        // Use the same role/program filters for an exact database count and the visible student rows.
+        // This avoids relying on a client-side array length as the dashboard's source of truth.
+        var countQuery = state.sb.from(TABLES.USERS)
+            .select('id', { count: 'exact', head: true })
+            .eq('role', 'student');
+        var rowsQuery = state.sb.from(TABLES.USERS)
+            .select('*')
+            .eq('role', 'student');
+
         if (state.program) {
-            query = query.eq('program', state.program);
+            countQuery = countQuery.eq('program', state.program);
+            rowsQuery = rowsQuery.eq('program', state.program);
         }
-        var { data, error } = await query.order('full_name', { ascending: true });
-        if (error) throw error;
-        state.allStudents = data || [];
-        console.log('✅ Loaded ' + state.allStudents.length + ' students for ' + state.program);
+
+        var results = await Promise.all([
+            countQuery,
+            rowsQuery.order('full_name', { ascending: true })
+        ]);
+        var countResult = results[0];
+        var rowsResult = results[1];
+        if (countResult.error) throw countResult.error;
+        if (rowsResult.error) throw rowsResult.error;
+
+        state.studentCount = Number.isFinite(countResult.count) ? countResult.count : (rowsResult.data || []).length;
+        state.allStudents = rowsResult.data || [];
+        console.log('✅ Loaded ' + state.allStudents.length + ' student rows; exact count ' + state.studentCount + ' for ' + state.program);
         return state.allStudents;
     } catch (error) {
         console.error('Error loading students:', error);
+        // Keep the failure visible instead of silently presenting a misleading zero.
+        state.studentCount = null;
         state.allStudents = [];
         return [];
     }
@@ -510,13 +531,13 @@ async function loadDashboard() {
         var students = state.allStudents;
         var courses = state.allCourses;
         
-        var totalStudents = students.length;
+        var totalStudents = state.studentCount === null ? null : state.studentCount;
         var totalCourses = courses.length;
         var atRisk = students.filter(function(s) { 
             return (s.cumulative_absences || 0) > 5 || (s.status || '').toLowerCase() === 'probation';
         });
         
-        $('totalStudentsCount').textContent = totalStudents;
+        $('totalStudentsCount').textContent = totalStudents === null ? '—' : totalStudents;
         $('totalCoursesCount').textContent = totalCourses;
         $('studentsAtRiskCount').textContent = atRisk.length;
         $('pendingAttendanceCount').textContent = '0';
@@ -526,7 +547,7 @@ async function loadDashboard() {
         $('unreadMessagesCount').textContent = '0';
         
         var badge = $('studentCountBadge');
-        if (badge) badge.textContent = totalStudents;
+        if (badge) badge.textContent = totalStudents === null ? '—' : totalStudents;
         
         await loadAttendanceMetrics();
         
