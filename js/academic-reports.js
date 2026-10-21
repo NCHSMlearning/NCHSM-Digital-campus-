@@ -1548,8 +1548,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         const yearFilter = document.getElementById('my_marks_year_filter')?.value || 'all';
         const searchTerm = document.getElementById('my_marks_search')?.value?.trim().toLowerCase() || '';
         const normalizeBlock = value => String(value || '').trim().toLowerCase()
-            .replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ')
-            .replace(/^(block|term)\\s*(\\d+)$/, '$1 $2');
+            .replace(/[_-]+/g, ' ').replace(/\s+/g, ' ')
+            .replace(/^(block|term)\s*(\d+)$/, '$1 $2');
 
         let marks = Array.isArray(myMarksFiltered) ? [...myMarksFiltered] : [];
         // Reapply the selected filters against the canonical loaded data so stale
