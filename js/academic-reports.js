@@ -1535,64 +1535,50 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     // ============================================================
     function downloadReportCard() {
         console.log('📊 Downloading Semester Report...');
-        
-        const user = window.currentUserProfile || {};
+
+        const user = window.currentUserProfile || window.db?.currentUserProfile || {};
         const userProgram = user.program || '';
         const isTVET = PROGRAM.isTVET(userProgram);
         const programType = PROGRAM.getProgramType(userProgram);
-        
-        let marks = [];
-        
-        // ✅ Try multiple ways to get marks data
-        if (typeof myMarksData !== 'undefined' && myMarksData.length > 0) {
-            marks = myMarksData;
-            console.log('📊 Got marks from myMarksData:', marks.length);
-        } else if (typeof myMarksFiltered !== 'undefined' && myMarksFiltered.length > 0) {
-            marks = myMarksFiltered;
-            console.log('📊 Got marks from myMarksFiltered:', marks.length);
-        } else if (window.myMarksData && window.myMarksData.length > 0) {
-            marks = window.myMarksData;
-            console.log('📊 Got marks from window.myMarksData:', marks.length);
-        } else {
-            const tableRows = document.querySelectorAll('#my_marks_table_body tr');
-            if (tableRows && tableRows.length > 0) {
-                console.log('📊 Reading marks from table...');
-                tableRows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length >= 6) {
-                        const unitCode = cells[1]?.textContent?.trim() || '';
-                        const unitName = cells[2]?.textContent?.trim() || '';
-                        const grade = cells[3]?.textContent?.trim() || '';
-                        const points = parseFloat(cells[4]?.textContent?.trim()) || 0;
-                        
-                        if (unitName && unitName !== 'No published marks found' && unitName !== 'No marks match the current filter') {
-                            const hasRetake = unitName.includes('☆') || cells[2]?.querySelector('.hollow-star') !== null;
-                            const cleanUnitName = unitName.replace('☆', '').trim();
-                            
-                            marks.push({
-                                subject_name: cleanUnitName,
-                                unit_code: unitCode,
-                                grade: grade,
-                                points: points,
-                                final_score: 0,
-                                hasRetake: hasRetake,
-                                retakeCount: hasRetake ? 1 : 0,
-                                retakeScore: null,
-                                retakeStatus: null
-                            });
-                        }
-                    }
-                });
-                console.log('📊 Got marks from table:', marks.length);
+
+        // IMPORTANT: build the PDF from the currently filtered records, not the
+        // unfiltered cache. This prevents Block 1 marks leaking into a Block 2 PDF.
+        const blockFilter = document.getElementById('my_marks_block_filter')?.value || 'all';
+        const subjectFilter = document.getElementById('my_marks_subject_filter')?.value || 'all';
+        const yearFilter = document.getElementById('my_marks_year_filter')?.value || 'all';
+        const searchTerm = document.getElementById('my_marks_search')?.value?.trim().toLowerCase() || '';
+        const normalizeBlock = value => String(value || '').trim().toLowerCase()
+            .replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ')
+            .replace(/^(block|term)\\s*(\\d+)$/, '$1 $2');
+
+        let marks = Array.isArray(myMarksFiltered) ? [...myMarksFiltered] : [];
+        // Reapply the selected filters against the canonical loaded data so stale
+        // table state or an outdated filtered array cannot affect the downloaded file.
+        if (Array.isArray(myMarksData) && myMarksData.length) {
+            marks = [...myMarksData];
+            if (blockFilter !== 'all') {
+                marks = marks.filter(m => normalizeBlock(m.block || m.block_term || m.term) === normalizeBlock(blockFilter));
+            }
+            if (subjectFilter !== 'all') marks = marks.filter(m => m.subject_name === subjectFilter);
+            if (yearFilter !== 'all') marks = marks.filter(m => String(m.academic_year || m.year || '') === yearFilter);
+            if (searchTerm) {
+                marks = marks.filter(m =>
+                    String(m.subject_name || '').toLowerCase().includes(searchTerm) ||
+                    String(m.unit_code || '').toLowerCase().includes(searchTerm)
+                );
             }
         }
-        
+
+        // Never fall back to scraping the visible table or unfiltered marks:
+        // that can silently create a report for the wrong block.
         if (marks.length === 0) {
-            alert('📊 No marks available to generate semester report.\n\nPlease:\n1. Click the "Refresh" button to load your marks\n2. Make sure you have published marks\n3. Try switching tabs and coming back\n\nIf the problem persists, contact support.');
+            alert(blockFilter !== 'all'
+                ? 'No published marks were found for ' + blockFilter + '. Please check the selected block and try again.'
+                : 'No marks match the current filters. Please adjust the filters and try again.');
             return;
         }
-        
-        console.log('📊 Generating semester report for', marks.length, 'marks');
+
+        console.log('📊 Generating filtered semester report for', marks.length, 'marks; block:', blockFilter);
         
         // Show loading
         const loadingEl = document.createElement('div');
