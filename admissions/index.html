@@ -1713,7 +1713,7 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
 
 <style id="nchsm-dashboard-design-refresh">
 /* Dashboard layout inspired by the approved NCHSM portal mockup. */
-#admissionApp .nchsm-dashboard-cards{grid-column:2;grid-row:4;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 18px}
+#admissionApp .nchsm-dashboard-cards{grid-column:2;grid-row:2!important;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 18px}
 #admissionApp .dashboard-stat-card{position:relative;min-width:0;min-height:175px;padding:18px;overflow:hidden}
 #admissionApp .dashboard-stat-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#e5f4ff;color:#0877c9;font-size:1.1rem;margin-bottom:12px}
 #admissionApp .dashboard-stat-card h3{font-size:.82rem;margin:0 0 9px}
@@ -2631,7 +2631,7 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
                         </div>
                     </div>
                     <div class="header-right">
-                        <div class="app-no"><span>Application No:</span> <strong id="dashAppNo">ADM-2026-001</strong></div>
+                        <div class="app-no"><span>Application No:</span> <strong id="dashAppNo">Pending</strong></div>
                     </div>
                 </div>
 
@@ -2672,9 +2672,9 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
     <p>Your chosen course will appear here.</p>
   </div>
   <div class="nchsm-dash-card dashboard-activity-card">
-    <div class="dashboard-card-heading"><h3><i class="fas fa-history"></i> Application Progress</h3><span id="dashboardProgressCount">1 of 4 steps</span></div>
+    <div class="dashboard-card-heading"><h3><i class="fas fa-history"></i> Application Progress</h3><span id="dashboardProgressCount">Progress loading</span></div>
     <div class="dashboard-activity-list">
-      <div class="dashboard-activity-item"><span class="dashboard-activity-icon done"><i class="fas fa-check"></i></span><div><b>Account created</b><small>Your applicant account is active.</small></div><span class="dashboard-activity-status">Done</span></div>
+      <div class="dashboard-activity-item"><span class="dashboard-activity-icon"><i class="fas fa-user-check"></i></span><div><b>Applicant account</b><small>Signed-in account status.</small></div><span class="dashboard-activity-status" id="dashboardAccountStepStatus">Checking</span></div>
       <div class="dashboard-activity-item"><span class="dashboard-activity-icon current"><i class="fas fa-user-edit"></i></span><div><b>Personal information</b><small>Review your personal details.</small></div><span class="dashboard-activity-status">In progress</span></div>
       <div class="dashboard-activity-item"><span class="dashboard-activity-icon"><i class="fas fa-graduation-cap"></i></span><div><b>Programme selection</b><small>Select your course and intake.</small></div><span class="dashboard-activity-status">Pending</span></div>
       <div class="dashboard-activity-item"><span class="dashboard-activity-icon"><i class="fas fa-file-upload"></i></span><div><b>Documents &amp; submission</b><small>Upload required documents and review.</small></div><span class="dashboard-activity-status">Pending</span></div>
@@ -6459,14 +6459,13 @@ body{font-family:Inter,system-ui,sans-serif!important;background:var(--n2-soft)!
   }
 
   function nchsmAppRef(){
-    const u=getStoredUser(); const email=(u&&u.email)||'guest';
-    const key='nchsm_application_ref_v1_'+email.toLowerCase();
-    let ref=localStorage.getItem(key);
-    if(!ref){ const year=new Date().getFullYear(); const n=String(Math.floor(100000+Math.random()*900000)); ref='NCHSM-'+year+'-'+n; try{localStorage.setItem(key,ref)}catch(e){} }
-    return ref;
+    const u=getStoredUser()||{};
+    const saved=u.application_number||u.applicationNumber||u.application_ref||u.applicationReference||u.admission_number||u.admissionNumber;
+    return saved ? String(saved) : 'Pending';
   }
   function updateApplicationReference(){
-    const ref=nchsmAppRef(); ['dashAppNo','mockAppNumber'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=ref});
+    const ref=nchsmAppRef();
+    ['dashAppNo','mockAppNumber'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=ref});
   }
   function updateCompletion(){
     const f=currentForm(); if(!f||!getStoredUser())return;
