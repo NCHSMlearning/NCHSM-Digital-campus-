@@ -13863,7 +13863,37 @@
     </div>
 </div>
 
-        </main>
+        
+<!-- STAFF MANAGEMENT SECTION: connected to staff_records -->
+<section id="staff-management" class="tab-content" style="display:none;padding:24px;min-height:70vh;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+    <div><h2 style="margin:0;color:#1e293b;">Staff Management</h2><p style="margin:6px 0 0;color:#64748b;">View and manage staff records registered in the college system.</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" onclick="refreshStaff()" style="border:0;border-radius:8px;padding:10px 14px;background:#e2e8f0;color:#1e293b;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh</button>
+      <button type="button" onclick="exportStaffToCSV()" style="border:0;border-radius:8px;padding:10px 14px;background:#0f766e;color:white;cursor:pointer;"><i class="fas fa-file-csv"></i> Export CSV</button>
+      <button type="button" onclick="openAddStaffModal()" style="border:0;border-radius:8px;padding:10px 14px;background:#4C1D95;color:white;cursor:pointer;"><i class="fas fa-user-plus"></i> Add Staff</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;">
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="color:#64748b;font-size:13px;">Total staff</div><strong id="staffManagementTotal" style="font-size:26px;">—</strong></div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="color:#64748b;font-size:13px;">Active staff</div><strong id="staffManagementActive" style="font-size:26px;">—</strong></div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="color:#64748b;font-size:13px;">Academic staff</div><strong id="staffManagementAcademic" style="font-size:26px;">—</strong></div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="color:#64748b;font-size:13px;">Departments</div><strong id="staffManagementDepartments" style="font-size:26px;">—</strong></div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+    <input id="staffManagementSearch" type="search" placeholder="Search name, staff ID, email, department…" style="flex:1;min-width:220px;padding:11px 12px;border:1px solid #cbd5e1;border-radius:8px;">
+    <select id="staffManagementDepartment" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;"><option value="all">All departments</option><option>Nursing</option><option>TVET</option><option>Community Health</option><option>Health Records</option><option>ICT</option><option>Administration</option><option>Front Desk</option><option>Library</option><option>Clinical</option><option>Finance</option></select>
+    <select id="staffManagementStatus" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;"><option value="all">All statuses</option><option value="active">Active</option><option value="pending">Pending</option><option value="inactive">Inactive</option></select>
+  </div>
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:auto;">
+    <table style="width:100%;min-width:850px;border-collapse:collapse;">
+      <thead><tr style="background:#f8fafc;text-align:left;"><th style="padding:13px;">Staff</th><th style="padding:13px;">Staff ID</th><th style="padding:13px;">Department / Program</th><th style="padding:13px;">Designation</th><th style="padding:13px;">Status</th><th style="padding:13px;">Actions</th></tr></thead>
+      <tbody id="staffManagementBody"><tr><td colspan="6" style="padding:32px;text-align:center;color:#64748b;">Open Staff Management to load records.</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+</main>
     </div>
 
     <!-- MODALS -->
@@ -14821,6 +14851,28 @@
 
 <!-- 6. ✅ STUDENT MANAGEMENT MODULE - NEW -->
 <script src="./js/superadmin-student-management.js"></script>
+<script src="./js/superadmin-staff-management.js"></script>
+<script>
+(function(){
+  function wireStaffManagement(){
+    document.querySelectorAll('[data-tab="staff-management"]').forEach(function(link){
+      if(link.dataset.staffManagementBound==="1") return;
+      link.dataset.staffManagementBound="1";
+      link.addEventListener("click",function(){
+        setTimeout(function(){
+          var section=document.getElementById("staff-management");
+          if(section && (section.classList.contains("active") || section.style.display!=="none")){
+            if(typeof window.initStaffManagement==="function") window.initStaffManagement();
+          }
+        },350);
+      });
+    });
+    var section=document.getElementById("staff-management");
+    if(section && (section.classList.contains("active") || section.style.display!=="none") && typeof window.initStaffManagement==="function") window.initStaffManagement();
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",wireStaffManagement); else wireStaffManagement();
+})();
+</script>
 <!-- 7. 🎓 GRADUATION & CERTIFICATE MODULE -->
 <script src="./js/superadmin-graduation.js"></script>
                        
