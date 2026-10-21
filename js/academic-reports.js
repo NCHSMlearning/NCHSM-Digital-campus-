@@ -540,47 +540,23 @@
                     .order('published_at', { ascending: false });
                 
                 if (!result.error && result.data && result.data.length > 0) {
-                    marks = result.data;
-                    
-                    marks = marks.map(mark => {
-                        // ✅ Get retake info for THIS SPECIFIC UNIT
+                    // Student dashboard is read-only: preserve the published database values.
+                    // Retake history may be shown as context, but must not replace a published score.
+                    marks = result.data.map(mark => {
                         const retakes = studentRetakeMap[mark.subject_name] || [];
-                        const hasRetake = retakes.length > 0;
-                        const lastRetake = retakes[retakes.length - 1];
-                        
-                        // ✅ Use retake score if available, otherwise use original
-                        let finalScore = mark.final_score;
-                        let retakeScore = null;
-                        let retakeStatus = null;
-                        
-                        if (hasRetake && lastRetake) {
-                            retakeScore = lastRetake.exam_score;
-                            retakeStatus = lastRetake.status;
-                            // ✅ Use retake score if it exists
-                            if (retakeScore !== null && retakeScore !== undefined) {
-                                finalScore = retakeScore;
-                            }
-                        }
-                        
-                        // ✅ ALWAYS recalculate grade and points (don't use existing mark.grade)
-                        const grade = calculateGrade(finalScore, userProgram);
-                        const points = calculatePoints(grade, userProgram);
-                        
                         return {
                             ...mark,
-                            unit_code: getUnitCode(mark.subject_name),
-                            grade: grade,        // ✅ Override with recalculated grade
-                            points: points,      // ✅ Override with recalculated points
-                            final_score: finalScore,
-                            original_score: mark.final_score,
-                            hasRetake: hasRetake,
+                            unit_code: mark.unit_code || getUnitCode(mark.subject_name),
+                            grade: mark.grade ?? mark.final_grade ?? '',
+                            points: mark.points,
+                            status: mark.final_status ?? mark.status ?? '',
+                            final_score: mark.final_score,
+                            hasRetake: retakes.length > 0,
                             retakeCount: retakes.length,
-                            retakeScore: retakeScore,
-                            retakeStatus: retakeStatus,
                             retakeHistory: retakes
                         };
                     });
-                    console.log(`📊 Loaded ${marks.length} marks with retake data`);
+                    console.log(`📊 Loaded ${marks.length} published marks without recalculating results`);
                 } else {
                     // ✅ No marks found - show empty state
                     tbody.innerHTML = `
@@ -734,11 +710,11 @@
         
         let html = '';
         marks.forEach((mark, index) => {
-            const status = getGradingStatus(mark.final_score, userProgram);
+            const status = mark.final_status || mark.status || '';
             const statusColor = getStatusColor(status);
             const gradeColor = getGradeColor(mark.grade);
             const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-            const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
+            const pointsValue = mark.points !== null && mark.points !== undefined && mark.points !== '' && Number.isFinite(Number(mark.points)) ? Number(mark.points) : null;
             
             // ✅ Hollow star indicator (subtle)
             const starIndicator = getHollowStarHtml(mark.subject_name);
@@ -758,7 +734,7 @@
                             ${mark.grade || '-'}
                         </span>
                     </td>
-                    <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${points.toFixed(1)}</td>
+                    <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${pointsValue === null ? '-' : pointsValue.toFixed(1)}</td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
                             ${status}
