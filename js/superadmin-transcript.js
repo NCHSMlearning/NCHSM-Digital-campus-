@@ -509,6 +509,7 @@ window.renderTranscriptStudentList = function(students, marks) {
             onmouseout="this.style.transform='none'; this.style.boxShadow='${isSelected ? '0 0 0 3px rgba(10,61,98,0.2)' : 'none'}';">
                 <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
                     <input type="checkbox" 
+                           data-transcript-student-id="${escapeHtml(student.student_id)}"
                            ${isSelected ? 'checked' : ''} 
                            onclick="event.stopPropagation(); window.toggleTranscriptStudent('${student.student_id}')"
                            style="width: 16px; height: 16px; cursor: pointer; accent-color: #0A3D62; flex-shrink: 0;">
@@ -747,11 +748,9 @@ window.generateSelectedTranscripts = async function() {
     // Reconcile app state with the rendered checked boxes; this prevents a stale
     // selection array from disagreeing with the visible "Selected: N" counter.
     const checkedIds = Array.from(document.querySelectorAll('#transcriptStudentList input[type="checkbox"]:checked'))
-        .map(box => {
-            const card = box.closest('[onclick*="toggleTranscriptStudent"]');
-            const match = card?.getAttribute('onclick')?.match(/toggleTranscriptStudent\(['"]([^'"]+)['"]\)/);
-            return match ? match[1] : null;
-        }).filter(Boolean);
+        .map(box => box.dataset.transcriptStudentId || box.value || '')
+        .map(id => String(id).trim())
+        .filter(Boolean);
 
     let selectedIds = Array.isArray(window.transcriptData?.selectedStudents)
         ? window.transcriptData.selectedStudents.map(String)
