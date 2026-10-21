@@ -67,10 +67,9 @@
         ['totalCourses', () => countRows('courses')],
         ['totalResources', () => countRows('resources')],
         ['dashboardTotalPrograms', () => countRows('programs')],
-        ['dashboardTotalUnits', () => countRows('units')],
         ['totalStaffCountDisplay', () => countRows('staff_records')],
         ['dashboardLecturersCount', () => countRows('staff_records', q => q.eq('designation', 'lecturer').eq('status', 'active'))],
-        ['dashboardPendingMarks', () => countRows('student_marks', q => q.eq('status', 'pending'))],
+        ['dashboardPendingMarks', () => countRows('student_marks', q => q.eq('approval_status', 'pending'))],
         ['dashboardPublishedMarks', () => countRows('released_exam_results')]
       ];
 
