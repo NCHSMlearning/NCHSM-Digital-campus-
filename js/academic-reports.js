@@ -1017,7 +1017,7 @@
     async function loadSemesterReport() {
         const tbody = document.getElementById('grades-table-body');
         if (!tbody) return;
-        tbody.innerHTML = `<tr><td colspan="9" style="padding:40px;text-align:center;color:#94a3b8;"><div class="loading-spinner"></div> Loading grades...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:40px;text-align:center;color:#94a3b8;"><div class="loading-spinner"></div> Loading grades...</td></tr>`;
 
         try {
             const user = window.currentUserProfile || window.db?.currentUserProfile || {};
@@ -1043,17 +1043,17 @@
             currentGrades = grades;
 
             if (!grades.length) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:50px;color:#94a3b8;"><i class="fas fa-file-circle-xmark" style="font-size:34px;display:block;margin-bottom:10px;"></i><strong style="display:block;color:#1e293b;">No published academic results</strong><span>Results will appear here after they are published by the academic office.</span></td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:50px;color:#94a3b8;"><i class="fas fa-file-circle-xmark" style="font-size:34px;display:block;margin-bottom:10px;"></i><strong style="display:block;color:#1e293b;">No published academic results</strong><span>Results will appear here after they are published by the academic office.</span></td></tr>`;
                 setAcademicSummary(0, '-', 0);
                 return;
             }
 
-            const passMark = PROGRAM.isTVET(program) ? 50 : 60;
-            const earnedCredits = grades.filter(g => Number(g.final_score) >= passMark)
+            const isPublishedPass = g => /^(PASS|DISTINCTION|CREDIT|SATISFACTORY|EXCELLENT)$/i.test(String(g.status || ''));
+            const earnedCredits = grades.filter(isPublishedPass)
                 .reduce((s,g) => s + (Number(g.credits) || 3), 0);
             const gpa = calculateGPA(grades);
-            const avgScore = grades.reduce((s,g) => s + (Number(g.final_score) || 0), 0) / grades.length;
-            setAcademicSummary(gpa, calculateGrade(avgScore, program), earnedCredits);
+            // Do not infer a new overall grade from the average of published unit scores.
+            setAcademicSummary(gpa, '-', earnedCredits);
 
             // Keep the Course Grades table focused on published outcomes, not CAT/exam components.
             const gradesTable = tbody.closest('table');
@@ -1063,15 +1063,15 @@
             }
             tbody.innerHTML = grades.map(g => {
                 const gradeColor = getGradeColor(g.grade);
-                const score = Number(g.final_score || 0);
-                const passed = score >= passMark;
+                const score = g.final_score === null || g.final_score === undefined || g.final_score === '' ? null : Number(g.final_score);
+                const passed = /^(PASS|DISTINCTION|CREDIT|SATISFACTORY|EXCELLENT)$/i.test(String(g.status || ''));
                 return `<tr style="border-bottom:1px solid #e2e8f0;">
                     <td style="padding:12px;white-space:nowrap;">${escapeHtml(g.unit_code || 'N/A')}</td>
                     <td style="padding:12px;">${escapeHtml(g.subject_name || 'N/A')}</td>
                     <td style="padding:12px;text-align:center;">${Number(g.credits) || 3}</td>
-                    <td style="padding:12px;text-align:center;font-weight:700;">${score.toFixed(1)}%</td>
+                    <td style="padding:12px;text-align:center;font-weight:700;">${score === null || !Number.isFinite(score) ? '-' : score.toFixed(1) + '%'}</td>
                     <td style="padding:12px;text-align:center;"><span style="background:${gradeColor};color:white;padding:2px 10px;border-radius:12px;font-weight:700;font-size:12px;">${escapeHtml(g.grade || '-')}</span></td>
-                    <td style="padding:12px;text-align:center;"><span style="background:${passed ? '#10b981' : '#ef4444'};color:white;padding:2px 10px;border-radius:12px;font-weight:600;font-size:10px;">${passed ? 'PASS' : 'NOT PASSED'}</span></td>
+                    <td style="padding:12px;text-align:center;"><span style="background:${passed ? '#10b981' : '#94a3b8'};color:white;padding:2px 10px;border-radius:12px;font-weight:600;font-size:10px;">${g.status ? escapeHtml(String(g.status)) : '-'}</span></td>
                 </tr>`;
             }).join('');
 
@@ -1080,7 +1080,7 @@
             document.dispatchEvent(new CustomEvent('academicGpaUpdated', {detail:{semesterGPA:gpa,cumulativeGPA:gpa,formatted:gpa.toFixed(2)}}));
         } catch (error) {
             console.error('Academic Reports semester load failed:', error);
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:45px;color:#dc2626;">Unable to load academic results. Please refresh and try again.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:45px;color:#dc2626;">Unable to load academic results. Please refresh and try again.</td></tr>`;
         }
     }
 
