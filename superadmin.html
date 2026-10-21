@@ -6125,7 +6125,7 @@
             <button onclick="deselectAllTranscriptStudents()" style="padding: 5px 14px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
                 <i class="fas fa-times"></i> Deselect
             </button>
-            <button onclick="generateSelectedTranscripts()" style="padding: 5px 14px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
+            <button onclick="generateSelectedTranscriptBatch()" style="padding: 5px 14px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
                 <i class="fas fa-file-pdf"></i> Generate Selected (<span id="transcriptSelectedCount">0</span>)
             </button>
             <button onclick="exportAllTranscripts()" style="padding: 5px 14px; background: #FDB913; color: #0A3D62; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
@@ -6350,7 +6350,7 @@
         
         <!-- Bulk Actions -->
         <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid #e5e7eb;">
-            <button onclick="generateSelectedTranscripts()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <button onclick="generateSelectedTranscriptBatch()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-file-pdf"></i> Generate Transcripts
             </button>
             <button onclick="generateSelectedCertificates()" class="btn-action" style="background: #10b981; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
@@ -14834,7 +14834,7 @@
 <script src="./js/superadmin-analytics.js"></script>
 
 <!-- 2. SUPER ADMIN TRANSCRIPT GENERATOR MODULE -->
-<script src="./js/superadmin-transcript.js?v=20261021-3"></script>
+<script src="./js/superadmin-transcript.js?v=20261021-4"></script>
 
 <!-- 3. SUPER ADMIN MARKS ENTRY MODULE -->
 <!-- 3. SUPER ADMIN EXAMS / CATS MODULE - EXTERNAL -->
