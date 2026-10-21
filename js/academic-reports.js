@@ -424,18 +424,18 @@
     }
 
     function getPublishedScore(mark) {
-        const a = getAssessmentValues(mark);
-        if (a.total !== null) return a.total;
-        if (a.finalExam !== null && a.cat1 === null && a.cat2 === null) return a.finalExam;
-        if (a.cat1 !== null || a.cat2 !== null || a.finalExam !== null) {
-            return (a.cat1 || 0) + (a.cat2 || 0) + (a.finalExam || 0);
-        }
-        return 0;
+        // Student reports are read-only: display the stored/published overall score.
+        // Never reconstruct a final mark by adding CAT and exam components.
+        return numericMark(mark, [
+            'final_score', 'published_score', 'overall_score',
+            'total_score', 'final_total', 'total', 'score', 'marks'
+        ]);
     }
 
     function normalizeAcademicMark(mark, program) {
+        // Preserve published values as-is. Missing overall scores remain missing;
+        // do not turn assessment components into a newly calculated student result.
         const score = getPublishedScore(mark);
-        const grade = calculateGrade(score, program);
         const assessments = getAssessmentValues(mark);
         return {
             ...mark,
@@ -443,9 +443,9 @@
             subject_name: mark.subject_name || mark.course_name || mark.unit_name || 'N/A',
             credits: Number(mark.credits) > 0 ? Number(mark.credits) : 3,
             final_score: score,
-            grade,
-            points: calculatePoints(grade, program),
-            status: getGradingStatus(score, program),
+            grade: mark.grade ?? mark.published_grade ?? mark.final_grade ?? '',
+            points: mark.points,
+            status: mark.status ?? mark.published_status ?? mark.result_status ?? '',
             cat1: assessments.cat1,
             cat2: assessments.cat2,
             final_exam: assessments.finalExam,
