@@ -117,10 +117,10 @@ const KRCHN_BLOCKS = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4'
 
 function normalizeKRCHNBlock(value) {
     const raw = String(value || '').trim();
-    const normalized = raw.toLowerCase().replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ').trim();
-    if (/\\bfqe\\b|final qualifying examination|qualifying examination/.test(normalized)) return 'FQE';
+    const normalized = raw.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (/\bfqe\b|final qualifying examination|qualifying examination/.test(normalized)) return 'FQE';
     if (/introductory/.test(normalized)) return 'Introductory';
-    const match = normalized.match(/\\bblock\\s*([1-6])\\b/);
+    const match = normalized.match(/\bblock\s*([1-6])\b/);
     if (match) return 'Block ' + match[1];
     if (/^final$/.test(normalized)) return 'FQE';
     return raw || 'General';
@@ -848,7 +848,6 @@ window.generateSelectedTranscriptBatch = async function() {
                 // include every block in the selected scope, not only the first.
                 (transcriptState?.blockNames || []).forEach((blockName, blockIndex) => {
                     if (typeof window.renderTranscriptBlock === 'function') window.renderTranscriptBlock(blockIndex);
-                    else if (typeof renderBlock === 'function') renderBlock(blockIndex);
                     const blockHtml = content.innerHTML;
                     if (blockHtml.trim()) renderedBlocks.push(`<div class="bulk-block"><h3>${String(blockName).replace(/[<>&"]/g, '')}</h3>${blockHtml}</div>`);
                 });
@@ -933,7 +932,25 @@ window.showTranscriptPreview = function(student, marks, year) {
         if (!groupedMarks[block]) groupedMarks[block] = [];
         groupedMarks[block].push(m);
     });
-    const blockNames = Object.keys(groupedMarks).sort();
+    // Normalize KRCHN labels and order them by programme progression.
+    if (isNursing) {
+        const normalizedGroups = {};
+        Object.entries(groupedMarks).forEach(([label, rows]) => {
+            const normalizedLabel = normalizeKRCHNBlock(label);
+            normalizedGroups[normalizedLabel] = (normalizedGroups[normalizedLabel] || []).concat(rows);
+        });
+        Object.keys(groupedMarks).forEach(key => delete groupedMarks[key]);
+        Object.assign(groupedMarks, normalizedGroups);
+    }
+    const progressionOrder = isTVET ? getTVETTermStructure(program) : KRCHN_BLOCKS;
+    const blockNames = Object.keys(groupedMarks).sort((a, b) => {
+        const ai = progressionOrder.indexOf(a);
+        const bi = progressionOrder.indexOf(b);
+        if (ai < 0 && bi < 0) return a.localeCompare(b);
+        if (ai < 0) return 1;
+        if (bi < 0) return -1;
+        return ai - bi;
+    });
     
     // Store data globally for navigation
     window._transcriptData = {
@@ -1040,7 +1057,7 @@ window.navigateBlock = function(direction) {
     const newIndex = data.currentBlockIndex + direction;
     if (newIndex < 0 || newIndex >= data.blockNames.length) return;
     
-    renderBlock(newIndex);
+    window.renderTranscriptBlock(newIndex);
 };
 
 // ============================================================
