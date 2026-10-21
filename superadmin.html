@@ -6121,10 +6121,12 @@
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
             <label for="transcript_scope_select" style="font-size:12px;font-weight:700;color:#334155;">Transcript scope</label>
             <select id="transcript_scope_select" style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:12px;">
-                <option value="yearly" selected>Yearly — selected academic year only</option>
-                <option value="cumulative">Cumulative — all academic years</option>
+                <option value="study_year_1">KRCHN Study Year 1 — Introductory + Block 1</option>
+                <option value="study_year_2">KRCHN Study Year 2 — Block 2 + Block 3</option>
+                <option value="study_year_3">KRCHN Study Year 3 — Block 4 + Block 5 + Block 6 + FQE</option>
+                <option value="cumulative" selected>Cumulative — all study years / all blocks</option>
             </select>
-            <span style="font-size:11px;color:#64748b;">Bulk generation creates one combined print-ready document, with a separate page per student. Choose Save as PDF to download.</span>
+            <span style="font-size:11px;color:#64748b;">KRCHN study years follow the official block structure. Cumulative includes all available blocks. Bulk generation creates one combined PDF-ready document.</span>
         </div>
 
         <!-- Quick Action Buttons -->
@@ -14844,7 +14846,7 @@
 <script src="./js/superadmin-analytics.js"></script>
 
 <!-- 2. SUPER ADMIN TRANSCRIPT GENERATOR MODULE -->
-<script src="./js/superadmin-transcript.js?v=20261021-5"></script>
+<script src="./js/superadmin-transcript.js?v=20261021-6"></script>
 
 <!-- 3. SUPER ADMIN MARKS ENTRY MODULE -->
 <!-- 3. SUPER ADMIN EXAMS / CATS MODULE - EXTERNAL -->
