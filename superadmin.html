@@ -6117,6 +6117,16 @@
             </div>
         </div>
         
+        <!-- Transcript scope: yearly or cumulative -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+            <label for="transcript_scope_select" style="font-size:12px;font-weight:700;color:#334155;">Transcript scope</label>
+            <select id="transcript_scope_select" style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:12px;">
+                <option value="yearly" selected>Yearly — selected academic year only</option>
+                <option value="cumulative">Cumulative — all academic years</option>
+            </select>
+            <span style="font-size:11px;color:#64748b;">Bulk generation creates one combined print-ready document, with a separate page per student. Choose Save as PDF to download.</span>
+        </div>
+
         <!-- Quick Action Buttons -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
             <button onclick="selectAllTranscriptStudents()" style="padding: 5px 14px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
@@ -14834,7 +14844,7 @@
 <script src="./js/superadmin-analytics.js"></script>
 
 <!-- 2. SUPER ADMIN TRANSCRIPT GENERATOR MODULE -->
-<script src="./js/superadmin-transcript.js?v=20261021-4"></script>
+<script src="./js/superadmin-transcript.js?v=20261021-5"></script>
 
 <!-- 3. SUPER ADMIN MARKS ENTRY MODULE -->
 <!-- 3. SUPER ADMIN EXAMS / CATS MODULE - EXTERNAL -->
