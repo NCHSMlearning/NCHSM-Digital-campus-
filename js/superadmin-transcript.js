@@ -744,7 +744,7 @@ window.generateSelectedTranscript = async function() {
 // GENERATE SELECTED TRANSCRIPTS (Bulk)
 // ============================================================
 
-window.generateSelectedTranscripts = async function() {
+window.generateSelectedTranscriptBatch = async function() {
     // Reconcile app state with the rendered checked boxes; this prevents a stale
     // selection array from disagreeing with the visible "Selected: N" counter.
     const checkedIds = Array.from(document.querySelectorAll('#transcriptStudentList input[type="checkbox"]:checked'))
