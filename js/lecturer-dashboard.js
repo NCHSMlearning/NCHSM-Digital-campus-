@@ -949,7 +949,7 @@ const LecturerDashboard = {
             const threshold = this.getPassingThreshold();
             const profile = window.lecturerDB?.getCurrentUserProfile();
 
-            this.metrics.totalStudents = this.assignedStudents.length || 0;
+            // totalStudents is set by loadAssignedStudents; preserve null on a failed load.
             this.metrics.totalCourses = this.assignedUnits.length || 0;
 
             const atRisk = this.assignedStudents.filter(s => {
