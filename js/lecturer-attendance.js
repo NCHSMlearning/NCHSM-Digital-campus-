@@ -686,6 +686,7 @@ const LecturerAttendance = {
 
             return `
                 <tr style="border-bottom:1px solid #f1f5f9; ${isVerified ? 'background:#f0fdf4;' : ''} ${isLecturerCheckin ? 'background:#f0fdf4;' : ''}">
+                    <td style="padding:10px;text-align:center;">${!isLecturerCheckin && log.id && !isVerified ? `<input type="checkbox" aria-label="Select attendance for ${this.escapeHtml(studentName)}" data-attendance-select-id="${this.escapeHtml(String(log.id))}" style="width:16px;height:16px;cursor:pointer;">` : ''} </td>
                     <td style="padding:10px 14px;color:#475569;font-size:12px;white-space:nowrap;">${this.escapeHtml(this.formatAttendanceDate(log.check_in_time || log.created_at))}</td>
                     <td style="padding:10px 14px;min-width:220px;">
                         <div style="font-weight:700;color:#1e293b;font-size:13px;line-height:1.35;">${this.escapeHtml(studentName)} ${isLecturerCheckin ? '<span style="font-size:10px;background:#10b981;color:white;padding:1px 7px;border-radius:10px;">👨‍🏫</span>' : ''}</div>
@@ -1238,14 +1239,72 @@ const LecturerAttendance = {
     // ============================================================
     // POPULATE UNIT FILTER — WITH "ALL CLINICAL AREAS" OPTION
     // ============================================================
+    normalizeBlockFilterValue(value) {
+        return String(value ?? '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    },
+    blockFilterMatches(a, b) {
+        const norm = value => this.normalizeBlockFilterValue(value);
+        const left = norm(a), right = norm(b);
+        if (!left || !right) return false;
+        if (left === right) return true;
+        const number = value => (value.match(/(?:block|term)\s*(\d+)/i) || value.match(/^(\d+)$/) || [])[1] || '';
+        return !!number(left) && number(left) === number(right);
+    },
+    ensureBulkVerifyControls() {
+        const tbody = document.getElementById('attendanceTable');
+        if (!tbody || document.getElementById('attendanceBulkVerifyToolbar')) return;
+        const table = tbody.closest('table'); if (!table) return;
+        const toolbar = document.createElement('div');
+        toolbar.id = 'attendanceBulkVerifyToolbar';
+        toolbar.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin:0 0 12px;';
+        toolbar.innerHTML = '<label style="display:flex;gap:7px;align-items:center;font-weight:600;color:#334155;"><input type="checkbox" id="attendanceSelectAllVisible"> Select all visible</label><span id="attendanceSelectedCount" style="color:#64748b;font-size:13px;">0 selected</span><button type="button" id="attendanceVerifySelected" style="background:#7c3aed;color:#fff;border:0;border-radius:7px;padding:8px 12px;font-weight:600;cursor:pointer;">Verify selected</button>';
+        table.parentElement.insertBefore(toolbar, table);
+        toolbar.querySelector('#attendanceSelectAllVisible').addEventListener('change', e => {
+            tbody.querySelectorAll('input[data-attendance-select-id]').forEach(cb => cb.checked = e.target.checked);
+            this.updateSelectedAttendanceCount();
+        });
+        toolbar.querySelector('#attendanceVerifySelected').addEventListener('click', () => this.bulkVerifySelectedAttendance());
+        tbody.addEventListener('change', e => { if (e.target.matches('input[data-attendance-select-id]')) this.updateSelectedAttendanceCount(); });
+    },
+    updateSelectedAttendanceCount() {
+        const boxes = [...document.querySelectorAll('#attendanceTable input[data-attendance-select-id]')];
+        const selected = boxes.filter(cb => cb.checked).length;
+        const count = document.getElementById('attendanceSelectedCount');
+        if (count) count.textContent = selected + ' selected';
+        const all = document.getElementById('attendanceSelectAllVisible');
+        if (all) all.checked = boxes.length > 0 && selected === boxes.length;
+    },
+    async bulkVerifySelectedAttendance() {
+        if (this.isProcessing) return;
+        const ids = [...document.querySelectorAll('#attendanceTable input[data-attendance-select-id]:checked')].map(cb => cb.getAttribute('data-attendance-select-id')).filter(Boolean);
+        if (!ids.length) { this.showNotification('Select one or more attendance records first.', 'info'); return; }
+        if (!confirm('Verify the ' + ids.length + ' selected attendance record(s)?')) return;
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) { this.showNotification('Database not available.', 'error'); return; }
+        this.isProcessing = true;
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile?.();
+            const { error } = await supabase.from('geo_attendance_logs').update({
+                is_verified: true, attendance_status: 'Verified',
+                verified_by: profile?.user_id || this.lecturerUuid || 'unknown',
+                verified_by_name: profile?.full_name || 'Lecturer',
+                verified_at: new Date().toISOString(), verification_source: 'Bulk Selected Verification'
+            }).in('id', ids);
+            if (error) throw error;
+            this.showNotification(ids.length + ' selected attendance record(s) verified.', 'success');
+            await this.loadAllAttendance(); this.applyFilters();
+        } catch (error) {
+            console.error('Bulk selected attendance verification failed:', error);
+            this.showNotification('Verification failed: ' + error.message, 'error');
+        } finally { this.isProcessing = false; }
+    },
+
     populateUnitFilter() {
         const select = document.getElementById('filterUnit');
         if (!select) return;
 
         const selectedBlock = String(document.getElementById('filterBlock')?.value || 'All').trim();
-        const norm = value => this.normalizeFilterValue(String(value || '').replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ').trim());
-        const blockMatches = (a, b) => norm(a) === norm(b) ||
-            norm(a).replace(/^block\\s*/, '') === norm(b).replace(/^block\\s*/, '');
+        const blockMatches = (a, b) => this.blockFilterMatches(a, b);
 
         // When a block is selected, show only units assigned to that block.
         const values = new Map();
@@ -1386,7 +1445,7 @@ const LecturerAttendance = {
 
             if (rangeFrom && (!date || date < rangeFrom)) return false;
             if (rangeTo && (!date || date > rangeTo)) return false;
-            if (filterBlock !== 'All' && this.normalizeFilterValue(block) !== this.normalizeFilterValue(filterBlock)) return false;
+            if (filterBlock !== 'All' && !this.blockFilterMatches(block, filterBlock)) return false;
 
             // ---- Unit filter (with clinical-only special case) ----
             if (filterUnit === '__CLINICAL_ONLY__') {
@@ -1428,6 +1487,9 @@ const LecturerAttendance = {
         this.filteredTodayLogs = filtered.filter(l => this.getAttendanceDate(l) === this.getNairobiDateString());
         this.filteredPastLogs = filtered.filter(l => this.getAttendanceDate(l) !== this.getNairobiDateString());
         this.renderFilteredToday(filtered);
+        this.renderFilteredPast(this.filteredPastLogs);
+        this.ensureBulkVerifyControls();
+        this.updateSelectedAttendanceCount();
         this.updateStats(filtered);
 
         const countEl = document.getElementById('filteredCount');
