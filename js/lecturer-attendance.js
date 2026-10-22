@@ -1277,8 +1277,11 @@ const LecturerAttendance = {
         return !!number(left) && number(left) === number(right);
     },
     ensureBulkVerifyControls() {
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody || document.getElementById('attendanceBulkVerifyToolbar')) return;
+        [['attendanceTable', 'today'], ['pastAttendanceTable', 'history']].forEach(([tbodyId, key]) => {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        const toolbarId = `attendanceBulkVerifyToolbar_${key}`;
+        if (document.getElementById(toolbarId)) return;
         const table = tbody.closest('table'); if (!table) return;
         const headerRow = table.querySelector('thead tr');
         if (headerRow && !headerRow.querySelector('[data-attendance-select-header]')) {
@@ -1289,28 +1292,31 @@ const LecturerAttendance = {
             headerRow.insertBefore(th, headerRow.firstElementChild);
         }
         const toolbar = document.createElement('div');
-        toolbar.id = 'attendanceBulkVerifyToolbar';
+        toolbar.id = toolbarId;
         toolbar.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin:0 0 12px;';
-        toolbar.innerHTML = '<label style="display:flex;gap:7px;align-items:center;font-weight:600;color:#334155;"><input type="checkbox" id="attendanceSelectAllVisible"> Select all visible</label><span id="attendanceSelectedCount" style="color:#64748b;font-size:13px;">0 selected</span><button type="button" id="attendanceVerifySelected" style="background:#7c3aed;color:#fff;border:0;border-radius:7px;padding:8px 12px;font-weight:600;cursor:pointer;">Verify selected</button>';
+        toolbar.innerHTML = `<label style="display:flex;gap:7px;align-items:center;font-weight:600;color:#334155;"><input type="checkbox" id="attendanceSelectAllVisible_${key}"> Select all visible</label><span id="attendanceSelectedCount_${key}" style="color:#64748b;font-size:13px;">0 selected</span><button type="button" id="attendanceVerifySelected_${key}" style="background:#7c3aed;color:#fff;border:0;border-radius:7px;padding:8px 12px;font-weight:600;cursor:pointer;">Verify selected</button>`;
         table.parentElement.insertBefore(toolbar, table);
-        toolbar.querySelector('#attendanceSelectAllVisible').addEventListener('change', e => {
+        toolbar.querySelector(`#attendanceSelectAllVisible_${key}`).addEventListener('change', e => {
             tbody.querySelectorAll('input[data-attendance-select-id]').forEach(cb => cb.checked = e.target.checked);
             this.updateSelectedAttendanceCount();
         });
-        toolbar.querySelector('#attendanceVerifySelected').addEventListener('click', () => this.bulkVerifySelectedAttendance());
-        tbody.addEventListener('change', e => { if (e.target.matches('input[data-attendance-select-id]')) this.updateSelectedAttendanceCount(); });
+        toolbar.querySelector(`#attendanceVerifySelected_${key}`).addEventListener('click', () => this.bulkVerifySelectedAttendance());
+        if (!tbody.dataset.bulkVerifyBound) { tbody.dataset.bulkVerifyBound = '1'; tbody.addEventListener('change', e => { if (e.target.matches('input[data-attendance-select-id]')) this.updateSelectedAttendanceCount(); }); }
+        });
     },
     updateSelectedAttendanceCount() {
-        const boxes = [...document.querySelectorAll('#attendanceTable input[data-attendance-select-id]')];
-        const selected = boxes.filter(cb => cb.checked).length;
-        const count = document.getElementById('attendanceSelectedCount');
-        if (count) count.textContent = selected + ' selected';
-        const all = document.getElementById('attendanceSelectAllVisible');
-        if (all) all.checked = boxes.length > 0 && selected === boxes.length;
+        [['attendanceTable','today'], ['pastAttendanceTable','history']].forEach(([tbodyId,key]) => {
+            const boxes = [...(document.getElementById(tbodyId)?.querySelectorAll('input[data-attendance-select-id]') || [])];
+            const selected = boxes.filter(cb => cb.checked).length;
+            const count = document.getElementById(`attendanceSelectedCount_${key}`);
+            if (count) count.textContent = selected + ' selected';
+            const all = document.getElementById(`attendanceSelectAllVisible_${key}`);
+            if (all) all.checked = boxes.length > 0 && selected === boxes.length;
+        });
     },
     async bulkVerifySelectedAttendance() {
         if (this.isProcessing) return;
-        const ids = [...document.querySelectorAll('#attendanceTable input[data-attendance-select-id]:checked')].map(cb => cb.getAttribute('data-attendance-select-id')).filter(Boolean);
+        const ids = [...document.querySelectorAll('#attendanceTable input[data-attendance-select-id]:checked, #pastAttendanceTable input[data-attendance-select-id]:checked')].map(cb => cb.getAttribute('data-attendance-select-id')).filter(Boolean);
         if (!ids.length) { this.showNotification('Select one or more attendance records first.', 'info'); return; }
         if (!confirm('Verify the ' + ids.length + ' selected attendance record(s)?')) return;
         const supabase = window.lecturerDB?.supabase;
