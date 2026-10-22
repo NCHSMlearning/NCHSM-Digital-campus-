@@ -721,20 +721,10 @@ const LecturerAttendance = {
     // UPDATE STATS
     // ============================================================
     ensureAttendanceStatsPanel() {
-        const root = document.getElementById('attendance-content') || document.querySelector('#attendance-content');
-        if (!root || document.getElementById('lecturerAttendanceStatsPanel')) return;
-        const panel = document.createElement('div');
-        panel.id = 'lecturerAttendanceStatsPanel';
-        panel.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:0 0 16px;';
-        panel.innerHTML = [
-            ['total','Total records','#eff6ff','#1d4ed8'],
-            ['present','Present / verified','#ecfdf5','#047857'],
-            ['absent','Absent','#fef2f2','#b91c1c'],
-            ['pending','Pending review','#fffbeb','#b45309'],
-            ['rate','Attendance rate','#f5f3ff','#6d28d9']
-        ].map(([key,label,bg,fg]) => `<div style="background:${bg};border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;min-height:82px;"><div style="font-size:12px;font-weight:600;color:#64748b;">${label}</div><div id="lecturerAttendanceStat_${key}" style="font-size:25px;font-weight:800;color:${fg};margin-top:5px;">0</div></div>`).join('');
-        const filters = root.querySelector('.attendance-filters');
-        root.insertBefore(panel, filters || root.firstChild);
+        // The attendance page already contains its own top summary cards.
+        // Remove the legacy injected summary row to prevent duplicate statistics.
+        const duplicatePanel = document.getElementById('lecturerAttendanceStatsPanel');
+        if (duplicatePanel) duplicatePanel.remove();
     },
 
     updateStats(logs) {
@@ -762,14 +752,6 @@ const LecturerAttendance = {
         };
         Object.entries(map).forEach(([id, value]) => {
             const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        });
-
-        const statsPanelValues = {
-            total: total, present: present, absent: absent, pending: pending, rate: `${rate}%`
-        };
-        Object.entries(statsPanelValues).forEach(([key, value]) => {
-            const el = document.getElementById(`lecturerAttendanceStat_${key}`);
             if (el) el.textContent = value;
         });
 
