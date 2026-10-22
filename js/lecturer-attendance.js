@@ -1369,7 +1369,9 @@ const LecturerAttendance = {
     populateBlockFilter() {
         const blockFilter = document.getElementById('filterBlock');
         if (!blockFilter) return;
-        const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
+        const current = blockFilter.value || 'All';
+        const blocks = [...new Set((this.assignedUnits || []).map(u => String(u.block || '').trim()).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         blockFilter.innerHTML = '<option value="All">All Blocks/Terms</option>';
         blocks.forEach(block => {
             const option = document.createElement('option');
@@ -1377,6 +1379,7 @@ const LecturerAttendance = {
             option.textContent = this.getBlockDisplay(block);
             blockFilter.appendChild(option);
         });
+        if ([...blockFilter.options].some(o => o.value === current)) blockFilter.value = current;
         const label = document.getElementById('blockFilterLabel');
         if (label) label.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${this.isTVET ? 'Term' : 'Block'}`;
     },
@@ -1477,20 +1480,7 @@ const LecturerAttendance = {
             return true;
         });
 
-        // SAFETY NET: If a specific session is selected but its register is empty,
-        // and the global logs have data for the date range, fall back to showing
-        // the global logs rather than an empty table.
-        if (filtered.length === 0 && allLogs.length > 0 && selectedSession) {
-            console.warn("⚠️ Filtered result is empty. Showing all records for the selected date range.");
-            filtered = allLogs.filter(log => {
-                const date = this.getAttendanceDate(log);
-                if (rangeFrom && (!date || date < rangeFrom)) return false;
-                if (rangeTo && (!date || date > rangeTo)) return false;
-                return true;
-            });
-            this.showNotification("No records found for the selected session. Showing all records for this date.", "info");
-        }
-
+        // Never bypass the selected block/unit/search filters when a session has no matches.
         filtered.sort((a, b) => String(b.check_in_time || b.created_at || '').localeCompare(String(a.check_in_time || a.created_at || '')));
         this.filteredTodayLogs = filtered.filter(l => this.getAttendanceDate(l) === this.getNairobiDateString());
         this.filteredPastLogs = filtered.filter(l => this.getAttendanceDate(l) !== this.getNairobiDateString());
@@ -2231,9 +2221,18 @@ const LecturerAttendance = {
                 el.dataset.filterBound = '1';
                 el.addEventListener('change', () => {
                     if (id === 'filterBlock') {
-                        // Refresh the unit list first; a stale unit from another block
-                        // must not silently keep filtering the attendance register.
+                        // A block change resets a unit selected from a different block.
                         this.populateUnitFilter();
+                        const unitSelect = document.getElementById('filterUnit');
+                        if (unitSelect && ![...unitSelect.options].some(o => o.value === unitSelect.value)) unitSelect.value = 'All';
+                    }
+                    // Block/unit views are intended for full-history review. Clear date
+                    // constraints so selecting a block or unit shows all matching dates.
+                    if (id === 'filterBlock' || id === 'filterUnit') {
+                        ['filterDateFrom', 'filterDateTo', 'filterDate'].forEach(dateId => {
+                            const dateEl = document.getElementById(dateId);
+                            if (dateEl) dateEl.value = '';
+                        });
                     }
                     this.applyFilters();
                 });
