@@ -1242,59 +1242,49 @@ const LecturerAttendance = {
         const select = document.getElementById('filterUnit');
         if (!select) return;
 
-        // Assigned units (from lecturer_subject_assignments)
+        const selectedBlock = String(document.getElementById('filterBlock')?.value || 'All').trim();
+        const norm = value => this.normalizeFilterValue(String(value || '').replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ').trim());
+        const blockMatches = (a, b) => norm(a) === norm(b) ||
+            norm(a).replace(/^block\\s*/, '') === norm(b).replace(/^block\\s*/, '');
+
+        // When a block is selected, show only units assigned to that block.
         const values = new Map();
         (Array.isArray(this.assignedUnits) ? this.assignedUnits : []).forEach(u => {
             const name = String(u?.subject_name || '').trim();
             if (!name) return;
+            if (selectedBlock !== 'All' && !blockMatches(u.block, selectedBlock)) return;
             values.set(this.normalizeFilterValue(name), { name, type: 'unit' });
         });
 
-        // Clinical areas (from clinical_names) — only for KRCHN
+        // Keep clinical locations available for All Blocks, or limit them to the
+        // selected block when clinical_names contains block_term metadata.
         if (!this.isTVET) {
-            (Array.isArray(this.clinicalLocations) ? this.clinicalLocations : []).forEach(c => {
-                const name = String(c?.clinical_area_name || c?.name || '').trim();
+            (Array.isArray(this.clinicalLocations) ? this.clinicalLocations : []).forEach(location => {
+                const name = String(location?.clinical_area_name || location?.name || '').trim();
                 if (!name) return;
+                if (selectedBlock !== 'All' && location.block_term && !blockMatches(location.block_term, selectedBlock)) return;
                 values.set(this.normalizeFilterValue(name), { name, type: 'clinical' });
             });
         }
 
-        // Also collect unit/target names from loaded logs
+        // Include historical logged targets only if they belong to the selected block.
         [...(this.todayLogs || []), ...(this.pastLogs || [])].forEach(log => {
             const name = String(log?.unit_name || log?.target_name || '').trim();
             if (!name) return;
-            if (!values.has(this.normalizeFilterValue(name))) {
-                values.set(this.normalizeFilterValue(name), { name, type: 'log' });
-            }
+            if (selectedBlock !== 'All' && !blockMatches(log.block, selectedBlock)) return;
+            if (!values.has(this.normalizeFilterValue(name))) values.set(this.normalizeFilterValue(name), { name, type: 'log' });
         });
 
         const current = select.value || 'All';
-        const optionsHtml = [];
-
-        // Default "All" option
-        optionsHtml.push('<option value="All">All Assigned Units &amp; Clinical Areas</option>');
-
-        // "Clinical Only" option — only for KRCHN
-        if (!this.isTVET) {
+        const optionsHtml = ['<option value="All">All Units in Selected Block</option>'];
+        if (!this.isTVET && selectedBlock === 'All') {
             optionsHtml.push('<option value="__CLINICAL_ONLY__">🏥 All Clinical Areas (Clinical Only)</option>');
         }
-
-        // Individual units + individual clinical areas
-        [...values.values()]
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .forEach(v => {
-                optionsHtml.push(
-                    `<option value="${this.escapeHtml(v.name)}">${v.type === 'clinical' ? '🏥 ' : ''}${this.escapeHtml(v.name)}</option>`
-                );
-            });
-
+        [...values.values()].sort((a, b) => a.name.localeCompare(b.name)).forEach(v => {
+            optionsHtml.push(`<option value="${this.escapeHtml(v.name)}">${v.type === 'clinical' ? '🏥 ' : ''}${this.escapeHtml(v.name)}</option>`);
+        });
         select.innerHTML = optionsHtml.join('');
-
-        if ([...select.options].some(o => o.value === current)) {
-            select.value = current;
-        } else {
-            select.value = 'All';
-        }
+        select.value = [...select.options].some(o => o.value === current) ? current : 'All';
     },
 
     populateYearFilter() {
@@ -2169,7 +2159,14 @@ const LecturerAttendance = {
             const el = document.getElementById(id);
             if (el && !el.dataset.filterBound) {
                 el.dataset.filterBound = '1';
-                el.addEventListener('change', () => this.applyFilters());
+                el.addEventListener('change', () => {
+                    if (id === 'filterBlock') {
+                        // Refresh the unit list first; a stale unit from another block
+                        // must not silently keep filtering the attendance register.
+                        this.populateUnitFilter();
+                    }
+                    this.applyFilters();
+                });
             }
         });
 
