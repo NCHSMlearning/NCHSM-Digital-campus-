@@ -725,6 +725,8 @@ const LecturerAttendance = {
         // Remove the legacy injected summary row to prevent duplicate statistics.
         const duplicatePanel = document.getElementById('lecturerAttendanceStatsPanel');
         if (duplicatePanel) duplicatePanel.remove();
+        const root = document.getElementById('attendance-content');
+        if (root) root.querySelectorAll('[data-legacy-attendance-stats], .legacy-attendance-stats, #attendanceLegacyStats').forEach(el => el.remove());
     },
 
     updateStats(logs) {
@@ -789,7 +791,8 @@ const LecturerAttendance = {
                 from += pageSize;
             }
 
-            this.pastLogs = this.dedupeAttendanceLogs(all);
+            // Use the same lecturer/program ownership filter as today's attendance.
+            this.pastLogs = this.dedupeAttendanceLogs(await this.filterLecturerAttendanceLogs(all));
             this.filteredPastLogs = [...this.pastLogs];
 
             console.info(`📚 Historical attendance loaded: ${this.pastLogs.length} records`);
@@ -1462,8 +1465,16 @@ const LecturerAttendance = {
         this.populateUnitFilter();
         this.populateYearFilter();
 
+        // Block/unit/date filters must search all available history. A selected session
+        // may supplement the data, but must never narrow the full history unexpectedly.
         const selectedSession = this.getSelectedSession();
-        const allLogs = this.getFilterableAttendanceLogs(selectedSession, rangeFrom, rangeTo);
+        const globalLogs = this.dedupeAttendanceLogs([...(this.todayLogs || []), ...(this.pastLogs || [])]);
+        const sessionDate = selectedSession ? this.getNairobiDateString(selectedSession.session_date) : '';
+        const sessionInRange = !!selectedSession && (!rangeFrom || sessionDate >= rangeFrom) && (!rangeTo || sessionDate <= rangeTo);
+        const registerLogs = sessionInRange
+            ? this.sessionRegisterToLogs(this.sessionRegister || { rows: [] }, selectedSession)
+            : [];
+        const allLogs = this.dedupeAttendanceLogs([...globalLogs, ...registerLogs]);
 
         let filtered = allLogs.filter(log => {
             const date = this.getAttendanceDate(log);
