@@ -1229,10 +1229,12 @@ const LecturerAttendance = {
         const today = this.getNairobiDateString();
         const filterDateFrom = document.getElementById('filterDateFrom');
         const filterDateTo = document.getElementById('filterDateTo');
-        if (filterDateFrom) filterDateFrom.value = today;
-        if (filterDateTo) filterDateTo.value = today;
+        // Historical attendance is the default view. Do not silently restrict
+        // the register to today when the lecturer opens the Attendance section.
+        if (filterDateFrom && !filterDateFrom.value) filterDateFrom.value = '';
+        if (filterDateTo && !filterDateTo.value) filterDateTo.value = '';
         const filterDate = document.getElementById('filterDate');
-        if (filterDate) filterDate.value = today;
+        if (filterDate && !filterDate.value) filterDate.value = '';
         const attDate = document.getElementById('attDate');
         if (attDate) attDate.value = today;
 
@@ -1453,8 +1455,10 @@ const LecturerAttendance = {
         const filterSessionType = String(document.getElementById('filterSessionType')?.value ?? 'All').trim() || 'All';
         const searchText = String(document.getElementById('filterSearch')?.value ?? '').trim().toLowerCase();
 
-        const rangeFrom = from || legacyDate || '';
-        const rangeTo = to || legacyDate || '';
+        // A blank date range means all available history. A legacy single-date
+        // field only applies when the range controls are not being used.
+        const rangeFrom = (from || to) ? from : (legacyDate || '');
+        const rangeTo = (from || to) ? to : (legacyDate || '');
         this.populateUnitFilter();
         this.populateYearFilter();
 
