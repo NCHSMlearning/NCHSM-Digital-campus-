@@ -1043,7 +1043,7 @@
             currentGrades = grades;
 
             if (!grades.length) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:50px;color:#94a3b8;"><i class="fas fa-file-circle-xmark" style="font-size:34px;display:block;margin-bottom:10px;"></i><strong style="display:block;color:#1e293b;">No published academic results</strong><span>Results will appear here after they are published by the academic office.</span></td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:50px;color:#94a3b8;"><i class="fas fa-file-circle-xmark" style="font-size:34px;display:block;margin-bottom:10px;"></i><strong style="display:block;color:#1e293b;">No published academic results</strong><span>Results will appear here after they are published by the academic office.</span></td></tr>`;
                 setAcademicSummary(0, '-', 0);
                 return;
             }
@@ -1059,7 +1059,7 @@
             const gradesTable = tbody.closest('table');
             if (gradesTable) {
                 const header = gradesTable.querySelector('thead tr');
-                if (header) header.innerHTML = '<th>Course Code</th><th>Course Name</th><th>Credits</th><th>Score</th><th>Grade</th><th>Rate</th>';
+                if (header) header.innerHTML = '<th>Course Code</th><th>Course Name</th><th>Credits</th><th>Grade</th><th>Rate</th>';
             }
             tbody.innerHTML = grades.map(g => {
                 const gradeColor = getGradeColor(g.grade);
@@ -1069,7 +1069,6 @@
                     <td style="padding:12px;white-space:nowrap;">${escapeHtml(g.unit_code || 'N/A')}</td>
                     <td style="padding:12px;">${escapeHtml(g.subject_name || 'N/A')}</td>
                     <td style="padding:12px;text-align:center;">${Number(g.credits) || 3}</td>
-                    <td style="padding:12px;text-align:center;font-weight:700;">${score === null || !Number.isFinite(score) ? '-' : score.toFixed(1) + '%'}</td>
                     <td style="padding:12px;text-align:center;"><span style="background:${gradeColor};color:white;padding:2px 10px;border-radius:12px;font-weight:700;font-size:12px;">${escapeHtml(g.grade || '-')}</span></td>
                     <td style="padding:12px;text-align:center;"><span style="background:${passed ? '#10b981' : '#94a3b8'};color:white;padding:2px 10px;border-radius:12px;font-weight:600;font-size:10px;">${g.status ? escapeHtml(String(g.status)) : '-'}</span></td>
                 </tr>`;
@@ -1080,7 +1079,7 @@
             document.dispatchEvent(new CustomEvent('academicGpaUpdated', {detail:{semesterGPA:gpa,cumulativeGPA:gpa,formatted:gpa.toFixed(2)}}));
         } catch (error) {
             console.error('Academic Reports semester load failed:', error);
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:45px;color:#dc2626;">Unable to load academic results. Please refresh and try again.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:45px;color:#dc2626;">Unable to load academic results. Please refresh and try again.</td></tr>`;
         }
     }
 
