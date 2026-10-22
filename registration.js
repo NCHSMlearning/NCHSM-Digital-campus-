@@ -464,6 +464,7 @@ function validateStudentId(studentId) {
             'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 
             'CCJS', 'CAG', 'CHSS', 'CICT',
             'CCG', 'COMT',
+            'KRCHN', // Continuing KRCHN students use the existing programme/year registration format
             'ACH', 'AAG', 'ASW',
             'CCA', 'PTE'
         ];
@@ -519,7 +520,7 @@ function validateStudentId(studentId) {
     
     return { 
         valid: false, 
-        message: 'Invalid format. Use DCHN/XXXX/MAR/YYYY for Nursing or PROGRAM/XXXXX/MM/YY or PROGRAM/XXXXX/MM/YYYY for TVET' 
+        message: 'Invalid format. Use DCHN/XXXX/MAR/YYYY or KRCHN/XXXXX/MM/YY (or /YYYY). Other programmes use PROGRAM/XXXXX/MM/YY or PROGRAM/XXXXX/MM/YYYY.' 
     };
 }
 
@@ -604,7 +605,7 @@ function selectStudentType(type) {
     if (type === 'continuing') {
         studentIdLabel.textContent = 'Student ID';
         studentIdHint.textContent = '(Enter your existing Student ID)';
-        studentIdInput.placeholder = 'e.g., DCHN/0001/MAR/2024 or DPOTT/00001/05/26';
+        studentIdInput.placeholder = 'e.g., KRCHN/00001/05/26, DCHN/0001/MAR/2024 or DPOTT/00001/05/26';
         studentIdInput.value = '';
         studentIdInput.disabled = false;
         studentIdInput.required = true;
