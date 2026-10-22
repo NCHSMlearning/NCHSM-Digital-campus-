@@ -1511,10 +1511,14 @@ const LecturerAttendance = {
 
         // Never bypass the selected block/unit/search filters when a session has no matches.
         filtered.sort((a, b) => String(b.check_in_time || b.created_at || '').localeCompare(String(a.check_in_time || a.created_at || '')));
+        // The lecturer page has one combined "Attendance Records (Filtered Range)"
+        // table (attendanceTable), not a separate pastAttendanceTable. Render the
+        // entire filtered history into that table so older records are not hidden.
         this.filteredTodayLogs = filtered.filter(l => this.getAttendanceDate(l) === this.getNairobiDateString());
         this.filteredPastLogs = filtered.filter(l => this.getAttendanceDate(l) !== this.getNairobiDateString());
-        this.renderFilteredToday(this.filteredTodayLogs);
-        this.renderFilteredPast(this.filteredPastLogs);
+        this.renderFilteredToday(filtered);
+        // Render historical rows only when a dedicated history table actually exists.
+        if (document.getElementById('pastAttendanceTable')) this.renderFilteredPast(this.filteredPastLogs);
         this.ensureBulkVerifyControls();
         this.updateSelectedAttendanceCount();
         this.updateStats(filtered);
