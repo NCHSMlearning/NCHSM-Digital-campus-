@@ -405,122 +405,76 @@ async function generateSequentialStudentNumber(programType) {
     return `${programType}/${paddedNumber}/${month}/${yearSuffix}`;
 }
 
+function normalizeStudentIdInput(value) {
+    // Normalize harmless presentation differences while retaining a canonical stored format.
+    return String(value || '').trim().toUpperCase()
+        .replace(/[\\s-]+/g, '/')
+        .replace(/\\/{2,}/g, '/')
+        .replace(/^\\/+|\\/+$/g, '');
+}
+
 function validateStudentId(studentId) {
-    if (!studentId || studentId.trim() === '') {
+    if (!studentId || String(studentId).trim() === '') {
         return { valid: false, message: 'Student ID is required' };
     }
-    
-    const cleaned = studentId.trim().toUpperCase();
-    
+
+    const cleaned = normalizeStudentIdInput(studentId);
     if (containsSQLInjection(cleaned)) {
         return { valid: false, message: 'Invalid characters detected' };
     }
-    
-    const dchnRegex = /^DCHN\/(\d{4})\/(MAR)\/(\d{4})$/;
-    const dchnMatch = cleaned.match(dchnRegex);
+
+    // DCHN format: DCHN/0001/MAR/2024. Permit historical and future years.
+    const dchnMatch = cleaned.match(/^DCHN\\/(\\d{1,6})\\/MAR\\/(\\d{4})$/);
     if (dchnMatch) {
-        const number = dchnMatch[1];
-        const month = dchnMatch[2];
-        const year = dchnMatch[3];
-        
-        if (month !== 'MAR') {
-            return { valid: false, message: 'DCHN intakes are only in March (MAR)' };
+        const number = dchnMatch[1].padStart(4, '0');
+        const yearNum = Number(dchnMatch[2]);
+        if (yearNum < 2000 || yearNum > new Date().getFullYear() + 10) {
+            return { valid: false, message: 'Enter a valid four-digit intake year.' };
         }
-        
-        const yearNum = parseInt(year);
-        if (yearNum < 2021 || yearNum > 2030) {
-            return { valid: false, message: 'Year must be between 2021 and 2030' };
-        }
-        
-        return { 
-            valid: true, 
-            format: 'dchn',
-            program: 'DCHN',
-            number: number,
-            month: month,
-            year: year,
-            display: `DCHN/${number}/${month}/${year}`
+        return {
+            valid: true, format: 'dchn', program: 'DCHN', number,
+            month: 'MAR', year: dchnMatch[2],
+            display: `DCHN/${number}/MAR/${dchnMatch[2]}`
         };
     }
-    
-    const tvetRegex2Digit = /^([A-Z]{2,5})\/(\d{4,5})\/(\d{2})\/(\d{2})$/;
-    const tvetMatch2Digit = cleaned.match(tvetRegex2Digit);
-    
-    const tvetRegex4Digit = /^([A-Z]{2,5})\/(\d{4,5})\/(\d{2})\/(\d{4})$/;
-    const tvetMatch4Digit = cleaned.match(tvetRegex4Digit);
-    
-    let tvetMatch = tvetMatch2Digit || tvetMatch4Digit;
-    let is2DigitYear = !!tvetMatch2Digit;
-    
-    if (tvetMatch) {
-        const program = tvetMatch[1];
-        const number = tvetMatch[2];
-        const month = tvetMatch[3];
-        const year = tvetMatch[4];
-        
-        const validTvetPrograms = [
-            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 
-            'DCJS', 'DHSS', 'DICT', 'DME',
-            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 
-            'CCJS', 'CAG', 'CHSS', 'CICT',
-            'CCG', 'COMT',
-            'KRCHN', // Continuing KRCHN students use the existing programme/year registration format
-            'ACH', 'AAG', 'ASW',
-            'CCA', 'PTE'
+
+    const match = cleaned.match(/^([A-Z]{2,8})\\/(\\d{1,8})\\/(\\d{1,2})\\/(\\d{2}|\\d{4})$/);
+    if (match) {
+        const program = match[1];
+        const number = match[2];
+        const monthNum = Number(match[3]);
+        const rawYear = match[4];
+        const allowedPrograms = [
+            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+            'CCG', 'COMT', 'KRCHN', 'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
         ];
-        
-        if (!validTvetPrograms.includes(program)) {
-            return { 
-                valid: false, 
-                message: `Invalid program "${program}". Valid: ${validTvetPrograms.join(', ')}` 
-            };
+        if (!allowedPrograms.includes(program)) {
+            return { valid: false, message: `Unrecognized programme code "${program}". Check your registration number or contact the college.` };
         }
-        
-        const monthNum = parseInt(month);
         if (monthNum < 1 || monthNum > 12) {
-            return { valid: false, message: 'Month must be 01-12' };
+            return { valid: false, message: 'Month must be between 01 and 12.' };
         }
-        
-        let yearNum = parseInt(year);
-        let fullYear = year;
-        
-        if (is2DigitYear) {
-            if (yearNum < 21 || yearNum > 30) {
-                return { valid: false, message: 'Year must be 21-30 (2021-2030)' };
-            }
-            fullYear = '20' + year;
-        } else {
-            if (yearNum < 2021 || yearNum > 2030) {
-                return { valid: false, message: 'Year must be between 2021 and 2030' };
-            }
+
+        const yearNum = Number(rawYear);
+        const fullYear = rawYear.length === 2 ? 2000 + yearNum : yearNum;
+        if (fullYear < 2000 || fullYear > new Date().getFullYear() + 10) {
+            return { valid: false, message: 'Enter a valid intake year.' };
         }
-        
-        const monthNames = {
-            '01': 'JAN', '02': 'FEB', '03': 'MAR', '04': 'APR',
-            '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
-            '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
-        };
-        
+        const month = String(monthNum).padStart(2, '0');
+        const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
         const paddedNumber = number.padStart(5, '0');
-        
-        return { 
-            valid: true, 
-            format: 'tvet',
-            program: program,
-            number: number,
-            paddedNumber: paddedNumber,
-            month: month,
-            monthName: monthNames[month] || month,
-            year: year,
-            fullYear: fullYear,
-            display: `${program}/${paddedNumber}/${month}/${year}`,
-            is2DigitYear: is2DigitYear
+        const canonical = `${program}/${paddedNumber}/${month}/${rawYear.length === 2 ? String(fullYear).slice(-2) : fullYear}`;
+        return {
+            valid: true, format: 'tvet', program, number, paddedNumber, month,
+            monthName: monthNames[monthNum - 1], year: rawYear, fullYear: String(fullYear),
+            display: canonical, canonical, is2DigitYear: rawYear.length === 2
         };
     }
-    
-    return { 
-        valid: false, 
-        message: 'Invalid format. Use DCHN/XXXX/MAR/YYYY or KRCHN/XXXXX/MM/YY (or /YYYY). Other programmes use PROGRAM/XXXXX/MM/YY or PROGRAM/XXXXX/MM/YYYY.' 
+
+    return {
+        valid: false,
+        message: 'Use your full registration number, e.g. KRCHN/00001/05/26 or DCHN/0001/MAR/2024. Spaces, hyphens and letter case are accepted.'
     };
 }
 
@@ -530,7 +484,7 @@ function validateStudentId(studentId) {
 async function checkStudentIdExists(studentId) {
     if (!studentId || studentId.trim() === '') return false;
     
-    const sanitized = sanitizeInput(studentId).toUpperCase();
+    const validation = validateStudentId(studentId);\n    const sanitized = sanitizeInput(validation.valid ? (validation.canonical || validation.display) : normalizeStudentIdInput(studentId)).toUpperCase();
     
     try {
         const { data, error } = await sb
