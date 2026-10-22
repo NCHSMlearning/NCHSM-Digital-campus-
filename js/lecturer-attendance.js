@@ -1517,6 +1517,14 @@ const LecturerAttendance = {
         this.filteredTodayLogs = filtered.filter(l => this.getAttendanceDate(l) === this.getNairobiDateString());
         this.filteredPastLogs = filtered.filter(l => this.getAttendanceDate(l) !== this.getNairobiDateString());
         this.renderFilteredToday(filtered);
+        // Keep table output consistent with the result count if a concurrent refresh
+        // has replaced the tbody during rendering.
+        const visibleBody = document.getElementById('attendanceTable');
+        if (visibleBody && filtered.length > 0 && visibleBody.querySelector('td[colspan]')) {
+            const previousRows = this.todayLogs;
+            this.todayLogs = filtered;
+            try { this.renderTodayAttendance(); } finally { this.todayLogs = previousRows; }
+        }
         // Render historical rows only when a dedicated history table actually exists.
         if (document.getElementById('pastAttendanceTable')) this.renderFilteredPast(this.filteredPastLogs);
         this.ensureBulkVerifyControls();
@@ -1537,10 +1545,20 @@ const LecturerAttendance = {
     },
 
     renderFilteredToday(logs = []) {
+        // Render the exact filtered result. Guard the combined history table against
+        // overlapping refreshes leaving an empty-state message beside a nonzero count.
+        const rows = Array.isArray(logs) ? logs : [];
+        const tbody = document.getElementById('attendanceTable');
+        if (!tbody) return;
         const original = this.todayLogs;
-        this.todayLogs = Array.isArray(logs) ? logs : [];
+        this.todayLogs = rows;
         try {
             this.renderTodayAttendance();
+            const emptyCell = tbody.querySelector('td[colspan="9"]');
+            if (emptyCell) emptyCell.colSpan = 10;
+        } catch (error) {
+            console.error('renderFilteredToday failed:', error);
+            tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:#b91c1c;">Unable to render attendance records. Refresh and try again.</td></tr>';
         } finally {
             this.todayLogs = original;
         }
