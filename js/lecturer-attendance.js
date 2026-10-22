@@ -1254,6 +1254,14 @@ const LecturerAttendance = {
         const tbody = document.getElementById('attendanceTable');
         if (!tbody || document.getElementById('attendanceBulkVerifyToolbar')) return;
         const table = tbody.closest('table'); if (!table) return;
+        const headerRow = table.querySelector('thead tr');
+        if (headerRow && !headerRow.querySelector('[data-attendance-select-header]')) {
+            const th = document.createElement('th');
+            th.setAttribute('data-attendance-select-header', '1');
+            th.textContent = 'Select';
+            th.style.cssText = 'padding:10px;text-align:center;color:#475569;font-size:12px;';
+            headerRow.insertBefore(th, headerRow.firstElementChild);
+        }
         const toolbar = document.createElement('div');
         toolbar.id = 'attendanceBulkVerifyToolbar';
         toolbar.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin:0 0 12px;';
