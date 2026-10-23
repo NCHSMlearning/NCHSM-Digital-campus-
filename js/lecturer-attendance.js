@@ -1263,6 +1263,13 @@ const LecturerAttendance = {
         const number = value => (value.match(/(?:block|term)\s*(\d+)/i) || value.match(/^(\d+)$/) || [])[1] || '';
         return !!number(left) && number(left) === number(right);
     },
+    getAttendanceAssignment(log) {
+        const unitName = this.normalizeFilterValue(log?.unit_name || log?.target_name || log?.subject_name);
+        if (!unitName) return null;
+        return (this.assignedUnits || []).find(unit =>
+            this.normalizeFilterValue(unit?.subject_name) === unitName
+        ) || null;
+    },
     ensureBulkVerifyControls() {
         [['attendanceTable', 'today'], ['pastAttendanceTable', 'history']].forEach(([tbodyId, key]) => {
         const tbody = document.getElementById(tbodyId);
@@ -1478,9 +1485,13 @@ const LecturerAttendance = {
 
         let filtered = allLogs.filter(log => {
             const date = this.getAttendanceDate(log);
-            const unit = String(log.unit_name || log.target_name || '').trim();
-            const block = String(log.block || '').trim();
-            const year = String(log.intake_year || '').trim();
+            const unit = String(log.unit_name || log.target_name || log.subject_name || '').trim();
+            // Older geo_attendance_logs rows may not carry block/year metadata.
+            // Resolve missing values from the lecturer's assigned-unit records,
+            // without overriding metadata stored on the attendance record.
+            const assignment = this.getAttendanceAssignment(log);
+            const block = String(log.block || assignment?.block || '').trim();
+            const year = String(log.intake_year || assignment?.academic_year || '').trim();
             const type = String(log.session_type || 'Class').trim();
 
             if (rangeFrom && (!date || date < rangeFrom)) return false;
