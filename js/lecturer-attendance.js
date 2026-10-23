@@ -1615,10 +1615,12 @@ const LecturerAttendance = {
     },
 
     resetFilters() {
-        const today = this.getNairobiDateString();
-        const fromEl = document.getElementById('filterDateFrom'); if (fromEl) fromEl.value = today;
-        const toEl = document.getElementById('filterDateTo'); if (toEl) toEl.value = today;
-        const legacyEl = document.getElementById('filterDate'); if (legacyEl) legacyEl.value = today;
+        // Reset to the historical register view: dates are unrestricted until
+        // the lecturer explicitly chooses a date/range. Keep today's date only
+        // on the separate manual-attendance form (#attDate).
+        const fromEl = document.getElementById('filterDateFrom'); if (fromEl) fromEl.value = '';
+        const toEl = document.getElementById('filterDateTo'); if (toEl) toEl.value = '';
+        const legacyEl = document.getElementById('filterDate'); if (legacyEl) legacyEl.value = '';
         const fBlock = document.getElementById('filterBlock'); if (fBlock) fBlock.value = 'All';
         const fUnit = document.getElementById('filterUnit'); if (fUnit) fUnit.value = 'All';
         const fYear = document.getElementById('filterYear'); if (fYear) fYear.value = 'All';
