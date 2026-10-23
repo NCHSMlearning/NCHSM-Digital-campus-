@@ -408,9 +408,9 @@ async function generateSequentialStudentNumber(programType) {
 function normalizeStudentIdInput(value) {
     // Normalize harmless presentation differences while retaining a canonical stored format.
     return String(value || '').trim().toUpperCase()
-        .replace(/[\\s-]+/g, '/')
-        .replace(/\\/{2,}/g, '/')
-        .replace(/^\\/+|\\/+$/g, '');
+        .replace(/[\s-]+/g, '/')
+        .replace(/\/{2,}/g, '/')
+        .replace(/^\/+|\/+$/g, '');
 }
 
 function validateStudentId(studentId) {
@@ -424,7 +424,7 @@ function validateStudentId(studentId) {
     }
 
     // DCHN format: DCHN/0001/MAR/2024. Permit historical and future years.
-    const dchnMatch = cleaned.match(/^DCHN\\/(\\d{1,6})\\/MAR\\/(\\d{4})$/);
+    const dchnMatch = cleaned.match(/^DCHN\/(\d{1,6})\/MAR\/(\d{4})$/);
     if (dchnMatch) {
         const number = dchnMatch[1].padStart(4, '0');
         const yearNum = Number(dchnMatch[2]);
@@ -438,7 +438,7 @@ function validateStudentId(studentId) {
         };
     }
 
-    const match = cleaned.match(/^([A-Z]{2,8})\\/(\\d{1,8})\\/(\\d{1,2})\\/(\\d{2}|\\d{4})$/);
+    const match = cleaned.match(/^([A-Z]{2,8})\/(\d{1,8})\/(\d{1,2})\/(\d{2}|\d{4})$/);
     if (match) {
         const program = match[1];
         const number = match[2];
@@ -484,7 +484,8 @@ function validateStudentId(studentId) {
 async function checkStudentIdExists(studentId) {
     if (!studentId || studentId.trim() === '') return false;
     
-    const validation = validateStudentId(studentId);\n    const sanitized = sanitizeInput(validation.valid ? (validation.canonical || validation.display) : normalizeStudentIdInput(studentId)).toUpperCase();
+    const validation = validateStudentId(studentId);
+    const sanitized = sanitizeInput(validation.valid ? (validation.canonical || validation.display) : normalizeStudentIdInput(studentId)).toUpperCase();
     
     try {
         const { data, error } = await sb
