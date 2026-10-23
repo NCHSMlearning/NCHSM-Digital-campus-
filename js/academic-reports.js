@@ -1861,6 +1861,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .summary-card .value { font-size: 24px; line-height: 1.2; font-weight: 800; color: #0A3D62; }
         .summary-card .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 800; margin-top: 3px; }
         table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; border: 1px solid #d1d5db; }
+        .semester-results-title { margin: 14px 0 0; padding: 11px 16px; background: #0A3D62; color: #ffffff; border-radius: 7px 7px 0 0; font-size: 15px; line-height: 1.25; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; }
+        table.semester-results-table { margin: 0 0 12px; font-size: 11px; table-layout: auto; }
+        table.semester-results-table thead th { padding: 12px 14px; font-size: 11px; line-height: 1.3; }
+        table.semester-results-table tbody td { padding: 12px 14px; font-size: 12px; line-height: 1.45; }
+        table.semester-results-table tbody td:nth-child(1),
+        table.semester-results-table tbody td:nth-child(4),
+        table.semester-results-table tbody td:nth-child(5) { text-align: center; }
+
         thead th { background: #0A3D62; color: white; padding: 10px 12px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; border: 1px solid #0A3D62; }
         thead th.center { text-align: center; }
         tbody td { padding: 9px 12px; border: 1px solid #d1d5db; font-size: 10px; line-height: 1.35; }
@@ -1892,6 +1900,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .container { border: 2px solid #0A3D62; border-radius: 0; padding: 12px 14px; max-width: 100%; box-shadow: none; }
             .no-print { display: none !important; }
             thead th { background: #0A3D62 !important; color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .semester-results-title { background: #0A3D62 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            table.semester-results-table thead th { font-size: 10px; padding: 10px 11px; }
+            table.semester-results-table tbody td { font-size: 11px; padding: 10px 11px; }
             td span { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .student-photo { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .chart-container canvas { height: 125px !important; max-height: 125px !important; }
@@ -1924,8 +1935,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             </div>
         </div>
         
+        <!-- SEMESTER RESULTS -->
+        <div class="semester-results-title">Semester Results</div>
         <!-- TABLE WITH ALL BORDERS - ☆ STAR NEXT TO UNIT NAME -->
-        <table>
+        <table class="semester-results-table">
             <thead>
                 <tr>
                     <th style="text-align: center; width: 25px; border: 1px solid #0A3D62;">#</th>
