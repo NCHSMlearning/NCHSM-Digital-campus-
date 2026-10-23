@@ -58,6 +58,7 @@
                     'Block 3': { year: 1, label: 'Year 2' },
                     'Block 4': { year: 2, label: 'Year 3' },
                     'Block 5': { year: 2, label: 'Year 3' },
+                    'Block 6': { year: 2, label: 'Year 3' },
                     'Final': { year: 2, label: 'Year 3' }
                 };
                 return nursingMapping[blockName] || { year: 0, label: 'Year 1' };
@@ -1615,16 +1616,23 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             const nextYear = currentYear + 1;
             const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
             
-            let totalPoints = 0;
+            let weightedPoints = 0;
+            let totalCredits = 0;
             let totalUnits = 0;
             let passed = 0;
             let failed = 0;
             let pending = 0;
             
             marks.forEach(m => {
-                const points = m.points || 0;
-                
-                totalPoints += points;
+                const publishedGrade = m.grade || m.published_grade || m.final_grade || '';
+                const pointsValue = Number(m.points);
+                const points = Number.isFinite(pointsValue) ? pointsValue : (publishedGrade ? calculatePoints(publishedGrade, userProgram) : null);
+                const creditsValue = Number(m.credits);
+                const credits = Number.isFinite(creditsValue) && creditsValue > 0 ? creditsValue : 3;
+                if (points !== null && Number.isFinite(points)) {
+                    weightedPoints += points * credits;
+                    totalCredits += credits;
+                }
                 totalUnits++;
                 
                 // Determine pass/fail based on program type
@@ -1635,7 +1643,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 else pending++;
             });
             
-            const gpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
+            const gpa = totalCredits > 0 ? (weightedPoints / totalCredits) : 0;
             
             let grade;
             if (isTVET) {
@@ -1656,9 +1664,11 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             let tableRows = '';
             marks.forEach((mark, index) => {
                 const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-                const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
-                const gradeColor = getGradeColor(mark.grade);
-                const gradeDisplay = mark.grade || calculateGrade(0, userProgram) || '-';
+                const score = getPublishedScore(mark);
+                const gradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
+                const pointsValue = Number(mark.points);
+                const points = Number.isFinite(pointsValue) ? pointsValue : (gradeDisplay !== '-' ? calculatePoints(gradeDisplay, userProgram) : null);
+                const gradeColor = getGradeColor(gradeDisplay);
                 const hasRetake = mark.hasRetake || false;
                 const retakeCount = mark.retakeCount || 0;
                 
@@ -1697,8 +1707,13 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             });
             
             const graphLabels = sortedMarks.map(m => m.unit_code || getUnitCode(m.subject_name) || 'N/A');
-            const graphData = sortedMarks.map(m => m.points || 0);
-            const avgPoints = graphData.reduce((a, b) => a + b, 0) / graphData.length || 0;
+            const graphData = sortedMarks.map(m => {
+                const grade = m.grade || m.published_grade || m.final_grade || '';
+                const points = Number(m.points);
+                return Number.isFinite(points) ? points : (grade ? calculatePoints(grade, userProgram) : null);
+            });
+            const validGraphPoints = graphData.filter(p => Number.isFinite(p));
+            const avgPoints = validGraphPoints.length ? validGraphPoints.reduce((a, b) => a + b, 0) / validGraphPoints.length : 0;
             
             // TABLE FORMAT GRADING SCALE
             let gradingScaleHTML = '';
@@ -1827,37 +1842,37 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4 portrait; margin: 8mm 10mm; }
         body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
-        .container { max-width: 750px; width: 100%; margin: 0 auto; padding: 16px 20px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; }
+        .container { max-width: 900px; width: 100%; margin: 0 auto; padding: 22px 26px; background: #ffffff; border: 3px solid #0A3D62; border-radius: 10px; box-shadow: 0 8px 28px rgba(10,61,98,.12); }
         .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 10px; margin-bottom: 12px; }
         .header-top { display: flex; align-items: center; justify-content: center; gap: 12px; }
-        .header-top img { max-height: 40px; width: auto; }
-        .header .school { font-size: 16px; font-weight: 700; color: #0A3D62; font-family: 'Georgia', serif; }
+        .header-top img { max-height: 64px; max-width: 76px; width: auto; object-fit: contain; }
+        .header .school { font-size: 19px; line-height: 1.25; font-weight: 800; color: #0A3D62; font-family: 'Georgia', serif; }
         .header .motto { font-size: 8px; color: #64748b; font-style: italic; }
-        .header .subtitle { font-size: 13px; color: #0A3D62; font-weight: 700; margin-top: 3px; letter-spacing: 1.5px; font-family: 'Georgia', serif; }
+        .header .subtitle { display: inline-block; font-size: 17px; color: #ffffff; background: #0A3D62; font-weight: 800; margin-top: 10px; padding: 7px 28px; border-radius: 4px; letter-spacing: 2px; font-family: 'Georgia', serif; }
         .header .date { font-size: 8px; color: #94a3b8; margin-top: 2px; }
-        .student-info-wrapper { display: flex; align-items: center; gap: 12px; margin: 6px 0 10px 0; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .student-info-wrapper { display: flex; align-items: center; gap: 16px; margin: 12px 0 16px; padding: 14px 16px; background: #f1f6fb; border-radius: 8px; border: 1px solid #cbdbea; border-left: 5px solid #0A3D62; }
         .student-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; flex: 1; }
         .student-info .field { display: flex; flex-direction: column; }
-        .student-info .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-        .student-info .value { font-weight: 600; font-size: 10px; color: #0A3D62; margin-top: 1px; }
+        .student-info .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; }
+        .student-info .value { font-weight: 800; font-size: 12px; line-height: 1.35; color: #0A3D62; margin-top: 3px; overflow-wrap: anywhere; }
         .student-photo { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #0A3D62; padding: 2px; background: white; flex-shrink: 0; }
-        .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 8px 0; }
-        .summary-card { background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0; }
-        .summary-card .value { font-size: 18px; font-weight: 700; color: #0A3D62; }
-        .summary-card .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
+        .summary-card { background: linear-gradient(180deg,#ffffff,#f3f7fb); border-radius: 8px; padding: 12px 10px; text-align: center; border: 1px solid #cbdbea; border-top: 4px solid #0A3D62; }
+        .summary-card .value { font-size: 24px; line-height: 1.2; font-weight: 800; color: #0A3D62; }
+        .summary-card .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 800; margin-top: 3px; }
         table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; border: 1px solid #d1d5db; }
-        thead th { background: #0A3D62; color: white; padding: 6px 10px; text-align: left; font-size: 7px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; border: 1px solid #0A3D62; }
+        thead th { background: #0A3D62; color: white; padding: 10px 12px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; border: 1px solid #0A3D62; }
         thead th.center { text-align: center; }
-        tbody td { padding: 6px 10px; border: 1px solid #d1d5db; font-size: 8px; }
-        .chart-container { margin: 6px 0 8px 0; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
+        tbody td { padding: 9px 12px; border: 1px solid #d1d5db; font-size: 10px; line-height: 1.35; }
+        .chart-container { margin: 10px 0 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
         .chart-container .title { font-weight: 700; font-size: 8px; color: #0A3D62; text-align: center; margin-bottom: 4px; }
-        .chart-container canvas { width: 100% !important; height: 120px !important; max-height: 120px; }
-        .grading-scale-table { margin: 6px 0 8px 0; padding: 6px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
-        .grading-scale-table .title { font-weight: 700; font-size: 8px; color: #0A3D62; text-align: center; margin-bottom: 4px; }
+        .chart-container canvas { width: 100% !important; height: 145px !important; max-height: 145px; }
+        .grading-scale-table { margin: 10px 0 12px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
+        .grading-scale-table .title { font-weight: 800; font-size: 11px; color: #0A3D62; text-align: center; margin-bottom: 8px; }
         .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db; }
         .grading-scale-table th { background: #0A3D62; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #0A3D62; }
         .grading-scale-table td { padding: 4px 8px; text-align: center; border: 1px solid #d1d5db; font-size: 7px; }
-        .declaration { margin: 6px 0 8px 0; padding: 6px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 8px; }
+        .declaration { margin: 10px 0 12px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; font-size: 10px; line-height: 1.5; }
         .declaration .title { font-weight: 700; color: #0A3D62; font-size: 8px; }
         .declaration .checkbox { display: inline-block; width: 9px; height: 9px; border: 2px solid #0A3D62; border-radius: 2px; margin-right: 4px; vertical-align: middle; background: #0A3D62; position: relative; }
         .declaration .checkbox::after { content: "✓"; color: white; font-size: 6px; position: absolute; top: -2px; left: 0px; }
@@ -1866,7 +1881,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .signature-box .line { border-bottom: 2px solid #1e293b; width: 130px; margin: 8px auto 2px auto; }
         .signature-box .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
         .signature-box .name { font-weight: 600; font-size: 10px; color: #0A3D62; }
-        .footer { text-align: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0; font-size: 7px; color: #94a3b8; }
+        .footer { text-align: center; margin-top: 10px; padding-top: 10px; border-top: 2px solid #0A3D62; font-size: 9px; line-height: 1.5; color: #52677a; }
         .footer strong { color: #0A3D62; }
         .no-print { text-align: center; margin-top: 8px; }
         .no-print button { padding: 5px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 10px; }
@@ -1874,12 +1889,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .no-print .btn-close { background: #e2e8f0; color: #475569; margin-left: 6px; }
         @media print {
             body { padding: 0; background: white; }
-            .container { border: 2px solid #0A3D62; border-radius: 0; padding: 12px 16px; max-width: 100%; }
+            .container { border: 2px solid #0A3D62; border-radius: 0; padding: 12px 14px; max-width: 100%; box-shadow: none; }
             .no-print { display: none !important; }
             thead th { background: #0A3D62 !important; color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             td span { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .student-photo { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .chart-container canvas { height: 120px !important; }
+            .chart-container canvas { height: 125px !important; max-height: 125px !important; }
         }
     </style>
 </head>
@@ -1925,11 +1940,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         
         <!-- SUMMARY CARDS -->
         <div class="summary-grid">
-            <div class="summary-card"><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
-            <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div><div class="label">Grade</div></div>
-            <div class="summary-card"><div class="value" style="color: #0A3D62;">${totalUnits}</div><div class="label">Units</div></div>
+            <div class="summary-card"><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div><div class="label">Grade Point Average</div></div>
+            <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div><div class="label">Overall Grade</div></div>
+            <div class="summary-card"><div class="value" style="color: #0A3D62;">${totalUnits}</div><div class="label">Units Reported</div></div>
             <div class="summary-card"><div class="value" style="color: #0A3D62;">${passRate}%</div><div class="label">Pass Rate</div></div>
-            <div class="summary-card"><div class="value" style="color: #94a3b8;">${marks.filter(m => m.hasRetake).length}</div><div class="label">☆ Retakes</div></div>
         </div>
         
         <!-- GRADING SCALE -->
