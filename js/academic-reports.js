@@ -2311,24 +2311,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         printWindow.print();
                         return;
                     }
-                    if (typeof printWindow.html2pdf !== 'function') {
-                        let attempts = 0;
-                        const waitForPdfLibrary = () => {
-                            if (printWindow.closed) return;
-                            if (typeof printWindow.html2pdf === 'function') {
-                                generateTranscriptPdf();
-                                return;
-                            }
-                            attempts += 1;
-                            if (attempts < 20) setTimeout(waitForPdfLibrary, 300);
-                            else {
-                                printWindow.close();
-                                alert('PDF generator could not load. Check your internet connection and try again.');
-                            }
-                        };
-                        waitForPdfLibrary();
-                        return;
-                    }
                     const generateTranscriptPdf = () => {
                     if (!printWindow || printWindow.closed) return;
                     const downloadStyle = printWindow.document.createElement('style');
@@ -2380,7 +2362,26 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         alert('PDF download failed: ' + (error.message || 'Please try again.'));
                     });
                     };
-                    generateTranscriptPdf();
+                    // Define the generator before any asynchronous library wait can call it.
+                    if (typeof printWindow.html2pdf !== 'function') {
+                        let attempts = 0;
+                        const waitForPdfLibrary = () => {
+                            if (printWindow.closed) return;
+                            if (typeof printWindow.html2pdf === 'function') {
+                                generateTranscriptPdf();
+                                return;
+                            }
+                            attempts += 1;
+                            if (attempts < 30) setTimeout(waitForPdfLibrary, 300);
+                            else {
+                                printWindow.close();
+                                alert('PDF generator could not load after waiting. Check your connection and try again.');
+                            }
+                        };
+                        waitForPdfLibrary();
+                    } else {
+                        generateTranscriptPdf();
+                    }
                 }, 1400);
             } else {
                 alert('The transcript window was closed before the PDF was ready. Please try again.');
