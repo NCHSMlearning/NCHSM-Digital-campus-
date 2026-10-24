@@ -4444,6 +4444,7 @@ class SecureFaceProctor {
 // ============================================================
 resumeExam() {
     if (!this.state.isPaused) return;
+    if (!this.state.faceStable) return;
     
     console.log('✅ Resuming exam...');
     
