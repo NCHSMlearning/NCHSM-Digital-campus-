@@ -1724,7 +1724,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const score = getPublishedScore(mark);
                 const gradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
                 // Define the grade colour in this row's scope before rendering the grade and points.
-                const gradeColor = getGradeColor(gradeDisplay);
+                const gradeColor = (typeof getGradeColor === 'function' ? getGradeColor(gradeDisplay) : '#64748b');
                 const pointsValue = numericMark(mark, ['points', 'grade_points']);
                 const points = pointsValue !== null ? pointsValue : (gradeDisplay !== '-' ? calculatePoints(gradeDisplay, userProgram) : null);
                 const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
@@ -2040,8 +2040,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .grading-scale-table .title, .chart-container .title { font-size: 7px !important; margin-bottom: 1px !important; }
             .grading-scale-table th, .grading-scale-table td { font-size: 6px !important; line-height: 1 !important; padding: 1px 2px !important; }
             .grading-scale-table table { margin: 0 !important; }
-            .chart-container { padding: 1px 3px !important; margin: 2px 0 !important; }
-            .chart-container canvas { height: 25px !important; max-height: 25px !important; }
+            /* The progression chart is useful on screen but wastes page height on the official print copy. */
+            .chart-container { display: none !important; }
+            .chart-container canvas { display: none !important; }
             .declaration { padding: 2px 4px !important; margin: 2px 0 !important; font-size: 6px !important; line-height: 1.05 !important; }
             .declaration .title { font-size: 6px !important; }
             .signatures { gap: 8px !important; margin: 2px 0 !important; }
@@ -2053,7 +2054,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .footer p { margin: 1px 0 !important; }
             thead th, td span { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             /* Avoid splitting a row; allow extra pages when the unit count genuinely requires them. */
-            .container, table.semester-results-table, table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+            /* Do not force the whole document onto a second page; only keep individual rows intact. */
+            .container { break-inside: auto !important; page-break-inside: auto !important; }
+            table.semester-results-table, table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
             .student-info-wrapper, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
         }
     </style>
