@@ -6107,38 +6107,34 @@ async function sendApprovalEmail(email, userName, role, program, intakeYear, int
 </body>
 </html>`;
         
-        const response = await fetch(BREVO_CONFIG.apiUrl, {
-            method: 'POST',
-            headers: {
-                'api-key': BREVO_CONFIG.apiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: {
-                    email: 'noreply@nakurucollegeofhealthelearning.site',
-                    name: 'NCHSM ICT Support'
-                },
-                to: [{ email: email }],
-                subject: `✅ Account Approved - Welcome to NCHSM!`,
-                htmlContent: htmlContent
-            })
+        // Send through the Supabase Edge Function so the Brevo API key stays server-side.
+        const supabase = getSb();
+        const { data, error } = await supabase.functions.invoke('send-email', {
+            body: {
+                to: email,
+                subject: '✅ Account Approved - Welcome to NCHSM!',
+                html: htmlContent,
+                from: 'noreply@nchsm.co.ke'
+            }
         });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            console.log(`✅ Approval email sent to ${email}`);
-            return { success: true, data };
-        } else {
-            console.error('❌ Approval email failed:', data);
-            return { success: false, error: data };
+
+        if (error) {
+            console.error('❌ Approval email function failed:', error);
+            return { success: false, error: error.message || 'Approval email request failed' };
         }
-        
-    } catch(e) {
-        console.warn('⚠️ Approval email error:', e);
-        return sendApprovalEmailFallback(email, userName, role, programDisplay, intakeDisplay, blockDisplay);
+
+        if (!data || data.success !== true) {
+            const errorMessage = data?.error || 'Email service did not confirm success';
+            console.error('❌ Approval email was not confirmed:', data);
+            return { success: false, error: errorMessage };
+        }
+
+        console.log(`✅ Approval email accepted by email service for ${email}`);
+        return { success: true, data };
+    } catch (e) {
+        console.error('⚠️ Approval email error:', e);
+        return { success: false, error: e?.message || 'Unknown email error' };
     }
-}
 
 async function sendApprovalEmailFallback(email, userName, role, programDisplay, intakeDisplay, blockDisplay) {
     console.log('📧 Using fallback approval email to:', email);
@@ -7836,13 +7832,20 @@ async function confirmApproveUser() {
         
         if (error) throw error;
         
+        let approvalEmailResult = { success: false, error: 'Email was not attempted' };
         try {
-            await sendApprovalEmail(email, fullName, role, program, intakeYear, intakeMonth, block);
+            approvalEmailResult = await sendApprovalEmail(email, fullName, role, program, intakeYear, intakeMonth, block);
         } catch (e) {
-            console.warn('⚠️ Email error:', e);
+            console.error('⚠️ Approval email error:', e);
+            approvalEmailResult = { success: false, error: e?.message || 'Unknown email error' };
         }
-        
-        showFeedback(`✅ User ${fullName} approved successfully!`, 'success');
+
+        if (approvalEmailResult?.success) {
+            showFeedback(`✅ User ${fullName} approved successfully. Approval email was accepted by the email service.`, 'success');
+        } else {
+            console.error('Approval succeeded but email was not confirmed:', approvalEmailResult?.error);
+            showFeedback(`User ${fullName} was approved, but the email could not be confirmed: ${approvalEmailResult?.error || 'Unknown email error'}. Check the email service logs.`, 'warning');
+        }
         
         await logAudit('USER_APPROVE', `User ${fullName} approved`, userId, 'SUCCESS');
         
