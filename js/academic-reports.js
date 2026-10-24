@@ -1943,12 +1943,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         @page { size: A4 portrait; margin: 6mm; }
         body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
         .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 12px 14px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; box-shadow: none; }
-        .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 6px; align-items: start; }
+        .transcript-top { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 5px; align-items: start; }
         .transcript-top .header { min-width: 0; }
-        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 60px; padding: 3px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #0A3D62; }
-        .verification-qr img { display: block; width: 48px; height: 48px; object-fit: contain; }
+        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 1px; width: 34px; padding: 2px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 5px; font-weight: 700; color: #0A3D62; }
+        .verification-qr img { display: block; width: 26px; height: 26px; object-fit: contain; }
         .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 10px; margin-bottom: 12px; }
-        .header-top { display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
         .header-top img { max-height: 64px; max-width: 76px; width: auto; object-fit: contain; }
         .header .school { font-size: 19px; line-height: 1.25; font-weight: 800; color: #0A3D62; font-family: 'Georgia', serif; }
         .header .motto { font-size: 8px; color: #64748b; font-style: italic; }
@@ -2082,7 +2082,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .footer { grid-area: footer !important; }
             .no-print { display: none !important; }
             .header { padding-bottom: 2px !important; margin-bottom: 2px !important; border-bottom-width: 1px !important; }
-            .header-top img { max-height: 28px !important; max-width: 38px !important; }
+            .header-top { justify-content: flex-start !important; gap: 6px !important; }\n                        .header-top img { max-height: 28px !important; max-width: 38px !important; }
             .header .school { font-size: 12px !important; line-height: 1.1 !important; }
             .header .motto { font-size: 7px !important; }
             .header .subtitle { font-size: 10px !important; margin-top: 2px !important; padding: 2px 8px !important; letter-spacing: .5px !important; }
@@ -2141,6 +2141,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <div class="container">
         <!-- HEADER WITH SMALL VERIFICATION QR IN TOP-RIGHT CORNER -->
         <div class="transcript-top">
+            <div class="verification-qr" aria-label="Document verification QR code">
+                <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
+                <span>VERIFY</span>
+            </div>
             <div class="header">
             <div class="header-top">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
@@ -2151,10 +2155,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             </div>
             <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
             <div class="date">Generated: ${now}</div>
-            </div>
-            <div class="verification-qr" aria-label="Document verification QR code">
-                <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
-                <span>VERIFY</span>
             </div>
         </div>
         
@@ -2379,12 +2379,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "signatures signatures"
                     "footer footer" !important; align-items: stretch !important; column-gap: 7px !important; row-gap: 3px !important; }
                         .container { row-gap: 2px !important; }
-                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: minmax(0,1fr) 48px !important; gap: 4px !important; align-items: start !important; min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; }
+                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: 36px minmax(0,1fr) !important; gap: 5px !important; align-items: start !important; min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; }
                         .container > .transcript-top { align-self: start !important; }
                         .container > .transcript-top > .header { grid-area: auto !important; }
                         .transcript-top .header { grid-area: auto !important; margin: 0 !important; padding: 0 0 2px !important; min-width: 0 !important; border-bottom-width: 1px !important; }
-                        .verification-qr { grid-area: auto !important; width: 46px !important; padding: 2px !important; border: 1px solid #0A3D62 !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; }
-                        .verification-qr img { display: block !important; width: 38px !important; height: 38px !important; }
+                        .verification-qr { grid-area: auto !important; width: 34px !important; padding: 2px !important; border: 1px solid #0A3D62 !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; }
+                        .verification-qr img { display: block !important; width: 26px !important; height: 26px !important; }
                         .verification-qr span { font-size: 5px !important; }
                         .header { margin: 0 0 3px !important; padding: 0 0 5px !important; } 
                         .header h1 { font-size: 17px !important; line-height: 1.15 !important; }
