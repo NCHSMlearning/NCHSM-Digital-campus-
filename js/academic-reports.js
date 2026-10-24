@@ -278,6 +278,10 @@
         return div.innerHTML;
     }
 
+    // Safe fallback for legacy report templates that may reference the colour outside a row callback.
+    // Row renderers below still compute a specific colour from each published grade.
+    const gradeColor = '#64748b';
+
     function getGradeColor(grade) {
         const colors = {
             'A': '#10b981',
