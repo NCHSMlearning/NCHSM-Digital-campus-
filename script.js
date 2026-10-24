@@ -7920,7 +7920,7 @@ async function deleteProfile(userId, fullName, isRejection = false) {
     
     const action = isRejection ? 'Reject' : 'Delete';
     const message = isRejection
-        ? `Reject ${fullName}? Their account will be marked rejected and retained for audit; it will not be deleted.`
+        ? `Reject ${fullName}? This permanently deletes their pending profile record. Their authentication account will not be deleted by this action.`
         : `CRITICAL: Permanently delete profile and user ${fullName}?`;
     
     if (!confirm(`${action}: ${message}`)) return;
@@ -7928,29 +7928,44 @@ async function deleteProfile(userId, fullName, isRejection = false) {
     try {
         const supabase = getSb();
 
-        // REJECT is a status transition, not permanent deletion.
-        // Keep the profile and Auth account for audit/recovery, and remove it
-        // from the pending queue by changing status to "rejected".
+        // Reject permanently removes the pending profile record. The database
+        // RLS policy and delete guard allow this only for a signed-in superadmin.
         if (isRejection) {
-            const { data: rejectedProfile, error: rejectError } = await supabase
+            const { data: pendingProfile, error: fetchPendingError } = await supabase
                 .from(USER_PROFILE_TABLE)
-                .update({
-                    status: 'rejected',
-                    updated_at: new Date().toISOString()
-                })
+                .select('user_id, full_name, email')
                 .eq('user_id', userId)
                 .eq('status', 'pending')
-                .select('user_id, full_name, email')
                 .maybeSingle();
 
-            if (rejectError) {
-                console.error('❌ Error rejecting pending user:', rejectError);
-                showFeedback(`Failed to reject user: ${rejectError.message}`, 'error');
+            if (fetchPendingError) {
+                console.error('❌ Could not load pending profile before rejection:', fetchPendingError);
+                showFeedback(`Could not reject user: ${fetchPendingError.message}`, 'error');
                 return;
             }
 
-            if (!rejectedProfile) {
-                showFeedback('This account is no longer pending (or could not be updated). Refresh the list and try again.', 'warning');
+            if (!pendingProfile) {
+                showFeedback('This account is no longer pending or is not available. Refresh the list and try again.', 'warning');
+                await loadPendingApprovals();
+                return;
+            }
+
+            const { data: deletedProfile, error: rejectDeleteError } = await supabase
+                .from(USER_PROFILE_TABLE)
+                .delete()
+                .eq('user_id', userId)
+                .eq('status', 'pending')
+                .select('user_id')
+                .maybeSingle();
+
+            if (rejectDeleteError) {
+                console.error('❌ Error deleting rejected pending profile:', rejectDeleteError);
+                showFeedback(`Failed to reject/delete profile: ${rejectDeleteError.message}`, 'error');
+                return;
+            }
+
+            if (!deletedProfile) {
+                showFeedback('The pending profile was not deleted. Check your Super Admin permissions and refresh.', 'error');
                 await loadPendingApprovals();
                 return;
             }
@@ -7958,15 +7973,15 @@ async function deleteProfile(userId, fullName, isRejection = false) {
             try {
                 await logAudit(
                     'USER_REJECT',
-                    `Rejected pending user ${rejectedProfile.full_name || fullName}; profile retained with status rejected.`,
+                    `Rejected and deleted pending profile for ${pendingProfile.full_name || fullName} (${pendingProfile.email || 'no email'}). Authentication account was not deleted by this action.`,
                     userId,
                     'SUCCESS'
                 );
             } catch (auditError) {
-                console.warn('User was rejected, but audit logging failed:', auditError);
+                console.warn('Profile was deleted, but audit logging failed:', auditError);
             }
 
-            showFeedback(`User ${rejectedProfile.full_name || fullName} rejected. Their profile was retained for audit purposes.`, 'success');
+            showFeedback(`Pending profile for ${pendingProfile.full_name || fullName} was rejected and deleted.`, 'success');
 
             await Promise.allSettled([
                 loadPendingApprovals(),
