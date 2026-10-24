@@ -4050,6 +4050,9 @@ class SecureFaceProctor {
         };
         this.state = {
             consecutiveLost: 0,
+            detectionErrors: 0,
+            headTurnStartedAt: 0,
+            cameraRecoveryShown: false,
             faceConfirmations: 0,
             lastFaceCount: 0,
             totalViolations: 0,
@@ -4109,21 +4112,33 @@ class SecureFaceProctor {
             if (this.state.isSubmitting || !this.video) return;
 
             const stream = this.video.srcObject;
-            if (!stream) return;
-
-            const tracks = typeof stream.getVideoTracks === 'function' ? stream.getVideoTracks() : [];
-            if (tracks.length && tracks.every(track => track.readyState === 'ended')) {
-                this.showCameraRecoveryState('Camera connection was lost.');
+            if (!stream) {
+                this.showCameraRecoveryState('Camera stream is unavailable.');
                 return;
             }
-
+            const tracks = typeof stream.getVideoTracks === 'function' ? stream.getVideoTracks() : [];
+            if (!tracks.length || tracks.every(track => track.readyState === 'ended' || track.enabled === false)) {
+                this.showCameraRecoveryState('Camera connection was lost or disabled.');
+                return;
+            }
+            if (this.video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !this.video.videoWidth || !this.video.videoHeight) {
+                this.showCameraRecoveryState('Camera is not providing a live video feed.');
+                return;
+            }
             try {
                 const detections = await fastDetectFace(this.video);
+                if (!detections) {
+                    this.state.detectionErrors++;
+                    if (this.state.detectionErrors >= 4) this.showCameraRecoveryState('Face detection is temporarily unavailable. Retry the camera.');
+                    return;
+                }
+                this.state.detectionErrors = 0;
                 this.drawDetections(detections);
-                const faceCount = detections ? detections.length : 0;
-                this.handleDetectionResult(faceCount, detections);
+                this.handleDetectionResult(detections.length, detections);
             } catch (error) {
+                this.state.detectionErrors++;
                 console.warn('Face detection frame error:', error);
+                if (this.state.detectionErrors >= 4) this.showCameraRecoveryState('Face detection failed repeatedly. Retry the camera.');
             }
         }, this.config.DETECTION_INTERVAL);
     }
@@ -4184,6 +4199,10 @@ class SecureFaceProctor {
 
     showCameraRecoveryState(reason = 'Camera connection interrupted.') {
         if (this.state.isSubmitting) return;
+        if (this.state.cameraRecoveryShown) return;
+        this.state.cameraRecoveryShown = true;
+        this.state.isPaused = true;
+        logProctoringEvent('camera_connection_lost', reason, 'critical');
 
         updateCameraStatus('danger', '📷 Camera unavailable - recovery required', '0 faces');
 
@@ -4239,6 +4258,7 @@ class SecureFaceProctor {
                 this.state.faceConfirmations = 0;
                 this.state.consecutiveLost++;
                 this.state.faceStable = false;
+                if (!this.state.headTurnStartedAt) this.state.headTurnStartedAt = Date.now();
                 const direction = {
                     head_turned_left: 'turned left',
                     head_turned_right: 'turned right',
@@ -4246,11 +4266,10 @@ class SecureFaceProctor {
                     head_tilted_down: 'looking down'
                 }[pose.reason] || 'not facing the camera';
                 updateCameraStatus('warning', `⚠️ Head ${direction}`, 'Face turned');
-                if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) {
-                    this.handleViolation();
-                }
+                if (Date.now() - this.state.headTurnStartedAt >= 2500 || this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) this.handleViolation();
                 return;
             }
+            this.state.headTurnStartedAt = 0;
             this.state.lastFaceCount = 1;
             this.state.faceConfirmations = Math.min(
                 this.state.faceConfirmations + 1,
@@ -4272,6 +4291,7 @@ class SecureFaceProctor {
         }
 
         if (faceCount > 1) {
+            this.state.headTurnStartedAt = 0;
             this.state.lastFaceCount = faceCount;
             this.state.faceConfirmations = 0;
             this.state.consecutiveLost++;
@@ -4287,6 +4307,7 @@ class SecureFaceProctor {
             return;
         }
 
+        this.state.headTurnStartedAt = 0;
         this.state.lastFaceCount = 0;
         this.state.faceConfirmations = 0;
         this.state.consecutiveLost++;
@@ -4608,6 +4629,8 @@ retryCamera() {
                     }
 
                     if (oneFaceHits >= 2) {
+                        this.state.cameraRecoveryShown = false;
+                        this.state.isPaused = false;
                         console.log('✅ Stable face detected after retry');
                         this.state.faceConfirmations = this.config.FACE_CONFIRMATIONS_REQUIRED;
                         this.state.consecutiveLost = 0;
@@ -4705,6 +4728,12 @@ retryCamera() {
             clearInterval(this.state.detectionInterval);
             this.state.detectionInterval = null;
         }
+        if (this.phoneDetectionInterval) {
+            clearInterval(this.phoneDetectionInterval);
+            this.phoneDetectionInterval = null;
+        }
+        this.phoneDetectionStarted = false;
+        this.phoneModel = null;
         if (this.state.recoveryTimerId) {
             clearInterval(this.state.recoveryTimerId);
             this.state.recoveryTimerId = null;
