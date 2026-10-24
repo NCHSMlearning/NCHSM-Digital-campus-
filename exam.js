@@ -360,6 +360,7 @@ async function fastDetectFace(videoElement) {
 const EXAM_TAB_LOCK_PREFIX = 'nchsm_active_exam_tab_';
 let examTabLockKey = null;
 let examTabLockToken = null;
+let examTabPageInstance = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'page-' + Date.now() + '-' + Math.random().toString(36).slice(2);
 let examTabLockHeartbeat = null;
 let examTabChannel = null;
 let examTabBlocked = false;
@@ -396,17 +397,25 @@ function claimSingleExamTab() {
         const now = Date.now();
         let current = null;
         try { current = JSON.parse(localStorage.getItem(examTabLockKey) || 'null'); } catch (_) {}
-        if (current && current.token !== examTabLockToken && now - Number(current.lastSeen || 0) < 12000) {
+        if (current && now - Number(current.lastSeen || 0) < 12000 &&
+            current.pageInstance && current.pageInstance !== examTabPageInstance &&
+            current.token !== examTabLockToken) {
             showDuplicateExamTabBlock();
             return false;
         }
-        localStorage.setItem(examTabLockKey, JSON.stringify({ token: examTabLockToken, lastSeen: now, studentId: String(AppState.studentId), examId: String(AppState.examId) }));
+        localStorage.setItem(examTabLockKey, JSON.stringify({ token: examTabLockToken, pageInstance: examTabPageInstance, lastSeen: now, studentId: String(AppState.studentId), examId: String(AppState.examId) }));
         if ('BroadcastChannel' in window) {
             examTabChannel = new BroadcastChannel('nchsm_exam_tab_guard');
             examTabChannel.onmessage = (event) => {
                 const data = event.data || {};
-                if (data.key === examTabLockKey && data.token !== examTabLockToken && data.type === 'claim') {
-                    showDuplicateExamTabBlock();
+                if (data.key === examTabLockKey && data.pageInstance !== examTabPageInstance && data.type === 'claim') {
+                    // Duplicated browser tabs can clone sessionStorage. A deterministic tie-break
+                    // ensures exactly one tab remains active even when both copied the same token.
+                    if (String(examTabPageInstance) > String(data.pageInstance)) {
+                        showDuplicateExamTabBlock();
+                    } else {
+                        try { localStorage.setItem(examTabLockKey, JSON.stringify({ token: examTabLockToken, pageInstance: examTabPageInstance, lastSeen: Date.now(), studentId: String(AppState.studentId), examId: String(AppState.examId) })); } catch (_) {}
+                    }
                 }
             };
             examTabChannel.postMessage({ type: 'claim', key: examTabLockKey, token: examTabLockToken });
@@ -416,11 +425,12 @@ function claimSingleExamTab() {
             if (examTabBlocked) return;
             try {
                 const lock = JSON.parse(localStorage.getItem(examTabLockKey) || 'null');
-                if (lock && lock.token !== examTabLockToken && Date.now() - Number(lock.lastSeen || 0) < 12000) {
+                if (lock && lock.pageInstance && lock.pageInstance !== examTabPageInstance && Date.now() - Number(lock.lastSeen || 0) < 12000 &&
+                    String(examTabPageInstance) > String(lock.pageInstance)) {
                     showDuplicateExamTabBlock();
                     return;
                 }
-                localStorage.setItem(examTabLockKey, JSON.stringify({ token: examTabLockToken, lastSeen: Date.now(), studentId: String(AppState.studentId), examId: String(AppState.examId) }));
+                localStorage.setItem(examTabLockKey, JSON.stringify({ token: examTabLockToken, pageInstance: examTabPageInstance, lastSeen: Date.now(), studentId: String(AppState.studentId), examId: String(AppState.examId) }));
             } catch (_) {}
         }, 3000);
         return true;
