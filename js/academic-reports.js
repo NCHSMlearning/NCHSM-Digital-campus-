@@ -2332,11 +2332,20 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         printWindow.print();
                         return;
                     }
-                    const generateTranscriptPdf = () => {
+                    const generateTranscriptPdf = async () => {
                     if (!printWindow || printWindow.closed) return;
+                    // Wait for the QR code to finish rendering before capturing the PDF.
+                    const qrImage = printWindow.document.getElementById('transcriptVerificationQr');
+                    if (qrImage && qrImage.style.display !== 'none' && !qrImage.complete) {
+                        await new Promise(resolve => {
+                            qrImage.addEventListener('load', resolve, { once: true });
+                            qrImage.addEventListener('error', resolve, { once: true });
+                            setTimeout(resolve, 2500);
+                        });
+                    }
                     const downloadStyle = printWindow.document.createElement('style');
                     downloadStyle.textContent = `
-                        @page { size: A4 landscape; margin: 4mm; }
+                        @page { size: A4 portrait; margin: 6mm; }
                         * { box-sizing: border-box !important; }
                         html, body { width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
                         body { font-size: 9px !important; }
@@ -2381,7 +2390,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .declaration { grid-area: declaration !important; min-width: 0 !important; margin: 3px 0 !important; padding: 5px 7px !important; font-size: 8px !important; line-height: 1.2 !important; }
                         .signatures { grid-area: signatures !important; min-width: 0 !important; margin: 2px 0 !important; padding-top: 4px !important; gap: 12px !important; }
                         .signature-box .line { margin: 4px auto 1px !important; }
-                        .verification-qr { grid-area: verification !important; justify-self: center !important; margin: 2px auto !important; }\n                        .verification-qr img { width: 42px !important; height: 42px !important; }\n                        .footer { grid-area: footer !important; margin: 2px 0 0 !important; padding-top: 4px !important; font-size: 7px !important; }
+                        .verification-qr { grid-area: verification !important; justify-self: center !important; margin: 2px auto !important; }\n                        .verification-qr img { width: 42px !important; height: 42px !important; }\n                        .verification-qr { grid-area: verification !important; display: flex !important; align-items: center !important; justify-content: center !important; min-height: 48px !important; }\n                        .verification-qr img { display: block !important; width: 42px !important; height: 42px !important; object-fit: contain !important; }\n                        .footer { grid-area: footer !important; margin: 2px 0 0 !important; padding-top: 4px !important; font-size: 7px !important; }
                         .no-print, .btn-print, .btn-close { display: none !important; }
                         .container, .header, .student-info-wrapper, .semester-results-title, .chart-container, .summary-grid, .grading-scale-table, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                     `;
@@ -2407,8 +2416,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                     const options = {
-                        // html2pdf.js requires margins in top, left, bottom, right order; use a numeric margin for broad mobile-version compatibility.
-                        margin: 4,
+                        // Capture at portrait A4 CSS width and retain the QR image before PDF serialization.
+                        margin: 6,
                         filename: fileBase + '.pdf',
                         image: { type: 'jpeg', quality: 0.98 },
                         html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, width: 794 },
