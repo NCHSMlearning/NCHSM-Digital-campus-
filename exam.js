@@ -1416,20 +1416,18 @@ async function initExam() {
 
         const qResult = await sb
             .from('exam_questions')
-            .select('*')
+            .select('id, exam_id, question_number, question_text, option_a, option_b, option_c, option_d, option_e, question_type, marks, max_chars, max_characters, image_url, difficulty_level')
             .eq('exam_id', parseInt(AppState.examId))
             .order('question_number');
 
         if (qResult.data && qResult.data.length > 0) {
             AppState.questions = qResult.data;
 
-            // ✅ Populate lookup maps BEFORE shuffling, so scoring always works
-            //    regardless of question order. saveAnswerToDatabase() reads
-            //    these to write real marks as soon as the student answers.
+            // Correct answers are deliberately never loaded into the student browser.
+            // The database grades the submitted answers in submit_exam_attempt_secure().
             AppState.correctAnswerMap = {};
             AppState.questionMarksMap = {};
             AppState.questions.forEach(q => {
-                AppState.correctAnswerMap[q.id] = q.correct_answer;
                 AppState.questionMarksMap[q.id] = Number(q.marks) || 1;
             });
 
@@ -1918,22 +1916,12 @@ async function saveAnswerToDatabase(questionId, answer) {
             throw new Error('No active exam attempt');
         }
 
-        // ✅ Look up the correct answer and mark value for this question.
-        // These maps are built once in initExam() right after questions load.
-        const correctAnswer = AppState.correctAnswerMap?.[questionId] ?? null;
-        const questionMark  = AppState.questionMarksMap?.[questionId] ?? 1;
-
-        const isCorrect = answer != null
-                       && correctAnswer != null
-                       && String(answer) === String(correctAnswer);
-
-        const earned = isCorrect ? questionMark : 0;
-
+        // Persist the selected response only. Scoring is server-side at submission.
         await upsertAttemptGrade({
             question_id: questionId,
             selected_answer: answer,
-            marks: earned,                // ✅ real mark, not 0
-            graded_at: new Date().toISOString(),
+            marks: 0,
+            graded_at: null,
             updated_at: new Date().toISOString()
         });
     } catch (e) {
@@ -2972,126 +2960,50 @@ async function saveAllAnswersToDatabase() {
     const total = answerEntries.length;
     const now = new Date().toISOString();
 
-    // ✅ Score each answer here too. This replaces the previous `marks: 0`
-    //    which erased what saveAnswerToDatabase() had already written.
-    //    If the student crashes mid-submit, the DB keeps real marks.
-    const rows = answerEntries.map(([questionId, answer]) => {
-        const correctAnswer = AppState.correctAnswerMap?.[questionId] ?? null;
-        const questionMark  = AppState.questionMarksMap?.[questionId] ?? 1;
+    // Save responses only. The answer key and marks remain on the server.
+    const rows = answerEntries.map(([questionId, answer]) => ({
+        question_id: questionId,
+        selected_answer: answer,
+        marks: 0,
+        graded_at: null,
+        updated_at: now
+    }));
 
-        const isCorrect = answer != null
-                       && correctAnswer != null
-                       && String(answer) === String(correctAnswer);
+    if (total > 0) await bulkUpsertAttemptGrades(rows, 20, 45);
 
-        const earned = isCorrect ? questionMark : 0;
-
-        return {
-            question_id: questionId,
-            selected_answer: answer,
-            marks: earned,                 // ✅ real mark, not 0
-            graded_at: now,
-            updated_at: now
-        };
-    });
-
-    if (total > 0) {
-        await bulkUpsertAttemptGrades(rows, 20, 45);
-    }
-
-    // Drafts have now been included in the bulk write, so it is safe to clear them.
     if (Array.isArray(AppState.pendingSubmissionDraftKeys)) {
         AppState.pendingSubmissionDraftKeys.forEach(key => localStorage.removeItem(key));
         AppState.pendingSubmissionDraftKeys = [];
     }
 
-    console.log('✅ Saved ' + total + '/' + total + ` answers for Attempt ${AppState.attemptNumber} using bulk upsert (with marks)`);
+    console.log('Saved ' + total + ' responses for attempt ' + AppState.attemptNumber);
     return total;
 }
 async function calculateAndSaveGrade() {
-    try {
-        if (!AppState.attemptId) throw new Error('No active exam attempt');
+    if (!AppState.attemptId) throw new Error('No active exam attempt');
+    const answers = {};
+    Object.entries(AppState.answers || {}).forEach(([questionId, answer]) => {
+        answers[String(questionId)] = answer == null ? '' : String(answer);
+    });
 
-        const qResult = await sb.from('exam_questions')
-            .select('id, correct_answer, marks')
-            .eq('exam_id', parseInt(AppState.examId));
-
-        if (qResult.error) throw qResult.error;
-        const questionsData = qResult.data;
-        if (!questionsData || questionsData.length === 0) throw new Error('No questions found');
-
-        let totalEarned = 0;
-        let totalPossible = 0;
-        let correctCount = 0;
-        let wrongCount = 0;
-        const now = new Date().toISOString();
-        const gradeRows = [];
-
-        // Recalculate every question from scratch locally, then write all rows in bulk.
-        for (const q of questionsData) {
-            const marks = Number(q.marks) || 1;
-            totalPossible += marks;
-            const studentAnswer = AppState.answers[q.id];
-            const isCorrect = studentAnswer != null && studentAnswer === q.correct_answer;
-            const earned = isCorrect ? marks : 0;
-            totalEarned += earned;
-            if (isCorrect) correctCount++; else wrongCount++;
-
-            gradeRows.push({
-                question_id: q.id,
-                selected_answer: studentAnswer || null,
-                marks: earned,
-                graded_at: now,
-                updated_at: now
-            });
-        }
-
-        // Question rows occupy 45–75% of the visible submission progress.
-        await bulkUpsertAttemptGrades(gradeRows, 45, 75);
-
-        const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
-        const resultStatus = 'PENDING_REVIEW';
-
-        // Sentinel/summary row. Keep this as a separate write because it uses the
-        // zero UUID and carries the attempt-level result information.
-        await upsertAttemptGrade({
-            question_id: '00000000-0000-0000-0000-000000000000',
-            marks: totalEarned,
-            total_score: totalEarned,
-            percentage: percentage,
-            result_status: resultStatus,
-            completed: true,
-            graded_at: now,
-            updated_at: now,
-            retake_unlocked: false,
-            retake_count: AppState.attemptNumber,
-            reset_count: AppState.isRetake ? AppState.retakeCount : 0
-        });
-        setSubmissionProgressValue(82);
-        await yieldToBrowser();
-
-        const { error: attemptError } = await sb
-            .from('exam_attempts')
-            .update({
-                status: resultStatus,
-                submitted_at: now,
-                score: totalEarned,
-                percentage: percentage,
-                total_marks: totalPossible,
-                updated_at: now
-            })
-            .eq('id', AppState.attemptId);
-
-        if (attemptError) throw attemptError;
-
-        setSubmissionProgressValue(90);
-        await yieldToBrowser();
-        console.log(`✅ Attempt ${AppState.attemptNumber} graded: ${totalEarned}/${totalPossible} (${percentage.toFixed(2)}%)`);
-        return { totalEarned, totalPossible, percentage, correctCount, wrongCount, resultStatus };
-
-    } catch (error) {
-        console.error('❌ Error calculating grade:', error);
+    const { data, error } = await sb.rpc('submit_exam_attempt_secure', {
+        p_student_id: AppState.studentId,
+        p_exam_id: parseInt(AppState.examId, 10),
+        p_attempt_id: AppState.attemptId,
+        p_answers: answers,
+        p_attempt_number: Number(AppState.attemptNumber) || 1,
+        p_is_retake: AppState.isRetake === true,
+        p_retake_count: Number(AppState.retakeCount) || 0
+    });
+    if (error) {
+        console.error('Server-side exam grading failed:', error);
         throw error;
     }
+    if (!data || typeof data !== 'object') throw new Error('The server did not return a submission result');
+    setSubmissionProgressValue(90);
+    await yieldToBrowser();
+    console.log('Exam graded securely by server:', data);
+    return data;
 }
 
 // ============================================================
