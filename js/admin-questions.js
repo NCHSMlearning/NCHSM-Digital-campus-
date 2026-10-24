@@ -104,11 +104,12 @@ async function loadQuestionsForExam() {
         }
         if (table) table.style.display = 'none';
 
-        const { data, error } = await window.supabase
-            .from('exam_questions')
-            .select('*')
-            .eq('exam_id', parseInt(examId))
-            .order('question_number', { ascending: true });
+        // Answer keys are intentionally unavailable through direct table SELECT.
+        // Use the authenticated staff-only RPC to retrieve the full question bank.
+        const { data, error } = await window.supabase.rpc(
+            'get_exam_questions_for_staff',
+            { p_exam_id: parseInt(examId, 10) }
+        );
 
         if (error) throw error;
 
@@ -270,11 +271,12 @@ function openAddQuestion() {
 async function editQuestion(questionId) {
     console.log('📝 editQuestion called for:', questionId);
     try {
-        const { data, error } = await window.supabase
-            .from('exam_questions')
-            .select('*')
-            .eq('id', questionId)
-            .single();
+        const { data: questionRows, error } = await window.supabase.rpc(
+            'get_exam_questions_for_staff',
+            { p_exam_id: parseInt(currentQuestionExamId || document.getElementById('questionExamId')?.value, 10) }
+        );
+        const data = (questionRows || []).find(question => String(question.id) === String(questionId));
+        if (!error && !data) throw new Error('Question not found in the selected exam.');
 
         if (error) throw error;
 
@@ -947,11 +949,20 @@ function updatePendingStats(questions) {
 // ============================================================
 async function viewQuestionDetail(questionId) {
     try {
-        const { data, error } = await window.supabase
-            .from('exam_questions')
-            .select('*, exams(title, exam_name)')
-            .eq('id', questionId)
-            .single();
+        const questionExamId = currentQuestionExamId || document.getElementById('questionExamId')?.value;
+        const { data: questionRows, error } = await window.supabase.rpc(
+            'get_exam_questions_for_staff',
+            { p_exam_id: parseInt(questionExamId, 10) }
+        );
+        if (error) throw error;
+        const data = (questionRows || []).find(question => String(question.id) === String(questionId));
+        if (!data) throw new Error('Question not found in the selected exam.');
+        const { data: examMeta } = await window.supabase
+            .from('exams')
+            .select('title, exam_name')
+            .eq('id', questionExamId)
+            .maybeSingle();
+        data.exams = examMeta || {};
 
         if (error) throw error;
 
