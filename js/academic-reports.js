@@ -1925,6 +1925,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <meta charset="UTF-8">
     <title>Provisional Academic Transcript - ${escapeHtml(user.full_name || 'Student')}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4 portrait; margin: 8mm 10mm; }
@@ -2286,7 +2287,40 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 </html>
                 `);
                 printWindow.document.close();
-                setTimeout(() => { printWindow.print(); }, 800);
+                // Download must save a real A4 landscape PDF; only the separate Print action opens print preview.
+                setTimeout(() => {
+                    const target = printWindow.document.querySelector('.container');
+                    if (!target || typeof printWindow.html2pdf !== 'function') {
+                        printWindow.close();
+                        alert('Automatic PDF download could not load. Please check your internet connection and try again.');
+                        return;
+                    }
+                    const downloadStyle = printWindow.document.createElement('style');
+                    downloadStyle.textContent = `
+                        body { width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                        .container { box-sizing: border-box !important; width: 1123px !important; max-width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 8px 10px !important; border-radius: 0 !important; box-shadow: none !important; }
+                        .container { display: grid !important; grid-template-columns: minmax(0,1.18fr) minmax(0,.92fr) minmax(0,1.18fr) !important; grid-template-areas: "header header header" "student student student" "results-title results-title results-title" "results-table results-table results-table" "chart summary grading" "chart declaration declaration" "chart signatures signatures" "footer footer footer" !important; align-items: start !important; column-gap: 8px !important; row-gap: 4px !important; }
+                        .header { grid-area: header !important; } .student-info-wrapper { grid-area: student !important; } .semester-results-title { grid-area: results-title !important; } table.semester-results-table { grid-area: results-table !important; } .chart-container { grid-area: chart !important; min-width: 0 !important; align-self: stretch !important; margin: 0 !important; } .summary-grid { grid-area: summary !important; display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 4px !important; margin: 0 !important; } .grading-scale-table { grid-area: grading !important; min-width: 0 !important; margin: 0 !important; } .declaration { grid-area: declaration !important; min-width: 0 !important; } .signatures { grid-area: signatures !important; min-width: 0 !important; } .footer { grid-area: footer !important; }
+                        table.semester-results-table { width: 100% !important; table-layout: fixed !important; } .chart-container canvas { width: 100% !important; height: 145px !important; max-height: 145px !important; }
+                    `;
+                    printWindow.document.head.appendChild(downloadStyle);
+                    const fileBase = 'Provisional-Academic-Transcript-' + ${JSON.stringify(String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, ''))};
+                    const options = {
+                        margin: [4, 4, 4, 4],
+                        filename: fileBase + '.pdf',
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 1123, scrollX: 0, scrollY: 0 },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true },
+                        pagebreak: { mode: ['css', 'legacy'] }
+                    };
+                    printWindow.html2pdf().set(options).from(target).save()
+                        .then(() => { printWindow.close(); })
+                        .catch(error => {
+                            console.error('PDF download failed:', error);
+                            printWindow.close();
+                            alert('PDF download failed. Please try again or use Print / Save as PDF.');
+                        });
+                }, 1400);
             } else {
                 alert('Please allow popups to download the semester report.');
             }
