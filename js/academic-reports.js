@@ -1729,7 +1729,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             
             const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
             // Adjust print typography to the actual number of units; no fixed unit limit.
-            const printUnitFontSize = marks.length <= 10 ? 14 : marks.length <= 16 ? 12 : marks.length <= 22 ? 10 : 9;
+            const printUnitFontSize = marks.length <= 4 ? 15 : marks.length <= 8 ? 14 : marks.length <= 14 ? 12 : marks.length <= 22 ? 10 : 9;
+            const printRowVerticalPadding = marks.length <= 2 ? 7 : marks.length <= 4 ? 5 : marks.length <= 8 ? 4 : marks.length <= 14 ? 2 : 1;
+            const printSectionSpacing = marks.length <= 4 ? 5 : marks.length <= 8 ? 4 : 2;
             
             // ✅ Build table rows - ☆ star next to unit name, ALL BORDERS
             let tableRows = '';
@@ -2044,11 +2046,13 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .semester-results-title { font-size: 9px !important; line-height: 1.1 !important; padding: 3px 6px !important; margin-bottom: 1px !important; background: #0A3D62 !important; color: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             table.semester-results-table { width: 100% !important; table-layout: fixed !important; font-size: 8px !important; margin: 0 !important; }
             table.semester-results-table thead th { font-size: 7px !important; line-height: 1 !important; padding: 2px 3px !important; }
-            table.semester-results-table tbody td { font-size: 8px !important; line-height: 1.02 !important; padding: 2px 3px !important; }
-            table.semester-results-table tbody td:nth-child(3) { font-size: ${printUnitFontSize}px !important; line-height: 1.02 !important; overflow-wrap: anywhere !important; padding-top: 1px !important; padding-bottom: 1px !important; }
+            table.semester-results-table tbody td { font-size: 8px !important; line-height: 1.08 !important; padding: ${printRowVerticalPadding}px 3px !important; }
+            table.semester-results-table tbody td:nth-child(3) { font-size: ${printUnitFontSize}px !important; line-height: 1.02 !important; overflow-wrap: anywhere !important; padding-top: ${printRowVerticalPadding}px !important; padding-bottom: ${printRowVerticalPadding}px !important; }
             table.semester-results-table tbody td:nth-child(6) { font-size: 7px !important; }
-            .summary-grid { gap: 3px !important; margin: 3px 0 !important; }
-            .summary-card { padding: 2px !important; }
+            .summary-grid { gap: ${printSectionSpacing}px !important; margin: ${printSectionSpacing}px 0 !important; }
+            .summary-card { padding: ${marks.length <= 4 ? 5 : marks.length <= 8 ? 3 : 2}px !important; }
+            .grading-scale-table { padding: 2px !important; margin: ${printSectionSpacing}px 0 !important; }
+            .chart-container { margin: ${printSectionSpacing}px 0 !important; }
             .summary-card .value { font-size: 11px !important; line-height: 1 !important; }
             .summary-card .label { font-size: 6px !important; line-height: 1 !important; }
             .grading-scale-table { padding: 2px !important; margin: 2px 0 !important; }
