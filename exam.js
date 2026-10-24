@@ -1516,7 +1516,7 @@ async function initExam() {
 
         const qResult = await sb
             .from('exam_questions')
-            .select('id, exam_id, question_number, question_text, option_a, option_b, option_c, option_d, option_e, question_type, marks, max_chars, image_url, difficulty_level')
+            .select('id, exam_id, question_number, question_text, option_a, option_b, option_c, option_d, option_e, question_type, marks, max_chars, image_url')
             .eq('exam_id', parseInt(AppState.examId))
             .order('question_number');
 
@@ -2011,27 +2011,17 @@ async function upsertAttemptGrade(payload) {
 }
 
 async function saveAnswerToDatabase(questionId, answer) {
-    try {
-        if (!AppState.attemptId) {
-            throw new Error('No active exam attempt');
-        }
-
-        // Persist the selected response only. Scoring is server-side at submission.
-        await upsertAttemptGrade({
-            question_id: questionId,
-            selected_answer: answer,
-            marks: 0,
-            graded_at: null,
-            updated_at: new Date().toISOString()
-        });
-    } catch (e) {
-        console.warn('⚠️ Save failed, saving locally:', e);
-        saveToLocalStorage(`draft_${questionId}`, {
-            answer,
-            timestamp: Date.now(),
-            attemptId: AppState.attemptId
-        });
-    }
+    // Answers are held locally while the exam is in progress. Direct browser
+    // writes to exam_grades are intentionally disabled; the authenticated,
+    // server-side submit_exam_attempt_secure RPC persists and grades them.
+    if (!AppState.attemptId) throw new Error('No active exam attempt');
+    const saved = saveToLocalStorage(`draft_${questionId}`, {
+        answer: answer == null ? '' : String(answer),
+        timestamp: Date.now(),
+        attemptId: AppState.attemptId
+    });
+    if (!saved) throw new Error('Could not save answer locally. Check browser storage.');
+    return true;
 }
 async function loadSavedAnswers() {
     try {
@@ -3055,28 +3045,12 @@ function yieldToBrowser() {
 // ============================================================
 async function saveAllAnswersToDatabase() {
     if (!AppState.attemptId) throw new Error('No active exam attempt');
-
-    const answerEntries = Object.entries(AppState.answers);
-    const total = answerEntries.length;
-    const now = new Date().toISOString();
-
-    // Save responses only. The answer key and marks remain on the server.
-    const rows = answerEntries.map(([questionId, answer]) => ({
-        question_id: questionId,
-        selected_answer: answer,
-        marks: 0,
-        graded_at: null,
-        updated_at: now
-    }));
-
-    if (total > 0) await bulkUpsertAttemptGrades(rows, 20, 45);
-
-    if (Array.isArray(AppState.pendingSubmissionDraftKeys)) {
-        AppState.pendingSubmissionDraftKeys.forEach(key => localStorage.removeItem(key));
-        AppState.pendingSubmissionDraftKeys = [];
-    }
-
-    console.log('Saved ' + total + ' responses for attempt ' + AppState.attemptNumber);
+    // No direct exam_grades writes: the secure submission RPC stores answers
+    // and grades MCQs on the server in one validated operation.
+    const total = Object.keys(AppState.answers || {}).length;
+    setSubmissionProgressValue(45);
+    await yieldToBrowser();
+    console.log('Prepared ' + total + ' responses for secure server submission.');
     return total;
 }
 async function calculateAndSaveGrade() {
@@ -4775,7 +4749,7 @@ function setupExamEventListeners() {
 // ============================================================
 // INITIALIZATION
 // ============================================================
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     if (!document.getElementById('nchsm-timer-force-contrast')) {
         const s = document.createElement('style');
         s.id = 'nchsm-timer-force-contrast';
@@ -4807,25 +4781,20 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ exam.js loaded with Retake/Continuation support');
     
     const params = new URLSearchParams(window.location.search);
-    let studentId = params.get('user_id') || localStorage.getItem('currentUserId');
-    
-    // ✅ FIX: Try to get student ID from userProfile if missing
-    if (!studentId) {
-        const userProfile = localStorage.getItem('userProfile');
-        if (userProfile) {
-            try {
-                const profile = JSON.parse(userProfile);
-                if (profile.user_id) {
-                    studentId = profile.user_id;
-                    localStorage.setItem('currentUserId', studentId);
-                    console.log('✅ Found student ID from userProfile:', studentId);
-                }
-            } catch (e) {
-                console.warn('Could not parse userProfile:', e);
-            }
-        }
+    // Never trust user_id from the URL, localStorage, or a cached profile.
+    // The verified Supabase Auth session is the sole source of student identity.
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    const authUser = sessionData && sessionData.session && sessionData.session.user;
+    if (sessionError || !authUser || !authUser.id) {
+        console.warn('No verified Supabase session; returning to student sign-in.');
+        window.location.replace('student-login.html');
+        return;
     }
-    
+    const studentId = authUser.id;
+    const urlStudentId = params.get('user_id');
+    if (urlStudentId && urlStudentId !== studentId) {
+        console.warn('URL student ID does not match authenticated account; ignoring URL identity.');
+    }
     AppState.studentId = studentId;
     AppState.examId = params.get('exam_id');
     retakeRequestedByUrl = params.get('retake') === 'true';
@@ -4840,6 +4809,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
+    // Keep this value only as a compatibility hint for older pages; never use it for authorization.
     localStorage.setItem('currentUserId', AppState.studentId);
 
     if (!AppState.examId) {
@@ -4855,7 +4825,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const storedExamId = sessionStorage.getItem('examId');
         const storedStudentId = sessionStorage.getItem('studentId');
         if (storedExamId && storedStudentId) {
-            window.location.href = `exam.html?user_id=${storedStudentId}&exam_id=${storedExamId}`;
+            window.location.href = `exam.html?exam_id=${encodeURIComponent(storedExamId)}`;
             return;
         }
     }
