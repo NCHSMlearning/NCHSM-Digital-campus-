@@ -12,7 +12,7 @@ const CONFIG = {
     MAX_BLUR_COUNT: 3,
     MAX_TAB_SWITCHES: 2,
     MAX_TIME_PER_QUESTION: 120,
-    CONSECUTIVE_FACE_LOST_LIMIT: 6,
+    CONSECUTIVE_FACE_LOST_LIMIT: 3, // Lock exam after ~1.5 seconds without a detectable face
     TOTAL_VIOLATIONS_LIMIT: 6,
     RECOVERY_TIMER_SECONDS: 10,
     RETRY_COOLDOWN_SECONDS: 10,
@@ -4083,7 +4083,7 @@ class SecureFaceProctor {
             this.state.faceConfirmations = 0;
             this.state.consecutiveLost++;
             this.state.faceStable = false;
-            updateCameraStatus('warning', `⚠️ Multiple faces (${faceCount})`, `${faceCount} faces`);
+            updateCameraStatus('warning', `⚠️ Multiple people detected (${faceCount})`, `${faceCount} faces`);
             this.showMultipleFacesWarning(faceCount);
             if (this.state.multipleFacesStartTime === 0) {
                 this.state.multipleFacesStartTime = Date.now();
@@ -4106,7 +4106,7 @@ class SecureFaceProctor {
             updateCameraStatus('warning', `⏳ Face still lost (${this.state.remainingTime || 0}s remaining)`, '0 faces');
             return;
         }
-        updateCameraStatus('warning', `⚠️ Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
+        updateCameraStatus('warning', `⚠️ Face not visible / turned away (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
         if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) this.handleViolation();
     }
     
@@ -4163,10 +4163,16 @@ class SecureFaceProctor {
 
         this.callbacks.onViolation?.(
             count,
-            `⚠️ Face not detected (${count}/5). Please return to the camera and improve lighting.`
+            `⚠️ WARNING ${count}/${limit}: Your face is not clearly visible or may be turned away. The exam is locked until you face the camera again.`
+        );
+        // Record a distinct, auditable warning for the proctor/admin dashboard.
+        logProctoringEvent(
+            'face_not_visible_lock',
+            `Exam locked because the student's face was not visible or appeared turned away. Warning ${count}/${limit}.`,
+            'warning'
         );
 
-        // Every one of the five recovery opportunities gets the full 20 seconds.
+        // Pause/lock immediately; recovery time is only for returning to camera.
         this.pauseExam(this.config.RECOVERY_TIMER_SECONDS);
     }
 
@@ -4184,7 +4190,7 @@ class SecureFaceProctor {
         AppState.isExamPaused = true;
         this.state.remainingTime = seconds;
         
-        this.callbacks.onPause?.(`Face not detected — recovery opportunity ${this.state.totalViolations}/5. Please return to the camera and improve lighting.`, seconds);
+        this.callbacks.onPause?.(`EXAM LOCKED: Face not visible or turned away. Warning ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}. Face the camera to resume.`, seconds);
         
         if (DOM.faceRecoveryCountdown) {
             DOM.faceRecoveryCountdown.textContent = seconds;
