@@ -126,8 +126,8 @@
             if (error) throw error;
             
             unitCodeCache = {};
-            data.forEach(item => {
-                unitCodeCache[item.unit_name] = item.unit_code;
+            (data || []).forEach(item => {
+                if (item.unit_name && item.unit_code) unitCodeCache[item.unit_name] = item.unit_code;
             });
             
             console.log(`📊 Cached ${Object.keys(unitCodeCache).length} unit codes`);
@@ -395,8 +395,14 @@
         if (!Array.isArray(marks) || marks.length === 0) return 0;
         let weightedPoints = 0, totalCredits = 0;
         marks.forEach(m => {
-            const points = Number(m?.points);
-            if (!Number.isFinite(points)) return;
+            // Prefer stored points; if missing, derive points only from the published grade.
+            let points = numericMark(m, ['points', 'grade_points']);
+            if (points === null) {
+                const grade = String(m?.grade ?? m?.published_grade ?? m?.final_grade ?? '').trim().toUpperCase();
+                const gradePoints = { A: 4, B: 3, C: 2, D: 0, F: 0, FAIL: 0 };
+                if (Object.prototype.hasOwnProperty.call(gradePoints, grade)) points = gradePoints[grade];
+            }
+            if (points === null || !Number.isFinite(points)) return;
             const credits = Number(m?.credits);
             const c = Number.isFinite(credits) && credits > 0 ? credits : 3;
             weightedPoints += points * c;
@@ -533,23 +539,48 @@
             
             let marks = [];
             try {
-                const result = await window.db.supabase
-                    .from('student_marks')
-                    .select('*')
-                    .eq('admission_number', registrationNumber)
-                    .eq('published', true)
-                    .order('published_at', { ascending: false });
-                
-                if (!result.error && result.data && result.data.length > 0) {
-                    // Student dashboard is read-only: preserve the published database values.
-                    // Retake history may be shown as context, but must not replace a published score.
-                    marks = result.data.map(mark => {
+                if (!window.db?.supabase) throw new Error('Academic database connection is not ready.');
+                const supabase = window.db.supabase;
+                const admissionNumber = String(user.admission_number || user.student_id || '').trim();
+                let result = null;
+
+                // Match the published marks by admission number first. Some older profiles
+                // identify their marks using the UUID stored in student_marks.student_id.
+                if (admissionNumber) {
+                    result = await supabase.from('student_marks')
+                        .select('*')
+                        .eq('admission_number', admissionNumber)
+                        .eq('published', true)
+                        .order('published_at', { ascending: false });
+                    if (result.error) throw result.error;
+                }
+
+                const authUserId = user.user_id || user.id || user.student_uuid;
+                if ((!result || !(result.data || []).length) && authUserId) {
+                    const byStudentId = await supabase.from('student_marks')
+                        .select('*')
+                        .eq('student_id', authUserId)
+                        .eq('published', true)
+                        .order('published_at', { ascending: false });
+                    if (byStudentId.error) throw byStudentId.error;
+                    if ((byStudentId.data || []).length) result = byStudentId;
+                }
+
+                const rows = result?.data || [];
+                if (rows.length) {
+                    // Keep published scores and grades authoritative; fill only missing display metadata.
+                    marks = rows.map(mark => {
                         const retakes = studentRetakeMap[mark.subject_name] || [];
+                        const grade = mark.grade ?? mark.final_grade ?? '';
+                        const rawPoints = mark.points;
+                        const points = rawPoints !== null && rawPoints !== undefined && rawPoints !== ''
+                            ? Number(rawPoints)
+                            : (grade ? calculatePoints(String(grade).toUpperCase(), userProgram) : null);
                         return {
                             ...mark,
                             unit_code: mark.unit_code || getUnitCode(mark.subject_name),
-                            grade: mark.grade ?? mark.final_grade ?? '',
-                            points: mark.points,
+                            grade,
+                            points: Number.isFinite(points) ? points : null,
                             status: mark.final_status ?? mark.status ?? '',
                             final_score: mark.final_score,
                             hasRetake: retakes.length > 0,
@@ -559,34 +590,31 @@
                     });
                     console.log(`📊 Loaded ${marks.length} published marks without recalculating results`);
                 } else {
-                    // ✅ No marks found - show empty state
                     tbody.innerHTML = `
-                        <tr>
-                            <td colspan="6" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                                <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
-                                <h4 style="margin: 0 0 8px 0; color: #1e293b;">No published marks found</h4>
-                                <p style="font-size: 13px; margin: 0;">Your marks will appear here once they are published by the admin.</p>
-                            </td>
-                        </tr>
-                    `;
-                    document.getElementById('my_marks_count').textContent = '0 results';
+                        <tr><td colspan="6" style="text-align:center;padding:60px 20px;color:#64748b;">
+                            <i class="fas fa-file-circle-xmark" style="font-size:42px;display:block;margin-bottom:14px;"></i>
+                            <h4 style="margin:0 0 8px;color:#1e293b;">No published marks found</h4>
+                            <p style="font-size:13px;margin:0;">No results have been published for this student yet.</p>
+                        </td></tr>`;
+                    const countEl = document.getElementById('my_marks_count');
+                    if (countEl) countEl.textContent = '0 results';
+                    myMarksData = [];
+                    myMarksFiltered = [];
                     return;
                 }
             } catch (e) {
-                console.warn('Error fetching marks:', e);
+                console.error('Academic results request failed:', e);
                 tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                            <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
-                            <h4 style="margin: 0 0 8px 0; color: #1e293b;">No published marks found</h4>
-                            <p style="font-size: 13px; margin: 0;">Your marks will appear here once they are published by the admin.</p>
-                        </td>
-                    </tr>
-                `;
-                document.getElementById('my_marks_count').textContent = '0 results';
+                    <tr><td colspan="6" style="text-align:center;padding:45px 20px;color:#b91c1c;">
+                        <i class="fas fa-triangle-exclamation" style="font-size:38px;display:block;margin-bottom:12px;"></i>
+                        <h4 style="margin:0 0 8px;">Unable to load academic results</h4>
+                        <p style="font-size:13px;margin:0;">The academic database request failed. Please refresh or contact the academic office if this continues.</p>
+                    </td></tr>`;
+                const countEl = document.getElementById('my_marks_count');
+                if (countEl) countEl.textContent = 'Results unavailable';
                 return;
             }
-            
+
             if (marks && marks.length > 0) {
                 myMarksData = marks;
             } else {
