@@ -1943,6 +1943,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         @page { size: A4 portrait; margin: 6mm; }
         body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
         .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 12px 14px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; box-shadow: none; }
+        .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 6px; align-items: start; }
+        .transcript-top .header { min-width: 0; }
+        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 60px; padding: 3px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #0A3D62; }
+        .verification-qr img { display: block; width: 48px; height: 48px; object-fit: contain; }
         .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 10px; margin-bottom: 12px; }
         .header-top { display: flex; align-items: center; justify-content: center; gap: 12px; }
         .header-top img { max-height: 64px; max-width: 76px; width: auto; object-fit: contain; }
@@ -2135,8 +2139,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 </head>
 <body>
     <div class="container">
-        <!-- HEADER -->
-        <div class="header">
+        <!-- HEADER WITH SMALL VERIFICATION QR IN TOP-RIGHT CORNER -->
+        <div class="transcript-top">
+            <div class="header">
             <div class="header-top">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
                 <div>
@@ -2146,6 +2151,11 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             </div>
             <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
             <div class="date">Generated: ${now}</div>
+            </div>
+            <div class="verification-qr" aria-label="Document verification QR code">
+                <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
+                <span>VERIFY</span>
+            </div>
         </div>
         
         <!-- STUDENT INFO WITH PHOTO -->
@@ -2219,14 +2229,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             </div>
         </div>
         
-        <!-- DOCUMENT VERIFICATION QR -->
-        <div class="verification-qr" style="display:flex;align-items:center;justify-content:center;gap:8px;margin:4px auto;padding:4px;border-top:1px solid #cbdbea;max-width:100%;">
-            <img id="transcriptVerificationQr" alt="Transcript verification QR code" style="width:54px;height:54px;object-fit:contain;" />
-            <div style="font-size:7px;line-height:1.25;color:#52677a;max-width:190px;">
-                <strong style="color:#0A3D62;font-size:8px;">DOCUMENT VERIFICATION</strong><br>
-                Scan to open the college verification page. Confirm the student's record with the Academic Office.
-            </div>
-        </div>
         <!-- FOOTER -->
         <div class="footer">
             <p>This is an official document. For verification, contact the Academic Office.</p>
@@ -2358,9 +2360,13 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "chart chart"
                     "declaration declaration"
                     "signatures signatures"
-                    "verification verification"
                     "footer footer" !important; align-items: stretch !important; column-gap: 7px !important; row-gap: 3px !important; }
-                        .header { grid-area: header !important; margin: 0 0 3px !important; padding: 0 0 5px !important; } 
+                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: minmax(0,1fr) 48px !important; gap: 4px !important; align-items: start !important; }
+                        .transcript-top .header { grid-area: auto !important; margin: 0 !important; padding: 0 0 5px !important; min-width: 0 !important; }
+                        .verification-qr { grid-area: auto !important; width: 46px !important; padding: 2px !important; border: 1px solid #0A3D62 !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; }
+                        .verification-qr img { display: block !important; width: 38px !important; height: 38px !important; }
+                        .verification-qr span { font-size: 5px !important; }
+                        .header { margin: 0 0 3px !important; padding: 0 0 5px !important; } 
                         .header h1 { font-size: 17px !important; line-height: 1.15 !important; }
                         .header h2 { font-size: 14px !important; margin: 3px 0 5px !important; }
                         .student-info-wrapper { grid-area: student !important; margin: 3px 0 5px !important; padding: 7px 10px !important; gap: 8px !important; }
