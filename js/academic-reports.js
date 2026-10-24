@@ -1721,6 +1721,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
                 const score = getPublishedScore(mark);
                 const gradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
+                // Define the grade colour in this row's scope before rendering the grade and points.
+                const gradeColor = getGradeColor(gradeDisplay);
                 const pointsValue = numericMark(mark, ['points', 'grade_points']);
                 const points = pointsValue !== null ? pointsValue : (gradeDisplay !== '-' ? calculatePoints(gradeDisplay, userProgram) : null);
                 const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
