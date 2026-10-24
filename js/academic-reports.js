@@ -1660,7 +1660,18 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         }
 
         console.log('📊 Generating filtered semester report for', marks.length, 'marks; block:', blockFilter);
-        
+
+        // Open the output tab synchronously during the user's click. Mobile browsers
+        // block popups opened later after the transcript has been assembled.
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Your browser blocked the transcript window. Allow pop-ups for nchsm.co.ke and tap the button again.');
+            return;
+        }
+        printWindow.document.open();
+        printWindow.document.write('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Preparing transcript…</title></head><body style="font:16px Arial;padding:24px">Preparing your transcript PDF…</body></html>');
+        printWindow.document.close();
+
         // Show loading
         const loadingEl = document.createElement('div');
         loadingEl.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;';
@@ -1915,8 +1926,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             
             loadingEl.remove();
             
-            const printWindow = window.open('', '_blank', 'width=750,height=1050');
-            if (printWindow) {
+            if (printWindow && !printWindow.closed) {
+                printWindow.document.open();
                 printWindow.document.write(`
 <!DOCTYPE html>
 <html>
@@ -2332,11 +2343,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         });
                 }, 1400);
             } else {
-                alert('Please allow popups to download the semester report.');
+                alert('The transcript window was closed before the PDF was ready. Please try again.');
             }
             
         } catch (error) {
             loadingEl.remove();
+            if (printWindow && !printWindow.closed) printWindow.close();
             alert('Error generating report: ' + error.message);
             console.error('Report error:', error);
         }
