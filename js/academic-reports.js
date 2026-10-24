@@ -2010,51 +2010,51 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         }
         @page { size: A4 landscape; margin: 5mm; }
         @media print {
+            @page { size: A4 landscape; margin: 4mm; }
             html, body { width: 100%; height: auto; margin: 0 !important; padding: 0 !important; background: #fff; }
-            body { font-size: 9px !important; }
-            .container { width: 100% !important; max-width: none !important; margin: 0 !important; border: 1px solid #0A3D62; border-radius: 0; padding: 4mm !important; box-shadow: none; }
+            body { font-size: 8px !important; }
+            .container { width: 100% !important; max-width: none !important; margin: 0 !important; border: 1px solid #0A3D62 !important; border-radius: 0 !important; padding: 2mm !important; box-shadow: none !important; }
             .no-print { display: none !important; }
-            .header { padding-bottom: 4px !important; margin-bottom: 5px !important; border-bottom-width: 2px !important; }
-            .header-top img { max-height: 42px !important; max-width: 55px !important; }
-            .header .school { font-size: 15px !important; }
-            .header .subtitle { font-size: 13px !important; margin-top: 4px !important; padding: 4px 14px !important; letter-spacing: 1px !important; }
-            .student-info-wrapper { margin: 5px 0 6px !important; padding: 6px 8px !important; gap: 8px !important; }
-            .student-photo { width: 42px !important; height: 42px !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .student-info .value { font-size: 10px !important; }
-            .semester-results-title { padding: 5px 8px !important; margin-bottom: 2px !important; background: #0A3D62 !important; color: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            table.semester-results-table { width: 100% !important; table-layout: fixed !important; font-size: 10px !important; }
-            table.semester-results-table thead th { font-size: 9px !important; line-height: 1.1 !important; padding: 4px 5px !important; }
-            table.semester-results-table tbody td { font-size: 10px !important; line-height: 1.15 !important; padding: 4px 5px !important; }
-            table.semester-results-table tbody td:nth-child(3) { font-size: 14px !important; line-height: 1.1 !important; overflow-wrap: anywhere !important; }
-            table.semester-results-table tbody td:nth-child(6) { font-size: 9px !important; }
-            .summary-grid { gap: 5px !important; margin: 5px 0 !important; }
-            .summary-card { padding: 5px !important; }
-            .summary-card .value { font-size: 16px !important; }
-            .summary-card .label { font-size: 8px !important; }
-            .grading-scale-table { padding: 5px !important; margin: 4px 0 !important; }
-            .grading-scale-table .title, .chart-container .title { font-size: 9px !important; margin-bottom: 3px !important; }
-            .grading-scale-table th, .grading-scale-table td { font-size: 8px !important; padding: 2px 3px !important; }
-            .chart-container { padding: 4px !important; margin: 4px 0 !important; }
-            .chart-container canvas { height: 55px !important; max-height: 55px !important; }
-            .declaration { padding: 5px !important; margin: 4px 0 !important; font-size: 8px !important; }
-            .signatures { gap: 12px !important; margin: 5px 0 !important; }
-            .signature-box { padding: 3px !important; }
-            .signature-box .line { margin: 4px auto 2px !important; }
-            .footer { margin-top: 4px !important; padding-top: 3px !important; font-size: 7px !important; }
+            .header { padding-bottom: 2px !important; margin-bottom: 2px !important; border-bottom-width: 1px !important; }
+            .header-top img { max-height: 28px !important; max-width: 38px !important; }
+            .header .school { font-size: 12px !important; line-height: 1.1 !important; }
+            .header .motto { font-size: 7px !important; }
+            .header .subtitle { font-size: 10px !important; margin-top: 2px !important; padding: 2px 8px !important; letter-spacing: .5px !important; }
+            .header .date { font-size: 7px !important; margin-top: 1px !important; }
+            .student-info-wrapper { margin: 2px 0 3px !important; padding: 3px 5px !important; gap: 5px !important; }
+            .student-photo { width: 30px !important; height: 30px !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .student-info { gap: 2px 8px !important; }
+            .student-info .label { font-size: 7px !important; }
+            .student-info .value { font-size: 8px !important; line-height: 1.05 !important; }
+            .semester-results-title { font-size: 9px !important; line-height: 1.1 !important; padding: 3px 6px !important; margin-bottom: 1px !important; background: #0A3D62 !important; color: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            table.semester-results-table { width: 100% !important; table-layout: fixed !important; font-size: 8px !important; margin: 0 !important; }
+            table.semester-results-table thead th { font-size: 7px !important; line-height: 1 !important; padding: 2px 3px !important; }
+            table.semester-results-table tbody td { font-size: 8px !important; line-height: 1.02 !important; padding: 2px 3px !important; }
+            table.semester-results-table tbody td:nth-child(3) { font-size: ${printUnitFontSize}px !important; line-height: 1.02 !important; overflow-wrap: anywhere !important; padding-top: 1px !important; padding-bottom: 1px !important; }
+            table.semester-results-table tbody td:nth-child(6) { font-size: 7px !important; }
+            .summary-grid { gap: 3px !important; margin: 3px 0 !important; }
+            .summary-card { padding: 2px !important; }
+            .summary-card .value { font-size: 11px !important; line-height: 1 !important; }
+            .summary-card .label { font-size: 6px !important; line-height: 1 !important; }
+            .grading-scale-table { padding: 2px !important; margin: 2px 0 !important; }
+            .grading-scale-table .title, .chart-container .title { font-size: 7px !important; margin-bottom: 1px !important; }
+            .grading-scale-table th, .grading-scale-table td { font-size: 6px !important; line-height: 1 !important; padding: 1px 2px !important; }
+            .grading-scale-table table { margin: 0 !important; }
+            .chart-container { padding: 1px 3px !important; margin: 2px 0 !important; }
+            .chart-container canvas { height: 25px !important; max-height: 25px !important; }
+            .declaration { padding: 2px 4px !important; margin: 2px 0 !important; font-size: 6px !important; line-height: 1.05 !important; }
+            .declaration .title { font-size: 6px !important; }
+            .signatures { gap: 8px !important; margin: 2px 0 !important; }
+            .signature-box { padding: 1px !important; }
+            .signature-box .name { font-size: 7px !important; }
+            .signature-box .line { margin: 2px auto 1px !important; }
+            .signature-box .label, .signature-box .date { font-size: 6px !important; line-height: 1 !important; }
+            .footer { margin-top: 2px !important; padding-top: 1px !important; font-size: 6px !important; line-height: 1 !important; }
+            .footer p { margin: 1px 0 !important; }
             thead th, td span { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            /* Flexible pagination: compact reports fit on one page; longer reports continue cleanly. */
-            .container { break-inside: auto !important; page-break-inside: auto !important; }
-            table.semester-results-table { break-inside: auto !important; page-break-inside: auto !important; }
-            table.semester-results-table thead { display: table-header-group !important; }
-            table.semester-results-table tfoot { display: table-footer-group !important; }
-            table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+            /* Avoid splitting a row; allow extra pages when the unit count genuinely requires them. */
+            .container, table.semester-results-table, table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
             .student-info-wrapper, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
-            /* Scale unit-name type to the selected result count; long reports continue to further pages. */
-            table.semester-results-table tbody td:nth-child(3) { font-size: ${printUnitFontSize}px !important; line-height: 1.1 !important; padding-top: 2px !important; padding-bottom: 2px !important; }
-            .student-info-wrapper { padding: 3px 6px !important; margin: 3px 0 !important; }
-            .summary-grid { margin: 3px 0 !important; }
-            .grading-scale-table, .chart-container, .declaration, .signatures { margin-top: 3px !important; margin-bottom: 3px !important; }
-            .chart-container canvas { height: 45px !important; max-height: 45px !important; }
         }
     </style>
 </head>
