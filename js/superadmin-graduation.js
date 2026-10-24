@@ -167,11 +167,12 @@ function generateQRCodeData(certData) {
         program: certData.program,
         issueDate: certData.issueDate,
         expiryDate: certData.expiryDate,
-        verificationUrl: `https://nchsm.ac.ke/verify/${certData.serialNumber}`,
+        verificationUrl: `${window.location.origin}/graduation.html?id=${encodeURIComponent(certData.serialNumber)}`,
         hash: generateHash(certData.certId + certData.serialNumber + certData.studentId)
     };
-    const jsonStr = JSON.stringify(qrPayload);
-    return btoa(unescape(encodeURIComponent(jsonStr)));
+    // Encode a real verification URL in the QR so any phone camera can open it.
+    // Keep the payload URL-based; internal scanner also supports legacy JSON QR codes.
+    return qrPayload.verificationUrl;
 }
 
 // 🆕 Generate a QR code as a data URL (used by print templates and modal previews)
@@ -1149,7 +1150,14 @@ function stopQRScanner() {
 function handleQRScanResult(data) {
     const resultBox = document.getElementById('qrScanResult');
     let parsed = null;
-    try { parsed = JSON.parse(decodeURIComponent(escape(atob(data)))); } catch (e) {}
+    let scannedValue = String(data || '').trim();
+    // New QR codes contain a verification URL; legacy codes contain base64 JSON.
+    try {
+        const scannedUrl = new URL(scannedValue, window.location.origin);
+        const urlId = scannedUrl.searchParams.get('id') || scannedUrl.searchParams.get('serial');
+        if (urlId) scannedValue = urlId;
+    } catch (e) {}
+    try { parsed = JSON.parse(decodeURIComponent(escape(atob(scannedValue)))); } catch (e) {}
 
     if (parsed && parsed.serialNumber) {
         currentQRSerial = parsed.serialNumber;
@@ -1161,9 +1169,9 @@ function handleQRScanResult(data) {
         }
         verifyCertificate(parsed.serialNumber);
     } else {
-        // Treat as raw serial
-        currentQRSerial = data;
-        verifyCertificate(data);
+        // Treat the scanned content as a serial number or verification URL ID.
+        currentQRSerial = scannedValue;
+        verifyCertificate(scannedValue);
     }
 }
 
