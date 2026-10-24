@@ -2024,37 +2024,26 @@ async function saveAnswerToDatabase(questionId, answer) {
     return true;
 }
 async function loadSavedAnswers() {
-    try {
-        if (!AppState.attemptId) return;
-
-        const result = await sb.from('exam_grades')
-            .select('question_id, selected_answer')
-            .eq('attempt_id', AppState.attemptId)
-            .neq('question_id', '00000000-0000-0000-0000-000000000000');
-
-        if (result.error) throw result.error;
-
-        if (result.data && result.data.length > 0) {
-            let loaded = 0;
-            result.data.forEach((row) => {
-                if (row.selected_answer) {
-                    AppState.answers[row.question_id] = row.selected_answer;
-                    loaded++;
-                }
-            });
-            if (loaded > 0) {
-                AppState.hasAnsweredAtLeastOne = true;
-                if (DOM.submitBtn) {
-                    DOM.submitBtn.disabled = false;
-                    DOM.submitBtn.style.opacity = '1';
-                    DOM.submitBtn.style.cursor = 'pointer';
-                }
-            }
-            console.log(`✅ Loaded ${loaded} saved answers for Attempt ${AppState.attemptNumber}`);
+    // Individual answer rows are no longer readable by students. Recover only
+    // this attempt's locally saved drafts; final answers go to the secure RPC.
+    if (!AppState.attemptId) return;
+    let loaded = 0;
+    (AppState.questions || []).forEach((question) => {
+        const draft = loadFromLocalStorage(`draft_${question.id}`);
+        if (draft && draft.attemptId === AppState.attemptId && draft.answer != null) {
+            AppState.answers[question.id] = String(draft.answer);
+            loaded++;
         }
-    } catch (e) {
-        console.warn('Could not load saved answers:', e);
+    });
+    if (loaded > 0) {
+        AppState.hasAnsweredAtLeastOne = true;
+        if (DOM.submitBtn) {
+            DOM.submitBtn.disabled = false;
+            DOM.submitBtn.style.opacity = '1';
+            DOM.submitBtn.style.cursor = 'pointer';
+        }
     }
+    console.log(`Recovered ${loaded} locally saved answers for Attempt ${AppState.attemptNumber}`);
 }
 
 function saveProgressLocally() {
