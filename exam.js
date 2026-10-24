@@ -4159,9 +4159,13 @@ class SecureFaceProctor {
                             DOM.proctoringStatusText.textContent = '⚠️ Possible phone detected — keep desk clear';
                             DOM.proctoringStatusText.className = 'status-value warning';
                         }
-                        if (typeof this.callbacks.onViolation === 'function') {
-                            this.callbacks.onViolation(this.state.totalViolations,
-                                'Possible phone detected in the camera view. Remove it from the desk and follow the invigilator’s instructions.');
+                        // Phone events are separate from face violations; do not consume
+                        // the face-violation allowance or accidentally trigger auto-submit.
+                        if (typeof showToast === 'function') {
+                            showToast('Possible phone detected in the camera view. Please keep the desk clear.', 'warning');
+                        }
+                        if (DOM.examStatusText) {
+                            DOM.examStatusText.textContent = 'Possible phone detected — invigilator review may be required.';
                         }
                         this.phonePositiveFrames = 0;
                     }
