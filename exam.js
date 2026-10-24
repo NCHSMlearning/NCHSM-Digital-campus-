@@ -8,6 +8,10 @@ const CONFIG = {
     FACE_DETECTION_INTERVAL: 500,
     FACE_SCORE_THRESHOLD: 0.45,
     FACE_INPUT_SIZE: 224,
+    // Approximate normalized head-pose thresholds; tune with real device testing.
+    FACE_YAW_THRESHOLD: 0.24,
+    FACE_PITCH_UPPER_THRESHOLD: 0.18,
+    FACE_PITCH_LOWER_THRESHOLD: 0.78,
     FACE_CONFIRMATIONS_REQUIRED: 2,
     MAX_BLUR_COUNT: 3,
     MAX_TAB_SWITCHES: 2,
@@ -323,13 +327,55 @@ let faceModelsLoaded = false;
 async function loadFaceDetectionModels() {
     if (faceModelsLoaded) return true;
     try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri(CONFIG.FACE_MODEL_URL);
+        await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(CONFIG.FACE_MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(CONFIG.FACE_MODEL_URL)
+        ]);
         faceModelsLoaded = true;
         console.log('✅ Face detection models loaded');
         return true;
     } catch (error) {
         console.warn('Face detection not available:', error);
         return false;
+    }
+}
+
+
+// Estimate relative head orientation from 68 facial landmarks.
+// This is a heuristic for proctoring assistance, not identity verification.
+function estimateHeadPose(landmarks) {
+    try {
+        const p = landmarks && typeof landmarks.positions !== 'undefined' ? landmarks.positions : null;
+        if (!p || p.length < 68) return { available: false, turned: false, reason: 'landmarks_unavailable' };
+        const avg = (indices) => {
+            const pts = indices.map(i => p[i]).filter(Boolean);
+            if (!pts.length) return null;
+            return pts.reduce((a, v) => ({ x: a.x + v.x / pts.length, y: a.y + v.y / pts.length }), { x: 0, y: 0 });
+        };
+        const leftEye = avg([36, 37, 38, 39, 40, 41]);
+        const rightEye = avg([42, 43, 44, 45, 46, 47]);
+        const noseBridge = avg([27, 28, 29, 30]);
+        const noseTip = avg([31, 32, 33, 34, 35]);
+        const mouth = avg([51, 52, 53, 54]);
+        if (!leftEye || !rightEye || !noseBridge || !noseTip || !mouth) {
+            return { available: false, turned: false, reason: 'incomplete_landmarks' };
+        }
+        const eyeDistance = Math.max(1, Math.abs(rightEye.x - leftEye.x));
+        const eyeMidX = (leftEye.x + rightEye.x) / 2;
+        const eyeMidY = (leftEye.y + rightEye.y) / 2;
+        const yaw = (noseBridge.x - eyeMidX) / eyeDistance;
+        const verticalSpan = Math.max(1, mouth.y - eyeMidY);
+        const pitch = (noseTip.y - eyeMidY) / verticalSpan;
+        const turned = Math.abs(yaw) > CONFIG.FACE_YAW_THRESHOLD
+            || pitch < CONFIG.FACE_PITCH_UPPER_THRESHOLD
+            || pitch > CONFIG.FACE_PITCH_LOWER_THRESHOLD;
+        let reason = 'facing_camera';
+        if (Math.abs(yaw) > CONFIG.FACE_YAW_THRESHOLD) reason = yaw < 0 ? 'head_turned_left' : 'head_turned_right';
+        else if (pitch < CONFIG.FACE_PITCH_UPPER_THRESHOLD) reason = 'head_tilted_up';
+        else if (pitch > CONFIG.FACE_PITCH_LOWER_THRESHOLD) reason = 'head_tilted_down';
+        return { available: true, turned, reason, yaw: Number(yaw.toFixed(3)), pitch: Number(pitch.toFixed(3)) };
+    } catch (error) {
+        return { available: false, turned: false, reason: 'pose_estimation_error' };
     }
 }
 
@@ -346,7 +392,13 @@ async function fastDetectFace(videoElement) {
             inputSize: CONFIG.FACE_INPUT_SIZE,
             scoreThreshold: CONFIG.FACE_SCORE_THRESHOLD
         });
-        return await faceapi.detectAllFaces(videoElement, options);
+        // Landmarks let us estimate head orientation; face presence alone is not enough.
+        const results = await faceapi.detectAllFaces(videoElement, options).withFaceLandmarks();
+        return results.map(result => ({
+            ...result.detection,
+            landmarks: result.landmarks,
+            headPose: estimateHeadPose(result.landmarks)
+        }));
     } catch (error) {
         console.warn('Face detection frame failed:', error);
         return null;
@@ -3999,7 +4051,7 @@ class SecureFaceProctor {
                 const detections = await fastDetectFace(this.video);
                 this.drawDetections(detections);
                 const faceCount = detections ? detections.length : 0;
-                this.handleDetectionResult(faceCount);
+                this.handleDetectionResult(faceCount, detections);
             } catch (error) {
                 console.warn('Face detection frame error:', error);
             }
@@ -4054,10 +4106,27 @@ class SecureFaceProctor {
         });
     }
     
-    handleDetectionResult(faceCount) {
+    handleDetectionResult(faceCount, detections = []) {
         if (this.state.isSubmitting) return;
 
         if (faceCount === 1) {
+            const pose = detections[0] && detections[0].headPose;
+            if (pose && pose.available && pose.turned) {
+                this.state.faceConfirmations = 0;
+                this.state.consecutiveLost++;
+                this.state.faceStable = false;
+                const direction = {
+                    head_turned_left: 'turned left',
+                    head_turned_right: 'turned right',
+                    head_tilted_up: 'tilted up',
+                    head_tilted_down: 'looking down'
+                }[pose.reason] || 'not facing the camera';
+                updateCameraStatus('warning', `⚠️ Head ${direction}`, 'Face turned');
+                if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) {
+                    this.handleViolation();
+                }
+                return;
+            }
             this.state.lastFaceCount = 1;
             this.state.faceConfirmations = Math.min(
                 this.state.faceConfirmations + 1,
