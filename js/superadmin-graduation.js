@@ -159,19 +159,30 @@ function generateUniqueSerialNumber(student, program) {
 }
 
 function generateQRCodeData(certData) {
+    const studentId = certData.studentId || certData.student_id || '';
+    const relatedTranscripts = allTranscripts
+        .filter(t => String(t.studentId || t.student_id || t.student_id_number || '') === String(studentId))
+        .map(t => ({ id: t.id || t.transcriptId || null, type: t.type || t.transcriptType || 'academic' }))
+        .filter(t => t.id || t.type);
+    const verificationUrl = new URL('/graduation.html', window.location.origin);
+    verificationUrl.searchParams.set('id', certData.serialNumber || certData.certId || '');
+    verificationUrl.searchParams.set('type', 'certificate');
+    if (studentId) verificationUrl.searchParams.set('studentId', studentId);
+    if (relatedTranscripts.length) verificationUrl.searchParams.set('transcripts', JSON.stringify(relatedTranscripts));
     const qrPayload = {
+        documentType: 'certificate',
         certId: certData.certId,
         serialNumber: certData.serialNumber,
-        studentId: certData.studentId,
+        studentId,
         studentName: certData.studentName,
         program: certData.program,
         issueDate: certData.issueDate,
         expiryDate: certData.expiryDate,
-        verificationUrl: `${window.location.origin}/graduation.html?id=${encodeURIComponent(certData.serialNumber)}`,
-        hash: generateHash(certData.certId + certData.serialNumber + certData.studentId)
+        relatedTranscripts,
+        verificationUrl: verificationUrl.href,
+        hash: generateHash(String(certData.certId || '') + String(certData.serialNumber || '') + String(studentId))
     };
-    // Encode a real verification URL in the QR so any phone camera can open it.
-    // Keep the payload URL-based; internal scanner also supports legacy JSON QR codes.
+    // QR resolves to the public verification page and carries the linked student/transcript references.
     return qrPayload.verificationUrl;
 }
 
@@ -658,11 +669,36 @@ h2 { color: #1e293b; font-size: 34px; margin: 18px 0 8px; }
         <p>This certificate is issued by NCHSM. Verify at ${escapeHtml(cert.verificationUrl)}</p>
     </div>
 </div>
-<script>window.onload = function(){ setTimeout(function(){ window.print(); }, 400); };<\/script>
+<script>
+(function(){
+ const img=document.getElementById('transcriptQr');
+ const data=${JSON.stringify(transcriptVerificationUrl.href)};
+ function renderQr(){
+   if(!window.QRCode || !img) return false;
+   window.QRCode.toDataURL(data,{width:180,margin:1,errorCorrectionLevel:'M'},function(err,url){
+     if(!err && url){img.src=url;img.dataset.ready='true';}
+     else {img.alt='QR generation failed';}
+     setTimeout(function(){window.print();},250);
+   });
+   return true;
+ }
+ if(!renderQr()){
+   let tries=0;
+   const wait=()=>{if(renderQr())return;if(++tries<20)setTimeout(wait,150);else setTimeout(function(){window.print();},400);};
+   wait();
+ }
+})();
+<\/script>
 </body></html>`;
 }
 
-function buildTranscriptHTML(student, marks, cert) {
+function buildTranscriptHTML(student, marks, cert, transcriptType = 'academic') {
+    const transcriptStudentId = String(student.studentId || student.student_id || student.id || '');
+    const transcriptSerial = (cert && (cert.serialNumber || cert.certId)) || `TR-${transcriptType.toUpperCase()}-${transcriptStudentId}`;
+    const transcriptVerificationUrl = new URL('/graduation.html', window.location.origin);
+    transcriptVerificationUrl.searchParams.set('id', transcriptSerial);
+    transcriptVerificationUrl.searchParams.set('studentId', transcriptStudentId);
+    transcriptVerificationUrl.searchParams.set('type', transcriptType === 'provisional' ? 'provisional-transcript' : 'academic-transcript');
     const rows = marks.map((m, i) => `
         <tr>
             <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: center;">${i + 1}</td>
@@ -691,13 +727,19 @@ table { width: 100%; border-collapse: collapse; margin-top: 16px; }
 th { background: #0A3D62; color: white; padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 13px; }
 .summary { margin-top: 20px; padding: 16px; background: #e0e7ff; border-radius: 8px; text-align: center; }
 .summary .big { font-size: 24px; font-weight: 700; color: #4C1D95; }
+.transcript-header { position: relative; padding-right: 90px; min-height: 58px; }
+.qr-box { position: absolute; top: 0; right: 0; width: 68px; padding: 4px; border: 1px solid #0A3D62; border-radius: 4px; text-align: center; font-size: 8px; color: #0A3D62; }
+.qr-box img { display:block; width:58px; height:58px; object-fit:contain; margin:0 auto 2px; }
 .signatures { margin-top: 60px; display: flex; justify-content: space-between; }
 .signatures div { border-top: 1px solid #475569; padding-top: 6px; width: 40%; text-align: center; font-size: 13px; color: #475569; }
 @media print { body { padding: 0; } }
 </style></head>
 <body>
+<div class="transcript-header">
 <h1>Nakuru College of Health Sciences and Management</h1>
-<h2>Official Academic Transcript</h2>
+<h2>${transcriptType === 'provisional' ? 'Provisional Academic Transcript' : 'Official Academic Transcript'}</h2>
+<div class="qr-box"><img id="transcriptQr" alt="Transcript verification QR"><strong>VERIFY</strong></div>
+</div>
 <div class="info">
     <div><strong>Student:</strong> ${escapeHtml(student.name)}</div>
     <div><strong>Student ID:</strong> ${escapeHtml(student.studentId || student.id)}</div>
@@ -740,7 +782,7 @@ function generateTranscript(studentId) {
     if (!student) { showNotification?.('❌ Student not found', 'error'); return; }
 
     const marks = getStudentMarks(studentId);
-    const html = buildTranscriptHTML(student, marks, null);
+    const html = buildTranscriptHTML(student, marks, null, 'academic');
 
     const win = window.open('', '_blank');
     if (!win) { showNotification?.('❌ Pop-up blocked', 'error'); return; }
