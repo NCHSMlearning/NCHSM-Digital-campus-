@@ -13384,23 +13384,39 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
 <script>
 window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
 
-// Refresh-safe authentication: wait briefly for Supabase to restore its persisted session
-// before redirecting. This does NOT replace or reassign the shared database client.
-async function getSessionWithRestoreRetry(client, maxAttempts = 20, delayMs = 300) {
+// Refresh-safe authentication: wait for Supabase's persisted session to restore.
+// On mobile/slow networks, token storage and refresh can take longer than a normal page load.
+// Reuse the existing client; never sign the student out just because the first read is empty.
+async function getSessionWithRestoreRetry(client, maxAttempts = 60, delayMs = 500) {
     if (!client?.auth?.getSession) return null;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
             const { data, error } = await client.auth.getSession();
-            if (error) throw error;
-            if (data?.session) return data.session;
+            if (error) {
+                console.warn('Session restore check failed:', error.message || error);
+            } else if (data?.session) {
+                return data.session;
+            }
         } catch (error) {
-            if (attempt === maxAttempts - 1) throw error;
-            console.warn(`⚠️ Waiting for Supabase session restore (${attempt + 1}/${maxAttempts})...`);
+            console.warn(`Waiting for Supabase session restore (${attempt + 1}/${maxAttempts}):`, error?.message || error);
         }
+
+        // Listen briefly for Supabase auth initialization before the next poll.
+        if (attempt === 0 && client.auth.onAuthStateChange) {
+            try {
+                const { data: listener } = client.auth.onAuthStateChange((event, session) => {
+                    if (session?.user) window.__nchsmRestoredSession = session;
+                });
+                if (listener?.subscription) {
+                    setTimeout(() => listener.subscription.unsubscribe(), 30000);
+                }
+            } catch (_) {}
+        }
+        if (window.__nchsmRestoredSession?.user) return window.__nchsmRestoredSession;
         await new Promise(resolve => setTimeout(resolve, delayMs));
     }
-    return null;
+    return window.__nchsmRestoredSession || null;
 }
 
 async function initializeApp() {
@@ -13427,8 +13443,16 @@ async function initializeApp() {
         }
         
         if (!userSession) {
-            console.log('⚠️ No active session, redirecting...');
-            window.location.href = '/login';
+            // Avoid a silent logout on refresh if the browser has not restored auth yet.
+            console.warn('No Supabase session was restored after waiting. Showing recovery options instead of redirecting automatically.');
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) loadingScreen.style.display = 'none';
+            const appContent = document.getElementById('app-content');
+            if (appContent) appContent.style.display = 'block';
+            const welcomeSection = document.getElementById('welcome-section');
+            if (welcomeSection) {
+                welcomeSection.innerHTML = '<div style="max-width:560px;margin:50px auto;padding:28px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;text-align:center;color:#0f172a"><h2 style="margin-top:0">Restoring your student session</h2><p>Your session has not been confirmed yet. Your account has not been signed out. Check your connection and try again.</p><button onclick="location.reload()" class="profile-button">Retry session</button><button onclick="location.href=\'/login\'" class="profile-button" style="margin-left:8px">Go to sign in</button></div>';
+            }
             return;
         }
         
