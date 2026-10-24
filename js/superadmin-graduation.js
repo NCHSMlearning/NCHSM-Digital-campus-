@@ -777,27 +777,31 @@ th { background: #0A3D62; color: white; padding: 10px; border: 1px solid #cbd5e1
 // GENERATE — TRANSCRIPT (single student)
 // ============================================================
 
-function generateTranscript(studentId) {
+function generateTranscript(studentId, transcriptType = 'academic') {
     const student = graduationCandidates.find(g => g.studentId === studentId) || allStudents.find(s => s.id === studentId);
     if (!student) { showNotification?.('❌ Student not found', 'error'); return; }
 
     const marks = getStudentMarks(studentId);
-    const html = buildTranscriptHTML(student, marks, null, 'academic');
+    const html = buildTranscriptHTML(student, marks, null, transcriptType === 'provisional' ? 'provisional' : 'academic');
 
     const win = window.open('', '_blank');
     if (!win) { showNotification?.('❌ Pop-up blocked', 'error'); return; }
     win.document.write(html);
     win.document.close();
 
-    // Mark transcript generated
     const grad = graduationCandidates.find(g => g.studentId === studentId);
     if (grad) {
         grad.transcriptGenerated = true;
+        grad[transcriptType === 'provisional' ? 'provisionalTranscriptGenerated' : 'academicTranscriptGenerated'] = true;
         localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
         renderGraduateList();
     }
-    addAuditLog('Transcript Generated', student.name, '-');
-    showNotification?.('📄 Transcript ready to print', 'success');
+    addAuditLog(transcriptType === 'provisional' ? 'Provisional Transcript Generated' : 'Academic Transcript Generated', student.name, '-');
+    showNotification?.(transcriptType === 'provisional' ? '📄 Provisional transcript ready to print' : '📄 Academic transcript ready to print', 'success');
+}
+
+function generateProvisionalTranscript(studentId) {
+    return generateTranscript(studentId, 'provisional');
 }
 
 // ============================================================
@@ -1535,7 +1539,7 @@ Object.assign(window, {
     showCertificateQR, downloadQR, verifyCertificate, openCertificatePreview,
     startQRScanner, stopQRScanner, uploadQRImage, scanQRFromImage,
     viewCertificateFromQR, downloadCertificateFromQR,
-    downloadCertificatePDF, generateQRDataURL,
+    downloadCertificatePDF, generateQRDataURL, generateTranscript, generateProvisionalTranscript,
     downloadMarksTemplate, importBulkMarks,
     clearAuditLog, renderAuditLog, addAuditLog,
     closeBulkProgressModal, showBulkProgressModal, updateBulkProgress,
