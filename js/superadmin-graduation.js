@@ -715,6 +715,7 @@ function buildTranscriptHTML(student, marks, cert, transcriptType = 'academic') 
 
     return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Transcript - ${escapeHtml(student.name)}</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <style>
 @page { size: A4; margin: 20mm; }
 body { font-family: Arial, sans-serif; padding: 20px; }
