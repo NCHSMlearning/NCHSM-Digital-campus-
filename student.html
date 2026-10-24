@@ -8129,30 +8129,19 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
 </div>
 </div>
 </div>
-<!-- Download Report Button -->
-<div style="margin-top: 24px; text-align: center; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb;">
-<button onclick="downloadReportCard()" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(16,185,129,0.3)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.4)'" style="
-                background: linear-gradient(135deg, #10b981, #059669);
-                color: white;
-                border: none;
-                padding: 14px 44px;
-                border-radius: 12px;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 12px;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-            ">
-<i class="fas fa-file-pdf" style="font-size: 20px;"></i> 
-                Download Provisional Academic Transcript
-                <span style="font-size: 12px; opacity: 0.8; font-weight: 400;">(PDF)</span>
-</button>
-<p style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
-<i class="fas fa-info-circle"></i> Your semester report includes all published marks, grades, and performance summary
-            </p>
+<!-- Transcript actions: explicit download and print buttons -->
+<div style="margin-top:24px;text-align:center;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e5e7eb;">
+  <div style="display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;">
+    <button type="button" onclick="downloadReportCard('download')" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:0;padding:14px 24px;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:10px;">
+      <i class="fas fa-file-pdf" style="font-size:20px;"></i> Download PDF
+    </button>
+    <button type="button" onclick="downloadReportCard('print')" style="background:#0A3D62;color:#fff;border:0;padding:14px 24px;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:10px;">
+      <i class="fas fa-print" style="font-size:20px;"></i> Print
+    </button>
+  </div>
+  <p style="margin-top:10px;font-size:12px;color:#64748b;">
+    <i class="fas fa-info-circle"></i> Downloads an A4 landscape PDF or opens the print dialog.
+  </p>
 </div>
 </div>
 <!-- END MY PERFORMANCE TAB -->
@@ -13164,7 +13153,7 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
 <script src="/js/nurseiq.js?v=20261004-responsive-review"></script>
 <script src="/js/exam-card.js"></script>
 <script src="/js/lecture-card.js"></script>
-<script src="/js/academic-reports.js?v=20261024-transcript-print-fix-2"></script>
+<script src="/js/academic-reports.js?v=20261024-transcript-actions-3"></script>
 <script src="/js/timetable-manager.js"></script>
 <script src="/js/reviews-newsletter.js"></script>
 <!-- ===== 5️⃣ FIFTH: Finance and Enrollment ===== -->
