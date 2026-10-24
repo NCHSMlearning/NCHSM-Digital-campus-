@@ -2315,11 +2315,48 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     if (!printWindow || printWindow.closed) return;
                     const downloadStyle = printWindow.document.createElement('style');
                     downloadStyle.textContent = `
-                        body { width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-                        .container { box-sizing: border-box !important; width: 1123px !important; max-width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 8px 10px !important; border-radius: 0 !important; box-shadow: none !important; }
-                        .container { display: grid !important; grid-template-columns: minmax(0,1.18fr) minmax(0,.92fr) minmax(0,1.18fr) !important; grid-template-areas: "header header header" "student student student" "results-title results-title results-title" "results-table results-table results-table" "chart summary grading" "chart declaration declaration" "chart signatures signatures" "footer footer footer" !important; align-items: start !important; column-gap: 8px !important; row-gap: 4px !important; }
-                        .header { grid-area: header !important; } .student-info-wrapper { grid-area: student !important; } .semester-results-title { grid-area: results-title !important; } table.semester-results-table { grid-area: results-table !important; } .chart-container { grid-area: chart !important; min-width: 0 !important; align-self: stretch !important; margin: 0 !important; } .summary-grid { grid-area: summary !important; display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 4px !important; margin: 0 !important; } .grading-scale-table { grid-area: grading !important; min-width: 0 !important; margin: 0 !important; } .declaration { grid-area: declaration !important; min-width: 0 !important; } .signatures { grid-area: signatures !important; min-width: 0 !important; } .footer { grid-area: footer !important; }
-                        table.semester-results-table { width: 100% !important; table-layout: fixed !important; } .chart-container canvas { width: 100% !important; height: 145px !important; max-height: 145px !important; }
+                        @page { size: A4 landscape; margin: 4mm; }
+                        * { box-sizing: border-box !important; }
+                        html, body { width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                        body { font-size: 9px !important; }
+                        .container { box-sizing: border-box !important; width: 1123px !important; max-width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 5px 8px !important; border-radius: 0 !important; box-shadow: none !important; }
+                        .container { display: grid !important; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr) minmax(0,1.05fr) !important; grid-template-areas: "header header header" "student student student" "results-title results-title results-title" "results-table results-table results-table" "chart summary grading" "chart declaration declaration" "chart signatures signatures" "footer footer footer" !important; align-items: stretch !important; column-gap: 7px !important; row-gap: 3px !important; }
+                        .header { grid-area: header !important; margin: 0 0 3px !important; padding: 0 0 5px !important; } 
+                        .header h1 { font-size: 17px !important; line-height: 1.15 !important; }
+                        .header h2 { font-size: 14px !important; margin: 3px 0 5px !important; }
+                        .student-info-wrapper { grid-area: student !important; margin: 3px 0 5px !important; padding: 7px 10px !important; gap: 8px !important; }
+                        .student-info { gap: 3px 8px !important; }
+                        .student-info .label { font-size: 7px !important; }
+                        .student-info .value { font-size: 9px !important; line-height: 1.15 !important; margin-top: 1px !important; }
+                        .semester-results-title { grid-area: results-title !important; margin: 3px 0 0 !important; padding: 6px 10px !important; font-size: 11px !important; }
+                        table.semester-results-table { grid-area: results-table !important; width: 100% !important; table-layout: fixed !important; margin: 0 0 4px !important; border-collapse: collapse !important; }
+                        table.semester-results-table thead th { padding: 5px 5px !important; font-size: 8px !important; line-height: 1.1 !important; overflow-wrap: anywhere !important; }
+                        table.semester-results-table tbody td { padding: 5px 5px !important; font-size: 8px !important; line-height: 1.15 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
+                        table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 4% !important; text-align: center !important; }
+                        table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 8% !important; }
+                        table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 12% !important; }
+                        table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 31% !important; }
+                        table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 6% !important; text-align: center !important; }
+                        table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 9% !important; text-align: center !important; }
+                        table.semester-results-table th:nth-child(7), table.semester-results-table td:nth-child(7) { width: 7% !important; text-align: center !important; }
+                        table.semester-results-table th:nth-child(8), table.semester-results-table td:nth-child(8) { width: 8% !important; text-align: center !important; }
+                        table.semester-results-table th:nth-child(9), table.semester-results-table td:nth-child(9) { width: 15% !important; }
+                        .chart-container { grid-area: chart !important; min-width: 0 !important; align-self: stretch !important; margin: 0 !important; padding: 5px 7px !important; }
+                        .chart-container canvas { width: 100% !important; height: 105px !important; max-height: 105px !important; }
+                        .summary-grid { grid-area: summary !important; display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 3px !important; margin: 0 !important; }
+                        .summary-card { padding: 5px 4px !important; border-top-width: 2px !important; }
+                        .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
+                        .summary-card .label { font-size: 7px !important; margin-top: 2px !important; }
+                        .grading-scale-table { grid-area: grading !important; min-width: 0 !important; margin: 0 !important; padding: 5px 6px !important; }
+                        .grading-scale-table .title { font-size: 8px !important; margin-bottom: 3px !important; }
+                        .grading-scale-table table { font-size: 6px !important; }
+                        .grading-scale-table th, .grading-scale-table td { padding: 2px 3px !important; font-size: 6px !important; line-height: 1.1 !important; }
+                        .declaration { grid-area: declaration !important; min-width: 0 !important; margin: 3px 0 !important; padding: 5px 7px !important; font-size: 8px !important; line-height: 1.2 !important; }
+                        .signatures { grid-area: signatures !important; min-width: 0 !important; margin: 2px 0 !important; padding-top: 4px !important; gap: 12px !important; }
+                        .signature-box .line { margin: 4px auto 1px !important; }
+                        .footer { grid-area: footer !important; margin: 2px 0 0 !important; padding-top: 4px !important; font-size: 7px !important; }
+                        .no-print, .btn-print, .btn-close { display: none !important; }
+                        .container, .header, .student-info-wrapper, .semester-results-title, .chart-container, .summary-grid, .grading-scale-table, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                     `;
                     printWindow.document.head.appendChild(downloadStyle);
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
