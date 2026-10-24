@@ -1556,10 +1556,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         
         console.log('📊 Generating transcript PDF for', marksData.length, 'courses');
         const rows = marksData.map((m,i) => {
-            const score = Number(m.final_score ?? m.total ?? 0);
-            const grade = m.grade || calculateGrade(score, userProgram);
-            const points = Number(m.points ?? calculatePoints(grade, userProgram));
-            return `<tr><td>${i+1}</td><td>${escapeHtml(m.block || m.block_term || 'General')}</td><td>${escapeHtml(m.unit_code || getUnitCode(m.subject_name) || 'N/A')}</td><td>${escapeHtml(m.subject_name || 'N/A')}</td><td>${Number(m.credits || 3)}</td><td>${score.toFixed(1)}</td><td>${escapeHtml(grade)}</td><td>${points.toFixed(1)}</td></tr>`;
+            const scoreValue = getPublishedScore(m);
+            const score = scoreValue === null ? null : scoreValue;
+            const grade = m.grade || m.published_grade || m.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
+            const storedPoints = numericMark(m, ['points', 'grade_points']);
+            const points = storedPoints !== null ? storedPoints : (grade !== '-' ? calculatePoints(grade, userProgram) : null);
+            const storedStatus = String(m.status || m.published_status || m.result_status || '').toUpperCase();
+            const status = ['DISTINCTION','CREDIT','PASS','FAIL','PENDING','EXCELLENT','GOOD','SATISFACTORY'].includes(storedStatus)
+                ? storedStatus : (score !== null ? getGradingStatus(score, userProgram) : 'PENDING');
+            return `<tr><td>${i+1}</td><td>${escapeHtml(m.block || m.block_term || 'General')}</td><td>${escapeHtml(m.unit_code || getUnitCode(m.subject_name) || 'N/A')}</td><td>${escapeHtml(m.subject_name || 'N/A')}</td><td>${Number(m.credits || 3)}</td><td>${score === null ? 'Pending' : score.toFixed(1)}</td><td>${escapeHtml(grade)}</td><td>${points === null ? '—' : points.toFixed(1)}</td><td>${escapeHtml(status)}</td></tr>`;
         }).join('');
         const gpa = calculateGPA(marksData);
         const w = window.open('', '_blank', 'width=1100,height=800');
@@ -1568,7 +1573,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         body{font-family:Arial,sans-serif;margin:30px;color:#1e293b}h1{text-align:center;color:#0A3D62;font-size:22px;margin:0}h2{text-align:center;font-size:16px;margin:5px 0 20px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid #ddd;padding:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#0A3D62;color:white;padding:8px;border:1px solid #ccc}td{padding:7px;border:1px solid #ddd}.summary{margin-top:20px;font-weight:700}@media print{body{margin:12mm}.no-print{display:none}}</style></head><body>
         <h1>Nakuru College of Health Sciences and Management</h1><h2>Academic Transcript</h2>
         <div class="meta"><div><b>Student:</b> ${escapeHtml(user.full_name || 'Student')}</div><div><b>Admission:</b> ${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div><div><b>Program:</b> ${escapeHtml(userProgram || 'N/A')}</div></div>
-        <table><thead><tr><th>#</th><th>Block/Term</th><th>Unit Code</th><th>Unit Name</th><th>Credits</th><th>Score</th><th>Grade</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table>
+        <table><thead><tr><th>#</th><th>Block/Term</th><th>Unit Code</th><th>Unit Name</th><th>Credits</th><th>Score</th><th>Grade</th><th>Grade Points</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
         <div class="summary">Cumulative GPA: ${gpa.toFixed(2)} &nbsp; | &nbsp; Units: ${marksData.length}</div>
         <div class="no-print" style="text-align:center;margin-top:25px"><button onclick="window.print()">Print / Save as PDF</button></div>
         </body></html>`);
@@ -1699,9 +1704,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
                 const score = getPublishedScore(mark);
                 const gradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
-                const pointsValue = Number(mark.points);
-                const points = Number.isFinite(pointsValue) ? pointsValue : (gradeDisplay !== '-' ? calculatePoints(gradeDisplay, userProgram) : null);
-                const gradeColor = getGradeColor(gradeDisplay);
+                const pointsValue = numericMark(mark, ['points', 'grade_points']);
+                const points = pointsValue !== null ? pointsValue : (gradeDisplay !== '-' ? calculatePoints(gradeDisplay, userProgram) : null);
+                const rawStatus = String(mark.status || mark.published_status || mark.result_status || '').toUpperCase();
+                const statusDisplay = ['DISTINCTION','CREDIT','PASS','FAIL','PENDING','EXCELLENT','GOOD','SATISFACTORY'].includes(rawStatus)
+                    ? rawStatus : (score !== null ? getGradingStatus(score, userProgram) : 'PENDING');
+                const statusColor = statusDisplay === 'DISTINCTION' || statusDisplay === 'EXCELLENT' ? '#047857'
+                    : statusDisplay === 'CREDIT' || statusDisplay === 'GOOD' ? '#1d4ed8'
+                    : statusDisplay === 'PASS' || statusDisplay === 'SATISFACTORY' ? '#b45309'
+                    : statusDisplay === 'FAIL' ? '#b91c1c' : '#64748b';
                 const hasRetake = mark.hasRetake || false;
                 const retakeCount = mark.retakeCount || 0;
                 
@@ -1722,7 +1733,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             </span>
                         </td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; font-size: 10px; color: ${gradeColor};">
-                            ${points.toFixed(1)}
+                            ${points === null ? '—' : points.toFixed(1)}
+                        </td>
+                        <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: center;">
+                            <span style="display:inline-block;background:${statusColor};color:#fff;padding:4px 7px;border-radius:10px;font-weight:700;font-size:10px;white-space:normal;">${escapeHtml(statusDisplay)}</span>
                         </td>
                     </tr>
                 `;
@@ -2020,7 +2034,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     <th style="min-width: 65px; border: 1px solid #0A3D62;">Unit Code</th>
                     <th style="min-width: 150px; border: 1px solid #0A3D62;">Unit Name</th>
                     <th style="text-align: center; width: 50px; border: 1px solid #0A3D62;">Grade</th>
-                    <th style="text-align: center; width: 50px; border: 1px solid #0A3D62;">Points</th>
+                    <th style="text-align: center; width: 70px; border: 1px solid #0A3D62;">Grade Points</th>\n                    <th style="text-align: center; min-width: 95px; border: 1px solid #0A3D62;">Status</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
