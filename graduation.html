@@ -518,6 +518,12 @@ JAVASCRIPT
     (function() {
         'use strict';
 
+        function escapeVerificationText(value) {
+            return String(value || '').replace(/[&<>"']/g, function(ch) {
+                return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]);
+            });
+        }
+
         // Public QR verification bootstrap.
         // The previous Apps Script URL was a placeholder and always failed.
         const urlParams = new URLSearchParams(window.location.search);
@@ -550,9 +556,9 @@ JAVASCRIPT
                 <div class="result-card result-invalid">
                     <div class="result-title invalid"><i class="fas fa-hourglass-half"></i> Registry verification required</div>
                     <div class="detail-grid">
-                        <div class="detail-row"><strong>Document type</strong><span>${escapeHtml(typeLabel)}</span></div>
-                        <div class="detail-row"><strong>Reference</strong><span>${escapeHtml(documentId)}</span></div>
-                        ${studentId ? `<div class="detail-row"><strong>Student reference</strong><span>${escapeHtml(studentId)}</span></div>` : ''}
+                        <div class="detail-row"><strong>Document type</strong><span>${escapeVerificationText(typeLabel)}</span></div>
+                        <div class="detail-row"><strong>Reference</strong><span>${escapeVerificationText(documentId)}</span></div>
+                        ${studentId ? `<div class="detail-row"><strong>Student reference</strong><span>${escapeVerificationText(studentId)}</span></div>` : ''}
                     </div>
                     <p style="margin-top:14px;color:#64748b">The QR code has been read, but this page cannot yet confirm authenticity because the public document registry is not configured. Please verify with the NCHSM Academic Office.</p>
                 </div>`;
