@@ -3489,39 +3489,21 @@ function unblockApplications() {
 // NETWORK MONITORING
 // ============================================================
 function setupNetworkMonitoring() {
-    window.addEventListener('online', async () => {
-        showToast('✅ Network restored! Syncing answers...', 'success');
-
-        const draftKeys = Object.keys(localStorage).filter(key => 
-            key.startsWith(`${CONFIG.STORAGE_PREFIX}${AppState.examId}_draft_${AppState.studentId}`)
-        );
-        
-        if (draftKeys.length > 0) {
-            let synced = 0;
-            for (const key of draftKeys) {
-                try {
-                    const data = JSON.parse(localStorage.getItem(key));
-                    if (data && data.answer) {
-                        const questionId = key.split('_').pop();
-                        await saveAnswerToDatabase(questionId, data.answer);
-                        synced++;
-                    }
-                } catch (e) {}
-            }
-            if (synced > 0) {
-                showToast('✅ Synced ' + synced + ' answers to server', 'success');
-                draftKeys.forEach(key => localStorage.removeItem(key));
-            }
-        }
+    window.addEventListener('online', () => {
+        // Answers are kept as attempt-scoped local drafts until the secure
+        // submit_exam_attempt_secure RPC submits them. Re-saving a local draft
+        // is NOT a server sync, so never delete drafts or claim they were synced.
+        showToast('✅ Network restored. Your saved answers are ready for secure submission.', 'success');
     });
 
     window.addEventListener('offline', () => {
         showToast('⚠️ Network lost! Answers saved locally.', 'warning');
         for (const questionId in AppState.answers) {
             if (AppState.answers.hasOwnProperty(questionId)) {
-                saveToLocalStorage(`draft_${questionId}`, { 
-                    answer: AppState.answers[questionId], 
-                    timestamp: Date.now() 
+                saveToLocalStorage(`draft_${questionId}`, {
+                    answer: AppState.answers[questionId],
+                    timestamp: Date.now(),
+                    attemptId: AppState.attemptId
                 });
             }
         }
