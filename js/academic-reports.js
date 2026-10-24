@@ -2142,7 +2142,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 </div>
             </div>
             <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
-            <div style="margin: 5px auto 2px; max-width: 680px; padding: 5px 9px; border: 1px solid #d97706; border-radius: 4px; background: #fffbeb; color: #92400e; font-size: 9px; font-weight: 700; text-align: center;">PROVISIONAL RESULTS — Subject to academic verification and approval</div>
             <div class="date">Generated: ${now}</div>
         </div>
         
