@@ -2055,9 +2055,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .grading-scale-table .title, .chart-container .title { font-size: 7px !important; margin-bottom: 1px !important; }
             .grading-scale-table th, .grading-scale-table td { font-size: 6px !important; line-height: 1 !important; padding: 1px 2px !important; }
             .grading-scale-table table { margin: 0 !important; }
-            /* The progression chart is useful on screen but wastes page height on the official print copy. */
-            .chart-container { display: none !important; }
-            .chart-container canvas { display: none !important; }
+            /* Keep the chart, declaration, signatures and footer in the print output.
+               Compact the chart rather than removing report content to force pagination. */
+            .chart-container { display: block !important; padding: 2px 4px !important; margin: 2px 0 !important; }
+            .chart-container canvas { display: block !important; width: 100% !important; height: 48px !important; max-height: 48px !important; }
+            .chart-container .title { font-size: 6px !important; margin-bottom: 0 !important; }
+            .header > div[style*="border: 1px solid #d97706"] { margin: 2px auto 1px !important; padding: 2px 5px !important; font-size: 7px !important; line-height: 1.05 !important; }
+            .summary-card .label { letter-spacing: 0 !important; }
+            .grading-scale-table .title { margin-bottom: 0 !important; }
+            .semester-results-table tbody td:nth-child(3) { overflow-wrap: normal !important; word-break: normal !important; }
+            .signatures { grid-template-columns: 1fr 1fr !important; }
+            .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
             .declaration { padding: 2px 4px !important; margin: 2px 0 !important; font-size: 6px !important; line-height: 1.05 !important; }
             .declaration .title { font-size: 6px !important; }
             .signatures { gap: 8px !important; margin: 2px 0 !important; }
