@@ -510,7 +510,7 @@
                 return;
             }
             
-            const registrationNumber = user.student_id || user.admission_number || user.user_id;
+            const registrationNumber = user.admission_number || user.student_id || user.user_id;
             const userProgram = user.program || '';
             
             const nameEl = document.getElementById('my_marks_student_name');
