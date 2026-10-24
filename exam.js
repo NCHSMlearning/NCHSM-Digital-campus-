@@ -2053,6 +2053,9 @@ function saveProgressLocally() {
             answers: AppState.answers,
             currentIndex: AppState.currentIndex,
             flaggedQuestions: AppState.flaggedQuestions,
+            attemptId: AppState.attemptId,
+            examId: String(AppState.examId),
+            studentId: String(AppState.studentId),
             timestamp: Date.now()
         });
         saveExamSession();
@@ -2062,7 +2065,11 @@ function saveProgressLocally() {
 function checkSavedProgress() {
     try {
         const data = loadFromLocalStorage('progress');
-        if (data && Date.now() - data.timestamp < 30 * 60 * 1000) {
+        const belongsToCurrentAttempt = data
+            && String(data.examId) === String(AppState.examId)
+            && String(data.studentId) === String(AppState.studentId)
+            && String(data.attemptId) === String(AppState.attemptId);
+        if (belongsToCurrentAttempt && Date.now() - data.timestamp < 30 * 60 * 1000) {
             if (data.answers && Object.keys(data.answers).length > 0) {
                 AppState.answers = data.answers;
                 AppState.currentIndex = data.currentIndex || 0;
