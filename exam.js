@@ -1738,7 +1738,10 @@ async function initExam() {
 }
 
 function renderQuestion(index) {
-    if (AppState.fullscreenLockActive) return;
+    if (AppState.fullscreenLockActive || AppState.isExamPaused || AppState.isSubmitting || AppState.sessionLost) {
+        if (AppState.isExamPaused) showToast('⛔ Exam is paused. Complete proctoring recovery before continuing.', 'warning');
+        return;
+    }
     if (AppState.questions.length === 0) return;
     index = Math.max(0, Math.min(Number(index) || 0, AppState.questions.length - 1));
 
@@ -2022,7 +2025,12 @@ function nextQuestion() {
 // ANSWER SAVING
 // ============================================================
 function saveAnswer(answer) {
+    if (AppState.fullscreenLockActive || AppState.isExamPaused || AppState.isSubmitting || AppState.sessionLost || !AppState.isExamActive) {
+        showToast('⛔ Answering is locked until the exam can safely continue.', 'warning');
+        return;
+    }
     const q = AppState.questions[AppState.currentIndex];
+    if (!q) return;
     AppState.answers[q.id] = answer;
     AppState.hasAnsweredAtLeastOne = true;
     
@@ -2045,6 +2053,7 @@ function saveAnswer(answer) {
 }
 
 function saveCurrentAnswer() {
+    if (AppState.fullscreenLockActive || AppState.isExamPaused || AppState.isSubmitting || AppState.sessionLost || !AppState.isExamActive) return;
     const q = AppState.questions[AppState.currentIndex];
     if (!q) return;
     
@@ -4286,8 +4295,8 @@ class SecureFaceProctor {
 
             if (this.state.faceConfirmations >= (this.config.FACE_CONFIRMATIONS_REQUIRED || 2)) {
                 this.state.faceStable = true;
-                if (this.state.isPaused) this.resumeExam();
-                updateCameraStatus('good', '✅ Face detected', '1 face');
+                if (this.state.isPaused && !this.state.cameraRecoveryShown) this.resumeExam();
+                if (!this.state.cameraRecoveryShown) updateCameraStatus('good', '✅ Face detected', '1 face');
                 const warning = DOM.multipleFacesWarning;
                 if (warning) warning.style.display = 'none';
             } else {
