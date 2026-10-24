@@ -5992,11 +5992,6 @@ async function sendApprovalEmail(email, userName, role, program, intakeYear, int
     // ✅ FIXED: Pass intake_month to getDisplayIntake
     const intakeDisplay = intakeYear ? getDisplayIntake(program, intakeYear, intakeMonth) : 'N/A';
     
-    if (typeof BREVO_CONFIG === 'undefined' || !BREVO_CONFIG.apiKey) {
-        console.warn('⚠️ Brevo not configured. Using fallback email.');
-        return sendApprovalEmailFallback(email, userName, role, programDisplay, intakeDisplay, blockDisplay);
-    }
-    
     try {
         const year = new Date().getFullYear();
         const roleDisplay = role === 'student' ? 'Student' : role || 'User';
