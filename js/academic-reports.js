@@ -763,9 +763,9 @@
             const scoreValue = getPublishedScore(mark);
             const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
             const allowedStatuses = ['DISTINCTION', 'CREDIT', 'PASS', 'FAIL', 'PENDING', 'EXCELLENT', 'GOOD', 'SATISFACTORY'];
-            const status = allowedStatuses.includes(rawStatus)
-                ? rawStatus
-                : (scoreValue !== null ? getGradingStatus(scoreValue, userProgram) : 'PENDING');
+            const status = scoreValue === null
+                ? 'PENDING'
+                : (allowedStatuses.includes(rawStatus) ? rawStatus : getGradingStatus(scoreValue, userProgram));
             const statusColor = getStatusColor(status);
             const effectiveGrade = mark.grade || mark.published_grade || mark.final_grade || (scoreValue !== null ? calculateGrade(scoreValue, userProgram) : '');
             const gradeColor = getGradeColor(effectiveGrade);
@@ -1741,8 +1741,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const gradeColor = (typeof getGradeColor === 'function' ? getGradeColor(gradeDisplay) : '#64748b');
                 const points = resolveDisplayPoints(mark, gradeDisplay, userProgram);
                 const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
-                const statusDisplay = ['DISTINCTION','CREDIT','PASS','FAIL','PENDING','EXCELLENT','GOOD','SATISFACTORY'].includes(rawStatus)
-                    ? rawStatus : (score !== null ? getGradingStatus(score, userProgram) : 'PENDING');
+                const allowedStatuses = ['DISTINCTION','CREDIT','PASS','FAIL','PENDING','EXCELLENT','GOOD','SATISFACTORY'];
+                const statusDisplay = score === null
+                    ? 'PENDING'
+                    : (allowedStatuses.includes(rawStatus) ? rawStatus : getGradingStatus(score, userProgram));
                 const statusColor = statusDisplay === 'DISTINCTION' || statusDisplay === 'EXCELLENT' ? '#047857'
                     : statusDisplay === 'CREDIT' || statusDisplay === 'GOOD' ? '#1d4ed8'
                     : statusDisplay === 'PASS' || statusDisplay === 'SATISFACTORY' ? '#b45309'
