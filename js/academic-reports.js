@@ -2031,6 +2031,33 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             html, body { width: 100%; height: auto; margin: 0 !important; padding: 0 !important; background: #fff; }
             body { font-size: 8px !important; }
             .container { width: 100% !important; max-width: none !important; margin: 0 !important; border: 1px solid #0A3D62 !important; border-radius: 0 !important; padding: 2mm !important; box-shadow: none !important; }
+            /* Landscape transcript: maximize table width, then use a three-column lower band. */
+            .container {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1.18fr) minmax(0, .92fr) minmax(0, 1.18fr) !important;
+                grid-template-areas:
+                    "header header header"
+                    "student student student"
+                    "results-title results-title results-title"
+                    "results-table results-table results-table"
+                    "chart summary grading"
+                    "chart declaration declaration"
+                    "chart signatures signatures"
+                    "footer footer footer" !important;
+                align-items: start !important;
+                column-gap: 2mm !important;
+                row-gap: 1mm !important;
+            }
+            .header { grid-area: header !important; }
+            .student-info-wrapper { grid-area: student !important; }
+            .semester-results-title { grid-area: results-title !important; }
+            table.semester-results-table { grid-area: results-table !important; }
+            .chart-container { grid-area: chart !important; min-width: 0 !important; align-self: stretch !important; }
+            .summary-grid { grid-area: summary !important; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; align-self: start !important; }
+            .grading-scale-table { grid-area: grading !important; min-width: 0 !important; align-self: start !important; }
+            .declaration { grid-area: declaration !important; min-width: 0 !important; }
+            .signatures { grid-area: signatures !important; min-width: 0 !important; }
+            .footer { grid-area: footer !important; }
             .no-print { display: none !important; }
             .header { padding-bottom: 2px !important; margin-bottom: 2px !important; border-bottom-width: 1px !important; }
             .header-top img { max-height: 28px !important; max-width: 38px !important; }
@@ -2049,10 +2076,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             table.semester-results-table tbody td { font-size: 8px !important; line-height: 1.08 !important; padding: ${printRowVerticalPadding}px 3px !important; }
             table.semester-results-table tbody td:nth-child(3) { font-size: ${printUnitFontSize}px !important; line-height: 1.02 !important; overflow-wrap: anywhere !important; padding-top: ${printRowVerticalPadding}px !important; padding-bottom: ${printRowVerticalPadding}px !important; }
             table.semester-results-table tbody td:nth-child(6) { font-size: 7px !important; }
-            .summary-grid { gap: ${printSectionSpacing}px !important; margin: ${printSectionSpacing}px 0 !important; }
+            .summary-grid { gap: ${printSectionSpacing}px !important; margin: 0 !important; }
             .summary-card { padding: ${marks.length <= 4 ? 5 : marks.length <= 8 ? 3 : 2}px !important; }
-            .grading-scale-table { padding: 2px !important; margin: ${printSectionSpacing}px 0 !important; }
-            .chart-container { margin: ${printSectionSpacing}px 0 !important; }
+            .grading-scale-table { padding: 2px !important; margin: 0 !important; }
+            .chart-container { margin: 0 !important; }
             .summary-card .value { font-size: 11px !important; line-height: 1 !important; }
             .summary-card .label { font-size: 6px !important; line-height: 1 !important; }
             .grading-scale-table { padding: 2px !important; margin: 2px 0 !important; }
