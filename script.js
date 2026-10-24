@@ -7919,8 +7919,8 @@ async function deleteProfile(userId, fullName, isRejection = false) {
     console.log('🗑️ Deleting profile:', { userId, fullName, isRejection });
     
     const action = isRejection ? 'Reject' : 'Delete';
-    const message = isRejection 
-        ? `Reject (delete) user ${fullName}? This will permanently remove their account.`
+    const message = isRejection
+        ? `Reject ${fullName}? Their account will be marked rejected and retained for audit; it will not be deleted.`
         : `CRITICAL: Permanently delete profile and user ${fullName}?`;
     
     if (!confirm(`${action}: ${message}`)) return;
