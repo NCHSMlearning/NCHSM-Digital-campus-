@@ -7927,7 +7927,56 @@ async function deleteProfile(userId, fullName, isRejection = false) {
 
     try {
         const supabase = getSb();
-        
+
+        // REJECT is a status transition, not permanent deletion.
+        // Keep the profile and Auth account for audit/recovery, and remove it
+        // from the pending queue by changing status to "rejected".
+        if (isRejection) {
+            const { data: rejectedProfile, error: rejectError } = await supabase
+                .from(USER_PROFILE_TABLE)
+                .update({
+                    status: 'rejected',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', userId)
+                .eq('status', 'pending')
+                .select('user_id, full_name, email')
+                .maybeSingle();
+
+            if (rejectError) {
+                console.error('❌ Error rejecting pending user:', rejectError);
+                showFeedback(`Failed to reject user: ${rejectError.message}`, 'error');
+                return;
+            }
+
+            if (!rejectedProfile) {
+                showFeedback('This account is no longer pending (or could not be updated). Refresh the list and try again.', 'warning');
+                await loadPendingApprovals();
+                return;
+            }
+
+            try {
+                await logAudit(
+                    'USER_REJECT',
+                    `Rejected pending user ${rejectedProfile.full_name || fullName}; profile retained with status rejected.`,
+                    userId,
+                    'SUCCESS'
+                );
+            } catch (auditError) {
+                console.warn('User was rejected, but audit logging failed:', auditError);
+            }
+
+            showFeedback(`User ${rejectedProfile.full_name || fullName} rejected. Their profile was retained for audit purposes.`, 'success');
+
+            await Promise.allSettled([
+                loadPendingApprovals(),
+                loadAllUsers(1, USERS_STATE.filters),
+                loadStudents(),
+                typeof loadDashboardData === 'function' ? loadDashboardData() : Promise.resolve()
+            ]);
+            return;
+        }
+
         const { data: userProfile, error: fetchError } = await supabase
             .from(USER_PROFILE_TABLE)
             .select('user_id, email, full_name')
