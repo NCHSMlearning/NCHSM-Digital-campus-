@@ -2040,14 +2040,19 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .signature-box .line { margin: 4px auto 2px !important; }
             .footer { margin-top: 4px !important; padding-top: 3px !important; font-size: 7px !important; }
             thead th, td span { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .container { break-inside: avoid !important; page-break-inside: avoid !important; }
-            table.semester-results-table { break-inside: avoid !important; page-break-inside: avoid !important; }
+            /* Flexible pagination: compact reports fit on one page; longer reports continue cleanly. */
+            .container { break-inside: auto !important; page-break-inside: auto !important; }
+            table.semester-results-table { break-inside: auto !important; page-break-inside: auto !important; }
+            table.semester-results-table thead { display: table-header-group !important; }
+            table.semester-results-table tfoot { display: table-footer-group !important; }
             table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-            /* Compact the report to help a typical 14-unit transcript fit on one A4 landscape page. */
+            .student-info-wrapper, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+            /* Keep unit names readable; only vertical spacing is tightened for a typical 14-unit report. */
             table.semester-results-table tbody td:nth-child(3) { font-size: 14px !important; line-height: 1.05 !important; padding-top: 2px !important; padding-bottom: 2px !important; }
             .student-info-wrapper { padding: 3px 6px !important; margin: 3px 0 !important; }
             .summary-grid { margin: 3px 0 !important; }
             .grading-scale-table, .chart-container, .declaration, .signatures { margin-top: 3px !important; margin-bottom: 3px !important; }
+            .chart-container canvas { height: 45px !important; max-height: 45px !important; }
         }
     </style>
 </head>
