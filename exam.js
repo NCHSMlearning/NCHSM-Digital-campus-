@@ -5094,13 +5094,40 @@ function submitActiveExamOnExit() {
     exitSubmissionStarted = true;
 
     try {
-        saveProgressLocally();
+        // Flush the currently visible control before the browser tears the page down.
+        // Text answers use a debounce timer, so AppState.answers may otherwise lag
+        // behind the last keystroke when the student closes the tab.
+        const currentQuestion = (AppState.questions || [])[AppState.currentIndex];
+        if (currentQuestion && currentQuestion.id) {
+            const textControl = document.getElementById(`text-answer-${currentQuestion.id}`);
+            if (textControl && typeof textControl.value === 'string') {
+                AppState.answers[currentQuestion.id] = textControl.value;
+            } else {
+                const selected = document.querySelector(`input[name="answer-${currentQuestion.id}"]:checked`);
+                if (selected) AppState.answers[currentQuestion.id] = selected.value;
+            }
+        }
+
         const answerPayload = {};
         (AppState.questions || []).forEach((question) => {
-            if (question && question.id && AppState.answers[question.id] != null) {
+            if (!question || !question.id) return;
+            const textControl = document.getElementById(`text-answer-${question.id}`);
+            if (textControl && typeof textControl.value === 'string') {
+                AppState.answers[question.id] = textControl.value;
+            } else {
+                const selected = document.querySelector(`input[name="answer-${question.id}"]:checked`);
+                if (selected) AppState.answers[question.id] = selected.value;
+            }
+            if (AppState.answers[question.id] != null) {
                 answerPayload[question.id] = String(AppState.answers[question.id]);
+                saveToLocalStorage(`draft_${question.id}`, {
+                    answer: answerPayload[question.id],
+                    timestamp: Date.now(),
+                    attemptId: AppState.attemptId
+                });
             }
         });
+        saveProgressLocally();
 
         // Supabase JS persists the authenticated session in localStorage.
         // Use keepalive fetch so the request can outlive page teardown.
