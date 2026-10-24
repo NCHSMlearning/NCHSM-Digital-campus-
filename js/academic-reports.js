@@ -597,8 +597,7 @@
                     });
                     console.log(`📊 Loaded ${marks.length} published marks without recalculating results`);
                 } else {
-                    tbody.innerHTML = `
-                        <tr><td colspan="6" style="text-align:center;padding:60px 20px;color:#64748b;">
+                    tbody.innerHTML = `                        <tr><td colspan="6" style="text-align:center;padding:60px 20px;color:#64748b;">
                             <i class="fas fa-file-circle-xmark" style="font-size:42px;display:block;margin-bottom:14px;"></i>
                             <h4 style="margin:0 0 8px;color:#1e293b;">No published marks found</h4>
                             <p style="font-size:13px;margin:0;">No results have been published for this student yet.</p>
@@ -1197,8 +1196,7 @@
                             ticks: {
                                 stepSize: 1,
                                 font: { size: 10 }
-                            }
-                        },
+                            }                        },
                         x: {
                             ticks: {
                                 font: { size: 10, weight: '600' }
@@ -1797,8 +1795,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         </tbody>
                         <tfoot>
                             <tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 50%</td></tr>
-                        </tfoot>
-                    </table>
+                        </tfoot>                    </table>
                 `;
             } else {
                 gradingScaleHTML = `
@@ -1951,6 +1948,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             table.semester-results-table { width: 100%; table-layout: fixed; font-size: 13px; }
             table.semester-results-table thead th { font-size: 12px; padding: 9px 5px; overflow-wrap: anywhere; }
             table.semester-results-table tbody td { font-size: 13px; line-height: 1.4; padding: 10px 5px; overflow-wrap: anywhere; word-break: normal; }
+            /* Mobile readability: inline cell styles otherwise override responsive font sizes. */
+            table.semester-results-table thead th { font-size: 13px !important; line-height: 1.35; padding: 11px 6px !important; }
+            table.semester-results-table tbody td { font-size: 13px !important; line-height: 1.5 !important; padding: 12px 6px !important; }
+            table.semester-results-table tbody td:nth-child(1) { font-size: 11px !important; }
+            table.semester-results-table tbody td:nth-child(2) { font-size: 12px !important; overflow-wrap: normal; word-break: normal; }
+            table.semester-results-table tbody td:nth-child(3) { font-size: 14px !important; line-height: 1.5 !important; overflow-wrap: anywhere; }
+            table.semester-results-table tbody td:nth-child(4) span { font-size: 12px !important; padding: 4px 9px !important; }
+            table.semester-results-table tbody td:nth-child(5) { font-size: 12px !important; }
             table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 7%; }
             table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 22%; }
             table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 39%; }
