@@ -2039,10 +2039,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         }
         /* Apply the landscape layout to html2canvas capture as well as physical printing.
            html2pdf captures screen styles; print-only rules leave the report scaled and fragmented. */
-        @page { size: 297mm 210mm; margin: 4mm; }
+        @page { size: A4 portrait; margin: 6mm; }
         @media print, screen {
-            @page { size: 297mm 210mm; margin: 4mm; }
-            html, body { width: 289mm !important; min-width: 289mm !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: #fff; }
+            @page { size: A4 portrait; margin: 6mm; }
+            html, body { width: 198mm !important; min-width: 198mm !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: #fff; }
             body { font-size: 9px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             /* Fill the printable A4 landscape area rather than shrinking content into a centered strip. */
             .container { box-sizing: border-box !important; width: 100% !important; min-width: 0 !important; min-height: 0 !important; height: auto !important; margin: 0 !important; }
@@ -2050,16 +2050,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             /* Landscape transcript: maximize table width, then use a three-column lower band. */
             .container {
                 display: grid !important;
-                grid-template-columns: minmax(0, 1.18fr) minmax(0, .92fr) minmax(0, 1.18fr) !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
                 grid-template-areas:
-                    "header header header"
-                    "student student student"
-                    "results-title results-title results-title"
-                    "results-table results-table results-table"
-                    "chart summary grading"
-                    "chart declaration declaration"
-                    "chart signatures signatures"
-                    "footer footer footer" !important;
+                    "header header"
+                    "student student"
+                    "results-title results-title"
+                    "results-table results-table"
+                    "summary grading"
+                    "chart chart"
+                    "declaration declaration"
+                    "signatures signatures"
+                    "footer footer" !important;
                 align-items: start !important;
                 column-gap: 2mm !important;
                 row-gap: 1mm !important;
@@ -2320,7 +2321,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         html, body { width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
                         body { font-size: 9px !important; }
                         .container { box-sizing: border-box !important; width: 1123px !important; max-width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 5px 8px !important; border-radius: 0 !important; box-shadow: none !important; }
-                        .container { display: grid !important; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr) minmax(0,1.05fr) !important; grid-template-areas: "header header header" "student student student" "results-title results-title results-title" "results-table results-table results-table" "chart summary grading" "chart declaration declaration" "chart signatures signatures" "footer footer footer" !important; align-items: stretch !important; column-gap: 7px !important; row-gap: 3px !important; }
+                        .container { display: grid !important; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr) minmax(0,1.05fr) !important; grid-template-areas: "header header"
+                    "student student"
+                    "results-title results-title"
+                    "results-table results-table"
+                    "summary grading"
+                    "chart chart"
+                    "declaration declaration"
+                    "signatures signatures"
+                    "footer footer" !important; align-items: stretch !important; column-gap: 7px !important; row-gap: 3px !important; }
                         .header { grid-area: header !important; margin: 0 0 3px !important; padding: 0 0 5px !important; } 
                         .header h1 { font-size: 17px !important; line-height: 1.15 !important; }
                         .header h2 { font-size: 14px !important; margin: 3px 0 5px !important; }
@@ -2384,8 +2393,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         margin: 4,
                         filename: fileBase + '.pdf',
                         image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 1123, windowHeight: 794, scrollX: 0, scrollY: 0, width: target.scrollWidth },
-                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true },
+                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, width: target.scrollWidth },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
                         pagebreak: { mode: ['css', 'legacy'] }
                     };
                     // Generate a real PDF and save it directly from the original portal tab.
