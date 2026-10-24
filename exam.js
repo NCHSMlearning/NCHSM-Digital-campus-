@@ -4107,9 +4107,13 @@ class SecureFaceProctor {
         }
 
         if (this.state.detectionInterval) clearInterval(this.state.detectionInterval);
+        // Prevent overlapping model inference. Concurrent webcam predictions can
+        // return out of order and falsely count a face as missing or turned away.
+        this.detectionBusy = false;
 
         this.state.detectionInterval = setInterval(async () => {
-            if (this.state.isSubmitting || !this.video) return;
+            if (this.state.isSubmitting || !this.video || this.detectionBusy) return;
+            this.detectionBusy = true;
 
             const stream = this.video.srcObject;
             if (!stream) {
@@ -4139,6 +4143,8 @@ class SecureFaceProctor {
                 this.state.detectionErrors++;
                 console.warn('Face detection frame error:', error);
                 if (this.state.detectionErrors >= 4) this.showCameraRecoveryState('Face detection failed repeatedly. Retry the camera.');
+            } finally {
+                this.detectionBusy = false;
             }
         }, this.config.DETECTION_INTERVAL);
     }
@@ -4724,6 +4730,7 @@ retryCamera() {
     }
     
     stopDetection() {
+        this.detectionBusy = false;
         if (this.state.detectionInterval) {
             clearInterval(this.state.detectionInterval);
             this.state.detectionInterval = null;
