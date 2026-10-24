@@ -2242,7 +2242,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const qrImage = document.getElementById('transcriptVerificationQr');
-            const verifyId = "${user.student_id || user.admission_number || ''}";
+            const verifyId = ${JSON.stringify(user.student_id || user.admission_number || '')};
             const verificationUrl = new URL('/graduation.html', window.location.origin);
             verificationUrl.searchParams.set('id', verifyId);
             if (qrImage && window.QRCode && verifyId) {
