@@ -2312,10 +2312,25 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         return;
                     }
                     if (typeof printWindow.html2pdf !== 'function') {
-                        printWindow.close();
-                        alert('Automatic PDF download could not load. Please check your internet connection and try again.');
+                        let attempts = 0;
+                        const waitForPdfLibrary = () => {
+                            if (printWindow.closed) return;
+                            if (typeof printWindow.html2pdf === 'function') {
+                                generateTranscriptPdf();
+                                return;
+                            }
+                            attempts += 1;
+                            if (attempts < 20) setTimeout(waitForPdfLibrary, 300);
+                            else {
+                                printWindow.close();
+                                alert('PDF generator could not load. Check your internet connection and try again.');
+                            }
+                        };
+                        waitForPdfLibrary();
                         return;
                     }
+                    const generateTranscriptPdf = () => {
+                    if (!printWindow || printWindow.closed) return;
                     const downloadStyle = printWindow.document.createElement('style');
                     downloadStyle.textContent = `
                         body { width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -2334,13 +2349,28 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true },
                         pagebreak: { mode: ['css', 'legacy'] }
                     };
-                    printWindow.html2pdf().set(options).from(target).save()
-                        .then(() => { printWindow.close(); })
-                        .catch(error => {
-                            console.error('PDF download failed:', error);
-                            printWindow.close();
-                            alert('PDF download failed. Please try again or use Print / Save as PDF.');
-                        });
+                    // Explicit Blob + anchor download is more reliable than html2pdf's save helper on mobile.
+                    printWindow.html2pdf().set(options).from(target).toPdf().get('pdf').then(pdf => {
+                        const blob = pdf.output('blob');
+                        const url = URL.createObjectURL(blob);
+                        const anchor = printWindow.document.createElement('a');
+                        anchor.href = url;
+                        anchor.download = options.filename;
+                        anchor.style.display = 'none';
+                        printWindow.document.body.appendChild(anchor);
+                        anchor.click();
+                        anchor.remove();
+                        setTimeout(() => {
+                            URL.revokeObjectURL(url);
+                            if (!printWindow.closed) printWindow.close();
+                        }, 1500);
+                    }).catch(error => {
+                        console.error('PDF download failed:', error);
+                        if (!printWindow.closed) printWindow.close();
+                        alert('PDF download failed: ' + (error.message || 'Please try again.'));
+                    });
+                    };
+                    generateTranscriptPdf();
                 }, 1400);
             } else {
                 alert('The transcript window was closed before the PDF was ready. Please try again.');
