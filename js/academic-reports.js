@@ -2324,7 +2324,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     printWindow.document.head.appendChild(downloadStyle);
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                     const options = {
-                        margin: [4, 4, 4, 4],
+                        // html2pdf.js requires margins in top, left, bottom, right order; use a numeric margin for broad mobile-version compatibility.
+                        margin: 4,
                         filename: fileBase + '.pdf',
                         image: { type: 'jpeg', quality: 0.98 },
                         html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 1123, scrollX: 0, scrollY: 0 },
