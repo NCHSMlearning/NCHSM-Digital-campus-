@@ -1936,6 +1936,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <meta charset="UTF-8">
     <title>Provisional Academic Transcript - ${escapeHtml(user.full_name || 'Student')}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2218,6 +2219,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             </div>
         </div>
         
+        <!-- DOCUMENT VERIFICATION QR -->
+        <div class="verification-qr" style="display:flex;align-items:center;justify-content:center;gap:8px;margin:4px auto;padding:4px;border-top:1px solid #cbdbea;max-width:100%;">
+            <img id="transcriptVerificationQr" alt="Transcript verification QR code" style="width:54px;height:54px;object-fit:contain;" />
+            <div style="font-size:7px;line-height:1.25;color:#52677a;max-width:190px;">
+                <strong style="color:#0A3D62;font-size:8px;">DOCUMENT VERIFICATION</strong><br>
+                Scan to open the college verification page. Confirm the student's record with the Academic Office.
+            </div>
+        </div>
         <!-- FOOTER -->
         <div class="footer">
             <p>This is an official document. For verification, contact the Academic Office.</p>
@@ -2232,6 +2241,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const qrImage = document.getElementById('transcriptVerificationQr');
+            const verifyId = "${user.student_id || user.admission_number || ''}";
+            const verificationUrl = new URL('/graduation.html', window.location.origin);
+            verificationUrl.searchParams.set('id', verifyId);
+            if (qrImage && window.QRCode && verifyId) {
+                QRCode.toDataURL(verificationUrl.href, { width: 180, margin: 1, errorCorrectionLevel: 'M' })
+                    .then(url => { qrImage.src = url; qrImage.dataset.ready = 'true'; })
+                    .catch(err => console.error('Transcript QR generation failed:', err));
+            } else if (qrImage) {
+                qrImage.style.display = 'none';
+            }
             const ctx = document.getElementById('reportCardLineChart');
             if (ctx) {
                 const labels = ${JSON.stringify(graphLabels)};
