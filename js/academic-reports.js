@@ -745,11 +745,18 @@
         
         let html = '';
         marks.forEach((mark, index) => {
-            const status = mark.final_status || mark.status || '';
+            const scoreValue = getPublishedScore(mark);
+            const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
+            const allowedStatuses = ['DISTINCTION', 'CREDIT', 'PASS', 'FAIL', 'PENDING', 'EXCELLENT', 'GOOD', 'SATISFACTORY'];
+            const status = allowedStatuses.includes(rawStatus)
+                ? rawStatus
+                : (scoreValue !== null ? getGradingStatus(scoreValue, userProgram) : 'PENDING');
             const statusColor = getStatusColor(status);
-            const gradeColor = getGradeColor(mark.grade);
+            const effectiveGrade = mark.grade || mark.published_grade || mark.final_grade || (scoreValue !== null ? calculateGrade(scoreValue, userProgram) : '');
+            const gradeColor = getGradeColor(effectiveGrade);
             const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-            const pointsValue = mark.points !== null && mark.points !== undefined && mark.points !== '' && Number.isFinite(Number(mark.points)) ? Number(mark.points) : null;
+            const storedPoints = numericMark(mark, ['points', 'grade_points']);
+            const pointsValue = storedPoints !== null ? storedPoints : (effectiveGrade ? calculatePoints(effectiveGrade, userProgram) : null);
             
             // ✅ Hollow star indicator (subtle)
             const starIndicator = getHollowStarHtml(mark.subject_name);
@@ -766,13 +773,13 @@
                     </td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
-                            ${mark.grade || '-'}
+                            ${escapeHtml(effectiveGrade || '-')}
                         </span>
                     </td>
                     <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${pointsValue === null ? '-' : pointsValue.toFixed(1)}</td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
-                            ${status}
+                            ${escapeHtml(status)}
                         </span>
                     </td>
                 </tr>
@@ -1713,8 +1720,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     : statusDisplay === 'CREDIT' || statusDisplay === 'GOOD' ? '#1d4ed8'
                     : statusDisplay === 'PASS' || statusDisplay === 'SATISFACTORY' ? '#b45309'
                     : statusDisplay === 'FAIL' ? '#b91c1c' : '#64748b';
-                const hasRetake = mark.hasRetake || false;
-                const retakeCount = mark.retakeCount || 0;
+                // Use the same student retake records as the on-screen table.
+                const hasRetakeFlag = hasRetake(mark.subject_name);
+                const hasRetake = hasRetakeFlag || mark.hasRetake === true;
+                const retakeCount = hasRetakeFlag ? getRetakeCount(mark.subject_name) : (Number(mark.retakeCount) || 0);
                 
                 // ✅ ☆ star next to unit name (not a separate column)
                 const starIndicator = hasRetake ? `<span style="display: inline-block; margin-left: 4px; font-size: 11px; color: #94a3b8; opacity: 0.5; cursor: help;" title="Retaken (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})">☆</span>` : '';
