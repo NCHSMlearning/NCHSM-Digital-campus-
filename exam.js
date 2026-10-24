@@ -406,6 +406,71 @@ async function fastDetectFace(videoElement) {
 }
 
 // ============================================================
+// PHONE DETECTION + EXAM WATERMARK
+// Uses COCO-SSD in the existing webcam stream. Detection is advisory,
+// confidence-gated, and never treats one frame as proof of misconduct.
+let phoneModelPromise = null;
+function loadPhoneDetectionModel() {
+    if (phoneModelPromise) return phoneModelPromise;
+    phoneModelPromise = (async () => {
+        const loadScript = (src) => new Promise((resolve, reject) => {
+            const existing = Array.from(document.scripts).find(s => s.src === src);
+            if (existing) {
+                if (existing.dataset.loaded === 'true') return resolve();
+                existing.addEventListener('load', resolve, { once: true });
+                existing.addEventListener('error', reject, { once: true });
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = true;
+            script.onload = () => { script.dataset.loaded = 'true'; resolve(); };
+            script.onerror = () => reject(new Error('Unable to load proctoring model dependency'));
+            document.head.appendChild(script);
+        });
+        await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js');
+        await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js');
+        if (!window.cocoSsd || typeof window.cocoSsd.load !== 'function') throw new Error('Phone detection library unavailable');
+        return window.cocoSsd.load({ base: 'lite_mobilenet_v2' });
+    })().catch(error => {
+        phoneModelPromise = null;
+        throw error;
+    });
+    return phoneModelPromise;
+}
+
+function addExamScreenWatermark(examId, studentId) {
+    const id = 'nchsm-exam-screen-watermark';
+    let watermark = document.getElementById(id);
+    if (!watermark) {
+        watermark = document.createElement('div');
+        watermark.id = id;
+        Object.assign(watermark.style, {
+            position: 'fixed', inset: '0', zIndex: '9990', pointerEvents: 'none',
+            overflow: 'hidden', opacity: '0.12', display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gridTemplateRows: 'repeat(4, minmax(0, 1fr))',
+            color: '#334155', font: '700 13px/1.4 Arial, sans-serif',
+            userSelect: 'none', mixBlendMode: 'multiply'
+        });
+        document.body.appendChild(watermark);
+    }
+    const stamp = 'NCHSM • ' + String(studentId || 'STUDENT') + ' • EXAM ' + String(examId || '') + ' • ' + new Date().toLocaleString();
+    watermark.replaceChildren();
+    for (let i = 0; i < 8; i++) {
+        const mark = document.createElement('div');
+        mark.textContent = stamp;
+        Object.assign(mark.style, {
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transform: 'rotate(-24deg)', whiteSpace: 'nowrap', padding: '8px',
+            textAlign: 'center'
+        });
+        watermark.appendChild(mark);
+    }
+    return watermark;
+}
+
+// ============================================================
 // SINGLE-TAB EXAM GUARD
 // Blocks a second tab for the same student + exam before the exam starts.
 // The existing server-side session RPC remains the authoritative cross-device lock.
@@ -4011,6 +4076,11 @@ class SecureFaceProctor {
 
         if (!this.video) return;
 
+        // Keep a visible, non-interactive identity watermark over the exam page.
+        addExamScreenWatermark(this.examId, this.studentId);
+        // Load phone detector independently so a CDN/model failure cannot stop face proctoring.
+        this.startPhoneDetection();
+
         this.video.setAttribute('playsinline', 'true');
         this.video.setAttribute('autoplay', 'true');
         this.video.muted = true;
@@ -4056,6 +4126,56 @@ class SecureFaceProctor {
                 console.warn('Face detection frame error:', error);
             }
         }, this.config.DETECTION_INTERVAL);
+    }
+
+    startPhoneDetection() {
+        if (this.phoneDetectionStarted) return;
+        this.phoneDetectionStarted = true;
+        this.phoneDetectionBusy = false;
+        this.phonePositiveFrames = 0;
+        this.lastPhoneEventAt = 0;
+        loadPhoneDetectionModel().then(model => {
+            if (this.state.isSubmitting || !this.video) return;
+            this.phoneModel = model;
+            console.log('Phone-use object detection model loaded');
+            this.phoneDetectionInterval = setInterval(async () => {
+                if (this.state.isSubmitting || !this.video || this.phoneDetectionBusy ||
+                    !this.video.srcObject || this.video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+                this.phoneDetectionBusy = true;
+                try {
+                    const predictions = await this.phoneModel.detect(this.video, 12, 0.35);
+                    const phone = predictions.find(p => p.class === 'cell phone' && p.score >= 0.55);
+                    this.phonePositiveFrames = phone ? this.phonePositiveFrames + 1 : 0;
+                    // Require repeat detections to reduce false alarms from single-frame noise.
+                    if (phone && this.phonePositiveFrames >= 2 && Date.now() - this.lastPhoneEventAt > 30000) {
+                        this.lastPhoneEventAt = Date.now();
+                        const confidence = Math.round(phone.score * 100);
+                        logProctoringEvent(
+                            'phone_detected',
+                            'Possible mobile phone detected in webcam view (model confidence ' + confidence + '%). Review the evidence; this is not proof of misconduct.',
+                            'warning'
+                        );
+                        if (DOM.proctoringStatusText) {
+                            DOM.proctoringStatusText.textContent = '⚠️ Possible phone detected — keep desk clear';
+                            DOM.proctoringStatusText.className = 'status-value warning';
+                        }
+                        if (typeof this.callbacks.onViolation === 'function') {
+                            this.callbacks.onViolation(this.state.totalViolations,
+                                'Possible phone detected in the camera view. Remove it from the desk and follow the invigilator’s instructions.');
+                        }
+                        this.phonePositiveFrames = 0;
+                    }
+                } catch (error) {
+                    console.warn('Phone detection frame failed:', error);
+                } finally {
+                    this.phoneDetectionBusy = false;
+                }
+            }, 1500);
+        }).catch(error => {
+            console.warn('Phone detection unavailable; face proctoring remains active:', error);
+            logProctoringEvent('phone_detection_unavailable',
+                'Phone detection model could not load. Existing face proctoring remains active.', 'info');
+        });
     }
 
     showCameraRecoveryState(reason = 'Camera connection interrupted.') {
@@ -4548,6 +4668,10 @@ retryCamera() {
 }
     
     autoSubmitExam() {
+        if (this.phoneDetectionInterval) {
+            clearInterval(this.phoneDetectionInterval);
+            this.phoneDetectionInterval = null;
+        }
         if (this.state.isSubmitting) return;
         this.state.isSubmitting = true;
         
