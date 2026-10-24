@@ -14,7 +14,7 @@ const CONFIG = {
     MAX_TIME_PER_QUESTION: 120,
     CONSECUTIVE_FACE_LOST_LIMIT: 6,
     TOTAL_VIOLATIONS_LIMIT: 6,
-    RECOVERY_TIMER_SECONDS: 20,
+    RECOVERY_TIMER_SECONDS: 10,
     RETRY_COOLDOWN_SECONDS: 10,
     STORAGE_PREFIX: 'exam_',
     SNAPSHOT_INTERVAL: 30000,
@@ -5035,6 +5035,83 @@ initExam = async function(...args) {
     return result;
 };
 
-window.addEventListener('beforeunload', () => {
+// Best-effort server-side submission when the student closes/reloads the exam tab
+// or closes the browser window. The database RPC performs authoritative grading.
+let exitSubmissionStarted = false;
+function submitActiveExamOnExit() {
+    if (exitSubmissionStarted || !AppState.isExamActive || AppState.isSubmitting ||
+        AppState.examAutoSubmitted || !AppState.attemptId || !AppState.studentId || !AppState.examId) return;
+    exitSubmissionStarted = true;
+
+    try {
+        saveProgressLocally();
+        const answerPayload = {};
+        (AppState.questions || []).forEach((question) => {
+            if (question && question.id && AppState.answers[question.id] != null) {
+                answerPayload[question.id] = String(AppState.answers[question.id]);
+            }
+        });
+
+        // Supabase JS persists the authenticated session in localStorage.
+        // Use keepalive fetch so the request can outlive page teardown.
+        let accessToken = null;
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key || !/^sb-.+-auth-token$/.test(key)) continue;
+            try {
+                const stored = JSON.parse(localStorage.getItem(key) || '{}');
+                if (stored.access_token) { accessToken = stored.access_token; break; }
+            } catch (_) {}
+        }
+        if (!accessToken) {
+            console.warn('Exit auto-submit could not find an authenticated session; answers remain saved for recovery.');
+            exitSubmissionStarted = false;
+            return;
+        }
+
+        const body = JSON.stringify({
+            p_student_id: AppState.studentId,
+            p_exam_id: parseInt(AppState.examId, 10),
+            p_attempt_id: AppState.attemptId,
+            p_answers: answerPayload,
+            p_attempt_number: AppState.attemptNumber || 1,
+            p_is_retake: !!AppState.isRetake,
+            p_retake_count: AppState.retakeCount || 0
+        });
+        fetch(CONFIG.SUPABASE_URL + '/rest/v1/rpc/submit_exam_attempt_secure', {
+            method: 'POST',
+            keepalive: true,
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': CONFIG.SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + accessToken
+            },
+            body
+        }).then((response) => {
+            if (response.ok) {
+                AppState.examAutoSubmitted = true;
+                AppState.isExamActive = false;
+                try { localStorage.setItem(getStorageKey('exit_submitted'), String(Date.now())); } catch (_) {}
+            } else {
+                console.warn('Exit auto-submit was rejected; server will retain the attempt for recovery.');
+                exitSubmissionStarted = false;
+            }
+        }).catch((error) => {
+            console.warn('Exit auto-submit request failed; local progress was preserved.', error);
+            exitSubmissionStarted = false;
+        });
+    } catch (error) {
+        console.warn('Could not prepare exit submission:', error);
+        exitSubmissionStarted = false;
+    }
+}
+
+window.addEventListener('pagehide', () => {
+    submitActiveExamOnExit();
     closeNchsmWebRTCSignaling();
+});
+
+// beforeunload catches additional browser exits; the guard prevents duplicate calls.
+window.addEventListener('beforeunload', () => {
+    submitActiveExamOnExit();
 });
