@@ -1,9 +1,9 @@
 // js/academic-reports.js - COMPLETE STUDENT VERSION WITH HOLLOW STAR INDICATOR
-// All tabs: Semester Report, Yearly Summary, Full Transcript, Course Progress, My Performance
+// All tabs: Provincial Academic Transcript, Yearly Summary, Full Transcript, Course Progress, My Performance
 // INCLUDES: LINE GRAPHS, PROFILE PICTURE, DATABASE UNIT CODES, FIXED GRADE DISPLAY
 // INDICATOR: ☆ (hollow star) - subtle, only appears on retaken units in My Performance
 // NO DEMO DATA - ONLY REAL DATA FROM DATABASE
-// RETAKE SUMMARY REMOVED FROM SEMESTER REPORT DOWNLOAD
+// RETAKE SUMMARY REMOVED FROM PROVINCIAL ACADEMIC TRANSCRIPT DOWNLOAD
 // ACADEMIC YEAR MAPPING: KRCHN (3 years), TVET Cert (1 year), TVET Diploma (2 years)
 // "Proceed to next block" message on transcript
 // ============================================================
@@ -1044,7 +1044,7 @@
     }
 
     // ============================================================
-    // 15. SEMESTER REPORT
+    // 15. PROVINCIAL ACADEMIC TRANSCRIPT
     // ============================================================
     let gradeChart = null;
     let currentGrades = [];
@@ -1576,10 +1576,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     }
 
     // ============================================================
-    // 20. DOWNLOAD SEMESTER REPORT - RETAKE SUMMARY REMOVED
+    // 20. DOWNLOAD PROVINCIAL ACADEMIC TRANSCRIPT - RETAKE SUMMARY REMOVED
     // ============================================================
     function downloadReportCard() {
-        console.log('📊 Downloading Semester Report...');
+        console.log('📊 Downloading Provincial Academic Transcript...');
 
         const user = window.currentUserProfile || window.db?.currentUserProfile || {};
         const userProgram = user.program || '';
@@ -1628,7 +1628,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         // Show loading
         const loadingEl = document.createElement('div');
         loadingEl.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;';
-        loadingEl.innerHTML = '<div style="background:white;padding:30px;border-radius:12px;text-align:center;"><div class="loading-spinner"></div><p style="margin-top:12px;color:#1e293b;">Generating Semester Report...</p></div>';
+        loadingEl.innerHTML = '<div style="background:white;padding:30px;border-radius:12px;text-align:center;"><div class="loading-spinner"></div><p style="margin-top:12px;color:#1e293b;">Generating Provincial Academic Transcript...</p></div>';
         document.body.appendChild(loadingEl);
         
         try {
@@ -1869,7 +1869,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
-    <title>Semester Report - ${escapeHtml(user.full_name || 'Student')}</title>
+    <title>Provincial Academic Transcript - ${escapeHtml(user.full_name || 'Student')}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1994,7 +1994,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     <div class="motto">"Excellence in Health Sciences Education"</div>
                 </div>
             </div>
-            <div class="subtitle">SEMESTER REPORT</div>
+            <div class="subtitle">PROVINCIAL ACADEMIC TRANSCRIPT</div>
             <div class="date">Generated: ${now}</div>
         </div>
         
@@ -2076,7 +2076,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         </div>
         
         <div class="no-print">
-            <button class="btn-print" onclick="window.print()">🖨️ Print Semester Report</button>
+            <button class="btn-print" onclick="window.print()">🖨️ Print Provincial Academic Transcript</button>
             <button class="btn-close" onclick="window.close()">Close</button>
         </div>
     </div>
