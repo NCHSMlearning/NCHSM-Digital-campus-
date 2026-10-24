@@ -259,7 +259,7 @@ function createCertificate(student, marks, transcriptData) {
         printedAt: null,
         transcriptRef: transcriptData?.id || null,
         status: isPassing ? 'ACTIVE' : 'PENDING',
-        verificationUrl: `https://nchsm.ac.ke/verify/${serialNumber}`
+        verificationUrl: `${window.location.origin}/graduation.html?id=${encodeURIComponent(serialNumber)}`
     };
     certData.qrCode = generateQRCodeData(certData);
     return certData;
