@@ -1416,7 +1416,7 @@ async function initExam() {
 
         const qResult = await sb
             .from('exam_questions')
-            .select('id, exam_id, question_number, question_text, option_a, option_b, option_c, option_d, option_e, question_type, marks, max_chars, max_characters, image_url, difficulty_level')
+            .select('id, exam_id, question_number, question_text, option_a, option_b, option_c, option_d, option_e, question_type, marks, max_chars, image_url, difficulty_level')
             .eq('exam_id', parseInt(AppState.examId))
             .order('question_number');
 
