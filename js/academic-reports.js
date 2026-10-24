@@ -1090,7 +1090,15 @@
                 return;
             }
 
-            const isPublishedPass = g => /^(PASS|DISTINCTION|CREDIT|SATISFACTORY|EXCELLENT)$/i.test(String(g.status || ''));
+            const normalizedStatus = g => {
+                const raw = String(g.status || '').trim().toUpperCase();
+                const allowed = ['DISTINCTION','CREDIT','PASS','FAIL','PENDING','EXCELLENT','GOOD','SATISFACTORY'];
+                if (allowed.includes(raw) && raw !== 'PENDING') return raw;
+                const score = g.final_score;
+                return score === null || score === undefined || score === '' || !Number.isFinite(Number(score))
+                    ? 'PENDING' : getGradingStatus(Number(score), program);
+            };
+            const isPublishedPass = g => /^(PASS|DISTINCTION|CREDIT|SATISFACTORY|EXCELLENT|GOOD)$/i.test(normalizedStatus(g));
             const earnedCredits = grades.filter(isPublishedPass)
                 .reduce((s,g) => s + (Number(g.credits) || 3), 0);
             const gpa = calculateGPA(grades);
@@ -1106,13 +1114,15 @@
             tbody.innerHTML = grades.map(g => {
                 const gradeColor = getGradeColor(g.grade);
                 const score = g.final_score === null || g.final_score === undefined || g.final_score === '' ? null : Number(g.final_score);
-                const passed = /^(PASS|DISTINCTION|CREDIT|SATISFACTORY|EXCELLENT)$/i.test(String(g.status || ''));
+                const status = normalizedStatus(g);
+                const passed = /^(PASS|DISTINCTION|CREDIT|SATISFACTORY|EXCELLENT|GOOD)$/i.test(status);
+                const statusColor = status === 'FAIL' ? '#dc2626' : passed ? '#059669' : '#64748b';
                 return `<tr style="border-bottom:1px solid #e2e8f0;">
                     <td style="padding:12px;white-space:nowrap;">${escapeHtml(g.unit_code || 'N/A')}</td>
                     <td style="padding:12px;">${escapeHtml(g.subject_name || 'N/A')}</td>
                     <td style="padding:12px;text-align:center;">${Number(g.credits) || 3}</td>
-                    <td style="padding:12px;text-align:center;"><span style="background:${gradeColor};color:white;padding:2px 10px;border-radius:12px;font-weight:700;font-size:12px;">${escapeHtml(g.grade || '-')}</span></td>
-                    <td style="padding:12px;text-align:center;"><span style="background:${passed ? '#10b981' : '#94a3b8'};color:white;padding:2px 10px;border-radius:12px;font-weight:600;font-size:10px;">${g.status ? escapeHtml(String(g.status)) : '-'}</span></td>
+                    <td style="padding:12px;text-align:center;"><span style="background:${gradeColor};color:white;padding:2px 10px;border-radius:12px;font-weight:700;font-size:12px;">${escapeHtml(g.grade || (g.final_score === null ? 'Pending' : '-'))}</span></td>
+                    <td style="padding:12px;text-align:center;"><span style="background:${statusColor};color:white;padding:3px 8px;border-radius:12px;font-weight:700;font-size:10px;">${escapeHtml(status)}</span></td>
                 </tr>`;
             }).join('');
 
@@ -1722,14 +1732,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     : statusDisplay === 'FAIL' ? '#b91c1c' : '#64748b';
                 // Use the same student retake records as the on-screen table.
                 const hasRetakeFlag = hasRetake(mark.subject_name);
-                const hasRetake = hasRetakeFlag || mark.hasRetake === true;
+                const isRetakenUnit = hasRetakeFlag || mark.hasRetake === true;
                 const retakeCount = hasRetakeFlag ? getRetakeCount(mark.subject_name) : (Number(mark.retakeCount) || 0);
                 
-                // ✅ ☆ star next to unit name (not a separate column)
-                const starIndicator = hasRetake ? `<span style="display: inline-block; margin-left: 4px; font-size: 11px; color: #94a3b8; opacity: 0.5; cursor: help;" title="Retaken (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})">☆</span>` : '';
+                // Hollow star stays beside the unit name for retaken units.
+                const starIndicator = isRetakenUnit ? `<span style="display: inline-block; margin-left: 4px; font-size: 11px; color: #64748b; opacity: 0.9; cursor: help;" title="Retaken (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})">☆</span>` : '';
                 
                 tableRows += `
-                    <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''} ${hasRetake ? 'border-left: 3px solid #94a3b8;' : ''}">
+                    <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''} ${isRetakenUnit ? 'border-left: 3px solid #94a3b8;' : ''}">
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-weight: 600; color: #0A3D62; font-size: 9px;">${escapeHtml(unitCode)}</td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-size: 9px; color: #1e293b;">
@@ -2028,7 +2038,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .signature-box .line { margin: 4px auto 2px !important; }
             .footer { margin-top: 4px !important; padding-top: 3px !important; font-size: 7px !important; }
             thead th, td span { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .container, table, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+            .container { break-inside: avoid !important; page-break-inside: avoid !important; }
+            table.semester-results-table { break-inside: avoid !important; page-break-inside: avoid !important; }
+            table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+            /* Keep the 14-unit transcript on one A4 landscape page while preserving readable 14px unit names. */
+            .container { max-height: 190mm !important; overflow: hidden !important; }
+            table.semester-results-table tbody td:nth-child(3) { font-size: 14px !important; line-height: 1.05 !important; padding-top: 2px !important; padding-bottom: 2px !important; }
+            .student-info-wrapper { padding: 3px 6px !important; margin: 3px 0 !important; }
+            .summary-grid { margin: 3px 0 !important; }
+            .grading-scale-table, .chart-container, .declaration, .signatures { margin-top: 3px !important; margin-bottom: 3px !important; }
         }
     </style>
 </head>
