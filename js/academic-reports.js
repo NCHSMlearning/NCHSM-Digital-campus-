@@ -2358,6 +2358,25 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .container, .header, .student-info-wrapper, .semester-results-title, .chart-container, .summary-grid, .grading-scale-table, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                     `;
                     printWindow.document.head.appendChild(downloadStyle);
+
+                    // Size the transcript to its actual unit count. Keep every unit row intact,
+                    // use a compact but readable table, and allow additional A4 pages only when needed.
+                    const transcriptTable = printWindow.document.querySelector('table.semester-results-table');
+                    const transcriptRows = transcriptTable ? transcriptTable.querySelectorAll('tbody tr') : [];
+                    const unitCount = transcriptRows.length;
+                    const densityStyle = printWindow.document.createElement('style');
+                    const rowPadding = unitCount <= 8 ? 6 : unitCount <= 14 ? 4 : unitCount <= 22 ? 3 : 2;
+                    const rowFont = unitCount <= 14 ? 9 : unitCount <= 22 ? 8 : 7;
+                    densityStyle.textContent = `
+                        table.semester-results-table thead { display: table-header-group !important; }
+                        table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+                        table.semester-results-table tbody td { padding: ${rowPadding}px 5px !important; font-size: ${rowFont}px !important; line-height: 1.2 !important; }
+                        table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; }
+                        .container { break-inside: auto !important; page-break-inside: auto !important; }
+                        .header, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+                    `;
+                    printWindow.document.head.appendChild(densityStyle);
+
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                     const options = {
                         // html2pdf.js requires margins in top, left, bottom, right order; use a numeric margin for broad mobile-version compatibility.
