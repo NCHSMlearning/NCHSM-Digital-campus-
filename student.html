@@ -7560,7 +7560,7 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
             </p>
 </div>
 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-<button onclick="window.print()" onmouseout="this.style.background='rgba(255,255,255,0.2)'" onmouseover="this.style.background='rgba(255,255,255,0.3)'" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
+<button id="print-report" onmouseout="this.style.background='rgba(255,255,255,0.2)'" onmouseover="this.style.background='rgba(255,255,255,0.3)'" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
 <i class="fas fa-print"></i> Print
             </button>
 <button onclick="window.downloadExamCard?.()" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(253,185,19,0.3)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(253,185,19,0.4)'" style="background: #FDB913; color: #0A3D62; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 700; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(253,185,19,0.3);">
@@ -7923,10 +7923,10 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
             </p>
 </div>
 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-<button onclick="window.downloadTranscriptPDF?.()" onmouseout="this.style.background='rgba(255,255,255,0.2)'" onmouseover="this.style.background='rgba(255,255,255,0.3)'" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
+<button id="download-transcript-pdf" onmouseout="this.style.background='rgba(255,255,255,0.2)'" onmouseover="this.style.background='rgba(255,255,255,0.3)'" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
 <i class="fas fa-download"></i> Full Transcript
             </button>
-<button onclick="downloadReportCard()" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(16,185,129,0.3);">
+<button id="download-report-card" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(16,185,129,0.3);">
 <i class="fas fa-file-pdf"></i> Report Card
             </button>
 <button onclick="window.print()" onmouseout="this.style.background='rgba(255,255,255,0.15)'" onmouseover="this.style.background='rgba(255,255,255,0.25)'" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
@@ -8031,7 +8031,7 @@ window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.N
 <input id="my_marks_search" placeholder="Search..." style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;" type="text">
 </input></div>
 <span id="my_marks_count" style="font-size: 12px; color: #94a3b8; white-space: nowrap;">0 results</span>
-<button onclick="loadMyMarks()" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" style="padding: 8px 16px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: all 0.3s ease;">
+<button id="refresh-report" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" style="padding: 8px 16px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: all 0.3s ease;">
 <i class="fas fa-sync-alt"></i> Refresh
             </button>
 </div>
