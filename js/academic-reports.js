@@ -2041,8 +2041,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .container { break-inside: avoid !important; page-break-inside: avoid !important; }
             table.semester-results-table { break-inside: avoid !important; page-break-inside: avoid !important; }
             table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-            /* Keep the 14-unit transcript on one A4 landscape page while preserving readable 14px unit names. */
-            .container { max-height: 190mm !important; overflow: hidden !important; }
+            /* Compact the report to help a typical 14-unit transcript fit on one A4 landscape page. */
             table.semester-results-table tbody td:nth-child(3) { font-size: 14px !important; line-height: 1.05 !important; padding-top: 2px !important; padding-bottom: 2px !important; }
             .student-info-wrapper { padding: 3px 6px !important; margin: 3px 0 !important; }
             .summary-grid { margin: 3px 0 !important; }
