@@ -1714,6 +1714,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             }
             
             const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
+            // Adjust print typography to the actual number of units; no fixed unit limit.
+            const printUnitFontSize = marks.length <= 10 ? 14 : marks.length <= 16 ? 12 : marks.length <= 22 ? 10 : 9;
             
             // ✅ Build table rows - ☆ star next to unit name, ALL BORDERS
             let tableRows = '';
@@ -2047,8 +2049,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             table.semester-results-table tfoot { display: table-footer-group !important; }
             table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
             .student-info-wrapper, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
-            /* Keep unit names readable; only vertical spacing is tightened for a typical 14-unit report. */
-            table.semester-results-table tbody td:nth-child(3) { font-size: 14px !important; line-height: 1.05 !important; padding-top: 2px !important; padding-bottom: 2px !important; }
+            /* Scale unit-name type to the selected result count; long reports continue to further pages. */
+            table.semester-results-table tbody td:nth-child(3) { font-size: ${printUnitFontSize}px !important; line-height: 1.1 !important; padding-top: 2px !important; padding-bottom: 2px !important; }
             .student-info-wrapper { padding: 3px 6px !important; margin: 3px 0 !important; }
             .summary-grid { margin: 3px 0 !important; }
             .grading-scale-table, .chart-container, .declaration, .signatures { margin-top: 3px !important; margin-bottom: 3px !important; }
