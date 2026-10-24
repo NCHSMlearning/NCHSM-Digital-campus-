@@ -1967,57 +1967,83 @@ async function updateUserRole(userId, newRole, fullName) {
 // ============================================
 
 async function deleteProfile(userId, fullName, isRejection = false) {
-    console.log('🗑️ Deleting profile:', { userId, fullName, isRejection });
-    
+    if (!userId) {
+        showFeedback('User ID is missing. Nothing was deleted.', 'error');
+        return;
+    }
+
     const action = isRejection ? 'Reject' : 'Delete';
-    const message = isRejection 
-        ? `Reject (delete) user ${fullName}? This will permanently remove their account.`
-        : `CRITICAL: Permanently delete profile and user ${fullName}?`;
-    
+    const message = isRejection
+        ? `Reject ${fullName}? This permanently deletes the pending profile record. The audit log will be retained; the profile will not.`
+        : `CRITICAL: Permanently delete profile and authentication account for ${fullName}?`;
+
     if (!confirm(`${action}: ${message}`)) return;
 
+    const supabase = getSb();
+    if (!supabase) {
+        showFeedback('Database connection is unavailable. Nothing was deleted.', 'error');
+        return;
+    }
+
     try {
-        const supabase = getSb();
-        
-        const { data: userProfile, error: fetchError } = await supabase
+        // For rejection, only fetch and delete a profile that is still pending.
+        let profileQuery = supabase
             .from(USER_PROFILE_TABLE)
-            .select('user_id, email, full_name')
-            .eq('user_id', userId)
-            .single();
-        
-        if (fetchError) {
-            console.warn('Could not fetch user details:', fetchError);
-        }
-
-        const { error: profileError } = await supabase
-            .from(USER_PROFILE_TABLE)
-            .delete()
+            .select('user_id, email, full_name, status')
             .eq('user_id', userId);
+        if (isRejection) profileQuery = profileQuery.eq('status', 'pending');
 
-        if (profileError) {
-            console.error('❌ Error deleting profile:', profileError);
-            await logAudit(
-                'USER_DELETE',
-                `Failed to delete profile for ${fullName}. Reason: ${profileError.message}`,
-                userId,
-                'FAILURE'
+        const { data: userProfile, error: fetchError } = await profileQuery.maybeSingle();
+        if (fetchError) throw fetchError;
+        if (!userProfile) {
+            showFeedback(
+                isRejection
+                    ? 'This profile is no longer pending, or it has already been removed. Refresh the list.'
+                    : 'User profile was not found.',
+                'warning'
             );
-            showFeedback(`Failed to delete profile: ${profileError.message}`, 'error');
+            await loadPendingApprovals();
             return;
         }
 
-        console.log('✅ Profile deleted from table');
+        let deleteQuery = supabase
+            .from(USER_PROFILE_TABLE)
+            .delete()
+            .eq('user_id', userId);
+        if (isRejection) deleteQuery = deleteQuery.eq('status', 'pending');
 
+        const { data: deletedRows, error: profileError } = await deleteQuery.select('user_id');
+        if (profileError) throw profileError;
+        if (!deletedRows || deletedRows.length === 0) {
+            showFeedback('The profile was not deleted. It may have changed; refresh and try again.', 'error');
+            return;
+        }
+
+        // A rejected user's profile must be deleted, but the Auth account is not
+        // deleted by this action. Keep only the audit event, not the profile.
+        if (isRejection) {
+            await logAudit(
+                'USER_REJECT',
+                `Rejected pending user ${fullName}; pending profile record deleted.`,
+                userId,
+                'SUCCESS'
+            );
+            showFeedback(`Rejected ${fullName}. Their pending profile was deleted; the audit event was retained.`, 'success');
+            await Promise.allSettled([
+                loadPendingApprovals(),
+                loadAllUsers(1, USERS_STATE.filters),
+                loadStudents(),
+                ...(typeof loadDashboardData === 'function' ? [loadDashboardData()] : [])
+            ]);
+            return;
+        }
+
+        // Keep the existing full-delete behavior for ordinary Delete actions.
         let authDeleted = false;
-        
         try {
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-            
-            if (sessionError || !session) {
-                console.warn('⚠️ No active session, cannot delete auth user');
-                throw new Error('No active session');
-            }
-            
+            if (sessionError || !session) throw new Error('No active session');
+
             const response = await fetch(
                 'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-delete-user',
                 {
@@ -2026,43 +2052,14 @@ async function deleteProfile(userId, fullName, isRejection = false) {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${session.access_token}`
                     },
-                    body: JSON.stringify({ 
-                        userId: userId,
-                        email: userProfile?.email || ''
-                    })
+                    body: JSON.stringify({ userId, email: userProfile.email || '' })
                 }
             );
-            
-            const result = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(result.error || 'Auth deletion failed');
-            }
-            
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || 'Auth deletion failed');
             authDeleted = true;
-            console.log('✅ Auth user deleted successfully:', result);
-            
         } catch (authError) {
-            console.warn('⚠️ Auth deletion failed:', authError.message);
-            
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    await supabase.auth.admin.updateUserById(userId, {
-                        password: 'LOCKED_' + Date.now() + '_' + Math.random().toString(36)
-                    });
-                    console.log('🔒 Auth user locked out (password changed)');
-                    try {
-                        await supabase.auth.admin.deleteUser(userId);
-                        authDeleted = true;
-                        console.log('✅ Auth user deleted on retry');
-                    } catch (retryError) {
-                        console.warn('⚠️ Retry delete failed:', retryError.message);
-                    }
-                }
-            } catch (lockError) {
-                console.warn('⚠️ Could not lock out user:', lockError.message);
-            }
+            console.warn('Authentication account deletion failed:', authError.message);
         }
 
         try {
@@ -2070,62 +2067,46 @@ async function deleteProfile(userId, fullName, isRejection = false) {
                 .from('user_documents')
                 .delete()
                 .eq('user_id', userId);
-            
-            if (docError) {
-                console.warn('Could not delete user documents:', docError);
-            } else {
-                console.log('✅ User documents deleted');
-            }
-        } catch (docErr) {
-            console.warn('Error deleting documents:', docErr);
+            if (docError) console.warn('Could not delete user documents:', docError.message);
+        } catch (docError) {
+            console.warn('Error deleting user documents:', docError);
         }
-
-        const auditDetails = isRejection 
-            ? `Rejected user ${fullName} (pending approval)`
-            : `Deleted user ${fullName}`;
-        
-        const auditStatus = authDeleted ? 'SUCCESS' : 'WARNING';
-        const auditMessage = authDeleted 
-            ? `User ${fullName} deleted successfully from both profile and auth.`
-            : `Profile for ${fullName} deleted, but auth user remains. Manual cleanup may be needed.`;
 
         await logAudit(
             'USER_DELETE',
-            auditDetails + ' ' + auditMessage,
+            authDeleted
+                ? `Deleted user ${fullName} from profile and authentication.`
+                : `Deleted profile for ${fullName}; authentication account may require manual cleanup.`,
             userId,
-            auditStatus
+            authDeleted ? 'SUCCESS' : 'WARNING'
         );
 
-        if (authDeleted) {
-            showFeedback(`✅ ${action} successful! User ${fullName} has been removed.`, 'success');
-        } else {
-            showFeedback(`⚠️ Profile deleted, but auth user ${userProfile?.email || 'still exists'} may need manual cleanup.`, 'warning');
-            
-            console.log('🛠️ Manual cleanup instructions:');
-            console.log(`1. Go to Supabase Dashboard → Authentication → Users`);
-            console.log(`2. Find the user with email: ${userProfile?.email || 'unknown'}`);
-            console.log(`3. Click "Delete" to remove the user`);
-        }
+        showFeedback(
+            authDeleted
+                ? `User ${fullName} was deleted.`
+                : `Profile deleted, but authentication account for ${userProfile.email || fullName} may need manual cleanup.`,
+            authDeleted ? 'success' : 'warning'
+        );
 
-        loadPendingApprovals();
-        loadAllUsers(1, USERS_STATE.filters);
-        loadStudents();
-        
-        if (typeof loadDashboardData === 'function') {
-            loadDashboardData();
-        }
-
+        await Promise.allSettled([
+            loadPendingApprovals(),
+            loadAllUsers(1, USERS_STATE.filters),
+            loadStudents(),
+            ...(typeof loadDashboardData === 'function' ? [loadDashboardData()] : [])
+        ]);
     } catch (err) {
-        console.error('❌ Unexpected error in deleteProfile:', err);
-        
-        await logAudit(
-            'USER_DELETE',
-            `Unexpected error deleting ${fullName}: ${err.message}`,
-            userId,
-            'FAILURE'
-        );
-        
-        showFeedback(`Unexpected error: ${err.message}`, 'error');
+        console.error('Error in deleteProfile:', err);
+        try {
+            await logAudit(
+                isRejection ? 'USER_REJECT' : 'USER_DELETE',
+                `Failed to ${isRejection ? 'reject' : 'delete'} ${fullName}: ${err.message}`,
+                userId,
+                'FAILURE'
+            );
+        } catch (auditError) {
+            console.warn('Could not write audit event:', auditError);
+        }
+        showFeedback(`Failed to ${isRejection ? 'reject' : 'delete'} user: ${err.message}`, 'error');
     }
 }
 
