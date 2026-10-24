@@ -391,17 +391,24 @@
         return getNursingStatus(score);
     }
 
+    function pointsFromPublishedGrade(value) {
+        const grade = String(value ?? '').trim().toUpperCase();
+        const gradePoints = {
+            A: 4, DISTINCTION: 4, EXCELLENT: 4,
+            B: 3, CREDIT: 3, GOOD: 3,
+            C: 2, PASS: 2, SATISFACTORY: 2,
+            D: 0, F: 0, FAIL: 0
+        };
+        return Object.prototype.hasOwnProperty.call(gradePoints, grade) ? gradePoints[grade] : null;
+    }
+
     function calculateGPA(marks) {
         if (!Array.isArray(marks) || marks.length === 0) return 0;
         let weightedPoints = 0, totalCredits = 0;
         marks.forEach(m => {
             // Prefer stored points; if missing, derive points only from the published grade.
             let points = numericMark(m, ['points', 'grade_points']);
-            if (points === null) {
-                const grade = String(m?.grade ?? m?.published_grade ?? m?.final_grade ?? '').trim().toUpperCase();
-                const gradePoints = { A: 4, B: 3, C: 2, D: 0, F: 0, FAIL: 0 };
-                if (Object.prototype.hasOwnProperty.call(gradePoints, grade)) points = gradePoints[grade];
-            }
+            if (points === null) points = pointsFromPublishedGrade(m?.grade ?? m?.published_grade ?? m?.final_grade ?? m?.status);
             if (points === null || !Number.isFinite(points)) return;
             const credits = Number(m?.credits);
             const c = Number.isFinite(credits) && credits > 0 ? credits : 3;
@@ -575,7 +582,7 @@
                         const rawPoints = mark.points;
                         const points = rawPoints !== null && rawPoints !== undefined && rawPoints !== ''
                             ? Number(rawPoints)
-                            : (grade ? calculatePoints(String(grade).toUpperCase(), userProgram) : null);
+                            : pointsFromPublishedGrade(grade || mark.final_status || mark.status);
                         return {
                             ...mark,
                             unit_code: mark.unit_code || getUnitCode(mark.subject_name),
