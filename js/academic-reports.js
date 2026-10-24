@@ -2244,15 +2244,32 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const qrImage = document.getElementById('transcriptVerificationQr');
-            const verifyId = ${JSON.stringify(user.student_id || user.admission_number || '')};
+            const studentIdFromData = ${JSON.stringify(user.student_id || user.admission_number || '')};
+            const admissionNode = document.querySelector('.student-info .field:nth-child(2) .value');
+            const verifyId = String(studentIdFromData || (admissionNode && admissionNode.textContent) || '').trim();
             const verificationUrl = new URL('/graduation.html', window.location.origin);
-            verificationUrl.searchParams.set('id', verifyId);
-            if (qrImage && window.QRCode && verifyId) {
-                QRCode.toDataURL(verificationUrl.href, { width: 180, margin: 1, errorCorrectionLevel: 'M' })
-                    .then(url => { qrImage.src = url; qrImage.dataset.ready = 'true'; })
-                    .catch(err => console.error('Transcript QR generation failed:', err));
+            if (verifyId) verificationUrl.searchParams.set('id', verifyId);
+            if (qrImage && verifyId) {
+                const makeQr = () => {
+                    if (!window.QRCode || typeof window.QRCode.toDataURL !== 'function') return false;
+                    window.QRCode.toDataURL(verificationUrl.href, { width: 180, margin: 1, errorCorrectionLevel: 'M' })
+                        .then(url => { qrImage.src = url; qrImage.style.display = 'block'; qrImage.dataset.ready = 'true'; })
+                        .catch(err => { qrImage.dataset.error = String(err); console.error('Transcript QR generation failed:', err); });
+                    return true;
+                };
+                if (!makeQr()) {
+                    let attempts = 0;
+                    const waitForQrLibrary = () => {
+                        if (makeQr() || ++attempts >= 20) {
+                            if (!qrImage.dataset.ready && attempts >= 20) qrImage.dataset.error = 'QR library unavailable';
+                            return;
+                        }
+                        setTimeout(waitForQrLibrary, 150);
+                    };
+                    waitForQrLibrary();
+                }
             } else if (qrImage) {
-                qrImage.style.display = 'none';
+                qrImage.dataset.error = 'Student admission number unavailable';
             }
             const ctx = document.getElementById('reportCardLineChart');
             if (ctx) {
@@ -2361,15 +2378,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "declaration declaration"
                     "signatures signatures"
                     "footer footer" !important; align-items: stretch !important; column-gap: 7px !important; row-gap: 3px !important; }
-                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: minmax(0,1fr) 48px !important; gap: 4px !important; align-items: start !important; }
-                        .transcript-top .header { grid-area: auto !important; margin: 0 !important; padding: 0 0 5px !important; min-width: 0 !important; }
+                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: minmax(0,1fr) 48px !important; gap: 4px !important; align-items: start !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; }
+                        .transcript-top .header { grid-area: auto !important; margin: 0 !important; padding: 0 0 2px !important; min-width: 0 !important; border-bottom-width: 1px !important; }
                         .verification-qr { grid-area: auto !important; width: 46px !important; padding: 2px !important; border: 1px solid #0A3D62 !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; }
                         .verification-qr img { display: block !important; width: 38px !important; height: 38px !important; }
                         .verification-qr span { font-size: 5px !important; }
                         .header { margin: 0 0 3px !important; padding: 0 0 5px !important; } 
                         .header h1 { font-size: 17px !important; line-height: 1.15 !important; }
                         .header h2 { font-size: 14px !important; margin: 3px 0 5px !important; }
-                        .student-info-wrapper { grid-area: student !important; margin: 3px 0 5px !important; padding: 7px 10px !important; gap: 8px !important; }
+                        .student-info-wrapper { grid-area: student !important; margin: 0 0 3px !important; padding: 5px 8px !important; gap: 6px !important; }
                         .student-info { gap: 3px 8px !important; }
                         .student-info .label { font-size: 7px !important; }
                         .student-info .value { font-size: 9px !important; line-height: 1.15 !important; margin-top: 1px !important; }
