@@ -2037,9 +2037,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .signature-box .line { max-width: 100%; }
             .footer { overflow-wrap: anywhere; }
         }
-        /* Explicit physical dimensions help mobile and desktop print engines honor A4 landscape. */
+        /* Apply the landscape layout to html2canvas capture as well as physical printing.
+           html2pdf captures screen styles; print-only rules leave the report scaled and fragmented. */
         @page { size: 297mm 210mm; margin: 4mm; }
-        @media print {
+        @media print, screen {
             @page { size: 297mm 210mm; margin: 4mm; }
             html, body { width: 289mm !important; min-width: 289mm !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: #fff; }
             body { font-size: 9px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -2383,7 +2384,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         margin: 4,
                         filename: fileBase + '.pdf',
                         image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 1123, scrollX: 0, scrollY: 0, width: target.scrollWidth },
+                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 1123, windowHeight: 794, scrollX: 0, scrollY: 0, width: target.scrollWidth },
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true },
                         pagebreak: { mode: ['css', 'legacy'] }
                     };
