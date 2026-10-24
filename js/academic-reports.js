@@ -1870,6 +1870,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
     <title>Semester Report - ${escapeHtml(user.full_name || 'Student')}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1930,6 +1931,39 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .no-print button { padding: 5px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 10px; }
         .no-print .btn-print { background: #0A3D62; color: white; }
         .no-print .btn-close { background: #e2e8f0; color: #475569; margin-left: 6px; }
+        /* Keep the report readable on phones instead of scaling the whole page down. */
+        @media screen and (max-width: 600px) {
+            body { font-size: 14px; padding: 8px; }
+            .container { width: 100%; max-width: 100%; padding: 12px 10px; border-width: 2px; border-radius: 6px; }
+            .header-top { gap: 8px; align-items: center; }
+            .header-top img { max-width: 48px; max-height: 48px; }
+            .header .school { font-size: clamp(13px, 4vw, 17px); line-height: 1.25; }
+            .header .subtitle { font-size: 15px; padding: 7px 14px; letter-spacing: 1px; }
+            .student-info-wrapper { padding: 10px; gap: 8px; }
+            .student-info { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+            .student-info .label { font-size: 10px; }
+            .student-info .value { font-size: 13px; }
+            .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+            .summary-card { padding: 10px 6px; }
+            .summary-card .value { font-size: 22px; }
+            .summary-card .label { font-size: 10px; letter-spacing: .3px; }
+            .semester-results-title { font-size: 15px; padding: 10px 12px; }
+            table.semester-results-table { width: 100%; table-layout: fixed; font-size: 13px; }
+            table.semester-results-table thead th { font-size: 12px; padding: 9px 5px; overflow-wrap: anywhere; }
+            table.semester-results-table tbody td { font-size: 13px; line-height: 1.4; padding: 10px 5px; overflow-wrap: anywhere; word-break: normal; }
+            table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 7%; }
+            table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 22%; }
+            table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 39%; }
+            table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 16%; }
+            table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 16%; }
+            .grading-scale-table, .chart-container, .declaration { padding: 9px; }
+            .grading-scale-table table { table-layout: fixed; }
+            .grading-scale-table th, .grading-scale-table td { font-size: 9px; padding: 5px 3px; overflow-wrap: anywhere; }
+            .chart-container canvas { height: 160px !important; max-height: 160px; }
+            .signatures { gap: 12px; }
+            .signature-box .line { max-width: 100%; }
+            .footer { overflow-wrap: anywhere; }
+        }
         @media print {
             body { padding: 0; background: white; }
             .container { border: 2px solid #0A3D62; border-radius: 0; padding: 12px 14px; max-width: 100%; box-shadow: none; }
