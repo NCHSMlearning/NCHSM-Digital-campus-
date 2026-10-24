@@ -518,169 +518,47 @@ JAVASCRIPT
     (function() {
         'use strict';
 
-        // ============================================================
-        // 🔥 CONFIGURATION – UPDATE THIS WITH YOUR APPS SCRIPT URL
-        // ============================================================
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
-
-        // DOM refs
+        // Public QR verification bootstrap.
+        // The previous Apps Script URL was a placeholder and always failed.
+        const urlParams = new URLSearchParams(window.location.search);
+        const documentId = urlParams.get('id') || '';
+        const documentType = (urlParams.get('type') || 'certificate').toLowerCase();
+        const studentId = urlParams.get('studentId') || '';
         const loadingState = document.getElementById('loadingState');
         const resultState = document.getElementById('resultState');
 
-        // ============================================================
-        // GET CERTIFICATE ID FROM URL
-        // ============================================================
-        const urlParams = new URLSearchParams(window.location.search);
-        const certificateId = urlParams.get('id');
-
-        // ============================================================
-        // MAIN LOGIC
-        // ============================================================
-        if (!certificateId) {
-            // No ID provided – show error
+        // A QR URL is a lookup key, not proof of authenticity by itself.
+        // Never label a record as verified until it has been matched against a trusted registry.
+        if (!documentId) {
             loadingState.style.display = 'none';
             resultState.style.display = 'block';
             resultState.innerHTML = `
                 <div class="result-card result-invalid">
-                    <div class="result-title invalid">
-                        <i class="fas fa-exclamation-triangle"></i> No Certificate ID
-                    </div>
-                    <p style="color: #64748b; margin-bottom: 4px;">
-                        Please scan the QR code on your certificate.
-                    </p>
-                    <p style="color: #94a3b8; font-size: 14px; margin-top: 8px;">
-                        If you reached this page via a link, please contact the NCHSM administration.
-                    </p>
-                </div>
-            `;
-            return;
-        }
-
-        // We have an ID – verify it
-        verifyCertificate(certificateId);
-
-        // ============================================================
-        // VERIFY FUNCTION
-        // ============================================================
-        function verifyCertificate(id) {
-            const url = APPS_SCRIPT_URL + '?action=verify&id=' + encodeURIComponent(id);
-
-            fetch(url)
-                .then(function(response) {
-                    if (!response.ok) {
-                        throw new Error('Server responded with status ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(function(data) {
-                    // Hide loading
-                    loadingState.style.display = 'none';
-                    resultState.style.display = 'block';
-
-                    if (data.valid === true) {
-                        // --- SUCCESS ---
-                        resultState.innerHTML = `
-                            <div class="result-card result-valid">
-                                <div class="result-title valid">
-                                    <i class="fas fa-check-circle"></i> Certificate Verified
-                                </div>
-                                <div class="detail-grid">
-                                    <div class="detail-row">
-                                        <span class="detail-label">Student Name</span>
-                                        <span class="detail-value">${escapeHtml(data.student_name) || 'N/A'}</span>
-                                    </div>
-                                    <div class="detail-row">
-                                        <span class="detail-label">Registration No</span>
-                                        <span class="detail-value">${escapeHtml(data.registration_no) || 'N/A'}</span>
-                                    </div>
-                                    <div class="detail-row">
-                                        <span class="detail-label">Programme</span>
-                                        <span class="detail-value">${escapeHtml(data.programme) || 'N/A'}</span>
-                                    </div>
-                                    <div class="detail-row">
-                                        <span class="detail-label">Level</span>
-                                        <span class="detail-value">${escapeHtml(data.level) || 'N/A'}</span>
-                                    </div>
-                                    <div class="detail-row">
-                                        <span class="detail-label">Certificate No</span>
-                                        <span class="detail-value highlight">${escapeHtml(data.certificate_no) || escapeHtml(id)}</span>
-                                    </div>
-                                    <div class="detail-row">
-                                        <span class="detail-label">Date Issued</span>
-                                        <span class="detail-value">${escapeHtml(data.date_issued) || 'N/A'}</span>
-                                    </div>
-                                </div>
-                                <div class="verification-badge success">
-                                    <i class="fas fa-shield-alt"></i>
-                                    This is a valid certificate issued by NCHSM
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        // --- INVALID ---
-                        const msg = data.message || 'Certificate not found in our records.';
-                        resultState.innerHTML = `
-                            <div class="result-card result-invalid">
-                                <div class="result-title invalid">
-                                    <i class="fas fa-times-circle"></i> Invalid Certificate
-                                </div>
-                                <p style="color: #64748b;">
-                                    Certificate <strong>${escapeHtml(id)}</strong> could not be verified.
-                                </p>
-                                <p style="color: #64748b; margin-top: 8px; font-size: 14px;">
-                                    Possible reasons:
-                                </p>
-                                <ul class="invalid-list">
-                                    <li>The certificate number does not exist in our records</li>
-                                    <li>The certificate has been revoked or is expired</li>
-                                    <li>There was an error in the verification process</li>
-                                </ul>
-                                <p style="color: #64748b; margin-top: 12px; font-size: 14px;">
-                                    Please contact NCHSM administration for assistance.
-                                </p>
-                                ${data.error ? `<div class="error-message"><strong>Error:</strong> ${escapeHtml(data.error)}</div>` : ''}
-                            </div>
-                        `;
-                    }
-                })
-                .catch(function(error) {
-                    // --- FETCH ERROR ---
-                    loadingState.style.display = 'none';
-                    resultState.style.display = 'block';
-                    resultState.innerHTML = `
-                        <div class="result-card result-error">
-                            <div class="result-title error">
-                                <i class="fas fa-exclamation-circle"></i> Verification Error
-                            </div>
-                            <p style="color: #64748b;">
-                                Could not verify the certificate due to a system error.
-                            </p>
-                            <p style="color: #64748b; margin-top: 8px; font-size: 14px;">
-                                Please try again later or contact NCHSM administration.
-                            </p>
-                            <div class="error-message">
-                                <strong>Error:</strong> ${escapeHtml(error.message)}
-                            </div>
-                        </div>
-                    `;
-                });
-        }
-
-        // ============================================================
-        // HELPER: Escape HTML to prevent XSS
-        // ============================================================
-        function escapeHtml(str) {
-            if (!str) return '';
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
+                    <div class="result-title invalid"><i class="fas fa-exclamation-triangle"></i> Missing document reference</div>
+                    <p>This QR code does not contain a document reference. Please contact the NCHSM Academic Office.</p>
+                </div>`;
+        } else {
+            loadingState.style.display = 'none';
+            resultState.style.display = 'block';
+            const typeLabels = {
+                'certificate': 'Graduation certificate',
+                'academic-transcript': 'Academic transcript',
+                'provisional-transcript': 'Provisional academic transcript'
             };
-            return String(str).replace(/[&<>"']/g, function(m) { return map[m]; });
+            const typeLabel = typeLabels[documentType] || 'Academic document';
+            resultState.innerHTML = `
+                <div class="result-card result-invalid">
+                    <div class="result-title invalid"><i class="fas fa-hourglass-half"></i> Registry verification required</div>
+                    <div class="detail-grid">
+                        <div class="detail-row"><strong>Document type</strong><span>${escapeHtml(typeLabel)}</span></div>
+                        <div class="detail-row"><strong>Reference</strong><span>${escapeHtml(documentId)}</span></div>
+                        ${studentId ? `<div class="detail-row"><strong>Student reference</strong><span>${escapeHtml(studentId)}</span></div>` : ''}
+                    </div>
+                    <p style="margin-top:14px;color:#64748b">The QR code has been read, but this page cannot yet confirm authenticity because the public document registry is not configured. Please verify with the NCHSM Academic Office.</p>
+                </div>`;
         }
 
+        // Legacy network verifier removed: its deployment URL was a placeholder.
     })();
 </script>
 
