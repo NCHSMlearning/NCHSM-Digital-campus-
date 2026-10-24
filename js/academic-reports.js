@@ -2378,7 +2378,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "declaration declaration"
                     "signatures signatures"
                     "footer footer" !important; align-items: stretch !important; column-gap: 7px !important; row-gap: 3px !important; }
-                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: minmax(0,1fr) 48px !important; gap: 4px !important; align-items: start !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; }
+                        .container { row-gap: 2px !important; }
+                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: minmax(0,1fr) 48px !important; gap: 4px !important; align-items: start !important; min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; }
+                        .container > .transcript-top { align-self: start !important; }
+                        .container > .transcript-top > .header { grid-area: auto !important; }
                         .transcript-top .header { grid-area: auto !important; margin: 0 !important; padding: 0 0 2px !important; min-width: 0 !important; border-bottom-width: 1px !important; }
                         .verification-qr { grid-area: auto !important; width: 46px !important; padding: 2px !important; border: 1px solid #0A3D62 !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; }
                         .verification-qr img { display: block !important; width: 38px !important; height: 38px !important; }
