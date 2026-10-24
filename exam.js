@@ -354,6 +354,96 @@ async function fastDetectFace(videoElement) {
 }
 
 // ============================================================
+// SINGLE-TAB EXAM GUARD
+// Blocks a second tab for the same student + exam before the exam starts.
+// The existing server-side session RPC remains the authoritative cross-device lock.
+const EXAM_TAB_LOCK_PREFIX = 'nchsm_active_exam_tab_';
+let examTabLockKey = null;
+let examTabLockToken = null;
+let examTabLockHeartbeat = null;
+let examTabChannel = null;
+let examTabBlocked = false;
+
+function getExamTabLockKey() {
+    return EXAM_TAB_LOCK_PREFIX + String(AppState.studentId || '') + '_' + String(AppState.examId || '');
+}
+
+function showDuplicateExamTabBlock() {
+    examTabBlocked = true;
+    const existing = document.getElementById('nchsm-duplicate-exam-tab-block');
+    if (existing) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'nchsm-duplicate-exam-tab-block';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(8,24,40,.96);display:flex;align-items:center;justify-content:center;padding:24px;font-family:Arial,sans-serif;';
+    overlay.innerHTML = '<div style="max-width:520px;background:#fff;border-radius:18px;padding:32px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)"><div style="font-size:48px">🔒</div><h2 style="color:#0A3D62;margin:12px 0">This exam is already open</h2><p style="color:#475569;line-height:1.6">Only one tab or window may be used for this exam. Return to the original exam window. Do not close it unless you intend to submit or leave the exam.</p><button id="nchsm-duplicate-exam-tab-close" style="background:#0A3D62;color:white;border:0;border-radius:10px;padding:12px 18px;font-weight:700;cursor:pointer">Close this tab</button></div>';
+    document.body.appendChild(overlay);
+    document.getElementById('nchsm-duplicate-exam-tab-close')?.addEventListener('click', () => {
+        try { window.close(); } catch (_) {}
+        overlay.querySelector('p').textContent = 'This tab is blocked. Please close it manually and return to the original exam window.';
+    });
+}
+
+function claimSingleExamTab() {
+    if (!AppState.studentId || !AppState.examId) return true;
+    examTabLockKey = getExamTabLockKey();
+    const sessionKey = 'nchsm_exam_tab_token_' + examTabLockKey;
+    try {
+        examTabLockToken = sessionStorage.getItem(sessionKey);
+        if (!examTabLockToken) {
+            examTabLockToken = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'tab-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+            sessionStorage.setItem(sessionKey, examTabLockToken);
+        }
+        const now = Date.now();
+        let current = null;
+        try { current = JSON.parse(localStorage.getItem(examTabLockKey) || 'null'); } catch (_) {}
+        if (current && current.token !== examTabLockToken && now - Number(current.lastSeen || 0) < 12000) {
+            showDuplicateExamTabBlock();
+            return false;
+        }
+        localStorage.setItem(examTabLockKey, JSON.stringify({ token: examTabLockToken, lastSeen: now, studentId: String(AppState.studentId), examId: String(AppState.examId) }));
+        if ('BroadcastChannel' in window) {
+            examTabChannel = new BroadcastChannel('nchsm_exam_tab_guard');
+            examTabChannel.onmessage = (event) => {
+                const data = event.data || {};
+                if (data.key === examTabLockKey && data.token !== examTabLockToken && data.type === 'claim') {
+                    showDuplicateExamTabBlock();
+                }
+            };
+            examTabChannel.postMessage({ type: 'claim', key: examTabLockKey, token: examTabLockToken });
+        }
+        if (examTabLockHeartbeat) clearInterval(examTabLockHeartbeat);
+        examTabLockHeartbeat = setInterval(() => {
+            if (examTabBlocked) return;
+            try {
+                const lock = JSON.parse(localStorage.getItem(examTabLockKey) || 'null');
+                if (lock && lock.token !== examTabLockToken && Date.now() - Number(lock.lastSeen || 0) < 12000) {
+                    showDuplicateExamTabBlock();
+                    return;
+                }
+                localStorage.setItem(examTabLockKey, JSON.stringify({ token: examTabLockToken, lastSeen: Date.now(), studentId: String(AppState.studentId), examId: String(AppState.examId) }));
+            } catch (_) {}
+        }, 3000);
+        return true;
+    } catch (error) {
+        console.warn('Single-tab guard could not access browser storage; server-side exam lock remains active.', error);
+        return true;
+    }
+}
+
+function releaseSingleExamTabLock() {
+    if (examTabLockHeartbeat) clearInterval(examTabLockHeartbeat);
+    examTabLockHeartbeat = null;
+    try {
+        if (examTabLockKey) {
+            const lock = JSON.parse(localStorage.getItem(examTabLockKey) || 'null');
+            if (lock && lock.token === examTabLockToken) localStorage.removeItem(examTabLockKey);
+        }
+        if (examTabChannel) examTabChannel.close();
+    } catch (_) {}
+    examTabChannel = null;
+}
+
+// ============================================================
 // SESSION MANAGEMENT
 // ============================================================
 function saveExamSession() {
@@ -4749,6 +4839,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    if (!claimSingleExamTab()) return;
+
     if (!retakeRequestedByUrl && sessionStorage.getItem('examInProgress') === 'true') {
         const storedExamId = sessionStorage.getItem('examId');
         const storedStudentId = sessionStorage.getItem('studentId');
@@ -5109,6 +5201,7 @@ function submitActiveExamOnExit() {
 window.addEventListener('pagehide', () => {
     submitActiveExamOnExit();
     closeNchsmWebRTCSignaling();
+    releaseSingleExamTabLock();
 });
 
 // beforeunload catches additional browser exits; the guard prevents duplicate calls.
