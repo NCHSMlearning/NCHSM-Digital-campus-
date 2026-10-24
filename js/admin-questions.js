@@ -104,11 +104,12 @@ async function loadQuestionsForExam() {
         }
         if (table) table.style.display = 'none';
 
-        const { data, error } = await window.supabase
-            .from('exam_questions')
-            .select('*')
-            .eq('exam_id', parseInt(examId))
-            .order('question_number', { ascending: true });
+        // Answer keys are exposed only by the staff-authorized RPC.
+        // Direct exam_questions SELECT intentionally excludes correct_answer.
+        const { data, error } = await window.supabase.rpc(
+            'get_exam_questions_for_staff',
+            { p_exam_id: parseInt(examId, 10) }
+        );
 
         if (error) throw error;
 
