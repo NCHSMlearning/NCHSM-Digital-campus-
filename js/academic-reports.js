@@ -2332,54 +2332,60 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true },
                         pagebreak: { mode: ['css', 'legacy'] }
                     };
-                    // Generate the PDF in the prepared tab. First request a normal file download
-                    // from the original tab; if mobile Chrome blocks the delayed Blob download,
-                    // keep the prepared tab open and show the actual PDF there instead of silently
-                    // closing it and returning the user to the portal.
-                    printWindow.html2pdf().set(options).from(target).toPdf().get('pdf').then(pdf => {
+                    // Generate a real PDF and save it directly from the original portal tab.
+                    // Use numeric margin for html2pdf compatibility and a File/Blob fallback if
+                    // the browser supports the File System Access API. Never switch to print UI.
+                    printWindow.html2pdf().set(options).from(target).toPdf().get('pdf').then(async pdf => {
                         const blob = pdf.output('blob');
-                        const downloadUrl = window.URL.createObjectURL(blob);
-                        let downloadStarted = false;
-                        try {
-                            const anchor = document.createElement('a');
-                            anchor.href = downloadUrl;
-                            anchor.download = options.filename;
-                            anchor.setAttribute('download', options.filename);
-                            anchor.style.position = 'fixed';
-                            anchor.style.left = '-9999px';
-                            document.body.appendChild(anchor);
-                            anchor.click();
-                            anchor.remove();
-                            downloadStarted = true;
-                        } catch (downloadError) {
-                            console.warn('Direct PDF download was blocked; showing PDF tab instead.', downloadError);
+                        const fileName = options.filename || 'Provisional-Academic-Transcript.pdf';
+
+                        // Prefer the native save dialog where supported, which gives the user
+                        // an explicit file save instead of silently depending on an anchor click.
+                        if (typeof window.showSaveFilePicker === 'function') {
+                            try {
+                                const handle = await window.showSaveFilePicker({
+                                    suggestedName: fileName,
+                                    types: [{ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } }]
+                                });
+                                const writable = await handle.createWritable();
+                                await writable.write(blob);
+                                await writable.close();
+                                if (!printWindow.closed) printWindow.close();
+                                alert('Transcript PDF saved successfully.');
+                                return;
+                            } catch (saveError) {
+                                if (saveError && saveError.name === 'AbortError') {
+                                    // User cancelled the save dialog; do not force a second download.
+                                    return;
+                                }
+                                console.warn('Native save dialog unavailable; using direct download.', saveError);
+                            }
                         }
 
+                        const downloadUrl = window.URL.createObjectURL(blob);
+                        const anchor = document.createElement('a');
+                        anchor.href = downloadUrl;
+                        anchor.download = fileName;
+                        anchor.style.display = 'none';
+                        document.body.appendChild(anchor);
+                        anchor.click();
+                        anchor.remove();
+
+                        // Keep the URL alive long enough for mobile download managers to pick it up.
+                        setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 60000);
                         const status = document.createElement('div');
-                        status.textContent = 'PDF generated. If it did not download automatically, use the PDF tab to save it.';
+                        status.textContent = 'PDF generated. Check your Downloads folder.';
                         status.setAttribute('role', 'status');
                         status.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100000;background:#0f766e;color:#fff;padding:12px 18px;border-radius:8px;font:14px Arial;box-shadow:0 4px 16px #0003;max-width:90%;text-align:center;';
                         document.body.appendChild(status);
-
-                        // Always preserve a usable result on mobile browsers that ignore the
-                        // download attribute for Blob URLs. Do not close the PDF tab or revoke
-                        // its Blob URL while the user may still need to save/print the document.
-                        if (!printWindow.closed) {
-                            printWindow.document.open();
-                            printWindow.document.write('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>' +
-                                String(options.filename).replace(/[&<>"]/g, '') +
-                                '</title></head><body style="margin:0"><iframe title="Generated transcript PDF" src="' +
-                                downloadUrl +
-                                '" style="border:0;width:100%;height:100vh"></iframe></body></html>');
-                            printWindow.document.close();
-                        }
-                        if (downloadStarted) status.textContent = 'Transcript PDF generated; download requested. If no file appears, save it from the PDF tab.';
+                        setTimeout(() => status.remove(), 8000);
+                        if (!printWindow.closed) printWindow.close();
                     }).catch(error => {
                         console.error('PDF download failed:', error);
                         if (!printWindow.closed) {
                             printWindow.document.body.innerHTML = '<div style="font:16px Arial;padding:24px"><h2>PDF generation failed</h2><p>' +
                                 String(error.message || 'Please try again.').replace(/[&<>"]/g, '') +
-                                '</p><p>You can use the Print button to print or save as PDF.</p></div>';
+                                '</p></div>';
                             printWindow.focus();
                         }
                         alert('PDF download failed: ' + (error.message || 'Please try again.'));
