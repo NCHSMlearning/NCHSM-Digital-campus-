@@ -14886,7 +14886,10 @@
 })();
 </script>
 <!-- 7. 🎓 GRADUATION & CERTIFICATE MODULE -->
-<script src="./js/superadmin-graduation.js"></script>
+<!-- Load QR generation and scanning libraries before the module uses them. -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="./js/superadmin-graduation.js?v=20261025-qr-fix-1"></script>
                        
 <!-- ============================================ -->
 <!-- ✅ DROPDOWN FIX                              -->
