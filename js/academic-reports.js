@@ -2377,7 +2377,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "chart chart"
                     "declaration declaration"
                     "signatures signatures"
-                    "footer footer" !important; align-items: stretch !important; align-content: stretch !important; column-gap: 7px !important; row-gap: 2mm !important; min-height: 270mm !important; }
+                    "footer footer" !important; align-items: stretch !important; align-content: stretch !important; column-gap: 7px !important; row-gap: 2mm !important; min-height: 270mm !important; height: 270mm !important; }
+                        .footer { grid-area: footer !important; align-self: end !important; width: 100% !important; margin-top: auto !important; padding-top: 2mm !important; border-top: 1px solid #0A3D62 !important; }
                         .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: 36px minmax(0,1fr) !important; gap: 5px !important; align-items: start !important; min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; }
                         .container > .transcript-top { align-self: start !important; }
                         .container > .transcript-top > .header { grid-area: auto !important; }
