@@ -1614,7 +1614,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     // ============================================================
     // 20. DOWNLOAD PROVISIONAL ACADEMIC TRANSCRIPT - RETAKE SUMMARY REMOVED
     // ============================================================
-    function downloadReportCard() {
+    function downloadReportCard(outputMode = 'download') {
         console.log('📊 Downloading Provisional Academic Transcript...');
 
         const user = window.currentUserProfile || window.db?.currentUserProfile || {};
@@ -2290,7 +2290,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 // Download must save a real A4 landscape PDF; only the separate Print action opens print preview.
                 setTimeout(() => {
                     const target = printWindow.document.querySelector('.container');
-                    if (!target || typeof printWindow.html2pdf !== 'function') {
+                    if (!target) {
+                        printWindow.close();
+                        alert('Transcript preview could not be prepared. Please try again.');
+                        return;
+                    }
+                    if (outputMode === 'print') {
+                        printWindow.focus();
+                        printWindow.print();
+                        return;
+                    }
+                    if (typeof printWindow.html2pdf !== 'function') {
                         printWindow.close();
                         alert('Automatic PDF download could not load. Please check your internet connection and try again.');
                         return;
@@ -2418,7 +2428,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         
         const downloadReportCardBtn = document.getElementById('download-report-card');
         if (downloadReportCardBtn) {
-            downloadReportCardBtn.addEventListener('click', downloadReportCard);
+            downloadReportCardBtn.addEventListener('click', function () { downloadReportCard('download'); });
+        }
+
+        const printTranscriptBtn = document.getElementById('print-academic-transcript');
+        if (printTranscriptBtn) {
+            printTranscriptBtn.addEventListener('click', function () { downloadReportCard('print'); });
         }
         
         setTimeout(function() {
