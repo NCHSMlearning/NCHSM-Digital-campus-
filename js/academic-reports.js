@@ -406,6 +406,17 @@
         return Object.prototype.hasOwnProperty.call(gradePoints, grade) ? gradePoints[grade] : null;
     }
 
+    // Grade points are a derived display value. When a published grade exists,
+    // keep its points consistent with the institution's grading scale; do not
+    // alter the stored score or published grade itself.
+    function resolveDisplayPoints(mark, publishedGrade, program) {
+        const pointsFromGrade = pointsFromPublishedGrade(publishedGrade);
+        if (pointsFromGrade !== null) return pointsFromGrade;
+        const storedPoints = numericMark(mark, ['points', 'grade_points']);
+        if (storedPoints !== null) return storedPoints;
+        return publishedGrade ? calculatePoints(publishedGrade, program) : null;
+    }
+
     function calculateGPA(marks) {
         if (!Array.isArray(marks) || marks.length === 0) return 0;
         let weightedPoints = 0, totalCredits = 0;
@@ -759,8 +770,7 @@
             const effectiveGrade = mark.grade || mark.published_grade || mark.final_grade || (scoreValue !== null ? calculateGrade(scoreValue, userProgram) : '');
             const gradeColor = getGradeColor(effectiveGrade);
             const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-            const storedPoints = numericMark(mark, ['points', 'grade_points']);
-            const pointsValue = storedPoints !== null ? storedPoints : (effectiveGrade ? calculatePoints(effectiveGrade, userProgram) : null);
+            const pointsValue = resolveDisplayPoints(mark, effectiveGrade, userProgram);
             
             // ✅ Hollow star indicator (subtle)
             const starIndicator = getHollowStarHtml(mark.subject_name);
@@ -1729,8 +1739,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const gradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
                 // Define the grade colour in this row's scope before rendering the grade and points.
                 const gradeColor = (typeof getGradeColor === 'function' ? getGradeColor(gradeDisplay) : '#64748b');
-                const pointsValue = numericMark(mark, ['points', 'grade_points']);
-                const points = pointsValue !== null ? pointsValue : (gradeDisplay !== '-' ? calculatePoints(gradeDisplay, userProgram) : null);
+                const points = resolveDisplayPoints(mark, gradeDisplay, userProgram);
                 const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
                 const statusDisplay = ['DISTINCTION','CREDIT','PASS','FAIL','PENDING','EXCELLENT','GOOD','SATISFACTORY'].includes(rawStatus)
                     ? rawStatus : (score !== null ? getGradingStatus(score, userProgram) : 'PENDING');
