@@ -2304,7 +2304,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         table.semester-results-table { width: 100% !important; table-layout: fixed !important; } .chart-container canvas { width: 100% !important; height: 145px !important; max-height: 145px !important; }
                     `;
                     printWindow.document.head.appendChild(downloadStyle);
-                    const fileBase = 'Provisional-Academic-Transcript-' + ${JSON.stringify(String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, ''))};
+                    const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                     const options = {
                         margin: [4, 4, 4, 4],
                         filename: fileBase + '.pdf',
