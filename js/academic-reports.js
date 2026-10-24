@@ -2025,13 +2025,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .signature-box .line { max-width: 100%; }
             .footer { overflow-wrap: anywhere; }
         }
-        @page { size: A4 landscape; margin: 4mm; }
+        /* Explicit physical dimensions help mobile and desktop print engines honor A4 landscape. */
+        @page { size: 297mm 210mm; margin: 4mm; }
         @media print {
-            @page { size: A4 landscape; margin: 4mm; }
-            html, body { width: 100% !important; min-width: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: #fff; }
+            @page { size: 297mm 210mm; margin: 4mm; }
+            html, body { width: 289mm !important; min-width: 289mm !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: #fff; }
             body { font-size: 9px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            /* Use the landscape sheet, not a narrow centered print-preview column. */
-            .container { box-sizing: border-box !important; width: 100% !important; min-width: 0 !important; min-height: 190mm !important; }
+            /* Fill the printable A4 landscape area rather than shrinking content into a centered strip. */
+            .container { box-sizing: border-box !important; width: 289mm !important; min-width: 289mm !important; min-height: 202mm !important; margin: 0 !important; }
             .container { width: 100% !important; max-width: none !important; margin: 0 !important; border: 1px solid #0A3D62 !important; border-radius: 0 !important; padding: 2mm !important; box-shadow: none !important; }
             /* Landscape transcript: maximize table width, then use a three-column lower band. */
             .container {
