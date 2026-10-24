@@ -2349,21 +2349,31 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape', compress: true },
                         pagebreak: { mode: ['css', 'legacy'] }
                     };
-                    // Explicit Blob + anchor download is more reliable than html2pdf's save helper on mobile.
+                    // Generate from the prepared transcript, but trigger the file save in the
+                    // original student portal tab. Mobile browsers often block downloads
+                    // initiated from a newly opened tab/window.
                     printWindow.html2pdf().set(options).from(target).toPdf().get('pdf').then(pdf => {
                         const blob = pdf.output('blob');
-                        const url = URL.createObjectURL(blob);
-                        const anchor = printWindow.document.createElement('a');
-                        anchor.href = url;
+                        const downloadUrl = window.URL.createObjectURL(blob);
+                        const anchor = document.createElement('a');
+                        anchor.href = downloadUrl;
                         anchor.download = options.filename;
-                        anchor.style.display = 'none';
-                        printWindow.document.body.appendChild(anchor);
+                        anchor.setAttribute('download', options.filename);
+                        anchor.style.position = 'fixed';
+                        anchor.style.left = '-9999px';
+                        document.body.appendChild(anchor);
                         anchor.click();
                         anchor.remove();
+                        const status = document.createElement('div');
+                        status.textContent = 'Transcript PDF download started.';
+                        status.setAttribute('role', 'status');
+                        status.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100000;background:#0f766e;color:#fff;padding:12px 18px;border-radius:8px;font:14px Arial;box-shadow:0 4px 16px #0003;';
+                        document.body.appendChild(status);
                         setTimeout(() => {
-                            URL.revokeObjectURL(url);
+                            window.URL.revokeObjectURL(downloadUrl);
+                            status.remove();
                             if (!printWindow.closed) printWindow.close();
-                        }, 1500);
+                        }, 10000);
                     }).catch(error => {
                         console.error('PDF download failed:', error);
                         if (!printWindow.closed) printWindow.close();
