@@ -6135,6 +6135,7 @@ async function sendApprovalEmail(email, userName, role, program, intakeYear, int
         console.error('⚠️ Approval email error:', e);
         return { success: false, error: e?.message || 'Unknown email error' };
     }
+}
 
 async function sendApprovalEmailFallback(email, userName, role, programDisplay, intakeDisplay, blockDisplay) {
     console.log('📧 Using fallback approval email to:', email);
