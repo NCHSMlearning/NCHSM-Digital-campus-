@@ -1940,7 +1940,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        @page { size: A4 landscape; margin: 4mm; }
+        @page { size: A4 portrait; margin: 6mm; }
         body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
         .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 12px 14px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; box-shadow: none; }
         .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 10px; margin-bottom: 12px; }
@@ -2319,7 +2319,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 </html>
                 `);
                 printWindow.document.close();
-                // Download must save a real A4 landscape PDF; only the separate Print action opens print preview.
+                // Download must save a real A4 portrait PDF; only the separate Print action opens print preview.
                 setTimeout(() => {
                     const target = printWindow.document.querySelector('.container');
                     if (!target) {
@@ -2338,10 +2338,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     downloadStyle.textContent = `
                         @page { size: A4 landscape; margin: 4mm; }
                         * { box-sizing: border-box !important; }
-                        html, body { width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                        html, body { width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
                         body { font-size: 9px !important; }
-                        .container { box-sizing: border-box !important; width: 1123px !important; max-width: 1123px !important; min-width: 1123px !important; margin: 0 !important; padding: 5px 8px !important; border-radius: 0 !important; box-shadow: none !important; }
-                        .container { display: grid !important; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr) minmax(0,1.05fr) !important; grid-template-areas: "header header"
+                        .container { box-sizing: border-box !important; width: 794px !important; max-width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 5px 8px !important; border-radius: 0 !important; box-shadow: none !important; }
+                        .container { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-areas: "header header"
                     "student student"
                     "results-title results-title"
                     "results-table results-table"
@@ -2349,6 +2349,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "chart chart"
                     "declaration declaration"
                     "signatures signatures"
+                    "verification verification"
                     "footer footer" !important; align-items: stretch !important; column-gap: 7px !important; row-gap: 3px !important; }
                         .header { grid-area: header !important; margin: 0 0 3px !important; padding: 0 0 5px !important; } 
                         .header h1 { font-size: 17px !important; line-height: 1.15 !important; }
@@ -2361,15 +2362,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         table.semester-results-table { grid-area: results-table !important; width: 100% !important; table-layout: fixed !important; margin: 0 0 4px !important; border-collapse: collapse !important; }
                         table.semester-results-table thead th { padding: 5px 5px !important; font-size: 8px !important; line-height: 1.1 !important; overflow-wrap: anywhere !important; }
                         table.semester-results-table tbody td { padding: 5px 5px !important; font-size: 8px !important; line-height: 1.15 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
-                        table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 4% !important; text-align: center !important; }
-                        table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 8% !important; }
-                        table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 12% !important; }
-                        table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 31% !important; }
-                        table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 6% !important; text-align: center !important; }
-                        table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 9% !important; text-align: center !important; }
-                        table.semester-results-table th:nth-child(7), table.semester-results-table td:nth-child(7) { width: 7% !important; text-align: center !important; }
-                        table.semester-results-table th:nth-child(8), table.semester-results-table td:nth-child(8) { width: 8% !important; text-align: center !important; }
-                        table.semester-results-table th:nth-child(9), table.semester-results-table td:nth-child(9) { width: 15% !important; }
+                        table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; text-align: center !important; }
+                        table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
+                        table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
+                        table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; text-align: center !important; }
+                        table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; text-align: center !important; }
+                        table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; text-align: center !important; }
                         .chart-container { grid-area: chart !important; min-width: 0 !important; align-self: stretch !important; margin: 0 !important; padding: 5px 7px !important; }
                         .chart-container canvas { width: 100% !important; height: 105px !important; max-height: 105px !important; }
                         .summary-grid { grid-area: summary !important; display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 3px !important; margin: 0 !important; }
@@ -2383,7 +2381,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .declaration { grid-area: declaration !important; min-width: 0 !important; margin: 3px 0 !important; padding: 5px 7px !important; font-size: 8px !important; line-height: 1.2 !important; }
                         .signatures { grid-area: signatures !important; min-width: 0 !important; margin: 2px 0 !important; padding-top: 4px !important; gap: 12px !important; }
                         .signature-box .line { margin: 4px auto 1px !important; }
-                        .footer { grid-area: footer !important; margin: 2px 0 0 !important; padding-top: 4px !important; font-size: 7px !important; }
+                        .verification-qr { grid-area: verification !important; justify-self: center !important; margin: 2px auto !important; }\n                        .verification-qr img { width: 42px !important; height: 42px !important; }\n                        .footer { grid-area: footer !important; margin: 2px 0 0 !important; padding-top: 4px !important; font-size: 7px !important; }
                         .no-print, .btn-print, .btn-close { display: none !important; }
                         .container, .header, .student-info-wrapper, .semester-results-title, .chart-container, .summary-grid, .grading-scale-table, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                     `;
@@ -2413,7 +2411,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         margin: 4,
                         filename: fileBase + '.pdf',
                         image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, width: target.scrollWidth },
+                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, width: 794 },
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
                         pagebreak: { mode: ['css', 'legacy'] }
                     };
