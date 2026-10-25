@@ -1566,6 +1566,9 @@ render=function(){if(state.tab==='research'){renderResearch();return}_originalRe
 function boot(){bind();initResearch();loadData()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 document.addEventListener('appReady',function(){setTimeout(function(){bind();initResearch();loadData()},300)});
+window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};
+window.NCHSMStudentOnlineLearning.deleteSubmissionDocument=deleteSubmissionDocument;
+window.NCHSMStudentOnlineLearning.viewResult=viewResult;
+// Legacy inline handlers in the student portal call this function by its global name.
+window.deleteSubmissionDocument=deleteSubmissionDocument;
 })();
-
-window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.NCHSMStudentOnlineLearning.deleteSubmissionDocument=deleteSubmissionDocument;window.NCHSMStudentOnlineLearning.viewResult=viewResult;
