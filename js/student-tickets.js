@@ -434,42 +434,55 @@ class StudentTicketSystem {
     }
     
     async loadUserProfile() {
-        console.log('📋 Loading user profile...');
-        
-        if (window.db?.currentUserProfile) {
-            this.userProfile = window.db.currentUserProfile;
-            this.userId = this.userProfile?.user_id || this.userProfile?.id;
-            console.log('✅ Profile from window.db:', this.userId);
+        console.log('📋 Loading student ticket identity from authenticated session...');
+
+        const supabase = this.getSupabaseClient();
+        if (!supabase) {
+            console.error('❌ Supabase client unavailable; refusing to guess ticket owner');
+            this.userId = null;
+            this.userProfile = null;
             return;
         }
-        
-        const supabase = this.getSupabaseClient();
-        if (supabase) {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: profile } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .single();
-                
-                if (profile) {
-                    this.userProfile = profile;
-                    this.userId = profile.user_id || profile.id;
-                    console.log('✅ Profile from consolidated table:', this.userId);
-                    return;
-                }
-                
-                this.userId = user.id;
-                this.userProfile = { id: user.id, user_id: user.id, email: user.email, full_name: user.email?.split('@')[0] };
-                console.log('⚠️ Using auth user as fallback:', this.userId);
+
+        try {
+            // Auth session is the source of truth. Do not trust a cached/stale
+            // window.db profile ID for ownership-sensitive support-ticket queries.
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError) throw authError;
+            if (!user?.id) {
+                this.userId = null;
+                this.userProfile = null;
+                console.error('❌ No authenticated user; ticket access disabled');
                 return;
             }
+
+            this.userId = user.id;
+            const { data: profile, error: profileError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (profileError) throw profileError;
+            this.userProfile = profile || {
+                id: user.id,
+                user_id: user.id,
+                email: user.email,
+                full_name: user.email?.split('@')[0],
+                role: null
+            };
+
+            if (this.userProfile.role && this.userProfile.role !== 'student') {
+                console.warn('⚠️ Current profile is not a student; database RLS will govern allowed access.');
+            }
+            console.log('✅ Ticket identity bound to auth.uid():', this.userId);
+        } catch (error) {
+            this.userId = null;
+            this.userProfile = null;
+            console.error('❌ Could not verify ticket identity:', error);
         }
-        
-        console.error('❌ Could not load user profile');
     }
-    
+
     getCurrentUserId() {
         return this.userId || this.userProfile?.user_id || this.userProfile?.id;
     }
