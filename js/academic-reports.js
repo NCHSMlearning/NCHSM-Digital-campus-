@@ -2598,9 +2598,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     previewBody.insertBefore(toolbar, previewBody.firstChild);
                     toolbar.querySelector('.download').addEventListener('click', async () => {
                         const target = printWindow.document.querySelector('.container');
-                        if (!target || typeof printWindow.html2pdf !== 'function') {
-                            alert('PDF generation is not available in this preview. Please refresh the page and try again.');
+                        if (!target) {
+                            alert('The transcript content could not be found in the preview. Please close it, reopen Academic Transcript, and try again.');
                             return;
+                        }
+                        if (typeof printWindow.html2pdf !== 'function') {
+                            console.warn('[Transcript PDF] html2pdf unavailable; will use direct canvas fallback if its libraries are available.');
                         }
                         const qr = printWindow.document.getElementById('transcriptVerificationQr');
                         const qrDeadline = Date.now() + 6500;
@@ -2752,6 +2755,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             pagebreak: { mode: ['css', 'legacy'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
                         };
                         try {
+                            if (typeof printWindow.html2pdf !== 'function') {
+                                throw new Error('html2pdf library unavailable; using direct canvas fallback.');
+                            }
                             // Use html2pdf's supported save pipeline. Manually extracting a jsPDF
                             // blob and clicking an iframe-created link is unreliable in some browsers.
                             await printWindow.html2pdf().set(options).from(target).save();
