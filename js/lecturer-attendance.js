@@ -838,44 +838,51 @@ const LecturerAttendance = {
 
     updateStats(logs) {
         this.ensureAttendanceStatsPanel();
-        const rows = Array.isArray(logs) ? logs.filter(l => String(l?.session_type || '').toLowerCase() !== 'lecturer check-in') : [];
-        const total = rows.length;
-        const present = rows.filter(l => {
-            const s = String(l?.attendance_status || '').trim().toLowerCase();
-            return s === 'present' || s === 'verified' || l?.is_verified === true || l?.is_verified === 'true' || l?.is_verified === 1;
-        }).length;
-        const absent = rows.filter(l => String(l?.attendance_status || '').trim().toLowerCase() === 'absent').length;
-        const pending = rows.filter(l => {
-            const s = String(l?.attendance_status || '').trim().toLowerCase();
-            return s === 'pending' || s === 'not checked in' || s === 'late' || (!s && !l?.check_in_time);
-        }).length;
-        const rate = total ? Math.round((present / total) * 100) : 0;
-        this.stats = { total, present, absent, pending, rate };
-
-        const uniqueStudents = new Set(rows.map(l => String(
-            l?.user_id || l?.student_id || l?.registration_number || l?.student_name || ''
-        ).trim().toLowerCase()).filter(Boolean)).size;
-        const map = {
-            todayTotal: total, todayPresent: present, todayAbsent: absent, todayPending: pending,
-            todayRate: `${rate}%`, attendanceRate: `${rate}%`, filteredCount: total,
-            totalStudentsCount: uniqueStudents, presentTodayCount: present, absentTodayCount: absent,
-            pendingCount: pending, todayTotalDisplay: total, todayPresentDisplay: present,
-            todayAbsentDisplay: absent, todayPendingDisplay: pending, attendanceRateDisplay: `${rate}%`
+        const rows = Array.isArray(logs)
+            ? logs.filter(l => !['lecturer check-in', 'lecturer_check_in'].includes(String(l?.session_type || '').trim().toLowerCase()))
+            : [];
+        const statusOf = log => String(log?.attendance_status || log?.status || '').trim().toLowerCase();
+        const isPresent = log => {
+            const status = statusOf(log);
+            return ['present', 'verified', 'attended', 'complete', 'completed'].includes(status) ||
+                log?.is_verified === true || log?.is_verified === 'true' || log?.is_verified === 1;
         };
-        const studentCount = document.getElementById('studentCountDisplay');
-        if (studentCount) studentCount.textContent = `${uniqueStudents} Students`;
-        Object.entries(map).forEach(([id, value]) => {
+        const isAbsent = log => statusOf(log) === 'absent';
+        const isPending = log => {
+            const status = statusOf(log);
+            return ['pending', 'not checked in', 'not_checked_in', 'late', 'unmarked'].includes(status) ||
+                (!status && !log?.check_in_time);
+        };
+
+        const total = rows.length;
+        const present = rows.filter(isPresent).length;
+        const absent = rows.filter(isAbsent).length;
+        const pending = rows.filter(isPending).length;
+        const rate = total ? Math.round((present / total) * 100) : 0;
+        const uniqueStudents = new Set(rows.map(l => String(
+            l?.user_id || l?.student_id || l?.registration_number || l?.student_email || l?.student_name || ''
+        ).trim().toLowerCase()).filter(Boolean)).size;
+        this.stats = { total, present, absent, pending, rate, uniqueStudents };
+
+        // These are the actual IDs used by the top cards in lecturer.html.
+        const values = {
+            todayPresent: present,
+            todayAbsent: absent,
+            todayPending: pending,
+            attendanceRate: `${rate}%`,
+            filteredCount: total,
+            studentCountDisplay: `${uniqueStudents} Students`,
+            attendanceRateBadge: `${rate}% (Filtered: ${total} records)`,
+            attendanceProgressBar: null
+        };
+        Object.entries(values).forEach(([id, value]) => {
+            if (value === null) return;
             const el = document.getElementById(id);
             if (el) el.textContent = value;
         });
-
         const progressBar = document.getElementById('attendanceProgressBar');
         if (progressBar) progressBar.style.width = `${rate}%`;
-        const rateBadge = document.getElementById('attendanceRateBadge');
-        if (rateBadge) rateBadge.textContent = `${rate}% (Filtered: ${total} records)`;
 
-        // Keep the cards honest when a block, unit, search, session, or date
-        // range is selected. Their values always come from the filtered rows.
         const from = String(document.getElementById('filterDateFrom')?.value || '').trim();
         const to = String(document.getElementById('filterDateTo')?.value || '').trim();
         const legacyDate = String(document.getElementById('filterDate')?.value || '').trim();
@@ -885,19 +892,20 @@ const LecturerAttendance = {
         const sessionType = String(document.getElementById('filterSessionType')?.value || 'All');
         const search = String(document.getElementById('filterSearch')?.value || '').trim();
         const sessionSelected = !!this.getSelectedSession();
+        const filterCountText = String(document.getElementById('attendanceFilterCount')?.textContent || '');
         const filteredMode = !!(from || to || legacyDate || search || sessionSelected ||
             (block && block !== 'All') || (unit && unit !== 'All') || (year && year !== 'All') ||
-            (sessionType && sessionType !== 'All'));
-        const labelText = {
+            (sessionType && sessionType !== 'All') || /Showing \\d+ records/i.test(filterCountText) && /all dates|→|\\d{4}-\\d{2}-\\d{2}/i.test(filterCountText));
+        const labels = {
             todayPresent: filteredMode ? 'Present (Filtered)' : 'Present Today',
             todayAbsent: filteredMode ? 'Absent (Filtered)' : 'Absent Today',
             todayPending: filteredMode ? 'Pending (Filtered)' : 'Pending',
             attendanceRate: filteredMode ? 'Attendance Rate (Filtered)' : 'Attendance Rate',
             filteredCount: filteredMode ? 'Filtered Records' : 'Records Found'
         };
-        Object.entries(labelText).forEach(([id, label]) => {
-            const valueEl = document.getElementById(id);
-            const labelEl = valueEl?.parentElement?.querySelector('.stat-label');
+        Object.entries(labels).forEach(([id, label]) => {
+            const value = document.getElementById(id);
+            const labelEl = value?.parentElement?.querySelector('.stat-label');
             if (labelEl) labelEl.textContent = label;
         });
         return this.stats;
