@@ -376,6 +376,51 @@
             if (error) throw error;
 
             state.rows = Array.isArray(data) ? data : [];
+
+            // Older submissions may have stored lecturer_user_id but left
+            // lecturer_name/email blank. Resolve names from the same profile
+            // table used by the Super Admin authorization check.
+            const missingNameRows = state.rows.filter(row =>
+                !String(row.lecturer_name || '').trim() &&
+                row.lecturer_user_id
+            );
+            const userIds = [...new Set(missingNameRows.map(row => String(row.lecturer_user_id)))];
+
+            if (userIds.length) {
+                try {
+                    const { data: profiles, error: profileError } = await client
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id,full_name,email,staff_id,program,department')
+                        .in('user_id', userIds);
+
+                    if (profileError) throw profileError;
+
+                    const profileByUserId = new Map(
+                        (profiles || []).map(profile => [String(profile.user_id), profile])
+                    );
+
+                    state.rows = state.rows.map(row => {
+                        const profile = profileByUserId.get(String(row.lecturer_user_id));
+                        if (!profile) return row;
+                        return {
+                            ...row,
+                            lecturer_name: String(row.lecturer_name || profile.full_name || '').trim(),
+                            lecturer_email: String(row.lecturer_email || profile.email || '').trim(),
+                            lecturer_id: String(row.lecturer_id || profile.staff_id || '').trim(),
+                            program: String(row.program || profile.program || profile.department || '').trim()
+                        };
+                    });
+                } catch (profileError) {
+                    console.warn(`[${MODULE}] Could not resolve missing lecturer names from profiles`, profileError);
+                }
+            }
+
+            // Keep the catalogue readable if a legacy row still has no profile.
+            state.rows = state.rows.map(row => ({
+                ...row,
+                lecturer_name: String(row.lecturer_name || '').trim() || 'Name unavailable',
+                lecturer_email: String(row.lecturer_email || '').trim()
+            }));
             state.filteredRows = [...state.rows];
 
             populateFilters();
@@ -402,6 +447,14 @@
         } finally {
             state.loading = false;
         }
+    }
+
+    function normalizeProgram(value) {
+        const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!normalized) return '';
+        if (normalized.includes('krchn') || normalized.includes('registerednursing') || normalized.includes('nursing')) return 'KRCHN';
+        if (normalized === 'tvet' || normalized.includes('technicalvocational') || normalized.includes('vocationaltraining')) return 'TVET';
+        return String(value || '').trim();
     }
 
     function populateFilters() {
@@ -441,7 +494,11 @@
         }
 
         if (programSelect) {
-            const values = unique('program');
+            const values = [...new Set([
+                'KRCHN',
+                'TVET',
+                ...unique('program')
+            ])].filter(Boolean);
 
             programSelect.innerHTML = `
                 <option value="">All Programs</option>
@@ -531,8 +588,13 @@
         const status = getFilterValue('lrrStatusFilter');
 
         state.filteredRows = state.rows.filter(row => {
-            if (reportType && row.report_type !== reportType) return false;
-            if (program && row.program !== program) return false;
+            if (reportType && String(row.report_type || '') !== reportType) return false;
+            if (program) {
+                const selectedProgram = normalizeProgram(program);
+                const rowProgram = normalizeProgram(row.program || row.department || '');
+                if (selectedProgram ? rowProgram !== selectedProgram :
+                    String(row.program || '').trim().toLowerCase() !== program.trim().toLowerCase()) return false;
+            }
             if (block && row.block !== block) return false;
             if (year && String(row.academic_year || '') !== year) return false;
             if (status && row.status !== status) return false;
