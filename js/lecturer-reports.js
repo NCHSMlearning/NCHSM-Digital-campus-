@@ -2776,12 +2776,17 @@
         const search = String(submissionEl('submittedReportsSearch')?.value || '').trim().toLowerCase();
         const documentType = String(submissionEl('submittedDocumentTypeFilter')?.value || '').trim();
         const status = String(submissionEl('submittedStatusFilter')?.value || '').trim();
+        const dateFrom = String(submissionEl('submittedDateFrom')?.value || '').trim();
+        const dateTo = String(submissionEl('submittedDateTo')?.value || '').trim();
 
-        LecturerReports.submittedFilters = { search, documentType, status };
+        LecturerReports.submittedFilters = { search, documentType, status, dateFrom, dateTo };
         const rows = (LecturerReports.submittedRows || []).filter(row => {
             const rowType = String(row.document_type || '').trim();
             if (documentType && rowType !== documentType) return false;
             if (status && String(row.status || '') !== status) return false;
+            const rowDate = String(row.submitted_at || row.created_at || row.updated_at || '').slice(0, 10);
+            if (dateFrom && (!rowDate || rowDate < dateFrom)) return false;
+            if (dateTo && (!rowDate || rowDate > dateTo)) return false;
             if (search) {
                 const text = [
                     row.title, row.document_title, row.report_type, row.report_category,
@@ -2794,6 +2799,62 @@
         });
 
         renderSubmittedReports(rows, true);
+    };
+
+    LecturerReports.exportSubmittedReports = function () {
+        const search = String(submissionEl('submittedReportsSearch')?.value || '').trim().toLowerCase();
+        const documentType = String(submissionEl('submittedDocumentTypeFilter')?.value || '').trim();
+        const status = String(submissionEl('submittedStatusFilter')?.value || '').trim();
+        const dateFrom = String(submissionEl('submittedDateFrom')?.value || '').trim();
+        const dateTo = String(submissionEl('submittedDateTo')?.value || '').trim();
+        const rows = (LecturerReports.submittedRows || []).filter(row => {
+            if (documentType && String(row.document_type || '').trim() !== documentType) return false;
+            if (status && String(row.status || '') !== status) return false;
+            const date = String(row.submitted_at || row.created_at || row.updated_at || '').slice(0, 10);
+            if (dateFrom && (!date || date < dateFrom)) return false;
+            if (dateTo && (!date || date > dateTo)) return false;
+            if (search) {
+                const haystack = [row.title,row.document_title,row.report_type,row.report_category,row.document_type,row.unit_name,row.block,row.class_block,row.program,row.academic_year,row.status,row.reviewer_comments]
+                    .filter(Boolean).join(' ').toLowerCase();
+                if (!haystack.includes(search)) return false;
+            }
+            return true;
+        }).sort((a,b) => new Date(b.submitted_at || b.created_at || 0) - new Date(a.submitted_at || a.created_at || 0));
+
+        if (!rows.length) {
+            showReportNotice('There are no submitted reports matching the selected period and filters.', 'warning');
+            return;
+        }
+
+        const columns = [
+            ['Document', r => r.title || r.document_title || ''],
+            ['Report Type', r => r.report_type || ''],
+            ['Document Type', r => r.document_type || ''],
+            ['Unit', r => r.unit_name || ''],
+            ['Class / Block', r => r.block || r.class_block || ''],
+            ['Program', r => r.program || ''],
+            ['Academic Year', r => r.academic_year || ''],
+            ['Period Start', r => r.period_start || ''],
+            ['Period End', r => r.period_end || ''],
+            ['Submitted To', r => r.recipient_role || ''],
+            ['Submitted At', r => r.submitted_at || r.created_at || ''],
+            ['Status', r => r.status || ''],
+            ['Reviewer Comments', r => r.reviewer_comments || r.review_comments || '']
+        ];
+        const csvCell = value => '"' + String(value ?? '').replace(/"/g, '""') + '"';
+        const csv = [columns.map(([label]) => csvCell(label)).join(',')]
+            .concat(rows.map(row => columns.map(([, getter]) => csvCell(getter(row))).join(',')))
+            .join('\r\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'my-submitted-reports-' + (dateFrom || 'all') + '-to-' + (dateTo || 'all') + '.csv';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showReportNotice('Exported ' + rows.length + ' report record(s) to CSV.', 'success');
     };
 
     function renderSubmittedReports(rows, filtered = false) {
@@ -2866,46 +2927,69 @@
     LecturerReports.openSubmissionAttachment = async function (submissionIdOrPath) {
         const supabase = db();
         if (!supabase || !submissionIdOrPath) return;
+        let paths = [];
 
-        /* Case 1: full path passed (contains '/') — sign directly */
         if (String(submissionIdOrPath).includes('/')) {
-            const { data, error } = await supabase.storage
-                .from(REPORT_STORAGE_BUCKET)
-                .createSignedUrl(submissionIdOrPath, 900);
-
-            if (error) {
-                showReportNotice('Could not open attachment: ' + error.message, 'error');
-                return;
+            paths = [String(submissionIdOrPath)];
+        } else {
+            const row = (LecturerReports.submittedRows || []).find(item => String(item.id) === String(submissionIdOrPath));
+            const lecturerId = String(row?.lecturer_id || currentLecturerIdSync() || '');
+            const years = [...new Set([
+                new Date(row?.created_at || row?.submitted_at || Date.now()).getFullYear(),
+                new Date().getFullYear()
+            ])];
+            for (const year of years) {
+                const prefix = `${lecturerId}/${year}/${submissionIdOrPath}`;
+                const { data: files, error } = await supabase.storage.from(REPORT_STORAGE_BUCKET)
+                    .list(prefix, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+                if (!error && files?.length) paths.push(...files.filter(file => file.name).map(file => `${prefix}/${file.name}`));
             }
-            if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener');
+        }
+
+        if (!paths.length) {
+            showReportNotice('No attachment was found for this report. The upload may not have finished or Storage access may be restricted.', 'warning');
             return;
         }
 
-        /* Case 2: submission id — list the folder and pick the first file */
-        const lecturerId = currentLecturerIdSync();
-        const year = new Date().getFullYear();
-        const prefix = `${lecturerId}/${year}/${submissionIdOrPath}`;
-
-        const { data: list, error: listErr } = await supabase.storage
-            .from(REPORT_STORAGE_BUCKET)
-            .list(prefix, { limit: 1 });
-
-        if (listErr || !list?.length) {
-            showReportNotice('No attachment found for this submission.', 'warning');
+        const signed = await Promise.all(paths.map(async path => {
+            const { data, error } = await supabase.storage.from(REPORT_STORAGE_BUCKET).createSignedUrl(path, 900);
+            return error || !data?.signedUrl ? null : { path, url: data.signedUrl };
+        }));
+        const files = signed.filter(Boolean);
+        if (!files.length) {
+            showReportNotice('Could not create a secure preview link. Check the lecturer-reports Storage policies.', 'error');
             return;
         }
 
-        const fullPath = `${prefix}/${list[0].name}`;
-        const { data, error } = await supabase.storage
-            .from(REPORT_STORAGE_BUCKET)
-            .createSignedUrl(fullPath, 900);
-
-        if (error || !data?.signedUrl) {
-            showReportNotice('Could not open attachment.', 'error');
-            return;
+        let modal = document.getElementById('lecturerSubmittedDocumentPreview');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'lecturerSubmittedDocumentPreview';
+            modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:1000000;background:rgba(15,23,42,.78);padding:12px;align-items:center;justify-content:center;';
+            modal.innerHTML = `<div style="width:min(1100px,98vw);height:min(92vh,950px);background:white;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;background:#0A3D62;color:white;">
+                    <strong id="lecturerSubmittedPreviewTitle">Document Preview</strong>
+                    <div style="display:flex;gap:8px;align-items:center;"><a id="lecturerSubmittedPreviewOpen" href="#" target="_blank" rel="noopener noreferrer" style="background:white;color:#0A3D62;padding:8px 10px;border-radius:7px;text-decoration:none;font-size:12px;font-weight:700;">Open / Download</a><button type="button" id="lecturerSubmittedPreviewClose" style="border:0;border-radius:7px;background:rgba(255,255,255,.16);color:white;padding:7px 11px;font-size:18px;">×</button></div>
+                </div><div id="lecturerSubmittedPreviewBody" style="flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;background:#f1f5f9;"></div></div>`;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', event => { if (event.target === modal || event.target.id === 'lecturerSubmittedPreviewClose') { modal.style.display='none'; document.getElementById('lecturerSubmittedPreviewBody').innerHTML=''; } });
         }
-
-        window.open(data.signedUrl, '_blank', 'noopener');
+        const row = (LecturerReports.submittedRows || []).find(item => String(item.id) === String(submissionIdOrPath));
+        const path = files[0].path;
+        const url = files[0].url;
+        const name = path.split('/').pop().replace(/^\d+_/, '');
+        const ext = name.split('.').pop().toLowerCase();
+        document.getElementById('lecturerSubmittedPreviewTitle').textContent = name || row?.title || 'Document Preview';
+        document.getElementById('lecturerSubmittedPreviewOpen').href = url;
+        const body = document.getElementById('lecturerSubmittedPreviewBody');
+        if (ext === 'pdf') {
+            body.innerHTML = `<iframe title="Submitted document preview" src="${esc(url)}#toolbar=1&navpanes=0" style="width:100%;height:100%;min-height:500px;border:0;background:white;"></iframe>`;
+        } else if (['png','jpg','jpeg','gif','webp','bmp'].includes(ext)) {
+            body.innerHTML = `<img alt="${esc(name)}" src="${esc(url)}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+        } else {
+            body.innerHTML = `<div style="padding:28px;text-align:center;color:#475569;"><i class="fas fa-file-alt" style="font-size:42px;color:#0A3D62;"></i><p>Inline preview is not supported for this file type.</p><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open or download ${esc(name)}</a></div>`;
+        }
+        modal.style.display = 'flex';
     };
 
     LecturerReports.editReturnedReport = async function (id) {
