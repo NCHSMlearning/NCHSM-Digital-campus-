@@ -2378,11 +2378,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "declaration declaration"
                     "signatures signatures"
                     "footer footer" !important; align-items: stretch !important; align-content: stretch !important; column-gap: 7px !important; row-gap: 2mm !important; min-height: 270mm !important; height: 270mm !important; }
-                        .footer { grid-area: footer !important; align-self: end !important; width: 100% !important; margin-top: auto !important; padding-top: 2mm !important; border-top: 1px solid #0A3D62 !important; }
-                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: 36px minmax(0,1fr) !important; gap: 5px !important; align-items: start !important; min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; }
-                        .container > .transcript-top { align-self: start !important; }
-                        .container > .transcript-top > .header { grid-area: auto !important; }
-                        .transcript-top .header { grid-area: auto !important; margin: 0 !important; padding: 0 0 2px !important; min-width: 0 !important; border-bottom-width: 1px !important; }
+                        .footer { grid-area: footer !important; align-self: end !important; width: 100% !important; margin-top: 0 !important; padding-top: 2mm !important; border-top: 1px solid #0A3D62 !important; }
+                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: 36px minmax(0,1fr) !important; grid-template-rows: auto !important; gap: 5px !important; align-items: start !important; justify-items: stretch !important; min-height: 0 !important; height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+                        .container > .transcript-top { align-self: start !important; width: 100% !important; }
+                        .transcript-top > .verification-qr { grid-column: 1 !important; grid-row: 1 !important; justify-self: start !important; align-self: start !important; }
+                        .transcript-top > .header { grid-column: 2 !important; grid-row: 1 !important; grid-area: auto !important; display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; padding: 0 0 2px !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
+                        .transcript-top .header-top { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; width: 100% !important; gap: 6px !important; }
+                        .transcript-top .header .school { font-size: 12px !important; line-height: 1.1 !important; }
+                        .transcript-top .header .subtitle { font-size: 10px !important; margin: 2px 0 !important; }
+                        .transcript-top .header .date { font-size: 6px !important; }
                         .verification-qr { grid-area: auto !important; width: 34px !important; padding: 2px !important; border: 1px solid #0A3D62 !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; }
                         .verification-qr img { display: block !important; width: 26px !important; height: 26px !important; }
                         .verification-qr span { font-size: 5px !important; }
