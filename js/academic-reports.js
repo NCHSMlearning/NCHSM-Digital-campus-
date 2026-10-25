@@ -2435,20 +2435,47 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         const printStyle = printWindow.document.createElement('style');
                         printStyle.textContent = `
                             @page { size: A4 portrait; margin: 5mm; }
-                            html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
                             * { box-sizing: border-box !important; }
-                            .container { width: 100% !important; min-width: 0 !important; max-width: none !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-areas: "header header" "student student" "results-title results-title" "results-table results-table" "grading summary" "chart chart" "declaration declaration" "signatures signatures" "footer footer" !important; gap: 2mm !important; align-content: start !important; }
-                            .transcript-top { position: relative !important; display: block !important; width: 100% !important; }
-                            .transcript-top > .header { width: 100% !important; padding: 0 44px 2px 0 !important; margin: 0 !important; text-align: center !important; }
+                            html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                            .container { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: auto auto auto auto auto 42mm auto auto auto !important; grid-template-areas: "header header" "student student" "results-title results-title" "results-table results-table" "grading summary" "chart chart" "declaration declaration" "signatures signatures" "footer footer" !important; width: 100% !important; min-width: 0 !important; max-width: none !important; height: 272mm !important; min-height: 272mm !important; margin: 0 !important; padding: 2mm !important; gap: 2mm !important; align-content: space-between !important; align-items: stretch !important; }
+                            .transcript-top { grid-area: header !important; position: relative !important; display: block !important; width: 100% !important; }
+                            .transcript-top > .header { display: block !important; width: 100% !important; padding: 0 44px 2px 0 !important; margin: 0 !important; text-align: center !important; }
                             .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
                             .header-top { display: flex !important; flex-direction: row !important; justify-content: center !important; align-items: center !important; gap: 6px !important; }
-                            .chart-container { height: 38mm !important; min-height: 38mm !important; max-height: 38mm !important; overflow: visible !important; }
-                            .chart-container canvas { display: block !important; width: 100% !important; height: 30mm !important; max-height: 30mm !important; }
-                            .footer { margin-top: 0 !important; padding-top: 1mm !important; width: 100% !important; }
+                            .chart-container { grid-area: chart !important; position: relative !important; height: 42mm !important; min-height: 42mm !important; max-height: 42mm !important; overflow: visible !important; }
+                            .chart-container canvas { display: block !important; width: 100% !important; height: 32mm !important; min-height: 32mm !important; max-height: 32mm !important; }
+                            .footer { grid-area: footer !important; align-self: end !important; margin-top: 0 !important; padding-top: 1mm !important; width: 100% !important; }
                             .no-print { display: none !important; }
+                            .semester-results-title, table.semester-results-table, .student-info-wrapper, .grading-scale-table, .summary-grid, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                         `;
                         printWindow.document.head.appendChild(printStyle);
-                        await new Promise(resolve => setTimeout(resolve, 250));
+                        // Wait for QR and chart render before opening Chrome's print dialog.
+                        const qr = printWindow.document.getElementById('transcriptVerificationQr');
+                        const qrDeadline = Date.now() + 7000;
+                        while (qr && qr.dataset.ready !== 'true' && !qr.dataset.error && Date.now() < qrDeadline) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
+                        const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
+                        if (chartCanvas && printWindow.Chart) {
+                            const chart = printWindow.Chart.getChart(chartCanvas);
+                            if (chart) {
+                                chart.options.responsive = false;
+                                chart.options.maintainAspectRatio = false;
+                                chart.options.animation = false;
+                                chart.resize(chartCanvas.clientWidth || 700, 120);
+                                chart.update('none');
+                            }
+                        }
+                        await Promise.all(Array.from(printWindow.document.images).map(img => {
+                            if (img.complete) return Promise.resolve();
+                            return new Promise(resolve => {
+                                img.addEventListener('load', resolve, { once: true });
+                                img.addEventListener('error', resolve, { once: true });
+                                setTimeout(resolve, 2500);
+                            });
+                        }));
+                        if (printWindow.document.fonts && printWindow.document.fonts.ready) await printWindow.document.fonts.ready;
+                        await new Promise(resolve => setTimeout(resolve, 400));
                         printWindow.focus();
                         printWindow.print();
                         return;
