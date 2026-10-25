@@ -9486,11 +9486,17 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
         window.showTab.__nchsmReportsWrapped = true;
     }
 
+    // Keep report analytics responsive without polling the DOM/database every 1.5s.
+    // Only sync while the Reports section is actually visible and the page is foregrounded.
     setInterval(function () {
-        if (document.getElementById('reports-content')?.style.display !== 'none') {
+        const section = document.getElementById('reports-content');
+        const isVisible = !!section &&
+            section.classList.contains('active') &&
+            getComputedStyle(section).display !== 'none';
+        if (!document.hidden && isVisible) {
             syncReportAnalytics();
         }
-    }, 1500);
+    }, 15000);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () { setTimeout(bootReports, 800); }, { once: true });
