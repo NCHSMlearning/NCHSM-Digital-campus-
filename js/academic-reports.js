@@ -2795,27 +2795,27 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             @page { size: A4 portrait; margin: 5mm; }
                             * { box-sizing: border-box !important; }
                             html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-                            body { font-size: 9px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                            .container { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; border-radius: 0 !important; box-shadow: none !important; }
+                            body { font-size: 11px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            .container { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4mm !important; border-radius: 0 !important; box-shadow: none !important; }
                             .transcript-top { position: relative !important; display: block !important; width: 100% !important; margin: 0 0 3px !important; padding: 0 !important; }
                             .transcript-top > .header { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
                             .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
                             .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 26px !important; height: 26px !important; }
                             .header-top { display: flex !important; flex-direction: row !important; justify-content: center !important; align-items: center !important; gap: 6px !important; }
-                            .header-top img { max-height: 28px !important; max-width: 38px !important; }
-                            .header .school { font-size: 12px !important; line-height: 1.1 !important; }
-                            .header .motto { font-size: 7px !important; }
-                            .header .subtitle { font-size: 10px !important; margin: 2px 0 !important; padding: 2px 8px !important; }
-                            .header .date { font-size: 7px !important; margin-top: 1px !important; }
+                            .header-top img { max-height: 38px !important; max-width: 48px !important; }
+                            .header .school { font-size: 16px !important; line-height: 1.1 !important; }
+                            .header .motto { font-size: 9px !important; }
+                            .header .subtitle { font-size: 12px !important; margin: 2px 0 !important; padding: 2px 8px !important; }
+                            .header .date { font-size: 9px !important; margin-top: 1px !important; }
                             .student-info-wrapper { display: flex !important; margin: 0 0 3px !important; padding: 5px 8px !important; gap: 6px !important; }
                             .student-info { gap: 3px 8px !important; }
-                            .student-info .label { font-size: 7px !important; }
-                            .student-info .value { font-size: 9px !important; line-height: 1.15 !important; margin-top: 1px !important; }
-                            .semester-results-title { margin: 3px 0 0 !important; padding: 6px 10px !important; font-size: 11px !important; }
+                            .student-info .label { font-size: 9px !important; }
+                            .student-info .value { font-size: 11px !important; line-height: 1.15 !important; margin-top: 1px !important; }
+                            .semester-results-title { margin: 5px 0 0 !important; padding: 8px 10px !important; font-size: 13px !important; }
                             table.semester-results-table { display: table !important; width: 100% !important; table-layout: fixed !important; margin: 0 0 4px !important; border-collapse: collapse !important; }
                             table.semester-results-table thead { display: table-header-group !important; }
-                            table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; line-height: 1.1 !important; overflow-wrap: anywhere !important; }
-                            table.semester-results-table tbody td { padding: 4px 4px !important; font-size: 8px !important; line-height: 1.15 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
+                            table.semester-results-table thead th { padding: 7px 5px !important; font-size: 10px !important; line-height: 1.2 !important; overflow-wrap: anywhere !important; }
+                            table.semester-results-table tbody td { padding: 6px 5px !important; font-size: 10px !important; line-height: 1.25 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
                             table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; text-align: center !important; }
                             table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
                             table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
@@ -2824,17 +2824,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; text-align: center !important; }
                             .summary-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 3px !important; margin: 4px 0 !important; }
                             .summary-card { padding: 5px 4px !important; }
-                            .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
-                            .summary-card .label { font-size: 7px !important; margin-top: 2px !important; }
+                            .summary-card .value { font-size: 22px !important; line-height: 1.05 !important; }
+                            .summary-card .label { font-size: 9px !important; margin-top: 2px !important; }
                             .grading-scale-table { margin: 0 0 4px !important; padding: 5px 6px !important; }
-                            .grading-scale-table .title { font-size: 8px !important; margin-bottom: 3px !important; }
-                            .grading-scale-table table, .grading-scale-table th, .grading-scale-table td { font-size: 6px !important; }
+                            .grading-scale-table .title { font-size: 10px !important; margin-bottom: 3px !important; }
+                            .grading-scale-table table, .grading-scale-table th, .grading-scale-table td { font-size: 8px !important; }
                             .grading-scale-table th, .grading-scale-table td { padding: 2px 3px !important; }
-                            .chart-container { position: relative !important; display: block !important; width: 100% !important; height: 45mm !important; min-height: 45mm !important; max-height: 45mm !important; margin: 0 0 4px !important; padding: 2mm !important; overflow: hidden !important; }
-                            .chart-container canvas { display: block !important; width: 100% !important; height: 38mm !important; min-height: 38mm !important; max-height: 38mm !important; }
-                            .declaration { margin: 3px 0 !important; padding: 5px 7px !important; font-size: 8px !important; line-height: 1.2 !important; }
+                            .chart-container { position: relative !important; display: block !important; width: 100% !important; height: 55mm !important; min-height: 55mm !important; max-height: 55mm !important; margin: 0 0 4px !important; padding: 2mm !important; overflow: hidden !important; }
+                            .chart-container canvas { display: block !important; width: 100% !important; height: 48mm !important; min-height: 48mm !important; max-height: 48mm !important; }
+                            .declaration { margin: 5px 0 !important; padding: 7px 9px !important; font-size: 10px !important; line-height: 1.2 !important; }
                             .signatures { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px !important; margin: 3px 0 !important; padding-top: 4px !important; }
-                            .footer { margin: 3px 0 0 !important; padding-top: 4px !important; font-size: 7px !important; border-top: 1px solid #0A3D62 !important; }
+                            .footer { margin: 5px 0 0 !important; padding-top: 6px !important; font-size: 9px !important; border-top: 1px solid #0A3D62 !important; }
                             .no-print, .btn-print, .btn-close { display: none !important; }
                             .container { break-inside: auto !important; page-break-inside: auto !important; }
                             table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
