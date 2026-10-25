@@ -903,50 +903,245 @@
         }));
     }
 
-    async function buildReport(form = selectedFormData()) {
-        const result = await loadMarks({
-            unit: form.unit || null,
-            block: form.block || 'all',
-            year: currentAcademicYear()
+    function reportDateRange(form) {
+        const now = new Date();
+        const start = form.startDate ? new Date(form.startDate + 'T00:00:00') : null;
+        const end = form.endDate ? new Date(form.endDate + 'T23:59:59.999') : null;
+        if (form.period === 'custom') return { start, end };
+        if (form.period === 'week') {
+            const day = now.getDay();
+            const mondayOffset = day === 0 ? -6 : 1 - day;
+            const from = new Date(now);
+            from.setDate(now.getDate() + mondayOffset);
+            from.setHours(0,0,0,0);
+            const to = new Date(from);
+            to.setDate(from.getDate() + 7);
+            to.setMilliseconds(-1);
+            return { start: from, end: to };
+        }
+        if (form.period === 'month') {
+            return {
+                start: new Date(now.getFullYear(), now.getMonth(), 1),
+                end: new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, -1)
+            };
+        }
+        if (form.period === 'current') {
+            const from = new Date(now.getFullYear(), 0, 1);
+            const to = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+            return { start: from, end: to };
+        }
+        return { start: null, end: null };
+    }
+
+    function inReportRange(value, range) {
+        if (!value) return !range.start && !range.end;
+        const date = new Date(value);
+        if (!Number.isFinite(date.getTime())) return false;
+        return (!range.start || date >= range.start) && (!range.end || date <= range.end);
+    }
+
+    async function buildSmartAttendanceReport(form) {
+        const supabase = db();
+        if (!supabase) throw new Error('Database connection unavailable.');
+        const range = reportDateRange(form);
+        let query = supabase.from('geo_attendance_logs').select('*').order('check_in_time', { ascending: false });
+        if (range.start) query = query.gte('check_in_time', range.start.toISOString());
+        if (range.end) query = query.lte('check_in_time', range.end.toISOString());
+        const { data, error } = await query;
+        if (error) throw new Error('Could not load attendance data: ' + error.message);
+
+        const assignments = await loadAssignedUnits();
+        const assignedBlocks = [...new Set(assignments.map(a => String(a.block || '').trim()).filter(Boolean))];
+        const selectedBlock = String(form.block || 'all').trim();
+        let logs = (data || []).filter(log => {
+            const logProgram = String(log.program || log.student_program || '').trim();
+            if (logProgram && logProgram.toLowerCase() !== currentProgram().toLowerCase()) return false;
+            const block = String(log.block || log.class_block || log.student_block || '').trim();
+            if (selectedBlock !== 'all' && block && block !== selectedBlock) return false;
+            if (selectedBlock === 'all' && block && assignedBlocks.length && !assignedBlocks.includes(block)) return false;
+            return inReportRange(log.check_in_time || log.attendance_date || log.session_date || log.created_at, range);
         });
 
-        const marks = result.marks;
-        const stats = calculateStatistics(marks);
+        const unique = new Map();
+        logs.forEach(log => {
+            const key = [
+                log.user_id || log.student_id || log.registration_number || log.student_name || 'unknown',
+                log.session_id || '',
+                String(log.check_in_time || log.attendance_date || log.session_date || '').slice(0,10)
+            ].join('|');
+            const old = unique.get(key);
+            if (!old || String(log.check_in_time || '') > String(old.check_in_time || '')) unique.set(key, log);
+        });
+        logs = [...unique.values()];
+        const countStatus = status => logs.filter(log =>
+            String(log.attendance_status || log.status || '').toLowerCase() === status ||
+            (status === 'present' && log.is_verified === true)
+        ).length;
+        const rows = logs.map((log, i) => ({
+            '#': i + 1,
+            Date: log.check_in_time || log.attendance_date || log.session_date || log.created_at || '',
+            Student: log.student_name || log.full_name || log.name || '',
+            Admission: log.registration_number || log.student_id || log.admission_number || '',
+            Program: log.program || log.student_program || currentProgram(),
+            Block: log.block || log.class_block || log.student_block || '',
+            Unit: log.unit_name || log.subject_name || log.session_title || '',
+            Status: log.attendance_status || log.status || (log.is_verified ? 'Present' : 'Pending'),
+            Verified: log.is_verified === true ? 'Yes' : 'No',
+            'Check-in': log.check_in_time || '',
+            'Check-out': log.check_out_time || ''
+        }));
+        return {
+            marks: [],
+            rows,
+            statistics: {
+                totalRecords: logs.length,
+                present: countStatus('present') + countStatus('verified'),
+                late: countStatus('late'),
+                absent: countStatus('absent'),
+                pending: countStatus('pending'),
+                verified: logs.filter(log => log.is_verified === true).length
+            },
+            source: 'geo_attendance_logs'
+        };
+    }
+
+    async function buildSmartEnrollmentReport(form) {
+        const supabase = db();
+        if (!supabase) throw new Error('Database connection unavailable.');
+        const assignments = await loadAssignedUnits();
+        if (!assignments.length) throw new Error('No assigned units/classes were found for your lecturer account.');
+
+        const assignedBlocks = [...new Set(assignments.map(a => String(a.block || '').trim()).filter(Boolean))];
+        const selectedBlock = String(form.block || 'all').trim();
+        const allowedBlocks = selectedBlock === 'all' ? assignedBlocks : [selectedBlock];
+        if (selectedBlock !== 'all' && assignedBlocks.length && !assignedBlocks.includes(selectedBlock)) {
+            throw new Error('The selected block is not assigned to your lecturer account.');
+        }
+
+        const { data: profiles, error: profileError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id, student_id, full_name, email, phone, block, intake_year, program, department, role, status')
+            .eq('role', 'student');
+        if (profileError) throw new Error('Could not load student enrolments: ' + profileError.message);
+
+        const normalize = value => String(value || '').trim().toLowerCase();
+        let students = (profiles || []).filter(student => {
+            const program = student.program || student.department || '';
+            if (program && normalize(program) !== normalize(currentProgram())) return false;
+            const block = String(student.block || '').trim();
+            if (allowedBlocks.length && block && !allowedBlocks.includes(block)) return false;
+            if (selectedBlock !== 'all' && block && block !== selectedBlock) return false;
+            return true;
+        });
+
+        const ids = [...new Set(students.map(s => String(s.student_id || '').trim()).filter(Boolean))];
+        let registrations = [];
+        if (ids.length) {
+            const { data, error } = await supabase.from('student_unit_registrations').select('*').in('student_id', ids);
+            if (error) {
+                console.warn('[Reports] Unit registrations unavailable; exporting assigned-block student roster only:', error);
+            } else {
+                registrations = data || [];
+            }
+        }
+
+        const assignedUnits = assignments.filter(a =>
+            selectedBlock === 'all' || String(a.block || '').trim() === selectedBlock
+        );
+        const selectedUnit = String(form.unit || '').trim();
+        const filteredRegistrations = registrations.filter(reg => {
+            const regUnit = String(reg.subject_name || reg.unit_name || reg.unit || reg.subject_code || '').trim();
+            const regBlock = String(reg.block || reg.class_block || '').trim();
+            if (selectedUnit && regUnit && normalize(regUnit) !== normalize(selectedUnit)) return false;
+            if (selectedBlock !== 'all' && regBlock && regBlock !== selectedBlock) return false;
+            return true;
+        });
+
+        const rows = students.map((student, i) => {
+            const admission = String(student.student_id || '').trim();
+            const regs = filteredRegistrations.filter(reg => String(reg.student_id || '').trim() === admission);
+            const regUnits = [...new Set(regs.map(reg => reg.subject_name || reg.unit_name || reg.unit || reg.subject_code).filter(Boolean))];
+            return {
+                '#': i + 1,
+                Student: student.full_name || '',
+                Admission: admission,
+                Email: student.email || '',
+                Phone: student.phone || '',
+                Program: student.program || student.department || currentProgram(),
+                Block: student.block || '',
+                Intake: student.intake_year || '',
+                'Registered Units': regUnits.join('; ') || (selectedUnit || assignedUnits.map(a => a.subject_name || a.subject_code).filter(Boolean).join('; ')),
+                'Registration Count': regs.length,
+                Status: student.status || 'Active'
+            };
+        });
+        return {
+            marks: [],
+            rows,
+            statistics: {
+                totalStudents: students.length,
+                totalUnitRegistrations: filteredRegistrations.length,
+                assignedUnits: [...new Set(assignedUnits.map(a => a.subject_name || a.subject_code).filter(Boolean))].length,
+                block: selectedBlock === 'all' ? 'All Assigned Blocks' : selectedBlock
+            },
+            source: 'consolidated_user_profiles_table + student_unit_registrations'
+        };
+    }
+
+    async function buildReport(form = selectedFormData()) {
+        const type = String(form.type || '');
+        let result;
+        let marks = [];
+        let rows;
+        let stats;
+
+        if (['AttendanceSummary', 'AttendanceReport'].includes(type)) {
+            result = await buildSmartAttendanceReport(form);
+            rows = result.rows;
+            stats = result.statistics;
+        } else if (type === 'EnrollmentList') {
+            result = await buildSmartEnrollmentReport(form);
+            rows = result.rows;
+            stats = result.statistics;
+        } else {
+            result = await loadMarks({
+                unit: form.unit || null,
+                block: form.block || 'all',
+                year: currentAcademicYear()
+            });
+            marks = result.marks;
+            stats = calculateStatistics(marks);
+            rows = buildRows(marks, type);
+        }
 
         return {
             id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-            title: reportTitle(form.type),
-            type: form.type,
+            title: reportTitle(type),
+            type,
             unit: form.unit || 'All Assigned Units',
-            block: form.block === 'all' ? 'All Classes' : form.block,
+            block: form.block === 'all' ? 'All Assigned Classes' : form.block,
             program: currentProgram(),
             programType: currentProgramType(),
             academicYear: currentAcademicYear(),
             period: periodLabel(form),
             generatedAt: new Date().toISOString(),
-
             lecturer: {
                 id: currentLecturerIdSync(),
                 email: currentLecturerEmailSync(),
-                name:
-                    window.currentUser?.full_name ||
+                name: window.currentUser?.full_name ||
                     window.currentUser?.name ||
                     window.me_currentLecturer?.profile?.full_name ||
                     window.me_currentLecturer?.staff?.full_name ||
                     'Lecturer'
             },
-
             statistics: stats,
-            rows: buildRows(marks, form.type),
+            rows,
             marks,
-
+            source: result.source || 'student_marks',
             grading: {
                 passingThreshold: passingThreshold(),
-                system: currentProgramType() === 'TVET'
-                    ? 'TVET Competency-Based Grading'
-                    : 'Nursing Grading System'
+                system: currentProgramType() === 'TVET' ? 'TVET Competency-Based Grading' : 'Nursing Grading System'
             },
-
             options: form
         };
     }
