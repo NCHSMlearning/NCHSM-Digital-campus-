@@ -115,6 +115,32 @@ const LecturerAttendance = {
                 });
             });
 
+            // Re-query only the chosen slice when a lecturer changes block,
+            // unit, year or session type. This keeps stats and rows in sync without
+            // loading the entire attendance table.
+            ['filterBlock', 'filterUnit', 'filterYear', 'filterSessionType'].forEach(id => {
+                const input = document.getElementById(id);
+                if (!input || input.dataset.filteredHistoryBound === '1') return;
+                input.dataset.filteredHistoryBound = '1';
+                input.addEventListener('change', async () => {
+                    const from = String(document.getElementById('filterDateFrom')?.value || '').trim();
+                    const to = String(document.getElementById('filterDateTo')?.value || '').trim();
+                    const legacy = String(document.getElementById('filterDate')?.value || '').trim();
+                    const block = String(document.getElementById('filterBlock')?.value || 'All');
+                    const unit = String(document.getElementById('filterUnit')?.value || 'All');
+                    const year = String(document.getElementById('filterYear')?.value || 'All');
+                    const type = String(document.getElementById('filterSessionType')?.value || 'All');
+                    const narrow = [block, unit, year, type].some(v => v && v !== 'All');
+                    this.pastLogs = [];
+                    this._pastAttendanceLoadedAt = 0;
+                    this._pastAttendanceCacheKey = null;
+                    if (from || to || legacy || narrow) {
+                        await this.loadPastAttendance(true, from || legacy, to || legacy);
+                    }
+                    this.applyFilters();
+                });
+            });
+
             this._initialized = true;
             console.log('✅ Lecturer Attendance Module initialized successfully');
 
