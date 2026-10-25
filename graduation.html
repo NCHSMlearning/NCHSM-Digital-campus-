@@ -514,57 +514,74 @@
 <!-- ============================================
 JAVASCRIPT
 ============================================ -->
+<script src="/config.js"></script>
 <script>
-    (function() {
+    (async function() {
         'use strict';
-
         function escapeVerificationText(value) {
             return String(value || '').replace(/[&<>"']/g, function(ch) {
                 return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]);
             });
         }
-
-        // Public QR verification bootstrap.
-        // The previous Apps Script URL was a placeholder and always failed.
-        const urlParams = new URLSearchParams(window.location.search);
-        const documentId = urlParams.get('id') || '';
-        const documentType = (urlParams.get('type') || 'certificate').toLowerCase();
-        const studentId = urlParams.get('studentId') || '';
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token') || '';
+        const legacyId = params.get('id') || '';
         const loadingState = document.getElementById('loadingState');
         const resultState = document.getElementById('resultState');
-
-        // A QR URL is a lookup key, not proof of authenticity by itself.
-        // Never label a record as verified until it has been matched against a trusted registry.
-        if (!documentId) {
+        const config = window.APP_CONFIG || {};
+        function showResult(kind, title, message, detailsHtml = '') {
             loadingState.style.display = 'none';
             resultState.style.display = 'block';
+            const icon = kind === 'valid' ? 'fa-circle-check' : (kind === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-exclamation');
+            const resultClass = kind === 'valid' ? 'result-valid' : 'result-invalid';
+            const titleClass = kind === 'valid' ? 'valid' : (kind === 'error' ? 'error' : 'invalid');
             resultState.innerHTML = `
-                <div class="result-card result-invalid">
-                    <div class="result-title invalid"><i class="fas fa-exclamation-triangle"></i> Missing document reference</div>
-                    <p>This QR code does not contain a document reference. Please contact the NCHSM Academic Office.</p>
-                </div>`;
-        } else {
-            loadingState.style.display = 'none';
-            resultState.style.display = 'block';
-            const typeLabels = {
-                'certificate': 'Graduation certificate',
-                'academic-transcript': 'Academic transcript',
-                'provisional-transcript': 'Provisional academic transcript'
-            };
-            const typeLabel = typeLabels[documentType] || 'Academic document';
-            resultState.innerHTML = `
-                <div class="result-card result-invalid">
-                    <div class="result-title invalid"><i class="fas fa-hourglass-half"></i> Registry verification required</div>
-                    <div class="detail-grid">
-                        <div class="detail-row"><strong>Document type</strong><span>${escapeVerificationText(typeLabel)}</span></div>
-                        <div class="detail-row"><strong>Reference</strong><span>${escapeVerificationText(documentId)}</span></div>
-                        ${studentId ? `<div class="detail-row"><strong>Student reference</strong><span>${escapeVerificationText(studentId)}</span></div>` : ''}
-                    </div>
-                    <p style="margin-top:14px;color:#64748b">The QR code has been read, but this page cannot yet confirm authenticity because the public document registry is not configured. Please verify with the NCHSM Academic Office.</p>
+                <div class="result-card ${resultClass}">
+                    <div class="result-title ${titleClass}"><i class="fas ${icon}"></i> ${escapeVerificationText(title)}</div>
+                    ${detailsHtml ? '<div class="detail-grid">' + detailsHtml + '</div>' : ''}
+                    <p style="margin-top:14px;color:#64748b">${escapeVerificationText(message)}</p>
                 </div>`;
         }
-
-        // Legacy network verifier removed: its deployment URL was a placeholder.
+        function detail(label, value) {
+            return '<div class="detail-row"><strong>' + escapeVerificationText(label) + '</strong><span>' + escapeVerificationText(value || '—') + '</span></div>';
+        }
+        if (!token) {
+            if (legacyId) {
+                showResult('error', 'Registry lookup required',
+                    'This older QR format does not contain a secure registry token. Generate a fresh transcript preview to obtain a new verification QR code.',
+                    detail('Reference', legacyId));
+            } else {
+                showResult('invalid', 'Missing verification token',
+                    'This QR code does not contain a valid registry token. Please contact the NCHSM Academic Office.');
+            }
+            return;
+        }
+        if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
+            showResult('error', 'Verification service unavailable',
+                'The public registry configuration could not be loaded. Please try again later or contact the Academic Office.');
+            return;
+        }
+        try {
+            const response = await fetch(String(config.SUPABASE_URL).replace(/\/$/, '') + '/functions/v1/transcript-registry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': config.SUPABASE_ANON_KEY },
+                body: JSON.stringify({ action: 'verify', token })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || 'The registry could not be reached.');
+            const details = detail('Document type', 'Provisional academic transcript') +
+                detail('Student name', result.student_name) +
+                detail('Admission number', result.student_id) +
+                detail('Program', result.program) +
+                detail('Registry issue date', result.issued_at ? new Date(result.issued_at).toLocaleString() : '');
+            if (result.status === 'verified') showResult('valid', 'Verification successful', result.message, details);
+            else if (result.status === 'record_changed') showResult('error', 'Academic record requires review', result.message, details);
+            else showResult('invalid', 'Transcript not verified', result.message || 'No active registry record matches this QR code.');
+        } catch (error) {
+            console.error('Transcript registry verification failed:', error);
+            showResult('error', 'Verification service unavailable',
+                error && error.message ? error.message : 'Could not contact the NCHSM document registry. Please try again later.');
+        }
     })();
 </script>
 
