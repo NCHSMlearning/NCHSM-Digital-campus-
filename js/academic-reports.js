@@ -2349,6 +2349,24 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         return;
                     }
                     if (outputMode === 'print') {
+                        // Use the same A4 portrait layout for browser printing as for PDF download.
+                        const printStyle = printWindow.document.createElement('style');
+                        printStyle.textContent = `
+                            @page { size: A4 portrait; margin: 5mm; }
+                            html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                            * { box-sizing: border-box !important; }
+                            .container { width: 100% !important; min-width: 0 !important; max-width: none !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-areas: "header header" "student student" "results-title results-title" "results-table results-table" "grading summary" "chart chart" "declaration declaration" "signatures signatures" "footer footer" !important; gap: 2mm !important; align-content: start !important; }
+                            .transcript-top { position: relative !important; display: block !important; width: 100% !important; }
+                            .transcript-top > .header { width: 100% !important; padding: 0 44px 2px 0 !important; margin: 0 !important; text-align: center !important; }
+                            .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
+                            .header-top { display: flex !important; flex-direction: row !important; justify-content: center !important; align-items: center !important; gap: 6px !important; }
+                            .chart-container { height: 38mm !important; min-height: 38mm !important; max-height: 38mm !important; overflow: visible !important; }
+                            .chart-container canvas { display: block !important; width: 100% !important; height: 30mm !important; max-height: 30mm !important; }
+                            .footer { margin-top: 0 !important; padding-top: 1mm !important; width: 100% !important; }
+                            .no-print { display: none !important; }
+                        `;
+                        printWindow.document.head.appendChild(printStyle);
+                        await new Promise(resolve => setTimeout(resolve, 250));
                         printWindow.focus();
                         printWindow.print();
                         return;
@@ -2475,7 +2493,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         margin: 6,
                         filename: fileBase + '.pdf',
                         image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, width: 794 },
+                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, width: 794, onclone: clonedDoc => { const clonedTarget = clonedDoc.querySelector('.container'); if (clonedTarget) { clonedTarget.style.height = 'auto'; clonedTarget.style.minHeight = '0'; clonedTarget.style.alignContent = 'start'; } } },
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
                         pagebreak: { mode: ['css', 'legacy'] }
                     };
