@@ -2282,17 +2282,22 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             // Resolve the student reference from both the data object and rendered field labels.
             // Do not depend on a fixed field position: profile photos/optional fields can change the order.
             const studentFields = Array.from(document.querySelectorAll('.student-info .field'));
-            const admissionField = studentFields.find(field => /admission|student\s*(id|number|no\.?)/i.test(field.textContent || ''));
+            const admissionField = studentFields.find(field => {
+                const label = field.querySelector('.label');
+                return /admission|student\s*(id|number|no\.?)/i.test((label && label.textContent) || field.textContent || '');
+            });
             const admissionValueNode = admissionField && admissionField.querySelector('.value');
-            const admissionText = admissionValueNode ? admissionValueNode.textContent : (admissionField ? admissionField.textContent.replace(/admission\s*(number|no\.?)/i, '') : '');
+            const admissionText = admissionValueNode ? admissionValueNode.textContent : '';
             const candidateIds = [
                 ${JSON.stringify(user.student_id || '')},
                 ${JSON.stringify(user.admission_number || '')},
                 ${JSON.stringify(user.admission_no || '')},
                 ${JSON.stringify(user.student_number || '')},
+                ${JSON.stringify(user.admissionNumber || '')},
+                ${JSON.stringify(user.id || '')},
                 admissionText
             ];
-            const verifyId = candidateIds.map(value => String(value || '').replace(/\\s+/g, ' ').trim()).find(value => value && !/^N\/?A$/i.test(value)) || '';
+            const verifyId = candidateIds.map(value => String(value || '').replace(/\s+/g, ' ').trim()).find(value => value && !/^N\/?A$/i.test(value)) || '';
             if (!verifyId) {
                 qrImage.dataset.error = 'Student admission number unavailable';
                 qrImage.alt = 'Student reference unavailable';
@@ -2303,8 +2308,13 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
             const verificationUrl = new URL('/graduation.html', window.location.origin);
             verificationUrl.searchParams.set('id', verifyId);
+            verificationUrl.searchParams.set('studentId', verifyId);
             verificationUrl.searchParams.set('type', 'provisional-transcript');
             qrImage.style.display = 'block';
+            qrImage.style.visibility = 'visible';
+            qrImage.style.width = '26px';
+            qrImage.style.height = '26px';
+            qrImage.style.objectFit = 'contain';
             qrImage.dataset.ready = '';
             qrImage.dataset.error = '';
             qrImage.alt = 'Generating verification QR code';
@@ -2450,8 +2460,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             .transcript-top > .header { display: block !important; width: 100% !important; padding: 0 44px 2px 0 !important; margin: 0 !important; text-align: center !important; }
                             .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
                             .header-top { display: flex !important; flex-direction: row !important; justify-content: center !important; align-items: center !important; gap: 6px !important; }
-                            .chart-container { grid-area: chart !important; position: relative !important; height: 42mm !important; min-height: 42mm !important; max-height: 42mm !important; overflow: visible !important; }
-                            .chart-container canvas { display: block !important; width: 100% !important; height: 32mm !important; min-height: 32mm !important; max-height: 32mm !important; }
+                            .chart-container { grid-area: chart !important; position: relative !important; height: 30mm !important; min-height: 30mm !important; max-height: 30mm !important; overflow: hidden !important; padding: 2mm !important; }
+                            .chart-container canvas { display: block !important; width: 100% !important; height: 24mm !important; min-height: 24mm !important; max-height: 24mm !important; }
+                            .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 26px !important; height: 26px !important; }
                             .footer { grid-area: footer !important; align-self: end !important; margin-top: 0 !important; padding-top: 1mm !important; width: 100% !important; }
                             .no-print { display: none !important; }
                             .semester-results-title, table.semester-results-table, .student-info-wrapper, .grading-scale-table, .summary-grid, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
@@ -2555,8 +2566,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; text-align: center !important; }
                         table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; text-align: center !important; }
                         table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; text-align: center !important; }
-                        .chart-container { grid-area: chart !important; position: relative !important; min-width: 0 !important; min-height: 42mm !important; height: 42mm !important; max-height: 42mm !important; align-self: stretch !important; margin: 0 !important; padding: 3px 5px !important; display: block !important; overflow: visible !important; }
-                        .chart-container canvas { display: block !important; position: relative !important; width: 100% !important; height: 32mm !important; min-height: 32mm !important; max-height: 32mm !important; }
+                        .chart-container { grid-area: chart !important; position: relative !important; min-width: 0 !important; min-height: 30mm !important; height: 30mm !important; max-height: 30mm !important; align-self: stretch !important; margin: 0 !important; padding: 2mm !important; display: block !important; overflow: hidden !important; }
+                        .chart-container canvas { display: block !important; position: relative !important; width: 100% !important; height: 24mm !important; min-height: 24mm !important; max-height: 24mm !important; }
+                        .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 26px !important; height: 26px !important; }
                         .summary-grid { grid-area: summary !important; display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 3px !important; margin: 0 !important; }
                         .summary-card { padding: 5px 4px !important; border-top-width: 2px !important; }
                         .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
