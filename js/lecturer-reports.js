@@ -42,6 +42,8 @@
     };
 
     LecturerReports.currentReport = null;
+    LecturerReports.submittedRows = Array.isArray(LecturerReports.submittedRows) ? LecturerReports.submittedRows : [];
+    LecturerReports.submittedFilters = LecturerReports.submittedFilters || { search: '', documentType: '', status: '' };
     LecturerReports._cache = LecturerReports._cache || {};
     LecturerReports._initialized = false;
 
@@ -2700,6 +2702,7 @@
                 throw errors[0];
             }
 
+            LecturerReports.submittedRows = uniqueRows;
             renderSubmittedReports(uniqueRows);
             return uniqueRows;
         } catch (error) {
@@ -2749,11 +2752,39 @@
         return `<span style="display:inline-flex;padding:5px 8px;border-radius:999px;background:${bg};color:${color};font-size:10px;font-weight:800;">${esc(label)}</span>`;
     }
 
-    function renderSubmittedReports(rows) {
+    LecturerReports.applySubmittedReportFilters = function () {
+        const search = String(submissionEl('submittedReportsSearch')?.value || '').trim().toLowerCase();
+        const documentType = String(submissionEl('submittedDocumentTypeFilter')?.value || '').trim();
+        const status = String(submissionEl('submittedStatusFilter')?.value || '').trim();
+
+        LecturerReports.submittedFilters = { search, documentType, status };
+        const rows = (LecturerReports.submittedRows || []).filter(row => {
+            const rowType = String(row.document_type || '').trim();
+            if (documentType && rowType !== documentType) return false;
+            if (status && String(row.status || '') !== status) return false;
+            if (search) {
+                const text = [
+                    row.title, row.document_title, row.report_type, row.report_category,
+                    row.document_type, row.unit_name, row.block, row.class_block,
+                    row.program, row.academic_year, row.status, row.reviewer_comments
+                ].filter(Boolean).join(' ').toLowerCase();
+                if (!text.includes(search)) return false;
+            }
+            return true;
+        });
+
+        renderSubmittedReports(rows, true);
+    };
+
+    function renderSubmittedReports(rows, filtered = false) {
         const tbody = submissionEl('submittedReportsTable');
         if (!tbody) return;
 
-        const list = Array.isArray(rows) ? rows : [];
+        const list = Array.isArray(rows) ? [...rows] : [];
+        list.sort((a, b) =>
+            new Date(b.submitted_at || b.created_at || b.updated_at || 0) -
+            new Date(a.submitted_at || a.created_at || a.updated_at || 0)
+        );
 
         const count = submissionEl('submittedReportsCount');
         const under = submissionEl('submittedUnderReviewCount');
@@ -2769,7 +2800,9 @@
             list.filter(r => r.status === 'approved').length;
 
         if (!list.length) {
-            setSubmittedReportsEmpty('Submit a report to see its review status here.');
+            setSubmittedReportsEmpty(filtered
+                ? 'No submissions match these filters.'
+                : 'Submit a report to see its review status here.');
             return;
         }
 
@@ -2777,29 +2810,29 @@
             const title = r.title || r.document_title || 'Untitled Report';
             const block = r.block || r.class_block || 'All Classes';
             const hasAttachment = Number(r.attachment_count) > 0;
+            const documentLabel = r.document_type
+                ? String(r.document_type).replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                : (r.report_category || r.report_type || 'Report');
 
             return `
                 <tr>
                     <td>
                         <strong>${esc(title)}</strong>
-                        <div style="font-size:10px;color:#94a3b8;">
-                            ${esc(r.report_category || r.report_type || '')}
-                            ${r.document_type ? ` • ${esc(r.document_type)}` : ''}
-                        </div>
+                        <div style="font-size:10px;color:#64748b;">${esc(documentLabel)}</div>
                     </td>
                     <td>${esc(r.report_type || '—')}</td>
                     <td>
                         ${esc(r.unit_name || '—')}
-                        <div style="font-size:10px;color:#94a3b8;">${esc(block)}</div>
+                        <div style="font-size:10px;color:#94a3b8;">${esc(block)} · ${esc(r.program || '')}</div>
                     </td>
                     <td>${esc(r.period_start || '—')} → ${esc(r.period_end || '—')}</td>
                     <td>${esc(r.recipient_role || '—')}</td>
-                    <td>${r.submitted_at ? new Date(r.submitted_at).toLocaleString() : '—'}</td>
+                    <td>${r.submitted_at ? new Date(r.submitted_at).toLocaleString() : (r.created_at ? new Date(r.created_at).toLocaleString() : '—')}</td>
                     <td>${statusBadge(r.status)}</td>
                     <td>${esc(r.reviewer_comments || r.review_comments || '—')}</td>
                     <td style="white-space:nowrap;">
                         ${hasAttachment
-                            ? `<button type="button" class="lr-btn lr-btn-ghost" style="padding:6px 8px;" onclick="LecturerReports.openSubmissionAttachment('${esc(r.id)}')"><i class="fas fa-paperclip"></i></button>`
+                            ? `<button type="button" class="lr-btn lr-btn-ghost" style="padding:6px 8px;" onclick="LecturerReports.openSubmissionAttachment('${esc(r.id)}')" title="Open submitted file"><i class="fas fa-paperclip"></i> File</button>`
                             : ''}
                         ${r.status === 'returned'
                             ? `<button type="button" class="lr-btn lr-btn-light" style="padding:6px 8px;" onclick="LecturerReports.editReturnedReport('${esc(r.id)}')"><i class="fas fa-edit"></i> Correct</button>`
