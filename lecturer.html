@@ -7529,6 +7529,29 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
                 </div>
             </div>
 
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+                <input id="submittedReportsSearch" type="search" placeholder="Search my submitted documents…" oninput="window.LecturerReports?.applySubmittedReportFilters?.()" style="flex:1;min-width:200px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;">
+                <select id="submittedDocumentTypeFilter" onchange="window.LecturerReports?.applySubmittedReportFilters?.()" style="min-width:175px;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;">
+                    <option value="">All Document Types</option>
+                    <option value="scheme_of_work">Scheme of Work</option>
+                    <option value="course_outline">Course Outline</option>
+                    <option value="course_objectives">Course Objectives</option>
+                    <option value="records_of_work">Records of Work</option>
+                    <option value="lesson_plan">Lesson Plan</option>
+                    <option value="teaching_schedule">Teaching Schedule</option>
+                    <option value="learning_resources">Learning Resources / Materials</option>
+                    <option value="other_teaching_document">Other Teaching Document</option>
+                </select>
+                <select id="submittedStatusFilter" onchange="window.LecturerReports?.applySubmittedReportFilters?.()" style="min-width:145px;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;">
+                    <option value="">All Statuses</option>
+                    <option value="draft">Draft</option><option value="submitted">Submitted</option>
+                    <option value="under_review">Under Review</option><option value="returned">Returned</option>
+                    <option value="resubmitted">Resubmitted</option><option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+                <button class="lr-btn lr-btn-ghost" type="button" onclick="const a=document.getElementById('submittedReportsSearch');const b=document.getElementById('submittedDocumentTypeFilter');const c=document.getElementById('submittedStatusFilter');if(a)a.value='';if(b)b.value='';if(c)c.value='';window.LecturerReports?.applySubmittedReportFilters?.();"><i class="fas fa-times"></i> Clear</button>
+            </div>
+
             <div class="lr-table-wrap">
                 <table class="lr-table" style="min-width:1050px;">
                     <thead>
