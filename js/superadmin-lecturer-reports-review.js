@@ -954,6 +954,47 @@
             if (error) throw error;
 
             state.selectedAttachments = data || [];
+
+            // Lecturer portal uploads files directly to Storage under
+            // {lecturer_id}/{year}/{submission_id}/{timestamp}_{filename}.
+            // Older uploads may not have a lecturer_report_attachments row,
+            // so discover them in Storage when the metadata query is empty.
+            if (!state.selectedAttachments.length && client.storage?.from && state.selectedSubmission) {
+                const row = state.selectedSubmission;
+                const lecturerId = String(row.lecturer_id || '').trim();
+                const years = [...new Set([
+                    new Date(row.created_at || row.submitted_at || Date.now()).getFullYear(),
+                    new Date().getFullYear()
+                ])];
+                const discovered = [];
+
+                if (lecturerId) {
+                    for (const year of years) {
+                        const prefix = `${lecturerId}/${year}/${submissionId}`;
+                        try {
+                            const { data: files, error: storageError } = await client.storage
+                                .from(STORAGE_BUCKET)
+                                .list(prefix, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+                            if (storageError) throw storageError;
+                            (files || []).filter(file => file.name && file.id).forEach(file => {
+                                discovered.push({
+                                    id: `${prefix}/${file.name}`,
+                                    submission_id: submissionId,
+                                    uploaded_by: row.lecturer_user_id || null,
+                                    file_name: file.name.replace(/^\d+_/, ''),
+                                    storage_path: `${prefix}/${file.name}`,
+                                    mime_type: file.metadata?.mimetype || '',
+                                    file_size: file.metadata?.size || 0,
+                                    created_at: file.created_at || row.created_at || row.submitted_at
+                                });
+                            });
+                        } catch (storageError) {
+                            console.warn(`[${MODULE}] Storage fallback listing failed for ${prefix}`, storageError);
+                        }
+                    }
+                }
+                state.selectedAttachments = [...new Map(discovered.map(file => [file.storage_path, file])).values()];
+            }
         } catch (error) {
             console.error(`[${MODULE}] Attachment lookup failed`, error);
             state.selectedAttachments = [];
@@ -1647,7 +1688,7 @@
     }
 
     async function openAttachment(id) {
-        const file = state.selectedAttachments.find(item => String(item.id) === String(id));
+        const file = state.selectedAttachments.find(item => String(item.id) === String(id) || String(item.storage_path) === String(id));
 
         if (!file) {
             showModuleToast('Attachment not found.', 'error');
