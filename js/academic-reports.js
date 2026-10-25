@@ -2700,7 +2700,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         printWindow.document.head.appendChild(previewDensityStyle);
                         const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                         const options = {
-                            margin: [5, 5, 5, 5],
+                            margin: 5,
                             filename: fileBase + '.pdf',
                             image: { type: 'jpeg', quality: 0.98 },
                             html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 },
@@ -2957,7 +2957,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                     const options = {
                         // Capture at portrait A4 CSS width and retain the QR image before PDF serialization.
-                        margin: [5, 5, 5, 5],
+                        margin: 5,
                         filename: fileBase + '.pdf',
                         image: { type: 'jpeg', quality: 0.98 },
                         html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, onclone: clonedDoc => {
