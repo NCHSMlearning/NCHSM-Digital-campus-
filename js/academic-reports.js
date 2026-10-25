@@ -2577,7 +2577,37 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         margin: 6,
                         filename: fileBase + '.pdf',
                         image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, width: 794, onclone: clonedDoc => { const clonedTarget = clonedDoc.querySelector('.container'); if (clonedTarget) { clonedTarget.style.height = 'auto'; clonedTarget.style.minHeight = '0'; clonedTarget.style.alignContent = 'start'; } } },
+                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, width: 794, onclone: clonedDoc => {
+                            // Lock the cloned capture to the portrait A4 CSS width; otherwise mobile viewport
+                            // sizing can crop the right side of the transcript in the exported PDF.
+                            const clonedHtml = clonedDoc.documentElement;
+                            const clonedBody = clonedDoc.body;
+                            [clonedHtml, clonedBody].forEach(node => {
+                                node.style.setProperty('width', '794px', 'important');
+                                node.style.setProperty('min-width', '794px', 'important');
+                                node.style.setProperty('max-width', '794px', 'important');
+                                node.style.setProperty('margin', '0', 'important');
+                                node.style.setProperty('padding', '0', 'important');
+                                node.style.setProperty('overflow', 'visible', 'important');
+                            });
+                            const clonedTarget = clonedDoc.querySelector('.container');
+                            if (clonedTarget) {
+                                clonedTarget.style.setProperty('width', '794px', 'important');
+                                clonedTarget.style.setProperty('min-width', '794px', 'important');
+                                clonedTarget.style.setProperty('max-width', '794px', 'important');
+                                clonedTarget.style.setProperty('height', 'auto', 'important');
+                                clonedTarget.style.setProperty('min-height', '0', 'important');
+                                clonedTarget.style.setProperty('margin', '0', 'important');
+                                clonedTarget.style.setProperty('align-content', 'start', 'important');
+                                clonedTarget.style.setProperty('grid-template-rows', 'auto auto auto auto auto 42mm auto auto auto', 'important');
+                                clonedTarget.style.setProperty('overflow', 'visible', 'important');
+                            }
+                            const canvas = clonedDoc.querySelector('.chart-container canvas');
+                            if (canvas) {
+                                canvas.style.setProperty('width', '100%', 'important');
+                                canvas.style.setProperty('height', '32mm', 'important');
+                            }
+                        } },
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
                         pagebreak: { mode: ['css', 'legacy'] }
                     };
