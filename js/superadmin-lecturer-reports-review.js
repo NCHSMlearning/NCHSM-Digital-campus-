@@ -1328,6 +1328,13 @@
                             `
                     }
                 </div>
+                <div id="lrrInlinePreview" style="display:none;margin:0 12px 12px;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;background:#f8fafc;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:#ede9fe;color:#4C1D95;font-size:12px;font-weight:800;">
+                        <span id="lrrInlinePreviewTitle">Document Preview</span>
+                        <button type="button" onclick="window.LecturerReportsReview.closeInlinePreview()" style="border:0;background:white;color:#4C1D95;border-radius:6px;padding:5px 8px;cursor:pointer;">Close preview</button>
+                    </div>
+                    <div id="lrrInlinePreviewBody" style="min-height:260px;max-height:65vh;display:flex;align-items:center;justify-content:center;overflow:auto;"></div>
+                </div>
             </div>
         `;
     }
@@ -1393,7 +1400,7 @@
                         white-space:nowrap;
                     "
                 >
-                    <i class="fas fa-external-link-alt"></i> Open
+                    <i class="fas fa-eye"></i> Preview
                 </button>
             </div>
         `;
@@ -1666,7 +1673,25 @@
                 throw new Error('A signed URL could not be generated.');
             }
 
-            window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+            const preview = getElement('lrrInlinePreview');
+            const previewBody = getElement('lrrInlinePreviewBody');
+            const previewTitle = getElement('lrrInlinePreviewTitle');
+            if (!preview || !previewBody) { window.open(data.signedUrl, '_blank', 'noopener,noreferrer'); return; }
+            const mime = String(file.mime_type || '').toLowerCase();
+            const name = String(file.file_name || '').toLowerCase();
+            if (previewTitle) previewTitle.textContent = file.file_name || 'Document Preview';
+            const safeUrl = escapeAttr(data.signedUrl);
+            if (mime.includes('pdf') || name.endsWith('.pdf')) {
+                previewBody.innerHTML = `<iframe title="Lecturer document preview" src="${safeUrl}#toolbar=1&navpanes=0" style="width:100%;height:60vh;min-height:320px;border:0;background:white;"></iframe>`;
+            } else if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(name)) {
+                previewBody.innerHTML = `<img alt="${escapeAttr(file.file_name || 'Uploaded image')}" src="${safeUrl}" style="display:block;max-width:100%;max-height:60vh;object-fit:contain;margin:auto;">`;
+            } else if (mime.startsWith('text/') || /\.(txt|csv)$/i.test(name)) {
+                previewBody.innerHTML = `<iframe title="Text document preview" src="${safeUrl}" style="width:100%;height:50vh;border:0;background:white;"></iframe>`;
+            } else {
+                previewBody.innerHTML = `<div style="padding:24px;text-align:center;color:#475569;"><i class="fas fa-file-word" style="font-size:36px;color:#6d28d9;"></i><p>Inline preview is not supported for this file type.</p><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:#6d28d9;font-weight:700;">Open or download document</a></div>`;
+            }
+            preview.style.display = 'block';
+            preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch (error) {
             console.error(`[${MODULE}] Attachment open failed`, error);
             showModuleToast(
@@ -1967,6 +1992,12 @@
         filter: applyFilters,
         open: openSubmission,
         openAttachment,
+        closeInlinePreview: function () {
+            const preview = getElement('lrrInlinePreview');
+            const body = getElement('lrrInlinePreviewBody');
+            if (body) body.innerHTML = '';
+            if (preview) preview.style.display = 'none';
+        },
         close: closeModal,
         setUnderReview,
         returnForCorrection,
