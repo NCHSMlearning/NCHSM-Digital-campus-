@@ -2279,17 +2279,25 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             const qrImage = document.getElementById('transcriptVerificationQr');
             if (!qrImage) return;
 
-            const admissionNode = document.querySelector('.student-info .field:nth-child(2) .value');
+            // Resolve the student reference from both the data object and rendered field labels.
+            // Do not depend on a fixed field position: profile photos/optional fields can change the order.
+            const studentFields = Array.from(document.querySelectorAll('.student-info .field'));
+            const admissionField = studentFields.find(field => /admission|student\s*(id|number|no\.?)/i.test(field.textContent || ''));
+            const admissionValueNode = admissionField && admissionField.querySelector('.value');
+            const admissionText = admissionValueNode ? admissionValueNode.textContent : (admissionField ? admissionField.textContent.replace(/admission\s*(number|no\.?)/i, '') : '');
             const candidateIds = [
                 ${JSON.stringify(user.student_id || '')},
                 ${JSON.stringify(user.admission_number || '')},
                 ${JSON.stringify(user.admission_no || '')},
-                admissionNode ? admissionNode.textContent : ''
+                ${JSON.stringify(user.student_number || '')},
+                admissionText
             ];
-            const verifyId = candidateIds.map(value => String(value || '').replace(/\\s+/g, ' ').trim()).find(Boolean) || '';
-            if (!verifyId || verifyId === 'N/A') {
+            const verifyId = candidateIds.map(value => String(value || '').replace(/\\s+/g, ' ').trim()).find(value => value && !/^N\/?A$/i.test(value)) || '';
+            if (!verifyId) {
                 qrImage.dataset.error = 'Student admission number unavailable';
                 qrImage.alt = 'Student reference unavailable';
+                qrImage.style.display = 'block';
+                console.error('Transcript QR: no student/admission identifier found in data or rendered fields.');
                 return;
             }
 
