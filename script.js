@@ -17685,9 +17685,9 @@ function updateSelectedUnitsCount() {
 async function approveSingleUnitRecord(regId) {
     if (!confirm('Approve this unit?')) return;
     try {
-        await sb.from('student_unit_registrations')
-            .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
-            .eq('id', regId);
+        const { data: changedRows, error: mutationError } = const { data: changedRows, error: mutationError } = await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).eq('id', regId).select('id');
+        if (mutationError) throw mutationError;
+        if (!changedRows || changedRows.length !== 1) throw new Error('No registration was updated. Confirm your Super Admin permissions and refresh the list.');
         window.showFeedback('✅ Unit approved!', 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
@@ -17700,7 +17700,9 @@ async function approveSingleUnitRecord(regId) {
 async function rejectSingleUnitRecord(regId) {
     if (!confirm('Reject this unit?')) return;
     try {
-        await sb.from('student_unit_registrations').delete().eq('id', regId);
+        const { data: deletedRows, error: mutationError } = await sb.from('student_unit_registrations').delete().eq('id', regId).select('id');
+        if (mutationError) throw mutationError;
+        if (!deletedRows || deletedRows.length !== 1) throw new Error('No registration was removed. Confirm permissions and refresh the list.');
         window.showFeedback('❌ Unit rejected and removed!', 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
@@ -17716,9 +17718,9 @@ async function approveStudentAllUnits(studentId) {
     
     try {
         const ids = studentUnits.map(r => r.id);
-        await sb.from('student_unit_registrations')
-            .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
-            .in('id', ids);
+        const { data: changedRows, error: mutationError } = await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).in('id', ids).select('id');
+        if (mutationError) throw mutationError;
+        if (!changedRows || changedRows.length !== ids.length) throw new Error(`Only ${changedRows?.length || 0} of ${ids.length} registrations were updated. Check permissions and refresh before retrying.`);
         window.showFeedback(`✅ Approved ${studentUnits.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
@@ -17735,7 +17737,9 @@ async function rejectStudentAllUnits(studentId) {
     
     try {
         const ids = studentUnits.map(r => r.id);
-        await sb.from('student_unit_registrations').delete().in('id', ids);
+        const { data: deletedRows, error: mutationError } = await sb.from('student_unit_registrations').delete().in('id', ids).select('id');
+        if (mutationError) throw mutationError;
+        if (!deletedRows || deletedRows.length !== ids.length) throw new Error(`Only ${deletedRows?.length || 0} of ${ids.length} registrations were removed. Check permissions and refresh before retrying.`);
         window.showFeedback(`❌ Rejected ${studentUnits.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
@@ -17754,9 +17758,9 @@ async function bulkApproveSelectedUnits() {
     if (!confirm(`Approve ${selectedIds.length} unit(s)?`)) return;
     
     try {
-        await sb.from('student_unit_registrations')
-            .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
-            .in('id', selectedIds);
+        const { data: changedRows, error: mutationError } = await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).in('id', selectedIds).select('id');
+        if (mutationError) throw mutationError;
+        if (!changedRows || changedRows.length !== selectedIds.length) throw new Error(`Only ${changedRows?.length || 0} of ${selectedIds.length} registrations were updated. Check permissions and refresh before retrying.`);
         window.showFeedback(`✅ Approved ${selectedIds.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
@@ -17776,7 +17780,9 @@ async function bulkRejectSelectedUnits() {
     if (!confirm(`Reject ${selectedIds.length} unit(s)?`)) return;
     
     try {
-        await sb.from('student_unit_registrations').delete().in('id', selectedIds);
+        const { data: deletedRows, error: mutationError } = await sb.from('student_unit_registrations').delete().in('id', selectedIds).select('id');
+        if (mutationError) throw mutationError;
+        if (!deletedRows || deletedRows.length !== selectedIds.length) throw new Error(`Only ${deletedRows?.length || 0} of ${selectedIds.length} registrations were removed. Check permissions and refresh before retrying.`);
         window.showFeedback(`❌ Rejected ${selectedIds.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
@@ -17945,9 +17951,9 @@ function exportApprovedRegistrations() {
 async function deapproveSingleRegistration(regId, unitCode, studentName) {
     if (!confirm(`De-approve ${unitCode} for ${studentName}? This will move it back to pending.`)) return;
     try {
-        await sb.from('student_unit_registrations')
-            .update({ status: 'pending', approved_by: null, approval_date: null })
-            .eq('id', regId);
+        const { data: changedRows, error: mutationError } = await sb.from('student_unit_registrations').update({ status: 'pending', approved_by: null, approval_date: null }).eq('id', regId).select('id');
+        if (mutationError) throw mutationError;
+        if (!changedRows || changedRows.length !== 1) throw new Error('No registration was updated. Confirm your Super Admin permissions and refresh the list.');
         window.showFeedback(`🔄 Unit ${unitCode} moved to pending!`, 'success');
         await loadApprovedRegistrations();
         await loadUnitRegistrationStats();
@@ -17967,9 +17973,9 @@ async function bulkDeapproveSelected() {
     if (!confirm(`De-approve ${selectedIds.length} registration(s)?`)) return;
     
     try {
-        await sb.from('student_unit_registrations')
-            .update({ status: 'pending', approved_by: null, approval_date: null })
-            .in('id', selectedIds);
+        const { data: changedRows, error: mutationError } = await sb.from('student_unit_registrations').update({ status: 'pending', approved_by: null, approval_date: null }).in('id', selectedIds).select('id');
+        if (mutationError) throw mutationError;
+        if (!changedRows || changedRows.length !== selectedIds.length) throw new Error(`Only ${changedRows?.length || 0} of ${selectedIds.length} registrations were updated. Check permissions and refresh before retrying.`);
         window.showFeedback(`🔄 ${selectedIds.length} registration(s) de-approved!`, 'success');
         await loadApprovedRegistrations();
         await loadUnitRegistrationStats();
@@ -20104,8 +20110,9 @@ async function sendAdminChatReply() {
                 .update({ 
                     status: newStatus, 
                     updated_at: new Date().toISOString() 
-                })
-                .eq('id', currentAdminTicketId);
+                }).eq('id', currentAdminTicketId).select('id');
+        if (mutationError) throw mutationError;
+        if (!changedRows || changedRows.length !== 1) throw new Error('No registration was updated. Confirm your Super Admin permissions and refresh the list.');
             
             currentAdminTicketStatus = newStatus;
             const statusSpan = document.getElementById('modalTicketStatus');
