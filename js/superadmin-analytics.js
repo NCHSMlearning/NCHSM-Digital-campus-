@@ -962,25 +962,28 @@ window.renderProgressionTable = function(students, marks) {
     if (!tbody) return;
 
     const normalizeBlock = value => {
-        const raw = String(value || '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
-        if (raw === 'introductory' || raw === 'introduction') return 'Introductory';
-        const match = raw.match(/^(?:block\s*)?(\\d+)$/);
+        const raw = String(value || '').trim().toLowerCase().normalize('NFKC')
+            .replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+        if (raw === 'introductory' || raw === 'introduction' || raw === 'intro') return 'Introductory';
+        const match = raw.match(/^(?:block\s*)?(\d+)$/);
         return match ? 'Block ' + match[1] : String(value || '').trim();
     };
     const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4'];
-    const studentAverages = new Map();
+    const scoreByIdentifier = new Map();
 
     (marks || []).forEach(mark => {
         const score = Number(mark.final_score);
         if (!Number.isFinite(score) || score <= 0) return;
         const block = normalizeBlock(mark.block);
-        const identifiers = [mark.admission_number, mark.student_id].filter(Boolean).map(String);
+        if (!block) return;
+        const identifiers = [...new Set([mark.admission_number, mark.student_id].filter(Boolean).map(v => String(v).trim()))];
         identifiers.forEach(identifier => {
-            if (!studentAverages.has(identifier)) studentAverages.set(identifier, {});
-            const byBlock = studentAverages.get(identifier);
-            if (!byBlock[block]) byBlock[block] = { total: 0, count: 0 };
-            byBlock[block].total += score;
-            byBlock[block].count++;
+            if (!scoreByIdentifier.has(identifier)) scoreByIdentifier.set(identifier, new Map());
+            const byBlock = scoreByIdentifier.get(identifier);
+            if (!byBlock.has(block)) byBlock.set(block, { total: 0, count: 0 });
+            const entry = byBlock.get(block);
+            entry.total += score;
+            entry.count++;
         });
     });
 
@@ -990,18 +993,22 @@ window.renderProgressionTable = function(students, marks) {
         return;
     }
 
-    const resolveStudentBlockData = student => {
-        const ids = [student.admission_number, student.student_id, student.id].filter(Boolean).map(String);
-        for (const id of ids) {
-            if (studentAverages.has(id)) return studentAverages.get(id);
-        }
-        return {};
-    };
-
     tbody.innerHTML = topStudents.map(student => {
-        const data = resolveStudentBlockData(student);
+        const identifiers = [...new Set([student.admission_number, student.student_id, student.id].filter(Boolean).map(v => String(v).trim()))];
+        const merged = new Map();
+        identifiers.forEach(identifier => {
+            const byBlock = scoreByIdentifier.get(identifier);
+            if (!byBlock) return;
+            byBlock.forEach((entry, block) => {
+                if (!merged.has(block)) merged.set(block, { total: 0, count: 0 });
+                const current = merged.get(block);
+                current.total += entry.total;
+                current.count += entry.count;
+            });
+        });
+
         const scores = blockOrder.map(block => {
-            const entry = data[block];
+            const entry = merged.get(block);
             return entry && entry.count ? Math.round(entry.total / entry.count) : '-';
         });
         const valid = scores.filter(score => score !== '-');
@@ -1020,7 +1027,7 @@ window.renderProgressionTable = function(students, marks) {
 };
 
 // ============================================================
-// ============================================================
+// // ============================================================
 // RENDER ANALYTICS SUBJECT TABLE
 // ============================================================
 
