@@ -381,7 +381,8 @@
             // lecturer_name/email blank. Resolve names from the same profile
             // table used by the Super Admin authorization check.
             const missingNameRows = state.rows.filter(row =>
-                !String(row.lecturer_name || '').trim() &&
+                (!String(row.lecturer_name || '').trim() ||
+                 /^(lecturer|unnamed lecturer|name unavailable)$/i.test(String(row.lecturer_name || '').trim())) &&
                 row.lecturer_user_id
             );
             const userIds = [...new Set(missingNameRows.map(row => String(row.lecturer_user_id)))];
@@ -404,7 +405,11 @@
                         if (!profile) return row;
                         return {
                             ...row,
-                            lecturer_name: String(row.lecturer_name || profile.full_name || '').trim(),
+                            lecturer_name: (
+                                !String(row.lecturer_name || '').trim() ||
+                                /^(lecturer|unnamed lecturer|name unavailable)$/i.test(String(row.lecturer_name || '').trim())
+                            ) ? String(profile.full_name || row.lecturer_name || '').trim() :
+                                String(row.lecturer_name).trim(),
                             lecturer_email: String(row.lecturer_email || profile.email || '').trim(),
                             lecturer_id: String(row.lecturer_id || profile.staff_id || '').trim(),
                             program: String(row.program || profile.program || profile.department || '').trim()
