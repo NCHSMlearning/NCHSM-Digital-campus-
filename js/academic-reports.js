@@ -2300,13 +2300,24 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         try {
                             await new Promise((resolve, reject) => {
                                 const script = document.createElement('script');
+                                let settled = false;
+                                const finish = (fn, value) => {
+                                    if (settled) return;
+                                    settled = true;
+                                    clearTimeout(timer);
+                                    script.onload = null;
+                                    script.onerror = null;
+                                    fn(value);
+                                };
+                                const timer = setTimeout(() => finish(reject, new Error('QR library load timed out')), 4500);
                                 script.src = src;
-                                script.onload = resolve;
-                                script.onerror = reject;
+                                script.async = true;
+                                script.onload = () => finish(resolve);
+                                script.onerror = () => finish(reject, new Error('QR library CDN failed'));
                                 document.head.appendChild(script);
                             });
                             if (window.QRCode && typeof window.QRCode.toDataURL === 'function') return true;
-                        } catch (_) { /* try backup CDN */ }
+                        } catch (_) { /* try backup CDN; never leave the transcript waiting indefinitely */ }
                     }
                     return false;
                 };
@@ -2446,7 +2457,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     const qrImage = printWindow.document.getElementById('transcriptVerificationQr');
                     if (qrImage && qrImage.style.display !== 'none') {
                         const qrStartedAt = Date.now();
-                        while (qrImage.dataset.ready !== 'true' && !qrImage.dataset.error && Date.now() - qrStartedAt < 10000) {
+                        while (qrImage.dataset.ready !== 'true' && !qrImage.dataset.error && Date.now() - qrStartedAt < 6500) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
                         if (qrImage.dataset.ready === 'true' && qrImage.naturalWidth === 0) {
