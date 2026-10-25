@@ -2279,18 +2279,43 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         (async function initializeTranscriptQr() {
             const qrImage = document.getElementById('transcriptVerificationQr');
             if (!qrImage) return;
+            const portalWindow = window.opener || window;
             const portalOrigin = ${JSON.stringify(window.location.origin)};
-            const studentId = ${JSON.stringify(user.student_id || user.admission_number || user.admission_no || user.student_number || user.admissionNumber || user.id || '')};
-            const verifyId = String(studentId || '').replace(/\\s+/g, ' ').trim();
-            if (!verifyId || /^N\\/?A$/i.test(verifyId)) {
-                qrImage.dataset.error = 'Student admission number unavailable';
-                qrImage.alt = 'Student reference unavailable';
-                console.error('Transcript QR: student admission number is missing.');
+            const portalConfig = portalWindow.APP_CONFIG || {};
+            const portalClient = portalWindow.supabaseClient;
+            if (!portalClient || !portalClient.auth || !portalConfig.SUPABASE_URL || !portalConfig.SUPABASE_ANON_KEY) {
+                qrImage.dataset.error = 'Authenticated portal session or configuration unavailable';
+                qrImage.alt = 'Transcript verification could not be initialized';
+                console.error('Transcript QR: the portal Supabase client/config is unavailable.');
+                return;
+            }
+            let registryToken = '';
+            try {
+                const { data: sessionData, error: sessionError } = await portalClient.auth.getSession();
+                const accessToken = sessionData && sessionData.session && sessionData.session.access_token;
+                if (sessionError || !accessToken) throw new Error('Please sign in again to issue a transcript verification record.');
+                const registryResponse = await fetch(portalConfig.SUPABASE_URL.replace(/\\/$/, '') + '/functions/v1/transcript-registry', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': portalConfig.SUPABASE_ANON_KEY,
+                        'Authorization': 'Bearer ' + accessToken
+                    },
+                    body: JSON.stringify({ action: 'issue' })
+                });
+                const registryResult = await registryResponse.json().catch(() => ({}));
+                if (!registryResponse.ok || !registryResult.token) {
+                    throw new Error(registryResult.error || 'The transcript could not be registered for verification.');
+                }
+                registryToken = registryResult.token;
+            } catch (registryError) {
+                qrImage.dataset.error = String(registryError && registryError.message || registryError);
+                qrImage.alt = 'Transcript verification registry unavailable';
+                console.error('Transcript QR registry issue failed:', registryError);
                 return;
             }
             const verificationUrl = new URL('/graduation.html', portalOrigin);
-            verificationUrl.searchParams.set('id', verifyId);
-            verificationUrl.searchParams.set('studentId', verifyId);
+            verificationUrl.searchParams.set('token', registryToken);
             verificationUrl.searchParams.set('type', 'provisional-transcript');
             const payload = verificationUrl.href;
             qrImage.style.display = 'block';
@@ -2370,7 +2395,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 }
                 qrImage.dataset.ready = 'true';
                 qrImage.alt = 'Scan to verify this transcript';
-                console.info('Transcript QR generated for:', verifyId);
+                console.info('Transcript QR generated with registry token:', registryToken);
             } catch (error) {
                 qrImage.dataset.error = String(error && error.message || error);
                 qrImage.alt = 'QR generation failed';
