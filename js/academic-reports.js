@@ -2275,83 +2275,85 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        (async function initializeTranscriptQr() {
             const qrImage = document.getElementById('transcriptVerificationQr');
-            const studentIdFromData = ${JSON.stringify(user.student_id || user.admission_number || user.admission_no || '')};
+            if (!qrImage) return;
+
             const admissionNode = document.querySelector('.student-info .field:nth-child(2) .value');
-            const verifyId = String(studentIdFromData || (admissionNode && admissionNode.textContent) || '').replace(/\\s+/g, ' ').trim();
-            const verificationUrl = new URL('/graduation.html', window.location.origin);
-            if (verifyId) verificationUrl.searchParams.set('id', verifyId);
-            verificationUrl.searchParams.set('type', 'provisional-transcript');
-
-            // Generate a same-origin-independent data URI for html2canvas; do not rely on a remote image that may be blocked by CORS.
-            if (qrImage && verifyId) {
-                qrImage.style.display = 'block';
-                qrImage.dataset.ready = '';
-                qrImage.dataset.error = '';
-                qrImage.alt = 'Generating verification QR code';
-
-                const loadQrLibrary = async () => {
-                    if (window.QRCode && typeof window.QRCode.toDataURL === 'function') return true;
-                    for (const src of [
-                        'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js',
-                        'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js'
-                    ]) {
-                        try {
-                            await new Promise((resolve, reject) => {
-                                const script = document.createElement('script');
-                                let settled = false;
-                                const finish = (fn, value) => {
-                                    if (settled) return;
-                                    settled = true;
-                                    clearTimeout(timer);
-                                    script.onload = null;
-                                    script.onerror = null;
-                                    fn(value);
-                                };
-                                const timer = setTimeout(() => finish(reject, new Error('QR library load timed out')), 4500);
-                                script.src = src;
-                                script.async = true;
-                                script.onload = () => finish(resolve);
-                                script.onerror = () => finish(reject, new Error('QR library CDN failed'));
-                                document.head.appendChild(script);
-                            });
-                            if (window.QRCode && typeof window.QRCode.toDataURL === 'function') return true;
-                        } catch (_) { /* try backup CDN; never leave the transcript waiting indefinitely */ }
-                    }
-                    return false;
-                };
-
-                (async () => {
-                    try {
-                        const loaded = await loadQrLibrary();
-                        if (!loaded) throw new Error('QR library failed to load from both CDNs');
-                        const dataUrl = await window.QRCode.toDataURL(verificationUrl.href, {
-                            width: 240, margin: 1, errorCorrectionLevel: 'M'
-                        });
-                        qrImage.onload = () => {
-                            qrImage.dataset.ready = 'true';
-                            qrImage.alt = 'Scan to verify this transcript';
-                        };
-                        qrImage.onerror = () => {
-                            qrImage.dataset.error = 'Generated QR image could not be loaded';
-                            qrImage.alt = 'QR image failed to load';
-                        };
-                        qrImage.src = dataUrl;
-                        if (qrImage.complete && qrImage.naturalWidth > 0) {
-                            qrImage.dataset.ready = 'true';
-                            qrImage.alt = 'Scan to verify this transcript';
-                        }
-                    } catch (error) {
-                        qrImage.dataset.error = String(error && error.message || error);
-                        qrImage.alt = 'QR generation failed';
-                        console.error('Transcript QR generation failed:', error);
-                    }
-                })();
-            } else if (qrImage) {
+            const candidateIds = [
+                ${JSON.stringify(user.student_id || '')},
+                ${JSON.stringify(user.admission_number || '')},
+                ${JSON.stringify(user.admission_no || '')},
+                admissionNode ? admissionNode.textContent : ''
+            ];
+            const verifyId = candidateIds.map(value => String(value || '').replace(/\\s+/g, ' ').trim()).find(Boolean) || '';
+            if (!verifyId || verifyId === 'N/A') {
                 qrImage.dataset.error = 'Student admission number unavailable';
                 qrImage.alt = 'Student reference unavailable';
+                return;
             }
+
+            const verificationUrl = new URL('/graduation.html', window.location.origin);
+            verificationUrl.searchParams.set('id', verifyId);
+            verificationUrl.searchParams.set('type', 'provisional-transcript');
+            qrImage.style.display = 'block';
+            qrImage.dataset.ready = '';
+            qrImage.dataset.error = '';
+            qrImage.alt = 'Generating verification QR code';
+
+            const loadQrLibrary = async () => {
+                if (window.QRCode && typeof window.QRCode.toDataURL === 'function') return;
+                for (const src of [
+                    'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js',
+                    'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js'
+                ]) {
+                    try {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            const timer = setTimeout(() => reject(new Error('QR library load timed out')), 5000);
+                            script.onload = () => { clearTimeout(timer); resolve(); };
+                            script.onerror = () => { clearTimeout(timer); reject(new Error('QR library CDN failed')); };
+                            script.src = src;
+                            script.async = true;
+                            document.head.appendChild(script);
+                        });
+                        if (window.QRCode && typeof window.QRCode.toDataURL === 'function') return;
+                    } catch (error) {
+                        console.warn('Transcript QR CDN failed; trying backup.', error);
+                    }
+                }
+                throw new Error('QR library failed to load from both CDNs');
+            };
+
+            try {
+                await loadQrLibrary();
+                const dataUrl = await window.QRCode.toDataURL(verificationUrl.href, {
+                    width: 240, margin: 1, errorCorrectionLevel: 'M'
+                });
+                await new Promise((resolve, reject) => {
+                    qrImage.onload = () => {
+                        if (qrImage.naturalWidth > 0) {
+                            qrImage.dataset.ready = 'true';
+                            qrImage.alt = 'Scan to verify this transcript';
+                            resolve();
+                        } else {
+                            reject(new Error('QR image has no rendered pixels'));
+                        }
+                    };
+                    qrImage.onerror = () => reject(new Error('Generated QR image could not be loaded'));
+                    qrImage.src = dataUrl;
+                    if (qrImage.complete && qrImage.naturalWidth > 0) {
+                        qrImage.dataset.ready = 'true';
+                        qrImage.alt = 'Scan to verify this transcript';
+                        resolve();
+                    }
+                });
+            } catch (error) {
+                qrImage.dataset.error = String(error && error.message || error);
+                qrImage.alt = 'QR generation failed';
+                console.error('Transcript QR generation failed:', error);
+            }
+        })();
 
             const ctx = document.getElementById('reportCardLineChart');
             if (ctx) {
