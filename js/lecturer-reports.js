@@ -141,7 +141,10 @@
 
             /* 1. Already populated by the marks module */
             const lecturer = window.me_currentLecturer || {};
-            if (lecturer?.staff?.id || lecturer?.profile?.id) {
+            // Only staff.id (or CORRECT_LECTURER_ID) is a staff-record key.
+            // profile.id is commonly an auth/profile UUID and must not be treated
+            // as lecturer_subject_assignments.lecturer_id.
+            if (lecturer?.staff?.id || window.CORRECT_LECTURER_ID) {
                 _identityCache.authUuid =
                     window.currentUser?.id ||
                     lecturer?.profile?.user_id ||
@@ -149,7 +152,6 @@
                 _identityCache.staffId =
                     lecturer?.staff?.id ||
                     window.CORRECT_LECTURER_ID ||
-                    lecturer?.profile?.id ||
                     null;
                 _identityCache.email =
                     lecturer?.staff?.email ||
@@ -422,7 +424,11 @@
         }
 
         const key = `assignments:${lecturerId}`;
-        if (LecturerReports._cache[key]) return LecturerReports._cache[key];
+        // Never permanently cache an empty assignment result; identity can still
+        // be resolving or may have used the auth UUID rather than staff-record ID.
+        if (Array.isArray(LecturerReports._cache[key]) && LecturerReports._cache[key].length > 0) {
+            return LecturerReports._cache[key];
+        }
 
         const fetchAssignments = async id => {
             const result = await supabase
@@ -441,34 +447,66 @@
             throw new Error('Could not load assigned units: ' + (error.message || 'database query failed'));
         }
 
-        // Profile staff codes can differ from staff_records.id, which is the
-        // canonical foreign key used by lecturer_subject_assignments.
+        // Resolve the canonical staff row by email when the first ID returns no
+        // assignments, then retry by staff primary key and the Sessions module's
+        // lecturer_name matching strategy. This handles older assignment rows.
         const email = String(identity?.email || currentLecturerEmailSync() || '').trim();
+        let fullName = String(identity?.name || window.me_currentLecturer?.staff?.full_name ||
+            window.me_currentLecturer?.profile?.full_name || '').trim();
+        let canonicalId = '';
+
         if (!rows.length && email) {
             try {
                 const { data: staff, error: staffError } = await supabase
                     .from('staff_records')
-                    .select('id, email')
+                    .select('id, email, first_name, other_names')
                     .ilike('email', email)
                     .maybeSingle();
                 if (staffError) throw staffError;
-                if (staff?.id && String(staff.id) !== lecturerId) {
-                    const canonicalId = String(staff.id);
-                    const fallbackRows = await fetchAssignments(canonicalId);
-                    if (fallbackRows.length) {
+                if (staff?.id) {
+                    canonicalId = String(staff.id);
+                    fullName = [staff.first_name, staff.other_names].filter(Boolean).join(' ').trim() || fullName;
+                    if (canonicalId !== lecturerId) rows = await fetchAssignments(canonicalId);
+                    if (rows.length) {
                         lecturerId = canonicalId;
-                        rows = fallbackRows;
                         window.CORRECT_LECTURER_ID = canonicalId;
                         _identityCache.staffId = canonicalId;
                         _identityCache.email = staff.email || email;
-                        console.info('[Reports] recovered assigned units with canonical staff ID');
+                        _identityCache.name = fullName;
                     }
                 }
             } catch (fallbackError) {
-                console.warn('[Reports] canonical staff ID fallback failed:', fallbackError?.message || fallbackError);
+                console.warn('[Reports] staff-record fallback failed:', fallbackError?.message || fallbackError);
             }
         }
 
+        if (!rows.length && fullName) {
+            try {
+                const { data: namedRows, error: nameError } = await supabase
+                    .from('lecturer_subject_assignments')
+                    .select('subject_name, subject_code, block, program, academic_year, lecturer_id, lecturer_name')
+                    .ilike('lecturer_name', `%${fullName.replace(/[%_]/g, ' ')}%`);
+                if (nameError) throw nameError;
+                rows = (namedRows || []).filter(a => a.subject_name || a.subject_code);
+                if (rows.length) {
+                    const matchedIds = [...new Set(rows.map(a => String(a.lecturer_id || '')).filter(Boolean))];
+                    if (matchedIds.length === 1) {
+                        lecturerId = matchedIds[0];
+                        window.CORRECT_LECTURER_ID = lecturerId;
+                        _identityCache.staffId = lecturerId;
+                    }
+                    console.info('[Reports] recovered assigned units by lecturer name');
+                }
+            } catch (nameFallbackError) {
+                console.warn('[Reports] lecturer-name fallback failed:', nameFallbackError?.message || nameFallbackError);
+            }
+        }
+
+        if (!rows.length) {
+            console.warn('[Reports] no assignments found by current ID, email-linked staff ID, or lecturer name', {
+                lecturerId, email, fullName
+            });
+        }
         LecturerReports._cache[`assignments:${lecturerId}`] = rows;
         console.log(`📚 [Reports] loaded ${rows.length} assigned unit(s) for lecturer ${lecturerId}`);
         return rows;
