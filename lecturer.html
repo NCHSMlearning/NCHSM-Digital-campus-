@@ -7549,7 +7549,10 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
                     <option value="resubmitted">Resubmitted</option><option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
                 </select>
-                <button class="lr-btn lr-btn-ghost" type="button" onclick="const a=document.getElementById('submittedReportsSearch');const b=document.getElementById('submittedDocumentTypeFilter');const c=document.getElementById('submittedStatusFilter');if(a)a.value='';if(b)b.value='';if(c)c.value='';window.LecturerReports?.applySubmittedReportFilters?.();"><i class="fas fa-times"></i> Clear</button>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#475569;">From <input id="submittedDateFrom" type="date" onchange="window.LecturerReports?.applySubmittedReportFilters?.()" style="padding:9px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;"></label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#475569;">To <input id="submittedDateTo" type="date" onchange="window.LecturerReports?.applySubmittedReportFilters?.()" style="padding:9px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;"></label>
+                <button class="lr-btn lr-btn-primary" type="button" onclick="window.LecturerReports?.exportSubmittedReports?.()"><i class="fas fa-file-csv"></i> Export CSV</button>
+                <button class="lr-btn lr-btn-ghost" type="button" onclick="['submittedReportsSearch','submittedDocumentTypeFilter','submittedStatusFilter','submittedDateFrom','submittedDateTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});window.LecturerReports?.applySubmittedReportFilters?.();"><i class="fas fa-times"></i> Clear</button>
             </div>
 
             <div class="lr-table-wrap">
