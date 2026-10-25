@@ -85,19 +85,6 @@ class LecturerDatabase {
     }
 
     // Test connection
-            await this.testConnection();
-            
-            this.isInitialized = true;
-            console.log('✅ Lecturer Database initialized successfully');
-            return this.supabase;
-            
-        } catch (error) {
-            console.error('❌ Lecturer Database initialization failed:', error);
-            throw error;
-        }
-    }
-    
-    // Test connection
     async testConnection() {
         try {
             const { error } = await this.supabase.auth.getSession();
