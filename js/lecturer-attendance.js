@@ -25,6 +25,7 @@ const LecturerAttendance = {
     _attendanceLoadPromise: null,
     _ownedSessionIdsCache: null,
     _ownedSessionIdsCacheAt: 0,
+    _pastAttendanceLoadedAt: 0,
     isTVET: false,
     currentProgram: 'KRCHN',
     stats: { total: 0, present: 0, absent: 0, pending: 0, rate: 0 },
@@ -815,7 +816,13 @@ const LecturerAttendance = {
     // ============================================================
     // LOAD PAST
     // ============================================================
-    async loadPastAttendance() {
+    async loadPastAttendance(force = false) {
+        // Historical rows are expensive to page through. Reuse them for 3 minutes
+        // during tab switches/background refreshes; manual Refresh can force reload.
+        if (!force && Array.isArray(this.pastLogs) && this._pastAttendanceLoadedAt &&
+            Date.now() - this._pastAttendanceLoadedAt < 3 * 60 * 1000) {
+            return this.pastLogs;
+        }
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
@@ -842,6 +849,7 @@ const LecturerAttendance = {
             // Use the same lecturer/program ownership filter as today's attendance.
             this.pastLogs = this.dedupeAttendanceLogs(await this.filterLecturerAttendanceLogs(all));
             this.filteredPastLogs = [...this.pastLogs];
+            this._pastAttendanceLoadedAt = Date.now();
 
             console.info(`📚 Historical attendance loaded: ${this.pastLogs.length} records`);
 
@@ -2375,6 +2383,7 @@ const LecturerAttendance = {
         buttons.forEach(button => { button.disabled = true; button.dataset.originalText = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading…'; });
         try {
             await this.loadAttendanceSessions();
+            this._pastAttendanceLoadedAt = 0;
             await this.loadAllAttendance();
             this.applyFilters();
             this.updateProgramBadge();
