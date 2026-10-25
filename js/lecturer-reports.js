@@ -2770,8 +2770,8 @@
             _identityCache.resolved = false;
             _identityCache.promise = null;
 
-            await populateReportSelectors();
-            await populateSubmissionSelectors();
+            await populateReportSelectors().catch(error => console.warn('[Reports] retrying unit selectors on next open:', error));
+            await populateSubmissionSelectors().catch(error => console.warn('[Reports] submission selectors unavailable:', error));
             renderReports(LecturerReports.reports);
             await LecturerReports.refreshSubmittedReports().catch(() => {});
             return;
@@ -2781,8 +2781,8 @@
 
         LecturerReports.reports = loadLocalReports();
 
-        await populateReportSelectors();
-        await populateSubmissionSelectors();
+        await populateReportSelectors().catch(error => console.warn('[Reports] initial unit selector load failed; user can retry:', error));
+        await populateSubmissionSelectors().catch(error => console.warn('[Reports] initial submission selector load failed:', error));
 
         renderReports(LecturerReports.reports);
         updateAnalytics(LecturerReports.reports);
