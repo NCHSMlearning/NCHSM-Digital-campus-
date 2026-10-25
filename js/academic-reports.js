@@ -2732,7 +2732,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             });
                         } catch (error) {
                             const message = String(error && (error.message || error.name) || error || 'Unknown PDF generation error');
-                            console.error('[Transcript PDF] Preview PDF generation failed', {
+                            console.error('[Transcript PDF] html2pdf pipeline failed; attempting direct canvas fallback', {
                                 message,
                                 name: error && error.name,
                                 stack: error && error.stack,
@@ -2742,7 +2742,89 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 imageCount: printWindow.document.images.length,
                                 rowCount: previewRows.length
                             }, error);
-                            alert('The transcript PDF could not be generated. ' + message + '\\n\\nOpen Developer Tools (F12) > Console for details. Your transcript preview is still open; no PDF was confirmed as saved.');
+                            try {
+                                // Bypass html2pdf's margin normalization entirely. Render the
+                                // transcript to a canvas, then place it on A4 pages with numeric
+                                // coordinates using jsPDF. This avoids "Invalid margin array"
+                                // failures in desktop browsers with mismatched html2pdf/jsPDF builds.
+                                const html2canvasFn = printWindow.html2canvas ||
+                                    (printWindow.html2pdf && printWindow.html2pdf.html2canvas);
+                                const jsPDFCtor = printWindow.jspdf && printWindow.jspdf.jsPDF
+                                    ? printWindow.jspdf.jsPDF
+                                    : (printWindow.jsPDF || (printWindow.html2pdf && printWindow.html2pdf.jsPDF));
+                                if (typeof html2canvasFn !== 'function' || typeof jsPDFCtor !== 'function') {
+                                    throw new Error('Direct PDF fallback libraries are unavailable.');
+                                }
+                                const fallbackCanvas = await html2canvasFn(target, {
+                                    scale: 2,
+                                    useCORS: true,
+                                    allowTaint: false,
+                                    backgroundColor: '#ffffff',
+                                    scrollX: 0,
+                                    scrollY: 0,
+                                    logging: false,
+                                    windowWidth: 718,
+                                    onclone: (clonedDoc) => {
+                                        [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
+                                            node.style.setProperty('width', '718px', 'important');
+                                            node.style.setProperty('min-width', '718px', 'important');
+                                            node.style.setProperty('max-width', '718px', 'important');
+                                            node.style.setProperty('margin', '0', 'important');
+                                            node.style.setProperty('padding', '0', 'important');
+                                            node.style.setProperty('overflow', 'visible', 'important');
+                                        });
+                                        const clonedContainer = clonedDoc.querySelector('.container');
+                                        if (clonedContainer) {
+                                            clonedContainer.style.setProperty('width', '718px', 'important');
+                                            clonedContainer.style.setProperty('max-width', '718px', 'important');
+                                            clonedContainer.style.setProperty('min-height', '0', 'important');
+                                            clonedContainer.style.setProperty('height', 'auto', 'important');
+                                            clonedContainer.style.setProperty('margin', '0', 'important');
+                                            clonedContainer.style.setProperty('padding', '4mm', 'important');
+                                            clonedContainer.style.setProperty('box-sizing', 'border-box', 'important');
+                                        }
+                                        const clonedToolbar = clonedDoc.querySelector('.transcript-preview-toolbar');
+                                        if (clonedToolbar) clonedToolbar.style.setProperty('display', 'none', 'important');
+                                    }
+                                });
+                                const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+                                const pageWidth = 210;
+                                const pageHeight = 297;
+                                const marginMm = 5;
+                                const usableWidth = pageWidth - marginMm * 2;
+                                const usableHeight = pageHeight - marginMm * 2;
+                                const pxPerMm = fallbackCanvas.width / usableWidth;
+                                const pageSliceHeight = Math.max(1, Math.floor(usableHeight * pxPerMm));
+                                const pageCanvas = printWindow.document.createElement('canvas');
+                                const pageContext = pageCanvas.getContext('2d');
+                                pageCanvas.width = fallbackCanvas.width;
+                                let sourceY = 0;
+                                let pageIndex = 0;
+                                while (sourceY < fallbackCanvas.height) {
+                                    const sliceHeight = Math.min(pageSliceHeight, fallbackCanvas.height - sourceY);
+                                    pageCanvas.height = sliceHeight;
+                                    pageContext.fillStyle = '#ffffff';
+                                    pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+                                    pageContext.drawImage(fallbackCanvas, 0, sourceY, fallbackCanvas.width, sliceHeight, 0, 0, pageCanvas.width, sliceHeight);
+                                    if (pageIndex > 0) pdf.addPage('a4', 'portrait');
+                                    const renderedHeight = sliceHeight / pxPerMm;
+                                    pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.98), 'JPEG', marginMm, marginMm, usableWidth, renderedHeight, undefined, 'FAST');
+                                    sourceY += sliceHeight;
+                                    pageIndex++;
+                                }
+                                pdf.save(fileBase + '.pdf');
+                                console.info('[Transcript PDF] Direct canvas fallback download completed', {
+                                    filename: fileBase + '.pdf',
+                                    pages: pageIndex,
+                                    canvasWidth: fallbackCanvas.width,
+                                    canvasHeight: fallbackCanvas.height
+                                });
+                            } catch (fallbackError) {
+                                console.error('[Transcript PDF] Direct canvas fallback failed', fallbackError);
+                                alert('The transcript PDF could not be generated. ' +
+                                    String(fallbackError && (fallbackError.message || fallbackError.name) || fallbackError || message) +
+                                    '\\n\\nOpen Developer Tools (F12) > Console for details. Your transcript preview is still open; no PDF was confirmed as saved.');
+                            }
                         }
                     });
                     toolbar.querySelector('.print').addEventListener('click', async () => {
