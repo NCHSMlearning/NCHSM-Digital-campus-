@@ -91,6 +91,29 @@ const LecturerAttendance = {
             this.setupEventListeners();
             this.populateFilters();
             this.updateProgramBadge();
+            // Date-range selection is the only action that loads historical rows.
+            ['filterDateFrom', 'filterDateTo', 'filterDate'].forEach(id => {
+                const input = document.getElementById(id);
+                if (!input || input.dataset.historyLoadBound === '1') return;
+                input.dataset.historyLoadBound = '1';
+                input.addEventListener('change', async () => {
+                    const from = String(document.getElementById('filterDateFrom')?.value || '').trim();
+                    const to = String(document.getElementById('filterDateTo')?.value || '').trim();
+                    const legacy = String(document.getElementById('filterDate')?.value || '').trim();
+                    if (from || to || legacy) {
+                        try {
+                            await this.loadPastAttendance(true, from || legacy, to || legacy);
+                        } catch (historyError) {
+                            console.warn('[Attendance] Could not load selected date range:', historyError);
+                        }
+                    } else {
+                        this.pastLogs = [];
+                        this._pastAttendanceLoadedAt = 0;
+                        this._pastAttendanceCacheKey = null;
+                    }
+                    this.applyFilters();
+                });
+            });
 
             this._initialized = true;
             console.log('✅ Lecturer Attendance Module initialized successfully');
@@ -633,8 +656,15 @@ const LecturerAttendance = {
         if (this._attendanceLoadPromise) return this._attendanceLoadPromise;
         this._attendanceLoadPromise = (async () => {
             try {
-                // These queries are independent; run them together rather than serially.
-                await Promise.all([this.loadTodayAttendance(), this.loadPastAttendance()]);
+                // Default view is today's attendance only. Never fetch the entire
+                // historical register just because the lecturer opens Attendance.
+                const from = String(document.getElementById('filterDateFrom')?.value || '').trim();
+                const to = String(document.getElementById('filterDateTo')?.value || '').trim();
+                const legacyDate = String(document.getElementById('filterDate')?.value || '').trim();
+                const wantsHistory = !!(from || to || legacyDate);
+                const tasks = [this.loadTodayAttendance()];
+                if (wantsHistory) tasks.push(this.loadPastAttendance(true, from || legacyDate, to || legacyDate));
+                await Promise.all(tasks);
 
                 const session = this.getSelectedSession();
                 if (session) {
@@ -816,42 +846,45 @@ const LecturerAttendance = {
     // ============================================================
     // LOAD PAST
     // ============================================================
-    async loadPastAttendance(force = false) {
-        // Historical rows are expensive to page through. Reuse them for 3 minutes
-        // during tab switches/background refreshes; manual Refresh can force reload.
-        if (!force && Array.isArray(this.pastLogs) && this._pastAttendanceLoadedAt &&
-            Date.now() - this._pastAttendanceLoadedAt < 3 * 60 * 1000) {
+    async loadPastAttendance(force = false, rangeFrom = '', rangeTo = '') {
+        const fromDate = String(rangeFrom || '').trim();
+        const toDate = String(rangeTo || '').trim();
+        // History is fetched only when a lecturer explicitly chooses a date range.
+        if (!fromDate && !toDate) return [];
+        const cacheKey = `${fromDate || '*'}|${toDate || '*'}`;
+        if (!force && this._pastAttendanceCacheKey === cacheKey && Array.isArray(this.pastLogs) &&
+            this._pastAttendanceLoadedAt && Date.now() - this._pastAttendanceLoadedAt < 3 * 60 * 1000) {
             return this.pastLogs;
         }
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            const todayStr = this.getNairobiDateString();
+            if (!supabase) return [];
             const pageSize = 1000;
             const all = [];
-            let from = 0;
+            let offset = 0;
+            const queryStart = fromDate ? this.getNairobiDayBounds(fromDate).start : null;
+            const queryEnd = toDate ? this.getNairobiDayBounds(toDate).end : this.getNairobiDayBounds(this.getNairobiDateString()).start;
 
             while (true) {
-                const { data: page, error } = await supabase
-                    .from('geo_attendance_logs')
-                    .select('*')
-                    .lt('check_in_time', this.getNairobiDayBounds(todayStr).start)
-                    .order('check_in_time', { ascending: false })
-                    .range(from, from + pageSize - 1);
-
+                let query = supabase.from('geo_attendance_logs').select('*');
+                if (queryStart) query = query.gte('check_in_time', queryStart);
+                else query = query.lt('check_in_time', this.getNairobiDayBounds(this.getNairobiDateString()).start);
+                if (queryEnd) query = query.lte('check_in_time', queryEnd);
+                query = query.order('check_in_time', { ascending: false }).range(offset, offset + pageSize - 1);
+                const { data: page, error } = await query;
                 if (error) throw error;
                 const rows = page || [];
                 all.push(...rows);
                 if (rows.length < pageSize) break;
-                from += pageSize;
+                offset += pageSize;
             }
 
-            // Use the same lecturer/program ownership filter as today's attendance.
             this.pastLogs = this.dedupeAttendanceLogs(await this.filterLecturerAttendanceLogs(all));
             this.filteredPastLogs = [...this.pastLogs];
             this._pastAttendanceLoadedAt = Date.now();
+            this._pastAttendanceCacheKey = cacheKey;
 
-            console.info(`📚 Historical attendance loaded: ${this.pastLogs.length} records`);
+            console.info(`📚 Filtered historical attendance loaded: ${this.pastLogs.length} records (${cacheKey})`);
 
             if (document.getElementById('pastAttendanceTable')) {
                 this.renderPastAttendance();
@@ -2383,7 +2416,12 @@ const LecturerAttendance = {
         buttons.forEach(button => { button.disabled = true; button.dataset.originalText = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading…'; });
         try {
             await this.loadAttendanceSessions();
+            const from = String(document.getElementById('filterDateFrom')?.value || '').trim();
+            const to = String(document.getElementById('filterDateTo')?.value || '').trim();
+            const legacy = String(document.getElementById('filterDate')?.value || '').trim();
             this._pastAttendanceLoadedAt = 0;
+            if (from || to || legacy) await this.loadPastAttendance(true, from || legacy, to || legacy);
+            else this.pastLogs = [];
             await this.loadAllAttendance();
             this.applyFilters();
             this.updateProgramBadge();
