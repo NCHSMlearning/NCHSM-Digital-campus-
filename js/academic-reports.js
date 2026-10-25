@@ -2625,6 +2625,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         while (qr && qr.dataset.ready !== 'true' && !qr.dataset.error && Date.now() < qrDeadline) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
+                        if (qr && qr.dataset.ready !== 'true') {
+                            const reason = qr.dataset.error || 'QR generation timed out';
+                            console.error('Transcript print cancelled: verification QR is not ready.', reason);
+                            alert('The transcript verification QR code could not be generated. Check your connection and try again; the transcript was not sent to print.');
+                            return;
+                        }
                         const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
                         if (chartCanvas && printWindow.Chart) {
                             const chart = printWindow.Chart.getChart(chartCanvas);
