@@ -1916,9 +1916,16 @@ const LecturerDashboard = {
         if (this.refreshInterval) clearInterval(this.refreshInterval);
 
         this.refreshInterval = setInterval(async () => {
-            // Same protection pattern used by the student dashboard:
-            // don't refresh hidden tabs and never overlap requests.
-            if (document.hidden || this._refreshInProgress || this.isRefreshing) return;
+            // Do not run dashboard queries while the user is in another section.
+            // Background refreshes used to compete with the active module and
+            // could make the portal appear to freeze and reload its data.
+            const dashboard = document.getElementById('dashboard-content');
+            const dashboardVisible = !!dashboard &&
+                dashboard.classList.contains('active') &&
+                getComputedStyle(dashboard).display !== 'none';
+
+            if (document.hidden || !dashboardVisible ||
+                this._refreshInProgress || this.isRefreshing) return;
 
             this._refreshInProgress = true;
             try {
@@ -1928,9 +1935,9 @@ const LecturerDashboard = {
             } finally {
                 this._refreshInProgress = false;
             }
-        }, this.CACHE_DURATION);
+        }, Math.max(this.CACHE_DURATION, 300000));
 
-        console.log('🔄 Auto-refresh started (2-minute interval)');
+        console.log('🔄 Auto-refresh started (5-minute minimum; dashboard visible only)');
     },
 
     // ─── CHARTS ───
