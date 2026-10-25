@@ -2415,9 +2415,29 @@
         }
 
         if (file) {
-            await uploadSubmissionAttachment(file, payload.lecturer_id, submissionId);
+            const uploadedFile = await uploadSubmissionAttachment(file, payload.lecturer_id, submissionId);
 
-            /* Only attachment_count exists on the table */
+            // Save attachment metadata so Super Admin can find the uploaded file
+            // without relying solely on Storage folder discovery.
+            try {
+                const { error: attachmentMetaError } = await supabase
+                    .from('lecturer_report_attachments')
+                    .insert({
+                        submission_id: submissionId,
+                        uploaded_by: payload.lecturer_user_id,
+                        file_name: uploadedFile.name,
+                        storage_path: uploadedFile.path,
+                        mime_type: uploadedFile.type || null,
+                        file_size: uploadedFile.size || 0
+                    });
+                if (attachmentMetaError) {
+                    console.warn('[Reports] File uploaded, but attachment metadata could not be saved; Storage fallback will be used.', attachmentMetaError);
+                }
+            } catch (attachmentMetaError) {
+                console.warn('[Reports] Attachment metadata insert unavailable; Storage fallback will be used.', attachmentMetaError);
+            }
+
+            /* Keep attachment count in sync with the uploaded file. */
             const { data: updated, error } = await supabase
                 .from(REPORT_SUBMISSION_TABLE)
                 .update({
