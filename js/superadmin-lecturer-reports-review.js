@@ -976,7 +976,7 @@
                                 .from(STORAGE_BUCKET)
                                 .list(prefix, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
                             if (storageError) throw storageError;
-                            (files || []).filter(file => file.name && file.id).forEach(file => {
+                            (files || []).filter(file => file.name && !file.name.startsWith('.')).forEach(file => {
                                 discovered.push({
                                     id: `${prefix}/${file.name}`,
                                     submission_id: submissionId,
