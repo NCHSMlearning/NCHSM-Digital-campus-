@@ -875,13 +875,20 @@ const LecturerAttendance = {
             attendanceRateBadge: `${rate}% (Filtered: ${total} records)`,
             attendanceProgressBar: null
         };
+        // lecturer.html contains repeated IDs in legacy/hidden attendance markup.
+        // getElementById updates only the first occurrence, which can leave the
+        // visible summary cards stuck at zero. Update every matching card element.
         Object.entries(values).forEach(([id, value]) => {
             if (value === null) return;
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
+            document.querySelectorAll(`[id="${id}"]`).forEach(el => {
+                if (el.closest('#attendance-content') || id === 'studentCountDisplay') {
+                    el.textContent = value;
+                }
+            });
         });
-        const progressBar = document.getElementById('attendanceProgressBar');
-        if (progressBar) progressBar.style.width = `${rate}%`;
+        document.querySelectorAll('[id="attendanceProgressBar"]').forEach(progressBar => {
+            if (progressBar.closest('#attendance-content')) progressBar.style.width = `${rate}%`;
+        });
 
         const from = String(document.getElementById('filterDateFrom')?.value || '').trim();
         const to = String(document.getElementById('filterDateTo')?.value || '').trim();
@@ -904,9 +911,10 @@ const LecturerAttendance = {
             filteredCount: filteredMode ? 'Filtered Records' : 'Records Found'
         };
         Object.entries(labels).forEach(([id, label]) => {
-            const value = document.getElementById(id);
-            const labelEl = value?.parentElement?.querySelector('.stat-label');
-            if (labelEl) labelEl.textContent = label;
+            document.querySelectorAll(`#attendance-content [id="${id}"]`).forEach(value => {
+                const labelEl = value.parentElement?.querySelector('.stat-label');
+                if (labelEl) labelEl.textContent = label;
+            });
         });
         return this.stats;
     },
