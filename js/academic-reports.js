@@ -2356,7 +2356,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             if (qr && qr.dataset.ready !== 'true') {
-                console.error('Printing transcript without a ready QR code:', qr.dataset.error || 'QR generation timed out');
+                const reason = qr.dataset.error || 'QR generation timed out';
+                console.error('Transcript print cancelled: verification QR is not ready.', reason);
+                alert('The transcript verification QR code could not be generated. Check your connection and try again; the transcript was not sent to print.');
+                return;
             }
             const images = Array.from(document.images);
             await Promise.all(images.map(img => {
@@ -2453,7 +2456,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             @page { size: A4 portrait; margin: 5mm; }
                             * { box-sizing: border-box !important; }
                             html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-                            .container { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: auto auto auto auto auto 42mm auto auto auto !important; grid-template-areas: "header header" "student student" "results-title results-title" "results-table results-table" "grading summary" "chart chart" "declaration declaration" "signatures signatures" "footer footer" !important; width: 100% !important; min-width: 0 !important; max-width: none !important; height: 272mm !important; min-height: 272mm !important; margin: 0 !important; padding: 2mm !important; gap: 2mm !important; align-content: space-between !important; align-items: stretch !important; }
+                            .container { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: auto auto auto auto auto minmax(28mm,auto) auto auto auto !important; grid-template-areas: "header header" "student student" "results-title results-title" "results-table results-table" "grading summary" "chart chart" "declaration declaration" "signatures signatures" "footer footer" !important; width: 100% !important; min-width: 0 !important; max-width: none !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; gap: 2mm !important; align-content: start !important; align-items: start !important; }
                             .transcript-top { grid-area: header !important; position: relative !important; display: block !important; width: 100% !important; }
                             .transcript-top > .header { display: block !important; width: 100% !important; padding: 0 44px 2px 0 !important; margin: 0 !important; text-align: center !important; }
                             .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
@@ -2514,7 +2517,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             });
                         }
                         if (qrImage.dataset.ready !== 'true') {
-                            console.error('Transcript QR is not ready for PDF capture:', qrImage.dataset.error || 'generation timeout');
+                            const reason = qrImage.dataset.error || 'generation timeout';
+                            console.error('Transcript PDF download cancelled: verification QR is not ready.', reason);
+                            alert('The transcript verification QR code could not be generated. Check your connection and try again; no PDF was created.');
+                            return;
                         }
                     }
                     const downloadStyle = printWindow.document.createElement('style');
@@ -2523,16 +2529,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         * { box-sizing: border-box !important; }
                         html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
                         body { font-size: 9px !important; }
-                        .container { box-sizing: border-box !important; width: 100% !important; max-width: none !important; min-width: 0 !important; min-height: 272mm !important; height: 272mm !important; margin: 0 !important; padding: 2mm !important; border-radius: 0 !important; box-shadow: none !important; }
-                        .container { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: auto auto auto auto auto 38mm auto auto auto !important; grid-template-areas: "header header"
-                    "student student"
-                    "results-title results-title"
-                    "results-table results-table"
-                    "grading summary"
-                    "chart chart"
-                    "declaration declaration"
-                    "signatures signatures"
-                    "footer footer" !important; align-items: stretch !important; align-content: space-between !important; column-gap: 2mm !important; row-gap: 2mm !important; min-height: 272mm !important; height: 272mm !important; }
+                        .container { box-sizing: border-box !important; display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: auto auto auto auto auto minmax(28mm,auto) auto auto auto !important; grid-template-areas: "header header" "student student" "results-title results-title" "results-table results-table" "grading summary" "chart chart" "declaration declaration" "signatures signatures" "footer footer" !important; align-items: start !important; align-content: start !important; column-gap: 2mm !important; row-gap: 2mm !important; width: 100% !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 2mm !important; border-radius: 0 !important; box-shadow: none !important; }
                         .footer { grid-area: footer !important; align-self: end !important; margin-top: 0 !important; width: 100% !important; }
                         .footer { grid-area: footer !important; align-self: end !important; width: 100% !important; margin-top: 0 !important; padding-top: 2mm !important; border-top: 1px solid #0A3D62 !important; }
                         .transcript-top { grid-area: header !important; position: relative !important; display: block !important; min-height: 0 !important; height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
