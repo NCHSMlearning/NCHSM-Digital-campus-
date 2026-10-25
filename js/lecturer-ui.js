@@ -373,8 +373,15 @@ const LecturerUI = {
         'lecturer-questions': 'lecturer-questions-content'
     },
     
-    // Initialize UI
+    // Initialize UI exactly once; this module has several legacy boot paths.
+    _initialized: false,
+
     init() {
+        if (this._initialized) {
+            console.debug('Lecturer UI initialization skipped: already initialized');
+            return;
+        }
+        this._initialized = true;
         console.log('🎨 Initializing Lecturer UI...');
 
         // ============================================================
@@ -1289,21 +1296,24 @@ const LecturerUI = {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM Ready - Initializing Lecturer UI...');
+    console.log('📄 DOM Ready - Waiting for lecturer database before UI initialization...');
+    let elapsed = 0;
+    const pollMs = 200;
+    const maxWaitMs = 30000;
     const checkDb = setInterval(() => {
         if (window.lecturerDB && window.lecturerDB.isInitialized) {
             clearInterval(checkDb);
             LecturerUI.init();
             document.dispatchEvent(new CustomEvent('uiReady'));
             console.log('✅ UI Ready event dispatched');
+            return;
         }
-    }, 100);
-    setTimeout(() => {
-        if (!document.querySelector('.sidebar .nav')) {
-            console.log('⏳ Fallback initialization...');
-            LecturerUI.init();
+        elapsed += pollMs;
+        if (elapsed >= maxWaitMs) {
+            clearInterval(checkDb);
+            console.warn('Lecturer UI initialization stopped waiting after 30 seconds; database is not ready.');
         }
-    }, 3000);
+    }, pollMs);
 });
 
 // Make globally accessible
