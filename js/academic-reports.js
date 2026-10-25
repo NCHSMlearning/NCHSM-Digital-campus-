@@ -2418,8 +2418,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; text-align: center !important; }
                         table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; text-align: center !important; }
                         table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; text-align: center !important; }
-                        .chart-container { grid-area: chart !important; min-width: 0 !important; min-height: 0 !important; height: 38mm !important; max-height: 38mm !important; align-self: stretch !important; margin: 0 !important; padding: 3px 5px !important; display: block !important; overflow: hidden !important; }
-                        .chart-container canvas { display: block !important; width: 100% !important; height: 27mm !important; min-height: 27mm !important; max-height: 27mm !important; }
+                        .chart-container { grid-area: chart !important; position: relative !important; min-width: 0 !important; min-height: 42mm !important; height: 42mm !important; max-height: 42mm !important; align-self: stretch !important; margin: 0 !important; padding: 3px 5px !important; display: block !important; overflow: visible !important; }
+                        .chart-container canvas { display: block !important; position: relative !important; width: 100% !important; height: 32mm !important; min-height: 32mm !important; max-height: 32mm !important; }
                         .summary-grid { grid-area: summary !important; display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 3px !important; margin: 0 !important; }
                         .summary-card { padding: 5px 4px !important; border-top-width: 2px !important; }
                         .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
@@ -2436,6 +2436,20 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .container, .header, .student-info-wrapper, .semester-results-title, .chart-container, .summary-grid, .grading-scale-table, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                     `;
                     printWindow.document.head.appendChild(downloadStyle);
+
+                    // Recalculate Chart.js after PDF sizing rules are applied, then allow a paint before capture.
+                    const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
+                    if (chartCanvas && printWindow.Chart) {
+                        const chartInstance = printWindow.Chart.getChart(chartCanvas);
+                        if (chartInstance) {
+                            chartInstance.options.responsive = false;
+                            chartInstance.options.maintainAspectRatio = false;
+                            chartInstance.options.animation = false;
+                            chartInstance.resize(chartCanvas.clientWidth || 700, 120);
+                            chartInstance.update('none');
+                        }
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 350));
 
                     // Size the transcript to its actual unit count. Keep every unit row intact,
                     // use a compact but readable table, and allow additional A4 pages only when needed.
