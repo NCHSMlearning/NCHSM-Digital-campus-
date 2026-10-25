@@ -2632,16 +2632,18 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         }));
                         const previewPdfStyle = printWindow.document.createElement('style');
                         previewPdfStyle.textContent = `
-                            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important; gap: 8px !important; align-items: stretch !important; width: 100% !important; margin: 5px 0 !important; }
-                            .transcript-lower-grid > .grading-scale-table { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 5px !important; }
-                            .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; border: 1px solid #d5e2ee !important; border-radius: 6px !important; overflow: hidden !important; }
-                            .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 6px 7px !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; }
-                            .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 3px !important; padding: 4px !important; margin: 0 !important; }
-                            .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 4px !important; padding: 5px !important; margin: 0 !important; min-width: 0 !important; }
-                            .academic-summary-panel .summary-card .label { font-size: 7px !important; text-align: left !important; }
-                            .academic-summary-panel .summary-card .value { font-size: 13px !important; }
+                            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) !important; gap: 5px !important; align-items: stretch !important; width: 100% !important; margin: 3px 0 !important; }
+                            .transcript-lower-grid > .grading-scale-table { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 3px !important; border-radius: 4px !important; }
+                            .transcript-lower-grid > .grading-scale-table .title { font-size: 8px !important; margin: 0 0 2px !important; }
+                            .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; border: 1px solid #d5e2ee !important; border-radius: 4px !important; overflow: hidden !important; }
+                            .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 4px 5px !important; font-size: 8px !important; line-height: 1.1 !important; font-weight: 700 !important; text-transform: uppercase !important; }
+                            .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 2px !important; padding: 3px !important; margin: 0 !important; }
+                            .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 3px !important; padding: 3px 4px !important; margin: 0 !important; min-width: 0 !important; border-radius: 3px !important; }
+                            .academic-summary-panel .summary-card .label { font-size: 6.5px !important; line-height: 1.1 !important; text-align: left !important; }
+                            .academic-summary-panel .summary-card .value { font-size: 11px !important; line-height: 1 !important; }
                             .grading-scale-table table { width: 100% !important; table-layout: fixed !important; }
-                            table.semester-results-table tbody td { padding-top: 7px !important; padding-bottom: 7px !important; }
+                            .grading-scale-table th, .grading-scale-table td { padding: 2px 2px !important; font-size: 6px !important; line-height: 1.05 !important; }
+                            table.semester-results-table tbody td { padding-top: 5px !important; padding-bottom: 5px !important; }
 
                             @page { size: A4 portrait; margin: 5mm; }
                             * { box-sizing: border-box !important; }
@@ -3113,14 +3115,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     const rowPadding = unitCount <= 8 ? 6 : unitCount <= 14 ? 4 : unitCount <= 22 ? 3 : 2;
                     const rowFont = unitCount <= 14 ? 9 : unitCount <= 22 ? 8 : 7;
                     densityStyle.textContent = `
-                        .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important; gap: 8px !important; align-items: stretch !important; width: 100% !important; margin: 5px 0 !important; }
+                        .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) !important; gap: 5px !important; align-items: stretch !important; width: 100% !important; margin: 3px 0 !important; }
                         .transcript-lower-grid > .grading-scale-table, .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; box-sizing: border-box !important; }
-                        .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 6px 7px !important; font-size: 9px !important; font-weight: 700 !important; }
-                        .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 3px !important; padding: 4px !important; margin: 0 !important; }
-                        .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 5px !important; margin: 0 !important; }
-                        .academic-summary-panel .summary-card .label { font-size: 7px !important; text-align: left !important; }
-                        .academic-summary-panel .summary-card .value { font-size: 13px !important; }
-                        table.semester-results-table tbody td { padding-top: 7px !important; padding-bottom: 7px !important; }
+                        .transcript-lower-grid > .grading-scale-table { padding: 3px !important; }
+                        .transcript-lower-grid > .grading-scale-table .title { font-size: 8px !important; margin: 0 0 2px !important; }
+                        .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 4px 5px !important; font-size: 8px !important; font-weight: 700 !important; }
+                        .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 2px !important; padding: 3px !important; margin: 0 !important; }
+                        .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 3px 4px !important; margin: 0 !important; }
+                        .academic-summary-panel .summary-card .label { font-size: 6.5px !important; text-align: left !important; }
+                        .academic-summary-panel .summary-card .value { font-size: 11px !important; }
+                        .grading-scale-table th, .grading-scale-table td { padding: 2px !important; font-size: 6px !important; }
+                        table.semester-results-table tbody td { padding-top: 5px !important; padding-bottom: 5px !important; }
 
                         table.semester-results-table thead { display: table-header-group !important; }
                         table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
