@@ -2364,12 +2364,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     }
                     const downloadStyle = printWindow.document.createElement('style');
                     downloadStyle.textContent = `
-                        @page { size: A4 portrait; margin: 6mm; }
+                        @page { size: A4 portrait; margin: 5mm; }
                         * { box-sizing: border-box !important; }
-                        html, body { width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                        html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
                         body { font-size: 9px !important; }
-                        .container { box-sizing: border-box !important; width: 794px !important; max-width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 5px 8px !important; border-radius: 0 !important; box-shadow: none !important; }
-                        .container { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: auto auto auto auto auto minmax(36mm,1fr) auto auto auto !important; grid-template-areas: "header header"
+                        .container { box-sizing: border-box !important; width: 100% !important; max-width: none !important; min-width: 0 !important; min-height: 272mm !important; height: 272mm !important; margin: 0 !important; padding: 2mm !important; border-radius: 0 !important; box-shadow: none !important; }
+                        .container { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: auto auto auto auto auto minmax(42mm,1fr) auto auto auto !important; grid-template-areas: "header header"
                     "student student"
                     "results-title results-title"
                     "results-table results-table"
@@ -2377,12 +2377,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "chart chart"
                     "declaration declaration"
                     "signatures signatures"
-                    "footer footer" !important; align-items: stretch !important; align-content: stretch !important; column-gap: 7px !important; row-gap: 2mm !important; min-height: 270mm !important; height: 270mm !important; }
+                    "footer footer" !important; align-items: stretch !important; align-content: stretch !important; column-gap: 2mm !important; row-gap: 2mm !important; min-height: 272mm !important; height: 272mm !important; }
+                        .footer { grid-area: footer !important; align-self: end !important; margin-top: 0 !important; width: 100% !important; }
                         .footer { grid-area: footer !important; align-self: end !important; width: 100% !important; margin-top: 0 !important; padding-top: 2mm !important; border-top: 1px solid #0A3D62 !important; }
                         .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: 36px minmax(0,1fr) !important; grid-template-rows: auto !important; gap: 5px !important; align-items: start !important; justify-items: stretch !important; min-height: 0 !important; height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
                         .container > .transcript-top { align-self: start !important; width: 100% !important; }
                         .transcript-top > .verification-qr { grid-column: 1 !important; grid-row: 1 !important; justify-self: start !important; align-self: start !important; }
                         .transcript-top > .header { grid-column: 2 !important; grid-row: 1 !important; grid-area: auto !important; display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; padding: 0 0 2px !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
+                        .transcript-top .header-top img { max-width: 32px !important; max-height: 28px !important; width: auto !important; height: auto !important; }
                         .transcript-top .header-top { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; width: 100% !important; gap: 6px !important; }
                         .transcript-top .header .school { font-size: 12px !important; line-height: 1.1 !important; }
                         .transcript-top .header .subtitle { font-size: 10px !important; margin: 2px 0 !important; }
