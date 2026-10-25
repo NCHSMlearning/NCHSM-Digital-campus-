@@ -2699,13 +2699,35 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         previewDensityStyle.textContent = `table.semester-results-table tbody td { padding: ${previewRowPadding}px 4px !important; } table.semester-results-table thead { display: table-header-group !important; }`;
                         printWindow.document.head.appendChild(previewDensityStyle);
                         const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
+                        // Normalize the capture width before html2pdf snapshots the transcript.
+                        // Desktop browsers can otherwise capture the iframe at its narrow preview
+                        // width and place that cropped image on the left side of the A4 page.
+                        const captureStyle = printWindow.document.createElement('style');
+                        captureStyle.id = 'transcript-pdf-capture-normalization';
+                        captureStyle.textContent = `
+                            html, body { width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+                            .container { width: 794px !important; min-width: 794px !important; max-width: 794px !important; margin: 0 auto !important; box-sizing: border-box !important; }
+                            .transcript-preview-toolbar { display: none !important; }
+                        `;
+                        printWindow.document.head.appendChild(captureStyle);
+                        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
                         const options = {
-                            margin: 5,
+                            margin: [5, 5, 5, 5],
                             filename: fileBase + '.pdf',
                             image: { type: 'jpeg', quality: 0.98 },
-                            html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 },
+                            html2canvas: {
+                                scale: 2,
+                                useCORS: true,
+                                allowTaint: false,
+                                backgroundColor: '#ffffff',
+                                windowWidth: 794,
+                                width: 794,
+                                scrollX: 0,
+                                scrollY: 0,
+                                logging: false
+                            },
                             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-                            pagebreak: { mode: ['css'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
+                            pagebreak: { mode: ['css', 'legacy'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
                         };
                         try {
                             // Use html2pdf's supported save pipeline. Manually extracting a jsPDF
