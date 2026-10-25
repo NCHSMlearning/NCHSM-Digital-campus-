@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // 1. Wait for lecturerDB
         // ==========================================
         let retries = 0;
-        const maxRetries = 20;
+        const maxRetries = 60;
 
         console.log('⏳ Waiting for lecturerDB...');
         while (typeof window.lecturerDB === 'undefined' && retries < maxRetries) {
@@ -295,8 +295,30 @@ document.addEventListener('DOMContentLoaded', async function() {
             retries++;
         }
 
+        // Recovery for a transient/missing lecturer-database.js request.
+        // Do not create a second instance if the regular script finishes late.
         if (typeof window.lecturerDB === 'undefined') {
-            throw new Error('lecturerDB not loaded after ' + maxRetries + ' retries');
+            console.warn('⚠️ lecturerDB was not exposed by the initial script load; retrying the module once.');
+            await new Promise((resolve, reject) => {
+                const existing = document.querySelector('script[data-lecturer-db-recovery="true"]');
+                if (existing) {
+                    existing.addEventListener('load', resolve, { once: true });
+                    existing.addEventListener('error', () => reject(new Error('Could not reload js/lecturer-database.js')), { once: true });
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = 'js/lecturer-database.js?v=db-recovery-20261025';
+                script.dataset.lecturerDbRecovery = 'true';
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('Could not load js/lecturer-database.js. Check deployment path and network.'));
+                document.head.appendChild(script);
+            }).catch(error => {
+                console.error('❌ Lecturer database module recovery failed:', error);
+            });
+        }
+
+        if (typeof window.lecturerDB === 'undefined') {
+            throw new Error('Lecturer database module failed to load. Check js/lecturer-database.js in the deployed site and browser Network/Console errors.');
         }
         console.log('✅ lecturerDB found');
 
