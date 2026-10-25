@@ -2332,13 +2332,41 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     qrImage.src = dataUrl;
                     await loaded;
                 } else {
-                    const fallbackUrl = new URL('https://api.qrserver.com/v1/create-qr-code/');
-                    fallbackUrl.searchParams.set('size', '240x240');
-                    fallbackUrl.searchParams.set('margin', '1');
-                    fallbackUrl.searchParams.set('data', payload);
-                    const loaded = waitForImage();
-                    qrImage.src = fallbackUrl.href;
-                    await loaded;
+                    // Use independent QR image providers if the local QR library CDN is blocked.
+                    // Each attempt has its own timeout so a stalled provider cannot freeze the preview.
+                    const fallbackUrls = [
+                        'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&data=' + encodeURIComponent(payload),
+                        'https://quickchart.io/qr?size=240&margin=1&text=' + encodeURIComponent(payload)
+                    ];
+                    let fallbackLoaded = false;
+                    let lastFallbackError = null;
+                    for (const fallbackSrc of fallbackUrls) {
+                        try {
+                            await new Promise((resolve, reject) => {
+                                let settled = false;
+                                const finish = (fn, value) => {
+                                    if (settled) return;
+                                    settled = true;
+                                    clearTimeout(timer);
+                                    qrImage.onload = null;
+                                    qrImage.onerror = null;
+                                    fn(value);
+                                };
+                                const timer = setTimeout(() => finish(reject, new Error('QR image provider timed out')), 5000);
+                                qrImage.onload = () => qrImage.naturalWidth > 0
+                                    ? finish(resolve)
+                                    : finish(reject, new Error('QR image provider returned an empty image'));
+                                qrImage.onerror = () => finish(reject, new Error('QR image provider request failed'));
+                                qrImage.src = fallbackSrc;
+                            });
+                            fallbackLoaded = true;
+                            break;
+                        } catch (fallbackError) {
+                            lastFallbackError = fallbackError;
+                            console.warn('Transcript QR image provider failed:', fallbackError);
+                        }
+                    }
+                    if (!fallbackLoaded) throw (lastFallbackError || new Error('All QR image providers failed'));
                 }
                 qrImage.dataset.ready = 'true';
                 qrImage.alt = 'Scan to verify this transcript';
@@ -2494,7 +2522,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
                         if (qr && qr.dataset.ready !== 'true') {
-                            alert('The transcript verification QR code is not ready. No PDF was created.');
+                            alert('The transcript verification QR code could not be generated. Check the browser connection or reload the page and try again. No PDF was created.');
                             return;
                         }
                         const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
@@ -2694,7 +2722,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         if (qrImage.dataset.ready !== 'true') {
                             const reason = qrImage.dataset.error || 'generation timeout';
                             console.error('Transcript PDF download cancelled: verification QR is not ready.', reason);
-                            alert('The transcript verification QR code could not be generated. Check your connection and try again; no PDF was created.');
+                            alert('The transcript verification QR code could not be generated. Check the browser connection or reload the page and try again. No PDF was created.');
                             return;
                         }
                     }
