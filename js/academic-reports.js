@@ -2279,94 +2279,69 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         (async function initializeTranscriptQr() {
             const qrImage = document.getElementById('transcriptVerificationQr');
             if (!qrImage) return;
-
-            // Resolve the student reference from both the data object and rendered field labels.
-            // Do not depend on a fixed field position: profile photos/optional fields can change the order.
-            const studentFields = Array.from(document.querySelectorAll('.student-info .field'));
-            const admissionField = studentFields.find(field => {
-                const label = field.querySelector('.label');
-                return /admission|student\s*(id|number|no\.?)/i.test((label && label.textContent) || field.textContent || '');
-            });
-            const admissionValueNode = admissionField && admissionField.querySelector('.value');
-            const admissionText = admissionValueNode ? admissionValueNode.textContent : '';
-            const candidateIds = [
-                ${JSON.stringify(user.student_id || '')},
-                ${JSON.stringify(user.admission_number || '')},
-                ${JSON.stringify(user.admission_no || '')},
-                ${JSON.stringify(user.student_number || '')},
-                ${JSON.stringify(user.admissionNumber || '')},
-                ${JSON.stringify(user.id || '')},
-                admissionText
-            ];
-            const verifyId = candidateIds.map(value => String(value || '').replace(/\s+/g, ' ').trim()).find(value => value && !/^N\/?A$/i.test(value)) || '';
-            if (!verifyId) {
+            const studentId = ${JSON.stringify(user.student_id || user.admission_number || user.admission_no || user.student_number || user.admissionNumber || user.id || '')};
+            const verifyId = String(studentId || '').replace(/\\s+/g, ' ').trim();
+            if (!verifyId || /^N\\/?A$/i.test(verifyId)) {
                 qrImage.dataset.error = 'Student admission number unavailable';
                 qrImage.alt = 'Student reference unavailable';
-                qrImage.style.display = 'block';
-                console.error('Transcript QR: no student/admission identifier found in data or rendered fields.');
+                console.error('Transcript QR: student admission number is missing.');
                 return;
             }
-
             const verificationUrl = new URL('/graduation.html', window.location.origin);
             verificationUrl.searchParams.set('id', verifyId);
             verificationUrl.searchParams.set('studentId', verifyId);
             verificationUrl.searchParams.set('type', 'provisional-transcript');
+            const payload = verificationUrl.href;
             qrImage.style.display = 'block';
             qrImage.style.visibility = 'visible';
-            qrImage.style.width = '26px';
-            qrImage.style.height = '26px';
-            qrImage.style.objectFit = 'contain';
+            qrImage.width = 240;
+            qrImage.height = 240;
+            qrImage.alt = 'Generating transcript verification QR code';
             qrImage.dataset.ready = '';
             qrImage.dataset.error = '';
-            qrImage.alt = 'Generating verification QR code';
-
-            const loadQrLibrary = async () => {
-                if (window.QRCode && typeof window.QRCode.toDataURL === 'function') return;
-                for (const src of [
-                    'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js',
-                    'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js'
-                ]) {
-                    try {
-                        await new Promise((resolve, reject) => {
-                            const script = document.createElement('script');
-                            const timer = setTimeout(() => reject(new Error('QR library load timed out')), 5000);
-                            script.onload = () => { clearTimeout(timer); resolve(); };
-                            script.onerror = () => { clearTimeout(timer); reject(new Error('QR library CDN failed')); };
-                            script.src = src;
-                            script.async = true;
-                            document.head.appendChild(script);
-                        });
-                        if (window.QRCode && typeof window.QRCode.toDataURL === 'function') return;
-                    } catch (error) {
-                        console.warn('Transcript QR CDN failed; trying backup.', error);
+            const waitForImage = () => new Promise((resolve, reject) => {
+                qrImage.onload = () => qrImage.naturalWidth > 0 ? resolve() : reject(new Error('QR image has no pixels'));
+                qrImage.onerror = () => reject(new Error('QR image request failed'));
+            });
+            try {
+                let dataUrl = '';
+                if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
+                    dataUrl = await window.QRCode.toDataURL(payload, { width: 240, margin: 1, errorCorrectionLevel: 'M' });
+                } else {
+                    for (const src of ['https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js','https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js']) {
+                        try {
+                            await new Promise((resolve, reject) => {
+                                const script = document.createElement('script');
+                                const timer = setTimeout(() => reject(new Error('QR library load timed out')), 5000);
+                                script.onload = () => { clearTimeout(timer); resolve(); };
+                                script.onerror = () => { clearTimeout(timer); reject(new Error('QR library CDN failed')); };
+                                script.src = src;
+                                script.async = true;
+                                document.head.appendChild(script);
+                            });
+                            if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
+                                dataUrl = await window.QRCode.toDataURL(payload, { width: 240, margin: 1, errorCorrectionLevel: 'M' });
+                                break;
+                            }
+                        } catch (loadError) { console.warn('Transcript QR library source failed:', loadError); }
                     }
                 }
-                throw new Error('QR library failed to load from both CDNs');
-            };
-
-            try {
-                await loadQrLibrary();
-                const dataUrl = await window.QRCode.toDataURL(verificationUrl.href, {
-                    width: 240, margin: 1, errorCorrectionLevel: 'M'
-                });
-                await new Promise((resolve, reject) => {
-                    qrImage.onload = () => {
-                        if (qrImage.naturalWidth > 0) {
-                            qrImage.dataset.ready = 'true';
-                            qrImage.alt = 'Scan to verify this transcript';
-                            resolve();
-                        } else {
-                            reject(new Error('QR image has no rendered pixels'));
-                        }
-                    };
-                    qrImage.onerror = () => reject(new Error('Generated QR image could not be loaded'));
+                if (dataUrl) {
+                    const loaded = waitForImage();
                     qrImage.src = dataUrl;
-                    if (qrImage.complete && qrImage.naturalWidth > 0) {
-                        qrImage.dataset.ready = 'true';
-                        qrImage.alt = 'Scan to verify this transcript';
-                        resolve();
-                    }
-                });
+                    await loaded;
+                } else {
+                    const fallbackUrl = new URL('https://api.qrserver.com/v1/create-qr-code/');
+                    fallbackUrl.searchParams.set('size', '240x240');
+                    fallbackUrl.searchParams.set('margin', '1');
+                    fallbackUrl.searchParams.set('data', payload);
+                    const loaded = waitForImage();
+                    qrImage.src = fallbackUrl.href;
+                    await loaded;
+                }
+                qrImage.dataset.ready = 'true';
+                qrImage.alt = 'Scan to verify this transcript';
+                console.info('Transcript QR generated for:', verifyId);
             } catch (error) {
                 qrImage.dataset.error = String(error && error.message || error);
                 qrImage.alt = 'QR generation failed';
