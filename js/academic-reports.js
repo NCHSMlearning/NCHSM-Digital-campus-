@@ -1699,6 +1699,41 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             alert('Your browser blocked the transcript window. Allow pop-ups for nchsm.co.ke and tap the button again.');
             return;
         }
+
+        // Pass only the short-lived authenticated session context to this same-origin
+        // output window. Some browser isolation policies sever window.opener, which
+        // previously left the QR script without Supabase access.
+        try {
+            const qrParentConfig = window.APP_CONFIG || {};
+            const qrParentClient = window.supabaseClient;
+            if (qrParentClient && qrParentClient.auth && qrParentConfig.SUPABASE_URL && qrParentConfig.SUPABASE_ANON_KEY) {
+                qrParentClient.auth.getSession().then(({ data, error }) => {
+                    if (printWindow && !printWindow.closed && !error && data && data.session && data.session.access_token) {
+                        printWindow.__TRANSCRIPT_QR_CONTEXT = {
+                            supabaseUrl: qrParentConfig.SUPABASE_URL,
+                            anonKey: qrParentConfig.SUPABASE_ANON_KEY,
+                            accessToken: data.session.access_token
+                        };
+                        console.info('[Transcript QR] Session context passed to transcript window', { sessionAvailable: true });
+                    } else {
+                        console.error('[Transcript QR] Parent could not pass authenticated session context', {
+                            sessionError: error ? error.message : null,
+                            sessionAvailable: Boolean(data && data.session),
+                            popupAvailable: Boolean(printWindow && !printWindow.closed)
+                        });
+                    }
+                }).catch(error => console.error('[Transcript QR] Failed to retrieve parent session', error));
+            } else {
+                console.error('[Transcript QR] Parent portal client/config unavailable', {
+                    clientAvailable: Boolean(qrParentClient),
+                    authAvailable: Boolean(qrParentClient && qrParentClient.auth),
+                    configAvailable: Boolean(qrParentConfig.SUPABASE_URL && qrParentConfig.SUPABASE_ANON_KEY)
+                });
+            }
+        } catch (qrContextError) {
+            console.error('[Transcript QR] Could not initialize popup session bridge', qrContextError);
+        }
+
         printWindow.document.open();
         printWindow.document.write('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Preparing transcript…</title></head><body style="font:16px Arial;padding:24px">Preparing your transcript PDF…</body></html>');
         printWindow.document.close();
@@ -2277,30 +2312,49 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             const qrImage = document.getElementById('transcriptVerificationQr');
             if (!qrImage) return;
             const qrStartedAt = Date.now();
-            const portalWindow = window.opener || window;
+            const portalWindow = window.opener || null;
             const portalOrigin = ${JSON.stringify(window.location.origin)};
-            const portalConfig = portalWindow.APP_CONFIG || {};
-            const portalClient = portalWindow.supabaseClient;
+            const contextDeadline = Date.now() + 10000;
+            let injectedContext = window.__TRANSCRIPT_QR_CONTEXT || null;
+            while (!injectedContext && portalWindow && Date.now() < contextDeadline) {
+                injectedContext = portalWindow.__TRANSCRIPT_QR_CONTEXT || null;
+                if (!injectedContext) await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            const portalConfig = (injectedContext && injectedContext.supabaseUrl && injectedContext.anonKey)
+                ? { SUPABASE_URL: injectedContext.supabaseUrl, SUPABASE_ANON_KEY: injectedContext.anonKey }
+                : ((portalWindow && portalWindow.APP_CONFIG) || window.APP_CONFIG || {});
+            const portalClient = (portalWindow && portalWindow.supabaseClient) || window.supabaseClient || null;
             console.info('[Transcript QR] Setup started', {
                 time: new Date().toISOString(),
                 pageOrigin: window.location.origin,
-                openerAvailable: Boolean(window.opener),
+                openerAvailable: Boolean(portalWindow),
+                injectedSessionAvailable: Boolean(injectedContext && injectedContext.accessToken),
                 portalClientAvailable: Boolean(portalClient),
                 authAvailable: Boolean(portalClient && portalClient.auth),
                 supabaseUrlAvailable: Boolean(portalConfig.SUPABASE_URL),
                 anonKeyAvailable: Boolean(portalConfig.SUPABASE_ANON_KEY)
             });
-            if (!portalClient || !portalClient.auth || !portalConfig.SUPABASE_URL || !portalConfig.SUPABASE_ANON_KEY) {
-                qrImage.dataset.error = 'Authenticated portal session or configuration unavailable';
+            if ((!injectedContext || !injectedContext.accessToken) && (!portalClient || !portalClient.auth)) {
+                qrImage.dataset.error = 'No authenticated session was passed to the transcript window. Close this window and reopen the portal transcript.';
                 qrImage.alt = 'Transcript verification could not be initialized';
-                console.error('Transcript QR: the portal Supabase client/config is unavailable.');
+                console.error('[Transcript QR] No session bridge or accessible parent Supabase client');
+                return;
+            }
+            if (!portalConfig.SUPABASE_URL || !portalConfig.SUPABASE_ANON_KEY) {
+                qrImage.dataset.error = 'Supabase configuration unavailable in transcript window';
+                qrImage.alt = 'Transcript verification could not be initialized';
+                console.error('[Transcript QR] Supabase configuration missing');
                 return;
             }
             let registryToken = '';
             try {
-                const { data: sessionData, error: sessionError } = await portalClient.auth.getSession();
-                const accessToken = sessionData && sessionData.session && sessionData.session.access_token;
-                if (sessionError || !accessToken) throw new Error('Please sign in again to issue a transcript verification record.');
+                let accessToken = injectedContext && injectedContext.accessToken;
+                if (!accessToken && portalClient && portalClient.auth) {
+                    const { data: sessionData, error: sessionError } = await portalClient.auth.getSession();
+                    accessToken = sessionData && sessionData.session && sessionData.session.access_token;
+                    if (sessionError) throw new Error(sessionError.message || 'Could not read the signed-in session.');
+                }
+                if (!accessToken) throw new Error('No active sign-in session. Close this window, sign in again, and retry.');
                 const registryResponse = await fetch(portalConfig.SUPABASE_URL.replace(/\\/$/, '') + '/functions/v1/transcript-registry', {
                     method: 'POST',
                     headers: {
