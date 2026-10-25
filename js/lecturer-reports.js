@@ -424,18 +424,52 @@
         const key = `assignments:${lecturerId}`;
         if (LecturerReports._cache[key]) return LecturerReports._cache[key];
 
-        const { data, error } = await supabase
-            .from('lecturer_subject_assignments')
-            .select('subject_name, subject_code, block, program, academic_year')
-            .eq('lecturer_id', lecturerId);
+        const fetchAssignments = async id => {
+            const result = await supabase
+                .from('lecturer_subject_assignments')
+                .select('subject_name, subject_code, block, program, academic_year')
+                .eq('lecturer_id', String(id));
+            if (result.error) throw result.error;
+            return (result.data || []).filter(a => a.subject_name || a.subject_code);
+        };
 
-        if (error) {
+        let rows;
+        try {
+            rows = await fetchAssignments(lecturerId);
+        } catch (error) {
             console.error('LecturerReports: assignment query failed', error);
             throw new Error('Could not load assigned units: ' + (error.message || 'database query failed'));
         }
 
-        const rows = (data || []).filter(a => a.subject_name || a.subject_code);
-        LecturerReports._cache[key] = rows;
+        // Profile staff codes can differ from staff_records.id, which is the
+        // canonical foreign key used by lecturer_subject_assignments.
+        const email = String(identity?.email || currentLecturerEmailSync() || '').trim();
+        if (!rows.length && email) {
+            try {
+                const { data: staff, error: staffError } = await supabase
+                    .from('staff_records')
+                    .select('id, email')
+                    .ilike('email', email)
+                    .maybeSingle();
+                if (staffError) throw staffError;
+                if (staff?.id && String(staff.id) !== lecturerId) {
+                    const canonicalId = String(staff.id);
+                    const fallbackRows = await fetchAssignments(canonicalId);
+                    if (fallbackRows.length) {
+                        lecturerId = canonicalId;
+                        rows = fallbackRows;
+                        window.CORRECT_LECTURER_ID = canonicalId;
+                        _identityCache.staffId = canonicalId;
+                        _identityCache.email = staff.email || email;
+                        console.info('[Reports] recovered assigned units with canonical staff ID');
+                    }
+                }
+            } catch (fallbackError) {
+                console.warn('[Reports] canonical staff ID fallback failed:', fallbackError?.message || fallbackError);
+            }
+        }
+
+        LecturerReports._cache[`assignments:${lecturerId}`] = rows;
         console.log(`📚 [Reports] loaded ${rows.length} assigned unit(s) for lecturer ${lecturerId}`);
         return rows;
     }
