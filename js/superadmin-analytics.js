@@ -962,9 +962,9 @@ window.renderProgressionTable = function(students, marks) {
     if (!tbody) return;
 
     const normalizeBlock = value => {
-        const raw = String(value || '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ');
+        const raw = String(value || '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
         if (raw === 'introductory' || raw === 'introduction') return 'Introductory';
-        const match = raw.match(/^(?:block\\s*)?(\\d+)$/);
+        const match = raw.match(/^(?:block\s*)?(\\d+)$/);
         return match ? 'Block ' + match[1] : String(value || '').trim();
     };
     const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4'];
@@ -1045,7 +1045,7 @@ window.renderAnalyticsSubjectTable = async function(marks, students, program, bl
         .normalize('NFKC')
         .trim()
         .toLowerCase()
-        .replace(/\\s+/g, ' ')
+        .replace(/\s+/g, ' ')
         .replace(/[‐‑‒–—]/g, '-');
 
     const subjects = new Map();
