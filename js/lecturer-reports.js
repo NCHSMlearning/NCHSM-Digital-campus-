@@ -2645,33 +2645,67 @@
         const tbody = submissionEl('submittedReportsTable');
 
         if (!tbody) return [];
-
         if (!supabase) {
-            setSubmittedReportsEmpty('Supabase/database connection unavailable.');
-            return [];
-        }
-
-        const lecturerId = currentLecturerIdSync();
-        if (!lecturerId) {
-            setSubmittedReportsEmpty('Lecturer session is not ready.');
+            setSubmittedReportsEmpty('Database connection unavailable. Reopen the Reports section and try Refresh.');
             return [];
         }
 
         try {
-            const { data, error } = await supabase
-                .from(REPORT_SUBMISSION_TABLE)
-                .select('*')
-                .eq('lecturer_id', lecturerId)
-                .order('created_at', { ascending: false });
+            // Resolve both identifiers: lecturer_id is the staff-record ID,
+            // while lecturer_user_id is the authenticated Supabase UUID.
+            const identity = await resolveLecturerIdentity().catch(() => _identityCache);
+            let authUuid = identity?.authUuid || window.currentUser?.id || null;
+            let staffId = identity?.staffId || window.CORRECT_LECTURER_ID ||
+                window.me_currentLecturer?.staff?.id || null;
 
-            if (error) throw error;
+            try {
+                const { data: authData } = await supabase.auth.getUser();
+                if (authData?.user?.id) authUuid = authData.user.id;
+            } catch (_) {}
 
-            renderSubmittedReports(data || []);
-            return data || [];
+            if (!staffId) {
+                const candidate = currentLecturerIdSync();
+                if (candidate && candidate !== authUuid) staffId = candidate;
+            }
+
+            if (!authUuid && !staffId) {
+                setSubmittedReportsEmpty('Your lecturer identity is still loading. Press Refresh in a moment.');
+                return [];
+            }
+
+            const requests = [];
+            if (staffId) {
+                requests.push(
+                    supabase.from(REPORT_SUBMISSION_TABLE).select('*')
+                        .eq('lecturer_id', String(staffId))
+                        .order('created_at', { ascending: false })
+                );
+            }
+            if (authUuid) {
+                requests.push(
+                    supabase.from(REPORT_SUBMISSION_TABLE).select('*')
+                        .eq('lecturer_user_id', String(authUuid))
+                        .order('created_at', { ascending: false })
+                );
+            }
+
+            const results = await Promise.all(requests);
+            const errors = results.map(result => result.error).filter(Boolean);
+            const rows = results.flatMap(result => result.data || []);
+            const uniqueRows = [...new Map(rows.map(row => [String(row.id), row])).values()]
+                .sort((a, b) => new Date(b.created_at || b.submitted_at || 0) -
+                                new Date(a.created_at || a.submitted_at || 0));
+
+            if (!uniqueRows.length && errors.length === results.length) {
+                throw errors[0];
+            }
+
+            renderSubmittedReports(uniqueRows);
+            return uniqueRows;
         } catch (error) {
             console.error('LecturerReports.refreshSubmittedReports:', error);
             setSubmittedReportsEmpty(
-                'Submitted reports could not be loaded: ' + (error.message || error)
+                'Could not load your report catalogue: ' + (error.message || error)
             );
             return [];
         }
