@@ -377,6 +377,13 @@
 
             state.rows = Array.isArray(data) ? data : [];
 
+            // Always present newest submissions first, even if updated_at changed
+            // during a later review action.
+            state.rows.sort((a, b) =>
+                new Date(b.submitted_at || b.created_at || b.updated_at || 0) -
+                new Date(a.submitted_at || a.created_at || a.updated_at || 0)
+            );
+
             // Older submissions may have stored lecturer_user_id but left
             // lecturer_name/email blank. Resolve names from the same profile
             // table used by the Super Admin authorization check.
@@ -464,6 +471,7 @@
 
     function populateFilters() {
         const typeSelect = getElement('lrrReportTypeFilter');
+        const documentTypeSelect = getElement('lrrDocumentTypeFilter');
         const programSelect = getElement('lrrProgramFilter');
         const blockSelect = getElement('lrrBlockFilter');
         const yearSelect = getElement('lrrYearFilter');
@@ -471,6 +479,7 @@
 
         const preserve = {
             type: typeSelect?.value || '',
+            documentType: documentTypeSelect?.value || '',
             program: programSelect?.value || '',
             block: blockSelect?.value || '',
             year: yearSelect?.value || '',
@@ -496,6 +505,28 @@
             `;
 
             typeSelect.value = preserve.type;
+        }
+
+        if (documentTypeSelect) {
+            const values = unique('document_type');
+            const common = [
+                ['scheme_of_work', 'Scheme of Work'],
+                ['course_outline', 'Course Outline'],
+                ['course_objectives', 'Course Objectives'],
+                ['records_of_work', 'Records of Work'],
+                ['lesson_plan', 'Lesson Plan'],
+                ['teaching_schedule', 'Teaching Schedule'],
+                ['learning_resources', 'Learning Resources / Materials'],
+                ['other_teaching_document', 'Other Teaching Document']
+            ];
+            const labels = new Map(common);
+            documentTypeSelect.innerHTML = `
+                <option value="">All Document Types</option>
+                ${values.map(value => `
+                    <option value="${escapeAttr(value)}">${escapeHtml(labels.get(value) || humanize(value))}</option>
+                `).join('')}
+            `;
+            documentTypeSelect.value = preserve.documentType;
         }
 
         if (programSelect) {
@@ -587,6 +618,7 @@
     function applyFilters() {
         const search = getSearchTerm();
         const reportType = getFilterValue('lrrReportTypeFilter');
+        const documentType = getFilterValue('lrrDocumentTypeFilter');
         const program = getFilterValue('lrrProgramFilter');
         const block = getFilterValue('lrrBlockFilter');
         const year = getFilterValue('lrrYearFilter');
@@ -594,6 +626,7 @@
 
         state.filteredRows = state.rows.filter(row => {
             if (reportType && String(row.report_type || '') !== reportType) return false;
+            if (documentType && String(row.document_type || '') !== documentType) return false;
             if (program) {
                 const selectedProgram = normalizeProgram(program);
                 const rowProgram = normalizeProgram(row.program || row.department || '');
@@ -1836,6 +1869,7 @@
 
         const ids = [
             'lrrReportTypeFilter',
+            'lrrDocumentTypeFilter',
             'lrrProgramFilter',
             'lrrBlockFilter',
             'lrrYearFilter',
