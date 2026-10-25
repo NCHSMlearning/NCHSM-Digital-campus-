@@ -11,6 +11,7 @@ class LecturerDatabase {
         this.currentUserId = null;
         this.currentUserProfile = null;
         this.isInitialized = false;
+        this.initializationPromise = null;
         this.cachedData = {
             students: [],
             courses: [],
@@ -25,41 +26,65 @@ class LecturerDatabase {
         };
     }
     
-    // Initialize database connection
+    // Initialize once. Concurrent callers share the same connection attempt.
     async initialize() {
-        if (this.isInitialized) {
-            console.log('✅ Lecturer Database already initialized');
+        if (this.isInitialized && this.supabase) {
             return this.supabase;
         }
-        
-        try {
-            console.log('🚀 Initializing Lecturer Database...');
-            
-            // Check configuration
-            if (!window.APP_CONFIG || !window.APP_CONFIG.SUPABASE_URL) {
-                throw new Error('Configuration not loaded');
-            }
-            
-            // Create Supabase client
-            this.supabase = supabase.createClient(
-                window.APP_CONFIG.SUPABASE_URL,
-                window.APP_CONFIG.SUPABASE_ANON_KEY,
-                {
-                    auth: {
-                        persistSession: true,
-                        autoRefreshToken: true,
-                        detectSessionInUrl: true
-                    },
-                    global: {
-                        headers: {
-                            'x-application-name': 'nchsm-lecturer-portal',
-                            'x-role': 'lecturer'
+        if (this.initializationPromise) {
+            return this.initializationPromise;
+        }
+
+        this.initializationPromise = (async () => {
+            try {
+                console.log('🚀 Initializing Lecturer Database...');
+
+                if (!window.APP_CONFIG || !window.APP_CONFIG.SUPABASE_URL) {
+                    throw new Error('Configuration not loaded');
+                }
+                if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
+                    throw new Error('Supabase client library is not available');
+                }
+
+                const client = window.supabase.createClient(
+                    window.APP_CONFIG.SUPABASE_URL,
+                    window.APP_CONFIG.SUPABASE_ANON_KEY,
+                    {
+                        auth: {
+                            persistSession: true,
+                            autoRefreshToken: true,
+                            detectSessionInUrl: true
+                        },
+                        global: {
+                            headers: {
+                                'x-application-name': 'nchsm-lecturer-portal',
+                                'x-role': 'lecturer'
+                            }
                         }
                     }
-                }
-            );
-            
-            // Test connection
+                );
+
+                // Publish the single client before testing it so every caller
+                // sees the same instance while this initialization is in flight.
+                this.supabase = client;
+                await this.testConnection();
+                this.isInitialized = true;
+                console.log('✅ Lecturer Database initialized successfully');
+                return this.supabase;
+            } catch (error) {
+                this.isInitialized = false;
+                this.supabase = null;
+                console.error('❌ Lecturer Database initialization failed:', error);
+                throw error;
+            } finally {
+                this.initializationPromise = null;
+            }
+        })();
+
+        return this.initializationPromise;
+    }
+
+    // Test connection
             await this.testConnection();
             
             this.isInitialized = true;
