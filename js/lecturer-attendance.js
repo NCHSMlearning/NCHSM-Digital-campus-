@@ -839,7 +839,34 @@ const LecturerAttendance = {
         const progressBar = document.getElementById('attendanceProgressBar');
         if (progressBar) progressBar.style.width = `${rate}%`;
         const rateBadge = document.getElementById('attendanceRateBadge');
-        if (rateBadge) rateBadge.textContent = `${rate}% (Class: ${total} students)`;
+        if (rateBadge) rateBadge.textContent = `${rate}% (Filtered: ${total} records)`;
+
+        // Keep the cards honest when a block, unit, search, session, or date
+        // range is selected. Their values always come from the filtered rows.
+        const from = String(document.getElementById('filterDateFrom')?.value || '').trim();
+        const to = String(document.getElementById('filterDateTo')?.value || '').trim();
+        const legacyDate = String(document.getElementById('filterDate')?.value || '').trim();
+        const block = String(document.getElementById('filterBlock')?.value || 'All');
+        const unit = String(document.getElementById('filterUnit')?.value || 'All');
+        const year = String(document.getElementById('filterYear')?.value || 'All');
+        const sessionType = String(document.getElementById('filterSessionType')?.value || 'All');
+        const search = String(document.getElementById('filterSearch')?.value || '').trim();
+        const sessionSelected = !!this.getSelectedSession();
+        const filteredMode = !!(from || to || legacyDate || search || sessionSelected ||
+            (block && block !== 'All') || (unit && unit !== 'All') || (year && year !== 'All') ||
+            (sessionType && sessionType !== 'All'));
+        const labelText = {
+            todayPresent: filteredMode ? 'Present (Filtered)' : 'Present Today',
+            todayAbsent: filteredMode ? 'Absent (Filtered)' : 'Absent Today',
+            todayPending: filteredMode ? 'Pending (Filtered)' : 'Pending',
+            attendanceRate: filteredMode ? 'Attendance Rate (Filtered)' : 'Attendance Rate',
+            filteredCount: filteredMode ? 'Filtered Records' : 'Records Found'
+        };
+        Object.entries(labelText).forEach(([id, label]) => {
+            const valueEl = document.getElementById(id);
+            const labelEl = valueEl?.parentElement?.querySelector('.stat-label');
+            if (labelEl) labelEl.textContent = label;
+        });
         return this.stats;
     },
 
