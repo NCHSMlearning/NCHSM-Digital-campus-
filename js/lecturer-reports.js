@@ -50,10 +50,21 @@
     ============================================================ */
 
     function db() {
-        if (window.db?.supabase?.from) return window.db.supabase;
-        if (window.supabase?.from) return window.supabase;
-        if (window.sb?.from) return window.sb;
-        return null;
+        // The lecturer portal's canonical Supabase client is owned by LecturerDatabase.
+        // Prefer it first; window.supabase may be the CDN namespace, not a client.
+        const candidates = [
+            window.lecturerDB?.supabase,
+            window.supabaseClient,
+            window._supabase,
+            window.db?.supabase,
+            window.db,
+            window.sb,
+            window.supabase
+        ];
+        return candidates.find(candidate =>
+            candidate && typeof candidate.from === 'function' &&
+            candidate.auth && typeof candidate.auth.getUser === 'function'
+        ) || null;
     }
 
     function esc(value) {
