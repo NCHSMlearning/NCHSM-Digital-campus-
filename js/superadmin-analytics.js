@@ -303,6 +303,7 @@ window.loadAnalyticsData = async function() {
     
     const program = document.getElementById('analytics_program_select')?.value || 'all';
     const year = document.getElementById('analytics_year_select')?.value || '2025';
+    const intake = document.getElementById('analytics_intake_select')?.value || 'all';
     const block = document.getElementById('analytics_block_select')?.value || 'all';
     const metric = document.getElementById('analytics_metric_select')?.value || 'overview';
     
@@ -333,11 +334,22 @@ const client = window.sb || window.supabase;
         // Do not filter profiles by their CURRENT block or intake year.
         // Those fields can change as students progress; historical marks must
         // be selected by the academic year and block recorded on the marks.
-        const { data: students, error: studentError } = await studentQuery;
+        const { data: allStudents, error: studentError } = await studentQuery;
         if (studentError) throw studentError;
-        console.log(`👥 Found ${students?.length || 0} student profiles for the selected program`);
+        // Intake is separate from academic year. Current block is never used to
+        // decide which historical marks belong to a learner.
+        const students = (allStudents || []).filter(student => {
+            if (intake === 'all') return true;
+            const month = String(student.intake_month || '').trim().toLowerCase();
+            const intakeYear = String(student.intake_year || student.admission_year || '').trim();
+            const [wantedYear, wantedMonthCode] = intake.split('-');
+            const wantedMonth = wantedMonthCode === '03' ? 'march' : wantedMonthCode;
+            return intakeYear === wantedYear &&
+                (month === wantedMonth || month === wantedMonthCode || month.startsWith(wantedMonth));
+        });
+        console.log(`👥 Found ${students.length} student profiles for programme/intake filters`);
 
-        // 2. GET MARKS using the historical academic year/block on each mark.
+        // 2. GET MARKS by recorded academic year and block.
         // Do not require a match against the student's current profile first:
         // doing so hides valid marks when a student's profile block/intake changes.
         let marksQuery = client
@@ -351,10 +363,16 @@ const client = window.sb || window.supabase;
 
         const { data: marks, error: marksError } = await marksQuery;
         if (marksError) throw marksError;
-        console.log(`📊 Found ${marks?.length || 0} marks records for academic year ${year}, block ${block}`);
+        const cohortIdentifiers = new Set((students || []).flatMap(student =>
+            [student.admission_number, student.student_id, student.student_uuid, student.id]
+                .filter(Boolean).map(String)
+        ));
+        console.log(`📊 Found ${marks?.length || 0} marks records before cohort matching for academic year ${year}, block ${block}`);
 
         // 3. PROCESS DATA
-        let filteredMarks = marks || [];
+        let filteredMarks = (marks || []).filter(mark => intake === 'all' ||
+            [mark.admission_number, mark.student_id].filter(Boolean).some(id => cohortIdentifiers.has(String(id)))
+        );
         const markIdentifiers = new Set(filteredMarks.flatMap(m => [m.admission_number, m.student_id]).filter(Boolean).map(String));
         const filteredStudents = (students || []).filter(s =>
             [s.admission_number, s.student_id].filter(Boolean).some(id => markIdentifiers.has(String(id)))
@@ -449,7 +467,10 @@ const client = window.sb || window.supabase;
         if (program === 'TVET') progressionQuery = progressionQuery.neq('program', 'KRCHN');
         const { data: progressionMarks, error: progressionError } = await progressionQuery;
         if (progressionError) throw progressionError;
-        window.renderProgressionTable(students || [], progressionMarks || []);
+        const progressionRows = (progressionMarks || []).filter(mark => intake === 'all' ||
+            [mark.admission_number, mark.student_id].filter(Boolean).some(id => cohortIdentifiers.has(String(id)))
+        );
+        window.renderProgressionTable(students || [], progressionRows);
         
         // ============================================
         // 11. STORE DATA FOR CONSOLIDATED MARKSHEET
