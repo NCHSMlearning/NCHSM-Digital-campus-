@@ -2705,15 +2705,24 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         const captureStyle = printWindow.document.createElement('style');
                         captureStyle.id = 'transcript-pdf-capture-normalization';
                         captureStyle.textContent = `
-                            html, body { width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
-                            .container { width: 794px !important; min-width: 794px !important; max-width: 794px !important; margin: 0 auto !important; box-sizing: border-box !important; }
+                            /* A4 content area: 210mm page minus 5mm margins on both sides.
+                               718 CSS px is approximately 190mm at 96dpi. */
+                            html, body { width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+                            body { font-size: 10px !important; }
+                            .container { display: block !important; width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 4mm !important; box-sizing: border-box !important; }
                             .transcript-preview-toolbar { display: none !important; }
+                            .header-top img { max-width: 58px !important; max-height: 48px !important; }
+                            .header .school { font-size: 17px !important; }
+                            .header .subtitle { font-size: 14px !important; letter-spacing: 1px !important; }
+                            .student-info { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+                            table.semester-results-table { width: 100% !important; table-layout: fixed !important; }
+                            .chart-container { width: 100% !important; max-width: 100% !important; }
                         `;
                         printWindow.document.head.appendChild(captureStyle);
                         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
                         const options = {
-                            // html2pdf versions in the portal do not consistently accept
-                            // margin arrays. A scalar margin is supported across versions.
+                            // Use a supported scalar margin and a capture width that fits
+                            // inside the A4 printable area, independent of the device viewport.
                             margin: 5,
                             filename: fileBase + '.pdf',
                             image: { type: 'jpeg', quality: 0.98 },
@@ -2722,8 +2731,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 useCORS: true,
                                 allowTaint: false,
                                 backgroundColor: '#ffffff',
-                                windowWidth: 794,
-                                width: 794,
+                                windowWidth: 718,
+                                width: 718,
                                 scrollX: 0,
                                 scrollY: 0,
                                 logging: false
