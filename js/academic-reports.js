@@ -117,11 +117,25 @@
     // ============================================================
     let unitCodeCache = {};
 
+    // Prevent the academic UI from leaving an infinite spinner when Supabase/network
+    // requests stall on mobile. A timeout always returns control to the renderer.
+    function withAcademicTimeout(promise, timeoutMs = 12000, label = 'Academic request') {
+        let timer;
+        return Promise.race([
+            Promise.resolve(promise),
+            new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error(label + ' timed out. Check your connection and refresh.')), timeoutMs);
+            })
+        ]).finally(() => clearTimeout(timer));
+    }
+
     async function fetchUnitCodes() {
         try {
-            const { data, error } = await window.db.supabase
-                .from('units_catalog')
-                .select('unit_name, unit_code');
+            const { data, error } = await withAcademicTimeout(
+                window.db.supabase.from('units_catalog').select('unit_name, unit_code'),
+                10000,
+                'Unit catalogue request'
+            );
             
             if (error) throw error;
             
@@ -215,11 +229,14 @@
         if (retakeDataLoaded) return studentRetakeMap;
         
         try {
-            const { data, error } = await window.db.supabase
-                .from('student_retakes')
-                .select('*')
-                .eq('admission_number', admissionNumber)
-                .order('attempt_number', { ascending: true });
+            const { data, error } = await withAcademicTimeout(
+                window.db.supabase.from('student_retakes')
+                    .select('*')
+                    .eq('admission_number', admissionNumber)
+                    .order('attempt_number', { ascending: true }),
+                10000,
+                'Retake records request'
+            );
             
             if (error) throw error;
             
@@ -569,21 +586,29 @@
                 // Match the published marks by admission number first. Some older profiles
                 // identify their marks using the UUID stored in student_marks.student_id.
                 if (admissionNumber) {
-                    result = await supabase.from('student_marks')
-                        .select('*')
-                        .eq('admission_number', admissionNumber)
-                        .eq('published', true)
-                        .order('published_at', { ascending: false });
+                    result = await withAcademicTimeout(
+                        supabase.from('student_marks')
+                            .select('*')
+                            .eq('admission_number', admissionNumber)
+                            .eq('published', true)
+                            .order('published_at', { ascending: false }),
+                        15000,
+                        'Published marks request'
+                    );
                     if (result.error) throw result.error;
                 }
 
                 const authUserId = user.user_id || user.id || user.student_uuid;
                 if ((!result || !(result.data || []).length) && authUserId) {
-                    const byStudentId = await supabase.from('student_marks')
-                        .select('*')
-                        .eq('student_id', authUserId)
-                        .eq('published', true)
-                        .order('published_at', { ascending: false });
+                    const byStudentId = await withAcademicTimeout(
+                        supabase.from('student_marks')
+                            .select('*')
+                            .eq('student_id', authUserId)
+                            .eq('published', true)
+                            .order('published_at', { ascending: false }),
+                        15000,
+                        'Published marks fallback request'
+                    );
                     if (byStudentId.error) throw byStudentId.error;
                     if ((byStudentId.data || []).length) result = byStudentId;
                 }
@@ -690,7 +715,13 @@
             
         } catch (error) {
             console.error('Error loading my marks:', error);
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
+            const countEl = document.getElementById('my_marks_count');
+            if (countEl) countEl.textContent = 'Results unavailable';
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px 20px;color:#b91c1c;">
+                <i class="fas fa-triangle-exclamation" style="font-size:30px;display:block;margin-bottom:10px;"></i>
+                <strong>Unable to load academic results</strong>
+                <p style="margin:8px 0 0;font-size:12px;">${escapeHtml(error && error.message ? error.message : 'Please refresh and try again.')}</p>
+            </td></tr>`;
         }
     }
 
