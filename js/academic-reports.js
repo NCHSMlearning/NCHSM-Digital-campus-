@@ -2760,6 +2760,11 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 rows: previewRows.length,
                                 qrReady: Boolean(qr && qr.dataset.ready === 'true')
                             });
+                            // The browser has accepted the download. Close the preview overlay
+                            // so the user returns to the Academic Transcript page underneath.
+                            if (typeof printWindow.close === 'function') {
+                                printWindow.close();
+                            }
                         } catch (error) {
                             const message = String(error && (error.message || error.name) || error || 'Unknown PDF generation error');
                             console.error('[Transcript PDF] html2pdf pipeline failed; attempting direct canvas fallback', {
@@ -2849,6 +2854,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                     canvasWidth: fallbackCanvas.width,
                                     canvasHeight: fallbackCanvas.height
                                 });
+                                // Return to the Academic Transcript page after the PDF is saved.
+                                if (typeof printWindow.close === 'function') {
+                                    printWindow.close();
+                                }
                             } catch (fallbackError) {
                                 console.error('[Transcript PDF] Direct canvas fallback failed', fallbackError);
                                 alert('The transcript PDF could not be generated. ' +
