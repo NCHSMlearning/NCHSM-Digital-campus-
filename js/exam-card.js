@@ -632,11 +632,14 @@
                     
                     ${!examOver && isEligible ? `
                         <div class="action-buttons">
-                            <button class="preview-btn" id="previewExamCardBtn" aria-label="Preview exam card before downloading">
-                                👁️ Preview &amp; Download PDF
+                            <button class="download-btn" id="downloadExamCardBtn" aria-label="Download PDF">
+                                📥 Download PDF
                             </button>
                             <button class="print-btn" id="printExamCardBtn" aria-label="Print Card">
                                 🖨️ Print Card
+                            </button>
+                            <button class="preview-btn" id="previewExamCardBtn" aria-label="Preview A4">
+                                👁️ A4 Preview
                             </button>
                         </div>
                     ` : ''}
@@ -780,8 +783,9 @@
                     </div>
                     
                     <div class="action-buttons">
-                        <button class="preview-btn" onclick="window.examCardModule?.previewA4()" aria-label="Preview exam card before downloading">👁️ Preview &amp; Download PDF</button>
+                        <button class="download-btn" onclick="window.examCardModule?.downloadExamCardDirect()">📥 Download PDF</button>
                         <button class="print-btn" onclick="window.examCardModule?.printExamCard()">🖨️ Print Card</button>
+                        <button class="preview-btn" onclick="window.examCardModule?.previewA4()">👁️ A4 Preview</button>
                     </div>
                 </div>
             `;
@@ -1711,32 +1715,9 @@
                     overflow: auto;
                     box-shadow: 0 20px 60px rgba(0,0,0,0.5);
                 }
-                .preview-modal .preview-paper {
-                    width: min(794px, 100%);
-                    min-height: 1123px;
-                    box-sizing: border-box;
+                .preview-modal .exam-card-compact {
+                    max-width: 794px;
                     margin: 0 auto;
-                    padding: 38px;
-                    background: #fff;
-                    box-shadow: 0 2px 12px rgba(15,23,42,0.14);
-                    overflow: visible;
-                }
-                .preview-modal .preview-paper .exam-card-wrapper {
-                    width: 100%;
-                    max-width: none;
-                    margin: 0;
-                }
-                .preview-modal .preview-paper .exam-card-compact {
-                    width: 100%;
-                    max-width: none;
-                    margin: 0 auto;
-                }
-                @media (max-width: 600px) {
-                    .preview-modal .preview-paper {
-                        width: 100%;
-                        min-height: 0;
-                        padding: 12px;
-                    }
                 }
                 .preview-close {
                     position: sticky;
@@ -1927,7 +1908,7 @@
                             This is how your exam card will look when printed on A4 paper
                         </p>
                     </div>
-                    <div class="preview-paper" aria-label="A4 paper preview">
+                    <div style="border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; background: #f8fafc;">
                         ${cloneCard.outerHTML}
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center; flex-wrap: wrap;">
