@@ -2269,11 +2269,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         </div>
         
         <div class="no-print">
-            <button class="btn-print" onclick="window.print()">🖨️ Print Provisional Academic Transcript</button>
+            <button class="btn-print" onclick="window.printTranscriptWhenReady()">🖨️ Print Provisional Academic Transcript</button>
             <button class="btn-close" onclick="window.close()">Close</button>
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
     <script>
         (async function initializeTranscriptQr() {
             const qrImage = document.getElementById('transcriptVerificationQr');
@@ -2372,6 +2373,28 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 console.error('Transcript QR generation failed:', error);
             }
         })();
+
+        window.printTranscriptWhenReady = async function () {
+            const qr = document.getElementById('transcriptVerificationQr');
+            const deadline = Date.now() + 8000;
+            while (qr && qr.dataset.ready !== 'true' && !qr.dataset.error && Date.now() < deadline) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            if (qr && qr.dataset.ready !== 'true') {
+                console.error('Printing transcript without a ready QR code:', qr.dataset.error || 'QR generation timed out');
+            }
+            const images = Array.from(document.images);
+            await Promise.all(images.map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(resolve => {
+                    img.addEventListener('load', resolve, { once: true });
+                    img.addEventListener('error', resolve, { once: true });
+                    setTimeout(resolve, 2000);
+                });
+            }));
+            if (document.fonts && document.fonts.ready) await document.fonts.ready;
+            window.print();
+        };
 
             const ctx = document.getElementById('reportCardLineChart');
             if (ctx) {
