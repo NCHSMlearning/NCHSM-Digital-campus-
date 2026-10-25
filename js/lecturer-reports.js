@@ -434,6 +434,11 @@
             throw new Error('Your lecturer/staff ID is not ready. Reopen Reports after the lecturer portal finishes loading.');
         }
 
+        // Reuse the exact canonical assignment ID already resolved by Sessions
+        // when that module has completed initialization.
+        const sessionsId = String(window.LecturerSessions?.lecturerAssignmentId || '').trim();
+        if (sessionsId) lecturerId = sessionsId;
+
         const key = `assignments:${lecturerId}`;
         // Never permanently cache an empty assignment result; identity can still
         // be resolving or may have used the auth UUID rather than staff-record ID.
@@ -462,8 +467,13 @@
         // assignments, then retry by staff primary key and the Sessions module's
         // lecturer_name matching strategy. This handles older assignment rows.
         const email = String(identity?.email || currentLecturerEmailSync() || '').trim();
+        const liveProfile = (() => {
+            try { return window.lecturerDB?.getCurrentUserProfile?.() || {}; }
+            catch (_) { return {}; }
+        })();
         let fullName = String(identity?.name || window.me_currentLecturer?.staff?.full_name ||
-            window.me_currentLecturer?.profile?.full_name || '').trim();
+            window.me_currentLecturer?.profile?.full_name || liveProfile.full_name ||
+            liveProfile.name || liveProfile.display_name || '').trim();
         let canonicalId = '';
 
         if (!rows.length && email) {
@@ -493,10 +503,13 @@
 
         if (!rows.length && fullName) {
             try {
+                // Match the Sessions module's proven lookup strategy: resolve
+                // assignments by the lecturer's name, then use the assignment FK.
+                const escapedName = fullName.replace(/[%_]/g, ' ').trim();
                 const { data: namedRows, error: nameError } = await supabase
                     .from('lecturer_subject_assignments')
                     .select('subject_name, subject_code, block, program, academic_year, lecturer_id, lecturer_name')
-                    .ilike('lecturer_name', `%${fullName.replace(/[%_]/g, ' ')}%`);
+                    .ilike('lecturer_name', `%${escapedName}%`);
                 if (nameError) throw nameError;
                 rows = (namedRows || []).filter(a => a.subject_name || a.subject_code);
                 if (rows.length) {
@@ -506,7 +519,9 @@
                         window.CORRECT_LECTURER_ID = lecturerId;
                         _identityCache.staffId = lecturerId;
                     }
-                    console.info('[Reports] recovered assigned units by lecturer name');
+                    console.info('[Reports] recovered assigned units using Sessions-compatible lecturer-name lookup', {
+                        name: fullName, count: rows.length, lecturerId
+                    });
                 }
             } catch (nameFallbackError) {
                 console.warn('[Reports] lecturer-name fallback failed:', nameFallbackError?.message || nameFallbackError);
