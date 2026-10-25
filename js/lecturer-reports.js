@@ -395,40 +395,48 @@
        LOAD ASSIGNMENTS
     ============================================================ */
 
-    async function loadAssignedUnits() {
+    async function loadAssignedUnits(options = {}) {
         const supabase = db();
-        if (!supabase) return [];
+        if (!supabase) {
+            throw new Error('Reports could not connect to the database. Check the lecturer database session.');
+        }
 
-        const identity = await resolveLecturerIdentity();
-        const lecturerId = identity.staffId || currentLecturerIdSync();
+        // The main portal can dispatch its ready event before the lecturer identity
+        // has finished resolving. Retry briefly instead of permanently rendering empty selects.
+        let identity = null;
+        let lecturerId = '';
+        const attempts = options.retryIdentity === false ? 1 : 6;
+        for (let attempt = 0; attempt < attempts; attempt++) {
+            identity = await resolveLecturerIdentity();
+            lecturerId = String(identity?.staffId || currentLecturerIdSync() || '').trim();
+            if (lecturerId) break;
+            if (attempt < attempts - 1) {
+                _identityCache.resolved = false;
+                _identityCache.promise = null;
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+        }
 
         if (!lecturerId) {
-            console.warn('LecturerReports: lecturer ID unavailable');
-            return [];
+            throw new Error('Your lecturer/staff ID is not ready. Reopen Reports after the lecturer portal finishes loading.');
         }
 
         const key = `assignments:${lecturerId}`;
-        if (LecturerReports._cache[key]) {
-            return LecturerReports._cache[key];
-        }
+        if (LecturerReports._cache[key]) return LecturerReports._cache[key];
 
         const { data, error } = await supabase
             .from('lecturer_subject_assignments')
             .select('subject_name, subject_code, block, program, academic_year')
-            .eq('lecturer_id', String(lecturerId));
+            .eq('lecturer_id', lecturerId);
 
         if (error) {
-            console.error('LecturerReports: assignment error', error);
-            return [];
+            console.error('LecturerReports: assignment query failed', error);
+            throw new Error('Could not load assigned units: ' + (error.message || 'database query failed'));
         }
 
-        const rows = data || [];
+        const rows = (data || []).filter(a => a.subject_name || a.subject_code);
         LecturerReports._cache[key] = rows;
-
-        console.log(
-            `📚 [Reports] loaded ${rows.length} assigned unit(s) for lecturer ${lecturerId}`
-        );
-
+        console.log(`📚 [Reports] loaded ${rows.length} assigned unit(s) for lecturer ${lecturerId}`);
         return rows;
     }
 
@@ -814,7 +822,26 @@
     ============================================================ */
 
     async function populateReportSelectors() {
-        const assignments = await loadAssignedUnits();
+        let assignments;
+        try {
+            assignments = await loadAssignedUnits();
+        } catch (error) {
+            console.error('[Reports] unit selector population failed:', error);
+            const unitSelect = document.getElementById('reportUnit');
+            if (unitSelect) {
+                unitSelect.innerHTML = '<option value="">Assigned units unavailable — use Refresh</option>';
+                unitSelect.disabled = false;
+                unitSelect.title = error.message || 'Could not load assigned units';
+            }
+            const submissionSelect = document.getElementById('submissionReportUnit');
+            if (submissionSelect) {
+                submissionSelect.innerHTML = '<option value="">Assigned units unavailable — use Refresh</option>';
+                submissionSelect.disabled = false;
+                submissionSelect.title = error.message || 'Could not load assigned units';
+            }
+            showReportNotice('Could not load assigned units: ' + (error.message || error), 'error');
+            throw error;
+        }
 
         const unitSelect = document.getElementById('reportUnit');
         const unitFilter = document.getElementById('reportUnitFilter');
