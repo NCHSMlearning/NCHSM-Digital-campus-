@@ -2287,7 +2287,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 return;
             }
             let registryToken = '';
-            let registryQrSvg = '';
             try {
                 const { data: sessionData, error: sessionError } = await portalClient.auth.getSession();
                 const accessToken = sessionData && sessionData.session && sessionData.session.access_token;
@@ -2306,14 +2305,16 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     throw new Error(registryResult.error || 'The transcript could not be registered for verification.');
                 }
                 registryToken = registryResult.token;
-                registryQrSvg = registryResult.qr_svg || '';
-                if (!registryQrSvg) throw new Error('The verification registry did not return a QR image.');
             } catch (registryError) {
                 qrImage.dataset.error = String(registryError && registryError.message || registryError);
                 qrImage.alt = 'Transcript verification registry unavailable';
                 console.error('Transcript QR registry issue failed:', registryError);
                 return;
             }
+            const verificationUrl = new URL('/graduation.html', portalOrigin);
+            verificationUrl.searchParams.set('token', registryToken);
+            verificationUrl.searchParams.set('type', 'provisional-transcript');
+            const payload = verificationUrl.href;
             qrImage.style.display = 'block';
             qrImage.style.visibility = 'visible';
             qrImage.width = 240;
@@ -2322,9 +2323,33 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             qrImage.dataset.ready = '';
             qrImage.dataset.error = '';
             try {
+                let dataUrl = '';
+                if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
+                    dataUrl = await window.QRCode.toDataURL(payload, { width: 240, margin: 2, errorCorrectionLevel: 'M' });
+                } else {
+                    for (const src of ['https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js', 'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js']) {
+                        try {
+                            await new Promise((resolve, reject) => {
+                                const script = document.createElement('script');
+                                const timer = setTimeout(() => reject(new Error('QR library load timed out')), 6000);
+                                script.onload = () => { clearTimeout(timer); resolve(); };
+                                script.onerror = () => { clearTimeout(timer); reject(new Error('QR library CDN failed')); };
+                                script.src = src;
+                                script.async = true;
+                                document.head.appendChild(script);
+                            });
+                            if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
+                                dataUrl = await window.QRCode.toDataURL(payload, { width: 240, margin: 2, errorCorrectionLevel: 'M' });
+                                break;
+                            }
+                        } catch (loadError) {
+                            console.warn('Transcript QR library source failed:', loadError);
+                        }
+                    }
+                }
+                if (!dataUrl) throw new Error('QR generator did not return an image. Check that a QR library CDN is reachable.');
                 await new Promise((resolve, reject) => {
                     let settled = false;
-                    const timer = setTimeout(() => finish(reject, new Error('QR image loading timed out')), 8000);
                     const finish = (fn, value) => {
                         if (settled) return;
                         settled = true;
@@ -2333,11 +2358,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         qrImage.onerror = null;
                         fn(value);
                     };
+                    const timer = setTimeout(() => finish(reject, new Error('QR image loading timed out')), 8000);
                     qrImage.onload = () => qrImage.naturalWidth > 0
                         ? finish(resolve)
                         : finish(reject, new Error('Generated QR image has no pixels'));
-                    qrImage.onerror = () => finish(reject, new Error('Generated QR SVG could not be loaded'));
-                    qrImage.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(registryQrSvg);
+                    qrImage.onerror = () => finish(reject, new Error('Generated QR image could not be loaded'));
+                    qrImage.src = dataUrl;
                 });
                 qrImage.dataset.ready = 'true';
                 qrImage.alt = 'Scan to verify this transcript';
@@ -2358,7 +2384,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             if (qr && qr.dataset.ready !== 'true') {
                 const reason = qr.dataset.error || 'QR generation timed out';
                 console.error('Transcript print cancelled: verification QR is not ready.', reason);
-                alert('The transcript verification QR code could not be generated. Check your connection and try again; the transcript was not sent to print.');
+                alert('The transcript verification QR code could not be generated.\n\nReason: ' + reason + '\n\nCheck your connection, reload the portal, and try again. No PDF was created.');
                 return;
             }
             const images = Array.from(document.images);
