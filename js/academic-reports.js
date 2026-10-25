@@ -2441,6 +2441,36 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 </html>
                 `);
                 printWindow.document.close();
+                // Preview first: show the transcript on an A4-like page and let the user choose
+                // Download PDF or Print only after reviewing it. Keep the PDF generator unchanged.
+                if (outputMode === 'preview') {
+                    const previewStyle = printWindow.document.createElement('style');
+                    previewStyle.textContent = `
+                        html, body { min-height: 100%; background: #eef2f7 !important; }
+                        body { margin: 0 !important; padding: 74px 16px 24px !important; }
+                        .container { width: 794px !important; max-width: 100% !important; min-height: 1123px !important; height: auto !important; margin: 0 auto !important; padding: 28px !important; background: #fff !important; box-shadow: 0 8px 30px rgba(15,23,42,.18) !important; border-radius: 2px !important; align-content: start !important; }
+                        .transcript-preview-toolbar { position: fixed; z-index: 99999; top: 0; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: #0A3D62; box-shadow: 0 2px 10px #0002; }
+                        .transcript-preview-toolbar button { border: 0; border-radius: 7px; padding: 10px 16px; font: 600 14px Arial,sans-serif; cursor: pointer; }
+                        .transcript-preview-toolbar .download { background: #10b981; color: #fff; }
+                        .transcript-preview-toolbar .print { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+                        .transcript-preview-toolbar .close { background: #e2e8f0; color: #1e293b; }
+                        @media (max-width: 600px) { body { padding: 74px 6px 12px !important; } .container { width: 100% !important; min-height: 0 !important; padding: 10px !important; } .transcript-preview-toolbar button { padding: 9px 10px; font-size: 12px; } }
+                        @media print { html, body { background: #fff !important; padding: 0 !important; } .transcript-preview-toolbar { display: none !important; } .container { width: 100% !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; box-shadow: none !important; } }
+                    `;
+                    printWindow.document.head.appendChild(previewStyle);
+                    const toolbar = printWindow.document.createElement('div');
+                    toolbar.className = 'transcript-preview-toolbar no-print';
+                    toolbar.innerHTML = '<button type="button" class="download">⬇ Download PDF</button><button type="button" class="print">🖨 Print</button><button type="button" class="close">Close Preview</button>';
+                    printWindow.document.body.prepend(toolbar);
+                    toolbar.querySelector('.download').addEventListener('click', () => {
+                        if (window.downloadProvisionalTranscriptPDF) window.downloadProvisionalTranscriptPDF();
+                        else alert('Please return to the Academic Reports tab and choose Preview & Download PDF again.');
+                    });
+                    toolbar.querySelector('.print').addEventListener('click', () => printWindow.printTranscriptWhenReady());
+                    toolbar.querySelector('.close').addEventListener('click', () => printWindow.close());
+                    printWindow.focus();
+                    return;
+                }
                 // Download must save a real A4 portrait PDF; only the separate Print action opens print preview.
                 setTimeout(async () => {
                     const target = printWindow.document.querySelector('.container');
@@ -2892,6 +2922,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     window.loadTranscript = loadTranscript;
     window.loadCourseProgress = loadCourseProgress;
     window.downloadTranscriptPDF = downloadTranscriptPDF;
+    window.downloadProvisionalTranscriptPDF = function () { downloadReportCard('download'); };
     window.downloadReportCard = downloadReportCard;
     window.getUnitCode = getUnitCode;
     window.getGradingStatus = getGradingStatus;
