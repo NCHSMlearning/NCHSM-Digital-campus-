@@ -18,6 +18,10 @@ const LecturerAttendance = {
     mapInstance: null,
     currentLocation: null,
     isProcessing: false,
+    _initializing: false,
+    _initialized: false,
+    _refreshInterval: null,
+    _refreshInProgress: false,
     isTVET: false,
     currentProgram: 'KRCHN',
     stats: { total: 0, present: 0, absent: 0, pending: 0, rate: 0 },
@@ -64,6 +68,11 @@ const LecturerAttendance = {
     // INIT
     // ============================================================
     async init() {
+        if (this._initialized || this._initializing) {
+            console.debug('[Attendance] Duplicate init skipped.');
+            return;
+        }
+        this._initializing = true;
         console.log('📋 Initializing Lecturer Attendance Module...');
         this.currentProgram = this.getProgramType();
         this.isTVET = this.isTVETProgram();
@@ -79,15 +88,34 @@ const LecturerAttendance = {
             this.populateFilters();
             this.updateProgramBadge();
 
+            this._initialized = true;
             console.log('✅ Lecturer Attendance Module initialized successfully');
 
-            setInterval(() => {
-                this.loadAllAttendance().then(() => this.applyFilters());
-            }, 60000);
+            // One refresh timer only. Do not run attendance queries while another
+            // portal section is active, the page is backgrounded, or a refresh is in flight.
+            if (!this._refreshInterval) {
+                this._refreshInterval = setInterval(async () => {
+                    const section = document.getElementById('attendance-content');
+                    const active = !!section && section.classList.contains('active') &&
+                        getComputedStyle(section).display !== 'none';
+                    if (!active || document.hidden || this._refreshInProgress || this.isProcessing) return;
+                    this._refreshInProgress = true;
+                    try {
+                        await this.loadAllAttendance();
+                        this.applyFilters();
+                    } catch (refreshError) {
+                        console.warn('[Attendance] Background refresh skipped:', refreshError);
+                    } finally {
+                        this._refreshInProgress = false;
+                    }
+                }, 60000);
+            }
 
         } catch (error) {
             console.error('❌ Failed to initialize attendance module:', error);
             this.showError('Failed to initialize: ' + error.message);
+        } finally {
+            this._initializing = false;
         }
     },
 
