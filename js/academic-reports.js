@@ -2512,7 +2512,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             if (qr && qr.dataset.ready !== 'true') {
                 const reason = qr.dataset.error || 'QR generation timed out';
                 console.error('Transcript print cancelled: verification QR is not ready.', reason);
-                alert('The transcript verification QR code could not be generated.\n\nReason: ' + reason + '\n\nCheck your connection, reload the portal, and try again. No PDF was created.');
+                alert('The transcript verification QR code could not be generated.\\n\\nReason: ' + reason + '\\n\\nCheck your connection, reload the portal, and try again. No PDF was created.');
                 return;
             }
             const images = Array.from(document.images);
@@ -2647,7 +2647,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
                         if (qr && qr.dataset.ready !== 'true') {
-                            alert('Transcript verification QR failed: ' + (qr?.dataset?.error || 'The verification QR did not become ready in time.') + '\n\nOpen Developer Tools (F12) > Console for diagnostic details. No PDF was created.');
+                            alert('Transcript verification QR failed: ' + (qr?.dataset?.error || 'The verification QR did not become ready in time.') + '\\n\\nOpen Developer Tools (F12) > Console for diagnostic details. No PDF was created.');
                             return;
                         }
                         const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
