@@ -1009,75 +1009,111 @@ window.renderProgressionTable = function(students, marks) {
 // RENDER ANALYTICS SUBJECT TABLE
 // ============================================================
 
-window.renderAnalyticsSubjectTable = function(marks, students, program, block) {
+window.renderAnalyticsSubjectTable = async function(marks, students, program, block) {
     const tbody = document.getElementById('analytics_subject_table_body');
     if (!tbody) return;
-    
-    const subjectData = {};
-    marks?.forEach(m => {
-        const subject = m.subject_name || 'Unknown';
-        const score = m.final_score || 0;
-        if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0, pass: 0, students: new Set(), aCount: 0, bCount: 0, cCount: 0, failCount: 0 };
-        if (score > 0) {
-            subjectData[subject].total += score;
-            subjectData[subject].count++;
-            subjectData[subject].students.add(m.admission_number);
-            if (score >= 60) subjectData[subject].pass++;
-            if (score >= 75) subjectData[subject].aCount++;
-            else if (score >= 65) subjectData[subject].bCount++;
-            else if (score >= 60) subjectData[subject].cCount++;
-            else subjectData[subject].failCount++;
+
+    // Resolve display codes/names from the authoritative unit catalog.
+    // Keep historical performance grouped by the block stored on the marks.
+    const client = window.sb;
+    let catalog = [];
+    if (client) {
+        const { data, error } = await client
+            .from('units_catalog')
+            .select('unit_code, unit_name, program, block, status')
+            .eq('status', 'active');
+        if (error) console.warn('Could not load unit catalog for analytics:', error.message);
+        else catalog = data || [];
+    }
+
+    const normalize = value => String(value || '')
+        .normalize('NFKC')
+        .trim()
+        .toLowerCase()
+        .replace(/\\s+/g, ' ')
+        .replace(/[‐‑‒–—]/g, '-');
+
+    const subjects = new Map();
+    (marks || []).forEach(m => {
+        const subjectName = String(m.subject_name || '').trim();
+        const key = [normalize(subjectName), normalize(m.program)].join('|');
+        if (!subjects.has(key)) {
+            subjects.set(key, {
+                rawName: subjectName || 'Unknown unit',
+                program: m.program || '',
+                block: m.block || '',
+                total: 0, scoredCount: 0, passCount: 0, learners: new Set(),
+                aCount: 0, bCount: 0, cCount: 0, failCount: 0
+            });
         }
+        const item = subjects.get(key);
+        // Marks may contain multiple assessment rows per learner; count each
+        // learner once for the learner figure, while averages use scored rows.
+        const learnerKey = m.admission_number || m.student_id || m.student_name;
+        if (learnerKey) item.learners.add(String(learnerKey));
+        const score = Number(m.final_score);
+        if (!Number.isFinite(score) || score <= 0) return;
+        item.total += score;
+        item.scoredCount++;
+        if (score >= 60) item.passCount++;
+        if (score >= 75) item.aCount++;
+        else if (score >= 65) item.bCount++;
+        else if (score >= 60) item.cCount++;
+        else item.failCount++;
     });
-    
-    const sorted = Object.keys(subjectData)
-        .map(s => {
-            const data = subjectData[s];
-            const avg = data.count > 0 ? Math.round((data.total / data.count) * 10) / 10 : 0;
-            const gradeInfo = window.getGradeInfo(avg);
-            return {
-                name: s,
-                avg: avg,
-                count: data.count,
-                passCount: data.pass,
-                passRate: data.count > 0 ? Math.round((data.pass / data.count) * 100) : 0,
-                uniqueStudents: data.students.size,
-                grade: gradeInfo.grade,
-                points: gradeInfo.points,
-                color: gradeInfo.color,
-                aCount: data.aCount, bCount: data.bCount, cCount: data.cCount, failCount: data.failCount
-            };
-        })
-        .sort((a, b) => b.avg - a.avg);
-    
-    if (sorted.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;color:#94a3b8;">No unit data available</td></tr>';
+
+    const rows = [...subjects.values()].map(item => {
+        // Match on normalized name and programme first; prefer a catalog row
+        // whose block matches this historical mark group to avoid wrong codes
+        // when a similar unit name exists in another block.
+        const matches = catalog.filter(unit =>
+            normalize(unit.unit_name) === normalize(item.rawName) &&
+            (!item.program || !unit.program || normalize(unit.program) === normalize(item.program))
+        );
+        matches.sort((a, b) =>
+            Number(normalize(b.block) === normalize(item.block)) -
+            Number(normalize(a.block) === normalize(item.block))
+        );
+        const unit = matches[0];
+        const avg = item.scoredCount ? Math.round(item.total / item.scoredCount * 10) / 10 : 0;
+        const gradeInfo = window.getGradeInfo(avg);
+        return {
+            code: unit?.unit_code || '—',
+            name: unit?.unit_name || item.rawName,
+            avg,
+            learners: item.learners.size,
+            scoredCount: item.scoredCount,
+            passRate: item.scoredCount ? Math.round(item.passCount / item.scoredCount * 100) : 0,
+            grade: gradeInfo.grade,
+            points: gradeInfo.points,
+            color: gradeInfo.color,
+            status: avg >= 60 ? '✅ Passing' : avg > 0 ? '⚠️ At Risk' : '⏳ No Scores',
+            statusColor: avg >= 60 ? '#10b981' : avg > 0 ? '#ef4444' : '#94a3b8',
+            difficulty: avg >= 75 ? '🟢 Easy' : avg >= 65 ? '🟡 Medium' : avg >= 60 ? '🟠 Moderate' : avg > 0 ? '🔴 Hard' : '—',
+            block: item.block
+        };
+    }).sort((a, b) => b.avg - a.avg || a.name.localeCompare(b.name));
+
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;color:#94a3b8;">No unit data available for the selected filters</td></tr>';
         return;
     }
-    
-    let html = '';
-    sorted.forEach(s => {
-        const status = s.avg >= 60 ? '✅ Passing' : (s.avg > 0 ? '⚠️ At Risk' : '⏳ No Data');
-        const statusColor = s.avg >= 60 ? '#10b981' : (s.avg > 0 ? '#ef4444' : '#94a3b8');
-        const difficulty = s.avg >= 75 ? '🟢 Easy' : s.avg >= 65 ? '🟡 Medium' : s.avg >= 60 ? '🟠 Moderate' : '🔴 Hard';
-        
-        html += `
-            <tr style="border-bottom:1px solid #e5e7eb;">
-                <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(s.name)}</td>
-                <td style="padding:10px 12px;text-align:center;">${s.uniqueStudents} / ${s.count}</td>
-                <td style="padding:10px 12px;text-align:center;font-weight:600;">${s.avg}%</td>
-                <td style="padding:10px 12px;text-align:center;font-weight:600;">${s.passRate}%</td>
-                <td style="padding:10px 12px;text-align:center;font-weight:700;color:${s.color};">${s.grade}</td>
-                <td style="padding:10px 12px;text-align:center;font-weight:600;">${s.points}</td>
-                <td style="padding:10px 12px;text-align:center;color:${statusColor};">${status}</td>
-                <td style="padding:10px 12px;text-align:center;">${difficulty}</td>
-            </tr>
-        `;
-    });
-    
-    tbody.innerHTML = html;
+
+    tbody.innerHTML = rows.map(row => `
+        <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:12px;font-weight:600;white-space:nowrap;">${window.escapeHtml(row.code)}</td>
+            <td style="padding:12px;min-width:240px;">${window.escapeHtml(row.name)}</td>
+            <td style="padding:12px;text-align:center;white-space:nowrap;">${row.learners} / ${row.scoredCount}</td>
+            <td style="padding:12px;text-align:center;font-weight:600;">${row.scoredCount ? row.avg + '%' : '—'}</td>
+            <td style="padding:12px;text-align:center;">${row.scoredCount ? row.passRate + '%' : '—'}</td>
+            <td style="padding:12px;text-align:center;font-weight:700;color:${row.color};">${window.escapeHtml(row.grade)}</td>
+            <td style="padding:12px;text-align:center;color:${row.statusColor};white-space:nowrap;">${row.status}</td>
+            <td style="padding:12px;text-align:center;white-space:nowrap;">${row.difficulty}</td>
+        </tr>
+    `).join('');
 };
 
+// ============================================================
 // ============================================================
 // RENDER ANALYTICS STUDENT TABLE
 // ============================================================
