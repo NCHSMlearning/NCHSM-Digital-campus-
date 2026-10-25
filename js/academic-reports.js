@@ -2316,8 +2316,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             const portalOrigin = ${JSON.stringify(window.location.origin)};
             const contextDeadline = Date.now() + 10000;
             let injectedContext = window.__TRANSCRIPT_QR_CONTEXT || null;
-            while (!injectedContext && portalWindow && Date.now() < contextDeadline) {
-                injectedContext = portalWindow.__TRANSCRIPT_QR_CONTEXT || null;
+            while (!injectedContext && Date.now() < contextDeadline) {
+                injectedContext = window.__TRANSCRIPT_QR_CONTEXT
+                    || (portalWindow && portalWindow.__TRANSCRIPT_QR_CONTEXT)
+                    || null;
                 if (!injectedContext) await new Promise(resolve => setTimeout(resolve, 100));
             }
             const portalConfig = (injectedContext && injectedContext.supabaseUrl && injectedContext.anonKey)
