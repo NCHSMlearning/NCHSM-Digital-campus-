@@ -9255,13 +9255,8 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
         try {
             attendance.init();
 
-            // Force a data refresh now that UUID is guaranteed
-            if (typeof attendance.refresh === 'function') {
-                setTimeout(function() {
-                    console.log('🔄 Calling LecturerAttendance.refresh()...');
-                    try { attendance.refresh(); } catch (e) { console.warn(e); }
-                }, 800);
-            }
+            // Attendance.init() already loads the register after resolving the
+            // lecturer UUID. Avoid a second immediate refresh competing with init.
         } catch (err) {
             console.error('❌ LecturerAttendance init failed:', err);
         }
