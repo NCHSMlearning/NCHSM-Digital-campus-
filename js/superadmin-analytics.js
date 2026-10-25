@@ -338,7 +338,7 @@ const client = window.sb || window.supabase;
         console.log(`👥 Found ${students?.length || 0} students`);
         
         // 2. GET MARKS
-        const studentIds = students?.map(s => s.student_id) || [];
+        const studentIds = [...new Set((students || []).flatMap(s => [s.admission_number, s.student_id]).filter(Boolean).map(String))];
         let marksQuery = client
             .from('student_marks')
             .select('*')
@@ -354,11 +354,11 @@ const client = window.sb || window.supabase;
         // 3. PROCESS DATA
         let filteredStudents = students || [];
         const totalStudents = filteredStudents.length;
-        const filteredStudentIds = filteredStudents.map(s => s.student_id);
+        const filteredStudentIds = new Set(filteredStudents.flatMap(s => [s.admission_number, s.student_id]).filter(Boolean).map(String));
         
         let filteredMarks = marks || [];
         if (filteredStudentIds.length > 0) {
-            filteredMarks = marks.filter(m => filteredStudentIds.includes(m.admission_number));
+            filteredMarks = marks.filter(m => filteredStudentIds.has(String(m.admission_number || '')) || filteredStudentIds.has(String(m.student_id || '')));
         }
         
         const totalSubjects = [...new Set(filteredMarks?.map(m => m.subject_name) || [])].length;
