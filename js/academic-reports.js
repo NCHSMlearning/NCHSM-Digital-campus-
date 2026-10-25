@@ -2276,10 +2276,20 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         (async function initializeTranscriptQr() {
             const qrImage = document.getElementById('transcriptVerificationQr');
             if (!qrImage) return;
+            const qrStartedAt = Date.now();
             const portalWindow = window.opener || window;
             const portalOrigin = ${JSON.stringify(window.location.origin)};
             const portalConfig = portalWindow.APP_CONFIG || {};
             const portalClient = portalWindow.supabaseClient;
+            console.info('[Transcript QR] Setup started', {
+                time: new Date().toISOString(),
+                pageOrigin: window.location.origin,
+                openerAvailable: Boolean(window.opener),
+                portalClientAvailable: Boolean(portalClient),
+                authAvailable: Boolean(portalClient && portalClient.auth),
+                supabaseUrlAvailable: Boolean(portalConfig.SUPABASE_URL),
+                anonKeyAvailable: Boolean(portalConfig.SUPABASE_ANON_KEY)
+            });
             if (!portalClient || !portalClient.auth || !portalConfig.SUPABASE_URL || !portalConfig.SUPABASE_ANON_KEY) {
                 qrImage.dataset.error = 'Authenticated portal session or configuration unavailable';
                 qrImage.alt = 'Transcript verification could not be initialized';
@@ -2301,14 +2311,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     body: JSON.stringify({ action: 'issue' })
                 });
                 const registryResult = await registryResponse.json().catch(() => ({}));
+                console.info('[Transcript QR] Registry response', { httpStatus: registryResponse.status, ok: registryResponse.ok, tokenReturned: Boolean(registryResult && registryResult.token), error: registryResult && registryResult.error || null });
                 if (!registryResponse.ok || !registryResult.token) {
-                    throw new Error(registryResult.error || 'The transcript could not be registered for verification.');
+                    throw new Error('Registry request failed (' + registryResponse.status + '): ' + (registryResult.error || 'No verification token returned.'));
                 }
                 registryToken = registryResult.token;
             } catch (registryError) {
                 qrImage.dataset.error = String(registryError && registryError.message || registryError);
                 qrImage.alt = 'Transcript verification registry unavailable';
-                console.error('Transcript QR registry issue failed:', registryError);
+                console.error('[Transcript QR] Registry/session stage failed', { message: String(registryError && registryError.message || registryError), elapsedMs: Date.now() - qrStartedAt }, registryError);
                 return;
             }
             const verificationUrl = new URL('/graduation.html', portalOrigin);
@@ -2371,7 +2382,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             } catch (error) {
                 qrImage.dataset.error = String(error && error.message || error);
                 qrImage.alt = 'QR generation failed';
-                console.error('Transcript QR generation failed:', error);
+                console.error('[Transcript QR] Image-generation stage failed', { message: String(error && error.message || error), elapsedMs: Date.now() - qrStartedAt, qrLibraryAvailable: Boolean(window.QRCode && typeof window.QRCode.toDataURL === 'function') }, error);
             }
         })();
 
@@ -2718,8 +2729,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         }
                         if (qrImage.dataset.ready !== 'true') {
                             const reason = qrImage.dataset.error || 'generation timeout';
-                            console.error('Transcript PDF download cancelled: verification QR is not ready.', reason);
-                            alert('The transcript verification QR code could not be generated. Check the browser connection or reload the page and try again. No PDF was created.');
+                            console.error('[Transcript PDF] QR generation failed; download cancelled', {
+                                reason: reason,
+                                qrReady: qrImage.dataset.ready === 'true',
+                                qrImageError: qrImage.dataset.error || null,
+                                qrAlt: qrImage.alt || null,
+                                qrNaturalWidth: qrImage.naturalWidth,
+                                qrSourcePresent: Boolean(qrImage.src),
+                                popupClosed: printWindow.closed,
+                                timestamp: new Date().toISOString()
+                            });
+                            alert('Transcript verification QR failed: ' + reason + '\n\nOpen Developer Tools (F12) > Console for diagnostic details. No PDF was created.');
                             return;
                         }
                     }
