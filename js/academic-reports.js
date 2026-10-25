@@ -2334,55 +2334,95 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             qrImage.dataset.ready = '';
             qrImage.dataset.error = '';
             try {
-                let dataUrl = '';
+                const candidates = [];
                 if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
-                    dataUrl = await window.QRCode.toDataURL(payload, { width: 240, margin: 2, errorCorrectionLevel: 'M' });
+                    try {
+                        candidates.push({
+                            source: 'browser QR library',
+                            url: await window.QRCode.toDataURL(payload, { width: 240, margin: 2, errorCorrectionLevel: 'M' })
+                        });
+                    } catch (libraryError) {
+                        console.warn('[Transcript QR] Browser QR library failed', libraryError);
+                    }
                 } else {
                     for (const src of ['https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js', 'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js']) {
                         try {
                             await new Promise((resolve, reject) => {
                                 const script = document.createElement('script');
-                                const timer = setTimeout(() => reject(new Error('QR library load timed out')), 6000);
+                                const timer = setTimeout(() => reject(new Error('QR library load timed out: ' + src)), 6000);
                                 script.onload = () => { clearTimeout(timer); resolve(); };
-                                script.onerror = () => { clearTimeout(timer); reject(new Error('QR library CDN failed')); };
+                                script.onerror = () => { clearTimeout(timer); reject(new Error('QR library CDN failed: ' + src)); };
                                 script.src = src;
                                 script.async = true;
                                 document.head.appendChild(script);
                             });
                             if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
-                                dataUrl = await window.QRCode.toDataURL(payload, { width: 240, margin: 2, errorCorrectionLevel: 'M' });
+                                candidates.push({
+                                    source: src,
+                                    url: await window.QRCode.toDataURL(payload, { width: 240, margin: 2, errorCorrectionLevel: 'M' })
+                                });
                                 break;
                             }
                         } catch (loadError) {
-                            console.warn('Transcript QR library source failed:', loadError);
+                            console.warn('[Transcript QR] QR library source failed', loadError);
                         }
                     }
                 }
-                if (!dataUrl) throw new Error('QR generator did not return an image. Check that a QR library CDN is reachable.');
-                await new Promise((resolve, reject) => {
-                    let settled = false;
-                    const finish = (fn, value) => {
-                        if (settled) return;
-                        settled = true;
-                        clearTimeout(timer);
-                        qrImage.onload = null;
-                        qrImage.onerror = null;
-                        fn(value);
-                    };
-                    const timer = setTimeout(() => finish(reject, new Error('QR image loading timed out')), 8000);
-                    qrImage.onload = () => qrImage.naturalWidth > 0
-                        ? finish(resolve)
-                        : finish(reject, new Error('Generated QR image has no pixels'));
-                    qrImage.onerror = () => finish(reject, new Error('Generated QR image could not be loaded'));
-                    qrImage.src = dataUrl;
+
+                // A hosted image fallback avoids depending on a JavaScript QR library/CDN.
+                candidates.push({
+                    source: 'QR image service',
+                    url: 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=2&format=png&data=' + encodeURIComponent(payload)
                 });
+
+                let loadedSource = '';
+                let lastImageError = null;
+                for (const candidate of candidates) {
+                    try {
+                        await new Promise((resolve, reject) => {
+                            let settled = false;
+                            const finish = (fn, value) => {
+                                if (settled) return;
+                                settled = true;
+                                clearTimeout(timer);
+                                qrImage.onload = null;
+                                qrImage.onerror = null;
+                                fn(value);
+                            };
+                            const timer = setTimeout(() => finish(reject, new Error('Image load timed out from ' + candidate.source)), 10000);
+                            qrImage.onload = () => qrImage.naturalWidth > 0
+                                ? finish(resolve)
+                                : finish(reject, new Error('Image loaded without pixels from ' + candidate.source));
+                            qrImage.onerror = () => finish(reject, new Error('Image request failed for ' + candidate.source));
+                            qrImage.src = candidate.url;
+                        });
+                        loadedSource = candidate.source;
+                        break;
+                    } catch (imageError) {
+                        lastImageError = imageError;
+                        console.warn('[Transcript QR] Candidate failed', { source: candidate.source, message: imageError.message });
+                    }
+                }
+                if (!loadedSource) {
+                    throw new Error('All QR image sources failed. ' + (lastImageError && lastImageError.message || 'No QR image was returned.'));
+                }
                 qrImage.dataset.ready = 'true';
+                qrImage.dataset.error = '';
                 qrImage.alt = 'Scan to verify this transcript';
-                console.info('Transcript QR generated with registry token:', registryToken);
+                console.info('[Transcript QR] SUCCESS', {
+                    source: loadedSource,
+                    elapsedMs: Date.now() - qrStartedAt,
+                    imageWidth: qrImage.naturalWidth,
+                    imageHeight: qrImage.naturalHeight
+                });
             } catch (error) {
                 qrImage.dataset.error = String(error && error.message || error);
                 qrImage.alt = 'QR generation failed';
-                console.error('[Transcript QR] Image-generation stage failed', { message: String(error && error.message || error), elapsedMs: Date.now() - qrStartedAt, qrLibraryAvailable: Boolean(window.QRCode && typeof window.QRCode.toDataURL === 'function') }, error);
+                console.error('[Transcript QR] Image-generation stage failed', {
+                    message: String(error && error.message || error),
+                    elapsedMs: Date.now() - qrStartedAt,
+                    qrLibraryAvailable: Boolean(window.QRCode && typeof window.QRCode.toDataURL === 'function')
+                }, error);
             }
         })();
 
@@ -2530,7 +2570,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
                         if (qr && qr.dataset.ready !== 'true') {
-                            alert('The transcript verification QR code could not be generated. Check the browser connection or reload the page and try again. No PDF was created.');
+                            alert('Transcript verification QR failed: ' + reason + '\n\nOpen Developer Tools (F12) > Console for diagnostic details. No PDF was created.');
                             return;
                         }
                         const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
