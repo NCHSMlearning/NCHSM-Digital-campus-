@@ -340,12 +340,28 @@ const client = window.sb || window.supabase;
         // decide which historical marks belong to a learner.
         const students = (allStudents || []).filter(student => {
             if (intake === 'all') return true;
-            const month = String(student.intake_month || '').trim().toLowerCase();
-            const intakeYear = String(student.intake_year || student.admission_year || '').trim();
+            const monthRaw = String(student.intake_month || '').trim().toLowerCase();
+            const monthAliases = {
+                '01': 'january', 'jan': 'january', '1': 'january',
+                '02': 'february', 'feb': 'february', '2': 'february',
+                '03': 'march', 'mar': 'march', '3': 'march',
+                '04': 'april', 'apr': 'april', '4': 'april',
+                '05': 'may', '5': 'may',
+                '06': 'june', 'jun': 'june', '6': 'june',
+                '07': 'july', 'jul': 'july', '7': 'july',
+                '08': 'august', 'aug': 'august', '8': 'august',
+                '09': 'september', 'sep': 'september', 'sept': 'september', '9': 'september',
+                '10': 'october', 'oct': 'october',
+                '11': 'november', 'nov': 'november',
+                '12': 'december', 'dec': 'december'
+            };
+            const month = monthAliases[monthRaw] || monthRaw;
+            const intakeYearRaw = String(student.intake_year || '').trim();
+            const intakeYearMatch = intakeYearRaw.match(/(?:19|20)\\d{2}/);
+            const intakeYear = intakeYearMatch ? intakeYearMatch[0] : intakeYearRaw;
             const [wantedYear, wantedMonthCode] = intake.split('-');
-            const wantedMonth = wantedMonthCode === '03' ? 'march' : wantedMonthCode;
-            return intakeYear === wantedYear &&
-                (month === wantedMonth || month === wantedMonthCode || month.startsWith(wantedMonth));
+            const wantedMonth = monthAliases[wantedMonthCode] || wantedMonthCode;
+            return intakeYear === wantedYear && month === wantedMonth;
         });
         console.log(`👥 Found ${students.length} student profiles for programme/intake filters`);
 
