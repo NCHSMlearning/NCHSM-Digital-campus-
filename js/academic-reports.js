@@ -2708,20 +2708,27 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             pagebreak: { mode: ['css'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
                         };
                         try {
-                            const pdf = await printWindow.html2pdf().set(options).from(target).toPdf().get('pdf');
-                            const blob = pdf.output('blob');
-                            const url = printWindow.URL.createObjectURL(blob);
-                            const link = printWindow.document.createElement('a');
-                            link.href = url;
-                            link.download = options.filename;
-                            link.style.display = 'none';
-                            printWindow.document.body.appendChild(link);
-                            link.click();
-                            link.remove();
-                            setTimeout(() => printWindow.URL.revokeObjectURL(url), 30000);
+                            // Use html2pdf's supported save pipeline. Manually extracting a jsPDF
+                            // blob and clicking an iframe-created link is unreliable in some browsers.
+                            await printWindow.html2pdf().set(options).from(target).save();
+                            console.info('[Transcript PDF] Download pipeline completed', {
+                                filename: options.filename,
+                                rows: previewRows.length,
+                                qrReady: Boolean(qr && qr.dataset.ready === 'true')
+                            });
                         } catch (error) {
-                            console.error('Transcript preview PDF generation failed:', error);
-                            alert('The transcript PDF could not be generated from this preview. Please try again.');
+                            const message = String(error && (error.message || error.name) || error || 'Unknown PDF generation error');
+                            console.error('[Transcript PDF] Preview PDF generation failed', {
+                                message,
+                                name: error && error.name,
+                                stack: error && error.stack,
+                                html2pdfAvailable: typeof printWindow.html2pdf === 'function',
+                                targetFound: Boolean(target),
+                                qrReady: Boolean(qr && qr.dataset.ready === 'true'),
+                                imageCount: printWindow.document.images.length,
+                                rowCount: previewRows.length
+                            }, error);
+                            alert('The transcript PDF could not be generated. ' + message + '\\n\\nOpen Developer Tools (F12) > Console for details. Your transcript preview is still open; no PDF was confirmed as saved.');
                         }
                     });
                     toolbar.querySelector('.print').addEventListener('click', () => printWindow.printTranscriptWhenReady());
