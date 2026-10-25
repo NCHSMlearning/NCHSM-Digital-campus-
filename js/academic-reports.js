@@ -1692,13 +1692,34 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
         console.log('📊 Generating filtered semester report for', marks.length, 'marks; block:', blockFilter);
 
-        // Open the output tab synchronously during the user's click. Mobile browsers
-        // block popups opened later after the transcript has been assembled.
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            alert('Your browser blocked the transcript window. Allow pop-ups for nchsm.co.ke and tap the button again.');
-            return;
-        }
+        // Keep preview and PDF download inside the current portal page.
+        // An iframe provides an isolated document for transcript layout/PDF scripts,
+        // while the modal overlay keeps the user on the same page.
+        const previewHost = document.createElement('div');
+        previewHost.className = 'transcript-preview-overlay';
+        previewHost.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.72);display:flex;flex-direction:column;padding:12px;box-sizing:border-box;';
+        const previewFrame = document.createElement('iframe');
+        previewFrame.title = 'Provisional Academic Transcript Preview';
+        previewFrame.style.cssText = 'display:block;flex:1;width:100%;height:100%;min-height:0;border:0;border-radius:10px;background:#fff;box-shadow:0 12px 40px #0004;';
+        previewHost.appendChild(previewFrame);
+        document.body.appendChild(previewHost);
+        const frameWindow = previewFrame.contentWindow;
+        // Compatibility adapter: keep the existing transcript rendering logic
+        // working, but route its document and actions to the in-page iframe.
+        const printWindow = new Proxy({}, {
+            get(_target, key) {
+                if (key === 'closed') return !previewHost.isConnected;
+                if (key === 'close') return () => previewHost.remove();
+                if (key === 'focus') return () => previewFrame.focus();
+                if (key === 'print') return () => frameWindow.print();
+                if (key === 'document') return frameWindow.document;
+                return frameWindow[key];
+            },
+            set(_target, key, value) {
+                frameWindow[key] = value;
+                return true;
+            }
+        });
 
         // Pass only the short-lived authenticated session context to this same-origin
         // output window. Some browser isolation policies sever window.opener, which
@@ -2617,7 +2638,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     toolbar.querySelector('.download').addEventListener('click', async () => {
                         const target = printWindow.document.querySelector('.container');
                         if (!target || typeof printWindow.html2pdf !== 'function') {
-                            alert('PDF generation is not available in this preview. Close it and try Preview & Download PDF again.');
+                            alert('PDF generation is not available in this preview. Please refresh the page and try again.');
                             return;
                         }
                         const qr = printWindow.document.getElementById('transcriptVerificationQr');
@@ -2626,7 +2647,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
                         if (qr && qr.dataset.ready !== 'true') {
-                            alert('Transcript verification QR failed: ' + reason + '\n\nOpen Developer Tools (F12) > Console for diagnostic details. No PDF was created.');
+                            alert('Transcript verification QR failed: ' + (qr?.dataset?.error || 'The verification QR did not become ready in time.') + '\n\nOpen Developer Tools (F12) > Console for diagnostic details. No PDF was created.');
                             return;
                         }
                         const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
