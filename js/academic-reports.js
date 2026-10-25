@@ -1967,7 +1967,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <meta charset="UTF-8">
     <title>Provisional Academic Transcript - ${escapeHtml(user.full_name || 'Student')}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2273,8 +2272,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             <button class="btn-close" onclick="window.close()">Close</button>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
     <script>
         (async function initializeTranscriptQr() {
             const qrImage = document.getElementById('transcriptVerificationQr');
@@ -2290,6 +2287,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 return;
             }
             let registryToken = '';
+            let registryQrSvg = '';
             try {
                 const { data: sessionData, error: sessionError } = await portalClient.auth.getSession();
                 const accessToken = sessionData && sessionData.session && sessionData.session.access_token;
@@ -2308,16 +2306,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     throw new Error(registryResult.error || 'The transcript could not be registered for verification.');
                 }
                 registryToken = registryResult.token;
+                registryQrSvg = registryResult.qr_svg || '';
+                if (!registryQrSvg) throw new Error('The verification registry did not return a QR image.');
             } catch (registryError) {
                 qrImage.dataset.error = String(registryError && registryError.message || registryError);
                 qrImage.alt = 'Transcript verification registry unavailable';
                 console.error('Transcript QR registry issue failed:', registryError);
                 return;
             }
-            const verificationUrl = new URL('/graduation.html', portalOrigin);
-            verificationUrl.searchParams.set('token', registryToken);
-            verificationUrl.searchParams.set('type', 'provisional-transcript');
-            const payload = verificationUrl.href;
             qrImage.style.display = 'block';
             qrImage.style.visibility = 'visible';
             qrImage.width = 240;
@@ -2325,74 +2321,24 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             qrImage.alt = 'Generating transcript verification QR code';
             qrImage.dataset.ready = '';
             qrImage.dataset.error = '';
-            const waitForImage = () => new Promise((resolve, reject) => {
-                qrImage.onload = () => qrImage.naturalWidth > 0 ? resolve() : reject(new Error('QR image has no pixels'));
-                qrImage.onerror = () => reject(new Error('QR image request failed'));
-            });
             try {
-                let dataUrl = '';
-                if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
-                    dataUrl = await window.QRCode.toDataURL(payload, { width: 240, margin: 1, errorCorrectionLevel: 'M' });
-                } else {
-                    for (const src of ['https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js','https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js']) {
-                        try {
-                            await new Promise((resolve, reject) => {
-                                const script = document.createElement('script');
-                                const timer = setTimeout(() => reject(new Error('QR library load timed out')), 5000);
-                                script.onload = () => { clearTimeout(timer); resolve(); };
-                                script.onerror = () => { clearTimeout(timer); reject(new Error('QR library CDN failed')); };
-                                script.src = src;
-                                script.async = true;
-                                document.head.appendChild(script);
-                            });
-                            if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
-                                dataUrl = await window.QRCode.toDataURL(payload, { width: 240, margin: 1, errorCorrectionLevel: 'M' });
-                                break;
-                            }
-                        } catch (loadError) { console.warn('Transcript QR library source failed:', loadError); }
-                    }
-                }
-                if (dataUrl) {
-                    const loaded = waitForImage();
-                    qrImage.src = dataUrl;
-                    await loaded;
-                } else {
-                    // Use independent QR image providers if the local QR library CDN is blocked.
-                    // Each attempt has its own timeout so a stalled provider cannot freeze the preview.
-                    const fallbackUrls = [
-                        'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&data=' + encodeURIComponent(payload),
-                        'https://quickchart.io/qr?size=240&margin=1&text=' + encodeURIComponent(payload)
-                    ];
-                    let fallbackLoaded = false;
-                    let lastFallbackError = null;
-                    for (const fallbackSrc of fallbackUrls) {
-                        try {
-                            await new Promise((resolve, reject) => {
-                                let settled = false;
-                                const finish = (fn, value) => {
-                                    if (settled) return;
-                                    settled = true;
-                                    clearTimeout(timer);
-                                    qrImage.onload = null;
-                                    qrImage.onerror = null;
-                                    fn(value);
-                                };
-                                const timer = setTimeout(() => finish(reject, new Error('QR image provider timed out')), 5000);
-                                qrImage.onload = () => qrImage.naturalWidth > 0
-                                    ? finish(resolve)
-                                    : finish(reject, new Error('QR image provider returned an empty image'));
-                                qrImage.onerror = () => finish(reject, new Error('QR image provider request failed'));
-                                qrImage.src = fallbackSrc;
-                            });
-                            fallbackLoaded = true;
-                            break;
-                        } catch (fallbackError) {
-                            lastFallbackError = fallbackError;
-                            console.warn('Transcript QR image provider failed:', fallbackError);
-                        }
-                    }
-                    if (!fallbackLoaded) throw (lastFallbackError || new Error('All QR image providers failed'));
-                }
+                await new Promise((resolve, reject) => {
+                    let settled = false;
+                    const timer = setTimeout(() => finish(reject, new Error('QR image loading timed out')), 8000);
+                    const finish = (fn, value) => {
+                        if (settled) return;
+                        settled = true;
+                        clearTimeout(timer);
+                        qrImage.onload = null;
+                        qrImage.onerror = null;
+                        fn(value);
+                    };
+                    qrImage.onload = () => qrImage.naturalWidth > 0
+                        ? finish(resolve)
+                        : finish(reject, new Error('Generated QR image has no pixels'));
+                    qrImage.onerror = () => finish(reject, new Error('Generated QR SVG could not be loaded'));
+                    qrImage.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(registryQrSvg);
+                });
                 qrImage.dataset.ready = 'true';
                 qrImage.alt = 'Scan to verify this transcript';
                 console.info('Transcript QR generated with registry token:', registryToken);
