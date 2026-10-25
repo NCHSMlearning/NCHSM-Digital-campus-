@@ -2423,7 +2423,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 `);
                 printWindow.document.close();
                 // Download must save a real A4 portrait PDF; only the separate Print action opens print preview.
-                setTimeout(() => {
+                setTimeout(async () => {
                     const target = printWindow.document.querySelector('.container');
                     if (!target) {
                         printWindow.close();
