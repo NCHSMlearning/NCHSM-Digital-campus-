@@ -46,23 +46,31 @@ class LecturerDatabase {
                     throw new Error('Supabase client library is not available');
                 }
 
-                const client = window.supabase.createClient(
-                    window.APP_CONFIG.SUPABASE_URL,
-                    window.APP_CONFIG.SUPABASE_ANON_KEY,
-                    {
-                        auth: {
-                            persistSession: true,
-                            autoRefreshToken: true,
-                            detectSessionInUrl: true
-                        },
-                        global: {
-                            headers: {
-                                'x-application-name': 'nchsm-lecturer-portal',
-                                'x-role': 'lecturer'
+                // Reuse the app-wide Supabase client when available. Creating a
+                // second GoTrue client with the same storage key can race session
+                // refreshes and cause modules to behave inconsistently.
+                const sharedClient = window.sb || window.supabaseClient;
+                const client = sharedClient &&
+                    typeof sharedClient.from === 'function' &&
+                    sharedClient.auth
+                    ? sharedClient
+                    : window.supabase.createClient(
+                        window.APP_CONFIG.SUPABASE_URL,
+                        window.APP_CONFIG.SUPABASE_ANON_KEY,
+                        {
+                            auth: {
+                                persistSession: true,
+                                autoRefreshToken: true,
+                                detectSessionInUrl: true
+                            },
+                            global: {
+                                headers: {
+                                    'x-application-name': 'nchsm-lecturer-portal',
+                                    'x-role': 'lecturer'
+                                }
                             }
                         }
-                    }
-                );
+                    );
 
                 // Publish the single client before testing it so every caller
                 // sees the same instance while this initialization is in flight.
