@@ -2162,7 +2162,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; text-align: center !important; }
             table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; text-align: center !important; }
             table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; text-align: center !important; }
-            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) !important; align-items: stretch !important; gap: 4mm !important; margin: 4px 0 !important; }
+            table.semester-results-table { width: 100% !important; table-layout: fixed !important; }
+            table.semester-results-table tbody td { padding-top: 7px !important; padding-bottom: 7px !important; line-height: 1.25 !important; }
+            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) !important; align-items: stretch !important; gap: 4mm !important; margin: 6px 0 !important; }
             .academic-summary-panel { border: 1px solid #d5e2ee !important; border-radius: 6px !important; overflow: hidden !important; min-width: 0 !important; background: #fff !important; }
             .academic-summary-title { background: #0A3D62 !important; color: #fff !important; font-weight: 700 !important; padding: 6px 8px !important; font-size: 10px !important; text-transform: uppercase !important; }
             .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 3px !important; margin: 0 !important; padding: 4px !important; }
@@ -2251,12 +2253,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     <div class="summary-card"><div class="label">Pass Rate</div><div class="value" style="color: #0A3D62;">${passRate}%</div></div>
                 </div>
             </section>
-        </div>
-        
-        <!-- LINE CHART -->
-        <div class="chart-container">
-            <div class="title">Grade Points Progression</div>
-            <canvas id="reportCardLineChart"></canvas>
         </div>
         
         <!-- DECLARATION -->
