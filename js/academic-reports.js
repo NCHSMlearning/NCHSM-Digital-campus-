@@ -2865,7 +2865,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         
         const downloadReportCardBtn = document.getElementById('download-report-card');
         if (downloadReportCardBtn) {
-            downloadReportCardBtn.addEventListener('click', function () { downloadReportCard('download'); });
+            downloadReportCardBtn.addEventListener('click', function () { downloadReportCard('preview'); });
         }
 
         const printTranscriptBtn = document.getElementById('print-academic-transcript');
