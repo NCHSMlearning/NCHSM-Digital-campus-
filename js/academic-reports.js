@@ -2442,6 +2442,19 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 </html>
                 `);
                 printWindow.document.close();
+                // Some browsers/webviews may not expose head/body immediately after document.write().
+                // Recreate missing nodes before preview UI is attached to avoid a null.prepend error.
+                const previewDocument = printWindow.document;
+                if (!previewDocument.documentElement) {
+                    previewDocument.appendChild(previewDocument.createElement('html'));
+                }
+                if (!previewDocument.head) {
+                    const safeHead = previewDocument.createElement('head');
+                    previewDocument.documentElement.insertBefore(safeHead, previewDocument.documentElement.firstChild);
+                }
+                if (!previewDocument.body) {
+                    previewDocument.documentElement.appendChild(previewDocument.createElement('body'));
+                }
                 // Preview first: show the transcript on an A4-like page and let the user choose
                 // Download PDF or Print only after reviewing it. Keep the PDF generator unchanged.
                 if (outputMode === 'preview') {
@@ -2462,7 +2475,13 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     const toolbar = printWindow.document.createElement('div');
                     toolbar.className = 'transcript-preview-toolbar no-print';
                     toolbar.innerHTML = '<button type="button" class="download">⬇ Download PDF</button><button type="button" class="print">🖨 Print</button><button type="button" class="close">Close Preview</button>';
-                    printWindow.document.body.prepend(toolbar);
+                    const previewBody = printWindow.document.body || printWindow.document.getElementsByTagName('body')[0];
+                    if (!previewBody) {
+                        alert('The transcript preview could not be initialized. Please try again.');
+                        printWindow.close();
+                        return;
+                    }
+                    previewBody.insertBefore(toolbar, previewBody.firstChild);
                     toolbar.querySelector('.download').addEventListener('click', async () => {
                         const target = printWindow.document.querySelector('.container');
                         if (!target || typeof printWindow.html2pdf !== 'function') {
