@@ -17685,7 +17685,7 @@ function updateSelectedUnitsCount() {
 async function approveSingleUnitRecord(regId) {
     if (!confirm('Approve this unit?')) return;
     try {
-        const { data: changedRows, error: mutationError } = const { data: changedRows, error: mutationError } = await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).eq('id', regId).select('id');
+        const { data: changedRows, error: mutationError } = await sb.from('student_unit_registrations').update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] }).eq('id', regId).select('id');
         if (mutationError) throw mutationError;
         if (!changedRows || changedRows.length !== 1) throw new Error('No registration was updated. Confirm your Super Admin permissions and refresh the list.');
         window.showFeedback('✅ Unit approved!', 'success');
@@ -20105,14 +20105,13 @@ async function sendAdminChatReply() {
         if (replyError) throw replyError;
         
         if (newStatus && newStatus !== currentAdminTicketStatus) {
-            await supabase
+            const { error: ticketUpdateError } = await supabase
                 .from('support_tickets')
                 .update({ 
                     status: newStatus, 
                     updated_at: new Date().toISOString() 
-                }).eq('id', currentAdminTicketId).select('id');
-        if (mutationError) throw mutationError;
-        if (!changedRows || changedRows.length !== 1) throw new Error('No registration was updated. Confirm your Super Admin permissions and refresh the list.');
+                }).eq('id', currentAdminTicketId);
+            if (ticketUpdateError) throw ticketUpdateError;
             
             currentAdminTicketStatus = newStatus;
             const statusSpan = document.getElementById('modalTicketStatus');
