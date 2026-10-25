@@ -1943,7 +1943,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         @page { size: A4 portrait; margin: 6mm; }
         body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
         .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 12px 14px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; box-shadow: none; }
-        .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 42px; gap: 5px; align-items: start; }
+        .transcript-top { position: relative; display: block; width: 100%; }
+        .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 44px; }
+        .transcript-top > .verification-qr { position: absolute; top: 0; right: 0; z-index: 2; }
         .transcript-top .header { min-width: 0; }
         .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 1px; width: 34px; padding: 2px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 5px; font-weight: 700; color: #0A3D62; }
         .verification-qr img { display: block; width: 26px; height: 26px; object-fit: contain; }
@@ -2387,10 +2389,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "footer footer" !important; align-items: stretch !important; align-content: space-between !important; column-gap: 2mm !important; row-gap: 2mm !important; min-height: 272mm !important; height: 272mm !important; }
                         .footer { grid-area: footer !important; align-self: end !important; margin-top: 0 !important; width: 100% !important; }
                         .footer { grid-area: footer !important; align-self: end !important; width: 100% !important; margin-top: 0 !important; padding-top: 2mm !important; border-top: 1px solid #0A3D62 !important; }
-                        .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: minmax(0,1fr) 42px !important; grid-template-rows: auto !important; gap: 5px !important; align-items: start !important; justify-items: stretch !important; min-height: 0 !important; height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+                        .transcript-top { grid-area: header !important; position: relative !important; display: block !important; min-height: 0 !important; height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
                         .container > .transcript-top { align-self: start !important; width: 100% !important; }
-                        .transcript-top > .header { grid-column: 1 !important; grid-row: 1 !important; grid-area: auto !important; display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; padding: 0 0 2px !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
-                        .transcript-top > .verification-qr { grid-column: 2 !important; grid-row: 1 !important; justify-self: end !important; align-self: start !important; }
+                        .transcript-top > .header { display: block !important; box-sizing: border-box !important; width: 100% !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
+                        .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; min-width: 34px !important; margin: 0 !important; justify-self: auto !important; align-self: auto !important; z-index: 2 !important; }
                         .transcript-top .header-top img { max-width: 32px !important; max-height: 28px !important; width: auto !important; height: auto !important; }
                         .transcript-top .header-top { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; width: 100% !important; gap: 6px !important; }
                         .transcript-top .header .school { font-size: 12px !important; line-height: 1.1 !important; }
