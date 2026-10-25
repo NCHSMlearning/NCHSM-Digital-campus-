@@ -2355,12 +2355,19 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     if (!printWindow || printWindow.closed) return;
                     // Wait for the QR code to finish rendering before capturing the PDF.
                     const qrImage = printWindow.document.getElementById('transcriptVerificationQr');
-                    if (qrImage && qrImage.style.display !== 'none' && !qrImage.complete) {
-                        await new Promise(resolve => {
-                            qrImage.addEventListener('load', resolve, { once: true });
-                            qrImage.addEventListener('error', resolve, { once: true });
-                            setTimeout(resolve, 2500);
-                        });
+                    if (qrImage && qrImage.style.display !== 'none' && qrImage.dataset.error !== 'Student admission number unavailable') {
+                        // Wait for QR generation itself, not just the initially empty img element.
+                        const qrStartedAt = Date.now();
+                        while (qrImage.dataset.ready !== 'true' && !qrImage.dataset.error && Date.now() - qrStartedAt < 4000) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
+                        if (qrImage.dataset.ready === 'true' && !qrImage.complete) {
+                            await new Promise(resolve => {
+                                qrImage.addEventListener('load', resolve, { once: true });
+                                qrImage.addEventListener('error', resolve, { once: true });
+                                setTimeout(resolve, 1500);
+                            });
+                        }
                     }
                     const downloadStyle = printWindow.document.createElement('style');
                     downloadStyle.textContent = `
@@ -2369,7 +2376,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
                         body { font-size: 9px !important; }
                         .container { box-sizing: border-box !important; width: 100% !important; max-width: none !important; min-width: 0 !important; min-height: 272mm !important; height: 272mm !important; margin: 0 !important; padding: 2mm !important; border-radius: 0 !important; box-shadow: none !important; }
-                        .container { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: auto auto auto auto auto minmax(42mm,1fr) auto auto auto !important; grid-template-areas: "header header"
+                        .container { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: auto auto auto auto auto 38mm auto auto auto !important; grid-template-areas: "header header"
                     "student student"
                     "results-title results-title"
                     "results-table results-table"
@@ -2377,7 +2384,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     "chart chart"
                     "declaration declaration"
                     "signatures signatures"
-                    "footer footer" !important; align-items: stretch !important; align-content: stretch !important; column-gap: 2mm !important; row-gap: 2mm !important; min-height: 272mm !important; height: 272mm !important; }
+                    "footer footer" !important; align-items: stretch !important; align-content: space-between !important; column-gap: 2mm !important; row-gap: 2mm !important; min-height: 272mm !important; height: 272mm !important; }
                         .footer { grid-area: footer !important; align-self: end !important; margin-top: 0 !important; width: 100% !important; }
                         .footer { grid-area: footer !important; align-self: end !important; width: 100% !important; margin-top: 0 !important; padding-top: 2mm !important; border-top: 1px solid #0A3D62 !important; }
                         .transcript-top { grid-area: header !important; display: grid !important; grid-template-columns: 36px minmax(0,1fr) !important; grid-template-rows: auto !important; gap: 5px !important; align-items: start !important; justify-items: stretch !important; min-height: 0 !important; height: auto !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
@@ -2409,8 +2416,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; text-align: center !important; }
                         table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; text-align: center !important; }
                         table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; text-align: center !important; }
-                        .chart-container { grid-area: chart !important; min-width: 0 !important; min-height: 36mm !important; height: 100% !important; align-self: stretch !important; margin: 0 !important; padding: 5px 7px !important; display: flex !important; flex-direction: column !important; }
-                        .chart-container canvas { width: 100% !important; height: 100% !important; min-height: 28mm !important; max-height: none !important; flex: 1 1 auto !important; }
+                        .chart-container { grid-area: chart !important; min-width: 0 !important; min-height: 0 !important; height: 38mm !important; max-height: 38mm !important; align-self: stretch !important; margin: 0 !important; padding: 3px 5px !important; display: block !important; overflow: hidden !important; }
+                        .chart-container canvas { display: block !important; width: 100% !important; height: 27mm !important; min-height: 27mm !important; max-height: 27mm !important; }
                         .summary-grid { grid-area: summary !important; display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 3px !important; margin: 0 !important; }
                         .summary-card { padding: 5px 4px !important; border-top-width: 2px !important; }
                         .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
