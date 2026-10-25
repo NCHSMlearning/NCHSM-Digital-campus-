@@ -2496,6 +2496,36 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 setTimeout(resolve, 2500);
                             });
                         }));
+                        const previewPdfStyle = printWindow.document.createElement('style');
+                        previewPdfStyle.textContent = `
+                            @page { size: A4 portrait; margin: 5mm; }
+                            * { box-sizing: border-box !important; }
+                            html, body { width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                            .container { display: block !important; width: 794px !important; min-width: 794px !important; max-width: 794px !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; box-shadow: none !important; border-radius: 0 !important; }
+                            .transcript-top { position: relative !important; display: block !important; width: 100% !important; }
+                            .transcript-top > .header { display: block !important; width: 100% !important; padding: 0 44px 2px 0 !important; text-align: center !important; }
+                            .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
+                            .transcript-top > .verification-qr img { width: 26px !important; height: 26px !important; }
+                            table.semester-results-table { width: 100% !important; table-layout: fixed !important; border-collapse: collapse !important; }
+                            table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; }
+                            table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
+                            table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
+                            table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; }
+                            table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; }
+                            table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; }
+                            .summary-grid { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+                            .chart-container { display: block !important; width: 100% !important; height: 45mm !important; min-height: 45mm !important; max-height: 45mm !important; overflow: hidden !important; }
+                            .chart-container canvas { display: block !important; width: 100% !important; height: 38mm !important; min-height: 38mm !important; max-height: 38mm !important; }
+                            .container { break-inside: auto !important; page-break-inside: auto !important; }
+                            table.semester-results-table tr, .transcript-top, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+                            .no-print, .transcript-preview-toolbar { display: none !important; }
+                        `;
+                        printWindow.document.head.appendChild(previewPdfStyle);
+                        const previewRows = printWindow.document.querySelectorAll('table.semester-results-table tbody tr');
+                        const previewRowPadding = previewRows.length <= 8 ? 6 : previewRows.length <= 14 ? 4 : previewRows.length <= 22 ? 3 : 2;
+                        const previewDensityStyle = printWindow.document.createElement('style');
+                        previewDensityStyle.textContent = `table.semester-results-table tbody td { padding: ${previewRowPadding}px 4px !important; } table.semester-results-table thead { display: table-header-group !important; }`;
+                        printWindow.document.head.appendChild(previewDensityStyle);
                         const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                         const options = {
                             margin: [5, 5, 5, 5],
