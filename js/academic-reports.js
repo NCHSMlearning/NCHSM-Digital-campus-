@@ -2731,7 +2731,51 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             alert('The transcript PDF could not be generated. ' + message + '\\n\\nOpen Developer Tools (F12) > Console for details. Your transcript preview is still open; no PDF was confirmed as saved.');
                         }
                     });
-                    toolbar.querySelector('.print').addEventListener('click', () => printWindow.printTranscriptWhenReady());
+                    toolbar.querySelector('.print').addEventListener('click', async () => {
+                        const printButton = toolbar.querySelector('.print');
+                        const qrImage = printWindow.document.getElementById('transcriptVerificationQr');
+                        try {
+                            printButton.disabled = true;
+                            printButton.textContent = 'Preparing print…';
+                            const deadline = Date.now() + 8000;
+                            while (qrImage && qrImage.dataset.ready !== 'true' && !qrImage.dataset.error && Date.now() < deadline) {
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                            }
+                            if (qrImage && qrImage.dataset.ready !== 'true') {
+                                throw new Error(qrImage.dataset.error || 'Transcript verification QR did not finish generating.');
+                            }
+                            await Promise.all(Array.from(printWindow.document.images).map(img => {
+                                if (img.complete) return Promise.resolve();
+                                return new Promise(resolve => {
+                                    img.addEventListener('load', resolve, { once: true });
+                                    img.addEventListener('error', resolve, { once: true });
+                                    setTimeout(resolve, 2500);
+                                });
+                            }));
+                            if (printWindow.document.fonts && printWindow.document.fonts.ready) {
+                                await printWindow.document.fonts.ready;
+                            }
+                            printWindow.focus();
+                            await new Promise(resolve => setTimeout(resolve, 350));
+                            // Call the iframe's native print API directly. This avoids depending
+                            // on an inline helper being exposed through the proxy in desktop browsers.
+                            frameWindow.focus();
+                            frameWindow.print();
+                            console.info('[Transcript Print] Native browser print dialog requested', {
+                                targetFound: Boolean(printWindow.document.querySelector('.container')),
+                                qrReady: Boolean(qrImage && qrImage.dataset.ready === 'true'),
+                                userAgent: navigator.userAgent
+                            });
+                        } catch (error) {
+                            console.error('[Transcript Print] Could not open browser print dialog', error);
+                            alert('Could not open the transcript print dialog. ' + (error && error.message ? error.message : error) + '\\n\\nTry Download PDF, or check the browser console (F12) for details.');
+                        } finally {
+                            if (printButton.isConnected) {
+                                printButton.disabled = false;
+                                printButton.textContent = '🖨 Print';
+                            }
+                        }
+                    });
                     toolbar.querySelector('.close').addEventListener('click', () => printWindow.close());
                     printWindow.focus();
                     return;
