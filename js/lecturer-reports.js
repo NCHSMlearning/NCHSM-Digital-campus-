@@ -1088,6 +1088,89 @@
         };
     }
 
+    async function buildSmartExamReport(form) {
+        const supabase = db();
+        if (!supabase) throw new Error('Database connection unavailable.');
+        const [marksResult, examResult] = await Promise.all([
+            loadMarks({ unit: form.unit || null, block: form.block || 'all', year: currentAcademicYear() }),
+            supabase.from('exams').select('*').order('exam_date', { ascending: false })
+        ]);
+        if (examResult.error) {
+            console.warn('[Reports] Exam catalogue query failed; using marked exam records only:', examResult.error);
+        }
+        const normalize = value => String(value || '').trim().toLowerCase();
+        const assignments = await loadAssignedUnits();
+        const assignedCodes = new Set(assignments.map(a => normalize(a.subject_code)).filter(Boolean));
+        let exams = (examResult.data || []).filter(exam => {
+            const program = exam.target_program || exam.program || '';
+            if (program && normalize(program) !== normalize(currentProgram())) return false;
+            const unit = exam.subject_name || exam.unit_name || exam.subject_code || exam.course_name || '';
+            if (form.unit && unit && normalize(unit) !== normalize(form.unit) &&
+                normalize(exam.subject_code) !== normalize(form.unit)) return false;
+            const block = String(exam.block || exam.class_block || '').trim();
+            if (form.block && form.block !== 'all' && block && block !== form.block) return false;
+            if (assignedCodes.size && exam.subject_code && !assignedCodes.has(normalize(exam.subject_code)) &&
+                !assignments.some(a => normalize(a.subject_name) === normalize(unit))) return false;
+            return true;
+        });
+        const marks = marksResult.marks.filter(mark => {
+            const assessment = normalize(mark.assessmentType);
+            return !assessment || assessment.includes('exam') || Number(mark.exam) > 0;
+        });
+        let rows = buildRows(marks, 'ExamPerformance');
+        if (!rows.length) {
+            rows = exams.map((exam, index) => ({
+                '#': index + 1,
+                Exam: exam.title || exam.exam_name || exam.name || 'Examination',
+                Unit: exam.subject_name || exam.unit_name || exam.subject_code || form.unit || '',
+                Program: exam.target_program || exam.program || currentProgram(),
+                Block: exam.block || exam.class_block || form.block || '',
+                Date: exam.exam_date || exam.start_time || '',
+                Status: exam.approval_status || (exam.is_published ? 'Published' : 'Not published')
+            }));
+        } else {
+            rows = rows.map(row => ({
+                ...row,
+                'Exam Catalogue Count': exams.length
+            }));
+        }
+        return {
+            marks,
+            rows,
+            statistics: { ...calculateStatistics(marks), examCatalogueCount: exams.length },
+            source: 'exams + student_marks'
+        };
+    }
+
+    async function buildSmartCATReport(form) {
+        const result = await loadMarks({
+            unit: form.unit || null,
+            block: form.block || 'all',
+            year: currentAcademicYear()
+        });
+        const marks = result.marks.filter(mark => {
+            const type = String(mark.assessmentType || '').toLowerCase();
+            return type.includes('cat') || Number(mark.cat1) > 0 || Number(mark.cat2) > 0;
+        });
+        return {
+            marks,
+            rows: marks.map((mark, index) => ({
+                '#': index + 1,
+                Admission: mark.admission,
+                Student: mark.studentName || mark.name,
+                Block: mark.block,
+                Unit: mark.unit,
+                CAT1: mark.cat1 || '',
+                CAT2: mark.cat2 || '',
+                Total: Number(mark.cat1 || 0) + Number(mark.cat2 || 0),
+                Grade: mark.grade || '',
+                Status: mark.approvalStatus || ''
+            })),
+            statistics: { ...calculateStatistics(marks), catRecords: marks.length },
+            source: 'student_marks'
+        };
+    }
+
     async function buildReport(form = selectedFormData()) {
         const type = String(form.type || '');
         let result;
@@ -1097,6 +1180,16 @@
 
         if (['AttendanceSummary', 'AttendanceReport'].includes(type)) {
             result = await buildSmartAttendanceReport(form);
+            rows = result.rows;
+            stats = result.statistics;
+        } else if (type === 'ExamPerformance') {
+            result = await buildSmartExamReport(form);
+            marks = result.marks;
+            rows = result.rows;
+            stats = result.statistics;
+        } else if (type === 'AssessmentSummary' || type === 'AssignmentPerformance') {
+            result = await buildSmartCATReport(form);
+            marks = result.marks;
             rows = result.rows;
             stats = result.statistics;
         } else if (type === 'EnrollmentList') {
