@@ -508,7 +508,6 @@
         }
 
         if (documentTypeSelect) {
-            const values = unique('document_type');
             const common = [
                 ['scheme_of_work', 'Scheme of Work'],
                 ['course_outline', 'Course Outline'],
@@ -520,6 +519,7 @@
                 ['other_teaching_document', 'Other Teaching Document']
             ];
             const labels = new Map(common);
+            const values = [...new Set([...common.map(([value]) => value), ...unique('document_type')])];
             documentTypeSelect.innerHTML = `
                 <option value="">All Document Types</option>
                 ${values.map(value => `
