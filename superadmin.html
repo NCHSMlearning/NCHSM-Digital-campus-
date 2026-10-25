@@ -1176,6 +1176,12 @@
                             </a>
                         </li>
                         <li>
+                            <a href="#" data-tab="lecturer-reports-review" style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:13px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.8)'">
+                                <i class="fas fa-file-alt" style="width:18px;text-align:center;font-size:12px;"></i>
+                                <span>Lecturer Reports</span>
+                            </a>
+                        </li>
+                        <li>
                             <a href="#" data-tab="messages" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-inbox" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>Inbox</span>
@@ -13905,6 +13911,41 @@
   </div>
 </section>
 
+<!-- LECTURER REPORTS REVIEW -->
+<section id="lecturer-reports-review" class="tab-content" style="display:none;padding:24px;min-height:70vh;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
+    <div>
+      <h2 style="margin:0;color:#1e293b;"><i class="fas fa-file-alt" style="color:#4C1D95;margin-right:8px;"></i>Lecturer Reports</h2>
+      <p style="margin:6px 0 0;color:#64748b;">Review lecturer submissions, supporting documents, and return feedback.</p>
+    </div>
+    <button type="button" onclick="window.LecturerReportsReview?.refresh()" style="border:0;border-radius:9px;padding:10px 14px;background:#4C1D95;color:white;font-weight:700;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh Reports</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:18px;">
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;">Total Reports</div><strong id="lrrTotalCount" style="display:block;font-size:26px;color:#0f172a;margin-top:5px;">0</strong></div>
+    <div style="background:#fff;border:1px solid #dbeafe;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#2563eb;text-transform:uppercase;font-weight:700;">Submitted</div><strong id="lrrSubmittedCount" style="display:block;font-size:26px;color:#2563eb;margin-top:5px;">0</strong></div>
+    <div style="background:#fff;border:1px solid #ede9fe;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#6d28d9;text-transform:uppercase;font-weight:700;">Under Review</div><strong id="lrrUnderReviewCount" style="display:block;font-size:26px;color:#6d28d9;margin-top:5px;">0</strong></div>
+    <div style="background:#fff;border:1px solid #fef3c7;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#b45309;text-transform:uppercase;font-weight:700;">Returned</div><strong id="lrrReturnedCount" style="display:block;font-size:26px;color:#b45309;margin-top:5px;">0</strong></div>
+    <div style="background:#fff;border:1px solid #d1fae5;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#047857;text-transform:uppercase;font-weight:700;">Approved</div><strong id="lrrApprovedCount" style="display:block;font-size:26px;color:#047857;margin-top:5px;">0</strong></div>
+  </div>
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px;margin-bottom:14px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input id="lrrSearch" type="search" placeholder="Search lecturer, report, unit, email…" style="flex:1;min-width:220px;padding:11px 12px;border:1px solid #cbd5e1;border-radius:8px;">
+      <select id="lrrReportTypeFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:145px;"><option value="">All report types</option></select>
+      <select id="lrrProgramFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:125px;"><option value="">All programs</option></select>
+      <select id="lrrBlockFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:115px;"><option value="">All blocks/classes</option></select>
+      <select id="lrrYearFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:115px;"><option value="">All academic years</option></select>
+      <select id="lrrStatusFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:130px;">
+        <option value="">All statuses</option><option value="submitted">Submitted</option><option value="under_review">Under Review</option><option value="resubmitted">Resubmitted</option><option value="returned">Returned</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="draft">Draft</option>
+      </select>
+    </div>
+    <div style="font-size:12px;color:#64748b;margin-top:10px;">Showing <strong id="lrrVisibleCount">0</strong> reports. Select Review to inspect details, open supporting documents, and record a decision.</div>
+  </div>
+  <div id="lecturerReportsReviewTable" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;min-height:170px;">
+    <div style="padding:40px;text-align:center;color:#64748b;">Loading lecturer reports…</div>
+  </div>
+</section>
+
+
 </main>
     </div>
 
@@ -15415,6 +15456,7 @@ console.log('✅ Search function loaded successfully!');
     });
 </script>
 
+<script src="./js/superadmin-lecturer-reports-review.js?v=20261025-integrated-1"></script>
 <script src="./js/superadmin-dashboard-reliability.js"></script>
 <script src="./js/superadmin-rejection-fix.js?v=20261024-1"></script>
 </body>
