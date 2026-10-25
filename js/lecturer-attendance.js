@@ -22,6 +22,9 @@ const LecturerAttendance = {
     _initialized: false,
     _refreshInterval: null,
     _refreshInProgress: false,
+    _attendanceLoadPromise: null,
+    _ownedSessionIdsCache: null,
+    _ownedSessionIdsCacheAt: 0,
     isTVET: false,
     currentProgram: 'KRCHN',
     stats: { total: 0, present: 0, absent: 0, pending: 0, rate: 0 },
@@ -486,16 +489,24 @@ const LecturerAttendance = {
         );
 
         const supabase = window.lecturerDB?.supabase;
-        let ownedSessionIds = new Set();
-        if (supabase && this.lecturerUuid) {
-            try {
-                const { data } = await supabase
-                    .from('scheduled_sessions')
-                    .select('id,unit_name,target_program')
-                    .eq('created_by', this.lecturerUuid);
-                ownedSessionIds = new Set((data || []).map(s => String(s.id)));
-            } catch (e) {
-                console.warn('⚠️ Could not load owned attendance sessions:', e);
+        let ownedSessionIds = this._ownedSessionIdsCache;
+        const cacheFresh = ownedSessionIds instanceof Set && Date.now() - this._ownedSessionIdsCacheAt < 5 * 60 * 1000;
+        if (!cacheFresh) {
+            ownedSessionIds = new Set();
+            if (supabase && this.lecturerUuid) {
+                try {
+                    const { data, error } = await supabase
+                        .from('scheduled_sessions')
+                        .select('id')
+                        .eq('created_by', this.lecturerUuid);
+                    if (error) throw error;
+                    ownedSessionIds = new Set((data || []).map(s => String(s.id)));
+                    this._ownedSessionIdsCache = ownedSessionIds;
+                    this._ownedSessionIdsCacheAt = Date.now();
+                } catch (e) {
+                    console.warn('⚠️ Could not load owned attendance sessions:', e);
+                    ownedSessionIds = this._ownedSessionIdsCache instanceof Set ? this._ownedSessionIdsCache : new Set();
+                }
             }
         }
 
@@ -618,26 +629,30 @@ const LecturerAttendance = {
     // LOAD ALL
     // ============================================================
     async loadAllAttendance() {
-        try {
-            await this.loadTodayAttendance();
-            await this.loadPastAttendance();
+        if (this._attendanceLoadPromise) return this._attendanceLoadPromise;
+        this._attendanceLoadPromise = (async () => {
+            try {
+                // These queries are independent; run them together rather than serially.
+                await Promise.all([this.loadTodayAttendance(), this.loadPastAttendance()]);
 
-            const session = this.getSelectedSession();
-            if (session) {
-                console.log("🔄 Loading register for selected session:", session.id);
-                this.sessionRegister = await this.getSessionAttendanceRegister(session, false);
-            } else {
-                this.sessionRegister = null;
+                const session = this.getSelectedSession();
+                if (session) {
+                    console.log("🔄 Loading register for selected session:", session.id);
+                    this.sessionRegister = await this.getSessionAttendanceRegister(session, false);
+                } else {
+                    this.sessionRegister = null;
+                }
+
+                await this.loadProgramInfo();
+                this.applyFilters();
+            } catch (error) {
+                console.error('❌ loadAllAttendance:', error);
+                this.showError('Failed to load attendance data: ' + error.message);
+            } finally {
+                this._attendanceLoadPromise = null;
             }
-
-            await this.loadProgramInfo();
-
-            this.applyFilters();
-
-        } catch (error) {
-            console.error('❌ loadAllAttendance:', error);
-            this.showError('Failed to load attendance data: ' + error.message);
-        }
+        })();
+        return this._attendanceLoadPromise;
     },
 
     // ============================================================
@@ -773,13 +788,18 @@ const LecturerAttendance = {
         const rate = total ? Math.round((present / total) * 100) : 0;
         this.stats = { total, present, absent, pending, rate };
 
+        const uniqueStudents = new Set(rows.map(l => String(
+            l?.user_id || l?.student_id || l?.registration_number || l?.student_name || ''
+        ).trim().toLowerCase()).filter(Boolean)).size;
         const map = {
             todayTotal: total, todayPresent: present, todayAbsent: absent, todayPending: pending,
             todayRate: `${rate}%`, attendanceRate: `${rate}%`, filteredCount: total,
-            totalStudentsCount: total, presentTodayCount: present, absentTodayCount: absent,
+            totalStudentsCount: uniqueStudents, presentTodayCount: present, absentTodayCount: absent,
             pendingCount: pending, todayTotalDisplay: total, todayPresentDisplay: present,
             todayAbsentDisplay: absent, todayPendingDisplay: pending, attendanceRateDisplay: `${rate}%`
         };
+        const studentCount = document.getElementById('studentCountDisplay');
+        if (studentCount) studentCount.textContent = `${uniqueStudents} Students`;
         Object.entries(map).forEach(([id, value]) => {
             const el = document.getElementById(id);
             if (el) el.textContent = value;
@@ -2346,11 +2366,26 @@ const LecturerAttendance = {
     // REFRESH
     // ============================================================
     async refresh() {
-        await this.loadAttendanceSessions();
-        await this.loadAllAttendance();
-        this.applyFilters();
-        this.updateProgramBadge();
-        this.showNotification(`${this.getProgramTypeLabel()} attendance refreshed!`, 'success');
+        if (this._refreshInProgress || this._attendanceLoadPromise || this.isProcessing) {
+            console.debug('[Attendance] Refresh already running; duplicate request skipped.');
+            return;
+        }
+        this._refreshInProgress = true;
+        const buttons = document.querySelectorAll('#attendance-content button[onclick*="LecturerAttendance.refresh"]');
+        buttons.forEach(button => { button.disabled = true; button.dataset.originalText = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading…'; });
+        try {
+            await this.loadAttendanceSessions();
+            await this.loadAllAttendance();
+            this.applyFilters();
+            this.updateProgramBadge();
+            this.showNotification(`${this.getProgramTypeLabel()} attendance refreshed!`, 'success');
+        } catch (error) {
+            console.error('[Attendance] Manual refresh failed:', error);
+            this.showNotification('Unable to refresh attendance. Please try again.', 'error');
+        } finally {
+            this._refreshInProgress = false;
+            buttons.forEach(button => { button.disabled = false; if (button.dataset.originalText) button.innerHTML = button.dataset.originalText; delete button.dataset.originalText; });
+        }
     },
 
     closeMapModal() {
