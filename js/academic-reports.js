@@ -2246,32 +2246,51 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const qrImage = document.getElementById('transcriptVerificationQr');
-            const studentIdFromData = ${JSON.stringify(user.student_id || user.admission_number || '')};
+            const studentIdFromData = ${JSON.stringify(user.student_id || user.admission_number || user.admission_no || '')};
             const admissionNode = document.querySelector('.student-info .field:nth-child(2) .value');
-            const verifyId = String(studentIdFromData || (admissionNode && admissionNode.textContent) || '').trim();
+            const verifyId = String(studentIdFromData || (admissionNode && admissionNode.textContent) || '').replace(/\\s+/g, ' ').trim();
             const verificationUrl = new URL('/graduation.html', window.location.origin);
             if (verifyId) verificationUrl.searchParams.set('id', verifyId);
+            verificationUrl.searchParams.set('type', 'provisional-transcript');
             if (qrImage && verifyId) {
+                qrImage.style.display = 'block';
+                qrImage.alt = 'Generating verification QR code';
+                const useRemoteFallback = () => {
+                    // Fallback when the QR library CDN is unavailable or errors.
+                    qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=2&data=' + encodeURIComponent(verificationUrl.href);
+                    qrImage.onload = () => { qrImage.dataset.ready = 'true'; qrImage.dataset.source = 'fallback'; qrImage.alt = 'Scan to verify this transcript'; };
+                    qrImage.onerror = () => { qrImage.dataset.error = 'QR generation failed'; qrImage.alt = 'QR unavailable'; };
+                };
                 const makeQr = () => {
                     if (!window.QRCode || typeof window.QRCode.toDataURL !== 'function') return false;
-                    window.QRCode.toDataURL(verificationUrl.href, { width: 180, margin: 1, errorCorrectionLevel: 'M' })
-                        .then(url => { qrImage.src = url; qrImage.style.display = 'block'; qrImage.dataset.ready = 'true'; })
-                        .catch(err => { qrImage.dataset.error = String(err); console.error('Transcript QR generation failed:', err); });
+                    let completed = false;
+                    const done = (err, url) => {
+                        if (completed) return;
+                        completed = true;
+                        if (err || !url) { useRemoteFallback(); return; }
+                        qrImage.onload = () => { qrImage.dataset.ready = 'true'; qrImage.alt = 'Scan to verify this transcript'; };
+                        qrImage.onerror = useRemoteFallback;
+                        qrImage.src = url;
+                        qrImage.style.display = 'block';
+                    };
+                    try {
+                        const result = window.QRCode.toDataURL(verificationUrl.href, { width: 180, margin: 1, errorCorrectionLevel: 'M' }, done);
+                        if (result && typeof result.then === 'function') result.then(url => done(null, url)).catch(done);
+                    } catch (err) { done(err); }
                     return true;
                 };
                 if (!makeQr()) {
                     let attempts = 0;
                     const waitForQrLibrary = () => {
-                        if (makeQr() || ++attempts >= 20) {
-                            if (!qrImage.dataset.ready && attempts >= 20) qrImage.dataset.error = 'QR library unavailable';
-                            return;
-                        }
-                        setTimeout(waitForQrLibrary, 150);
+                        if (makeQr()) return;
+                        if (++attempts < 20) setTimeout(waitForQrLibrary, 150);
+                        else useRemoteFallback();
                     };
                     waitForQrLibrary();
                 }
             } else if (qrImage) {
                 qrImage.dataset.error = 'Student admission number unavailable';
+                qrImage.alt = 'Student reference unavailable';
             }
             const ctx = document.getElementById('reportCardLineChart');
             if (ctx) {
