@@ -2589,7 +2589,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     }
                 });
             }
-        });
     <\/script>
 </body>
 </html>
