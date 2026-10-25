@@ -2162,7 +2162,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; text-align: center !important; }
             table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; text-align: center !important; }
             table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; text-align: center !important; }
-            .summary-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 4px !important; margin: 4px 0 !important; }
+            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) !important; align-items: stretch !important; gap: 4mm !important; margin: 4px 0 !important; }
+            .academic-summary-panel { border: 1px solid #d5e2ee !important; border-radius: 6px !important; overflow: hidden !important; min-width: 0 !important; background: #fff !important; }
+            .academic-summary-title { background: #0A3D62 !important; color: #fff !important; font-weight: 700 !important; padding: 6px 8px !important; font-size: 10px !important; text-transform: uppercase !important; }
+            .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 3px !important; margin: 0 !important; padding: 4px !important; }
+            .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 4px !important; padding: 5px 6px !important; min-width: 0 !important; border: 1px solid #d5e2ee !important; border-radius: 4px !important; background: #f4f8fc !important; }
+            .summary-card .label { font-size: 7px !important; line-height: 1.15 !important; }
+            .summary-card .value { font-size: 14px !important; line-height: 1 !important; }
+            .grading-scale-table { min-width: 0 !important; }
             .summary-card { padding: 5px 4px !important; }
             .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
             .summary-card .label { font-size: 8px !important; }
@@ -2177,7 +2184,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .no-print, .btn-print, .btn-close { display: none !important; }
             .container { break-inside: auto !important; page-break-inside: auto !important; }
             table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-            .transcript-top, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+            .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .summary-grid, .grading-scale-table, .academic-summary-panel, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
         }
     </style>
 </head>
@@ -2229,18 +2236,21 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             <tbody>${tableRows}</tbody>
         </table>
         
-        <!-- SUMMARY CARDS -->
-        <div class="summary-grid">
-            <div class="summary-card"><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div><div class="label">Grade Point Average</div></div>
-            <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div><div class="label">Overall Grade</div></div>
-            <div class="summary-card"><div class="value" style="color: #0A3D62;">${totalUnits}</div><div class="label">Units Reported</div></div>
-            <div class="summary-card"><div class="value" style="color: #0A3D62;">${passRate}%</div><div class="label">Pass Rate</div></div>
-        </div>
-        
-        <!-- GRADING SCALE -->
-        <div class="grading-scale-table">
-            <div class="title">Grading Scale (${programType})</div>
-            ${gradingScaleHTML}
+        <!-- GRADING SCALE + ACADEMIC SUMMARY: side-by-side below the unchanged unit table -->
+        <div class="transcript-lower-grid">
+            <div class="grading-scale-table">
+                <div class="title">Grading Scale (${programType})</div>
+                ${gradingScaleHTML}
+            </div>
+            <section class="academic-summary-panel" aria-label="Academic Summary">
+                <div class="academic-summary-title">Academic Summary</div>
+                <div class="summary-grid">
+                    <div class="summary-card"><div class="label">Grade Point Average (GPA)</div><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div></div>
+                    <div class="summary-card"><div class="label">Overall Grade</div><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div></div>
+                    <div class="summary-card"><div class="label">Units Reported</div><div class="value" style="color: #0A3D62;">${totalUnits}</div></div>
+                    <div class="summary-card"><div class="label">Pass Rate</div><div class="value" style="color: #0A3D62;">${passRate}%</div></div>
+                </div>
+            </section>
         </div>
         
         <!-- LINE CHART -->
@@ -3090,7 +3100,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         table.semester-results-table tbody td { padding: ${rowPadding}px 5px !important; font-size: ${rowFont}px !important; line-height: 1.2 !important; }
                         table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; }
                         .container { break-inside: auto !important; page-break-inside: auto !important; }
-                        .header, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+                        .header, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .summary-grid, .grading-scale-table, .academic-summary-panel, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                     `;
                     printWindow.document.head.appendChild(densityStyle);
 
