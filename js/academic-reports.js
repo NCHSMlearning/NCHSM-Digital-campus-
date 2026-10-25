@@ -2279,6 +2279,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         (async function initializeTranscriptQr() {
             const qrImage = document.getElementById('transcriptVerificationQr');
             if (!qrImage) return;
+            const portalOrigin = ${JSON.stringify(window.location.origin)};
             const studentId = ${JSON.stringify(user.student_id || user.admission_number || user.admission_no || user.student_number || user.admissionNumber || user.id || '')};
             const verifyId = String(studentId || '').replace(/\\s+/g, ' ').trim();
             if (!verifyId || /^N\\/?A$/i.test(verifyId)) {
@@ -2287,7 +2288,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 console.error('Transcript QR: student admission number is missing.');
                 return;
             }
-            const verificationUrl = new URL('/graduation.html', window.location.origin);
+            const verificationUrl = new URL('/graduation.html', portalOrigin);
             verificationUrl.searchParams.set('id', verifyId);
             verificationUrl.searchParams.set('studentId', verifyId);
             verificationUrl.searchParams.set('type', 'provisional-transcript');
