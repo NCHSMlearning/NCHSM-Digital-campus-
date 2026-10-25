@@ -439,7 +439,17 @@ const client = window.sb || window.supabase;
         window.renderWeakStudents(filteredStudents, filteredMarks);
         window.renderBlockFilterStats(filteredStudents, filteredMarks, block);
         window.renderDifficultyHeatmap(filteredMarks);
-        window.renderProgressionTable(filteredStudents, filteredMarks);
+        // Progression must use all blocks for the selected academic year.
+        // The selected block filter is for the other analytics panels only.
+        let progressionQuery = client
+            .from('student_marks')
+            .select('*')
+            .eq('academic_year', year);
+        if (program !== 'all' && program !== 'TVET') progressionQuery = progressionQuery.eq('program', program);
+        if (program === 'TVET') progressionQuery = progressionQuery.neq('program', 'KRCHN');
+        const { data: progressionMarks, error: progressionError } = await progressionQuery;
+        if (progressionError) throw progressionError;
+        window.renderProgressionTable(students || [], progressionMarks || []);
         
         // ============================================
         // 11. STORE DATA FOR CONSOLIDATED MARKSHEET
@@ -950,61 +960,66 @@ window.renderDifficultyHeatmap = function(marks) {
 window.renderProgressionTable = function(students, marks) {
     const tbody = document.getElementById('analytics_progression_body');
     if (!tbody) return;
-    
-    const studentAverages = {};
-    marks?.forEach(m => {
-        const admission = m.admission_number;
-        const block = m.block || 'Unknown';
-        const score = m.final_score || 0;
-        if (!studentAverages[admission]) studentAverages[admission] = {};
-        if (!studentAverages[admission][block]) studentAverages[admission][block] = { total: 0, count: 0 };
-        if (score > 0) {
-            studentAverages[admission][block].total += score;
-            studentAverages[admission][block].count++;
-        }
-    });
-    
+
+    const normalizeBlock = value => {
+        const raw = String(value || '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ');
+        if (raw === 'introductory' || raw === 'introduction') return 'Introductory';
+        const match = raw.match(/^(?:block\\s*)?(\\d+)$/);
+        return match ? 'Block ' + match[1] : String(value || '').trim();
+    };
     const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4'];
-    const topStudents = students?.slice(0, 15) || [];
-    
-    if (topStudents.length === 0) {
+    const studentAverages = new Map();
+
+    (marks || []).forEach(mark => {
+        const score = Number(mark.final_score);
+        if (!Number.isFinite(score) || score <= 0) return;
+        const block = normalizeBlock(mark.block);
+        const identifiers = [mark.admission_number, mark.student_id].filter(Boolean).map(String);
+        identifiers.forEach(identifier => {
+            if (!studentAverages.has(identifier)) studentAverages.set(identifier, {});
+            const byBlock = studentAverages.get(identifier);
+            if (!byBlock[block]) byBlock[block] = { total: 0, count: 0 };
+            byBlock[block].total += score;
+            byBlock[block].count++;
+        });
+    });
+
+    const topStudents = (students || []).filter(Boolean).slice(0, 100);
+    if (!topStudents.length) {
         tbody.innerHTML = '<tr><td colspan="7" style="padding:30px;text-align:center;color:#94a3b8;">No progression data available</td></tr>';
         return;
     }
-    
-    let html = '';
-    topStudents.forEach(student => {
-        const data = studentAverages[student.student_id] || {};
+
+    const resolveStudentBlockData = student => {
+        const ids = [student.admission_number, student.student_id, student.id].filter(Boolean).map(String);
+        for (const id of ids) {
+            if (studentAverages.has(id)) return studentAverages.get(id);
+        }
+        return {};
+    };
+
+    tbody.innerHTML = topStudents.map(student => {
+        const data = resolveStudentBlockData(student);
         const scores = blockOrder.map(block => {
-            const bData = data[block];
-            return bData && bData.count > 0 ? Math.round(bData.total / bData.count) : '-';
+            const entry = data[block];
+            return entry && entry.count ? Math.round(entry.total / entry.count) : '-';
         });
-        
-        const validScores = scores.filter(s => s !== '-');
+        const valid = scores.filter(score => score !== '-');
         let trend = '➡️', trendColor = '#94a3b8';
-        if (validScores.length >= 2) {
-            const first = validScores[0];
-            const last = validScores[validScores.length - 1];
-            if (last > first) { trend = '📈'; trendColor = '#10b981'; }
-            else if (last < first) { trend = '📉'; trendColor = '#ef4444'; }
+        if (valid.length >= 2) {
+            if (valid[valid.length - 1] > valid[0]) { trend = '↗️'; trendColor = '#10b981'; }
+            else if (valid[valid.length - 1] < valid[0]) { trend = '↘️'; trendColor = '#ef4444'; }
             else { trend = '➡️'; trendColor = '#f59e0b'; }
         }
-        
-        const avg = validScores.length > 0 ? Math.round(validScores.reduce((a,b) => a + b, 0) / validScores.length) : 0;
-        const avgColor = avg >= 60 ? '#10b981' : avg > 0 ? '#ef4444' : '#94a3b8';
-        
-        html += `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(student.full_name || 'Unknown')}</td>
-                ${scores.map(s => `<td style="padding:10px 12px;text-align:center;font-weight:600;color:${s !== '-' && s >= 60 ? '#10b981' : s !== '-' ? '#ef4444' : '#94a3b8'};">${s}</td>`).join('')}
-                <td style="padding:10px 12px;text-align:center;font-size:20px;color:${trendColor};">${trend}</td>
-            </tr>
-        `;
-    });
-    
-    tbody.innerHTML = html;
+        return `<tr style="border-bottom:1px solid #e5e7eb;">
+            <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(student.full_name || student.name || 'Unknown')}</td>
+            ${scores.map(score => `<td style="padding:10px 12px;text-align:center;font-weight:600;color:${score !== '-' && score >= 60 ? '#10b981' : score !== '-' ? '#ef4444' : '#94a3b8'};">${score}</td>`).join('')}
+            <td style="padding:10px 12px;text-align:center;font-size:20px;color:${trendColor};">${trend}</td>
+        </tr>`;
+    }).join('');
 };
 
+// ============================================================
 // ============================================================
 // RENDER ANALYTICS SUBJECT TABLE
 // ============================================================
