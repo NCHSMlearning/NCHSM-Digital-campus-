@@ -904,16 +904,7 @@ const LecturerAttendance = {
             let offset = 0;
             const queryStart = fromDate ? this.getNairobiDayBounds(fromDate).start : null;
             const queryEnd = toDate ? this.getNairobiDayBounds(toDate).end : null;
-            const block = String(document.getElementById('filterBlock')?.value || 'All').trim();
-            const unit = String(document.getElementById('filterUnit')?.value || 'All').trim();
-            const year = String(document.getElementById('filterYear')?.value || 'All').trim();
-            const sessionType = String(document.getElementById('filterSessionType')?.value || 'All').trim();
             const program = String(this.currentProgram || 'KRCHN').trim();
-            const cacheKey = [fromDate || '*', toDate || '*', block, unit, year, sessionType, program].join('|');
-            if (!force && this._pastAttendanceCacheKey === cacheKey && Array.isArray(this.pastLogs) &&
-                this._pastAttendanceLoadedAt && Date.now() - this._pastAttendanceLoadedAt < 3 * 60 * 1000) {
-                return this.pastLogs;
-            }
 
             while (true) {
                 let query = supabase.from('geo_attendance_logs').select('*');
