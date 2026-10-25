@@ -2712,7 +2712,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         printWindow.document.head.appendChild(captureStyle);
                         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
                         const options = {
-                            margin: [5, 5, 5, 5],
+                            // html2pdf versions in the portal do not consistently accept
+                            // margin arrays. A scalar margin is supported across versions.
+                            margin: 5,
                             filename: fileBase + '.pdf',
                             image: { type: 'jpeg', quality: 0.98 },
                             html2canvas: {
