@@ -2632,6 +2632,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         }));
                         const previewPdfStyle = printWindow.document.createElement('style');
                         previewPdfStyle.textContent = `
+                            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important; gap: 8px !important; align-items: stretch !important; width: 100% !important; margin: 5px 0 !important; }
+                            .transcript-lower-grid > .grading-scale-table { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 5px !important; }
+                            .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; border: 1px solid #d5e2ee !important; border-radius: 6px !important; overflow: hidden !important; }
+                            .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 6px 7px !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; }
+                            .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 3px !important; padding: 4px !important; margin: 0 !important; }
+                            .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 4px !important; padding: 5px !important; margin: 0 !important; min-width: 0 !important; }
+                            .academic-summary-panel .summary-card .label { font-size: 7px !important; text-align: left !important; }
+                            .academic-summary-panel .summary-card .value { font-size: 13px !important; }
+                            .grading-scale-table table { width: 100% !important; table-layout: fixed !important; }
+                            table.semester-results-table tbody td { padding-top: 7px !important; padding-bottom: 7px !important; }
+
                             @page { size: A4 portrait; margin: 5mm; }
                             * { box-sizing: border-box !important; }
                             html, body { width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -2667,6 +2678,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         const captureStyle = printWindow.document.createElement('style');
                         captureStyle.id = 'transcript-pdf-capture-normalization';
                         captureStyle.textContent = `
+                            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important; gap: 8px !important; align-items: stretch !important; width: 100% !important; margin: 5px 0 !important; }
+                            .transcript-lower-grid > .grading-scale-table { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 5px !important; }
+                            .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; border: 1px solid #d5e2ee !important; border-radius: 6px !important; overflow: hidden !important; }
+                            .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 6px 7px !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; }
+                            .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 3px !important; padding: 4px !important; margin: 0 !important; }
+                            .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 4px !important; padding: 5px !important; margin: 0 !important; min-width: 0 !important; }
+                            .academic-summary-panel .summary-card .label { font-size: 7px !important; text-align: left !important; }
+                            .academic-summary-panel .summary-card .value { font-size: 13px !important; }
+                            .grading-scale-table table { width: 100% !important; table-layout: fixed !important; }
+                            table.semester-results-table tbody td { padding-top: 7px !important; padding-bottom: 7px !important; }
+
                             /* A4 content area: 210mm page minus 5mm margins on both sides.
                                718 CSS px is approximately 190mm at 96dpi. */
                             html, body { width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
@@ -3091,6 +3113,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     const rowPadding = unitCount <= 8 ? 6 : unitCount <= 14 ? 4 : unitCount <= 22 ? 3 : 2;
                     const rowFont = unitCount <= 14 ? 9 : unitCount <= 22 ? 8 : 7;
                     densityStyle.textContent = `
+                        .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important; gap: 8px !important; align-items: stretch !important; width: 100% !important; margin: 5px 0 !important; }
+                        .transcript-lower-grid > .grading-scale-table, .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; box-sizing: border-box !important; }
+                        .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 6px 7px !important; font-size: 9px !important; font-weight: 700 !important; }
+                        .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 3px !important; padding: 4px !important; margin: 0 !important; }
+                        .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 5px !important; margin: 0 !important; }
+                        .academic-summary-panel .summary-card .label { font-size: 7px !important; text-align: left !important; }
+                        .academic-summary-panel .summary-card .value { font-size: 13px !important; }
+                        table.semester-results-table tbody td { padding-top: 7px !important; padding-bottom: 7px !important; }
+
                         table.semester-results-table thead { display: table-header-group !important; }
                         table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
                         table.semester-results-table tbody td { padding: ${rowPadding}px 5px !important; font-size: ${rowFont}px !important; line-height: 1.2 !important; }
