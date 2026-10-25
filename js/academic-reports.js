@@ -2619,12 +2619,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                     const options = {
                         // Capture at portrait A4 CSS width and retain the QR image before PDF serialization.
-                        margin: 6,
+                        margin: [5, 5, 5, 5],
                         filename: fileBase + '.pdf',
                         image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, width: 794, onclone: clonedDoc => {
-                            // Lock the cloned capture to the portrait A4 CSS width; otherwise mobile viewport
-                            // sizing can crop the right side of the transcript in the exported PDF.
+                        html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0, onclone: clonedDoc => {
+                            // Keep the cloned document and target at the same A4 CSS width; do not force a
+                            // separate canvas width, which can crop content when html2canvas measures overflow.
                             const clonedHtml = clonedDoc.documentElement;
                             const clonedBody = clonedDoc.body;
                             [clonedHtml, clonedBody].forEach(node => {
@@ -2637,6 +2637,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             });
                             const clonedTarget = clonedDoc.querySelector('.container');
                             if (clonedTarget) {
+                                clonedTarget.style.setProperty('box-sizing', 'border-box', 'important');
                                 clonedTarget.style.setProperty('width', '794px', 'important');
                                 clonedTarget.style.setProperty('min-width', '794px', 'important');
                                 clonedTarget.style.setProperty('max-width', '794px', 'important');
@@ -2646,15 +2647,18 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 clonedTarget.style.setProperty('align-content', 'start', 'important');
                                 clonedTarget.style.setProperty('grid-template-rows', 'auto auto auto auto auto 42mm auto auto auto', 'important');
                                 clonedTarget.style.setProperty('overflow', 'visible', 'important');
+                                clonedTarget.style.setProperty('transform', 'none', 'important');
                             }
                             const canvas = clonedDoc.querySelector('.chart-container canvas');
                             if (canvas) {
+                                canvas.style.setProperty('display', 'block', 'important');
                                 canvas.style.setProperty('width', '100%', 'important');
                                 canvas.style.setProperty('height', '32mm', 'important');
+                                canvas.style.setProperty('max-width', '100%', 'important');
                             }
                         } },
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-                        pagebreak: { mode: ['css', 'legacy'] }
+                        pagebreak: { mode: ['css'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
                     };
                     // Generate a real PDF and save it directly from the original portal tab.
                     // Use numeric margin for html2pdf compatibility and a File/Blob fallback if
