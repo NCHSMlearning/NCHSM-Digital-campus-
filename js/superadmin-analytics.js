@@ -330,36 +330,37 @@ const client = window.sb || window.supabase;
                 studentQuery = studentQuery.eq('program', program);
             }
         }
-        if (block !== 'all') studentQuery = studentQuery.eq('block', block);
-        if (year) studentQuery = studentQuery.eq('intake_year', year);
-        
+        // Do not filter profiles by their CURRENT block or intake year.
+        // Those fields can change as students progress; historical marks must
+        // be selected by the academic year and block recorded on the marks.
         const { data: students, error: studentError } = await studentQuery;
         if (studentError) throw studentError;
-        console.log(`👥 Found ${students?.length || 0} students`);
-        
-        // 2. GET MARKS
-        const studentIds = [...new Set((students || []).flatMap(s => [s.admission_number, s.student_id]).filter(Boolean).map(String))];
+        console.log(`👥 Found ${students?.length || 0} student profiles for the selected program`);
+
+        // 2. GET MARKS using the historical academic year/block on each mark.
+        // Do not require a match against the student's current profile first:
+        // doing so hides valid marks when a student's profile block/intake changes.
         let marksQuery = client
             .from('student_marks')
             .select('*')
-            .eq('academic_year', year)
-            .in('admission_number', studentIds.length > 0 ? studentIds : ['none']);
-        
+            .eq('academic_year', year);
+
         if (block !== 'all') marksQuery = marksQuery.eq('block', block);
-        
+        if (program !== 'all' && program !== 'TVET') marksQuery = marksQuery.eq('program', program);
+        if (program === 'TVET') marksQuery = marksQuery.neq('program', 'KRCHN');
+
         const { data: marks, error: marksError } = await marksQuery;
         if (marksError) throw marksError;
-        console.log(`📊 Found ${marks?.length || 0} marks records`);
-        
+        console.log(`📊 Found ${marks?.length || 0} marks records for academic year ${year}, block ${block}`);
+
         // 3. PROCESS DATA
-        let filteredStudents = students || [];
-        const totalStudents = filteredStudents.length;
-        const filteredStudentIds = new Set(filteredStudents.flatMap(s => [s.admission_number, s.student_id]).filter(Boolean).map(String));
-        
         let filteredMarks = marks || [];
-        if (filteredStudentIds.length > 0) {
-            filteredMarks = marks.filter(m => filteredStudentIds.has(String(m.admission_number || '')) || filteredStudentIds.has(String(m.student_id || '')));
-        }
+        const markIdentifiers = new Set(filteredMarks.flatMap(m => [m.admission_number, m.student_id]).filter(Boolean).map(String));
+        const filteredStudents = (students || []).filter(s =>
+            [s.admission_number, s.student_id].filter(Boolean).some(id => markIdentifiers.has(String(id)))
+        );
+        const totalStudents = new Set(filteredMarks.map(m => m.admission_number || m.student_id).filter(Boolean).map(String)).size;
+        const filteredStudentIds = new Set(filteredStudents.flatMap(s => [s.admission_number, s.student_id]).filter(Boolean).map(String));
         
         const totalSubjects = [...new Set(filteredMarks?.map(m => m.subject_name) || [])].length;
         
