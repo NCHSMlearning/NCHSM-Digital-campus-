@@ -394,25 +394,39 @@ const LecturerStudents = {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
-            
-            const { data: uploads, error } = await supabase
-                .from('student_uploads')
-                .select('*')
+
+            // DRMS is the shared document register. Map its records into the
+            // legacy shape used by the lecturer modal to avoid a second file list.
+            const { data: documents, error } = await supabase
+                .from('drms_documents')
+                .select('id, student_id, title, category, description, file_name, file_url, file_size, uploaded_by, uploaded_at, status')
                 .order('uploaded_at', { ascending: false });
-            
+
             if (error) {
-                console.error('Error loading uploads:', error);
-                return;
+                console.error('Error loading DRMS documents:', error);
+                // Keep the existing list usable if the DRMS table/policy is not
+                // available in this environment.
+                const legacy = await supabase.from('student_uploads').select('*').order('uploaded_at', { ascending: false });
+                if (legacy.error) {
+                    console.error('Error loading legacy uploads:', legacy.error);
+                    return;
+                }
+                this.uploads = legacy.data || [];
+            } else {
+                this.uploads = (documents || []).map(doc => ({
+                    ...doc,
+                    file_name: doc.file_name || doc.title || 'Student document',
+                    file_type: doc.category || '',
+                    status: doc.status || 'Available',
+                    storage_url: doc.file_url || null
+                }));
             }
-            
-            this.uploads = uploads || [];
             this.updateUploadStats();
-            
         } catch (error) {
-            console.error('Failed to load uploads:', error);
+            console.error('Failed to load student documents:', error);
         }
     },
-    
+
     // ─── UPDATE UPLOAD STATS ───
     updateUploadStats() {
         const el = document.getElementById('totalUploadsStat');
@@ -822,54 +836,101 @@ const LecturerStudents = {
     
     // ─── UPLOAD FILE (FOR APPROVAL) ───
     async uploadFile(studentId, file) {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) {
+            window.LecturerUI?.showNotification('Secure file service is unavailable.', 'error');
+            return;
+        }
+
+        // Guard against oversized or potentially unsafe uploads.
+        const maxBytes = 15 * 1024 * 1024;
+        const allowedTypes = new Set([
+            'application/pdf', 'image/jpeg', 'image/png',
+            'image/webp', 'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ]);
+        if (!file || file.size <= 0 || file.size > maxBytes) {
+            window.LecturerUI?.showNotification('Choose a non-empty file up to 15 MB.', 'error');
+            return;
+        }
+        if (file.type && !allowedTypes.has(file.type)) {
+            window.LecturerUI?.showNotification('Allowed files: PDF, JPG, PNG, WEBP, DOC and DOCX.', 'error');
+            return;
+        }
+
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-150);
+        const storagePath = `drms/${studentId}/lecturer-${Date.now()}-${safeName}`;
+
+        try {
+            const { data: stored, error: storageError } = await supabase.storage
+                .from('drms_files')
+                .upload(storagePath, file, {
+                    contentType: file.type || 'application/octet-stream',
+                    upsert: false
+                });
+
+            if (storageError) throw storageError;
+
+            // DRMS is the shared document register; never write a duplicate
+            // metadata-only row to student_uploads.
+            const { data: publicData } = supabase.storage.from('drms_files').getPublicUrl(stored.path);
+            const { error: documentError } = await supabase.from('drms_documents').insert({
+                student_id: studentId,
+                title: file.name,
+                category: 'Lecturer Supporting Document',
+                description: 'Uploaded by a lecturer for the student record.',
+                file_name: file.name,
+                file_url: publicData?.publicUrl || null,
+                file_size: file.size,
+                uploaded_by: profile?.user_id || null,
+                uploaded_at: new Date().toISOString(),
+                status: 'Pending Approval'
+            });
+
+            if (documentError) {
+                // Remove the orphaned object if the document register rejects it.
+                await supabase.storage.from('drms_files').remove([stored.path]);
+                throw documentError;
+            }
+
+            window.LecturerUI?.showNotification('Uploaded ' + file.name + ' to the shared student file.', 'success');
+            await this.loadUploads();
+            if (this.selectedStudentId === studentId) await this.loadStudentUploads(studentId);
+        } catch (error) {
+            console.error('Student document upload failed:', error);
+            window.LecturerUI?.showNotification('Upload failed: ' + (error?.message || 'check storage and DRMS permissions'), 'error');
+        }
+    },
+
+    // ─── OPEN / DOWNLOAD SHARED DRMS DOCUMENT ───
+    async downloadFile(uploadId) {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            
-            const { data, error } = await supabase
-                .from('student_uploads')
-                .insert({
-                    student_id: studentId,
-                    file_name: file.name,
-                    file_size: file.size,
-                    file_type: file.type,
-                    uploaded_by: profile?.user_id || 'unknown',
-                    uploaded_by_name: profile?.full_name || 'Lecturer',
-                    uploaded_at: new Date().toISOString(),
-                    status: 'Pending Approval'
-                });
-            
-            if (error) {
-                console.error('Error uploading file:', error);
-                if (window.LecturerUI) {
-                    window.LecturerUI.showNotification('Failed to upload: ' + file.name, 'error');
-                }
-                return;
+            if (!supabase) throw new Error('Document service is unavailable.');
+
+            const document = this.uploads.find(item => String(item.id) === String(uploadId));
+            if (!document) throw new Error('Document not found. Refresh the student file and try again.');
+
+            // Prefer a signed link for private buckets; public URLs remain a
+            // compatibility fallback for existing DRMS records.
+            let url = document.storage_url || document.file_url || document.file_path || null;
+            const storagePath = document.storage_path || document.file_path;
+            if (storagePath) {
+                const { data, error } = await supabase.storage
+                    .from('drms_files')
+                    .createSignedUrl(storagePath, 60);
+                if (!error && data?.signedUrl) url = data.signedUrl;
             }
-            
-            if (window.LecturerUI) {
-                window.LecturerUI.showNotification('✅ Uploaded: ' + file.name + ' (Pending Approval)', 'success');
-            }
-            
-            // Update uploads count
-            this.uploads.push(data);
-            this.updateUploadStats();
-            
+            if (!url) throw new Error('No file URL is stored for this document.');
+
+            window.open(url, '_blank', 'noopener,noreferrer');
         } catch (error) {
-            console.error('Failed to upload file:', error);
+            console.error('Unable to open student document:', error);
+            window.LecturerUI?.showNotification(error?.message || 'Unable to open document.', 'error');
         }
     },
-    
-    // ─── DOWNLOAD FILE ───
-    downloadFile(uploadId) {
-        if (window.LecturerUI) {
-            window.LecturerUI.showNotification('Download functionality coming soon.', 'info');
-        }
-        console.log('Download file:', uploadId);
-    },
-    
+
     // ─── SETUP BULK UPLOAD ───
     setupBulkUpload() {
         const dropzone = document.getElementById('bulkDropzone');
