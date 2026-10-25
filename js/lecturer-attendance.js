@@ -661,7 +661,14 @@ const LecturerAttendance = {
                 const from = String(document.getElementById('filterDateFrom')?.value || '').trim();
                 const to = String(document.getElementById('filterDateTo')?.value || '').trim();
                 const legacyDate = String(document.getElementById('filterDate')?.value || '').trim();
-                const wantsHistory = !!(from || to || legacyDate);
+                const block = String(document.getElementById('filterBlock')?.value || 'All');
+                const unit = String(document.getElementById('filterUnit')?.value || 'All');
+                const year = String(document.getElementById('filterYear')?.value || 'All');
+                const sessionType = String(document.getElementById('filterSessionType')?.value || 'All');
+                // All-dates mode must load matching historical records too. Query by
+                // selected block/unit/year/type so it doesn't download the whole table.
+                const hasNarrowFilter = [block, unit, year, sessionType].some(v => v && v !== 'All');
+                const wantsHistory = !!(from || to || legacyDate || hasNarrowFilter);
                 const tasks = [this.loadTodayAttendance()];
                 if (wantsHistory) tasks.push(this.loadPastAttendance(true, from || legacyDate, to || legacyDate));
                 await Promise.all(tasks);
@@ -876,9 +883,15 @@ const LecturerAttendance = {
     async loadPastAttendance(force = false, rangeFrom = '', rangeTo = '') {
         const fromDate = String(rangeFrom || '').trim();
         const toDate = String(rangeTo || '').trim();
-        // History is fetched only when a lecturer explicitly chooses a date range.
-        if (!fromDate && !toDate) return [];
-        const cacheKey = `${fromDate || '*'}|${toDate || '*'}`;
+        const block = String(document.getElementById('filterBlock')?.value || 'All').trim();
+        const unit = String(document.getElementById('filterUnit')?.value || 'All').trim();
+        const year = String(document.getElementById('filterYear')?.value || 'All').trim();
+        const sessionType = String(document.getElementById('filterSessionType')?.value || 'All').trim();
+        const hasNarrowFilter = [block, unit, year, sessionType].some(v => v && v !== 'All');
+        // Blank dates mean all dates, but only fetch history when a narrowing
+        // filter exists; this avoids unbounded full-table reads.
+        if (!fromDate && !toDate && !hasNarrowFilter) return [];
+        const cacheKey = [fromDate || '*', toDate || '*', block, unit, year, sessionType, this.currentProgram || 'KRCHN'].join('|');
         if (!force && this._pastAttendanceCacheKey === cacheKey && Array.isArray(this.pastLogs) &&
             this._pastAttendanceLoadedAt && Date.now() - this._pastAttendanceLoadedAt < 3 * 60 * 1000) {
             return this.pastLogs;
@@ -890,13 +903,30 @@ const LecturerAttendance = {
             const all = [];
             let offset = 0;
             const queryStart = fromDate ? this.getNairobiDayBounds(fromDate).start : null;
-            const queryEnd = toDate ? this.getNairobiDayBounds(toDate).end : this.getNairobiDayBounds(this.getNairobiDateString()).start;
+            const queryEnd = toDate ? this.getNairobiDayBounds(toDate).end : null;
+            const block = String(document.getElementById('filterBlock')?.value || 'All').trim();
+            const unit = String(document.getElementById('filterUnit')?.value || 'All').trim();
+            const year = String(document.getElementById('filterYear')?.value || 'All').trim();
+            const sessionType = String(document.getElementById('filterSessionType')?.value || 'All').trim();
+            const program = String(this.currentProgram || 'KRCHN').trim();
+            const cacheKey = [fromDate || '*', toDate || '*', block, unit, year, sessionType, program].join('|');
+            if (!force && this._pastAttendanceCacheKey === cacheKey && Array.isArray(this.pastLogs) &&
+                this._pastAttendanceLoadedAt && Date.now() - this._pastAttendanceLoadedAt < 3 * 60 * 1000) {
+                return this.pastLogs;
+            }
 
             while (true) {
                 let query = supabase.from('geo_attendance_logs').select('*');
                 if (queryStart) query = query.gte('check_in_time', queryStart);
-                else query = query.lt('check_in_time', this.getNairobiDayBounds(this.getNairobiDateString()).start);
                 if (queryEnd) query = query.lte('check_in_time', queryEnd);
+                if (program && program !== 'All') query = query.ilike('program', program);
+                if (block && block !== 'All') query = query.ilike('block', block);
+                if (year && year !== 'All') query = query.eq('intake_year', year);
+                if (unit && unit !== 'All') {
+                    const safeUnit = unit.replace(/[,%()]/g, ' ').trim();
+                    query = query.or(`unit_name.ilike.%${safeUnit}%,target_name.ilike.%${safeUnit}%,uunit_name.ilike.%${safeUnit}%`);
+                }
+                if (sessionType && sessionType !== 'All') query = query.ilike('session_type', sessionType);
                 query = query.order('check_in_time', { ascending: false }).range(offset, offset + pageSize - 1);
                 const { data: page, error } = await query;
                 if (error) throw error;
@@ -2447,7 +2477,12 @@ const LecturerAttendance = {
             const to = String(document.getElementById('filterDateTo')?.value || '').trim();
             const legacy = String(document.getElementById('filterDate')?.value || '').trim();
             this._pastAttendanceLoadedAt = 0;
-            if (from || to || legacy) await this.loadPastAttendance(true, from || legacy, to || legacy);
+            const block = String(document.getElementById('filterBlock')?.value || 'All');
+            const unit = String(document.getElementById('filterUnit')?.value || 'All');
+            const year = String(document.getElementById('filterYear')?.value || 'All');
+            const type = String(document.getElementById('filterSessionType')?.value || 'All');
+            const narrow = [block, unit, year, type].some(v => v && v !== 'All');
+            if (from || to || legacy || narrow) await this.loadPastAttendance(true, from || legacy, to || legacy);
             else this.pastLogs = [];
             await this.loadAllAttendance();
             this.applyFilters();
