@@ -1712,13 +1712,18 @@ class DashboardModule {
                 ? (ratings.reduce((sum, r) => sum + (r.rating || 0), 0) / ratings.length).toFixed(1)
                 : '0.0';
             
-            const { count: userPending, error: pendingError } = await this.sb
-                .from('student_reviews')
-                .select('*', { count: 'exact', head: true })
-                .eq('student_id', this.userId)
-                .eq('status', 'pending');
-            
-            if (pendingError) throw pendingError;
+            // Do not issue a student-specific query until the authenticated user ID exists.
+            // Previously this could send student_id=eq.undefined during dashboard startup.
+            let userPending = 0;
+            if (this.userId !== undefined && this.userId !== null && String(this.userId).trim() !== '') {
+                const { count, error: pendingError } = await this.sb
+                    .from('student_reviews')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('student_id', this.userId)
+                    .eq('status', 'pending');
+                if (pendingError) throw pendingError;
+                userPending = count || 0;
+            }
             
             this.metrics.reviews = {
                 total: totalReviews || 0,
