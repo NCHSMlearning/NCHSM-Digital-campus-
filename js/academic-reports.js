@@ -2094,8 +2094,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
         <div class="transcript-lower-grid">
             <div class="grading-scale-table">
-                <div class="title">Grading Scale (${programType})</div>
+                <div class="title">Grading Scale (${programType})*</div>
                 ${gradingScaleHTML}
+                <div class="grading-scale-footnote" style="font-size: 7px; line-height: 1.2; margin-top: 3px; color: #475569;">* A star beside a grade or status identifies a result obtained following a retake assessment.</div>
             </div>
             <div class="academic-summary-panel">
                 <div class="academic-summary-title">Academic Summary</div>
