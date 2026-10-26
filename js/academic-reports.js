@@ -2160,7 +2160,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 hideQrBox(registryError && registryError.message || registryError);
                 return;
             }
-            const verificationUrl = new URL('/graduation.html', portalOrigin);
+            const verificationUrl = new URL('/transcripts', portalOrigin);
             verificationUrl.searchParams.set('token', registryToken);
             verificationUrl.searchParams.set('type', 'provisional-transcript');
             const payload = verificationUrl.href;
