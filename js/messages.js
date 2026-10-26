@@ -147,9 +147,23 @@ class MessagesSystem {
     
     // Helper function for safe Supabase client access
     getSupabaseClient() {
-        const client = window.db?.supabase;
-        if (!client || typeof client.from !== 'function') {
-            console.error('❌ No valid Supabase client available');
+        // The portal config exposes the initialized client as window.sb and
+        // window.supabaseClient. window.db.supabase is only present in some
+        // dashboard boot paths, so support all established global aliases.
+        const candidates = [
+            window.db?.supabase,
+            window.sb,
+            window.supabaseClient
+        ];
+        const client = candidates.find(candidate =>
+            candidate && typeof candidate.from === 'function'
+        );
+        if (!client) {
+            console.error('❌ No valid Supabase client available', {
+                dbClientAvailable: Boolean(window.db?.supabase),
+                sbAvailable: Boolean(window.sb),
+                supabaseClientAvailable: Boolean(window.supabaseClient)
+            });
             return null;
         }
         return client;
