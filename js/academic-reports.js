@@ -2254,7 +2254,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             window.print();
         };
 
-    <\\/script>
+    <\/script>
 </body>
 </html>
             `);
