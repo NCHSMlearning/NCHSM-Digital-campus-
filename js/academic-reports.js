@@ -2063,9 +2063,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .declaration .title { font-weight: 700; color: #0A3D62; font-size: 8px; }
         .declaration .checkbox { display: inline-block; width: 9px; height: 9px; border: 2px solid #0A3D62; border-radius: 2px; margin-right: 4px; vertical-align: middle; background: #0A3D62; position: relative; }
         .declaration .checkbox::after { content: "✓"; color: white; font-size: 6px; position: absolute; top: -2px; left: 0px; }
-        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; min-height: 62px; }
         .signature-box { text-align: center; }
-        .signature-box .line { border-bottom: 2px solid #1e293b; width: 130px; margin: 8px auto 2px auto; }
+        .signature-box .line { border-bottom: 1px solid #1e293b; width: 155px; height: 24px; margin: 0 auto 2px auto; }
         .signature-box .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
         .signature-box .name { font-weight: 600; font-size: 10px; color: #0A3D62; }
         .footer { text-align: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid #0A3D62; font-size: 8px; line-height: 1.2; color: #52677a; }
@@ -2166,17 +2166,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
         <div class="signatures">
             <div class="signature-box">
-                <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
                 <div class="line"></div>
                 <div class="label">Student Signature</div>
-                <div class="date">Date: ${now}</div>
+                <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
+                <div class="date">Date: _____________</div>
             </div>
             <div class="signature-box">
-                <div class="name" style="color: #94a3b8;">_________________________</div>
                 <div class="line"></div>
                 <div class="label">Head of Department (HOD)</div>
                 <div class="date">Date: _____________</div>
             </div>
+        </div>
         </div>
 
         <div class="footer">
