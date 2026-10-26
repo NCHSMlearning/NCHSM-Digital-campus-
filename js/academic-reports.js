@@ -2397,46 +2397,16 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         });
                     }));
 
-                    // Constrain the live iframe layout to A4 content width before capture.
+                    // Export the exact preview DOM. Only remove interactive controls; never restyle transcript content.
                     const captureStyle = printWindow.document.createElement('style');
                     captureStyle.id = 'transcript-pdf-capture-normalization';
                     captureStyle.textContent = `
-                        html, body { width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
-                        body { font-size: 11px !important; }
-                        .container { display: block !important; width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 4mm !important; box-sizing: border-box !important; box-shadow: none !important; border-radius: 0 !important; }
-                        .transcript-preview-toolbar { display: none !important; }
-                        .header-top img { max-width: 58px !important; max-height: 48px !important; }
-                        .header .school { font-size: 17px !important; }
-                        .header .subtitle { font-size: 14px !important; letter-spacing: 1px !important; }
-                        .student-info { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-                        table.semester-results-table { width: 100% !important; table-layout: fixed !important; }
-                        table.semester-results-table thead { display: table-header-group !important; }
-                        table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; }
-                        table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
-                        table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
-                        table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; }
-                        table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; }
-                        table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; }
-                        .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; gap: 5px !important; align-items: start !important; margin: 4px 0 !important; }
-                        .transcript-lower-grid > * { min-width: 0 !important; }
-                        .grading-scale-table, .academic-summary-panel { margin: 0 !important; padding: 5px 6px !important; min-width: 0 !important; }
-                        .grading-scale-table .title, .academic-summary-title { font-size: 9px !important; margin-bottom: 3px !important; }
-                        .grading-scale-table table, .grading-scale-table th, .grading-scale-table td { font-size: 7px !important; padding: 3px 4px !important; }
-                        .transcript-lower-grid .summary-grid { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 3px !important; margin: 0 !important; }
-                        .transcript-lower-grid .summary-card { padding: 4px 3px !important; }
-                        .transcript-lower-grid .summary-card .value { font-size: 14px !important; }
-                        .transcript-lower-grid .summary-card .label { font-size: 7px !important; }
-                        .container { break-inside: auto !important; page-break-inside: auto !important; }
-                        table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-                        .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: auto !important; page-break-inside: auto !important; }
-                        .no-print, .transcript-preview-toolbar { display: none !important; }
+                        @page { size: A4 portrait; margin: 5mm; }
+                        html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+                        .transcript-preview-toolbar, .no-print { display: none !important; }
                     `;
                     printWindow.document.head.appendChild(captureStyle);
                     const previewRows = printWindow.document.querySelectorAll('table.semester-results-table tbody tr');
-                    const previewRowPadding = previewRows.length <= 8 ? 6 : previewRows.length <= 14 ? 4 : previewRows.length <= 22 ? 3 : 2;
-                    const previewDensityStyle = printWindow.document.createElement('style');
-                    previewDensityStyle.textContent = `table.semester-results-table tbody td { padding: ${previewRowPadding}px 4px !important; } table.semester-results-table thead { display: table-header-group !important; }`;
-                    printWindow.document.head.appendChild(previewDensityStyle);
                     await new Promise(resolve => setTimeout(resolve, 250));
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
@@ -2446,7 +2416,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     try {
                         if (typeof printWindow.html2pdf === 'function') {
                             const options = {
-                                margin: [5, 5, 5, 5],
+                                margin: 0,
                                 filename: fileBase + '.pdf',
                                 image: { type: 'jpeg', quality: 0.98 },
                                 html2canvas: {
@@ -2459,32 +2429,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                     logging: false,
                                     onclone: (clonedDoc) => {
                                         [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
-                                            node.style.setProperty('width', '718px', 'important');
-                                            node.style.setProperty('min-width', '718px', 'important');
-                                            node.style.setProperty('max-width', '718px', 'important');
                                             node.style.setProperty('margin', '0', 'important');
                                             node.style.setProperty('padding', '0', 'important');
                                             node.style.setProperty('overflow', 'visible', 'important');
+                                            node.style.setProperty('background', '#ffffff', 'important');
                                         });
-                                        const container = clonedDoc.querySelector('.container');
-                                        if (container) {
-                                            container.style.setProperty('display', 'block', 'important');
-                                            container.style.setProperty('width', '718px', 'important');
-                                            container.style.setProperty('min-width', '718px', 'important');
-                                            container.style.setProperty('max-width', '718px', 'important');
-                                            container.style.setProperty('box-sizing', 'border-box', 'important');
-                                            container.style.setProperty('margin', '0', 'important');
-                                            container.style.setProperty('padding', '4mm', 'important');
-                                        }
-                                        const canvas = clonedDoc.querySelector('.chart-container canvas');
-                                        if (canvas) {
-                                            canvas.style.setProperty('display', 'block', 'important');
-                                            canvas.style.setProperty('width', '100%', 'important');
-                                            canvas.style.setProperty('height', '38mm', 'important');
-                                            canvas.style.setProperty('max-width', '100%', 'important');
-                                        }
-                                        const toolbarEl = clonedDoc.querySelector('.transcript-preview-toolbar');
-                                        if (toolbarEl) toolbarEl.style.setProperty('display', 'none', 'important');
+                                        clonedDoc.querySelectorAll('.transcript-preview-toolbar, .no-print').forEach(node => {
+                                            node.style.setProperty('display', 'none', 'important');
+                                        });
                                     }
                                 },
                                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
@@ -2553,29 +2505,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 scrollX: 0,
                                 scrollY: 0,
                                 logging: false,
-                                windowWidth: 718,
                                 onclone: (clonedDoc) => {
-                                    [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
-                                        node.style.setProperty('width', '718px', 'important');
-                                        node.style.setProperty('min-width', '718px', 'important');
-                                        node.style.setProperty('max-width', '718px', 'important');
-                                        node.style.setProperty('margin', '0', 'important');
-                                        node.style.setProperty('padding', '0', 'important');
-                                        node.style.setProperty('overflow', 'visible', 'important');
-                                    });
-                                    const clonedContainer = clonedDoc.querySelector('.container');
-                                    if (clonedContainer) {
-                                        clonedContainer.style.setProperty('width', '718px', 'important');
-                                        clonedContainer.style.setProperty('max-width', '718px', 'important');
-                                        clonedContainer.style.setProperty('min-height', '0', 'important');
-                                        clonedContainer.style.setProperty('height', 'auto', 'important');
-                                        clonedContainer.style.setProperty('margin', '0', 'important');
-                                        clonedContainer.style.setProperty('padding', '4mm', 'important');
-                                        clonedContainer.style.setProperty('box-sizing', 'border-box', 'important');
+                                        [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
+                                            node.style.setProperty('margin', '0', 'important');
+                                            node.style.setProperty('padding', '0', 'important');
+                                            node.style.setProperty('overflow', 'visible', 'important');
+                                            node.style.setProperty('background', '#ffffff', 'important');
+                                        });
+                                        clonedDoc.querySelectorAll('.transcript-preview-toolbar, .no-print').forEach(node => {
+                                            node.style.setProperty('display', 'none', 'important');
+                                        });
                                     }
-                                    const clonedToolbar = clonedDoc.querySelector('.transcript-preview-toolbar');
-                                    if (clonedToolbar) clonedToolbar.style.setProperty('display', 'none', 'important');
-                                }
                             });
                             const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
                             const pageWidth = 210;
@@ -2785,17 +2725,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     const transcriptTable = printWindow.document.querySelector('table.semester-results-table');
                     const transcriptRows = transcriptTable ? transcriptTable.querySelectorAll('tbody tr') : [];
                     const unitCount = transcriptRows.length;
+                    // Keep preview styling intact; only hide interactive controls in the PDF.
                     const densityStyle = printWindow.document.createElement('style');
-                    const rowPadding = unitCount <= 8 ? 6 : unitCount <= 14 ? 4 : unitCount <= 22 ? 3 : 2;
-                    const rowFont = unitCount <= 14 ? 9 : unitCount <= 22 ? 8 : 7;
-                    densityStyle.textContent = `
-                        table.semester-results-table thead { display: table-header-group !important; }
-                        table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-                        table.semester-results-table tbody td { padding: ${rowPadding}px 5px !important; font-size: ${rowFont}px !important; line-height: 1.2 !important; }
-                        table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; }
-                        .container { break-inside: auto !important; page-break-inside: auto !important; }
-                        .header, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
-                    `;
+                    densityStyle.textContent = '.transcript-preview-toolbar, .no-print { display: none !important; }';
                     printWindow.document.head.appendChild(densityStyle);
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
@@ -2805,7 +2737,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     try {
                         if (typeof printWindow.html2pdf === 'function') {
                             const options = {
-                                margin: [5, 5, 5, 5],
+                                margin: 0,
                                 filename: fileBase + '.pdf',
                                 image: { type: 'jpeg', quality: 0.98 },
                                 html2canvas: {
@@ -2818,34 +2750,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                     logging: false,
                                     onclone: (clonedDoc) => {
                                         [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
-                                            node.style.setProperty('width', '718px', 'important');
-                                            node.style.setProperty('min-width', '718px', 'important');
-                                            node.style.setProperty('max-width', '718px', 'important');
                                             node.style.setProperty('margin', '0', 'important');
                                             node.style.setProperty('padding', '0', 'important');
                                             node.style.setProperty('overflow', 'visible', 'important');
+                                            node.style.setProperty('background', '#ffffff', 'important');
                                         });
-                                        const container = clonedDoc.querySelector('.container');
-                                        if (container) {
-                                            container.style.setProperty('display', 'block', 'important');
-                                            container.style.setProperty('width', '718px', 'important');
-                                            container.style.setProperty('min-width', '718px', 'important');
-                                            container.style.setProperty('max-width', '718px', 'important');
-                                            container.style.setProperty('box-sizing', 'border-box', 'important');
-                                            container.style.setProperty('margin', '0', 'important');
-                                            container.style.setProperty('padding', '4mm', 'important');
-                                            container.style.setProperty('height', 'auto', 'important');
-                                            container.style.setProperty('min-height', '0', 'important');
-                                            container.style.setProperty('transform', 'none', 'important');
-                                            container.style.setProperty('overflow', 'visible', 'important');
-                                        }
-                                        const canvas = clonedDoc.querySelector('.chart-container canvas');
-                                        if (canvas) {
-                                            canvas.style.setProperty('display', 'block', 'important');
-                                            canvas.style.setProperty('width', '100%', 'important');
-                                            canvas.style.setProperty('height', '38mm', 'important');
-                                            canvas.style.setProperty('max-width', '100%', 'important');
-                                        }
+                                        clonedDoc.querySelectorAll('.transcript-preview-toolbar, .no-print').forEach(node => {
+                                            node.style.setProperty('display', 'none', 'important');
+                                        });
                                     }
                                 },
                                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
@@ -2910,27 +2822,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 scrollX: 0,
                                 scrollY: 0,
                                 logging: false,
-                                windowWidth: 718,
                                 onclone: (clonedDoc) => {
-                                    [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
-                                        node.style.setProperty('width', '718px', 'important');
-                                        node.style.setProperty('min-width', '718px', 'important');
-                                        node.style.setProperty('max-width', '718px', 'important');
-                                        node.style.setProperty('margin', '0', 'important');
-                                        node.style.setProperty('padding', '0', 'important');
-                                        node.style.setProperty('overflow', 'visible', 'important');
-                                    });
-                                    const clonedContainer = clonedDoc.querySelector('.container');
-                                    if (clonedContainer) {
-                                        clonedContainer.style.setProperty('width', '718px', 'important');
-                                        clonedContainer.style.setProperty('max-width', '718px', 'important');
-                                        clonedContainer.style.setProperty('min-height', '0', 'important');
-                                        clonedContainer.style.setProperty('height', 'auto', 'important');
-                                        clonedContainer.style.setProperty('margin', '0', 'important');
-                                        clonedContainer.style.setProperty('padding', '4mm', 'important');
-                                        clonedContainer.style.setProperty('box-sizing', 'border-box', 'important');
+                                        [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
+                                            node.style.setProperty('margin', '0', 'important');
+                                            node.style.setProperty('padding', '0', 'important');
+                                            node.style.setProperty('overflow', 'visible', 'important');
+                                            node.style.setProperty('background', '#ffffff', 'important');
+                                        });
+                                        clonedDoc.querySelectorAll('.transcript-preview-toolbar, .no-print').forEach(node => {
+                                            node.style.setProperty('display', 'none', 'important');
+                                        });
                                     }
-                                }
                             });
                             const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
                             const usableWidth = 200;
