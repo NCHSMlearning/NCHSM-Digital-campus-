@@ -1645,11 +1645,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
        // ============================================================
     // 20. DOWNLOAD PROVISIONAL ACADEMIC TRANSCRIPT - PORTRAIT ONLY
     // ============================================================
-    function downloadReportCard(outputMode = 'download') {
+    async function downloadReportCard(outputMode = 'download') {
         console.log('📊 Downloading Provisional Academic Transcript (PORTRAIT)...');
 
         const user = window.currentUserProfile || window.db?.currentUserProfile || {};
         const userProgram = user.program || '';
+        // Ensure retake records are loaded even when the transcript is opened directly
+        // without first visiting My Performance. Stored historical marks remain unchanged.
+        const transcriptAdmission = user.admission_number || user.student_id || user.user_id;
+        if (transcriptAdmission && !retakeDataLoaded) {
+            await fetchStudentRetakeData(transcriptAdmission);
+        }
         const isTVET = PROGRAM.isTVET(userProgram);
         const programType = PROGRAM.getProgramType(userProgram);
 
