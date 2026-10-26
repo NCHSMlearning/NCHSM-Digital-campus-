@@ -2277,7 +2277,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 previewStyle.textContent = `
                     html, body { min-height: 100%; background: #eef2f7 !important; }
                     body { margin: 0 !important; padding: 74px 16px 24px !important; }
-                    .container { display: block !important; width: 794px !important; max-width: 100% !important; min-height: 1123px !important; height: auto !important; margin: 0 auto !important; padding: 28px !important; background: #fff !important; box-shadow: 0 8px 30px rgba(15,23,42,.18) !important; border-radius: 2px !important; }
+                    .container { display: block !important; width: 794px !important; max-width: 100% !important; min-height: 0 !important; height: auto !important; margin: 0 auto !important; padding: 20px 24px !important; background: #fff !important; box-shadow: 0 8px 30px rgba(15,23,42,.18) !important; border-radius: 2px !important; }
                     .transcript-preview-toolbar { position: fixed; z-index: 99999; top: 0; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: #0A3D62; box-shadow: 0 2px 10px #0002; }
                     .transcript-preview-toolbar button { border: 0; border-radius: 7px; padding: 10px 16px; font: 600 14px Arial,sans-serif; cursor: pointer; }
                     .transcript-preview-toolbar .download { background: #10b981; color: #fff; }
