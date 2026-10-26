@@ -1497,16 +1497,29 @@ async function loadMarksEntry() {
         console.log(`📊 Found ${marks?.length || 0} marks records for ${unit}`);
         
         // ==========================================
-        // STEP 2: If no marks exist, fall back to approved registrations
+        // STEP 2: Merge approved registrations with existing marks.
+        // This creates blank records only for newly approved students;
+        // existing marks are never overwritten.
         // ==========================================
-        if (!marks || marks.length === 0) {
-            console.log(`⚠️ No marks records. Checking approved registrations...`);
-            await loadFromApprovedRegistrations(program, block, unit, year, unitCode);
+        await loadFromApprovedRegistrations(program, block, unit, year, unitCode, true);
+        
+        // Re-fetch after the merge so newly added students appear immediately.
+        const { data: mergedMarks, error: mergedMarksError } = await sb
+            .from('student_marks')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        if (mergedMarksError) throw mergedMarksError;
+        marks = mergedMarks || [];
+        
+        if (!marks.length) {
+            console.log('No existing marks or approved registrations found for this unit.');
             return;
         }
         
         // ==========================================
-        // STEP 3: Normal path — render existing marks
+        // STEP 3: Render all existing and newly added marks
         // ==========================================
         
         // ==========================================
@@ -1603,7 +1616,7 @@ async function loadMarksEntry() {
 // LOAD FROM APPROVED REGISTRATIONS
 // Finds approved students, creates blank marks records
 // ============================================================
-async function loadFromApprovedRegistrations(program, block, unit, year, unitCode) {
+async function loadFromApprovedRegistrations(program, block, unit, year, unitCode, mergeOnly = false) {
     const container = document.getElementById('me_marks_container');
     
     try {
@@ -1642,6 +1655,7 @@ async function loadFromApprovedRegistrations(program, block, unit, year, unitCod
         // No approved registrations — check for pending ones
         // ==========================================
         if (matchingRegs.length === 0) {
+            if (mergeOnly) return;
             const { data: allRegs } = await sb
                 .from('student_unit_registrations')
                 .select('student_id, unit_code, unit_name, status')
@@ -1827,6 +1841,10 @@ async function loadFromApprovedRegistrations(program, block, unit, year, unitCod
         }
         
         console.log(`✅ Created ${successCount} marks records (${skipCount} already existed)`);
+        
+        // When merging into an existing marks table, let the caller continue
+        // with its refreshed query to avoid recursive loading.
+        if (mergeOnly) return;
         
         // Reload — now marks records exist, students will appear
         await loadMarksEntry();
