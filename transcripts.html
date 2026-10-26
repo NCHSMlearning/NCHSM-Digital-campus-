@@ -691,6 +691,7 @@ JAVASCRIPT
             const result = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(result.error || 'The registry could not be reached.');
             const details = detail('Document type', 'Provisional academic transcript') +
+                detail('Transcript generation number', result.transcript_number || 'Not available on this registry record') +
                 detail('Student name', result.student_name) +
                 detail('Admission number', result.student_id) +
                 detail('Program', result.program) +
