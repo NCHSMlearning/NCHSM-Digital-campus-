@@ -479,17 +479,29 @@
     <!-- ===== MAIN CONTENT ===== -->
     <div class="blog-container">
 
-        <!-- ===== LIVE STUDENT POSTS ===== -->
-        <section class="student-posts-section" aria-label="Student Blog Posts">
+        <!-- Editorial guide hub: no unpublished student-content feed is presented as live. -->
+        <section class="student-posts-section" aria-labelledby="guide-hub-title">
             <div class="student-posts-heading">
-                <h2><i class="fas fa-book-open"></i> Learning &amp; Career Insights</h2>
-                <span>Approved student contributions appear here when available</span>
+                <h2 id="guide-hub-title"><i class="fas fa-book-open"></i> Practical Student Guides</h2>
+                <span>Editorial resources</span>
             </div>
-            <div id="studentBlogGrid">
-                <div class="blog-loading">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <div style="margin-top:8px;">Loading student posts...</div>
-                </div>
+            <div class="blog-grid">
+                <article class="blog-card">
+                    <div class="body">
+                        <div class="meta"><span>APPLICATION PLANNING</span></div>
+                        <h3><a href="/blog/choosing-healthcare-training-programme.html">How to Choose a Healthcare Training Programme in Kenya</a></h3>
+                        <p>A checklist for comparing entry requirements, professional regulation, practical learning, fees and application instructions before enrolling.</p>
+                        <a class="read-more" href="/blog/choosing-healthcare-training-programme.html">Read the guide <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </article>
+                <article class="blog-card">
+                    <div class="body">
+                        <div class="meta"><span>SKILLS &amp; PROFESSIONAL PRACTICE</span></div>
+                        <h3><a href="/blog/preparing-for-practical-clinical-learning.html">Preparing for Practical and Clinical Learning</a></h3>
+                        <p>Practical advice on preparation, supervision, confidentiality, feedback, accurate logbooks and safe professional conduct.</p>
+                        <a class="read-more" href="/blog/preparing-for-practical-clinical-learning.html">Read the guide <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </article>
             </div>
         </section>
 
@@ -749,18 +761,7 @@
         </div>
     </footer>
 
-    <!-- Live Student Blog integration. Safe fallback: existing editorial posts remain visible if Supabase is not configured. -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./js/student-blog-public.js"></script>
-
     <script>
-    // If the live student-blog service fails, keep the editorial articles visible.
-    window.addEventListener('error', function (event) {
-        const grid = document.getElementById('studentBlogGrid');
-        if (grid && /student-blog-public|supabase/i.test(event.filename || '')) {
-            grid.innerHTML = '<div class="blog-loading">Student posts are temporarily unavailable. Please explore the NCHSM editorial articles below.</div>';
-        }
-    });
     </script>
 
 </body>
