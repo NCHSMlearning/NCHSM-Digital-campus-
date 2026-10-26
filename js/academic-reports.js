@@ -2350,17 +2350,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         });
                     }));
 
-                    // Capture the preview as rendered. Wait for images and the chart, but do not inject
-                    // new layout CSS or change the transcript's widths, table, typography, or spacing.
-                    await Promise.all(Array.from(printWindow.document.images).map(img => {
-                        if (img.complete) return Promise.resolve();
-                        return new Promise(resolve => {
-                            img.addEventListener('load', resolve, { once: true });
-                            img.addEventListener('error', resolve, { once: true });
-                            setTimeout(resolve, 2500);
-                        });
-                    }));
-
+                    // Capture the preview as rendered. The images were awaited above; do not inject
+                    // layout CSS or change the transcript's widths, table, typography, or spacing.
                     const chartCanvasEl = printWindow.document.querySelector('#reportCardLineChart');
                     if (chartCanvasEl && printWindow.Chart) {
                         const chartInstance = printWindow.Chart.getChart(chartCanvasEl);
