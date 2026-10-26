@@ -1480,18 +1480,22 @@ async function loadMarksEntry() {
     }
     
     try {
-        await loadRetakeData(block, unit, year);
-        
+        // Load retake history and the existing marks query at the same time.
+        // These requests are independent, so awaiting them sequentially only adds latency.
+        const [retakeLoadResult, initialMarksResult] = await Promise.all([
+            loadRetakeData(block, unit, year),
+            sb.from('student_marks')
+                .select('*')
+                .eq('block', block)
+                .eq('subject_name', unit)
+                .eq('academic_year', year)
+        ]);
+
         // ==========================================
-        // STEP 1: Try student_marks table first
+        // STEP 1: Existing marks loaded
         // ==========================================
-        let { data: marks, error: marksError } = await sb
-            .from('student_marks')
-            .select('*')
-            .eq('block', block)
-            .eq('subject_name', unit)
-            .eq('academic_year', year);
-        
+        let { data: marks, error: marksError } = initialMarksResult;
+
         if (marksError) throw marksError;
         
         console.log(`📊 Found ${marks?.length || 0} marks records for ${unit}`);
