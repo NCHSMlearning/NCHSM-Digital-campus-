@@ -1642,19 +1642,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         w.document.close();
     }
 
-    // ============================================================
-    // 20. DOWNLOAD PROVISIONAL ACADEMIC TRANSCRIPT - RETAKE SUMMARY REMOVED
+       // ============================================================
+    // 20. DOWNLOAD PROVISIONAL ACADEMIC TRANSCRIPT - PORTRAIT ONLY
     // ============================================================
     function downloadReportCard(outputMode = 'download') {
-        console.log('📊 Downloading Provisional Academic Transcript...');
+        console.log('📊 Downloading Provisional Academic Transcript (PORTRAIT)...');
 
         const user = window.currentUserProfile || window.db?.currentUserProfile || {};
         const userProgram = user.program || '';
         const isTVET = PROGRAM.isTVET(userProgram);
         const programType = PROGRAM.getProgramType(userProgram);
 
-        // IMPORTANT: build the PDF from the currently filtered records, not the
-        // unfiltered cache. This prevents Block 1 marks leaking into a Block 2 PDF.
         const blockFilter = document.getElementById('my_marks_block_filter')?.value || 'all';
         const subjectFilter = document.getElementById('my_marks_subject_filter')?.value || 'all';
         const yearFilter = document.getElementById('my_marks_year_filter')?.value || 'all';
@@ -1664,8 +1662,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .replace(/^(block|term)\s*(\d+)$/, '$1 $2');
 
         let marks = Array.isArray(myMarksFiltered) ? [...myMarksFiltered] : [];
-        // Reapply the selected filters against the canonical loaded data so stale
-        // table state or an outdated filtered array cannot affect the downloaded file.
         if (Array.isArray(myMarksData) && myMarksData.length) {
             marks = [...myMarksData];
             if (blockFilter !== 'all') {
@@ -1681,8 +1677,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             }
         }
 
-        // Never fall back to scraping the visible table or unfiltered marks:
-        // that can silently create a report for the wrong block.
         if (marks.length === 0) {
             alert(blockFilter !== 'all'
                 ? 'No published marks were found for ' + blockFilter + '. Please check the selected block and try again.'
@@ -1690,11 +1684,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             return;
         }
 
-        console.log('📊 Generating filtered semester report for', marks.length, 'marks; block:', blockFilter);
-
-        // Keep preview and PDF download inside the current portal page.
-        // An iframe provides an isolated document for transcript layout/PDF scripts,
-        // while the modal overlay keeps the user on the same page.
+        // In-page overlay + iframe keeps the user on the portal.
         const previewHost = document.createElement('div');
         previewHost.className = 'transcript-preview-overlay';
         previewHost.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.72);display:flex;flex-direction:column;padding:12px;box-sizing:border-box;';
@@ -1704,8 +1694,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         previewHost.appendChild(previewFrame);
         document.body.appendChild(previewHost);
         const frameWindow = previewFrame.contentWindow;
-        // Compatibility adapter: keep the existing transcript rendering logic
-        // working, but route its document and actions to the in-page iframe.
+
         const printWindow = new Proxy({}, {
             get(_target, key) {
                 if (key === 'closed') return !previewHost.isConnected;
@@ -1721,9 +1710,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             }
         });
 
-        // Pass only the short-lived authenticated session context to this same-origin
-        // output window. Some browser isolation policies sever window.opener, which
-        // previously left the QR script without Supabase access.
+        // Pass session context for QR generation.
         try {
             const qrParentConfig = window.APP_CONFIG || {};
             const qrParentClient = window.supabaseClient;
@@ -1735,61 +1722,38 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             anonKey: qrParentConfig.SUPABASE_ANON_KEY,
                             accessToken: data.session.access_token
                         };
-                        console.info('[Transcript QR] Session context passed to transcript window', { sessionAvailable: true });
-                    } else {
-                        console.error('[Transcript QR] Parent could not pass authenticated session context', {
-                            sessionError: error ? error.message : null,
-                            sessionAvailable: Boolean(data && data.session),
-                            popupAvailable: Boolean(printWindow && !printWindow.closed)
-                        });
                     }
-                }).catch(error => console.error('[Transcript QR] Failed to retrieve parent session', error));
-            } else {
-                console.error('[Transcript QR] Parent portal client/config unavailable', {
-                    clientAvailable: Boolean(qrParentClient),
-                    authAvailable: Boolean(qrParentClient && qrParentClient.auth),
-                    configAvailable: Boolean(qrParentConfig.SUPABASE_URL && qrParentConfig.SUPABASE_ANON_KEY)
-                });
+                }).catch(err => console.error('[Transcript QR] Session bridge failed', err));
             }
         } catch (qrContextError) {
-            console.error('[Transcript QR] Could not initialize popup session bridge', qrContextError);
+            console.error('[Transcript QR] Could not initialize session bridge', qrContextError);
         }
 
         printWindow.document.open();
         printWindow.document.write('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Preparing transcript…</title></head><body style="font:16px Arial;padding:24px">Preparing your transcript PDF…</body></html>');
         printWindow.document.close();
 
-        // Show loading
         const loadingEl = document.createElement('div');
         loadingEl.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;';
         loadingEl.innerHTML = '<div style="background:white;padding:30px;border-radius:12px;text-align:center;"><div class="loading-spinner"></div><p style="margin-top:12px;color:#1e293b;">Generating Provisional Academic Transcript...</p></div>';
         document.body.appendChild(loadingEl);
-        
+
         try {
             let profilePicture = '';
             if (user.passport_photo || user.profile_picture || user.photo_url) {
                 profilePicture = user.passport_photo || user.profile_picture || user.photo_url || '';
             }
-            
+
             const now = new Date().toLocaleDateString('en-KE', {
-                timeZone: 'Africa/Nairobi',
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric'
+                timeZone: 'Africa/Nairobi', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
             });
-            
+
             const currentYear = new Date().getFullYear();
             const nextYear = currentYear + 1;
             const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
-            
-            let weightedPoints = 0;
-            let totalCredits = 0;
-            let totalUnits = 0;
-            let passed = 0;
-            let failed = 0;
-            let pending = 0;
-            
+
+            let weightedPoints = 0, totalCredits = 0, totalUnits = 0, passed = 0, failed = 0, pending = 0;
+
             marks.forEach(m => {
                 const publishedGrade = m.grade || m.published_grade || m.final_grade || '';
                 const pointsValue = Number(m.points);
@@ -1801,43 +1765,29 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     totalCredits += credits;
                 }
                 totalUnits++;
-                
-                // Determine pass/fail based on program type
                 const threshold = isTVET ? 50 : 60;
                 const score = m.final_score || 0;
                 if (score >= threshold) passed++;
                 else if (score > 0) failed++;
                 else pending++;
             });
-            
+
             const gpa = totalCredits > 0 ? (weightedPoints / totalCredits) : 0;
-            
             let grade;
             if (isTVET) {
-                if (gpa >= 3.75) grade = 'A';
-                else if (gpa >= 3.0) grade = 'B';
-                else if (gpa >= 2.0) grade = 'C';
-                else grade = 'FAIL';
+                if (gpa >= 3.75) grade = 'A'; else if (gpa >= 3.0) grade = 'B';
+                else if (gpa >= 2.0) grade = 'C'; else grade = 'FAIL';
             } else {
-                if (gpa >= 3.75) grade = 'A';
-                else if (gpa >= 3.0) grade = 'B';
-                else if (gpa >= 2.0) grade = 'C';
-                else grade = 'D';
+                if (gpa >= 3.75) grade = 'A'; else if (gpa >= 3.0) grade = 'B';
+                else if (gpa >= 2.0) grade = 'C'; else grade = 'D';
             }
-            
             const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
-            // Adjust print typography to the actual number of units; no fixed unit limit.
-            const printUnitFontSize = marks.length <= 4 ? 15 : marks.length <= 8 ? 14 : marks.length <= 14 ? 12 : marks.length <= 22 ? 10 : 9;
-            const printRowVerticalPadding = marks.length <= 2 ? 7 : marks.length <= 4 ? 5 : marks.length <= 8 ? 4 : marks.length <= 14 ? 2 : 1;
-            const printSectionSpacing = marks.length <= 4 ? 5 : marks.length <= 8 ? 4 : 2;
-            
-            // ✅ Build table rows - ☆ star next to unit name, ALL BORDERS
+
             let tableRows = '';
             marks.forEach((mark, index) => {
                 const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
                 const score = getPublishedScore(mark);
                 const gradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
-                // Define the grade colour in this row's scope before rendering the grade and points.
                 const gradeColor = (typeof getGradeColor === 'function' ? getGradeColor(gradeDisplay) : '#64748b');
                 const points = resolveDisplayPoints(mark, gradeDisplay, userProgram);
                 const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
@@ -1849,181 +1799,99 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     : statusDisplay === 'CREDIT' || statusDisplay === 'GOOD' ? '#1d4ed8'
                     : statusDisplay === 'PASS' || statusDisplay === 'SATISFACTORY' ? '#b45309'
                     : statusDisplay === 'FAIL' ? '#b91c1c' : '#64748b';
-                // Use the same student retake records as the on-screen table.
                 const hasRetakeFlag = hasRetake(mark.subject_name);
                 const isRetakenUnit = hasRetakeFlag || mark.hasRetake === true;
                 const retakeCount = hasRetakeFlag ? getRetakeCount(mark.subject_name) : (Number(mark.retakeCount) || 0);
-                
-                // Hollow star stays beside the unit name for retaken units.
                 const starIndicator = isRetakenUnit ? `<span style="display: inline-block; margin-left: 4px; font-size: 11px; color: #64748b; opacity: 0.9; cursor: help;" title="Retaken (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})">☆</span>` : '';
-                
+
                 tableRows += `
                     <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''} ${isRetakenUnit ? 'border-left: 3px solid #94a3b8;' : ''}">
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-weight: 600; color: #0A3D62; font-size: 9px;">${escapeHtml(unitCode)}</td>
-                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-size: 9px; color: #1e293b;">
-                            ${escapeHtml(mark.subject_name || 'N/A')}
-                            ${starIndicator}
-                        </td>
-                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center;">
-                            <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 10px; font-weight: 700; font-size: 10px; display: inline-block; min-width: 28px;">
-                                ${escapeHtml(gradeDisplay)}
-                            </span>
-                        </td>
-                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; font-size: 10px; color: ${gradeColor};">
-                            ${points === null ? '—' : points.toFixed(1)}
-                        </td>
-                        <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: center;">
-                            <span style="display:inline-block;background:${statusColor};color:#fff;padding:4px 7px;border-radius:10px;font-weight:700;font-size:10px;white-space:normal;">${escapeHtml(statusDisplay)}</span>
-                        </td>
-                    </tr>
-                `;
+                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-size: 9px; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}${starIndicator}</td>
+                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center;"><span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 10px; font-weight: 700; font-size: 10px; display: inline-block; min-width: 28px;">${escapeHtml(gradeDisplay)}</span></td>
+                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; font-size: 10px; color: ${gradeColor};">${points === null ? '—' : points.toFixed(1)}</td>
+                        <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: center;"><span style="display:inline-block;background:${statusColor};color:#fff;padding:4px 7px;border-radius:10px;font-weight:700;font-size:10px;white-space:normal;">${escapeHtml(statusDisplay)}</span></td>
+                    </tr>`;
             });
-            
-            // Generate data for line graph
+
             const sortedMarks = [...marks].sort((a, b) => {
-                const blockOrder = {
-                    'Introductory': 0, 'Block 1': 1, 'Block 2': 2, 'Block 3': 3,
-                    'Block 4': 4, 'Block 5': 5, 'Final': 6,
-                    'Term 1': 1, 'Term 2': 2, 'Term 3': 3, 'Term 4': 4,
-                    'Term 5': 5, 'Term 6': 6
-                };
+                const blockOrder = {'Introductory':0,'Block 1':1,'Block 2':2,'Block 3':3,'Block 4':4,'Block 5':5,'Final':6,'Term 1':1,'Term 2':2,'Term 3':3,'Term 4':4,'Term 5':5,'Term 6':6};
                 return (blockOrder[a.block] || 0) - (blockOrder[b.block] || 0);
             });
-            
             const graphLabels = sortedMarks.map(m => m.unit_code || getUnitCode(m.subject_name) || 'N/A');
             const graphData = sortedMarks.map(m => {
-                const grade = m.grade || m.published_grade || m.final_grade || '';
-                const points = Number(m.points);
-                return Number.isFinite(points) ? points : (grade ? calculatePoints(grade, userProgram) : null);
+                const g = m.grade || m.published_grade || m.final_grade || '';
+                const p = Number(m.points);
+                return Number.isFinite(p) ? p : (g ? calculatePoints(g, userProgram) : null);
             });
             const validGraphPoints = graphData.filter(p => Number.isFinite(p));
             const avgPoints = validGraphPoints.length ? validGraphPoints.reduce((a, b) => a + b, 0) / validGraphPoints.length : 0;
-            
-            // TABLE FORMAT GRADING SCALE
+
             let gradingScaleHTML = '';
             if (isTVET) {
                 gradingScaleHTML = `
                     <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db;">
-                        <thead>
-                            <tr style="background: #0A3D62; color: white;">
-                                <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Marks Range</th>
-                                <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Grade</th>
-                                <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Points</th>
-                                <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Status</th>
-                            </tr>
-                        </thead>
+                        <thead><tr style="background: #0A3D62; color: white;">
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Marks Range</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Grade</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Points</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Status</th>
+                        </tr></thead>
                         <tbody>
-                            <tr style="background: #d1fae5;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">75 - 100%</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #065f46;">A</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">4.0</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #065f46;">EXCELLENT</td>
-                            </tr>
-                            <tr style="background: #dbeafe;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">65 - 74%</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #1e40af;">B</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">3.0</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #1e40af;">GOOD</td>
-                            </tr>
-                            <tr style="background: #fef3c7;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">50 - 64%</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #92400e;">C</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">2.0</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #92400e;">SATISFACTORY</td>
-                            </tr>
-                            <tr style="background: #fee2e2;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">Below 50%</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #991b1b;">FAIL</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">0.0</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
-                            </tr>
-                            <tr style="background: #f3f4f6;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-style: italic;">No Score</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
-                            </tr>
+                            <tr style="background: #d1fae5;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">75 - 100%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #065f46;">A</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">4.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #065f46;">EXCELLENT</td></tr>
+                            <tr style="background: #dbeafe;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">65 - 74%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #1e40af;">B</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">3.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #1e40af;">GOOD</td></tr>
+                            <tr style="background: #fef3c7;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">50 - 64%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #92400e;">C</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">2.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #92400e;">SATISFACTORY</td></tr>
+                            <tr style="background: #fee2e2;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">Below 50%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #991b1b;">FAIL</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">0.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td></tr>
+                            <tr style="background: #f3f4f6;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-style: italic;">No Score</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td></tr>
                         </tbody>
-                        <tfoot>
-                            <tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 50%</td></tr>
-                        </tfoot>                    </table>
-                `;
+                        <tfoot><tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 50%</td></tr></tfoot>
+                    </table>`;
             } else {
                 gradingScaleHTML = `
                     <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db;">
-                        <thead>
-                            <tr style="background: #0A3D62; color: white;">
-                                <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Marks Range</th>
-                                <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Grade</th>
-                                <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Points</th>
-                                <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Status</th>
-                            </tr>
-                        </thead>
+                        <thead><tr style="background: #0A3D62; color: white;">
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Marks Range</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Grade</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Points</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Status</th>
+                        </tr></thead>
                         <tbody>
-                            <tr style="background: #d1fae5;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">75 - 100%</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #065f46;">A</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">4.0</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #065f46;">DISTINCTION</td>
-                            </tr>
-                            <tr style="background: #dbeafe;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">65 - 74%</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #1e40af;">B</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">3.0</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #1e40af;">CREDIT</td>
-                            </tr>
-                            <tr style="background: #fef3c7;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">60 - 64%</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #92400e;">C</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">2.0</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #92400e;">PASS</td>
-                            </tr>
-                            <tr style="background: #fee2e2;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">Below 60%</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #991b1b;">D</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">0.0</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
-                            </tr>
-                            <tr style="background: #f3f4f6;">
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-style: italic;">No Score</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td>
-                                <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
-                            </tr>
+                            <tr style="background: #d1fae5;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">75 - 100%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #065f46;">A</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">4.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #065f46;">DISTINCTION</td></tr>
+                            <tr style="background: #dbeafe;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">65 - 74%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #1e40af;">B</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">3.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #1e40af;">CREDIT</td></tr>
+                            <tr style="background: #fef3c7;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">60 - 64%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #92400e;">C</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">2.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #92400e;">PASS</td></tr>
+                            <tr style="background: #fee2e2;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">Below 60%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #991b1b;">D</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">0.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td></tr>
+                            <tr style="background: #f3f4f6;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-style: italic;">No Score</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td></tr>
                         </tbody>
-                        <tfoot>
-                            <tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 60%</td></tr>
-                        </tfoot>
-                    </table>
-                `;
+                        <tfoot><tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 60%</td></tr></tfoot>
+                    </table>`;
             }
-            
-            // Profile picture HTML
+
             let profilePictureHTML = '';
             if (profilePicture) {
                 profilePictureHTML = `
                     <div style="text-align: center; margin-right: 12px; flex-shrink: 0;">
-                        <img src="${profilePicture}" alt="Student Photo" 
-                             style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #0A3D62; padding: 2px; background: white;"
-                             onerror="this.style.display='none'">
-                    </div>
-                `;
+                        <img src="${profilePicture}" alt="Student Photo" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #0A3D62; padding: 2px; background: white;" onerror="this.style.display='none'">
+                    </div>`;
             }
-            
+
             loadingEl.remove();
-            
-            if (printWindow && !printWindow.closed) {
-                printWindow.document.open();
-                printWindow.document.write(`
+
+            if (!printWindow || printWindow.closed) {
+                alert('The transcript window was closed before the PDF was ready. Please try again.');
+                return;
+            }
+
+            printWindow.document.open();
+            printWindow.document.write(`
 <!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
     <title>Provisional Academic Transcript - ${escapeHtml(user.full_name || 'Student')}</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4 portrait; margin: 6mm; }
@@ -2057,12 +1925,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         table.semester-results-table { margin: 0 0 12px; font-size: 11px; table-layout: auto; }
         table.semester-results-table thead th { padding: 12px 14px; font-size: 11px; line-height: 1.3; }
         table.semester-results-table tbody td { padding: 12px 14px; font-size: 12px; line-height: 1.45; }
-        table.semester-results-table tbody td:nth-child(1),
-        table.semester-results-table tbody td:nth-child(4),
-        table.semester-results-table tbody td:nth-child(5) { text-align: center; }
-
         thead th { background: #0A3D62; color: white; padding: 10px 12px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; border: 1px solid #0A3D62; }
-        thead th.center { text-align: center; }
         tbody td { padding: 9px 12px; border: 1px solid #d1d5db; font-size: 10px; line-height: 1.35; }
         .chart-container { margin: 10px 0 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
         .chart-container .title { font-weight: 700; font-size: 8px; color: #0A3D62; text-align: center; margin-bottom: 4px; }
@@ -2087,52 +1950,18 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .no-print button { padding: 5px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 10px; }
         .no-print .btn-print { background: #0A3D62; color: white; }
         .no-print .btn-close { background: #e2e8f0; color: #475569; margin-left: 6px; }
-        /* Keep the report readable on phones instead of scaling the whole page down. */
         @media screen and (max-width: 600px) {
             body { font-size: 14px; padding: 8px; }
-            .container { width: 100%; max-width: 100%; padding: 12px 10px; border-width: 2px; border-radius: 6px; }
-            .header-top { gap: 8px; align-items: center; }
-            .header-top img { max-width: 48px; max-height: 48px; }
-            .header .school { font-size: clamp(13px, 4vw, 17px); line-height: 1.25; }
-            .header .subtitle { font-size: 15px; padding: 7px 14px; letter-spacing: 1px; }
-            .student-info-wrapper { padding: 10px; gap: 8px; }
+            .container { width: 100%; max-width: 100%; padding: 12px 10px; }
             .student-info { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-            .student-info .label { font-size: 10px; }
-            .student-info .value { font-size: 13px; }
             .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-            .summary-card { padding: 10px 6px; }
             .summary-card .value { font-size: 22px; }
-            .summary-card .label { font-size: 10px; letter-spacing: .3px; }
-            .semester-results-title { font-size: 15px; padding: 10px 12px; }
-            table.semester-results-table { width: 100%; table-layout: fixed; font-size: 13px; }
-            table.semester-results-table thead th { font-size: 12px; padding: 9px 5px; overflow-wrap: anywhere; }
-            table.semester-results-table tbody td { font-size: 13px; line-height: 1.4; padding: 10px 5px; overflow-wrap: anywhere; word-break: normal; }
-            /* Mobile readability: inline cell styles otherwise override responsive font sizes. */
-            table.semester-results-table thead th { font-size: 13px !important; line-height: 1.35; padding: 11px 6px !important; }
+            table.semester-results-table { table-layout: fixed; font-size: 13px; }
+            table.semester-results-table thead th { font-size: 13px !important; padding: 11px 6px !important; }
             table.semester-results-table tbody td { font-size: 13px !important; line-height: 1.5 !important; padding: 12px 6px !important; }
-            table.semester-results-table tbody td:nth-child(1) { font-size: 11px !important; }
-            table.semester-results-table tbody td:nth-child(2) { font-size: 12px !important; overflow-wrap: normal; word-break: normal; }
-            table.semester-results-table tbody td:nth-child(3) { font-size: 14px !important; line-height: 1.35 !important; overflow-wrap: anywhere; }
-            table.semester-results-table tbody td:nth-child(4) span { font-size: 12px !important; padding: 3px 6px !important; }
-            table.semester-results-table tbody td:nth-child(5) { font-size: 12px !important; }
-            table.semester-results-table tbody td:nth-child(6) { font-size: 10px !important; }
-            table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 6%; }
-            table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 18%; }
-            table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 31%; }
-            table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 13%; }
-            table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 14%; }
-            table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 18%; }
-            .grading-scale-table, .chart-container, .declaration { padding: 9px; }
-            .grading-scale-table table { table-layout: fixed; }
-            .grading-scale-table th, .grading-scale-table td { font-size: 9px; padding: 5px 3px; overflow-wrap: anywhere; }
             .chart-container canvas { height: 160px !important; max-height: 160px; }
-            .signatures { gap: 12px; }
-            .signature-box .line { max-width: 100%; }
-            .footer { overflow-wrap: anywhere; }
         }
-        /* Apply the landscape layout to html2canvas capture as well as physical printing.
-           html2pdf captures screen styles; print-only rules leave the report scaled and fragmented. */
-        @page { size: A4 portrait; margin: 6mm; }
+        /* PORTRAIT SINGLE-COLUMN PRINT LAYOUT */
         @media print {
             @page { size: A4 portrait; margin: 5mm; }
             html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -2162,16 +1991,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; text-align: center !important; }
             table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; text-align: center !important; }
             table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; text-align: center !important; }
-            table.semester-results-table { width: 100% !important; table-layout: fixed !important; }
-            table.semester-results-table tbody td { padding-top: 7px !important; padding-bottom: 7px !important; line-height: 1.25 !important; }
-            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) !important; align-items: stretch !important; gap: 4mm !important; margin: 6px 0 !important; }
-            .academic-summary-panel { border: 1px solid #d5e2ee !important; border-radius: 6px !important; overflow: hidden !important; min-width: 0 !important; background: #fff !important; }
-            .academic-summary-title { background: #0A3D62 !important; color: #fff !important; font-weight: 700 !important; padding: 6px 8px !important; font-size: 10px !important; text-transform: uppercase !important; }
-            .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 3px !important; margin: 0 !important; padding: 4px !important; }
-            .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 4px !important; padding: 5px 6px !important; min-width: 0 !important; border: 1px solid #d5e2ee !important; border-radius: 4px !important; background: #f4f8fc !important; }
-            .summary-card .label { font-size: 7px !important; line-height: 1.15 !important; }
-            .summary-card .value { font-size: 14px !important; line-height: 1 !important; }
-            .grading-scale-table { min-width: 0 !important; }
+            .summary-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 4px !important; margin: 4px 0 !important; }
             .summary-card { padding: 5px 4px !important; }
             .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
             .summary-card .label { font-size: 8px !important; }
@@ -2186,32 +2006,30 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .no-print, .btn-print, .btn-close { display: none !important; }
             .container { break-inside: auto !important; page-break-inside: auto !important; }
             table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-            .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .summary-grid, .grading-scale-table, .academic-summary-panel, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+            .transcript-top, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- HEADER WITH SMALL VERIFICATION QR IN TOP-RIGHT CORNER -->
         <div class="transcript-top">
             <div class="header">
-            <div class="header-top">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
-                <div>
-                    <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                    <div class="motto">"Excellence in Health Sciences Education"</div>
+                <div class="header-top">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
+                    <div>
+                        <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
+                        <div class="motto">"Excellence in Health Sciences Education"</div>
+                    </div>
                 </div>
-            </div>
-            <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
-            <div class="date">Generated: ${now}</div>
+                <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
+                <div class="date">Generated: ${now}</div>
             </div>
             <div class="verification-qr" aria-label="Document verification QR code">
                 <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
                 <span>VERIFY</span>
             </div>
         </div>
-        
-        <!-- STUDENT INFO WITH PHOTO -->
+
         <div class="student-info-wrapper">
             ${profilePictureHTML}
             <div class="student-info">
@@ -2221,10 +2039,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 <div class="field"><span class="label">Academic Year</span><span class="value">${escapeHtml(academicYear)}</span></div>
             </div>
         </div>
-        
-        <!-- SEMESTER RESULTS -->
+
         <div class="semester-results-title">Semester Results</div>
-        <!-- TABLE WITH ALL BORDERS - ☆ STAR NEXT TO UNIT NAME -->
         <table class="semester-results-table">
             <thead>
                 <tr>
@@ -2232,38 +2048,37 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     <th style="min-width: 65px; border: 1px solid #0A3D62;">Unit Code</th>
                     <th style="min-width: 150px; border: 1px solid #0A3D62;">Unit Name</th>
                     <th style="text-align: center; width: 50px; border: 1px solid #0A3D62;">Grade</th>
-                    <th style="text-align: center; width: 70px; border: 1px solid #0A3D62;">Grade Points</th>\n                    <th style="text-align: center; min-width: 95px; border: 1px solid #0A3D62;">Status</th>
+                    <th style="text-align: center; width: 70px; border: 1px solid #0A3D62;">Grade Points</th>
+                    <th style="text-align: center; min-width: 95px; border: 1px solid #0A3D62;">Status</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
         </table>
-        
-        <!-- GRADING SCALE + ACADEMIC SUMMARY: side-by-side below the unchanged unit table -->
-        <div class="transcript-lower-grid">
-            <div class="grading-scale-table">
-                <div class="title">Grading Scale (${programType})</div>
-                ${gradingScaleHTML}
-            </div>
-            <section class="academic-summary-panel" aria-label="Academic Summary">
-                <div class="academic-summary-title">Academic Summary</div>
-                <div class="summary-grid">
-                    <div class="summary-card"><div class="label">Grade Point Average (GPA)</div><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div></div>
-                    <div class="summary-card"><div class="label">Overall Grade</div><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div></div>
-                    <div class="summary-card"><div class="label">Units Reported</div><div class="value" style="color: #0A3D62;">${totalUnits}</div></div>
-                    <div class="summary-card"><div class="label">Pass Rate</div><div class="value" style="color: #0A3D62;">${passRate}%</div></div>
-                </div>
-            </section>
+
+        <div class="summary-grid">
+            <div class="summary-card"><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div><div class="label">Grade Point Average</div></div>
+            <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div><div class="label">Overall Grade</div></div>
+            <div class="summary-card"><div class="value" style="color: #0A3D62;">${totalUnits}</div><div class="label">Units Reported</div></div>
+            <div class="summary-card"><div class="value" style="color: #0A3D62;">${passRate}%</div><div class="label">Pass Rate</div></div>
         </div>
-        
-        <!-- DECLARATION -->
+
+        <div class="grading-scale-table">
+            <div class="title">Grading Scale (${programType})</div>
+            ${gradingScaleHTML}
+        </div>
+
+        <div class="chart-container">
+            <div class="title">Grade Points Progression</div>
+            <canvas id="reportCardLineChart"></canvas>
+        </div>
+
         <div class="declaration">
             <span class="title">Student Declaration:</span>
             <span class="checkbox"></span>
             <span>I confirm that the grades presented are accurate and reflect my academic performance.</span>
             <div style="font-size: 6px; color: #94a3b8; margin-top: 2px;">I understand that falsification will result in disciplinary action.</div>
         </div>
-        
-        <!-- SIGNATURES -->
+
         <div class="signatures">
             <div class="signature-box">
                 <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
@@ -2278,13 +2093,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 <div class="date">Date: _____________</div>
             </div>
         </div>
-        
-        <!-- FOOTER -->
+
         <div class="footer">
             <p>This is an official document. For verification, contact the Academic Office.</p>
             <p><strong>NCHSM</strong> · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
         </div>
-        
+
         <div class="no-print">
             <button class="btn-print" onclick="window.printTranscriptWhenReady()">🖨️ Print Provisional Academic Transcript</button>
             <button class="btn-close" onclick="window.close()">Close</button>
@@ -2300,46 +2114,29 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             const contextDeadline = Date.now() + 10000;
             let injectedContext = window.__TRANSCRIPT_QR_CONTEXT || null;
             while (!injectedContext && Date.now() < contextDeadline) {
-                injectedContext = window.__TRANSCRIPT_QR_CONTEXT
-                    || (portalWindow && portalWindow.__TRANSCRIPT_QR_CONTEXT)
-                    || null;
+                injectedContext = window.__TRANSCRIPT_QR_CONTEXT || null;
                 if (!injectedContext) await new Promise(resolve => setTimeout(resolve, 100));
             }
             const portalConfig = (injectedContext && injectedContext.supabaseUrl && injectedContext.anonKey)
                 ? { SUPABASE_URL: injectedContext.supabaseUrl, SUPABASE_ANON_KEY: injectedContext.anonKey }
                 : ((portalWindow && portalWindow.APP_CONFIG) || window.APP_CONFIG || {});
             const portalClient = (portalWindow && portalWindow.supabaseClient) || window.supabaseClient || null;
-            console.info('[Transcript QR] Setup started', {
-                time: new Date().toISOString(),
-                pageOrigin: window.location.origin,
-                openerAvailable: Boolean(portalWindow),
-                injectedSessionAvailable: Boolean(injectedContext && injectedContext.accessToken),
-                portalClientAvailable: Boolean(portalClient),
-                authAvailable: Boolean(portalClient && portalClient.auth),
-                supabaseUrlAvailable: Boolean(portalConfig.SUPABASE_URL),
-                anonKeyAvailable: Boolean(portalConfig.SUPABASE_ANON_KEY)
-            });
             if ((!injectedContext || !injectedContext.accessToken) && (!portalClient || !portalClient.auth)) {
-                qrImage.dataset.error = 'No authenticated session was passed to the transcript window. Close this window and reopen the portal transcript.';
-                qrImage.alt = 'Transcript verification could not be initialized';
-                console.error('[Transcript QR] No session bridge or accessible parent Supabase client');
+                qrImage.dataset.error = 'No authenticated session was passed to the transcript window.';
                 return;
             }
             if (!portalConfig.SUPABASE_URL || !portalConfig.SUPABASE_ANON_KEY) {
-                qrImage.dataset.error = 'Supabase configuration unavailable in transcript window';
-                qrImage.alt = 'Transcript verification could not be initialized';
-                console.error('[Transcript QR] Supabase configuration missing');
+                qrImage.dataset.error = 'Supabase configuration unavailable';
                 return;
             }
             let registryToken = '';
             try {
                 let accessToken = injectedContext && injectedContext.accessToken;
                 if (!accessToken && portalClient && portalClient.auth) {
-                    const { data: sessionData, error: sessionError } = await portalClient.auth.getSession();
+                    const { data: sessionData } = await portalClient.auth.getSession();
                     accessToken = sessionData && sessionData.session && sessionData.session.access_token;
-                    if (sessionError) throw new Error(sessionError.message || 'Could not read the signed-in session.');
                 }
-                if (!accessToken) throw new Error('No active sign-in session. Close this window, sign in again, and retry.');
+                if (!accessToken) throw new Error('No active sign-in session.');
                 const registryResponse = await fetch(portalConfig.SUPABASE_URL.replace(/\\/$/, '') + '/functions/v1/transcript-registry', {
                     method: 'POST',
                     headers: {
@@ -2350,15 +2147,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     body: JSON.stringify({ action: 'issue' })
                 });
                 const registryResult = await registryResponse.json().catch(() => ({}));
-                console.info('[Transcript QR] Registry response', { httpStatus: registryResponse.status, ok: registryResponse.ok, tokenReturned: Boolean(registryResult && registryResult.token), error: registryResult && registryResult.error || null });
                 if (!registryResponse.ok || !registryResult.token) {
-                    throw new Error('Registry request failed (' + registryResponse.status + '): ' + (registryResult.error || 'No verification token returned.'));
+                    throw new Error('Registry request failed (' + registryResponse.status + ')');
                 }
                 registryToken = registryResult.token;
             } catch (registryError) {
                 qrImage.dataset.error = String(registryError && registryError.message || registryError);
-                qrImage.alt = 'Transcript verification registry unavailable';
-                console.error('[Transcript QR] Registry/session stage failed', { message: String(registryError && registryError.message || registryError), elapsedMs: Date.now() - qrStartedAt }, registryError);
                 return;
             }
             const verificationUrl = new URL('/graduation.html', portalOrigin);
@@ -2369,7 +2163,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             qrImage.style.visibility = 'visible';
             qrImage.width = 240;
             qrImage.height = 240;
-            qrImage.alt = 'Generating transcript verification QR code';
             qrImage.dataset.ready = '';
             qrImage.dataset.error = '';
             try {
@@ -2380,40 +2173,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             source: 'browser QR library',
                             url: await window.QRCode.toDataURL(payload, { width: 240, margin: 2, errorCorrectionLevel: 'M' })
                         });
-                    } catch (libraryError) {
-                        console.warn('[Transcript QR] Browser QR library failed', libraryError);
-                    }
-                } else {
-                    for (const src of ['https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js', 'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js']) {
-                        try {
-                            await new Promise((resolve, reject) => {
-                                const script = document.createElement('script');
-                                const timer = setTimeout(() => reject(new Error('QR library load timed out: ' + src)), 6000);
-                                script.onload = () => { clearTimeout(timer); resolve(); };
-                                script.onerror = () => { clearTimeout(timer); reject(new Error('QR library CDN failed: ' + src)); };
-                                script.src = src;
-                                script.async = true;
-                                document.head.appendChild(script);
-                            });
-                            if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
-                                candidates.push({
-                                    source: src,
-                                    url: await window.QRCode.toDataURL(payload, { width: 240, margin: 2, errorCorrectionLevel: 'M' })
-                                });
-                                break;
-                            }
-                        } catch (loadError) {
-                            console.warn('[Transcript QR] QR library source failed', loadError);
-                        }
-                    }
+                    } catch (libraryError) { console.warn('[Transcript QR] Library failed', libraryError); }
                 }
-
-                // A hosted image fallback avoids depending on a JavaScript QR library/CDN.
                 candidates.push({
                     source: 'QR image service',
                     url: 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=2&format=png&data=' + encodeURIComponent(payload)
                 });
-
                 let loadedSource = '';
                 let lastImageError = null;
                 for (const candidate of candidates) {
@@ -2428,53 +2193,33 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 qrImage.onerror = null;
                                 fn(value);
                             };
-                            const timer = setTimeout(() => finish(reject, new Error('Image load timed out from ' + candidate.source)), 10000);
-                            qrImage.onload = () => qrImage.naturalWidth > 0
-                                ? finish(resolve)
-                                : finish(reject, new Error('Image loaded without pixels from ' + candidate.source));
-                            qrImage.onerror = () => finish(reject, new Error('Image request failed for ' + candidate.source));
+                            const timer = setTimeout(() => finish(reject, new Error('Image load timed out')), 20000);
+                            qrImage.onload = () => qrImage.naturalWidth > 0 ? finish(resolve) : finish(reject, new Error('No pixels'));
+                            qrImage.onerror = () => finish(reject, new Error('Image request failed'));
                             qrImage.src = candidate.url;
                         });
                         loadedSource = candidate.source;
                         break;
                     } catch (imageError) {
                         lastImageError = imageError;
-                        console.warn('[Transcript QR] Candidate failed', { source: candidate.source, message: imageError.message });
                     }
                 }
-                if (!loadedSource) {
-                    throw new Error('All QR image sources failed. ' + (lastImageError && lastImageError.message || 'No QR image was returned.'));
-                }
+                if (!loadedSource) throw new Error('All QR sources failed. ' + (lastImageError && lastImageError.message || ''));
                 qrImage.dataset.ready = 'true';
                 qrImage.dataset.error = '';
-                qrImage.alt = 'Scan to verify this transcript';
-                console.info('[Transcript QR] SUCCESS', {
-                    source: loadedSource,
-                    elapsedMs: Date.now() - qrStartedAt,
-                    imageWidth: qrImage.naturalWidth,
-                    imageHeight: qrImage.naturalHeight
-                });
             } catch (error) {
                 qrImage.dataset.error = String(error && error.message || error);
-                qrImage.alt = 'QR generation failed';
-                console.error('[Transcript QR] Image-generation stage failed', {
-                    message: String(error && error.message || error),
-                    elapsedMs: Date.now() - qrStartedAt,
-                    qrLibraryAvailable: Boolean(window.QRCode && typeof window.QRCode.toDataURL === 'function')
-                }, error);
             }
         })();
 
         window.printTranscriptWhenReady = async function () {
             const qr = document.getElementById('transcriptVerificationQr');
-            const deadline = Date.now() + 8000;
+            const deadline = Date.now() + 20000;
             while (qr && qr.dataset.ready !== 'true' && !qr.dataset.error && Date.now() < deadline) {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             if (qr && qr.dataset.ready !== 'true') {
-                const reason = qr.dataset.error || 'QR generation timed out';
-                console.error('Transcript print cancelled: verification QR is not ready.', reason);
-                alert('The transcript verification QR code could not be generated.\\n\\nReason: ' + reason + '\\n\\nCheck your connection, reload the portal, and try again. No PDF was created.');
+                alert('The transcript verification QR code could not be generated. Check your connection and try again.');
                 return;
             }
             const images = Array.from(document.images);
@@ -2490,313 +2235,173 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             window.print();
         };
 
-            const ctx = document.getElementById('reportCardLineChart');
-            if (ctx) {
-                const labels = ${JSON.stringify(graphLabels)};
-                const data = ${JSON.stringify(graphData)};
-                const avgPoints = ${avgPoints.toFixed(2)};
-                
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Grade Points',
-                            data: data,
-                            borderColor: '#4C1D95',
-                            backgroundColor: 'rgba(76, 29, 149, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.3,
-                            pointBackgroundColor: data.map(p => {
-                                if (p >= 4) return '#10b981';
-                                if (p >= 3) return '#3b82f6';
-                                if (p >= 2) return '#f59e0b';
-                                return '#ef4444';
-                            }),
-                            pointBorderColor: '#ffffff',
-                            pointBorderWidth: 1.5,
-                            pointRadius: 5,
-                            pointHoverRadius: 7
-                        }, {
-                            label: 'GPA (' + avgPoints.toFixed(2) + ')',
-                            data: data.map(() => avgPoints),
-                            borderColor: '#0A3D62',
-                            borderDash: [6, 4],
-                            borderWidth: 1.5,
-                            fill: false,
-                            tension: 0,
-                            pointRadius: 0,
-                            pointHoverRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: {
-                                    boxWidth: 10,
-                                    padding: 6,
-                                    font: { size: 8, weight: '600' }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: { min: 0, max: 4.5, ticks: { stepSize: 0.5, font: { size: 8 } } },
-                            x: { ticks: { font: { size: 7 }, maxRotation: 30, minRotation: 20 } }
-                        }
+        const ctx = document.getElementById('reportCardLineChart');
+        if (ctx) {
+            const labels = ${JSON.stringify(graphLabels)};
+            const data = ${JSON.stringify(graphData)};
+            const avgPoints = ${avgPoints.toFixed(2)};
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Grade Points',
+                        data: data,
+                        borderColor: '#4C1D95',
+                        backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: data.map(p => p >= 4 ? '#10b981' : p >= 3 ? '#3b82f6' : p >= 2 ? '#f59e0b' : '#ef4444'),
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1.5,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }, {
+                        label: 'GPA (' + avgPoints.toFixed(2) + ')',
+                        data: data.map(() => avgPoints),
+                        borderColor: '#0A3D62',
+                        borderDash: [6, 4],
+                        borderWidth: 1.5,
+                        fill: false,
+                        tension: 0,
+                        pointRadius: 0,
+                        pointHoverRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 10, padding: 6, font: { size: 8, weight: '600' } } } },
+                    scales: {
+                        y: { min: 0, max: 4.5, ticks: { stepSize: 0.5, font: { size: 8 } } },
+                        x: { ticks: { font: { size: 7 }, maxRotation: 30, minRotation: 20 } }
                     }
-                });
-            }
+                }
+            });
+        }
     <\/script>
 </body>
 </html>
-                `);
-                printWindow.document.close();
-                // Some browsers/webviews may not expose head/body immediately after document.write().
-                // Recreate missing nodes before preview UI is attached to avoid a null.prepend error.
-                const previewDocument = printWindow.document;
-                if (!previewDocument.documentElement) {
-                    previewDocument.appendChild(previewDocument.createElement('html'));
+            `);
+            printWindow.document.close();
+
+            const previewDocument = printWindow.document;
+            if (!previewDocument.documentElement) previewDocument.appendChild(previewDocument.createElement('html'));
+            if (!previewDocument.head) {
+                const safeHead = previewDocument.createElement('head');
+                previewDocument.documentElement.insertBefore(safeHead, previewDocument.documentElement.firstChild);
+            }
+            if (!previewDocument.body) previewDocument.documentElement.appendChild(previewDocument.createElement('body'));
+
+            // ---------- PREVIEW MODE ----------
+            if (outputMode === 'preview') {
+                const previewStyle = printWindow.document.createElement('style');
+                previewStyle.textContent = `
+                    html, body { min-height: 100%; background: #eef2f7 !important; }
+                    body { margin: 0 !important; padding: 74px 16px 24px !important; }
+                    .container { display: block !important; width: 794px !important; max-width: 100% !important; min-height: 1123px !important; height: auto !important; margin: 0 auto !important; padding: 28px !important; background: #fff !important; box-shadow: 0 8px 30px rgba(15,23,42,.18) !important; border-radius: 2px !important; }
+                    .transcript-preview-toolbar { position: fixed; z-index: 99999; top: 0; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: #0A3D62; box-shadow: 0 2px 10px #0002; }
+                    .transcript-preview-toolbar button { border: 0; border-radius: 7px; padding: 10px 16px; font: 600 14px Arial,sans-serif; cursor: pointer; }
+                    .transcript-preview-toolbar .download { background: #10b981; color: #fff; }
+                    .transcript-preview-toolbar .print { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+                    .transcript-preview-toolbar .close { background: #e2e8f0; color: #1e293b; }
+                    @media (max-width: 600px) { body { padding: 74px 6px 12px !important; } .container { width: 100% !important; min-height: 0 !important; padding: 10px !important; } .transcript-preview-toolbar button { padding: 9px 10px; font-size: 12px; } }
+                    @media print { html, body { background: #fff !important; padding: 0 !important; } .transcript-preview-toolbar { display: none !important; } .container { width: 100% !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; box-shadow: none !important; } }
+                `;
+                printWindow.document.head.appendChild(previewStyle);
+                const toolbar = printWindow.document.createElement('div');
+                toolbar.className = 'transcript-preview-toolbar no-print';
+                toolbar.innerHTML = '<button type="button" class="download">⬇ Download PDF</button><button type="button" class="print">🖨 Print</button><button type="button" class="close">Close Preview</button>';
+                const previewBody = printWindow.document.body || printWindow.document.getElementsByTagName('body')[0];
+                if (!previewBody) {
+                    alert('The transcript preview could not be initialized. Please try again.');
+                    printWindow.close();
+                    return;
                 }
-                if (!previewDocument.head) {
-                    const safeHead = previewDocument.createElement('head');
-                    previewDocument.documentElement.insertBefore(safeHead, previewDocument.documentElement.firstChild);
-                }
-                if (!previewDocument.body) {
-                    previewDocument.documentElement.appendChild(previewDocument.createElement('body'));
-                }
-                // Preview first: show the transcript on an A4-like page and let the user choose
-                // Download PDF or Print only after reviewing it. Keep the PDF generator unchanged.
-                if (outputMode === 'preview') {
-                    const previewStyle = printWindow.document.createElement('style');
-                    previewStyle.textContent = `
-                        html, body { min-height: 100%; background: #eef2f7 !important; }
-                        body { margin: 0 !important; padding: 74px 16px 24px !important; }
-                        .container { display: block !important; width: 794px !important; max-width: 100% !important; min-height: 1123px !important; height: auto !important; margin: 0 auto !important; padding: 28px !important; background: #fff !important; box-shadow: 0 8px 30px rgba(15,23,42,.18) !important; border-radius: 2px !important; }
-                        .transcript-preview-toolbar { position: fixed; z-index: 99999; top: 0; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: #0A3D62; box-shadow: 0 2px 10px #0002; }
-                        .transcript-preview-toolbar button { border: 0; border-radius: 7px; padding: 10px 16px; font: 600 14px Arial,sans-serif; cursor: pointer; }
-                        .transcript-preview-toolbar .download { background: #10b981; color: #fff; }
-                        .transcript-preview-toolbar .print { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.35); }
-                        .transcript-preview-toolbar .close { background: #e2e8f0; color: #1e293b; }
-                        @media (max-width: 600px) { body { padding: 74px 6px 12px !important; } .container { width: 100% !important; min-height: 0 !important; padding: 10px !important; } .transcript-preview-toolbar button { padding: 9px 10px; font-size: 12px; } }
-                        @media print { html, body { background: #fff !important; padding: 0 !important; } .transcript-preview-toolbar { display: none !important; } .container { width: 100% !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; box-shadow: none !important; } }
-                    `;
-                    printWindow.document.head.appendChild(previewStyle);
-                    const toolbar = printWindow.document.createElement('div');
-                    toolbar.className = 'transcript-preview-toolbar no-print';
-                    toolbar.innerHTML = '<button type="button" class="download">⬇ Download PDF</button><button type="button" class="print">🖨 Print</button><button type="button" class="close">Close Preview</button>';
-                    const previewBody = printWindow.document.body || printWindow.document.getElementsByTagName('body')[0];
-                    if (!previewBody) {
-                        alert('The transcript preview could not be initialized. Please try again.');
-                        printWindow.close();
+                previewBody.insertBefore(toolbar, previewBody.firstChild);
+
+                toolbar.querySelector('.download').addEventListener('click', async () => {
+                    const target = printWindow.document.querySelector('.container');
+                    if (!target) {
+                        alert('The transcript content could not be found in the preview. Please close it, reopen Academic Transcript, and try again.');
                         return;
                     }
-                    previewBody.insertBefore(toolbar, previewBody.firstChild);
-                    toolbar.querySelector('.download').addEventListener('click', async () => {
-                        const target = printWindow.document.querySelector('.container');
-                        if (!target) {
-                            alert('The transcript content could not be found in the preview. Please close it, reopen Academic Transcript, and try again.');
-                            return;
+                    const qr = printWindow.document.getElementById('transcriptVerificationQr');
+                    const qrDeadline = Date.now() + 20000;
+                    while (qr && qr.dataset.ready !== 'true' && !qr.dataset.error && Date.now() < qrDeadline) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    if (qr && qr.dataset.ready !== 'true') {
+                        alert('Transcript verification QR failed: ' + (qr?.dataset?.error || 'The verification QR did not become ready in time.') + '\n\nNo PDF was created.');
+                        return;
+                    }
+                    const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
+                    if (chartCanvas && printWindow.Chart) {
+                        const chart = printWindow.Chart.getChart(chartCanvas);
+                        if (chart) {
+                            chart.options.responsive = false;
+                            chart.options.maintainAspectRatio = false;
+                            chart.options.animation = false;
+                            chart.resize(700, 143);
+                            chart.update('none');
                         }
-                        if (typeof printWindow.html2pdf !== 'function') {
-                            console.warn('[Transcript PDF] html2pdf unavailable; will use direct canvas fallback if its libraries are available.');
-                        }
-                        const qr = printWindow.document.getElementById('transcriptVerificationQr');
-                        const qrDeadline = Date.now() + 6500;
-                        while (qr && qr.dataset.ready !== 'true' && !qr.dataset.error && Date.now() < qrDeadline) {
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                        }
-                        if (qr && qr.dataset.ready !== 'true') {
-                            alert('Transcript verification QR failed: ' + (qr?.dataset?.error || 'The verification QR did not become ready in time.') + '\\n\\nOpen Developer Tools (F12) > Console for diagnostic details. No PDF was created.');
-                            return;
-                        }
-                        const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
-                        if (chartCanvas && printWindow.Chart) {
-                            const chart = printWindow.Chart.getChart(chartCanvas);
-                            if (chart) {
-                                chart.options.responsive = false;
-                                chart.options.maintainAspectRatio = false;
-                                chart.options.animation = false;
-                                chart.resize(chartCanvas.clientWidth || 700, 152);
-                                chart.update('none');
-                            }
-                        }
-                        await Promise.all(Array.from(printWindow.document.images).map(img => {
-                            if (img.complete) return Promise.resolve();
-                            return new Promise(resolve => {
-                                img.addEventListener('load', resolve, { once: true });
-                                img.addEventListener('error', resolve, { once: true });
-                                setTimeout(resolve, 2500);
-                            });
-                        }));
-                        const previewPdfStyle = printWindow.document.createElement('style');
-                        previewPdfStyle.textContent = `
-                            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) !important; gap: 5px !important; align-items: stretch !important; width: 100% !important; margin: 3px 0 !important; }
-                            .transcript-lower-grid > .grading-scale-table { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 3px !important; border-radius: 4px !important; }
-                            .transcript-lower-grid > .grading-scale-table .title { font-size: 8px !important; margin: 0 0 2px !important; }
-                            .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; border: 1px solid #d5e2ee !important; border-radius: 4px !important; overflow: hidden !important; }
-                            .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 4px 5px !important; font-size: 8px !important; line-height: 1.1 !important; font-weight: 700 !important; text-transform: uppercase !important; }
-                            .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 2px !important; padding: 3px !important; margin: 0 !important; }
-                            .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 3px !important; padding: 3px 4px !important; margin: 0 !important; min-width: 0 !important; border-radius: 3px !important; }
-                            .academic-summary-panel .summary-card .label { font-size: 6.5px !important; line-height: 1.1 !important; text-align: left !important; }
-                            .academic-summary-panel .summary-card .value { font-size: 11px !important; line-height: 1 !important; }
-                            .grading-scale-table table { width: 100% !important; table-layout: fixed !important; }
-                            .grading-scale-table th, .grading-scale-table td { padding: 2px 2px !important; font-size: 6px !important; line-height: 1.05 !important; }
-                            table.semester-results-table tbody td { padding-top: 5px !important; padding-bottom: 5px !important; }
+                    }
+                    await Promise.all(Array.from(printWindow.document.images).map(img => {
+                        if (img.complete) return Promise.resolve();
+                        return new Promise(resolve => {
+                            img.addEventListener('load', resolve, { once: true });
+                            img.addEventListener('error', resolve, { once: true });
+                            setTimeout(resolve, 2500);
+                        });
+                    }));
 
-                            @page { size: A4 portrait; margin: 5mm; }
-                            * { box-sizing: border-box !important; }
-                            html, body { width: 794px !important; min-width: 794px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-                            .container { display: block !important; width: 794px !important; min-width: 794px !important; max-width: 794px !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; box-shadow: none !important; border-radius: 0 !important; }
-                            .transcript-top { position: relative !important; display: block !important; width: 100% !important; }
-                            .transcript-top > .header { display: block !important; width: 100% !important; padding: 0 44px 2px 0 !important; text-align: center !important; }
-                            .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
-                            .transcript-top > .verification-qr img { width: 26px !important; height: 26px !important; }
-                            table.semester-results-table { width: 100% !important; table-layout: fixed !important; border-collapse: collapse !important; }
-                            table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; }
-                            table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
-                            table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
-                            table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; }
-                            table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; }
-                            table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; }
-                            .summary-grid { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
-                            .chart-container { display: block !important; width: 100% !important; height: 45mm !important; min-height: 45mm !important; max-height: 45mm !important; overflow: hidden !important; }
-                            .chart-container canvas { display: block !important; width: 100% !important; height: 38mm !important; min-height: 38mm !important; max-height: 38mm !important; }
-                            .container { break-inside: auto !important; page-break-inside: auto !important; }
-                            table.semester-results-table tr, .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .summary-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
-                            .no-print, .transcript-preview-toolbar { display: none !important; }
-                        `;
-                        printWindow.document.head.appendChild(previewPdfStyle);
-                        const previewRows = printWindow.document.querySelectorAll('table.semester-results-table tbody tr');
-                        const previewRowPadding = previewRows.length <= 8 ? 6 : previewRows.length <= 14 ? 4 : previewRows.length <= 22 ? 3 : 2;
-                        const previewDensityStyle = printWindow.document.createElement('style');
-                        previewDensityStyle.textContent = `table.semester-results-table tbody td { padding: ${previewRowPadding}px 4px !important; } table.semester-results-table thead { display: table-header-group !important; }`;
-                        printWindow.document.head.appendChild(previewDensityStyle);
-                        const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
-                        // Normalize the capture width before html2pdf snapshots the transcript.
-                        // Desktop browsers can otherwise capture the iframe at its narrow preview
-                        // width and place that cropped image on the left side of the A4 page.
-                        const captureStyle = printWindow.document.createElement('style');
-                        captureStyle.id = 'transcript-pdf-capture-normalization';
-                        captureStyle.textContent = `
-                            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important; gap: 8px !important; align-items: stretch !important; width: 100% !important; margin: 5px 0 !important; }
-                            .transcript-lower-grid > .grading-scale-table { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 5px !important; }
-                            .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; border: 1px solid #d5e2ee !important; border-radius: 6px !important; overflow: hidden !important; }
-                            .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 6px 7px !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; }
-                            .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 3px !important; padding: 4px !important; margin: 0 !important; }
-                            .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 4px !important; padding: 5px !important; margin: 0 !important; min-width: 0 !important; }
-                            .academic-summary-panel .summary-card .label { font-size: 7px !important; text-align: left !important; }
-                            .academic-summary-panel .summary-card .value { font-size: 13px !important; }
-                            .grading-scale-table table { width: 100% !important; table-layout: fixed !important; }
-                            table.semester-results-table tbody td { padding-top: 7px !important; padding-bottom: 7px !important; }
+                    // Constrain the live iframe layout to A4 content width before capture.
+                    const captureStyle = printWindow.document.createElement('style');
+                    captureStyle.id = 'transcript-pdf-capture-normalization';
+                    captureStyle.textContent = `
+                        html, body { width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+                        body { font-size: 10px !important; }
+                        .container { display: block !important; width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 4mm !important; box-sizing: border-box !important; box-shadow: none !important; border-radius: 0 !important; }
+                        .transcript-preview-toolbar { display: none !important; }
+                        .header-top img { max-width: 58px !important; max-height: 48px !important; }
+                        .header .school { font-size: 17px !important; }
+                        .header .subtitle { font-size: 14px !important; letter-spacing: 1px !important; }
+                        .student-info { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+                        table.semester-results-table { width: 100% !important; table-layout: fixed !important; }
+                        table.semester-results-table thead { display: table-header-group !important; }
+                        table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; }
+                        table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
+                        table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
+                        table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; }
+                        table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; }
+                        table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; }
+                        .summary-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+                        .chart-container { display: block !important; width: 100% !important; height: 45mm !important; min-height: 45mm !important; max-height: 45mm !important; overflow: hidden !important; }
+                        .chart-container canvas { display: block !important; width: 100% !important; height: 38mm !important; min-height: 38mm !important; max-height: 38mm !important; }
+                        .container { break-inside: auto !important; page-break-inside: auto !important; }
+                        table.semester-results-table tr, .transcript-top, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+                        .no-print, .transcript-preview-toolbar { display: none !important; }
+                    `;
+                    printWindow.document.head.appendChild(captureStyle);
+                    const previewRows = printWindow.document.querySelectorAll('table.semester-results-table tbody tr');
+                    const previewRowPadding = previewRows.length <= 8 ? 6 : previewRows.length <= 14 ? 4 : previewRows.length <= 22 ? 3 : 2;
+                    const previewDensityStyle = printWindow.document.createElement('style');
+                    previewDensityStyle.textContent = `table.semester-results-table tbody td { padding: ${previewRowPadding}px 4px !important; } table.semester-results-table thead { display: table-header-group !important; }`;
+                    printWindow.document.head.appendChild(previewDensityStyle);
+                    await new Promise(resolve => setTimeout(resolve, 250));
 
-                            /* A4 content area: 210mm page minus 5mm margins on both sides.
-                               718 CSS px is approximately 190mm at 96dpi. */
-                            html, body { width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
-                            body { font-size: 10px !important; }
-                            .container { display: block !important; width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 4mm !important; box-sizing: border-box !important; }
-                            .transcript-preview-toolbar { display: none !important; }
-                            .header-top img { max-width: 58px !important; max-height: 48px !important; }
-                            .header .school { font-size: 17px !important; }
-                            .header .subtitle { font-size: 14px !important; letter-spacing: 1px !important; }
-                            .student-info { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-                            table.semester-results-table { width: 100% !important; table-layout: fixed !important; }
-                            .chart-container { width: 100% !important; max-width: 100% !important; }
-                        `;
-                        printWindow.document.head.appendChild(captureStyle);
-                        await new Promise(resolve => setTimeout(resolve, 250));
-                        const options = {
-                            margin: 5,
-                            filename: fileBase + '.pdf',
-                            image: { type: 'jpeg', quality: 0.98 },
-                            html2canvas: {
-                                scale: 2,
-                                useCORS: true,
-                                allowTaint: false,
-                                backgroundColor: '#ffffff',
-                                scrollX: 0,
-                                scrollY: 0,
-                                logging: false,
-                                onclone: (clonedDoc) => {
-                                    const html = clonedDoc.documentElement;
-                                    const body = clonedDoc.body;
-                                    [html, body].forEach(node => {
-                                        node.style.setProperty('width', '718px', 'important');
-                                        node.style.setProperty('min-width', '718px', 'important');
-                                        node.style.setProperty('max-width', '718px', 'important');
-                                        node.style.setProperty('margin', '0', 'important');
-                                        node.style.setProperty('padding', '0', 'important');
-                                        node.style.setProperty('overflow', 'visible', 'important');
-                                    });
-                                    const container = clonedDoc.querySelector('.container');
-                                    if (container) {
-                                        container.style.setProperty('width', '718px', 'important');
-                                        container.style.setProperty('min-width', '718px', 'important');
-                                        container.style.setProperty('max-width', '718px', 'important');
-                                        container.style.setProperty('box-sizing', 'border-box', 'important');
-                                        container.style.setProperty('display', 'block', 'important');
-                                        container.style.setProperty('margin', '0', 'important');
-                                        container.style.setProperty('padding', '4mm', 'important');
-                                    }
-                                    const canvas = clonedDoc.querySelector('.chart-container canvas');
-                                    if (canvas) {
-                                        canvas.style.setProperty('display', 'block', 'important');
-                                        canvas.style.setProperty('width', '100%', 'important');
-                                        canvas.style.setProperty('height', '38mm', 'important');
-                                        canvas.style.setProperty('max-width', '100%', 'important');
-                                    }
-                                }
-                            },
-                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-                            pagebreak: { mode: ['css', 'legacy'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
-                        };
-                        try {
-                            if (typeof printWindow.html2pdf !== 'function') {
-                                throw new Error('html2pdf library unavailable; using direct canvas fallback.');
-                            }
-                            // Use html2pdf's supported save pipeline. Manually extracting a jsPDF
-                            // blob and clicking an iframe-created link is unreliable in some browsers.
-                            await printWindow.html2pdf().set(options).from(target).save();
-                            console.info('[Transcript PDF] Download pipeline completed', {
-                                filename: options.filename,
-                                rows: previewRows.length,
-                                qrReady: Boolean(qr && qr.dataset.ready === 'true')
-                            });
-                            // The browser has accepted the download. Close the preview overlay
-                            // so the user returns to the Academic Transcript page underneath.
-                            if (typeof printWindow.close === 'function') {
-                                printWindow.close();
-                            }
-                        } catch (error) {
-                            const message = String(error && (error.message || error.name) || error || 'Unknown PDF generation error');
-                            console.error('[Transcript PDF] html2pdf pipeline failed; attempting direct canvas fallback', {
-                                message,
-                                name: error && error.name,
-                                stack: error && error.stack,
-                                html2pdfAvailable: typeof printWindow.html2pdf === 'function',
-                                targetFound: Boolean(target),
-                                qrReady: Boolean(qr && qr.dataset.ready === 'true'),
-                                imageCount: printWindow.document.images.length,
-                                rowCount: previewRows.length
-                            }, error);
-                            try {
-                                // Bypass html2pdf's margin normalization entirely. Render the
-                                // transcript to a canvas, then place it on A4 pages with numeric
-                                // coordinates using jsPDF. This avoids "Invalid margin array"
-                                // failures in desktop browsers with mismatched html2pdf/jsPDF builds.
-                                const html2canvasFn = printWindow.html2canvas ||
-                                    (printWindow.html2pdf && printWindow.html2pdf.html2canvas);
-                                const jsPDFCtor = printWindow.jspdf && printWindow.jspdf.jsPDF
-                                    ? printWindow.jspdf.jsPDF
-                                    : (printWindow.jsPDF || (printWindow.html2pdf && printWindow.html2pdf.jsPDF));
-                                if (typeof html2canvasFn !== 'function' || typeof jsPDFCtor !== 'function') {
-                                    throw new Error('Direct PDF fallback libraries are unavailable.');
-                                }
-                                const fallbackCanvas = await html2canvasFn(target, {
+                    const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
+                    let downloadStarted = false;
+
+                    // Primary pipeline: html2pdf with array margin (0.10.1 requires array)
+                    try {
+                        if (typeof printWindow.html2pdf === 'function') {
+                            const options = {
+                                margin: [5, 5, 5, 5],
+                                filename: fileBase + '.pdf',
+                                image: { type: 'jpeg', quality: 0.98 },
+                                html2canvas: {
                                     scale: 2,
                                     useCORS: true,
                                     allowTaint: false,
@@ -2804,7 +2409,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                     scrollX: 0,
                                     scrollY: 0,
                                     logging: false,
-                                    windowWidth: 718,
                                     onclone: (clonedDoc) => {
                                         [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
                                             node.style.setProperty('width', '718px', 'important');
@@ -2814,223 +2418,143 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                             node.style.setProperty('padding', '0', 'important');
                                             node.style.setProperty('overflow', 'visible', 'important');
                                         });
-                                        const clonedContainer = clonedDoc.querySelector('.container');
-                                        if (clonedContainer) {
-                                            clonedContainer.style.setProperty('width', '718px', 'important');
-                                            clonedContainer.style.setProperty('max-width', '718px', 'important');
-                                            clonedContainer.style.setProperty('min-height', '0', 'important');
-                                            clonedContainer.style.setProperty('height', 'auto', 'important');
-                                            clonedContainer.style.setProperty('margin', '0', 'important');
-                                            clonedContainer.style.setProperty('padding', '4mm', 'important');
-                                            clonedContainer.style.setProperty('box-sizing', 'border-box', 'important');
+                                        const container = clonedDoc.querySelector('.container');
+                                        if (container) {
+                                            container.style.setProperty('display', 'block', 'important');
+                                            container.style.setProperty('width', '718px', 'important');
+                                            container.style.setProperty('min-width', '718px', 'important');
+                                            container.style.setProperty('max-width', '718px', 'important');
+                                            container.style.setProperty('box-sizing', 'border-box', 'important');
+                                            container.style.setProperty('margin', '0', 'important');
+                                            container.style.setProperty('padding', '4mm', 'important');
                                         }
-                                        const clonedToolbar = clonedDoc.querySelector('.transcript-preview-toolbar');
-                                        if (clonedToolbar) clonedToolbar.style.setProperty('display', 'none', 'important');
+                                        const canvas = clonedDoc.querySelector('.chart-container canvas');
+                                        if (canvas) {
+                                            canvas.style.setProperty('display', 'block', 'important');
+                                            canvas.style.setProperty('width', '100%', 'important');
+                                            canvas.style.setProperty('height', '38mm', 'important');
+                                            canvas.style.setProperty('max-width', '100%', 'important');
+                                        }
+                                        const toolbarEl = clonedDoc.querySelector('.transcript-preview-toolbar');
+                                        if (toolbarEl) toolbarEl.style.setProperty('display', 'none', 'important');
                                     }
-                                });
-                                const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
-                                const pageWidth = 210;
-                                const pageHeight = 297;
-                                const marginMm = 5;
-                                const usableWidth = pageWidth - marginMm * 2;
-                                const usableHeight = pageHeight - marginMm * 2;
-                                const pxPerMm = fallbackCanvas.width / usableWidth;
-                                const pageSliceHeight = Math.max(1, Math.floor(usableHeight * pxPerMm));
-                                const pageCanvas = printWindow.document.createElement('canvas');
-                                const pageContext = pageCanvas.getContext('2d');
-                                pageCanvas.width = fallbackCanvas.width;
-                                let sourceY = 0;
-                                let pageIndex = 0;
-                                while (sourceY < fallbackCanvas.height) {
-                                    const sliceHeight = Math.min(pageSliceHeight, fallbackCanvas.height - sourceY);
-                                    pageCanvas.height = sliceHeight;
-                                    pageContext.fillStyle = '#ffffff';
-                                    pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-                                    pageContext.drawImage(fallbackCanvas, 0, sourceY, fallbackCanvas.width, sliceHeight, 0, 0, pageCanvas.width, sliceHeight);
-                                    if (pageIndex > 0) pdf.addPage('a4', 'portrait');
-                                    const renderedHeight = sliceHeight / pxPerMm;
-                                    pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.98), 'JPEG', marginMm, marginMm, usableWidth, renderedHeight, undefined, 'FAST');
-                                    sourceY += sliceHeight;
-                                    pageIndex++;
-                                }
-                                pdf.save(fileBase + '.pdf');
-                                console.info('[Transcript PDF] Direct canvas fallback download completed', {
-                                    filename: fileBase + '.pdf',
-                                    pages: pageIndex,
-                                    canvasWidth: fallbackCanvas.width,
-                                    canvasHeight: fallbackCanvas.height
-                                });
-                                // Return to the Academic Transcript page after the PDF is saved.
-                                if (typeof printWindow.close === 'function') {
-                                    printWindow.close();
-                                }
-                            } catch (fallbackError) {
-                                console.error('[Transcript PDF] Direct canvas fallback failed', fallbackError);
-                                alert('The transcript PDF could not be generated. ' +
-                                    String(fallbackError && (fallbackError.message || fallbackError.name) || fallbackError || message) +
-                                    '\\n\\nOpen Developer Tools (F12) > Console for details. Your transcript preview is still open; no PDF was confirmed as saved.');
-                            }
-                        }
-                    });
-                    toolbar.querySelector('.print').addEventListener('click', async () => {
-                        const printButton = toolbar.querySelector('.print');
-                        const qrImage = printWindow.document.getElementById('transcriptVerificationQr');
-                        try {
-                            printButton.disabled = true;
-                            printButton.textContent = 'Preparing print…';
-                            const deadline = Date.now() + 8000;
-                            while (qrImage && qrImage.dataset.ready !== 'true' && !qrImage.dataset.error && Date.now() < deadline) {
-                                await new Promise(resolve => setTimeout(resolve, 100));
-                            }
-                            if (qrImage && qrImage.dataset.ready !== 'true') {
-                                throw new Error(qrImage.dataset.error || 'Transcript verification QR did not finish generating.');
-                            }
-                            await Promise.all(Array.from(printWindow.document.images).map(img => {
-                                if (img.complete) return Promise.resolve();
-                                return new Promise(resolve => {
-                                    img.addEventListener('load', resolve, { once: true });
-                                    img.addEventListener('error', resolve, { once: true });
-                                    setTimeout(resolve, 2500);
-                                });
-                            }));
-                            if (printWindow.document.fonts && printWindow.document.fonts.ready) {
-                                await printWindow.document.fonts.ready;
-                            }
-                            printWindow.focus();
-                            await new Promise(resolve => setTimeout(resolve, 350));
-                            // Call the iframe's native print API directly. This avoids depending
-                            // on an inline helper being exposed through the proxy in desktop browsers.
-                            frameWindow.focus();
-                            frameWindow.print();
-                            console.info('[Transcript Print] Native browser print dialog requested', {
-                                targetFound: Boolean(printWindow.document.querySelector('.container')),
-                                qrReady: Boolean(qrImage && qrImage.dataset.ready === 'true'),
-                                userAgent: navigator.userAgent
+                                },
+                                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+                                pagebreak: { mode: ['css', 'legacy'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
+                            };
+                            await printWindow.html2pdf().set(options).from(target).save();
+                            downloadStarted = true;
+                            console.info('[Transcript PDF] html2pdf download completed', {
+                                filename: options.filename,
+                                rows: previewRows.length
                             });
-                        } catch (error) {
-                            console.error('[Transcript Print] Could not open browser print dialog', error);
-                            alert('Could not open the transcript print dialog. ' + (error && error.message ? error.message : error) + '\\n\\nTry Download PDF, or check the browser console (F12) for details.');
-                        } finally {
-                            if (printButton.isConnected) {
-                                printButton.disabled = false;
-                                printButton.textContent = '🖨 Print';
-                            }
                         }
-                    });
-                    toolbar.querySelector('.close').addEventListener('click', () => printWindow.close());
-                    printWindow.focus();
-                    return;
-                }
-                // Download must save a real A4 portrait PDF; only the separate Print action opens print preview.
-                setTimeout(async () => {
-                    const target = printWindow.document.querySelector('.container');
-                    if (!target) {
-                        printWindow.close();
-                        alert('Transcript preview could not be prepared. Please try again.');
-                        return;
+                    } catch (error) {
+                        console.warn('[Transcript PDF] html2pdf pipeline failed; trying direct canvas fallback', {
+                            message: String(error && (error.message || error.name) || error || 'Unknown'),
+                            stack: error && error.stack
+                        });
                     }
-                    if (outputMode === 'print') {
-                        // Use the same A4 portrait layout for browser printing as for PDF download.
-                        const printStyle = printWindow.document.createElement('style');
-                        printStyle.textContent = `
-                            @page { size: A4 portrait; margin: 5mm; }
-                            * { box-sizing: border-box !important; }
-                            html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-                            body { font-size: 11px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                            .container { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4mm !important; border-radius: 0 !important; box-shadow: none !important; }
-                            .transcript-top { position: relative !important; display: block !important; width: 100% !important; margin: 0 0 3px !important; padding: 0 !important; }
-                            .transcript-top > .header { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
-                            .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
-                            .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 26px !important; height: 26px !important; }
-                            .header-top { display: flex !important; flex-direction: row !important; justify-content: center !important; align-items: center !important; gap: 6px !important; }
-                            .header-top img { max-height: 38px !important; max-width: 48px !important; }
-                            .header .school { font-size: 16px !important; line-height: 1.1 !important; }
-                            .header .motto { font-size: 9px !important; }
-                            .header .subtitle { font-size: 12px !important; margin: 2px 0 !important; padding: 2px 8px !important; }
-                            .header .date { font-size: 9px !important; margin-top: 1px !important; }
-                            .student-info-wrapper { display: flex !important; margin: 0 0 3px !important; padding: 5px 8px !important; gap: 6px !important; }
-                            .student-info { gap: 3px 8px !important; }
-                            .student-info .label { font-size: 9px !important; }
-                            .student-info .value { font-size: 11px !important; line-height: 1.15 !important; margin-top: 1px !important; }
-                            .semester-results-title { margin: 5px 0 0 !important; padding: 8px 10px !important; font-size: 13px !important; }
-                            table.semester-results-table { display: table !important; width: 100% !important; table-layout: fixed !important; margin: 0 0 4px !important; border-collapse: collapse !important; }
-                            table.semester-results-table thead { display: table-header-group !important; }
-                            table.semester-results-table thead th { padding: 7px 5px !important; font-size: 10px !important; line-height: 1.2 !important; overflow-wrap: anywhere !important; }
-                            table.semester-results-table tbody td { padding: 6px 5px !important; font-size: 10px !important; line-height: 1.25 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
-                            table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; text-align: center !important; }
-                            table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
-                            table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
-                            table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; text-align: center !important; }
-                            table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; text-align: center !important; }
-                            table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; text-align: center !important; }
-                            /* Keep the results table full width; compact grading and summary sit side by side. */
-                        .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 5px !important; align-items: stretch !important; width: 100% !important; margin: 3px 0 !important; }
-                        .transcript-lower-grid > .grading-scale-table, .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; box-sizing: border-box !important; }
-                        .transcript-lower-grid > .grading-scale-table { padding: 3px !important; border-radius: 4px !important; }
-                        .transcript-lower-grid > .grading-scale-table .title { font-size: 8px !important; margin: 0 0 2px !important; }
-                        .academic-summary-panel { border: 1px solid #d5e2ee !important; border-radius: 4px !important; overflow: hidden !important; }
-                        .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 4px 5px !important; font-size: 8px !important; line-height: 1.1 !important; font-weight: 700 !important; }
-                        .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 2px !important; padding: 3px !important; margin: 0 !important; }
-                        .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 3px !important; padding: 3px 4px !important; margin: 0 !important; min-width: 0 !important; }
-                        .academic-summary-panel .summary-card .label { font-size: 6.5px !important; line-height: 1.1 !important; text-align: left !important; }
-                        .academic-summary-panel .summary-card .value { font-size: 11px !important; line-height: 1 !important; }
-                        .grading-scale-table table { width: 100% !important; table-layout: fixed !important; }
-                        .grading-scale-table th, .grading-scale-table td { padding: 2px !important; font-size: 6px !important; line-height: 1.05 !important; }
-                        /* Print uses compact side-by-side grading scale and academic summary. */
-                        .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 5px !important; align-items: stretch !important; width: 100% !important; margin: 3px 0 !important; }
-                        .transcript-lower-grid > .grading-scale-table, .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; box-sizing: border-box !important; }
-                        .transcript-lower-grid > .grading-scale-table { padding: 3px !important; border-radius: 4px !important; }
-                        .transcript-lower-grid > .grading-scale-table .title { font-size: 8px !important; margin: 0 0 2px !important; }
-                        .academic-summary-panel { border: 1px solid #d5e2ee !important; border-radius: 4px !important; overflow: hidden !important; }
-                        .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 4px 5px !important; font-size: 8px !important; line-height: 1.1 !important; font-weight: 700 !important; }
-                        .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 2px !important; padding: 3px !important; margin: 0 !important; }
-                        .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 3px !important; padding: 3px 4px !important; margin: 0 !important; min-width: 0 !important; }
-                        .academic-summary-panel .summary-card .label { font-size: 6.5px !important; line-height: 1.1 !important; text-align: left !important; }
-                        .academic-summary-panel .summary-card .value { font-size: 11px !important; line-height: 1 !important; }
-                        .grading-scale-table table { width: 100% !important; table-layout: fixed !important; }
-                        .grading-scale-table th, .grading-scale-table td { padding: 2px !important; font-size: 6px !important; line-height: 1.05 !important; }
-                        .chart-container, .chart-container canvas { display: none !important; }
-                        .summary-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 3px !important; margin: 4px 0 !important; }
-                            .summary-card { padding: 5px 4px !important; }
-                            .summary-card .value { font-size: 22px !important; line-height: 1.05 !important; }
-                            .summary-card .label { font-size: 9px !important; margin-top: 2px !important; }
-                            .grading-scale-table { margin: 0 0 4px !important; padding: 5px 6px !important; }
-                            .grading-scale-table .title { font-size: 10px !important; margin-bottom: 3px !important; }
-                            .grading-scale-table table, .grading-scale-table th, .grading-scale-table td { font-size: 8px !important; }
-                            .grading-scale-table th, .grading-scale-table td { padding: 2px 3px !important; }
-                            .chart-container { position: relative !important; display: block !important; width: 100% !important; height: 55mm !important; min-height: 55mm !important; max-height: 55mm !important; margin: 0 0 4px !important; padding: 2mm !important; overflow: hidden !important; }
-                            .chart-container canvas { display: block !important; width: 100% !important; height: 48mm !important; min-height: 48mm !important; max-height: 48mm !important; }
-                            .declaration { margin: 5px 0 !important; padding: 7px 9px !important; font-size: 10px !important; line-height: 1.2 !important; }
-                            .signatures { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px !important; margin: 3px 0 !important; padding-top: 4px !important; }
-                            .footer { margin: 5px 0 0 !important; padding-top: 6px !important; font-size: 9px !important; border-top: 1px solid #0A3D62 !important; }
-                            .no-print, .btn-print, .btn-close { display: none !important; }
-                            .container { break-inside: auto !important; page-break-inside: auto !important; }
-                            table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-                            .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .summary-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
-`;
-                        printWindow.document.head.appendChild(printStyle);
-                        // Wait for QR and chart render before opening Chrome's print dialog.
-                        const qr = printWindow.document.getElementById('transcriptVerificationQr');
-                        const qrDeadline = Date.now() + 7000;
-                        while (qr && qr.dataset.ready !== 'true' && !qr.dataset.error && Date.now() < qrDeadline) {
+
+                    // Fallback: direct html2canvas + jsPDF page slicing
+                    if (!downloadStarted) {
+                        try {
+                            const html2canvasFn = printWindow.html2canvas ||
+                                (printWindow.html2pdf && printWindow.html2pdf.html2canvas);
+                            const jsPDFCtor = printWindow.jspdf && printWindow.jspdf.jsPDF
+                                ? printWindow.jspdf.jsPDF
+                                : (printWindow.jsPDF || (printWindow.html2pdf && printWindow.html2pdf.jsPDF));
+                            if (typeof html2canvasFn !== 'function' || typeof jsPDFCtor !== 'function') {
+                                throw new Error('Direct PDF fallback libraries are unavailable.');
+                            }
+                            const fallbackCanvas = await html2canvasFn(target, {
+                                scale: 2,
+                                useCORS: true,
+                                allowTaint: false,
+                                backgroundColor: '#ffffff',
+                                scrollX: 0,
+                                scrollY: 0,
+                                logging: false,
+                                windowWidth: 718,
+                                onclone: (clonedDoc) => {
+                                    [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
+                                        node.style.setProperty('width', '718px', 'important');
+                                        node.style.setProperty('min-width', '718px', 'important');
+                                        node.style.setProperty('max-width', '718px', 'important');
+                                        node.style.setProperty('margin', '0', 'important');
+                                        node.style.setProperty('padding', '0', 'important');
+                                        node.style.setProperty('overflow', 'visible', 'important');
+                                    });
+                                    const clonedContainer = clonedDoc.querySelector('.container');
+                                    if (clonedContainer) {
+                                        clonedContainer.style.setProperty('width', '718px', 'important');
+                                        clonedContainer.style.setProperty('max-width', '718px', 'important');
+                                        clonedContainer.style.setProperty('min-height', '0', 'important');
+                                        clonedContainer.style.setProperty('height', 'auto', 'important');
+                                        clonedContainer.style.setProperty('margin', '0', 'important');
+                                        clonedContainer.style.setProperty('padding', '4mm', 'important');
+                                        clonedContainer.style.setProperty('box-sizing', 'border-box', 'important');
+                                    }
+                                    const clonedToolbar = clonedDoc.querySelector('.transcript-preview-toolbar');
+                                    if (clonedToolbar) clonedToolbar.style.setProperty('display', 'none', 'important');
+                                }
+                            });
+                            const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+                            const pageWidth = 210;
+                            const pageHeight = 297;
+                            const marginMm = 5;
+                            const usableWidth = pageWidth - marginMm * 2;
+                            const usableHeight = pageHeight - marginMm * 2;
+                            const pxPerMm = fallbackCanvas.width / usableWidth;
+                            const pageSliceHeight = Math.max(1, Math.floor(usableHeight * pxPerMm));
+                            const pageCanvas = printWindow.document.createElement('canvas');
+                            const pageContext = pageCanvas.getContext('2d');
+                            pageCanvas.width = fallbackCanvas.width;
+                            let sourceY = 0;
+                            let pageIndex = 0;
+                            while (sourceY < fallbackCanvas.height) {
+                                const sliceHeight = Math.min(pageSliceHeight, fallbackCanvas.height - sourceY);
+                                pageCanvas.height = sliceHeight;
+                                pageContext.fillStyle = '#ffffff';
+                                pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+                                pageContext.drawImage(fallbackCanvas, 0, sourceY, fallbackCanvas.width, sliceHeight, 0, 0, pageCanvas.width, sliceHeight);
+                                if (pageIndex > 0) pdf.addPage('a4', 'portrait');
+                                const renderedHeight = sliceHeight / pxPerMm;
+                                pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.98), 'JPEG', marginMm, marginMm, usableWidth, renderedHeight, undefined, 'FAST');
+                                sourceY += sliceHeight;
+                                pageIndex++;
+                            }
+                            pdf.save(fileBase + '.pdf');
+                            downloadStarted = true;
+                            console.info('[Transcript PDF] Direct canvas fallback download completed', {
+                                filename: fileBase + '.pdf',
+                                pages: pageIndex
+                            });
+                        } catch (fallbackError) {
+                            console.error('[Transcript PDF] Direct canvas fallback failed', fallbackError);
+                            alert('The transcript PDF could not be generated. ' +
+                                String(fallbackError && (fallbackError.message || fallbackError.name) || fallbackError) +
+                                '\n\nOpen Developer Tools (F12) > Console for details. Your transcript preview is still open; no PDF was confirmed as saved.');
+                        }
+                    }
+
+                    if (downloadStarted) {
+                        try { printWindow.close(); } catch (_) {}
+                    }
+                });
+
+                toolbar.querySelector('.print').addEventListener('click', async () => {
+                    const printButton = toolbar.querySelector('.print');
+                    const qrImage = printWindow.document.getElementById('transcriptVerificationQr');
+                    try {
+                        printButton.disabled = true;
+                        printButton.textContent = 'Preparing print…';
+                        const deadline = Date.now() + 20000;
+                        while (qrImage && qrImage.dataset.ready !== 'true' && !qrImage.dataset.error && Date.now() < deadline) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
-                        if (qr && qr.dataset.ready !== 'true') {
-                            const reason = qr.dataset.error || 'QR generation timed out';
-                            console.error('Transcript print cancelled: verification QR is not ready.', reason);
-                            alert('The transcript verification QR code could not be generated. Check your connection and try again; the transcript was not sent to print.');
-                            return;
-                        }
-                        const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
-                        if (chartCanvas && printWindow.Chart) {
-                            const chart = printWindow.Chart.getChart(chartCanvas);
-                            if (chart) {
-                                chart.options.responsive = false;
-                                chart.options.maintainAspectRatio = false;
-                                chart.options.animation = false;
-                                chart.resize(chartCanvas.clientWidth || 700, 120);
-                                chart.update('none');
-                            }
+                        if (qrImage && qrImage.dataset.ready !== 'true') {
+                            throw new Error(qrImage.dataset.error || 'Transcript verification QR did not finish generating.');
                         }
                         await Promise.all(Array.from(printWindow.document.images).map(img => {
                             if (img.complete) return Promise.resolve();
@@ -3041,72 +2565,118 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             });
                         }));
                         if (printWindow.document.fonts && printWindow.document.fonts.ready) await printWindow.document.fonts.ready;
-                        await new Promise(resolve => setTimeout(resolve, 400));
-                        printWindow.focus();
-                        printWindow.print();
+                        frameWindow.focus();
+                        await new Promise(resolve => setTimeout(resolve, 350));
+                        frameWindow.print();
+                    } catch (error) {
+                        console.error('[Transcript Print] Failed', error);
+                        alert('Could not open the transcript print dialog. ' + (error && error.message ? error.message : error));
+                    } finally {
+                        if (printButton.isConnected) {
+                            printButton.disabled = false;
+                            printButton.textContent = '🖨 Print';
+                        }
+                    }
+                });
+                toolbar.querySelector('.close').addEventListener('click', () => printWindow.close());
+                printWindow.focus();
+                return;
+            }
+
+            // ---------- PRINT MODE ----------
+            if (outputMode === 'print') {
+                setTimeout(async () => {
+                    const target = printWindow.document.querySelector('.container');
+                    if (!target) {
+                        printWindow.close();
+                        alert('Transcript preview could not be prepared. Please try again.');
                         return;
                     }
-                    const generateTranscriptPdf = async () => {
+                    const qr = printWindow.document.getElementById('transcriptVerificationQr');
+                    const qrDeadline = Date.now() + 20000;
+                    while (qr && qr.dataset.ready !== 'true' && !qr.dataset.error && Date.now() < qrDeadline) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    if (qr && qr.dataset.ready !== 'true') {
+                        alert('The transcript verification QR code could not be generated. Check your connection and try again.');
+                        return;
+                    }
+                    const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
+                    if (chartCanvas && printWindow.Chart) {
+                        const chart = printWindow.Chart.getChart(chartCanvas);
+                        if (chart) {
+                            chart.options.responsive = false;
+                            chart.options.maintainAspectRatio = false;
+                            chart.options.animation = false;
+                            chart.resize(700, 143);
+                            chart.update('none');
+                        }
+                    }
+                    await Promise.all(Array.from(printWindow.document.images).map(img => {
+                        if (img.complete) return Promise.resolve();
+                        return new Promise(resolve => {
+                            img.addEventListener('load', resolve, { once: true });
+                            img.addEventListener('error', resolve, { once: true });
+                            setTimeout(resolve, 2500);
+                        });
+                    }));
+                    if (printWindow.document.fonts && printWindow.document.fonts.ready) await printWindow.document.fonts.ready;
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                    frameWindow.focus();
+                    frameWindow.print();
+                }, 300);
+                return;
+            }
+
+            // ---------- DOWNLOAD MODE (default) ----------
+            setTimeout(async () => {
+                const target = printWindow.document.querySelector('.container');
+                if (!target) {
+                    printWindow.close();
+                    alert('Transcript preview could not be prepared. Please try again.');
+                    return;
+                }
+
+                const generateTranscriptPdf = async () => {
                     if (!printWindow || printWindow.closed) return;
-                    // Wait for the QR code to finish rendering before capturing the PDF.
                     const qrImage = printWindow.document.getElementById('transcriptVerificationQr');
                     if (qrImage && qrImage.style.display !== 'none') {
                         const qrStartedAt = Date.now();
-                        while (qrImage.dataset.ready !== 'true' && !qrImage.dataset.error && Date.now() - qrStartedAt < 6500) {
+                        while (qrImage.dataset.ready !== 'true' && !qrImage.dataset.error && Date.now() - qrStartedAt < 20000) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
-                        if (qrImage.dataset.ready === 'true' && qrImage.naturalWidth === 0) {
-                            await new Promise(resolve => {
-                                qrImage.addEventListener('load', resolve, { once: true });
-                                qrImage.addEventListener('error', resolve, { once: true });
-                                setTimeout(resolve, 2000);
-                            });
-                        }
                         if (qrImage.dataset.ready !== 'true') {
-                            const reason = qrImage.dataset.error || 'generation timeout';
-                            console.error('[Transcript PDF] QR generation failed; download cancelled', {
-                                reason: reason,
-                                qrReady: qrImage.dataset.ready === 'true',
-                                qrImageError: qrImage.dataset.error || null,
-                                qrAlt: qrImage.alt || null,
-                                qrNaturalWidth: qrImage.naturalWidth,
-                                qrSourcePresent: Boolean(qrImage.src),
-                                popupClosed: printWindow.closed,
-                                timestamp: new Date().toISOString()
-                            });
-                            alert('Transcript verification QR failed: ' + reason + '\n\nOpen Developer Tools (F12) > Console for diagnostic details. No PDF was created.');
+                            alert('Transcript verification QR failed: ' + (qrImage.dataset.error || 'generation timeout') + '\n\nNo PDF was created.');
                             return;
                         }
                     }
+
                     const downloadStyle = printWindow.document.createElement('style');
                     downloadStyle.textContent = `
                         @page { size: A4 portrait; margin: 5mm; }
                         * { box-sizing: border-box !important; }
-                        html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+                        html, body { width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; }
                         body { font-size: 9px !important; }
-                        .container { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 2mm !important; border-radius: 0 !important; box-shadow: none !important; }
+                        .container { display: block !important; width: 718px !important; min-width: 718px !important; max-width: 718px !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4mm !important; border-radius: 0 !important; box-shadow: none !important; }
                         .transcript-top { position: relative !important; display: block !important; width: 100% !important; margin: 0 0 3px !important; padding: 0 !important; }
                         .transcript-top > .header { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
-                        .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; min-width: 34px !important; margin: 0 !important; z-index: 2 !important; }
+                        .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
                         .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 26px !important; height: 26px !important; }
-                        .verification-qr { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: flex-start !important; padding: 2px !important; border: 1px solid #0A3D62 !important; background: #fff !important; }
-                        .verification-qr span { font-size: 5px !important; }
-                        .header { margin: 0 0 3px !important; padding: 0 0 3px !important; }
                         .header-top { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; gap: 6px !important; }
-                        .header-top img { max-width: 32px !important; max-height: 28px !important; width: auto !important; height: auto !important; }
+                        .header-top img { max-width: 32px !important; max-height: 28px !important; }
                         .header .school { font-size: 12px !important; line-height: 1.1 !important; }
                         .header .motto { font-size: 7px !important; }
                         .header .subtitle { font-size: 10px !important; margin: 2px 0 !important; }
                         .header .date { font-size: 6px !important; }
                         .student-info-wrapper { display: flex !important; margin: 0 0 3px !important; padding: 5px 8px !important; gap: 6px !important; }
-                        .student-info { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 3px 8px !important; min-width: 0 !important; }
+                        .student-info { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 3px 8px !important; }
                         .student-info .label { font-size: 7px !important; }
-                        .student-info .value { font-size: 9px !important; line-height: 1.15 !important; margin-top: 1px !important; overflow-wrap: anywhere !important; }
+                        .student-info .value { font-size: 9px !important; line-height: 1.15 !important; }
                         .semester-results-title { margin: 3px 0 0 !important; padding: 6px 10px !important; font-size: 11px !important; }
                         table.semester-results-table { display: table !important; width: 100% !important; table-layout: fixed !important; margin: 0 0 4px !important; border-collapse: collapse !important; }
                         table.semester-results-table thead { display: table-header-group !important; }
-                        table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; line-height: 1.1 !important; overflow-wrap: anywhere !important; }
-                        table.semester-results-table tbody td { padding: 4px 4px !important; font-size: 8px !important; line-height: 1.15 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
+                        table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; line-height: 1.1 !important; }
+                        table.semester-results-table tbody td { padding: 4px 4px !important; font-size: 8px !important; line-height: 1.15 !important; vertical-align: middle !important; }
                         table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; text-align: center !important; }
                         table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
                         table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
@@ -3116,24 +2686,22 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .summary-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 3px !important; margin: 4px 0 !important; }
                         .summary-card { padding: 5px 4px !important; }
                         .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
-                        .summary-card .label { font-size: 7px !important; margin-top: 2px !important; }
+                        .summary-card .label { font-size: 7px !important; }
                         .grading-scale-table { margin: 0 0 4px !important; padding: 5px 6px !important; }
                         .grading-scale-table .title { font-size: 8px !important; margin-bottom: 3px !important; }
                         .grading-scale-table table, .grading-scale-table th, .grading-scale-table td { font-size: 6px !important; }
-                        .grading-scale-table th, .grading-scale-table td { padding: 2px 3px !important; }
-                        .chart-container, .chart-container canvas { display: none !important; }
-                        .declaration { margin: 3px 0 !important; padding: 5px 7px !important; font-size: 8px !important; line-height: 1.2 !important; }
+                        .chart-container { display: block !important; width: 100% !important; height: 45mm !important; min-height: 45mm !important; max-height: 45mm !important; margin: 0 0 4px !important; padding: 2mm !important; overflow: hidden !important; }
+                        .chart-container canvas { display: block !important; width: 100% !important; height: 38mm !important; min-height: 38mm !important; max-height: 38mm !important; }
+                        .declaration { margin: 3px 0 !important; padding: 5px 7px !important; font-size: 8px !important; }
                         .signatures { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px !important; margin: 3px 0 !important; padding-top: 4px !important; }
-                        .signature-box .line { margin: 4px auto 1px !important; }
                         .footer { margin: 3px 0 0 !important; padding-top: 4px !important; font-size: 7px !important; border-top: 1px solid #0A3D62 !important; }
                         .no-print, .btn-print, .btn-close { display: none !important; }
                         .container { break-inside: auto !important; page-break-inside: auto !important; }
                         table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
                         .transcript-top, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
-`;
+                    `;
                     printWindow.document.head.appendChild(downloadStyle);
 
-                    // Recalculate Chart.js after PDF sizing rules are applied, then allow a paint before capture.
                     const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
                     if (chartCanvas && printWindow.Chart) {
                         const chartInstance = printWindow.Chart.getChart(chartCanvas);
@@ -3147,8 +2715,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     }
                     await new Promise(resolve => setTimeout(resolve, 350));
 
-                    // Size the transcript to its actual unit count. Keep every unit row intact,
-                    // use a compact but readable table, and allow additional A4 pages only when needed.
                     const transcriptTable = printWindow.document.querySelector('table.semester-results-table');
                     const transcriptRows = transcriptTable ? transcriptTable.querySelectorAll('tbody tr') : [];
                     const unitCount = transcriptRows.length;
@@ -3156,161 +2722,174 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     const rowPadding = unitCount <= 8 ? 6 : unitCount <= 14 ? 4 : unitCount <= 22 ? 3 : 2;
                     const rowFont = unitCount <= 14 ? 9 : unitCount <= 22 ? 8 : 7;
                     densityStyle.textContent = `
-                        .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) !important; gap: 5px !important; align-items: stretch !important; width: 100% !important; margin: 3px 0 !important; }
-                        .transcript-lower-grid > .grading-scale-table, .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; box-sizing: border-box !important; }
-                        .transcript-lower-grid > .grading-scale-table { padding: 3px !important; }
-                        .transcript-lower-grid > .grading-scale-table .title { font-size: 8px !important; margin: 0 0 2px !important; }
-                        .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 4px 5px !important; font-size: 8px !important; font-weight: 700 !important; }
-                        .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 2px !important; padding: 3px !important; margin: 0 !important; }
-                        .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 3px 4px !important; margin: 0 !important; }
-                        .academic-summary-panel .summary-card .label { font-size: 6.5px !important; text-align: left !important; }
-                        .academic-summary-panel .summary-card .value { font-size: 11px !important; }
-                        .grading-scale-table th, .grading-scale-table td { padding: 2px !important; font-size: 6px !important; }
-                        table.semester-results-table tbody td { padding-top: 5px !important; padding-bottom: 5px !important; }
-
                         table.semester-results-table thead { display: table-header-group !important; }
                         table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
                         table.semester-results-table tbody td { padding: ${rowPadding}px 5px !important; font-size: ${rowFont}px !important; line-height: 1.2 !important; }
                         table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; }
                         .container { break-inside: auto !important; page-break-inside: auto !important; }
-                        .header, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .summary-grid, .grading-scale-table, .academic-summary-panel, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+                        .header, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                     `;
                     printWindow.document.head.appendChild(densityStyle);
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
-                    const options = {
-                        margin: 5,
-                        filename: fileBase + '.pdf',
-                        image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: {
-                            scale: 2,
-                            useCORS: true,
-                            allowTaint: false,
-                            backgroundColor: '#ffffff',
-                            scrollX: 0,
-                            scrollY: 0,
-                            logging: false,
-                            onclone: (clonedDoc) => {
-                                const html = clonedDoc.documentElement;
-                                const body = clonedDoc.body;
-                                [html, body].forEach(node => {
-                                    node.style.setProperty('width', '718px', 'important');
-                                    node.style.setProperty('min-width', '718px', 'important');
-                                    node.style.setProperty('max-width', '718px', 'important');
-                                    node.style.setProperty('margin', '0', 'important');
-                                    node.style.setProperty('padding', '0', 'important');
-                                    node.style.setProperty('overflow', 'visible', 'important');
-                                });
-                                const container = clonedDoc.querySelector('.container');
-                                if (container) {
-                                    container.style.setProperty('display', 'block', 'important');
-                                    container.style.setProperty('width', '718px', 'important');
-                                    container.style.setProperty('min-width', '718px', 'important');
-                                    container.style.setProperty('max-width', '718px', 'important');
-                                    container.style.setProperty('box-sizing', 'border-box', 'important');
-                                    container.style.setProperty('margin', '0', 'important');
-                                    container.style.setProperty('padding', '4mm', 'important');
-                                    container.style.setProperty('height', 'auto', 'important');
-                                    container.style.setProperty('min-height', '0', 'important');
-                                    container.style.setProperty('transform', 'none', 'important');
-                                    container.style.setProperty('overflow', 'visible', 'important');
-                                }
-                                const canvas = clonedDoc.querySelector('.chart-container canvas');
-                                if (canvas) {
-                                    canvas.style.setProperty('display', 'block', 'important');
-                                    canvas.style.setProperty('width', '100%', 'important');
-                                    canvas.style.setProperty('height', '38mm', 'important');
-                                    canvas.style.setProperty('max-width', '100%', 'important');
-                                }
-                            }
-                        },
-                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-                        pagebreak: { mode: ['css'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
-                    };
-                    // Generate a real PDF and save it directly from the original portal tab.
-                    // Use numeric margin for html2pdf compatibility and a File/Blob fallback if
-                    // the browser supports the File System Access API. Never switch to print UI.
-                    printWindow.html2pdf().set(options).from(target).toPdf().get('pdf').then(async pdf => {
-                        const blob = pdf.output('blob');
-                        const fileName = options.filename || 'Provisional-Academic-Transcript.pdf';
+                    let downloadStarted = false;
 
-                        // Prefer the native save dialog where supported, which gives the user
-                        // an explicit file save instead of silently depending on an anchor click.
-                        if (typeof window.showSaveFilePicker === 'function') {
-                            try {
-                                const handle = await window.showSaveFilePicker({
-                                    suggestedName: fileName,
-                                    types: [{ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } }]
-                                });
-                                const writable = await handle.createWritable();
-                                await writable.write(blob);
-                                await writable.close();
-                                if (!printWindow.closed) printWindow.close();
-                                alert('Transcript PDF saved successfully.');
-                                return;
-                            } catch (saveError) {
-                                if (saveError && saveError.name === 'AbortError') {
-                                    // User cancelled the save dialog; do not force a second download.
-                                    return;
-                                }
-                                console.warn('Native save dialog unavailable; using direct download.', saveError);
-                            }
+                    try {
+                        if (typeof printWindow.html2pdf === 'function') {
+                            const options = {
+                                margin: [5, 5, 5, 5],
+                                filename: fileBase + '.pdf',
+                                image: { type: 'jpeg', quality: 0.98 },
+                                html2canvas: {
+                                    scale: 2,
+                                    useCORS: true,
+                                    allowTaint: false,
+                                    backgroundColor: '#ffffff',
+                                    scrollX: 0,
+                                    scrollY: 0,
+                                    logging: false,
+                                    onclone: (clonedDoc) => {
+                                        [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
+                                            node.style.setProperty('width', '718px', 'important');
+                                            node.style.setProperty('min-width', '718px', 'important');
+                                            node.style.setProperty('max-width', '718px', 'important');
+                                            node.style.setProperty('margin', '0', 'important');
+                                            node.style.setProperty('padding', '0', 'important');
+                                            node.style.setProperty('overflow', 'visible', 'important');
+                                        });
+                                        const container = clonedDoc.querySelector('.container');
+                                        if (container) {
+                                            container.style.setProperty('display', 'block', 'important');
+                                            container.style.setProperty('width', '718px', 'important');
+                                            container.style.setProperty('min-width', '718px', 'important');
+                                            container.style.setProperty('max-width', '718px', 'important');
+                                            container.style.setProperty('box-sizing', 'border-box', 'important');
+                                            container.style.setProperty('margin', '0', 'important');
+                                            container.style.setProperty('padding', '4mm', 'important');
+                                            container.style.setProperty('height', 'auto', 'important');
+                                            container.style.setProperty('min-height', '0', 'important');
+                                            container.style.setProperty('transform', 'none', 'important');
+                                            container.style.setProperty('overflow', 'visible', 'important');
+                                        }
+                                        const canvas = clonedDoc.querySelector('.chart-container canvas');
+                                        if (canvas) {
+                                            canvas.style.setProperty('display', 'block', 'important');
+                                            canvas.style.setProperty('width', '100%', 'important');
+                                            canvas.style.setProperty('height', '38mm', 'important');
+                                            canvas.style.setProperty('max-width', '100%', 'important');
+                                        }
+                                    }
+                                },
+                                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+                                pagebreak: { mode: ['css'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
+                            };
+                            await printWindow.html2pdf().set(options).from(target).save();
+                            downloadStarted = true;
+                            console.info('[Transcript PDF] Download mode: html2pdf completed', { filename: options.filename });
                         }
-
-                        const downloadUrl = window.URL.createObjectURL(blob);
-                        const anchor = document.createElement('a');
-                        anchor.href = downloadUrl;
-                        anchor.download = fileName;
-                        anchor.style.display = 'none';
-                        document.body.appendChild(anchor);
-                        anchor.click();
-                        anchor.remove();
-
-                        // Keep the URL alive long enough for mobile download managers to pick it up.
-                        setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 60000);
-                        const status = document.createElement('div');
-                        status.textContent = 'PDF generated. Check your Downloads folder.';
-                        status.setAttribute('role', 'status');
-                        status.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100000;background:#0f766e;color:#fff;padding:12px 18px;border-radius:8px;font:14px Arial;box-shadow:0 4px 16px #0003;max-width:90%;text-align:center;';
-                        document.body.appendChild(status);
-                        setTimeout(() => status.remove(), 8000);
-                        if (!printWindow.closed) printWindow.close();
-                    }).catch(error => {
-                        console.error('PDF download failed:', error);
-                        if (!printWindow.closed) {
-                            printWindow.document.body.innerHTML = '<div style="font:16px Arial;padding:24px"><h2>PDF generation failed</h2><p>' +
-                                String(error.message || 'Please try again.').replace(/[&<>"]/g, '') +
-                                '</p></div>';
-                            printWindow.focus();
-                        }
-                        alert('PDF download failed: ' + (error.message || 'Please try again.'));
-                    });
-                    };
-                    // Define the generator before any asynchronous library wait can call it.
-                    if (typeof printWindow.html2pdf !== 'function') {
-                        let attempts = 0;
-                        const waitForPdfLibrary = () => {
-                            if (printWindow.closed) return;
-                            if (typeof printWindow.html2pdf === 'function') {
-                                generateTranscriptPdf();
-                                return;
-                            }
-                            attempts += 1;
-                            if (attempts < 30) setTimeout(waitForPdfLibrary, 300);
-                            else {
-                                printWindow.close();
-                                alert('PDF generator could not load after waiting. Check your connection and try again.');
-                            }
-                        };
-                        waitForPdfLibrary();
-                    } else {
-                        generateTranscriptPdf();
+                    } catch (error) {
+                        console.warn('[Transcript PDF] Download mode: html2pdf failed; trying fallback', {
+                            message: String(error && (error.message || error.name) || error || 'Unknown')
+                        });
                     }
-                }, 1400);
-            } else {
-                alert('The transcript window was closed before the PDF was ready. Please try again.');
-            }
-            
+
+                    if (!downloadStarted) {
+                        try {
+                            const html2canvasFn = printWindow.html2canvas ||
+                                (printWindow.html2pdf && printWindow.html2pdf.html2canvas);
+                            const jsPDFCtor = printWindow.jspdf && printWindow.jspdf.jsPDF
+                                ? printWindow.jspdf.jsPDF
+                                : (printWindow.jsPDF || (printWindow.html2pdf && printWindow.html2pdf.jsPDF));
+                            if (typeof html2canvasFn !== 'function' || typeof jsPDFCtor !== 'function') {
+                                throw new Error('Direct PDF fallback libraries are unavailable.');
+                            }
+                            const fallbackCanvas = await html2canvasFn(target, {
+                                scale: 2,
+                                useCORS: true,
+                                allowTaint: false,
+                                backgroundColor: '#ffffff',
+                                scrollX: 0,
+                                scrollY: 0,
+                                logging: false,
+                                windowWidth: 718,
+                                onclone: (clonedDoc) => {
+                                    [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
+                                        node.style.setProperty('width', '718px', 'important');
+                                        node.style.setProperty('min-width', '718px', 'important');
+                                        node.style.setProperty('max-width', '718px', 'important');
+                                        node.style.setProperty('margin', '0', 'important');
+                                        node.style.setProperty('padding', '0', 'important');
+                                        node.style.setProperty('overflow', 'visible', 'important');
+                                    });
+                                    const clonedContainer = clonedDoc.querySelector('.container');
+                                    if (clonedContainer) {
+                                        clonedContainer.style.setProperty('width', '718px', 'important');
+                                        clonedContainer.style.setProperty('max-width', '718px', 'important');
+                                        clonedContainer.style.setProperty('min-height', '0', 'important');
+                                        clonedContainer.style.setProperty('height', 'auto', 'important');
+                                        clonedContainer.style.setProperty('margin', '0', 'important');
+                                        clonedContainer.style.setProperty('padding', '4mm', 'important');
+                                        clonedContainer.style.setProperty('box-sizing', 'border-box', 'important');
+                                    }
+                                }
+                            });
+                            const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+                            const usableWidth = 200;
+                            const usableHeight = 287;
+                            const pxPerMm = fallbackCanvas.width / usableWidth;
+                            const pageSliceHeight = Math.max(1, Math.floor(usableHeight * pxPerMm));
+                            const pageCanvas = printWindow.document.createElement('canvas');
+                            const pageContext = pageCanvas.getContext('2d');
+                            pageCanvas.width = fallbackCanvas.width;
+                            let sourceY = 0;
+                            let pageIndex = 0;
+                            while (sourceY < fallbackCanvas.height) {
+                                const sliceHeight = Math.min(pageSliceHeight, fallbackCanvas.height - sourceY);
+                                pageCanvas.height = sliceHeight;
+                                pageContext.fillStyle = '#ffffff';
+                                pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+                                pageContext.drawImage(fallbackCanvas, 0, sourceY, fallbackCanvas.width, sliceHeight, 0, 0, pageCanvas.width, sliceHeight);
+                                if (pageIndex > 0) pdf.addPage('a4', 'portrait');
+                                const renderedHeight = sliceHeight / pxPerMm;
+                                pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.98), 'JPEG', 5, 5, usableWidth, renderedHeight, undefined, 'FAST');
+                                sourceY += sliceHeight;
+                                pageIndex++;
+                            }
+                            pdf.save(fileBase + '.pdf');
+                            downloadStarted = true;
+                            console.info('[Transcript PDF] Download mode: fallback completed', { pages: pageIndex });
+                        } catch (fallbackError) {
+                            console.error('[Transcript PDF] Download mode: fallback failed', fallbackError);
+                            alert('PDF download failed: ' + (fallbackError && fallbackError.message || 'Please try again.'));
+                        }
+                    }
+
+                    if (downloadStarted) {
+                        try { printWindow.close(); } catch (_) {}
+                    }
+                };
+
+                if (typeof printWindow.html2pdf !== 'function') {
+                    let attempts = 0;
+                    const waitForPdfLibrary = () => {
+                        if (printWindow.closed) return;
+                        if (typeof printWindow.html2pdf === 'function') {
+                            generateTranscriptPdf();
+                            return;
+                        }
+                        attempts += 1;
+                        if (attempts < 30) setTimeout(waitForPdfLibrary, 300);
+                        else {
+                            printWindow.close();
+                            alert('PDF generator could not load after waiting. Check your connection and try again.');
+                        }
+                    };
+                    waitForPdfLibrary();
+                } else {
+                    generateTranscriptPdf();
+                }
+            }, 1400);
+
         } catch (error) {
             loadingEl.remove();
             if (printWindow && !printWindow.closed) printWindow.close();
