@@ -1859,10 +1859,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     : statusDisplay === 'CREDIT' || statusDisplay === 'GOOD' ? '#1d4ed8'
                     : statusDisplay === 'PASS' || statusDisplay === 'SATISFACTORY' ? '#b45309'
                     : statusDisplay === 'FAIL' ? '#b91c1c' : '#64748b';
-                const hasRetakeFlag = hasRetake(mark.subject_name);
-                const isRetakenUnit = hasRetakeFlag || mark.hasRetake === true;
-                const retakeCount = hasRetakeFlag ? getRetakeCount(mark.subject_name) : (Number(mark.retakeCount) || 0);
-                const starIndicator = isRetakenUnit ? `<span style="display: inline-block; margin-left: 4px; font-size: 11px; color: #64748b; opacity: 0.9; cursor: help;" title="Retaken (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})">☆</span>` : '';
+                const starIndicator = retakenPassed ? '*' : '';
 
                 tableRows += `
                     <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''} ${isRetakenUnit ? 'border-left: 3px solid #94a3b8;' : ''}">
