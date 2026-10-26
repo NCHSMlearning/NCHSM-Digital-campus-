@@ -45,6 +45,10 @@ RewriteRule ^lecturer\.html$ - [L]
 # ------------------------------------------------------------------
 # CUSTOM ROUTES
 # ------------------------------------------------------------------
+# Public academic transcript verification (clean URL)
+RewriteRule ^transcripts\.html$ /transcripts [R=301,L]
+RewriteRule ^transcripts$ /transcripts.html [L,QSA]
+
 RewriteRule ^home$ /student.html [L,QSA]
 RewriteRule ^dashboard$ /student.html [L,QSA]
 RewriteRule ^student$ /student.html [L,QSA]
