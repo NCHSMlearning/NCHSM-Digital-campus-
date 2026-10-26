@@ -2000,11 +2000,11 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .container .transcript-top { z-index: 2; }
 
         .transcript-top { position: relative; display: block; width: 100%; padding-top: 1px; }
-        .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 116px; }
+        .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 126px; }
         .transcript-top > .verification-qr { position: absolute; top: 27px; right: 0; z-index: 2; }
-        .transcript-top > .transcript-generation-number { position: absolute; top: 0; right: 0; z-index: 3; display: none; width: 112px; margin: 0; padding: 0; border: 0; color: #0A3D62; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.15; font-weight: 800; text-align: center; overflow-wrap: anywhere; word-break: break-word; }
-        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 2px; color: #64748b; font-size: 6px; letter-spacing: .5px; }
-        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; font-size: 10px; letter-spacing: .1px; }
+        .transcript-top > .transcript-generation-number { position: absolute; top: 0; right: 0; z-index: 3; display: none; width: 126px; margin: 0; padding: 0; border: 0; color: #0A3D62; font-family: Arial, sans-serif; font-size: 9px; line-height: 1.15; font-weight: 800; text-align: center; white-space: nowrap; overflow: visible; }
+        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 2px; color: #64748b; font-size: 6px; letter-spacing: .5px; white-space: nowrap; }
+        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; font-size: 8px; letter-spacing: 0; white-space: nowrap; }
         .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 76px; padding: 3px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #0A3D62; }
         .verification-qr img { display: block; width: 66px; height: 66px; object-fit: contain; image-rendering: pixelated; }
         .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 5px; margin-bottom: 6px; }
