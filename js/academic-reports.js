@@ -1892,6 +1892,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <title>Provisional Academic Transcript - ${escapeHtml(user.full_name || 'Student')}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+    <script src="/js/lib/qrcode.min.js"><\/script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4 portrait; margin: 6mm; }
