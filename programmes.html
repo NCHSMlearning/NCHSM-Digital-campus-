@@ -22,14 +22,15 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .cta{background:var(--navy);color:#fff;padding:52px 0}.cta h2{color:#fff}.cta p{color:#d7e5ee;max-width:750px}.btn{display:inline-block;background:var(--gold);color:#17212b;font-weight:850;padding:12px 18px;border-radius:9px;margin:8px 8px 0 0}
 footer{background:#0c1f31;color:#dce7ef;padding:45px 0 20px}footer h3,footer h4{color:#fff;margin-top:0}footer p{color:#b9c9d5}footer a{display:block;color:#dce7ef;margin:6px 0}.footgrid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:28px}.copy{border-top:1px solid rgba(255,255,255,.15);margin-top:28px;padding-top:17px;color:#aebfcb;font-size:.9rem}
 .empty{display:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:25px;color:var(--muted);text-align:center}
-@media(max-width:900px){nav{display:none}.intro-grid,.grid{grid-template-columns:1fr 1fr}.footgrid{grid-template-columns:1fr 1fr}}
-@media(max-width:620px){.wrap{padding:0 16px}.hero{padding:55px 0}.section{padding:50px 0}.intro-grid,.grid,.footgrid{grid-template-columns:1fr}.toolbar{display:block}.count{display:block;margin-top:8px}}
+@media(max-width:900px){nav#mainNav{display:none}nav#mainNav.open{display:flex;position:absolute;top:76px;left:0;right:0;margin:0;padding:18px 22px 22px;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 12px 30px rgba(16,42,67,.12);flex-direction:column;align-items:stretch;gap:0}nav#mainNav.open a{padding:12px 0;border-bottom:1px solid var(--line)}.nav-toggle{display:inline-flex;margin-left:auto;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:9px;padding:10px 13px;font-size:1.1rem;cursor:pointer}.intro-grid,.grid{grid-template-columns:1fr 1fr}.footgrid{grid-template-columns:1fr 1fr}}
+@media(min-width:901px){.nav-toggle{display:none}}@media(max-width:620px){.wrap{padding:0 16px}.hero{padding:55px 0}.section{padding:50px 0}.intro-grid,.grid,.footgrid{grid-template-columns:1fr}.toolbar{display:block}.count{display:block;margin-top:8px}}
 </style>
 </head>
 <body>
 <header><div class="wrap nav">
 <a class="brand" href="/"><img src="/images/Logo_NCHSM.png" alt="NCHSM logo"><span>NCHSM</span></a>
-<nav>
+<button class="nav-toggle" id="navToggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mainNav">☰</button>
+<nav id="mainNav" aria-label="Main navigation">
 <a href="/">Home</a><a href="/about.html">About</a><a href="/programmes.html">Programmes</a><a href="/admissions/">Admissions</a><a href="/#programmes">Clinical Training</a><a href="/blog/">Articles</a><a href="/contact.html">Contact</a><a class="portal" href="/login.html">Student Portal</a>
 </nav>
 </div></header>
@@ -284,10 +285,21 @@ footer{background:#0c1f31;color:#dce7ef;padding:45px 0 20px}footer h3,footer h4{
 </div><div class="wrap copy">© 2026 Nakuru College of Health Sciences and Management. All rights reserved.</div></footer>
 
 <script>
-  // Hides the .html extension in the URL
-if (window.location.pathname.endsWith('.html')) {
-    const cleanPath = window.location.pathname.replace(/\.html$/, '');
-    window.history.replaceState({}, '', cleanPath);
+const navToggle=document.getElementById('navToggle');
+const mainNav=document.getElementById('mainNav');
+if(navToggle&&mainNav){
+ navToggle.addEventListener('click',()=>{
+  const isOpen=mainNav.classList.toggle('open');
+  navToggle.setAttribute('aria-expanded',String(isOpen));
+  navToggle.setAttribute('aria-label',isOpen?'Close navigation':'Open navigation');
+  navToggle.textContent=isOpen?'✕':'☰';
+ });
+ mainNav.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>{
+  mainNav.classList.remove('open');
+  navToggle.setAttribute('aria-expanded','false');
+  navToggle.setAttribute('aria-label','Open navigation');
+  navToggle.textContent='☰';
+ }));
 }
 const input=document.getElementById('search');
 const cards=[...document.querySelectorAll('.programme-card')];
