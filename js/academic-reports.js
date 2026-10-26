@@ -1810,18 +1810,45 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             }
             const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
 
+            // Resolve retake results for display only; the original published mark stays untouched.
+            const resolveRetakeDisplay = (mark) => {
+                const records = studentRetakeMap[mark.subject_name] || [];
+                if (!records.length) return { mark, retaken: false };
+                const latest = [...records].sort((a, b) =>
+                    Number(b.attempt_number || 0) - Number(a.attempt_number || 0) ||
+                    new Date(b.updated_at || b.created_at || b.assessed_at || 0) - new Date(a.updated_at || a.created_at || a.assessed_at || 0)
+                ).find(r => {
+                    const value = numericMark(r, ['retake_score','final_score','score','marks','total_score','mark']);
+                    return value !== null;
+                });
+                if (!latest) return { mark, retaken: false };
+                const retakeScore = numericMark(latest, ['retake_score','final_score','score','marks','total_score','mark']);
+                const threshold = PROGRAM.isTVET(userProgram) ? 50 : 60;
+                // Only replace the displayed result when the retake meets the programme pass mark.
+                if (retakeScore < threshold) return { mark, retaken: false };
+                const retakeGrade = latest.retake_grade || latest.grade || latest.final_grade || calculateGrade(retakeScore, userProgram);
+                const retakeStatus = latest.final_status || latest.status || getGradingStatus(retakeScore, userProgram);
+                return { mark: { ...mark, final_score: retakeScore, grade: retakeGrade, final_grade: retakeGrade,
+                    status: retakeStatus, final_status: retakeStatus }, retaken: true };
+            };
+
             let tableRows = '';
-            marks.forEach((mark, index) => {
+            marks.forEach((originalMark, index) => {
+                const resolved = resolveRetakeDisplay(originalMark);
+                const mark = resolved.mark;
+                const retakenPassed = resolved.retaken;
                 const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
                 const score = getPublishedScore(mark);
-                const gradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
-                const gradeColor = (typeof getGradeColor === 'function' ? getGradeColor(gradeDisplay) : '#64748b');
-                const points = resolveDisplayPoints(mark, gradeDisplay, userProgram);
+                const baseGradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
+                const gradeDisplay = retakenPassed ? (String(baseGradeDisplay).replace(/\\*+$/, '') + '*') : baseGradeDisplay;
+                const gradeColor = (typeof getGradeColor === 'function' ? getGradeColor(baseGradeDisplay) : '#64748b');
+                const points = resolveDisplayPoints(mark, baseGradeDisplay, userProgram);
                 const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
                 const allowedStatuses = ['DISTINCTION','CREDIT','PASS','FAIL','PENDING','EXCELLENT','GOOD','SATISFACTORY'];
-                const statusDisplay = score === null
+                const baseStatusDisplay = score === null
                     ? 'PENDING'
                     : (allowedStatuses.includes(rawStatus) ? rawStatus : getGradingStatus(score, userProgram));
+                const statusDisplay = retakenPassed ? (String(baseStatusDisplay).replace(/\\*+$/, '') + '*') : baseStatusDisplay;
                 const statusColor = statusDisplay === 'DISTINCTION' || statusDisplay === 'EXCELLENT' ? '#047857'
                     : statusDisplay === 'CREDIT' || statusDisplay === 'GOOD' ? '#1d4ed8'
                     : statusDisplay === 'PASS' || statusDisplay === 'SATISFACTORY' ? '#b45309'
@@ -2094,9 +2121,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
         <div class="transcript-lower-grid">
             <div class="grading-scale-table">
-                <div class="title">Grading Scale (${programType})*</div>
+                <div class="title">Grading Scale (${programType}) — Mark*</div>
                 ${gradingScaleHTML}
-                <div class="grading-scale-footnote" style="font-size: 7px; line-height: 1.2; margin-top: 3px; color: #475569;">* A star beside a grade or status identifies a result obtained following a retake assessment.</div>
+                <div class="grading-scale-footnote" style="font-size: 7px; line-height: 1.2; margin-top: 3px; color: #475569;">* Indicates a grade/status obtained following a retake assessment.</div>
             </div>
             <div class="academic-summary-panel">
                 <div class="academic-summary-title">Academic Summary</div>
