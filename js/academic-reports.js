@@ -1939,8 +1939,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             background-image: url("https://nchsm.co.ke/images/Logo_NCHSM.png");
             background-repeat: no-repeat;
             background-position: center 53%;
-            background-size: 48% auto;
-            opacity: 0.10;
+            background-size: 30% auto;
+            opacity: 0.045;
         }
         .container > * { position: relative; z-index: 1; }
         .container .transcript-top { z-index: 2; }
@@ -2051,7 +2051,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         <div class="transcript-top">
             <div class="header">
                 <div class="header-top">
-                    <img src="https://nchsm.co.ke/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
+                    <img src="https://nchsm.co.ke/images/Logo_NCHSM.png" alt="NCHSM Logo" crossorigin="anonymous">
                     <div>
                         <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
                         <div class="motto">"Excellence in Health Sciences Education"</div>
@@ -2411,7 +2411,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             await new Promise(resolve => {
                                 institutionalLogo.addEventListener('load', resolve, { once: true });
                                 institutionalLogo.addEventListener('error', resolve, { once: true });
-                                printWindow.setTimeout(resolve, 5000);
+                                setTimeout(resolve, 5000);
                             });
                         }
                     }
