@@ -1895,7 +1895,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <!-- Standalone PDF fallback dependencies, independent of html2pdf bundle loading. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
-    <script src="/js/lib/qrcode.min.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4 portrait; margin: 6mm; }
@@ -2442,6 +2442,26 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 if (hasCanvas && hasPdf) break;
                                 await new Promise(resolve => setTimeout(resolve, 200));
                             }
+                            // Retry from jsDelivr if cdnjs did not expose one or both libraries.
+                            if (typeof printWindow.html2canvas !== 'function') {
+                                await new Promise(resolve => {
+                                    const script = printWindow.document.createElement('script');
+                                    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+                                    script.onload = resolve;
+                                    script.onerror = resolve;
+                                    printWindow.document.head.appendChild(script);
+                                });
+                            }
+                            if (!(printWindow.jspdf && typeof printWindow.jspdf.jsPDF === 'function') &&
+                                typeof printWindow.jsPDF !== 'function') {
+                                await new Promise(resolve => {
+                                    const script = printWindow.document.createElement('script');
+                                    script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+                                    script.onload = resolve;
+                                    script.onerror = resolve;
+                                    printWindow.document.head.appendChild(script);
+                                });
+                            }
                             const html2canvasFn = printWindow.html2canvas ||
                                 (printWindow.html2pdf && printWindow.html2pdf.html2canvas);
                             const jsPDFCtor = printWindow.jspdf && printWindow.jspdf.jsPDF
@@ -2779,6 +2799,26 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                     (printWindow.html2pdf && typeof printWindow.html2pdf.jsPDF === 'function');
                                 if (hasCanvas && hasPdf) break;
                                 await new Promise(resolve => setTimeout(resolve, 200));
+                            }
+                            // Retry from jsDelivr if cdnjs did not expose one or both libraries.
+                            if (typeof printWindow.html2canvas !== 'function') {
+                                await new Promise(resolve => {
+                                    const script = printWindow.document.createElement('script');
+                                    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+                                    script.onload = resolve;
+                                    script.onerror = resolve;
+                                    printWindow.document.head.appendChild(script);
+                                });
+                            }
+                            if (!(printWindow.jspdf && typeof printWindow.jspdf.jsPDF === 'function') &&
+                                typeof printWindow.jsPDF !== 'function') {
+                                await new Promise(resolve => {
+                                    const script = printWindow.document.createElement('script');
+                                    script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+                                    script.onload = resolve;
+                                    script.onerror = resolve;
+                                    printWindow.document.head.appendChild(script);
+                                });
                             }
                             const html2canvasFn = printWindow.html2canvas ||
                                 (printWindow.html2pdf && printWindow.html2pdf.html2canvas);
