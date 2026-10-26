@@ -1936,7 +1936,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             inset: 0;
             z-index: 0;
             pointer-events: none;
-            background-image: url("https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png");
+            background-image: url("https://nchsm.co.ke/images/Logo_NCHSM.png");
             background-repeat: no-repeat;
             background-position: center 53%;
             background-size: 48% auto;
@@ -2051,7 +2051,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         <div class="transcript-top">
             <div class="header">
                 <div class="header-top">
-                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
+                    <img src="https://nchsm.co.ke/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
                     <div>
                         <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
                         <div class="motto">"Excellence in Health Sciences Education"</div>
@@ -2400,6 +2400,21 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         });
                     }));
 
+                    // Force the college logo to the canonical, same-site asset and wait for it before capture.
+                    const institutionalLogo = printWindow.document.querySelector('.header-top img');
+                    if (institutionalLogo) {
+                        institutionalLogo.src = 'https://nchsm.co.ke/images/Logo_NCHSM.png';
+                        institutionalLogo.crossOrigin = 'anonymous';
+                        institutionalLogo.style.display = 'block';
+                        institutionalLogo.style.visibility = 'visible';
+                        if (!institutionalLogo.complete || institutionalLogo.naturalWidth === 0) {
+                            await new Promise(resolve => {
+                                institutionalLogo.addEventListener('load', resolve, { once: true });
+                                institutionalLogo.addEventListener('error', resolve, { once: true });
+                                printWindow.setTimeout(resolve, 5000);
+                            });
+                        }
+                    }
                     // Capture the preview as rendered. The images were awaited above; do not inject
                     // layout CSS or change the transcript's widths, table, typography, or spacing.
                     const chartCanvasEl = printWindow.document.querySelector('#reportCardLineChart');
