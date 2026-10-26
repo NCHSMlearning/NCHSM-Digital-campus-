@@ -2373,8 +2373,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     let downloadStarted = false;
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
-                    let downloadStarted = false;
-
                     // Primary pipeline: html2pdf with array margin (0.10.1 requires array)
                     try {
                         if (typeof printWindow.html2pdf === 'function') {
