@@ -2227,8 +2227,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             if (qr && qr.dataset.ready !== 'true') {
-                alert('The transcript verification QR code could not be generated. Check your connection and try again.');
-                return;
+                console.warn('[Transcript Print] QR unavailable; continuing without it:', qr.dataset.error);
+                const box = qr.closest('.verification-qr');
+                if (box) box.style.display = 'none';
             }
             const images = Array.from(document.images);
             await Promise.all(images.map(img => {
