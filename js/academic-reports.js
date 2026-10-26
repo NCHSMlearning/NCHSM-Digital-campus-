@@ -1883,7 +1883,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''}">
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-weight: 600; color: #0A3D62; font-size: 9px;">${escapeHtml(unitCode)}</td>
-                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-size: 10.5px; line-height: 1.2; text-transform: uppercase; font-weight: 600; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}${starIndicator}</td>
+                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-size: 12px; line-height: 1.2; text-transform: uppercase; font-weight: 600; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}${starIndicator}</td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center;"><span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 10px; font-weight: 700; font-size: 10px; display: inline-block; min-width: 28px;">${escapeHtml(gradeDisplay)}</span></td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; font-size: 10px; color: ${gradeColor};">${points === null ? '—' : points.toFixed(1)}</td>
                         <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: center;"><span style="display:inline-block;background:${statusColor};color:#fff;padding:4px 7px;border-radius:10px;font-weight:700;font-size:10px;white-space:normal;">${escapeHtml(statusDisplay)}</span></td>
