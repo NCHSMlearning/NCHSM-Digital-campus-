@@ -1960,7 +1960,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     
     const isTVET = currentProgram !== 'KRCHN' && currentProgram !== 'nursing' && currentProgram !== 'Nursing';
     const examMaxDisplay = isTVET ? 100 : 70;
-    const passingThreshold = isTVET ? 50 : 60;
+    const passingThreshold = 60; // Admin marks-entry retake rule: 60+ passes for every program
     const programLabel = isTVET ? '📘 TVET' : '📕 NURSING';
     const isAdmin = isUserAdmin();
     
@@ -2040,13 +2040,15 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         const retakeStatus = m.retakeStatus;
         const isRetakePassing = retakeStatus === 'PASS';
         
-        const needsRetake = total > 0 && !isPassing && retakeCount < MAX_RETAKES;
-        const maxRetakesReached = total > 0 && !isPassing && retakeCount >= MAX_RETAKES;
+        const needsRetake = total > 0 && total < 60 && retakeCount < MAX_RETAKES;
+        const maxRetakesReached = total > 0 && total < 60 && retakeCount >= MAX_RETAKES;
+        // A current score of 60 or above must never show a retake badge or retake controls.
+        const showRetakeHistory = total > 0 && total < 60 && hasRetake;
         
         let rowStyle = '';
-        if (hasRetake && isRetakePassing) {
+        if (total > 0 && total < 60 && hasRetake && isRetakePassing) {
             rowStyle = 'background: linear-gradient(90deg, #f0fdf4, #dcfce7); border-left: 4px solid #059669;';
-        } else if (hasRetake && !isRetakePassing) {
+        } else if (total > 0 && total < 60 && hasRetake && !isRetakePassing) {
             rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
         } else if (needsRetake) {
             rowStyle = 'background: linear-gradient(90deg, #fffbeb, #fef3c7); border-left: 4px solid #f59e0b;';
@@ -2098,13 +2100,15 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                     </span>
                 `;
             }
-        } else {
+        } else if (total > 0 && total < 60) {
             retakeActionsHtml = `
                 <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
                         style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
                     <i class="fas fa-sync-alt"></i> Add Retake
                 </button>
             `;
+        } else {
+            retakeActionsHtml = '<span style="color:#94a3b8;font-size:11px;">—</span>';
         }
 
         // ✅ Build the row - total is DEFINED here
@@ -2113,17 +2117,17 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
             <td style="padding: 8px 8px;">
                 <strong>${m.name || 'Unknown'}</strong>
-                ${hasRetake ? `
+                ${showRetakeHistory ? `
                     <span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 700;">
                         ⭐ R${retakeCount}
                     </span>
                 ` : ''}
-                ${retakeScore !== null && retakeScore !== undefined ? `
+                ${showRetakeHistory && retakeScore !== null && retakeScore !== undefined ? `
                     <span style="display: inline-block; margin-left: 4px; font-size: 10px; color: ${isRetakePassing ? '#059669' : '#dc2626'};">
                         (Retake: ${retakeScore}%)
                     </span>
                 ` : ''}
-                ${retakeHistory.length > 0 ? `
+                ${showRetakeHistory && retakeHistory.length > 0 ? `
                     <span style="display: block; font-size: 10px; color: #94a3b8; margin-top: 2px;">
                         <i class="fas fa-history"></i> ${retakeHistory.length} attempt(s)
                     </span>
@@ -2145,7 +2149,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
             <td id="me_rating_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">
                 ${total > 0 ? `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
             </td>
-            <td style="padding: 8px 6px; text-align: center;">
+            <td id="me_retake_actions_${i}" style="padding: 8px 6px; text-align: center;">
                 ${retakeActionsHtml}
             </td>
             ${isAdmin ? `<td style="padding: 8px 6px; text-align: center; font-size: 11px;">${approvalBadge}</td>` : ''}
@@ -2202,7 +2206,7 @@ function updateMarksEntryRow(index) {
     const cat2 = parseFloat(document.getElementById(`me_cat2_${index}`)?.value) || 0;
     const exam = parseFloat(document.getElementById(`me_exam_${index}`)?.value) || 0;
     const assessmentType = me_currentAssessmentType;
-    const passingThreshold = getPassingThreshold();
+    const passingThreshold = 60; // Keep the admin table's retake/pass rule consistent: 60+ passes
     
     const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
     const gradeInfo = getMarksEntryGrade(total);
@@ -2239,6 +2243,12 @@ function updateMarksEntryRow(index) {
         me_currentMarks[index].cat1 = cat1;
         me_currentMarks[index].cat2 = cat2;
         me_currentMarks[index].exam = exam;
+    }
+
+    // Refresh retake controls immediately whenever an entered score changes.
+    if (Array.isArray(me_currentMarks)) {
+        renderMarksEntryTable(me_currentMarks, me_currentUnit, assessmentType, me_currentProgram);
+        updateMarksEntryStats(me_currentMarks, assessmentType);
     }
 }
 
