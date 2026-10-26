@@ -559,6 +559,18 @@
             .footer { margin-top: 28px; font-size: 12px; }
             .footer .institutional-footer { font-size: 11px; }
         }
+        .verified-marks { width:100%; margin-top:22px; border:1px solid #dce6ee; border-radius:14px; overflow:hidden; background:#fff; }
+        .verified-marks h3 { padding:16px 18px; background:#0A3D62; color:#fff; font-size:16px; }
+        .verified-marks .block-heading { padding:11px 14px; background:#edf4f8; color:#0A3D62; font-weight:800; font-size:12px; border-top:1px solid #dce6ee; }
+        .verified-marks table { width:100%; border-collapse:collapse; font-size:13px; }
+        .verified-marks th, .verified-marks td { text-align:left; padding:10px 12px; border-bottom:1px solid #e8eef3; }
+        .verified-marks th { color:#52697a; background:#f8fafc; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+        .verified-marks td.score { font-weight:800; color:#0A3D62; white-space:nowrap; }
+        .marks-note { padding:12px 14px; color:#63788a; font-size:11px; line-height:1.5; background:#f8fafc; }
+        @media (max-width:600px) {
+            .verified-marks { overflow-x:auto; }
+            .verified-marks table { min-width:460px; }
+        }
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
         }
@@ -683,7 +695,32 @@ JAVASCRIPT
                 detail('Admission number', result.student_id) +
                 detail('Program', result.program) +
                 detail('Registry issue date', result.issued_at ? new Date(result.issued_at).toLocaleString() : '');
-            if (result.status === 'verified') showResult('valid', 'Verification successful', result.message, details);
+            const marks = Array.isArray(result.marks) ? result.marks : [];
+            const groupedMarks = marks.reduce(function(groups, mark) {
+                const block = String(mark.block || 'Block not specified');
+                (groups[block] = groups[block] || []).push(mark);
+                return groups;
+            }, {});
+            let marksHtml = '';
+            if (result.status === 'verified' && marks.length) {
+                marksHtml = '<section class="verified-marks" aria-label="Verified published marks">' +
+                    '<h3><i class="fas fa-list-check"></i> Published Marks by Block</h3>';
+                Object.keys(groupedMarks).sort(function(a,b){return a.localeCompare(b,undefined,{numeric:true});}).forEach(function(block) {
+                    marksHtml += '<div class="block-heading">' + escapeVerificationText(block) + '</div>' +
+                        '<table><thead><tr><th>Unit</th><th>Academic Year</th><th>Mark</th><th>Grade</th></tr></thead><tbody>';
+                    groupedMarks[block].forEach(function(mark) {
+                        marksHtml += '<tr><td>' + escapeVerificationText(mark.unit || '—') +
+                            '</td><td>' + escapeVerificationText(mark.academic_year || '—') +
+                            '</td><td class="score">' + escapeVerificationText(mark.score || '—') +
+                            '</td><td>' + escapeVerificationText(mark.grade || '—') + '</td></tr>';
+                    });
+                    marksHtml += '</tbody></table>';
+                });
+                marksHtml += '<div class="marks-note">Only published marks are shown. Results are grouped by the block recorded in the academic registry.</div></section>';
+            } else if (result.status === 'verified') {
+                marksHtml = '<div class="marks-note">The transcript is verified, but no published unit marks were returned for display.</div>';
+            }
+            if (result.status === 'verified') showResult('valid', 'Verification successful', result.message, details + marksHtml);
             else if (result.status === 'record_changed') showResult('error', 'Academic record requires review', result.message, details);
             else showResult('invalid', 'Transcript not verified', result.message || 'No active registry record matches this QR code.');
         } catch (error) {
