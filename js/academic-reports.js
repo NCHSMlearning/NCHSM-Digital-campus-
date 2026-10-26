@@ -2006,7 +2006,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .transcript-lower-grid .summary-card .value { font-size: 17px; line-height: 1.1; }
         .transcript-lower-grid .summary-card .label { font-size: 7px; letter-spacing: .2px; }
         .grading-scale-table { margin: 0; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
-        .grading-scale-table .title { font-weight: 800; font-size: 11px; color: #0A3D62; text-align: center; margin-bottom: 8px; }
+        .semester-results-title { background: #0A3D62 !important; color: #ffffff !important; }
+        .grading-scale-table .title { font-weight: 800; font-size: 11px; color: #ffffff; background: #0A3D62; text-align: center; margin: 0 0 8px; padding: 6px 8px; border-radius: 5px; }
         .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db; }
         .grading-scale-table th { background: #0A3D62; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #0A3D62; }
         .grading-scale-table td { padding: 4px 8px; text-align: center; border: 1px solid #d1d5db; font-size: 7px; }
@@ -2342,6 +2343,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     .transcript-preview-toolbar { position: fixed; z-index: 99999; top: 0; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: #0A3D62; box-shadow: 0 2px 10px #0002; }
                     .transcript-preview-toolbar button { border: 0; border-radius: 7px; padding: 10px 16px; font: 600 14px Arial,sans-serif; cursor: pointer; }
                     .transcript-preview-toolbar .download { background: #10b981; color: #fff; }
+                    .transcript-preview-toolbar .download:disabled { opacity: .78; cursor: wait; }
+                    .transcript-preview-toolbar .generation-status { color: #fff; font: 600 13px Arial,sans-serif; min-width: 110px; text-align: center; }
                     .transcript-preview-toolbar .print { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.35); }
                     .transcript-preview-toolbar .close { background: #e2e8f0; color: #1e293b; }
                     /* Keep the document canvas A4-sized on every device; only the viewing viewport changes. */
@@ -2351,7 +2354,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 printWindow.document.head.appendChild(previewStyle);
                 const toolbar = printWindow.document.createElement('div');
                 toolbar.className = 'transcript-preview-toolbar no-print';
-                toolbar.innerHTML = '<button type="button" class="download">⬇ Download PDF</button><button type="button" class="print">🖨 Print</button><button type="button" class="close">Close Preview</button>';
+                toolbar.innerHTML = '<button type="button" class="download">⬇ Download PDF</button><span class="generation-status" role="status" aria-live="polite">Ready to download</span><button type="button" class="print">🖨 Print</button><button type="button" class="close">Close Preview</button>';
                 const previewBody = printWindow.document.body || printWindow.document.getElementsByTagName('body')[0];
                 if (!previewBody) {
                     alert('The transcript preview could not be initialized. Please try again.');
@@ -2361,18 +2364,31 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 previewBody.insertBefore(toolbar, previewBody.firstChild);
 
                 toolbar.querySelector('.download').addEventListener('click', async () => {
+                    const downloadButton = toolbar.querySelector('.download');
+                    const generationStatus = toolbar.querySelector('.generation-status');
+                    if (downloadButton.disabled) return;
+                    downloadButton.disabled = true;
+                    downloadButton.textContent = 'Generating PDF…';
+                    if (generationStatus) generationStatus.textContent = 'Preparing transcript…';
                     const target = printWindow.document.querySelector('.container');
                     if (!target) {
                         alert('The transcript content could not be found in the preview. Please close it, reopen Academic Transcript, and try again.');
+                        downloadButton.disabled = false;
+                        downloadButton.textContent = '⬇ Download PDF';
+                        if (generationStatus) generationStatus.textContent = 'Could not find transcript';
                         return;
                     }
                     const qr = printWindow.document.getElementById('transcriptVerificationQr');
                     const qrDeadline = Date.now() + 20000;
                     while (qr && qr.dataset.ready !== 'true' && !qr.dataset.error && Date.now() < qrDeadline) {
+                        if (generationStatus) generationStatus.textContent = 'Preparing verification QR…';
                         await new Promise(resolve => setTimeout(resolve, 100));
                     }
                     if (qr && qr.dataset.ready !== 'true') {
                         alert('Transcript verification QR failed: ' + (qr?.dataset?.error || 'The verification QR did not become ready in time.') + '\n\nNo PDF was created.');
+                        downloadButton.disabled = false;
+                        downloadButton.textContent = '⬇ Try Download Again';
+                        if (generationStatus) generationStatus.textContent = 'QR not ready';
                         return;
                     }
                     await Promise.all(Array.from(printWindow.document.images).map(img => {
@@ -2401,6 +2417,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         printWindow.requestAnimationFrame(resolve)
                     ));
 
+                    if (generationStatus) generationStatus.textContent = 'Rendering PDF…';
                     const previewToolbar = printWindow.document.querySelector('.transcript-preview-toolbar');
                     if (previewToolbar) previewToolbar.style.display = 'none';
                     const previewRows = printWindow.document.querySelectorAll('table.semester-results-table tbody tr');
@@ -2434,26 +2451,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 // onto a second page just because they are marked break-inside: avoid.
                                 pagebreak: { mode: ['css'] }
                             };
-                            const pdfBlob = await printWindow.html2pdf().set(options).from(target).outputPdf('blob');
-                            if (!pdfBlob || typeof pdfBlob.size !== 'number' || pdfBlob.size === 0) {
-                                throw new Error('PDF generation returned an empty file.');
-                            }
-                            // The Blob is created in the preview window; avoid cross-window instanceof checks.
-                            const blobUrl = printWindow.URL.createObjectURL(pdfBlob);
-                            const downloadLink = printWindow.document.createElement('a');
-                            downloadLink.href = blobUrl;
-                            downloadLink.download = options.filename;
-                            downloadLink.setAttribute('target', '_self');
-                            downloadLink.style.cssText = 'position:fixed;left:-9999px;top:0;display:block;';
-                            printWindow.document.body.appendChild(downloadLink);
-                            downloadLink.click();
-                            // Keep the anchor and Blob URL alive briefly for mobile browsers to start the download.
-                            printWindow.setTimeout(() => {
-                                try { downloadLink.remove(); } catch (_) {}
-                                try { printWindow.URL.revokeObjectURL(blobUrl); } catch (_) {}
-                            }, 120000);
+                            if (generationStatus) generationStatus.textContent = 'Generating and saving PDF…';
+                            // Use html2pdf's built-in save pipeline. It is more reliable on mobile
+                            // browsers than creating a Blob URL after a long asynchronous render.
+                            await printWindow.html2pdf().set(options).from(target).save();
                             downloadStarted = true;
-                            console.info('[Transcript PDF] html2pdf blob download triggered', {filename:options.filename, bytes:pdfBlob.size, rows:previewRows.length});
+                            console.info('[Transcript PDF] html2pdf save completed', {filename:options.filename, rows:previewRows.length});
                         }
                     } catch (error) {
                         console.warn('[Transcript PDF] html2pdf pipeline failed; trying direct canvas fallback', {
@@ -2562,8 +2565,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     }
 
                     if (downloadStarted) {
-                        toolbar.querySelector('.download').textContent = '✓ PDF download started';
-                        // Keep preview open so the browser can begin the Blob URL download.
+                        downloadButton.textContent = '✓ Downloaded / started';
+                        downloadButton.disabled = false;
+                        if (generationStatus) generationStatus.textContent = 'PDF generation finished. Check your Downloads.';
+                        // Keep the preview open so the user can retry or print.
+                    } else {
+                        downloadButton.textContent = '⬇ Try Download Again';
+                        downloadButton.disabled = false;
+                        if (generationStatus) generationStatus.textContent = 'PDF generation failed. Retry or check connection.';
                     }
                 });
 
