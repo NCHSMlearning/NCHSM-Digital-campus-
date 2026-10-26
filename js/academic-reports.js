@@ -1931,7 +1931,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .chart-container { margin: 10px 0 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
         .chart-container .title { font-weight: 700; font-size: 8px; color: #0A3D62; text-align: center; margin-bottom: 4px; }
         .chart-container canvas { width: 100% !important; height: 145px !important; max-height: 145px; }
-        .grading-scale-table { margin: 10px 0 12px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
+        .transcript-lower-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 10px; margin: 8px 0; }
+        .transcript-lower-grid > * { min-width: 0; }
+        .academic-summary-panel { margin: 0; padding: 10px 12px; background: #f8fafc; border: 1px solid #cbdbea; border-radius: 8px; }
+        .academic-summary-title { margin: 0 0 6px; color: #0A3D62; text-align: center; font-size: 11px; font-weight: 800; }
+        .transcript-lower-grid .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin: 0; }
+        .transcript-lower-grid .summary-card { padding: 7px 4px; border-radius: 5px; border-top-width: 2px; }
+        .transcript-lower-grid .summary-card .value { font-size: 17px; line-height: 1.1; }
+        .transcript-lower-grid .summary-card .label { font-size: 7px; letter-spacing: .2px; }
+        .grading-scale-table { margin: 0; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
         .grading-scale-table .title { font-weight: 800; font-size: 11px; color: #0A3D62; text-align: center; margin-bottom: 8px; }
         .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db; }
         .grading-scale-table th { background: #0A3D62; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #0A3D62; }
@@ -1996,18 +2004,21 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .summary-card { padding: 5px 4px !important; }
             .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
             .summary-card .label { font-size: 8px !important; }
-            .grading-scale-table { margin: 0 0 4px !important; padding: 5px 6px !important; }
-            .grading-scale-table .title { font-size: 9px !important; margin-bottom: 3px !important; }
-            .grading-scale-table table, .grading-scale-table th, .grading-scale-table td { font-size: 7px !important; }
-            .chart-container { display: block !important; width: 100% !important; height: 50mm !important; min-height: 50mm !important; max-height: 50mm !important; margin: 0 0 4px !important; padding: 2mm !important; overflow: hidden !important; }
-            .chart-container canvas { display: block !important; width: 100% !important; height: 44mm !important; min-height: 44mm !important; max-height: 44mm !important; }
+            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 5px !important; align-items: start !important; margin: 4px 0 !important; }
+            .grading-scale-table, .academic-summary-panel { min-width: 0 !important; margin: 0 !important; padding: 5px 6px !important; }
+            .grading-scale-table .title, .academic-summary-title { font-size: 9px !important; margin-bottom: 3px !important; }
+            .grading-scale-table table, .grading-scale-table th, .grading-scale-table td { font-size: 7px !important; padding: 3px 4px !important; }
+            .transcript-lower-grid .summary-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 3px !important; margin: 0 !important; }
+            .transcript-lower-grid .summary-card { padding: 4px 3px !important; }
+            .transcript-lower-grid .summary-card .value { font-size: 14px !important; }
+            .transcript-lower-grid .summary-card .label { font-size: 7px !important; }
             .declaration { margin: 4px 0 !important; padding: 6px 8px !important; font-size: 9px !important; }
             .signatures { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px !important; margin: 4px 0 !important; padding-top: 4px !important; }
             .footer { margin: 4px 0 0 !important; padding-top: 6px !important; font-size: 8px !important; border-top: 1px solid #0A3D62 !important; }
             .no-print, .btn-print, .btn-close { display: none !important; }
             .container { break-inside: auto !important; page-break-inside: auto !important; }
             table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-            .transcript-top, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+            .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
         }
     </style>
 </head>
@@ -2056,21 +2067,20 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             <tbody>${tableRows}</tbody>
         </table>
 
-        <div class="summary-grid">
-            <div class="summary-card"><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div><div class="label">Grade Point Average</div></div>
-            <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div><div class="label">Overall Grade</div></div>
-            <div class="summary-card"><div class="value" style="color: #0A3D62;">${totalUnits}</div><div class="label">Units Reported</div></div>
-            <div class="summary-card"><div class="value" style="color: #0A3D62;">${passRate}%</div><div class="label">Pass Rate</div></div>
-        </div>
-
-        <div class="grading-scale-table">
-            <div class="title">Grading Scale (${programType})</div>
-            ${gradingScaleHTML}
-        </div>
-
-        <div class="chart-container">
-            <div class="title">Grade Points Progression</div>
-            <canvas id="reportCardLineChart"></canvas>
+        <div class="transcript-lower-grid">
+            <div class="grading-scale-table">
+                <div class="title">Grading Scale (${programType})</div>
+                ${gradingScaleHTML}
+            </div>
+            <div class="academic-summary-panel">
+                <div class="academic-summary-title">Academic Summary</div>
+                <div class="summary-grid">
+                    <div class="summary-card"><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
+                    <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div><div class="label">Overall Grade</div></div>
+                    <div class="summary-card"><div class="value" style="color: #0A3D62;">${totalUnits}</div><div class="label">Units Reported</div></div>
+                    <div class="summary-card"><div class="value" style="color: #0A3D62;">${passRate}%</div><div class="label">Pass Rate</div></div>
+                </div>
+            </div>
         </div>
 
         <div class="declaration">
@@ -2244,52 +2254,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             window.print();
         };
 
-        const ctx = document.getElementById('reportCardLineChart');
-        if (ctx) {
-            const labels = ${JSON.stringify(graphLabels)};
-            const data = ${JSON.stringify(graphData)};
-            const avgPoints = ${avgPoints.toFixed(2)};
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Grade Points',
-                        data: data,
-                        borderColor: '#4C1D95',
-                        backgroundColor: 'rgba(76, 29, 149, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.3,
-                        pointBackgroundColor: data.map(p => p >= 4 ? '#10b981' : p >= 3 ? '#3b82f6' : p >= 2 ? '#f59e0b' : '#ef4444'),
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 1.5,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    }, {
-                        label: 'GPA (' + avgPoints.toFixed(2) + ')',
-                        data: data.map(() => avgPoints),
-                        borderColor: '#0A3D62',
-                        borderDash: [6, 4],
-                        borderWidth: 1.5,
-                        fill: false,
-                        tension: 0,
-                        pointRadius: 0,
-                        pointHoverRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 10, padding: 6, font: { size: 8, weight: '600' } } } },
-                    scales: {
-                        y: { min: 0, max: 4.5, ticks: { stepSize: 0.5, font: { size: 8 } } },
-                        x: { ticks: { font: { size: 7 }, maxRotation: 30, minRotation: 20 } }
-                    }
-                }
-            });
-        }
-    <\/script>
+    <\\/script>
 </body>
 </html>
             `);
@@ -2345,17 +2310,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         alert('Transcript verification QR failed: ' + (qr?.dataset?.error || 'The verification QR did not become ready in time.') + '\n\nNo PDF was created.');
                         return;
                     }
-                    const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
-                    if (chartCanvas && printWindow.Chart) {
-                        const chart = printWindow.Chart.getChart(chartCanvas);
-                        if (chart) {
-                            chart.options.responsive = false;
-                            chart.options.maintainAspectRatio = false;
-                            chart.options.animation = false;
-                            chart.resize(700, 143);
-                            chart.update('none');
-                        }
-                    }
                     await Promise.all(Array.from(printWindow.document.images).map(img => {
                         if (img.complete) return Promise.resolve();
                         return new Promise(resolve => {
@@ -2385,11 +2339,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         table.semester-results-table th:nth-child(4), table.semester-results-table td:nth-child(4) { width: 9% !important; }
                         table.semester-results-table th:nth-child(5), table.semester-results-table td:nth-child(5) { width: 12% !important; }
                         table.semester-results-table th:nth-child(6), table.semester-results-table td:nth-child(6) { width: 17% !important; }
-                        .summary-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
-                        .chart-container { display: block !important; width: 100% !important; height: 45mm !important; min-height: 45mm !important; max-height: 45mm !important; overflow: hidden !important; }
-                        .chart-container canvas { display: block !important; width: 100% !important; height: 38mm !important; min-height: 38mm !important; max-height: 38mm !important; }
+                        .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; gap: 5px !important; align-items: start !important; margin: 4px 0 !important; }
+                        .transcript-lower-grid > * { min-width: 0 !important; }
+                        .grading-scale-table, .academic-summary-panel { margin: 0 !important; padding: 5px 6px !important; min-width: 0 !important; }
+                        .grading-scale-table .title, .academic-summary-title { font-size: 9px !important; margin-bottom: 3px !important; }
+                        .grading-scale-table table, .grading-scale-table th, .grading-scale-table td { font-size: 7px !important; padding: 3px 4px !important; }
+                        .transcript-lower-grid .summary-grid { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 3px !important; margin: 0 !important; }
+                        .transcript-lower-grid .summary-card { padding: 4px 3px !important; }
+                        .transcript-lower-grid .summary-card .value { font-size: 14px !important; }
+                        .transcript-lower-grid .summary-card .label { font-size: 7px !important; }
                         .container { break-inside: auto !important; page-break-inside: auto !important; }
-                        table.semester-results-table tr, .transcript-top, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+                        table.semester-results-table tr, .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                         .no-print, .transcript-preview-toolbar { display: none !important; }
                     `;
                     printWindow.document.head.appendChild(captureStyle);
@@ -2612,17 +2572,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         alert('The transcript verification QR code could not be generated. Check your connection and try again.');
                         return;
                     }
-                    const chartCanvas = printWindow.document.querySelector('.chart-container canvas');
-                    if (chartCanvas && printWindow.Chart) {
-                        const chart = printWindow.Chart.getChart(chartCanvas);
-                        if (chart) {
-                            chart.options.responsive = false;
-                            chart.options.maintainAspectRatio = false;
-                            chart.options.animation = false;
-                            chart.resize(700, 143);
-                            chart.update('none');
-                        }
-                    }
                     await Promise.all(Array.from(printWindow.document.images).map(img => {
                         if (img.complete) return Promise.resolve();
                         return new Promise(resolve => {
@@ -2709,7 +2658,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .no-print, .btn-print, .btn-close { display: none !important; }
                         .container { break-inside: auto !important; page-break-inside: auto !important; }
                         table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-                        .transcript-top, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+                        .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
                     `;
                     printWindow.document.head.appendChild(downloadStyle);
 
