@@ -2355,7 +2355,13 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     captureStyle.id = 'transcript-pdf-capture-normalization';
                     captureStyle.textContent = `
                         @page { size: A4 portrait; margin: 5mm; }
-                        html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+                        html, body { margin: 0 !important; padding: 0 !important; width: 190mm !important; min-width: 0 !important; max-width: 190mm !important; overflow: visible !important; background: #fff !important; }
+                        body { box-sizing: border-box !important; }
+                        .container { display: block !important; width: 190mm !important; min-width: 0 !important; max-width: 190mm !important; margin: 0 auto !important; padding: 7px 8px !important; box-sizing: border-box !important; overflow: visible !important; }
+                        .transcript-top, .header, .student-info-wrapper, .transcript-lower-grid, .declaration, .signatures, .footer { min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
+                        table { width: 100% !important; max-width: 100% !important; }
+                        table.semester-results-table { table-layout: fixed !important; }
+                        table.semester-results-table th, table.semester-results-table td { min-width: 0 !important; overflow-wrap: anywhere !important; word-break: normal !important; }
                         .transcript-preview-toolbar, .no-print { display: none !important; }
                     `;
                     printWindow.document.head.appendChild(captureStyle);
