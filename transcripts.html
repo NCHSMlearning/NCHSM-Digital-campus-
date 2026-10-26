@@ -695,33 +695,19 @@ JAVASCRIPT
                 detail('Admission number', result.student_id) +
                 detail('Program', result.program) +
                 detail('Registry issue date', result.issued_at ? new Date(result.issued_at).toLocaleString() : '');
-            const marks = Array.isArray(result.marks) ? result.marks : [];
-            const groupedMarks = marks.reduce(function(groups, mark) {
-                const block = String(mark.block || 'Block not specified');
-                (groups[block] = groups[block] || []).push(mark);
-                return groups;
-            }, {});
-            let marksHtml = '';
-            if (result.status === 'verified' && marks.length) {
-                marksHtml = '<section class="verified-marks" aria-label="Verified published marks">' +
-                    '<h3><i class="fas fa-list-check"></i> Published Marks by Block</h3>';
-                Object.keys(groupedMarks).sort(function(a,b){return a.localeCompare(b,undefined,{numeric:true});}).forEach(function(block) {
-                    marksHtml += '<div class="block-heading">' + escapeVerificationText(block) + '</div>' +
-                        '<table><thead><tr><th>Unit</th><th>Academic Year</th><th>Mark</th><th>Grade</th></tr></thead><tbody>';
-                    groupedMarks[block].forEach(function(mark) {
-                        marksHtml += '<tr><td>' + escapeVerificationText(mark.unit || '—') +
-                            '</td><td>' + escapeVerificationText(mark.academic_year || '—') +
-                            '</td><td class="score">' + escapeVerificationText(mark.score || '—') +
-                            '</td><td>' + escapeVerificationText(mark.grade || '—') + '</td></tr>';
-                    });
-                    marksHtml += '</tbody></table>';
-                });
-                marksHtml += '<div class="marks-note">Only published marks are shown. Results are grouped by the block recorded in the academic registry.</div></section>';
-            } else if (result.status === 'verified') {
-                marksHtml = '<div class="marks-note">The transcript is verified, but no published unit marks were returned for display.</div>';
-            }
-            if (result.status === 'verified') showResult('valid', 'Verification successful', result.message, details + marksHtml);
-            else if (result.status === 'record_changed') showResult('error', 'Academic record requires review', result.message, details);
+            const blockNames = Array.isArray(result.marks)
+                ? Array.from(new Set(result.marks.map(function(mark) {
+                    return String(mark.block || '').trim();
+                }).filter(Boolean))).sort(function(a, b) {
+                    return a.localeCompare(b, undefined, { numeric: true });
+                })
+                : [];
+            const blockDetail = blockNames.length
+                ? detail('Marks included for block', blockNames.join(', '))
+                : detail('Marks included for block', result.block || result.transcript_block || 'Not specified on registry record');
+            const verificationDetails = details + blockDetail;
+            if (result.status === 'verified') showResult('valid', 'Transcript Verified', result.message, verificationDetails);
+            else if (result.status === 'record_changed') showResult('error', 'Academic record requires review', result.message, verificationDetails);
             else showResult('invalid', 'Transcript not verified', result.message || 'No active registry record matches this QR code.');
         } catch (error) {
             console.error('Transcript registry verification failed:', error);
