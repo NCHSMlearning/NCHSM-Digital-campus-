@@ -2301,7 +2301,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     .transcript-preview-toolbar .download { background: #10b981; color: #fff; }
                     .transcript-preview-toolbar .print { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.35); }
                     .transcript-preview-toolbar .close { background: #e2e8f0; color: #1e293b; }
-                    @media (max-width: 600px) { body { padding: 74px 6px 12px !important; } .container { width: 100% !important; min-height: 0 !important; padding: 10px !important; } .transcript-preview-toolbar button { padding: 9px 10px; font-size: 12px; } }
+                    /* Keep the document canvas A4-sized on every device; only the viewing viewport changes. */
+                    @media (max-width: 600px) { body { padding: 74px 6px 12px !important; overflow: auto !important; } .container { width: 794px !important; max-width: none !important; min-height: 0 !important; padding: 7px 8px !important; transform-origin: top left; } .transcript-preview-toolbar button { padding: 9px 10px; font-size: 12px; } }
                     @media print { html, body { background: #fff !important; padding: 0 !important; } .transcript-preview-toolbar { display: none !important; } .container { width: 100% !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; box-shadow: none !important; } }
                 `;
                 printWindow.document.head.appendChild(previewStyle);
