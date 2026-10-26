@@ -2428,9 +2428,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             chartInstance.update('none');
                         }
                     }
-                    await new Promise(resolve => printWindow.requestAnimationFrame(() =>
-                        printWindow.requestAnimationFrame(resolve)
-                    ));
+                    // Wait for the preview to paint without passing a cross-window callback
+                    // into requestAnimationFrame (which can throw Illegal invocation).
+                    await new Promise(resolve => setTimeout(resolve, 80));
 
                     if (generationStatus) generationStatus.textContent = 'Rendering PDF…';
                     const previewToolbar = printWindow.document.querySelector('.transcript-preview-toolbar');
