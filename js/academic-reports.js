@@ -2976,6 +2976,20 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .academic-summary-panel .summary-card .value { font-size: 11px !important; line-height: 1 !important; }
                         .grading-scale-table table { width: 100% !important; table-layout: fixed !important; }
                         .grading-scale-table th, .grading-scale-table td { padding: 2px !important; font-size: 6px !important; line-height: 1.05 !important; }
+                        /* Print uses compact side-by-side grading scale and academic summary. */
+                        .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 5px !important; align-items: stretch !important; width: 100% !important; margin: 3px 0 !important; }
+                        .transcript-lower-grid > .grading-scale-table, .transcript-lower-grid > .academic-summary-panel { display: block !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; box-sizing: border-box !important; }
+                        .transcript-lower-grid > .grading-scale-table { padding: 3px !important; border-radius: 4px !important; }
+                        .transcript-lower-grid > .grading-scale-table .title { font-size: 8px !important; margin: 0 0 2px !important; }
+                        .academic-summary-panel { border: 1px solid #d5e2ee !important; border-radius: 4px !important; overflow: hidden !important; }
+                        .academic-summary-title { background: #0A3D62 !important; color: #fff !important; padding: 4px 5px !important; font-size: 8px !important; line-height: 1.1 !important; font-weight: 700 !important; }
+                        .academic-summary-panel .summary-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 2px !important; padding: 3px !important; margin: 0 !important; }
+                        .academic-summary-panel .summary-card { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 3px !important; padding: 3px 4px !important; margin: 0 !important; min-width: 0 !important; }
+                        .academic-summary-panel .summary-card .label { font-size: 6.5px !important; line-height: 1.1 !important; text-align: left !important; }
+                        .academic-summary-panel .summary-card .value { font-size: 11px !important; line-height: 1 !important; }
+                        .grading-scale-table table { width: 100% !important; table-layout: fixed !important; }
+                        .grading-scale-table th, .grading-scale-table td { padding: 2px !important; font-size: 6px !important; line-height: 1.05 !important; }
+                        .chart-container, .chart-container canvas { display: none !important; }
                         .summary-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 3px !important; margin: 4px 0 !important; }
                             .summary-card { padding: 5px 4px !important; }
                             .summary-card .value { font-size: 22px !important; line-height: 1.05 !important; }
@@ -2992,7 +3006,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             .no-print, .btn-print, .btn-close { display: none !important; }
                             .container { break-inside: auto !important; page-break-inside: auto !important; }
                             table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-                            .transcript-top, .student-info-wrapper, .semester-results-title, .summary-grid, .grading-scale-table, .chart-container, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+                            .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .summary-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
 `;
                         printWindow.document.head.appendChild(printStyle);
                         // Wait for QR and chart render before opening Chrome's print dialog.
