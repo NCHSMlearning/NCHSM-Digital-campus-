@@ -2364,6 +2364,16 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     await new Promise(resolve => setTimeout(resolve, 250));
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
+                    const triggerPdfBlobDownload = (blob, filename) => {
+                        if (!(blob instanceof Blob) || blob.size < 100) throw new Error('PDF generation returned an empty or invalid file.');
+                        const url = printWindow.URL.createObjectURL(blob);
+                        const link = printWindow.document.createElement('a');
+                        link.href = url; link.download = filename; link.setAttribute('download', filename);
+                        link.style.cssText = 'position:fixed;left:-10000px;top:0;width:1px;height:1px;';
+                        printWindow.document.body.appendChild(link); link.click(); link.remove();
+                        printWindow.setTimeout(() => printWindow.URL.revokeObjectURL(url), 120000);
+                        console.info('[Transcript PDF] Browser download link activated', {filename, bytes:blob.size});
+                    };
                     let downloadStarted = false;
 
                     // Primary pipeline: html2pdf with array margin (0.10.1 requires array)
@@ -2724,16 +2734,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                     let downloadStarted = false;
-                    const triggerPdfBlobDownload = (blob, filename) => {
-                        if (!(blob instanceof Blob) || blob.size < 100) throw new Error('PDF generation returned an empty or invalid file.');
-                        const url = printWindow.URL.createObjectURL(blob);
-                        const link = printWindow.document.createElement('a');
-                        link.href = url; link.download = filename; link.setAttribute('download', filename);
-                        link.style.cssText = 'position:fixed;left:-10000px;top:0;width:1px;height:1px;';
-                        printWindow.document.body.appendChild(link); link.click(); link.remove();
-                        printWindow.setTimeout(() => printWindow.URL.revokeObjectURL(url), 120000);
-                        console.info('[Transcript PDF] Browser download link activated', {filename, bytes:blob.size});
-                    };
+                    
 
                     try {
                         if (typeof printWindow.html2pdf === 'function') {
