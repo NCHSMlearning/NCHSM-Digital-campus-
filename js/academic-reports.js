@@ -2304,14 +2304,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 previewStyle.textContent = `
                     html, body { min-height: 100%; background: #eef2f7 !important; }
                     body { margin: 0 !important; padding: 74px 16px 24px !important; }
-                    .container { display: block !important; width: 794px !important; max-width: 100% !important; min-height: 0 !important; height: auto !important; margin: 0 auto !important; padding: 20px 24px !important; background: #fff !important; box-shadow: 0 8px 30px rgba(15,23,42,.18) !important; border-radius: 2px !important; }
+                    .container { display: block !important; width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 0 !important; height: auto !important; margin: 0 auto !important; padding: 20px 24px !important; background: #fff !important; box-shadow: 0 8px 30px rgba(15,23,42,.18) !important; border-radius: 2px !important; }
                     .transcript-preview-toolbar { position: fixed; z-index: 99999; top: 0; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: #0A3D62; box-shadow: 0 2px 10px #0002; }
                     .transcript-preview-toolbar button { border: 0; border-radius: 7px; padding: 10px 16px; font: 600 14px Arial,sans-serif; cursor: pointer; }
                     .transcript-preview-toolbar .download { background: #10b981; color: #fff; }
                     .transcript-preview-toolbar .print { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.35); }
                     .transcript-preview-toolbar .close { background: #e2e8f0; color: #1e293b; }
                     /* Keep the document canvas A4-sized on every device; only the viewing viewport changes. */
-                    @media (max-width: 600px) { body { padding: 74px 6px 12px !important; overflow: auto !important; } .container { width: 794px !important; max-width: none !important; min-height: 0 !important; padding: 7px 8px !important; transform-origin: top left; } .transcript-preview-toolbar button { padding: 9px 10px; font-size: 12px; } }
+                    @media (max-width: 600px) { body { padding: 74px 6px 12px !important; overflow: auto !important; } .container { width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 0 !important; padding: 7px 8px !important; transform-origin: top left; } .transcript-preview-toolbar button { padding: 9px 10px; font-size: 12px; } }
                     @media print { html, body { background: #fff !important; padding: 0 !important; } .transcript-preview-toolbar { display: none !important; } .container { width: 100% !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; box-shadow: none !important; } }
                 `;
                 printWindow.document.head.appendChild(previewStyle);
@@ -2350,23 +2350,36 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         });
                     }));
 
-                    // Export the exact preview DOM. Only remove interactive controls; never restyle transcript content.
-                    const captureStyle = printWindow.document.createElement('style');
-                    captureStyle.id = 'transcript-pdf-capture-normalization';
-                    captureStyle.textContent = `
-                        @page { size: A4 portrait; margin: 5mm; }
-                        html, body { margin: 0 !important; padding: 0 !important; width: 190mm !important; min-width: 0 !important; max-width: 190mm !important; overflow: visible !important; background: #fff !important; }
-                        body { box-sizing: border-box !important; }
-                        .container { display: block !important; width: 190mm !important; min-width: 0 !important; max-width: 190mm !important; margin: 0 auto !important; padding: 7px 8px !important; box-sizing: border-box !important; overflow: visible !important; }
-                        .transcript-top, .header, .student-info-wrapper, .transcript-lower-grid, .declaration, .signatures, .footer { min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
-                        table { width: 100% !important; max-width: 100% !important; }
-                        table.semester-results-table { table-layout: fixed !important; }
-                        table.semester-results-table th, table.semester-results-table td { min-width: 0 !important; overflow-wrap: anywhere !important; word-break: normal !important; }
-                        .transcript-preview-toolbar, .no-print { display: none !important; }
-                    `;
-                    printWindow.document.head.appendChild(captureStyle);
+                    // Capture the preview as rendered. Wait for images and the chart, but do not inject
+                    // new layout CSS or change the transcript's widths, table, typography, or spacing.
+                    await Promise.all(Array.from(printWindow.document.images).map(img => {
+                        if (img.complete) return Promise.resolve();
+                        return new Promise(resolve => {
+                            img.addEventListener('load', resolve, { once: true });
+                            img.addEventListener('error', resolve, { once: true });
+                            setTimeout(resolve, 2500);
+                        });
+                    }));
+
+                    const chartCanvasEl = printWindow.document.querySelector('#reportCardLineChart');
+                    if (chartCanvasEl && printWindow.Chart) {
+                        const chartInstance = printWindow.Chart.getChart(chartCanvasEl);
+                        if (chartInstance) {
+                            chartInstance.options.responsive = false;
+                            chartInstance.options.maintainAspectRatio = false;
+                            chartInstance.options.animation = false;
+                            chartInstance.resize(700, 143);
+                            chartInstance.update('none');
+                        }
+                    }
+                    await new Promise(resolve => printWindow.requestAnimationFrame(() =>
+                        printWindow.requestAnimationFrame(resolve)
+                    ));
+
+                    const previewToolbar = printWindow.document.querySelector('.transcript-preview-toolbar');
+                    if (previewToolbar) previewToolbar.style.display = 'none';
                     const previewRows = printWindow.document.querySelectorAll('table.semester-results-table tbody tr');
-                    await new Promise(resolve => setTimeout(resolve, 250));
+                    let downloadStarted = false;
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                     let downloadStarted = false;
@@ -2380,7 +2393,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 image: { type: 'jpeg', quality: 0.98 },
                                 html2canvas: {
                                     scale: 2,
-                                    windowWidth: 794, // Same CSS viewport on phones, tablets and desktops.
                                     useCORS: true,
                                     allowTaint: false,
                                     backgroundColor: '#ffffff',
@@ -2388,12 +2400,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                     scrollY: 0,
                                     logging: false,
                                     onclone: (clonedDoc) => {
-                                        [clonedDoc.documentElement, clonedDoc.body].forEach(node => {
-                                            node.style.setProperty('margin', '0', 'important');
-                                            node.style.setProperty('padding', '0', 'important');
-                                            node.style.setProperty('overflow', 'visible', 'important');
-                                            node.style.setProperty('background', '#ffffff', 'important');
-                                        });
+                                        // Exclude controls only. Preserve the preview's existing layout styles.
                                         clonedDoc.querySelectorAll('.transcript-preview-toolbar, .no-print').forEach(node => {
                                             node.style.setProperty('display', 'none', 'important');
                                         });
