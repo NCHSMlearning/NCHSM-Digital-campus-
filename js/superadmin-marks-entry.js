@@ -2383,98 +2383,104 @@ async function saveMarksEntry() {
     let errors = 0;
     const errorDetails = [];
 
+    // Save independent student rows in small concurrent batches instead of
+    // waiting for every network request one-by-one. Limit concurrency to keep
+    // Supabase stable on mobile/slow connections.
+    const SAVE_BATCH_SIZE = 8;
+
+    const saveOneMark = async (mark) => {
+        try {
+            let recordId = mark.id;
+
+            // Resolve only legacy rows without an ID; never guess a row to update.
+            if (!recordId) {
+                const { data: existingRows, error: lookupError } = await sbClient
+                    .from('student_marks')
+                    .select('id')
+                    .eq('admission_number', mark.admission_number)
+                    .eq('subject_name', mark.subject_name)
+                    .eq('block', mark.block)
+                    .eq('academic_year', mark.academic_year)
+                    .order('created_at', { ascending: true })
+                    .limit(1);
+
+                if (lookupError) throw lookupError;
+                recordId = existingRows?.[0]?.id || null;
+            }
+
+            // Preserve existing approval metadata and update only mark fields/status.
+            const updateData = {
+                student_name: mark.student_name || 'Unknown',
+                assessment_type: mark.assessment_type,
+                cat1_score: Number(mark.cat1_score),
+                cat2_score: Number(mark.cat2_score),
+                exam_score: Number(mark.exam_score),
+                final_score: Number(mark.final_score),
+                grade: mark.grade,
+                approval_status: 'approved',
+                approved_at: now,
+                updated_at: now
+            };
+
+            let result;
+            if (recordId) {
+                result = await sbClient
+                    .from('student_marks')
+                    .update(updateData)
+                    .eq('id', recordId)
+                    .select('id');
+            } else {
+                result = await sbClient
+                    .from('student_marks')
+                    .insert({
+                        admission_number: mark.admission_number,
+                        student_name: mark.student_name || 'Unknown',
+                        block: mark.block,
+                        subject_name: mark.subject_name,
+                        assessment_type: mark.assessment_type,
+                        cat1_score: Number(mark.cat1_score),
+                        cat2_score: Number(mark.cat2_score),
+                        exam_score: Number(mark.exam_score),
+                        final_score: Number(mark.final_score),
+                        grade: mark.grade,
+                        academic_year: mark.academic_year,
+                        approval_status: 'approved',
+                        approved_at: now,
+                        created_at: now,
+                        updated_at: now
+                    })
+                    .select('id');
+            }
+
+            if (result.error) throw result.error;
+            return { saved: 1, error: null };
+        } catch (err) {
+            const detail = {
+                admission: mark.admission_number,
+                message: err?.message || 'Unknown database error',
+                code: err?.code || '',
+                details: err?.details || '',
+                hint: err?.hint || ''
+            };
+            console.error('❌ Mark save failed:', detail);
+            return { saved: 0, error: detail };
+        }
+    };
+
     try {
-        for (const mark of marksData) {
-            try {
-                let recordId = mark.id;
-
-                // If the row has no ID, resolve it safely. Do NOT use maybeSingle()
-                // because duplicate legacy records can make maybeSingle() fail.
-                if (!recordId) {
-                    const { data: existingRows, error: lookupError } = await sbClient
-                        .from('student_marks')
-                        .select('id')
-                        .eq('admission_number', mark.admission_number)
-                        .eq('subject_name', mark.subject_name)
-                        .eq('block', mark.block)
-                        .eq('academic_year', mark.academic_year)
-                        .order('created_at', { ascending: true })
-                        .limit(1);
-
-                    if (lookupError) throw lookupError;
-                    recordId = existingRows?.[0]?.id || null;
+        for (let offset = 0; offset < marksData.length; offset += SAVE_BATCH_SIZE) {
+            const batch = marksData.slice(offset, offset + SAVE_BATCH_SIZE);
+            const results = await Promise.all(batch.map(saveOneMark));
+            results.forEach(result => {
+                saved += result.saved;
+                if (result.error) {
+                    errors++;
+                    errorDetails.push(result.error);
                 }
-
-                /*
-                 * ROOT-CAUSE FIX FOR THE 400 PATCH:
-                 * Do not send approved_by from the browser. In this portal the
-                 * logged-in admin identifier can be values such as SA-001, while
-                 * student_marks.approved_by may be a UUID/reference column.
-                 * Sending that value causes PostgREST to reject the PATCH with 400.
-                 *
-                 * We therefore update only columns known to belong to the marks
-                 * record and leave approved_by untouched. Auto-approval remains.
-                 */
-                const updateData = {
-                    student_name: mark.student_name || 'Unknown',
-                    assessment_type: mark.assessment_type,
-                    cat1_score: Number(mark.cat1_score),
-                    cat2_score: Number(mark.cat2_score),
-                    exam_score: Number(mark.exam_score),
-                    final_score: Number(mark.final_score),
-                    grade: mark.grade,
-                    approval_status: 'approved',
-                    approved_at: now,
-                    updated_at: now
-                };
-
-                let result;
-
-                if (recordId) {
-                    result = await sbClient
-                        .from('student_marks')
-                        .update(updateData)
-                        .eq('id', recordId)
-                        .select('id');
-                } else {
-                    // New records are created without approved_by for the same
-                    // schema-safe reason explained above.
-                    result = await sbClient
-                        .from('student_marks')
-                        .insert({
-                            admission_number: mark.admission_number,
-                            student_name: mark.student_name || 'Unknown',
-                            block: mark.block,
-                            subject_name: mark.subject_name,
-                            assessment_type: mark.assessment_type,
-                            cat1_score: Number(mark.cat1_score),
-                            cat2_score: Number(mark.cat2_score),
-                            exam_score: Number(mark.exam_score),
-                            final_score: Number(mark.final_score),
-                            grade: mark.grade,
-                            academic_year: mark.academic_year,
-                            approval_status: 'approved',
-                            approved_at: now,
-                            created_at: now,
-                            updated_at: now
-                        })
-                        .select('id');
-                }
-
-                if (result.error) throw result.error;
-
-                saved++;
-            } catch (err) {
-                errors++;
-                const detail = {
-                    admission: mark.admission_number,
-                    message: err?.message || 'Unknown database error',
-                    code: err?.code || '',
-                    details: err?.details || '',
-                    hint: err?.hint || ''
-                };
-                errorDetails.push(detail);
-                console.error('❌ Mark save failed:', detail);
+            });
+            // Keep progress visible for large classes.
+            if (offset + batch.length < marksData.length) {
+                showLoading(`Saving marks... ${Math.min(offset + batch.length, marksData.length)}/${marksData.length}`);
             }
         }
     } finally {
