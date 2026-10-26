@@ -2414,12 +2414,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
                                 pagebreak: { mode: ['css', 'legacy'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
                             };
-                            await printWindow.html2pdf().set(options).from(target).save();
+                            const pdfBlob = await printWindow.html2pdf().set(options).from(target).outputPdf('blob');
+                            triggerPdfBlobDownload(pdfBlob, options.filename);
                             downloadStarted = true;
-                            console.info('[Transcript PDF] html2pdf download completed', {
-                                filename: options.filename,
-                                rows: previewRows.length
-                            });
+                            console.info('[Transcript PDF] PDF blob prepared', {filename:options.filename, bytes:pdfBlob.size, rows:previewRows.length});
                         }
                     } catch (error) {
                         console.warn('[Transcript PDF] html2pdf pipeline failed; trying direct canvas fallback', {
@@ -2527,12 +2525,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 sourceY += sliceHeight;
                                 pageIndex++;
                             }
-                            pdf.save(fileBase + '.pdf');
+                            const fallbackBlob = pdf.output('blob');
+                            triggerPdfBlobDownload(fallbackBlob, fileBase + '.pdf');
                             downloadStarted = true;
-                            console.info('[Transcript PDF] Direct canvas fallback download completed', {
-                                filename: fileBase + '.pdf',
-                                pages: pageIndex
-                            });
+                            console.info('[Transcript PDF] Direct canvas fallback PDF blob prepared', {filename:fileBase+'.pdf',bytes:fallbackBlob.size,pages:pageIndex});
                         } catch (fallbackError) {
                             console.error('[Transcript PDF] Direct canvas fallback failed', fallbackError);
                             alert('The transcript PDF could not be generated. ' +
@@ -2542,7 +2538,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     }
 
                     if (downloadStarted) {
-                        try { printWindow.close(); } catch (_) {}
+                        toolbar.querySelector('.download').textContent = '✓ PDF download started';
+                        // Keep preview open so the browser can begin the Blob URL download.
                     }
                 });
 
@@ -2727,6 +2724,16 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
                     let downloadStarted = false;
+                    const triggerPdfBlobDownload = (blob, filename) => {
+                        if (!(blob instanceof Blob) || blob.size < 100) throw new Error('PDF generation returned an empty or invalid file.');
+                        const url = printWindow.URL.createObjectURL(blob);
+                        const link = printWindow.document.createElement('a');
+                        link.href = url; link.download = filename; link.setAttribute('download', filename);
+                        link.style.cssText = 'position:fixed;left:-10000px;top:0;width:1px;height:1px;';
+                        printWindow.document.body.appendChild(link); link.click(); link.remove();
+                        printWindow.setTimeout(() => printWindow.URL.revokeObjectURL(url), 120000);
+                        console.info('[Transcript PDF] Browser download link activated', {filename, bytes:blob.size});
+                    };
 
                     try {
                         if (typeof printWindow.html2pdf === 'function') {
