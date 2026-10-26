@@ -451,6 +451,118 @@
                 font-size: 16px;
             }
         }
+    
+        /* Refined verification experience */
+        body {
+            background:
+                radial-gradient(ellipse at top left, rgba(253,185,19,.13), transparent 35%),
+                radial-gradient(ellipse at bottom right, rgba(10,61,98,.12), transparent 40%),
+                #eef3f8;
+            padding: clamp(14px, 3vw, 36px);
+            color: #183247;
+        }
+        .container {
+            max-width: 900px;
+            min-height: min(760px, calc(100vh - 48px));
+            display: flex;
+            flex-direction: column;
+            padding: clamp(22px, 4vw, 48px);
+            border: 1px solid rgba(203, 216, 228, .85);
+            border-radius: 26px;
+            box-shadow: 0 28px 80px rgba(10, 42, 66, .13);
+        }
+        .header {
+            justify-content: space-between;
+            gap: 20px;
+            padding-bottom: 24px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #e4ebf2;
+        }
+        .logo-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            font-size: 25px;
+        }
+        .logo-text { font-size: clamp(22px, 3vw, 28px); }
+        .logo-sub { font-size: 12px; line-height: 1.5; }
+        .badge {
+            padding: 10px 16px;
+            font-size: 12px;
+            letter-spacing: .1px;
+            white-space: normal;
+            text-align: center;
+        }
+        #content { flex: 1; min-height: 300px; }
+        .result-card {
+            padding: clamp(22px, 4vw, 36px);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(15, 45, 70, .06);
+        }
+        .result-title { font-size: clamp(21px, 3vw, 29px); line-height: 1.25; }
+        .result-card p { line-height: 1.65; font-size: 15px; }
+        .detail-grid {
+            margin-top: 22px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0 22px;
+            padding: 18px 20px;
+            background: rgba(255,255,255,.72);
+            border: 1px solid rgba(203,213,225,.75);
+            border-radius: 14px;
+        }
+        .detail-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 13px 0;
+            border-bottom: 1px solid #e8edf2;
+            min-width: 0;
+        }
+        .detail-row strong {
+            color: #64788a;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+        }
+        .detail-row span { color: #163d59; font-weight: 700; overflow-wrap: anywhere; }
+        .footer {
+            margin-top: 38px;
+            padding-top: 22px;
+            border-top: 1px solid #e4ebf2;
+            color: #718096;
+            text-align: center;
+            line-height: 1.7;
+        }
+        .footer .institutional-footer {
+            margin-top: 12px;
+            padding: 14px 16px;
+            background: #f5f8fb;
+            border: 1px solid #e4ebf2;
+            border-radius: 12px;
+            color: #234760;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.7;
+        }
+        .footer .security-note { color: #718096; font-size: 12px; }
+        .footer .grad-badge { margin-top: 12px; }
+        @media (max-width: 600px) {
+            body { padding: 12px; align-items: flex-start; }
+            .container { min-height: calc(100vh - 24px); padding: 22px 18px; border-radius: 20px; }
+            .header { align-items: flex-start; }
+            .logo { align-items: center; }
+            .logo-text { font-size: 22px; }
+            .logo-sub { max-width: 240px; font-size: 10px; }
+            .badge { margin: 0; width: 100%; justify-content: center; }
+            .detail-grid { grid-template-columns: 1fr; padding: 12px 16px; }
+            .footer { margin-top: 28px; font-size: 12px; }
+            .footer .institutional-footer { font-size: 11px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+        }
+
     </style>
 </head>
 <body>
@@ -495,17 +607,14 @@
     FOOTER
     ============================================ -->
     <div class="footer">
-        <div>
-            © 2025 <a href="https://nchsm.co.ke" target="_blank">NCHSM</a>
-            <span class="divider">|</span>
-            All rights reserved
-        </div>
-        <div style="margin-top: 4px; font-size: 12px; color: #cbd5e1;">
-            <i class="fas fa-shield-alt" style="margin-right: 4px;"></i>
+        <div class="security-note">
+            <i class="fas fa-shield-alt" aria-hidden="true"></i>
             Secure academic transcript verification
         </div>
-        <div class="grad-badge">
-            <i class="fas fa-graduation-cap"></i> Academic Records Verification Ceremony
+        <div class="institutional-footer">
+            Accredited &amp; Registered Institution <span class="divider">|</span>
+            Committed to Academic Excellence <span class="divider">|</span>
+            © 2026 Nakuru College of Health Sciences &amp; Management
         </div>
     </div>
 
