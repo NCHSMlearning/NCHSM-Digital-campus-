@@ -1650,6 +1650,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
         const user = window.currentUserProfile || window.db?.currentUserProfile || {};
         const userProgram = user.program || '';
+        const normalizedProgramCode = String(userProgram).trim().toUpperCase();
+        const transcriptProgramName = normalizedProgramCode === 'KRCHN'
+            ? 'Kenya Registered Community Health Nursing (KRCHN)'
+            : userProgram;
+        const transcriptIntakeYear = user.intake_year || user.admission_year || '';
+        const transcriptCurrentBlock = user.current_block || user.block || '';
         // Ensure retake records are loaded even when the transcript is opened directly
         // without first visiting My Performance. Stored historical marks remain unchanged.
         const transcriptAdmission = user.admission_number || user.student_id || user.user_id;
@@ -2120,8 +2126,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             <div class="student-info">
                 <div class="field"><span class="label">Student Name</span><span class="value">${escapeHtml(user.full_name || 'Student')}</span></div>
                 <div class="field"><span class="label">Admission Number</span><span class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</span></div>
-                <div class="field"><span class="label">Program</span><span class="value">${escapeHtml(userProgram || 'KRCHN')}</span></div>
+                <div class="field"><span class="label">Program</span><span class="value">${escapeHtml(transcriptProgramName || 'N/A')}</span></div>
                 <div class="field"><span class="label">Academic Year</span><span class="value">${escapeHtml(academicYear)}</span></div>
+                <div class="field"><span class="label">Intake Year</span><span class="value">${escapeHtml(transcriptIntakeYear || 'N/A')}</span></div>
+                <div class="field"><span class="label">${isTVET ? 'Current Term' : 'Current Block'}</span><span class="value">${escapeHtml(transcriptCurrentBlock || 'N/A')}</span></div>
             </div>
         </div>
 
