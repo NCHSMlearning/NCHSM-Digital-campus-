@@ -1653,20 +1653,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         const isTVET = PROGRAM.isTVET(userProgram);
         const programType = PROGRAM.getProgramType(userProgram);
 
-        const blockFilter = document.getElementById('my_marks_block_filter')?.value || 'all';
-        // The transcript heading must reflect the same block/term selected in the marks filter.
-        const transcriptResultsHeading = (() => {
-            const selected = String(blockFilter || 'all').trim();
-            if (!selected || selected.toLowerCase() === 'all') return 'Academic Results';
-            const readable = selected
-                .replace(/[_-]+/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim()
-                .replace(/\b(block|term)\s*(\d+)\b/ig, (_, kind, number) => kind.charAt(0).toUpperCase() + kind.slice(1).toLowerCase() + ' ' + number)
-                .replace(/\bintroductory\b/ig, 'Introductory')
-                .replace(/\b[a-z]/g, letter => letter.toUpperCase());
-            return readable + ' Results';
-        })();
+        const selectedBlockFilter = document.getElementById('my_marks_block_filter')?.value || 'all';
+        const blockLabelForTranscript = value => String(value || '').trim()
+            .replace(/[_-]+/g, ' ').replace(/\s+/g, ' ')
+            .replace(/\b(block|term)\s*(\d+)\b/ig, (_, kind, number) => kind.charAt(0).toUpperCase() + kind.slice(1).toLowerCase() + ' ' + number)
+            .replace(/\bintroductory\b/ig, 'Introductory')
+            .replace(/\b[a-z]/g, letter => letter.toUpperCase());
         const subjectFilter = document.getElementById('my_marks_subject_filter')?.value || 'all';
         const yearFilter = document.getElementById('my_marks_year_filter')?.value || 'all';
         const searchTerm = document.getElementById('my_marks_search')?.value?.trim().toLowerCase() || '';
@@ -1689,6 +1681,27 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 );
             }
         }
+
+        const blockOrder = value => {
+            const label = normalizeBlock(value);
+            if (/introductory/.test(label)) return 0;
+            const match = label.match(/(?:block|term)\s*(\d+)/i);
+            if (match) return Number(match[1]);
+            if (/final/.test(label)) return 99;
+            return -1;
+        };
+        let blockFilter = selectedBlockFilter;
+        if (!blockFilter || blockFilter.toLowerCase() === 'all') {
+            const availableBlocks = [...new Set(marks.map(m => m.block || m.block_term || m.term).filter(Boolean))];
+            if (availableBlocks.length) {
+                availableBlocks.sort((a, b) => blockOrder(a) - blockOrder(b));
+                blockFilter = availableBlocks[availableBlocks.length - 1];
+                marks = marks.filter(m => normalizeBlock(m.block || m.block_term || m.term) === normalizeBlock(blockFilter));
+            }
+        }
+        const transcriptResultsHeading = blockFilter && blockFilter.toLowerCase() !== 'all'
+            ? 'End of ' + blockLabelForTranscript(blockFilter) + ' Results'
+            : 'Academic Results';
 
         if (marks.length === 0) {
             alert(blockFilter !== 'all'
