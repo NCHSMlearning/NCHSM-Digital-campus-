@@ -1666,6 +1666,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .replace(/[_-]+/g, ' ').replace(/\s+/g, ' ')
             .replace(/^(block|term)\s*(\d+)$/, '$1 $2');
 
+        // Initialize the selected block before applying any result filters.
+        let blockFilter = selectedBlockFilter;
         let marks = Array.isArray(myMarksFiltered) ? [...myMarksFiltered] : [];
         if (Array.isArray(myMarksData) && myMarksData.length) {
             marks = [...myMarksData];
@@ -1690,7 +1692,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             if (/final/.test(label)) return 99;
             return -1;
         };
-        let blockFilter = selectedBlockFilter;
         if (!blockFilter || blockFilter.toLowerCase() === 'all') {
             const availableBlocks = [...new Set(marks.map(m => m.block || m.block_term || m.term).filter(Boolean))];
             if (availableBlocks.length) {
