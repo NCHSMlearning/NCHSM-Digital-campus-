@@ -1654,6 +1654,19 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         const programType = PROGRAM.getProgramType(userProgram);
 
         const blockFilter = document.getElementById('my_marks_block_filter')?.value || 'all';
+        // The transcript heading must reflect the same block/term selected in the marks filter.
+        const transcriptResultsHeading = (() => {
+            const selected = String(blockFilter || 'all').trim();
+            if (!selected || selected.toLowerCase() === 'all') return 'Academic Results';
+            const readable = selected
+                .replace(/[_-]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .replace(/\b(block|term)\s*(\d+)\b/ig, (_, kind, number) => kind.charAt(0).toUpperCase() + kind.slice(1).toLowerCase() + ' ' + number)
+                .replace(/\bintroductory\b/ig, 'Introductory')
+                .replace(/\b[a-z]/g, letter => letter.toUpperCase());
+            return readable + ' Results';
+        })();
         const subjectFilter = document.getElementById('my_marks_subject_filter')?.value || 'all';
         const yearFilter = document.getElementById('my_marks_year_filter')?.value || 'all';
         const searchTerm = document.getElementById('my_marks_search')?.value?.trim().toLowerCase() || '';
@@ -2055,7 +2068,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             </div>
         </div>
 
-        <div class="semester-results-title">Semester Results</div>
+        <div class="semester-results-title">${escapeHtml(transcriptResultsHeading)}</div>
         <table class="semester-results-table">
             <thead>
                 <tr>
