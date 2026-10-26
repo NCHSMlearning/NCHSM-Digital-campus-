@@ -2427,7 +2427,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .transcript-lower-grid .summary-card .value { font-size: 14px !important; }
                         .transcript-lower-grid .summary-card .label { font-size: 7px !important; }
                         .container { break-inside: auto !important; page-break-inside: auto !important; }
-                        table.semester-results-table tr, .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+                        table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+                        .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: auto !important; page-break-inside: auto !important; }
                         .no-print, .transcript-preview-toolbar { display: none !important; }
                     `;
                     printWindow.document.head.appendChild(captureStyle);
@@ -2487,7 +2488,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                     }
                                 },
                                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-                                pagebreak: { mode: ['css', 'legacy'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
+                                // Match the visible one-page preview: don't force whole footer/signature blocks
+                                // onto a second page just because they are marked break-inside: avoid.
+                                pagebreak: { mode: ['css'] }
                             };
                             await printWindow.html2pdf().set(options).from(target).save();
                             downloadStarted = true;
