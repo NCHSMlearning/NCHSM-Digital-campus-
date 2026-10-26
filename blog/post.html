@@ -6,7 +6,7 @@
     <title>NCHSM Blog | Nursing, Health Sciences, Admissions & Student Life</title>
     <meta name="description" content="Read useful, original articles from Nakuru College of Health Sciences and Management covering nursing education, health sciences, admissions, clinical training, student life and careers.">
     <meta name="robots" content="index, follow, max-image-preview:large">
-    <link rel="canonical" href="https://nchsm.co.ke/blog/">
+    <link rel="canonical" href="https://nchsm.co.ke/blog/post.html">
     <!-- ===== FAVICON ===== -->
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="16x16">
@@ -550,7 +550,7 @@
 
                     <p><strong>Interested in health sciences education? <a href="/programs" style="color:#0A3D62;font-weight:600;">Explore NCHSM programmes →</a></strong></p>
                 `
-            }
+            },
             'nursing-studies-guide': {
                 category: '📚 Career',
                 title: 'A Complete Guide to Nursing Studies in Kenya',
@@ -670,8 +670,10 @@
                 <a href="/blog/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Blog</a>
             `;
 
-            // Update page title
+            // Give each article a stable, crawlable canonical URL and unique metadata.
             document.title = `${post.title} | NCHSM Blog`;
+            const canonicalLink = document.querySelector('link[rel="canonical"]');
+            if (canonicalLink) canonicalLink.href = window.location.origin + window.location.pathname + '?slug=' + encodeURIComponent(slug);
             // Update meta description
             const metaDesc = document.querySelector('meta[name="description"]');
             if (metaDesc) {
