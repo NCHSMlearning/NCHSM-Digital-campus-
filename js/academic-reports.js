@@ -1846,7 +1846,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
                 const score = getPublishedScore(mark);
                 const baseGradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
-                const gradeDisplay = retakenPassed ? (String(baseGradeDisplay).replace(/\\*+$/, '') + '*') : baseGradeDisplay;
+                const gradeDisplay = retakenPassed ? (String(baseGradeDisplay).replace(/[*]+$/, '') + '*') : baseGradeDisplay;
                 const gradeColor = (typeof getGradeColor === 'function' ? getGradeColor(baseGradeDisplay) : '#64748b');
                 const points = resolveDisplayPoints(mark, baseGradeDisplay, userProgram);
                 const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
@@ -1854,7 +1854,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const baseStatusDisplay = score === null
                     ? 'PENDING'
                     : (allowedStatuses.includes(rawStatus) ? rawStatus : getGradingStatus(score, userProgram));
-                const statusDisplay = retakenPassed ? (String(baseStatusDisplay).replace(/\\*+$/, '') + '*') : baseStatusDisplay;
+                const statusDisplay = retakenPassed ? (String(baseStatusDisplay).replace(/[*]+$/, '') + '*') : baseStatusDisplay;
                 const statusColor = statusDisplay === 'DISTINCTION' || statusDisplay === 'EXCELLENT' ? '#047857'
                     : statusDisplay === 'CREDIT' || statusDisplay === 'GOOD' ? '#1d4ed8'
                     : statusDisplay === 'PASS' || statusDisplay === 'SATISFACTORY' ? '#b45309'
