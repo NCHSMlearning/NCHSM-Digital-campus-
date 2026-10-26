@@ -2298,24 +2298,37 @@ async function saveMarksEntry() {
         const cat1Input = document.getElementById(`me_cat1_${index}`);
         const cat2Input = document.getElementById(`me_cat2_${index}`);
         const examInput = document.getElementById(`me_exam_${index}`);
-        
-        if (cat1Input || cat2Input || examInput) {
-            const cells = row.querySelectorAll('td');
-            const admission = cells[1]?.textContent?.trim() || '';
-            const name = cells[2]?.textContent?.trim() || '';
-            const cat1 = parseFloat(cat1Input?.value) || 0;
-            const cat2 = parseFloat(cat2Input?.value) || 0;
-            const exam = parseFloat(examInput?.value) || 0;
-            
-            if (admission) {
-                marksData.push({
-                    admission: admission,
-                    name: name,
-                    cat1: cat1,
-                    cat2: cat2,
-                    exam: exam
-                });
+        const source = Array.isArray(me_currentMarks) ? me_currentMarks[index] : null;
+
+        if (!(cat1Input || cat2Input || examInput)) return;
+
+        // Use the underlying data model, not rendered cell text (which can contain
+        // retake badges/history). Empty inputs preserve saved values instead of
+        // silently replacing existing marks with zero.
+        const cells = row.querySelectorAll('td');
+        const admission = String(source?.admission || cells[1]?.textContent?.trim() || '').trim();
+        const name = String(source?.name || '').trim() || 'Unknown';
+        const readScore = (input, previous) => {
+            if (!input || String(input.value).trim() === '') {
+                return Number.isFinite(Number(previous)) ? Number(previous) : 0;
             }
+            const parsed = Number(input.value);
+            return Number.isFinite(parsed) ? parsed : (Number(previous) || 0);
+        };
+        const cat1 = readScore(cat1Input, source?.cat1);
+        const cat2 = readScore(cat2Input, source?.cat2);
+        const exam = readScore(examInput, source?.exam);
+
+        if (admission) {
+            marksData.push({
+                admission,
+                name,
+                student_id: source?.student_id || null,
+                id: source?.id || null,
+                cat1,
+                cat2,
+                exam
+            });
         }
     });
     
@@ -2351,7 +2364,7 @@ async function saveMarksEntry() {
         const admissions = marksData.map(m => m.admission);
         const { data: existingMarks, error: fetchError } = await supabase
             .from('student_marks')
-            .select('id, admission_number, approval_status, cat1_score, cat2_score, exam_score, final_score, retake_score, retake_count, retake_status')
+            .select('id, student_id, admission_number, approval_status, cat1_score, cat2_score, exam_score, final_score, retake_score, retake_count, retake_status')
             .eq('block', block)
             .eq('subject_name', unit)
             .eq('academic_year', year)
@@ -2436,14 +2449,15 @@ async function saveMarksEntry() {
             const markData = {
                 student_name: mark.name || 'Unknown',
                 assessment_type: assessmentType,
-                cat1_score: mark.cat1 || null,
-                cat2_score: mark.cat2 || null,
-                exam_score: mark.exam || null,
-                final_score: total || null,
+                cat1_score: mark.cat1,
+                cat2_score: mark.cat2,
+                exam_score: mark.exam,
+                final_score: total,
                 grade: gradeInfo.grade || null,
                 approval_status: newApprovalStatus,
                 updated_at: new Date().toISOString()
             };
+            if (mark.student_id) markData.student_id = mark.student_id;
             
             if (isAdmin && newApprovalStatus === 'approved') {
                 markData.approved_at = new Date().toISOString();
@@ -2463,6 +2477,7 @@ async function saveMarksEntry() {
                 const insertData = {
                     admission_number: mark.admission,
                     student_name: mark.name || 'Unknown',
+                    ...(mark.student_id ? { student_id: mark.student_id } : {}),
                     block: block,
                     subject_name: unit,
                     assessment_type: assessmentType,
