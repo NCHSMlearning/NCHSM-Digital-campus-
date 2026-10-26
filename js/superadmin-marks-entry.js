@@ -3630,32 +3630,59 @@ async function addSelectedStudentsToUnit() {
         
         updateLoadingProgress(30, 1, 'Resolving admission numbers...');
         
-        // ==========================================
-        // STEP 2: Resolve UUIDs → real admission numbers
-        // ==========================================
-        const uuids = studentData.map(s => s.uuid);
-        
-        const { data: profiles, error: profileErr } = await window.sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, student_id, admission_number, full_name')
-            .in('user_id', uuids);
-        
-        if (profileErr) {
-            console.error('❌ Could not fetch profiles:', profileErr);
-            throw new Error('Could not fetch student profiles');
+        // STEP 2: Resolve checkbox identifiers to profiles.
+        // Checkbox values are often admission numbers, NOT UUIDs.
+        const selectedIdentifiers = [...new Set(studentData.map(s => String(s.uuid || '').trim()).filter(Boolean))];
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const selectedUUIDs = selectedIdentifiers.filter(value => uuidPattern.test(value));
+        const selectedAdmissions = selectedIdentifiers.filter(value => !uuidPattern.test(value));
+        const profileQueries = [];
+
+        if (selectedAdmissions.length) {
+            profileQueries.push(window.sb.from('consolidated_user_profiles_table')
+                .select('id, user_id, student_uuid, student_id, admission_number, full_name')
+                .in('admission_number', selectedAdmissions));
+            profileQueries.push(window.sb.from('consolidated_user_profiles_table')
+                .select('id, user_id, student_uuid, student_id, admission_number, full_name')
+                .in('student_id', selectedAdmissions));
         }
-        
-        const profileLookup = {};
-        (profiles || []).forEach(p => {
-            const rawAdmission = p.admission_number || p.student_id;
-            const isUUID = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
-            
-            profileLookup[p.user_id] = {
-                full_name: p.full_name || 'Unknown',
-                admission_number: (!isUUID && rawAdmission) ? rawAdmission : null
+        if (selectedUUIDs.length) {
+            profileQueries.push(window.sb.from('consolidated_user_profiles_table')
+                .select('id, user_id, student_uuid, student_id, admission_number, full_name')
+                .in('user_id', selectedUUIDs));
+            profileQueries.push(window.sb.from('consolidated_user_profiles_table')
+                .select('id, user_id, student_uuid, student_id, admission_number, full_name')
+                .in('student_uuid', selectedUUIDs));
+            profileQueries.push(window.sb.from('consolidated_user_profiles_table')
+                .select('id, user_id, student_uuid, admission_number, full_name')
+                .in('id', selectedUUIDs));
+        }
+
+        const queryResults = await Promise.all(profileQueries);
+        const profileError = queryResults.find(result => result.error)?.error;
+        if (profileError) {
+            console.error('❌ Could not fetch profiles:', profileError);
+            throw new Error('Could not fetch student profiles: ' + profileError.message);
+        }
+
+        const profilesByKey = new Map();
+        queryResults.flatMap(result => result.data || []).forEach(profile => {
+            const rawAdmission = profile.admission_number || profile.student_id;
+            if (!rawAdmission || uuidPattern.test(String(rawAdmission))) return;
+            const resolved = {
+                full_name: profile.full_name || 'Unknown',
+                admission_number: String(rawAdmission),
+                student_uuid: profile.student_uuid || profile.id || profile.user_id || null
             };
+            [profile.admission_number, profile.student_id, profile.user_id, profile.student_uuid, profile.id]
+                .filter(Boolean).forEach(key => profilesByKey.set(String(key), resolved));
         });
-        
+
+        const profileLookup = {};
+        studentData.forEach(student => {
+            profileLookup[student.uuid] = profilesByKey.get(String(student.uuid)) || null;
+        });
+
         updateLoadingProgress(50, 1, 'Adding students to unit...');
         
         // ==========================================
@@ -3673,6 +3700,7 @@ async function addSelectedStudentsToUnit() {
             }
             
             const realAdmission = profile.admission_number;
+            const realStudentUUID = profile.student_uuid;
             
             // Check if already enrolled
             const { data: existing, error: checkError } = await window.sb
@@ -3697,7 +3725,7 @@ async function addSelectedStudentsToUnit() {
                 .from('student_marks')
                 .insert({
                     admission_number: realAdmission,
-                    student_id: student.uuid,
+                    student_id: realStudentUUID,
                     student_name: profile.full_name,
                     block: block,
                     subject_name: unit,
