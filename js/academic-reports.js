@@ -2053,6 +2053,34 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .container { break-inside: auto !important; page-break-inside: auto !important; }
             table.semester-results-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
             .transcript-top, .student-info-wrapper, .semester-results-title, .transcript-lower-grid, .grading-scale-table, .academic-summary-panel, .declaration, .signatures, .footer { break-inside: avoid !important; page-break-inside: avoid !important; }
+
+            /* Use more of the A4 page vertically while preserving legibility and one-page output. */
+            .container { padding: 3mm !important; }
+            .transcript-top { margin-bottom: 6px !important; }
+            .transcript-top > .header { padding-bottom: 5px !important; }
+            .header-top { gap: 8px !important; }
+            .header-top img { max-height: 44px !important; max-width: 54px !important; }
+            .header .school { font-size: 15px !important; line-height: 1.2 !important; }
+            .header .subtitle { margin: 5px 0 !important; padding: 5px 18px !important; font-size: 12px !important; }
+            .student-info-wrapper { margin: 0 0 8px !important; padding: 9px 10px !important; }
+            .student-info { gap: 6px 12px !important; }
+            .student-info .label { font-size: 8px !important; }
+            .student-info .value { font-size: 11px !important; line-height: 1.3 !important; }
+            .semester-results-title { margin-top: 7px !important; padding: 8px 10px !important; font-size: 12px !important; }
+            table.semester-results-table { margin-bottom: 7px !important; }
+            table.semester-results-table thead th { padding: 8px 5px !important; font-size: 10px !important; }
+            table.semester-results-table tbody td { padding: 8px 5px !important; font-size: 11px !important; line-height: 1.3 !important; }
+            .transcript-lower-grid { margin: 8px 0 !important; gap: 7px !important; }
+            .grading-scale-table, .academic-summary-panel { padding: 7px 8px !important; }
+            .grading-scale-table .title, .academic-summary-title { font-size: 9px !important; margin-bottom: 5px !important; }
+            .grading-scale-table th, .grading-scale-table td { padding: 4px 5px !important; }
+            .transcript-lower-grid .summary-grid { gap: 5px !important; }
+            .transcript-lower-grid .summary-card { padding: 6px 4px !important; }
+            .transcript-lower-grid .summary-card .value { font-size: 15px !important; }
+            .declaration { margin: 8px 0 !important; padding: 8px 10px !important; font-size: 9px !important; line-height: 1.45 !important; }
+            .signatures { gap: 18px !important; margin: 8px 0 6px !important; padding-top: 7px !important; }
+            .signature-box .line { margin-top: 10px !important; }
+            .footer { margin-top: 7px !important; padding-top: 6px !important; font-size: 8px !important; line-height: 1.55 !important; }
         }
     </style>
 </head>
