@@ -2004,7 +2004,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         @media print {
             @page { size: A4 portrait; margin: 5mm; }
             html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-            body { font-size: 10px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { font-size: 11px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .container { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; border: 1px solid #0A3D62 !important; border-radius: 0 !important; box-shadow: none !important; }
             .transcript-top { position: relative !important; display: block !important; width: 100% !important; margin: 0 0 3px !important; padding: 0 !important; }
             .transcript-top > .header { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
@@ -2015,15 +2015,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .header .school { font-size: 14px !important; line-height: 1.15 !important; }
             .header .subtitle { font-size: 11px !important; margin: 3px 0 !important; }
             .header .date { font-size: 8px !important; }
-            .student-info-wrapper { display: flex !important; margin: 0 0 4px !important; padding: 6px 8px !important; gap: 6px !important; }
-            .student-info { display: grid !important; grid-template-columns: repeat(3, minmax(0,1fr)) !important; gap: 4px 10px !important; }
+            .student-info-wrapper { display: flex !important; margin: 0 0 4px !important; padding: 9px 10px !important; gap: 8px !important; }
+            .student-info { display: grid !important; grid-template-columns: repeat(3, minmax(0,1fr)) !important; gap: 7px 12px !important; }
             .student-info .label { font-size: 8px !important; }
             .student-info .value { font-size: 10px !important; line-height: 1.2 !important; }
-            .semester-results-title { margin: 4px 0 0 !important; padding: 6px 10px !important; font-size: 12px !important; }
+            .semester-results-title { margin: 7px 0 0 !important; padding: 9px 12px !important; font-size: 14px !important; }
             table.semester-results-table { display: table !important; width: 100% !important; table-layout: fixed !important; margin: 0 0 4px !important; border-collapse: collapse !important; }
             table.semester-results-table thead { display: table-header-group !important; }
-            table.semester-results-table thead th { padding: 6px 5px !important; font-size: 10px !important; line-height: 1.15 !important; overflow-wrap: anywhere !important; }
-            table.semester-results-table tbody td { padding: 6px 5px !important; font-size: 11px !important; line-height: 1.25 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
+            table.semester-results-table thead th { padding: 9px 6px !important; font-size: 11px !important; line-height: 1.2 !important; overflow-wrap: anywhere !important; }
+            table.semester-results-table tbody td { padding: 9px 6px !important; font-size: 12px !important; line-height: 1.3 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
             table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; text-align: center !important; }
             table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
             table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
@@ -2034,7 +2034,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .summary-card { padding: 5px 4px !important; }
             .summary-card .value { font-size: 18px !important; line-height: 1.05 !important; }
             .summary-card .label { font-size: 8px !important; }
-            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 5px !important; align-items: start !important; margin: 4px 0 !important; }
+            .transcript-lower-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 7px !important; align-items: start !important; margin: 7px 0 !important; }
             .grading-scale-table, .academic-summary-panel { min-width: 0 !important; margin: 0 !important; padding: 5px 6px !important; }
             .grading-scale-table .title, .academic-summary-title { font-size: 9px !important; margin-bottom: 3px !important; }
             .grading-scale-table table, .grading-scale-table th, .grading-scale-table td { font-size: 7px !important; padding: 3px 4px !important; }
@@ -2358,7 +2358,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     captureStyle.id = 'transcript-pdf-capture-normalization';
                     captureStyle.textContent = `
                         html, body { width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
-                        body { font-size: 10px !important; }
+                        body { font-size: 11px !important; }
                         .container { display: block !important; width: 718px !important; min-width: 718px !important; max-width: 718px !important; margin: 0 !important; padding: 4mm !important; box-sizing: border-box !important; box-shadow: none !important; border-radius: 0 !important; }
                         .transcript-preview-toolbar { display: none !important; }
                         .header-top img { max-width: 58px !important; max-height: 48px !important; }
@@ -2696,7 +2696,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         table.semester-results-table { display: table !important; width: 100% !important; table-layout: fixed !important; margin: 0 0 4px !important; border-collapse: collapse !important; }
                         table.semester-results-table thead { display: table-header-group !important; }
                         table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; line-height: 1.1 !important; }
-                        table.semester-results-table tbody td { padding: 4px 4px !important; font-size: 8px !important; line-height: 1.15 !important; vertical-align: middle !important; }
+                        table.semester-results-table tbody td { padding: 7px 5px !important; font-size: 9px !important; line-height: 1.25 !important; vertical-align: middle !important; }
                         table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; text-align: center !important; }
                         table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
                         table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
