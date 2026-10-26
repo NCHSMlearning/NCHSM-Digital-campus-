@@ -2005,7 +2005,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             @page { size: A4 portrait; margin: 5mm; }
             html, body { width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
             body { font-size: 11px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .container { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; border: 1px solid #0A3D62 !important; border-radius: 0 !important; box-shadow: none !important; }
+            .container { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 3mm !important; border: 1px solid #0A3D62 !important; border-radius: 0 !important; box-shadow: none !important; transform: none !important; }
+            .header { padding-bottom: 7px !important; margin-bottom: 8px !important; }
+            .header-top img { max-height: 54px !important; }
+            .student-info-wrapper { margin-bottom: 7px !important; }
+            .semester-results-title { padding: 8px 10px !important; font-size: 13px !important; }
+            .transcript-lower-grid { margin: 7px 0 !important; }
+            .declaration { margin-top: 7px !important; padding: 8px 10px !important; }
+            .signatures { margin-top: 8px !important; padding-bottom: 3px !important; }
+            .footer { margin-top: 5px !important; padding-top: 5px !important; }
+            .verification-qr { width: 48px !important; padding: 2px !important; }
+            .verification-qr img { width: 42px !important; height: 42px !important; image-rendering: pixelated !important; }
             .transcript-top { position: relative !important; display: block !important; width: 100% !important; margin: 0 0 3px !important; padding: 0 !important; }
             .transcript-top > .header { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
             .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 44px !important; }
@@ -2219,13 +2229,47 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             qrImage.dataset.error = '';
             try {
                 const candidates = [];
-                if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
+                if (window.QRCode) {
                     try {
-                        candidates.push({
-                            source: 'browser QR library',
-                            url: await window.QRCode.toDataURL(payload, { width: 512, margin: 4, errorCorrectionLevel: 'H' })
-                        });
-                    } catch (libraryError) { console.warn('[Transcript QR] Library failed', libraryError); }
+                        // qrcodejs exposes a constructor (not QRCode.toDataURL). Generate locally
+                        // first so the printed QR does not depend on a third-party image service.
+                        let localQrUrl = '';
+                        if (typeof window.QRCode.toDataURL === 'function') {
+                            localQrUrl = await window.QRCode.toDataURL(payload, {
+                                width: 512, margin: 4, errorCorrectionLevel: 'H'
+                            });
+                        } else if (typeof window.QRCode === 'function') {
+                            const qrHost = document.createElement('div');
+                            qrHost.style.cssText = 'position:fixed;left:-10000px;top:0;width:512px;height:512px;';
+                            document.body.appendChild(qrHost);
+                            try {
+                                new window.QRCode(qrHost, {
+                                    text: payload, width: 512, height: 512,
+                                    colorDark: '#000000', colorLight: '#ffffff',
+                                    correctLevel: window.QRCode.CorrectLevel ? window.QRCode.CorrectLevel.H : 2
+                                });
+                                const qrCanvas = qrHost.querySelector('canvas');
+                                const qrGeneratedImage = qrHost.querySelector('img');
+                                if (qrCanvas && qrCanvas.width > 0) {
+                                    localQrUrl = qrCanvas.toDataURL('image/png');
+                                } else if (qrGeneratedImage) {
+                                    if (!qrGeneratedImage.complete || !qrGeneratedImage.naturalWidth) {
+                                        await new Promise((resolve, reject) => {
+                                            qrGeneratedImage.onload = resolve;
+                                            qrGeneratedImage.onerror = reject;
+                                            setTimeout(() => reject(new Error('Local QR image timed out')), 5000);
+                                        });
+                                    }
+                                    if (qrGeneratedImage.naturalWidth) localQrUrl = qrGeneratedImage.src;
+                                }
+                            } finally {
+                                qrHost.remove();
+                            }
+                        }
+                        if (localQrUrl) candidates.push({ source: 'local QR library', url: localQrUrl });
+                    } catch (libraryError) {
+                        console.warn('[Transcript QR] Local library failed', libraryError);
+                    }
                 }
                 candidates.push({
                     source: 'QR image service',
