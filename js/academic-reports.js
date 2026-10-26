@@ -2008,8 +2008,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .container { display: block !important; width: 100% !important; max-width: none !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 2mm !important; border: 1px solid #0A3D62 !important; border-radius: 0 !important; box-shadow: none !important; }
             .transcript-top { position: relative !important; display: block !important; width: 100% !important; margin: 0 0 3px !important; padding: 0 !important; }
             .transcript-top > .header { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
-            .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
-            .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 26px !important; height: 26px !important; }
+            .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 44px !important; }
+            .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 38px !important; height: 38px !important; }
             .header-top { display: flex !important; flex-direction: row !important; justify-content: center !important; align-items: center !important; gap: 6px !important; }
             .header-top img { max-height: 38px !important; max-width: 48px !important; }
             .header .school { font-size: 14px !important; line-height: 1.15 !important; }
@@ -2213,8 +2213,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             const payload = verificationUrl.href;
             qrImage.style.display = 'block';
             qrImage.style.visibility = 'visible';
-            qrImage.width = 240;
-            qrImage.height = 240;
+            qrImage.width = 512;
+            qrImage.height = 512;
             qrImage.dataset.ready = '';
             qrImage.dataset.error = '';
             try {
@@ -2223,13 +2223,13 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     try {
                         candidates.push({
                             source: 'browser QR library',
-                            url: await window.QRCode.toDataURL(payload, { width: 240, margin: 2, errorCorrectionLevel: 'M' })
+                            url: await window.QRCode.toDataURL(payload, { width: 512, margin: 4, errorCorrectionLevel: 'H' })
                         });
                     } catch (libraryError) { console.warn('[Transcript QR] Library failed', libraryError); }
                 }
                 candidates.push({
                     source: 'QR image service',
-                    url: 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=2&format=png&data=' + encodeURIComponent(payload)
+                    url: 'https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=4&ecc=H&format=png&data=' + encodeURIComponent(payload)
                 });
                 let loadedSource = '';
                 let lastImageError = null;
@@ -2680,8 +2680,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .container { display: block !important; width: 718px !important; min-width: 718px !important; max-width: 718px !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4mm !important; border-radius: 0 !important; box-shadow: none !important; }
                         .transcript-top { position: relative !important; display: block !important; width: 100% !important; margin: 0 0 3px !important; padding: 0 !important; }
                         .transcript-top > .header { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
-                        .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 34px !important; }
-                        .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 26px !important; height: 26px !important; }
+                        .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 44px !important; }
+                        .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 38px !important; height: 38px !important; }
                         .header-top { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; gap: 6px !important; }
                         .header-top img { max-width: 32px !important; max-height: 28px !important; }
                         .header .school { font-size: 12px !important; line-height: 1.1 !important; }
