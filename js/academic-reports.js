@@ -2108,6 +2108,13 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         (async function initializeTranscriptQr() {
             const qrImage = document.getElementById('transcriptVerificationQr');
             if (!qrImage) return;
+            const hideQrBox = (reason) => {
+                const box = qrImage.closest('.verification-qr');
+                if (box) box.style.display = 'none';
+                qrImage.dataset.error = String(reason || 'QR unavailable');
+                qrImage.alt = 'QR unavailable';
+                console.warn('[Transcript QR] Not available:', reason);
+            };
             const qrStartedAt = Date.now();
             const portalWindow = window.opener || null;
             const portalOrigin = ${JSON.stringify(window.location.origin)};
@@ -2122,11 +2129,11 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 : ((portalWindow && portalWindow.APP_CONFIG) || window.APP_CONFIG || {});
             const portalClient = (portalWindow && portalWindow.supabaseClient) || window.supabaseClient || null;
             if ((!injectedContext || !injectedContext.accessToken) && (!portalClient || !portalClient.auth)) {
-                qrImage.dataset.error = 'No authenticated session was passed to the transcript window.';
+                hideQrBox('No authenticated session was passed to the transcript window.');
                 return;
             }
             if (!portalConfig.SUPABASE_URL || !portalConfig.SUPABASE_ANON_KEY) {
-                qrImage.dataset.error = 'Supabase configuration unavailable';
+                hideQrBox('Supabase configuration unavailable');
                 return;
             }
             let registryToken = '';
@@ -2152,7 +2159,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 }
                 registryToken = registryResult.token;
             } catch (registryError) {
-                qrImage.dataset.error = String(registryError && registryError.message || registryError);
+                hideQrBox(registryError && registryError.message || registryError);
                 return;
             }
             const verificationUrl = new URL('/graduation.html', portalOrigin);
@@ -2208,7 +2215,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 qrImage.dataset.ready = 'true';
                 qrImage.dataset.error = '';
             } catch (error) {
-                qrImage.dataset.error = String(error && error.message || error);
+                hideQrBox(error && error.message || error);
             }
         })();
 
@@ -2554,8 +2561,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                         }
                         if (qrImage && qrImage.dataset.ready !== 'true') {
-                            throw new Error(qrImage.dataset.error || 'Transcript verification QR did not finish generating.');
-                        }
+                                console.warn('[Transcript Print] QR unavailable; continuing without it:', qrImage.dataset.error);
+                                const box = qrImage.closest('.verification-qr');
+                                if (box) box.style.display = 'none';
+                            }
                         await Promise.all(Array.from(printWindow.document.images).map(img => {
                             if (img.complete) return Promise.resolve();
                             return new Promise(resolve => {
