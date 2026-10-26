@@ -1862,7 +1862,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const starIndicator = retakenPassed ? '*' : '';
 
                 tableRows += `
-                    <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''} ${isRetakenUnit ? 'border-left: 3px solid #94a3b8;' : ''}">
+                    <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''}">
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-weight: 600; color: #0A3D62; font-size: 9px;">${escapeHtml(unitCode)}</td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-size: 9px; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}${starIndicator}</td>
