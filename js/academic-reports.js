@@ -2400,9 +2400,21 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 // onto a second page just because they are marked break-inside: avoid.
                                 pagebreak: { mode: ['css'] }
                             };
-                            await printWindow.html2pdf().set(options).from(target).save();
+                            const pdfBlob = await printWindow.html2pdf().set(options).from(target).outputPdf('blob');
+                            if (!(pdfBlob instanceof Blob) || pdfBlob.size === 0) {
+                                throw new Error('PDF generation returned an empty file.');
+                            }
+                            const blobUrl = printWindow.URL.createObjectURL(pdfBlob);
+                            const downloadLink = printWindow.document.createElement('a');
+                            downloadLink.href = blobUrl;
+                            downloadLink.download = options.filename;
+                            downloadLink.style.display = 'none';
+                            printWindow.document.body.appendChild(downloadLink);
+                            downloadLink.click();
+                            downloadLink.remove();
+                            printWindow.setTimeout(() => printWindow.URL.revokeObjectURL(blobUrl), 60000);
                             downloadStarted = true;
-                            console.info('[Transcript PDF] html2pdf save completed', {filename:options.filename, rows:previewRows.length});
+                            console.info('[Transcript PDF] html2pdf blob download triggered', {filename:options.filename, bytes:pdfBlob.size, rows:previewRows.length});
                         }
                     } catch (error) {
                         console.warn('[Transcript PDF] html2pdf pipeline failed; trying direct canvas fallback', {
