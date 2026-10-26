@@ -1485,7 +1485,7 @@ async function loadMarksEntry() {
         // ==========================================
         // STEP 1: Try student_marks table first
         // ==========================================
-        const { data: marks, error: marksError } = await sb
+        let { data: marks, error: marksError } = await sb
             .from('student_marks')
             .select('*')
             .eq('block', block)
