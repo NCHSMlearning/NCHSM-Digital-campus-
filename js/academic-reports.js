@@ -2365,6 +2365,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 image: { type: 'jpeg', quality: 0.98 },
                                 html2canvas: {
                                     scale: 2,
+                                    windowWidth: 794, // Same CSS viewport on phones, tablets and desktops.
                                     useCORS: true,
                                     allowTaint: false,
                                     backgroundColor: '#ffffff',
@@ -2443,6 +2444,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             }
                             const fallbackCanvas = await html2canvasFn(target, {
                                 scale: 2,
+                                windowWidth: 794, // Match the fixed A4-width preview canvas on every device.
                                 useCORS: true,
                                 allowTaint: false,
                                 backgroundColor: '#ffffff',
@@ -2640,6 +2642,7 @@ const chartCanvas = printWindow.document.querySelector('.chart-container canvas'
                                 image: { type: 'jpeg', quality: 0.98 },
                                 html2canvas: {
                                     scale: 2,
+                                    windowWidth: 794, // Same CSS viewport on phones, tablets and desktops.
                                     useCORS: true,
                                     allowTaint: false,
                                     backgroundColor: '#ffffff',
@@ -2714,6 +2717,7 @@ const chartCanvas = printWindow.document.querySelector('.chart-container canvas'
                             }
                             const fallbackCanvas = await html2canvasFn(target, {
                                 scale: 2,
+                                windowWidth: 794, // Match the fixed A4-width preview canvas on every device.
                                 useCORS: true,
                                 allowTaint: false,
                                 backgroundColor: '#ffffff',
