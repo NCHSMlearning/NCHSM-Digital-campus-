@@ -2008,10 +2008,11 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 76px; padding: 3px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #0A3D62; }
         .verification-qr img { display: block; width: 66px; height: 66px; object-fit: contain; image-rendering: pixelated; }
         .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 5px; margin-bottom: 6px; }
-        .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
-        .header-top img { max-height: 64px; max-width: 76px; width: auto; object-fit: contain; }
-        .header .school { font-size: 19px; line-height: 1.25; font-weight: 800; color: #0A3D62; font-family: 'Georgia', serif; }
-        .header .motto { font-size: 8px; color: #64748b; font-style: italic; }
+        .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-width: 0; overflow: hidden; }
+        .header-top img { display: block; flex: 0 0 62px; width: 62px; height: 62px; max-height: 62px; max-width: 62px; object-fit: contain; object-position: center; }
+        .header-top > div { flex: 1 1 auto; min-width: 0; text-align: center; }
+        .header .school { font-size: 16px; line-height: 1.2; font-weight: 800; color: #0A3D62; font-family: 'Georgia', serif; white-space: normal; overflow-wrap: break-word; word-break: normal; }
+        .header .motto { font-size: 8px; line-height: 1.25; color: #64748b; font-style: italic; }
         .header .subtitle { display: inline-block; font-size: 17px; color: #ffffff; background: #0A3D62; font-weight: 800; margin-top: 10px; padding: 7px 28px; border-radius: 4px; letter-spacing: 2px; font-family: 'Georgia', serif; }
         .header .date { font-size: 8px; color: #94a3b8; margin-top: 2px; }
         .student-info-wrapper { display: flex; align-items: center; gap: 10px; margin: 5px 0 7px; padding: 7px 9px; background: #f1f6fb; border-radius: 8px; border: 1px solid #cbdbea; border-left: 5px solid #0A3D62; }
