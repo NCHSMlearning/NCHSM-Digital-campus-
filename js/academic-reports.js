@@ -1927,21 +1927,21 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4 portrait; margin: 6mm; }
         body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
-        .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 12px 14px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; box-shadow: none; }
+        .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 7px 8px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; box-shadow: none; }
         .transcript-top { position: relative; display: block; width: 100%; }
         .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 44px; }
         .transcript-top > .verification-qr { position: absolute; top: 0; right: 0; z-index: 2; }
         .transcript-top .header { min-width: 0; }
         .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 66px; padding: 3px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #0A3D62; }
         .verification-qr img { display: block; width: 58px; height: 58px; object-fit: contain; image-rendering: pixelated; }
-        .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 10px; margin-bottom: 12px; }
+        .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 5px; margin-bottom: 6px; }
         .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
         .header-top img { max-height: 64px; max-width: 76px; width: auto; object-fit: contain; }
         .header .school { font-size: 19px; line-height: 1.25; font-weight: 800; color: #0A3D62; font-family: 'Georgia', serif; }
         .header .motto { font-size: 8px; color: #64748b; font-style: italic; }
         .header .subtitle { display: inline-block; font-size: 17px; color: #ffffff; background: #0A3D62; font-weight: 800; margin-top: 10px; padding: 7px 28px; border-radius: 4px; letter-spacing: 2px; font-family: 'Georgia', serif; }
         .header .date { font-size: 8px; color: #94a3b8; margin-top: 2px; }
-        .student-info-wrapper { display: flex; align-items: center; gap: 16px; margin: 12px 0 16px; padding: 14px 16px; background: #f1f6fb; border-radius: 8px; border: 1px solid #cbdbea; border-left: 5px solid #0A3D62; }
+        .student-info-wrapper { display: flex; align-items: center; gap: 10px; margin: 5px 0 7px; padding: 7px 9px; background: #f1f6fb; border-radius: 8px; border: 1px solid #cbdbea; border-left: 5px solid #0A3D62; }
         .student-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; flex: 1; }
         .student-info .field { display: flex; flex-direction: column; }
         .student-info .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; }
@@ -1952,10 +1952,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .summary-card .value { font-size: 24px; line-height: 1.2; font-weight: 800; color: #0A3D62; }
         .summary-card .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 800; margin-top: 3px; }
         table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; border: 1px solid #d1d5db; }
-        .semester-results-title { margin: 14px 0 0; padding: 11px 16px; background: #0A3D62; color: #ffffff; border-radius: 7px 7px 0 0; font-size: 15px; line-height: 1.25; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; }
-        table.semester-results-table { margin: 0 0 12px; font-size: 11px; table-layout: auto; }
-        table.semester-results-table thead th { padding: 12px 14px; font-size: 11px; line-height: 1.3; }
-        table.semester-results-table tbody td { padding: 12px 14px; font-size: 12px; line-height: 1.45; }
+        .semester-results-title { margin: 5px 0 0; padding: 6px 10px; background: #0A3D62; color: #ffffff; border-radius: 7px 7px 0 0; font-size: 11px; line-height: 1.15; font-weight: 800; letter-spacing: 0.35px; text-transform: uppercase; }
+        table.semester-results-table { margin: 0 0 5px; font-size: 9px; table-layout: fixed; }
+        table.semester-results-table thead th { padding: 5px 4px; font-size: 8px; line-height: 1.1; }
+        table.semester-results-table tbody td { padding: 4px 4px; font-size: 9px; line-height: 1.15; }
         thead th { background: #0A3D62; color: white; padding: 10px 12px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; border: 1px solid #0A3D62; }
         tbody td { padding: 9px 12px; border: 1px solid #d1d5db; font-size: 10px; line-height: 1.35; }
         .chart-container { margin: 10px 0 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
@@ -1974,7 +1974,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db; }
         .grading-scale-table th { background: #0A3D62; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #0A3D62; }
         .grading-scale-table td { padding: 4px 8px; text-align: center; border: 1px solid #d1d5db; font-size: 7px; }
-        .declaration { margin: 10px 0 12px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; font-size: 10px; line-height: 1.5; }
+        .declaration { margin: 4px 0 5px; padding: 5px 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; font-size: 8px; line-height: 1.25; }
         .declaration .title { font-weight: 700; color: #0A3D62; font-size: 8px; }
         .declaration .checkbox { display: inline-block; width: 9px; height: 9px; border: 2px solid #0A3D62; border-radius: 2px; margin-right: 4px; vertical-align: middle; background: #0A3D62; position: relative; }
         .declaration .checkbox::after { content: "✓"; color: white; font-size: 6px; position: absolute; top: -2px; left: 0px; }
@@ -1983,7 +1983,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .signature-box .line { border-bottom: 2px solid #1e293b; width: 130px; margin: 8px auto 2px auto; }
         .signature-box .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
         .signature-box .name { font-weight: 600; font-size: 10px; color: #0A3D62; }
-        .footer { text-align: center; margin-top: 10px; padding-top: 10px; border-top: 2px solid #0A3D62; font-size: 9px; line-height: 1.5; color: #52677a; }
+        .footer { text-align: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid #0A3D62; font-size: 8px; line-height: 1.2; color: #52677a; }
         .footer strong { color: #0A3D62; }
         .no-print { text-align: center; margin-top: 8px; }
         .no-print button { padding: 5px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 10px; }
