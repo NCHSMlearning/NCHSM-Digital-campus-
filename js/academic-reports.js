@@ -2140,7 +2140,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
         <div class="footer">
             <p>This is an official document. For verification, contact the Academic Office.</p>
-            <p><strong>NCHSM</strong> · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
+            <p><strong>NCHSM</strong> · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743 / 0703 345 771 · Email: <a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a></p>
         </div>
 
         <div class="no-print">
