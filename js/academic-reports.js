@@ -2029,11 +2029,11 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .student-info { display: grid !important; grid-template-columns: repeat(3, minmax(0,1fr)) !important; gap: 7px 12px !important; }
             .student-info .label { font-size: 8px !important; }
             .student-info .value { font-size: 10px !important; line-height: 1.2 !important; }
-            .semester-results-title { margin: 7px 0 0 !important; padding: 9px 12px !important; font-size: 14px !important; }
+            .semester-results-title { margin: 5px 0 0 !important; padding: 6px 10px !important; font-size: 11px !important; line-height: 1.15 !important; }
             table.semester-results-table { display: table !important; width: 100% !important; table-layout: fixed !important; margin: 0 0 4px !important; border-collapse: collapse !important; }
             table.semester-results-table thead { display: table-header-group !important; }
-            table.semester-results-table thead th { padding: 9px 6px !important; font-size: 11px !important; line-height: 1.2 !important; overflow-wrap: anywhere !important; }
-            table.semester-results-table tbody td { padding: 9px 6px !important; font-size: 12px !important; line-height: 1.3 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
+            table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; line-height: 1.1 !important; letter-spacing: 0.25px !important; overflow-wrap: anywhere !important; }
+            table.semester-results-table tbody td { padding: 5px 4px !important; font-size: 9px !important; line-height: 1.15 !important; overflow-wrap: anywhere !important; vertical-align: middle !important; }
             table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; text-align: center !important; }
             table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
             table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
@@ -2679,11 +2679,11 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .student-info { display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 3px 8px !important; }
                         .student-info .label { font-size: 7px !important; }
                         .student-info .value { font-size: 9px !important; line-height: 1.15 !important; }
-                        .semester-results-title { margin: 3px 0 0 !important; padding: 6px 10px !important; font-size: 11px !important; }
+                        .semester-results-title { margin: 3px 0 0 !important; padding: 5px 8px !important; font-size: 10px !important; line-height: 1.1 !important; }
                         table.semester-results-table { display: table !important; width: 100% !important; table-layout: fixed !important; margin: 0 0 4px !important; border-collapse: collapse !important; }
                         table.semester-results-table thead { display: table-header-group !important; }
-                        table.semester-results-table thead th { padding: 5px 4px !important; font-size: 8px !important; line-height: 1.1 !important; }
-                        table.semester-results-table tbody td { padding: 7px 5px !important; font-size: 9px !important; line-height: 1.25 !important; vertical-align: middle !important; }
+                        table.semester-results-table thead th { padding: 4px 3px !important; font-size: 7.5px !important; line-height: 1.05 !important; letter-spacing: 0.2px !important; }
+                        table.semester-results-table tbody td { padding: 4px 3px !important; font-size: 8px !important; line-height: 1.1 !important; vertical-align: middle !important; }
                         table.semester-results-table th:nth-child(1), table.semester-results-table td:nth-child(1) { width: 5% !important; text-align: center !important; }
                         table.semester-results-table th:nth-child(2), table.semester-results-table td:nth-child(2) { width: 15% !important; }
                         table.semester-results-table th:nth-child(3), table.semester-results-table td:nth-child(3) { width: 42% !important; }
