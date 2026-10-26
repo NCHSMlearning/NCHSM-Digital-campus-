@@ -1940,7 +1940,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             background-repeat: no-repeat;
             background-position: center 53%;
             background-size: 48% auto;
-            opacity: 0.045;
+            opacity: 0.10;
         }
         .container > * { position: relative; z-index: 1; }
         .container .transcript-top { z-index: 2; }
@@ -1978,9 +1978,20 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         /* Keep the key academic results clearly readable in both preview and PDF. */
         table.semester-results-table tbody td:nth-child(3),
         table.semester-results-table tbody td:nth-child(4),
-        table.semester-results-table tbody td:nth-child(6) { font-weight: 800 !important; color: #1e293b; }
-        table.semester-results-table tbody td:nth-child(4) { color: #0A3D62; text-align: center; }
+        table.semester-results-table tbody td:nth-child(6) {
+            font-weight: 800 !important;
+            color: #000000 !important;
+        }
+        table.semester-results-table tbody td:nth-child(4),
         table.semester-results-table tbody td:nth-child(6) { text-align: center; }
+        table.semester-results-table tbody td:nth-child(4) span,
+        table.semester-results-table tbody td:nth-child(6) span {
+            color: #000000 !important;
+            background: transparent !important;
+            font-weight: 800 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+        }
         thead th { background: #0A3D62; color: white; padding: 10px 12px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; border: 1px solid #0A3D62; }
         tbody td { padding: 9px 12px; border: 1px solid #d1d5db; font-size: 10px; line-height: 1.35; }
         .chart-container { margin: 10px 0 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
