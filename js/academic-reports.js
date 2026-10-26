@@ -2130,7 +2130,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             <thead>
                 <tr>
                     <th style="text-align: center; width: 25px; border: 1px solid #0A3D62;">#</th>
-                    <th style="width: 68px; border: 1px solid #0A3D62;">Unit Code</th>
+                    <th style="width: 76px; border: 1px solid #0A3D62;">Unit Code</th>
                     <th style="min-width: 170px; border: 1px solid #0A3D62;">Unit Name</th>
                     <th style="text-align: center; width: 50px; border: 1px solid #0A3D62;">Grade</th>
                     <th style="text-align: center; width: 70px; border: 1px solid #0A3D62;">Grade Points</th>
