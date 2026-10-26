@@ -294,7 +294,7 @@
                 title: 'Top 5 Reasons to Choose a Nursing Career in 2026',
                 date: 'August 28, 2026',
                 readTime: '3 min read',
-                author: 'Admin',
+                author: 'NCHSM Editorial Team',
                 image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=400&fit=crop',
                 content: `
                     <p>Nursing remains one of the most respected and in-demand professions worldwide. Here are the top 5 reasons to pursue a nursing career in 2026:</p>
@@ -322,7 +322,7 @@
                 title: 'A Day in the Life of a Health Sciences Student',
                 date: 'August 25, 2026',
                 readTime: '4 min read',
-                author: 'Admin',
+                author: 'NCHSM Editorial Team',
                 image: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=800&h=400&fit=crop',
                 content: `
                     <p>Ever wondered what it's really like to be a health sciences student? Here's a glimpse into a typical day at NCHSM.</p>
@@ -350,7 +350,7 @@
                 title: '10 Effective Study Tips for Nursing Students',
                 date: 'August 20, 2026',
                 readTime: '5 min read',
-                author: 'Admin',
+                author: 'NCHSM Editorial Team',
                 image: 'https://images.unsplash.com/photo-1530023367847-a683933f4172?w=800&h=400&fit=crop',
                 content: `
                     <p>Success in nursing and health sciences requires smart study strategies. Here are 10 tips to help you excel.</p>
@@ -393,7 +393,7 @@
                 title: 'Top Healthcare Trends Shaping the Future of Medicine',
                 date: 'August 15, 2026',
                 readTime: '4 min read',
-                author: 'Admin',
+                author: 'NCHSM Editorial Team',
                 image: 'https://images.unsplash.com/photo-1516841273335-e78b1881b1e2?w=800&h=400&fit=crop',
                 content: `
                     <p>The healthcare industry is evolving rapidly. Here are the top trends shaping the future of medicine.</p>
@@ -524,11 +524,11 @@
                 `
             },
             'nchsm-student-success-stories': {
-                category: '🌟 Student Stories',
+                category: '📚 Career Preparation',
                 title: 'How Health Sciences Education Can Prepare Students for Their Careers',
                 date: 'August 30, 2026',
                 readTime: '5 min read',
-                author: 'NCHSM',
+                author: 'NCHSM Editorial Team',
                 image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&h=400&fit=crop',
                 content: `
                     <p>Training in health sciences combines academic knowledge, practical skills, professional conduct and preparation for real healthcare environments. For students considering a career in healthcare, understanding this journey can help them make informed decisions about their education.</p>
@@ -694,8 +694,9 @@
                 "description": post.content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().substring(0, 300),
                 "datePublished": new Date(post.date).toISOString(),
                 "author": {
-                    "@type": "Person",
-                    "name": post.author
+                    "@type": "Organization",
+                    "name": post.author,
+                    "url": "https://nchsm.co.ke/"
                 },
                 "publisher": {
                     "@type": "Organization",
