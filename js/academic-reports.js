@@ -2177,7 +2177,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 <div class="date">Date: _____________</div>
             </div>
         </div>
-        </div>
 
         <div class="footer">
             <p>This is an official document. For verification, contact the Academic Office.</p>
