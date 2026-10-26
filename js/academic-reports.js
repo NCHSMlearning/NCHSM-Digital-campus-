@@ -1816,26 +1816,44 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             }
             const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
 
-            // Resolve retake results for display only; the original published mark stays untouched.
+            // Resolve retakes by normalized unit name. The student_retakes row is
+            // authoritative when it contains a passing score, even if legacy
+            // student_marks retake_* columns were not updated successfully.
+            const normalizeUnitName = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
             const resolveRetakeDisplay = (mark) => {
-                const records = studentRetakeMap[mark.subject_name] || [];
-                if (!records.length) return { mark, retaken: false };
-                const latest = [...records].sort((a, b) =>
+                const markUnit = normalizeUnitName(mark.subject_name || mark.course_name || mark.unit_name);
+                const records = Object.entries(studentRetakeMap)
+                    .filter(([name]) => normalizeUnitName(name) === markUnit)
+                    .flatMap(([, attempts]) => attempts || []);
+                const rowScore = numericMark(mark, ['retake_score']);
+                const rowAttempt = rowScore !== null ? [{
+                    retake_score: rowScore, retake_grade: mark.retake_grade,
+                    retake_status: mark.retake_status, attempt_number: mark.retake_count || 0,
+                    updated_at: mark.retake_date || mark.updated_at
+                }] : [];
+                const latest = [...records, ...rowAttempt].sort((a, b) =>
                     Number(b.attempt_number || 0) - Number(a.attempt_number || 0) ||
                     new Date(b.updated_at || b.created_at || b.assessed_at || 0) - new Date(a.updated_at || a.created_at || a.assessed_at || 0)
-                ).find(r => {
-                    const value = numericMark(r, ['retake_score','final_score','score','marks','total_score','mark']);
-                    return value !== null;
-                });
+                ).find(record => numericMark(record, ['retake_score','total_score','exam_score','final_score','score','marks','mark']) !== null);
                 if (!latest) return { mark, retaken: false };
-                const retakeScore = numericMark(latest, ['retake_score','final_score','score','marks','total_score','mark']);
+
+                const retakeScore = numericMark(latest, ['retake_score','total_score','exam_score','final_score','score','marks','mark']);
                 const threshold = PROGRAM.isTVET(userProgram) ? 50 : 60;
-                // Only replace the displayed result when the retake meets the programme pass mark.
-                if (retakeScore < threshold) return { mark, retaken: false };
+                const statusValue = String(latest.retake_status || latest.status || latest.final_status || '').trim().toUpperCase();
+                if (retakeScore < threshold && !['PASS','PASSED'].includes(statusValue)) return { mark, retaken: false };
+
                 const retakeGrade = latest.retake_grade || latest.grade || latest.final_grade || calculateGrade(retakeScore, userProgram);
-                const retakeStatus = latest.final_status || latest.status || getGradingStatus(retakeScore, userProgram);
-                return { mark: { ...mark, final_score: retakeScore, grade: retakeGrade, final_grade: retakeGrade,
-                    status: retakeStatus, final_status: retakeStatus }, retaken: true };
+                const retakeStatus = latest.retake_status || latest.status || latest.final_status || getGradingStatus(retakeScore, userProgram);
+                return {
+                    mark: {
+                        ...mark, final_score: retakeScore, published_score: retakeScore,
+                        grade: retakeGrade, final_grade: retakeGrade,
+                        points: pointsFromPublishedGrade(retakeGrade) ?? mark.points,
+                        status: retakeStatus, final_status: retakeStatus,
+                        retake_score: retakeScore, retake_grade: retakeGrade, retake_status: retakeStatus
+                    },
+                    retaken: true
+                };
             };
 
             let tableRows = '';
