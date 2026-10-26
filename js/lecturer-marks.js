@@ -1333,13 +1333,18 @@ async function loadMarksEntry() {
             throw new Error('Database not available');
         }
         
-        updateLoadingProgress(20, 1, 'Loading column settings...');
-        await loadAdminColumnSettings(block, unit);
-        
-        updateLoadingProgress(30, 2, 'Loading retake data...');
-        await loadLecturerRetakeData(block, unit, year);
-        
-        updateLoadingProgress(40, 2, 'Loading student marks...');
+        updateLoadingProgress(25, 1, 'Loading settings and retake history...');
+        // These reads are independent; run together to reduce wait time.
+        const auxiliaryLoads = await Promise.allSettled([
+            loadAdminColumnSettings(block, unit),
+            loadLecturerRetakeData(block, unit, year)
+        ]);
+        const failedAuxiliaryLoad = auxiliaryLoads.find(result => result.status === 'rejected');
+        if (failedAuxiliaryLoad) {
+            console.warn('Optional marks-entry settings/history could not fully load:', failedAuxiliaryLoad.reason);
+        }
+
+        updateLoadingProgress(45, 2, 'Loading student marks...');
         
         // ==========================================
         // STEP 1: Try student_marks table
