@@ -1993,14 +1993,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .container > * { position: relative; z-index: 1; }
         .container .transcript-top { z-index: 2; }
 
-        .transcript-top { position: relative; display: block; width: 100%; }
-        .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 44px; }
-        .transcript-top > .verification-qr { position: absolute; top: 0; right: 0; z-index: 2; }
-        .transcript-top .header { min-width: 0; }
+        .transcript-top { position: relative; display: block; width: 100%; padding-top: 1px; }
+        .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 116px; }
+        .transcript-top > .verification-qr { position: absolute; top: 27px; right: 0; z-index: 2; }
+        .transcript-top > .transcript-generation-number { position: absolute; top: 0; right: 0; z-index: 3; display: none; width: 112px; margin: 0; padding: 0; border: 0; color: #0A3D62; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.15; font-weight: 800; text-align: center; overflow-wrap: anywhere; word-break: break-word; }
+        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 2px; color: #64748b; font-size: 6px; letter-spacing: .5px; }
+        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; font-size: 10px; letter-spacing: .1px; }
         .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 76px; padding: 3px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #0A3D62; }
         .verification-qr img { display: block; width: 66px; height: 66px; object-fit: contain; image-rendering: pixelated; }
-        .transcript-generation-number { display: block; width: 100%; margin-top: 2px; padding-top: 3px; border-top: 1px solid #d8e2ec; color: #0A3D62; font-family: Arial, sans-serif; font-size: 5.5px; line-height: 1.25; font-weight: 800; text-align: center; overflow-wrap: anywhere; word-break: break-word; }
-        .transcript-generation-number .number-label { display: block; margin-bottom: 2px; color: #64748b; font-size: 4.5px; letter-spacing: .35px; }
         .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 5px; margin-bottom: 6px; }
         .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
         .header-top img { max-height: 64px; max-width: 76px; width: auto; object-fit: contain; }
@@ -2108,10 +2108,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
                 <div class="date">Generated: ${now}</div>
             </div>
+            <div class="transcript-generation-number" id="transcriptGenerationNumber" aria-label="Transcript generation number" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"></span></div>
             <div class="verification-qr" aria-label="Document verification QR code">
                 <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
                 <span>VERIFY</span>
-                <span class="transcript-generation-number" id="transcriptGenerationNumber" aria-label="Transcript generation number" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"></span></span>
             </div>
         </div>
 
