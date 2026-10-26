@@ -1928,6 +1928,23 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         @page { size: A4 portrait; margin: 6mm; }
         body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
         .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 7px 8px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; box-shadow: none; }
+        /* Subtle institutional watermark: recognizable, never competing with marks or unit names. */
+        .container { position: relative; isolation: isolate; overflow: hidden; }
+        .container::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image: url("https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png");
+            background-repeat: no-repeat;
+            background-position: center 53%;
+            background-size: 48% auto;
+            opacity: 0.045;
+        }
+        .container > * { position: relative; z-index: 1; }
+        .container .transcript-top { z-index: 2; }
+
         .transcript-top { position: relative; display: block; width: 100%; }
         .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 44px; }
         .transcript-top > .verification-qr { position: absolute; top: 0; right: 0; z-index: 2; }
