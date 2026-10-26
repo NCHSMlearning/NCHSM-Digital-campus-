@@ -695,12 +695,8 @@ JAVASCRIPT
                 detail('Admission number', result.student_id) +
                 detail('Program', result.program) +
                 detail('Registry issue date', result.issued_at ? new Date(result.issued_at).toLocaleString() : '');
-            const blockNames = Array.isArray(result.marks)
-                ? Array.from(new Set(result.marks.map(function(mark) {
-                    return String(mark.block || '').trim();
-                }).filter(Boolean))).sort(function(a, b) {
-                    return a.localeCompare(b, undefined, { numeric: true });
-                })
+            const blockNames = Array.isArray(result.blocks)
+                ? result.blocks.map(function(block) { return String(block || '').trim(); }).filter(Boolean)
                 : [];
             const blockDetail = blockNames.length
                 ? detail('Marks included for block', blockNames.join(', '))
