@@ -2884,7 +2884,9 @@ const chartCanvas = printWindow.document.querySelector('.chart-container canvas'
         
         const downloadBtn = document.getElementById('download-transcript-pdf');
         if (downloadBtn) {
-            downloadBtn.addEventListener('click', downloadTranscriptPDF);
+            // Always open the canonical transcript preview first. The preview's own
+            // Download PDF button exports that exact rendered document on desktop/mobile.
+            downloadBtn.addEventListener('click', function () { downloadReportCard('preview'); });
         }
         
         const printBtn = document.getElementById('print-report');
