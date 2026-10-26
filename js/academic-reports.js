@@ -1892,6 +1892,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     <title>Provisional Academic Transcript - ${escapeHtml(user.full_name || 'Student')}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+    <!-- Standalone PDF fallback dependencies, independent of html2pdf bundle loading. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
     <script src="/js/lib/qrcode.min.js"><\/script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2428,6 +2431,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     // Fallback: direct html2canvas + jsPDF page slicing
                     if (!downloadStarted) {
                         try {
+                            // Wait for standalone fallback scripts if the html2pdf bundle failed.
+                            const libraryDeadline = Date.now() + 8000;
+                            while (Date.now() < libraryDeadline) {
+                                const hasCanvas = typeof printWindow.html2canvas === 'function' ||
+                                    (printWindow.html2pdf && typeof printWindow.html2pdf.html2canvas === 'function');
+                                const hasPdf = !!(printWindow.jspdf && typeof printWindow.jspdf.jsPDF === 'function') ||
+                                    typeof printWindow.jsPDF === 'function' ||
+                                    (printWindow.html2pdf && typeof printWindow.html2pdf.jsPDF === 'function');
+                                if (hasCanvas && hasPdf) break;
+                                await new Promise(resolve => setTimeout(resolve, 200));
+                            }
                             const html2canvasFn = printWindow.html2canvas ||
                                 (printWindow.html2pdf && printWindow.html2pdf.html2canvas);
                             const jsPDFCtor = printWindow.jspdf && printWindow.jspdf.jsPDF
@@ -2755,6 +2769,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
                     if (!downloadStarted) {
                         try {
+                            // Wait for standalone fallback scripts if the html2pdf bundle failed.
+                            const libraryDeadline = Date.now() + 8000;
+                            while (Date.now() < libraryDeadline) {
+                                const hasCanvas = typeof printWindow.html2canvas === 'function' ||
+                                    (printWindow.html2pdf && typeof printWindow.html2pdf.html2canvas === 'function');
+                                const hasPdf = !!(printWindow.jspdf && typeof printWindow.jspdf.jsPDF === 'function') ||
+                                    typeof printWindow.jsPDF === 'function' ||
+                                    (printWindow.html2pdf && typeof printWindow.html2pdf.jsPDF === 'function');
+                                if (hasCanvas && hasPdf) break;
+                                await new Promise(resolve => setTimeout(resolve, 200));
+                            }
                             const html2canvasFn = printWindow.html2canvas ||
                                 (printWindow.html2pdf && printWindow.html2pdf.html2canvas);
                             const jsPDFCtor = printWindow.jspdf && printWindow.jspdf.jsPDF
