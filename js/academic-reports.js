@@ -2424,42 +2424,63 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     let downloadStarted = false;
 
                     const fileBase = 'Provisional-Academic-Transcript-' + String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
-                    // Primary pipeline: html2pdf with array margin (0.10.1 requires array)
+                    // Primary pipeline mirrors the working Exam Card export:
+                    // render the live transcript DOM with html2canvas, create jsPDF,
+                    // then call pdf.save() directly. Avoid html2pdf's worker/Blob path.
                     try {
-                        if (typeof printWindow.html2pdf === 'function') {
-                            const options = {
-                                margin: 0,
-                                filename: fileBase + '.pdf',
-                                image: { type: 'jpeg', quality: 0.98 },
-                                html2canvas: {
-                                    scale: 2,
-                                    useCORS: true,
-                                    allowTaint: false,
-                                    backgroundColor: '#ffffff',
-                                    scrollX: 0,
-                                    scrollY: 0,
-                                    logging: false,
-                                    onclone: (clonedDoc) => {
-                                        // Exclude controls only. Preserve the preview's existing layout styles.
-                                        clonedDoc.querySelectorAll('.transcript-preview-toolbar, .no-print').forEach(node => {
-                                            node.style.setProperty('display', 'none', 'important');
-                                        });
-                                    }
-                                },
-                                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-                                // Match the visible one-page preview: don't force whole footer/signature blocks
-                                // onto a second page just because they are marked break-inside: avoid.
-                                pagebreak: { mode: ['css'] }
-                            };
-                            if (generationStatus) generationStatus.textContent = 'Generating and saving PDF…';
-                            // Use html2pdf's built-in save pipeline. It is more reliable on mobile
-                            // browsers than creating a Blob URL after a long asynchronous render.
-                            await printWindow.html2pdf().set(options).from(target).save();
-                            downloadStarted = true;
-                            console.info('[Transcript PDF] html2pdf save completed', {filename:options.filename, rows:previewRows.length});
+                        const html2canvasFn = printWindow.html2canvas ||
+                            (printWindow.html2pdf && printWindow.html2pdf.html2canvas);
+                        const jsPDFCtor = printWindow.jspdf && printWindow.jspdf.jsPDF
+                            ? printWindow.jspdf.jsPDF
+                            : (printWindow.jsPDF || (printWindow.html2pdf && printWindow.html2pdf.jsPDF));
+                        if (typeof html2canvasFn !== 'function') {
+                            throw new Error('html2canvas is not loaded in the transcript preview.');
                         }
+                        if (typeof jsPDFCtor !== 'function') {
+                            throw new Error('jsPDF is not loaded in the transcript preview.');
+                        }
+                        if (generationStatus) generationStatus.textContent = 'Rendering transcript…';
+                        const canvas = await html2canvasFn(target, {
+                            scale: 2,
+                            backgroundColor: '#ffffff',
+                            logging: false,
+                            useCORS: true,
+                            allowTaint: false,
+                            scrollX: 0,
+                            scrollY: 0,
+                            windowWidth: 794,
+                            onclone: (clonedDoc) => {
+                                clonedDoc.querySelectorAll('.transcript-preview-toolbar, .no-print').forEach(node => {
+                                    node.style.setProperty('display', 'none', 'important');
+                                });
+                            }
+                        });
+                        if (!canvas || !canvas.width || !canvas.height) {
+                            throw new Error('Transcript rendering returned an empty canvas.');
+                        }
+                        if (generationStatus) generationStatus.textContent = 'Building PDF…';
+                        const pdf = new jsPDFCtor({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+                        const pageWidth = pdf.internal.pageSize.getWidth();
+                        const pageHeight = pdf.internal.pageSize.getHeight();
+                        const marginMm = 4;
+                        const availableWidth = pageWidth - marginMm * 2;
+                        const availableHeight = pageHeight - marginMm * 2;
+                        const ratio = Math.min(availableWidth / canvas.width, availableHeight / canvas.height);
+                        const imageWidth = canvas.width * ratio;
+                        const imageHeight = canvas.height * ratio;
+                        const imageX = (pageWidth - imageWidth) / 2;
+                        const imageY = marginMm;
+                        pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', imageX, imageY, imageWidth, imageHeight, undefined, 'FAST');
+                        if (generationStatus) generationStatus.textContent = 'Saving PDF…';
+                        const studentName = String(user.full_name || 'Student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
+                        const filename = 'Provisional-Academic-Transcript-' + (studentName || 'Student') + '.pdf';
+                        pdf.save(filename);
+                        downloadStarted = true;
+                        console.info('[Transcript PDF] Exam-card style canvas/jsPDF export completed', {
+                            filename, canvasWidth: canvas.width, canvasHeight: canvas.height, rows: previewRows.length
+                        });
                     } catch (error) {
-                        console.warn('[Transcript PDF] html2pdf pipeline failed; trying direct canvas fallback', {
+                        console.error('[Transcript PDF] Direct canvas/jsPDF export failed; trying fallback', {
                             message: String(error && (error.message || error.name) || error || 'Unknown'),
                             stack: error && error.stack
                         });
