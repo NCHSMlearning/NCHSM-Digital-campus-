@@ -2435,18 +2435,23 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                                 pagebreak: { mode: ['css'] }
                             };
                             const pdfBlob = await printWindow.html2pdf().set(options).from(target).outputPdf('blob');
-                            if (!(pdfBlob instanceof Blob) || pdfBlob.size === 0) {
+                            if (!pdfBlob || typeof pdfBlob.size !== 'number' || pdfBlob.size === 0) {
                                 throw new Error('PDF generation returned an empty file.');
                             }
+                            // The Blob is created in the preview window; avoid cross-window instanceof checks.
                             const blobUrl = printWindow.URL.createObjectURL(pdfBlob);
                             const downloadLink = printWindow.document.createElement('a');
                             downloadLink.href = blobUrl;
                             downloadLink.download = options.filename;
-                            downloadLink.style.display = 'none';
+                            downloadLink.setAttribute('target', '_self');
+                            downloadLink.style.cssText = 'position:fixed;left:-9999px;top:0;display:block;';
                             printWindow.document.body.appendChild(downloadLink);
                             downloadLink.click();
-                            downloadLink.remove();
-                            printWindow.setTimeout(() => printWindow.URL.revokeObjectURL(blobUrl), 60000);
+                            // Keep the anchor and Blob URL alive briefly for mobile browsers to start the download.
+                            printWindow.setTimeout(() => {
+                                try { downloadLink.remove(); } catch (_) {}
+                                try { printWindow.URL.revokeObjectURL(blobUrl); } catch (_) {}
+                            }, 120000);
                             downloadStarted = true;
                             console.info('[Transcript PDF] html2pdf blob download triggered', {filename:options.filename, bytes:pdfBlob.size, rows:previewRows.length});
                         }
