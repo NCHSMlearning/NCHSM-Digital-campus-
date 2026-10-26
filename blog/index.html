@@ -460,9 +460,9 @@
             <div class="nav">
                 <a href="/" class="home-link">🏠 Home</a>
                 <a href="/blog/">📝 Blog</a>
-                <a href="/about">ℹ️ About</a>
-                <a href="/contact">📧 Contact</a>
-                <a href="/login" class="portal-btn">
+                <a href="/about.html">ℹ️ About</a>
+                <a href="/contact.html">📧 Contact</a>
+                <a href="/login.html" class="portal-btn">
                     <i class="fas fa-graduation-cap"></i> Student Portal
                 </a>
             </div>
@@ -483,7 +483,7 @@
         <section class="student-posts-section" aria-label="Student Blog Posts">
             <div class="student-posts-heading">
                 <h2><i class="fas fa-book-open"></i> Learning &amp; Career Insights</h2>
-                <span>Published student posts</span>
+                <span>Approved student contributions appear here when available</span>
             </div>
             <div id="studentBlogGrid">
                 <div class="blog-loading">
@@ -710,25 +710,20 @@
                 <ul>
                     <li><a href="post.html?slug=nchsm-application-guide">How to Apply to NCHSM</a></li>
                     <li><a href="post.html?slug=healthcare-careers-kenya">Top 10 Healthcare Careers</a></li>
-                    <li><a href="post.html?slug=nchsm-student-success-stories">NCHSM Student Success Stories</a></li>
+                    <li><a href="post.html?slug=nchsm-student-success-stories">How Health Sciences Education Can Prepare Students for Their Careers</a></li>
                     <li><a href="post.html?slug=nursing-studies-guide">Complete Guide to Nursing Studies</a></li>
                     <li><a href="post.html?slug=nursing-career-guide">Top 5 Reasons to Choose Nursing</a></li>
                     <li><a href="post.html?slug=student-life-tips">Day in the Life of a Health Sciences Student</a></li>
                 </ul>
             </div>
 
-            <!-- Newsletter Widget -->
+            <!-- Newsletter sign-up is omitted until a real subscription service is connected. -->
             <div class="sidebar-widget">
-                <h4>📧 Subscribe to Newsletter</h4>
-                <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 12px;">
-                    Get the latest updates delivered to your inbox.
+                <h4>📬 NCHSM Updates</h4>
+                <p style="color:#64748b;font-size:.9rem;line-height:1.65;margin:0;">
+                    For current admissions and institutional updates, please use the official
+                    <a href="/contact.html" style="color:#0A3D62;font-weight:600;">NCHSM contact page</a>.
                 </p>
-                <form id="newsletterForm" style="display: flex; gap: 8px;" onsubmit="return handleNewsletter(event);">
-                    <input type="email" placeholder="Your email" style="flex: 1; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem;">
-                    <button type="submit" style="background: #0A3D62; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        Subscribe
-                    </button>
-                </form>
             </div>
 
         </aside>
@@ -744,7 +739,7 @@
                 <a href="/blog/">📝 Blog</a>
                 <a href="/about">ℹ️ About</a>
                 <a href="/contact">📧 Contact</a>
-                <a href="/privacy">🔒 Privacy</a>
+                <a href="/privacy.html">🔒 Privacy</a>
                 <a href="/login" style="color: #FDB913; font-weight: 600;">🎓 Student Portal</a>
             </div>
             <div class="copyright">
@@ -759,16 +754,6 @@
     <script src="./js/student-blog-public.js"></script>
 
     <script>
-    function handleNewsletter(event) {
-        event.preventDefault();
-        const input = event.target.querySelector('input[type="email"]');
-        const message = document.getElementById('newsletterMessage');
-        if (!input || !input.value.trim()) return false;
-        message.textContent = 'Newsletter subscriptions will be enabled when the NCHSM mailing service is connected.';
-        input.value = '';
-        return false;
-    }
-
     // If the live student-blog service fails, keep the editorial articles visible.
     window.addEventListener('error', function (event) {
         const grid = document.getElementById('studentBlogGrid');
