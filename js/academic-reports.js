@@ -1932,8 +1932,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 44px; }
         .transcript-top > .verification-qr { position: absolute; top: 0; right: 0; z-index: 2; }
         .transcript-top .header { min-width: 0; }
-        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 1px; width: 34px; padding: 2px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 5px; font-weight: 700; color: #0A3D62; }
-        .verification-qr img { display: block; width: 26px; height: 26px; object-fit: contain; }
+        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 66px; padding: 3px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #0A3D62; }
+        .verification-qr img { display: block; width: 58px; height: 58px; object-fit: contain; image-rendering: pixelated; }
         .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 10px; margin-bottom: 12px; }
         .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
         .header-top img { max-height: 64px; max-width: 76px; width: auto; object-fit: contain; }
@@ -2014,12 +2014,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             .declaration { margin-top: 7px !important; padding: 8px 10px !important; }
             .signatures { margin-top: 8px !important; padding-bottom: 3px !important; }
             .footer { margin-top: 5px !important; padding-top: 5px !important; }
-            .verification-qr { width: 48px !important; padding: 2px !important; }
-            .verification-qr img { width: 42px !important; height: 42px !important; image-rendering: pixelated !important; }
+            .verification-qr { width: 66px !important; padding: 3px !important; }
+            .verification-qr img { width: 58px !important; height: 58px !important; image-rendering: pixelated !important; }
             .transcript-top { position: relative !important; display: block !important; width: 100% !important; margin: 0 0 3px !important; padding: 0 !important; }
             .transcript-top > .header { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
-            .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 44px !important; }
-            .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 38px !important; height: 38px !important; }
+            .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 64px !important; }
+            .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 58px !important; height: 58px !important; image-rendering: pixelated !important; }
             .header-top { display: flex !important; flex-direction: row !important; justify-content: center !important; align-items: center !important; gap: 6px !important; }
             .header-top img { max-height: 38px !important; max-width: 48px !important; }
             .header .school { font-size: 14px !important; line-height: 1.15 !important; }
@@ -2724,8 +2724,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         .container { display: block !important; width: 718px !important; min-width: 718px !important; max-width: 718px !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 4mm !important; border-radius: 0 !important; box-shadow: none !important; }
                         .transcript-top { position: relative !important; display: block !important; width: 100% !important; margin: 0 0 3px !important; padding: 0 !important; }
                         .transcript-top > .header { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 44px 2px 0 !important; border-bottom: 1px solid #0A3D62 !important; text-align: center !important; }
-                        .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 44px !important; }
-                        .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 38px !important; height: 38px !important; }
+                        .transcript-top > .verification-qr { position: absolute !important; top: 0 !important; right: 0 !important; width: 64px !important; }
+                        .transcript-top > .verification-qr img { display: block !important; visibility: visible !important; width: 58px !important; height: 58px !important; image-rendering: pixelated !important; }
                         .header-top { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; gap: 6px !important; }
                         .header-top img { max-width: 32px !important; max-height: 28px !important; }
                         .header .school { font-size: 12px !important; line-height: 1.1 !important; }
