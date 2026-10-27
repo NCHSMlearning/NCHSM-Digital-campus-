@@ -479,6 +479,69 @@
         }
     }
 </style>
+<style id="nchsm-clinical-admin-style">
+#clinical-placements{padding:clamp(14px,2.5vw,28px);background:var(--background,#f4f7fb);color:var(--text-color,#172554);box-sizing:border-box}
+#clinical-placements .ca-shell{max-width:1600px;margin:0 auto}
+#clinical-placements .ca-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:clamp(20px,3vw,30px);border-radius:18px;background:linear-gradient(125deg,#12395b,#176b87);color:#fff;margin-bottom:16px;box-shadow:0 12px 30px #12395b24}
+#clinical-placements .ca-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.4px;color:#a5f3fc}
+#clinical-placements .ca-hero h2{color:#fff;margin:8px 0;font-size:clamp(22px,2.7vw,31px)}
+#clinical-placements .ca-hero h2 i{color:#5eead4;margin-right:8px}
+#clinical-placements .ca-hero p{margin:0;color:#ffffffd9;max-width:850px;font-size:13px;line-height:1.6}
+#clinical-placements .ca-status{padding:12px 15px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:11px;font-size:12px;margin-bottom:16px;overflow-wrap:anywhere}
+#clinical-placements .ca-status-bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+#clinical-placements .ca-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+#clinical-placements .ca-metric,#clinical-placements .ca-card{background:var(--card-bg,#fff);border:1px solid var(--border-color,#e2e8f0);border-radius:15px;box-shadow:0 5px 18px #0f172a08;min-width:0}
+#clinical-placements .ca-metric{padding:16px}
+#clinical-placements .ca-metric span,#clinical-placements .ca-metric small{display:block;color:var(--muted-color,#64748b);font-size:11px}
+#clinical-placements .ca-metric strong{display:block;font-size:27px;margin:6px 0;color:var(--text-color,#17345f)}
+#clinical-placements .ca-card{padding:clamp(14px,2vw,22px);margin-bottom:16px}
+#clinical-placements .ca-card-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:17px}
+#clinical-placements .ca-card-heading h3{margin:0 0 5px;font-size:17px;color:var(--text-color,#17345f)}
+#clinical-placements .ca-card-heading h3 i{color:#0d9488;margin-right:7px}
+#clinical-placements .ca-card-heading p,#clinical-placements .ca-capacity-heading p{margin:0;font-size:12px;color:var(--muted-color,#64748b);line-height:1.5}
+#clinical-placements .ca-tag{font-size:9px;font-weight:800;letter-spacing:.8px;color:#0f766e;background:#ccfbf1;padding:6px 9px;border-radius:99px}
+#clinical-placements .ca-form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+#clinical-placements .ca-field{display:flex;flex-direction:column;gap:7px;min-width:0}
+#clinical-placements .ca-field>span{font-size:11px;font-weight:750;color:var(--muted-color,#475569)}
+#clinical-placements .ca-span-2{grid-column:span 2}
+#clinical-placements .ca-input{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--border-color,#cbd5e1);border-radius:9px;background:var(--input-bg,#fff);color:var(--text-color,#172554);padding:10px 11px;font:inherit;font-size:12px;outline:none}
+#clinical-placements .ca-input:focus{border-color:#0d9488;box-shadow:0 0 0 3px #0d94881c}
+#clinical-placements .ca-capacity-heading{margin:20px 0 10px}
+#clinical-placements .ca-capacity-heading h4{margin:0 0 4px;font-size:13px}
+#clinical-placements .ca-capacity-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+#clinical-placements .ca-capacity>span i{color:#0d9488;margin-right:5px}
+#clinical-placements .ca-form-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:18px}
+#clinical-placements .ca-form-hint{font-size:11px;color:var(--muted-color,#64748b);flex:1 1 260px}
+#clinical-placements .ca-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:9px;padding:9px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+#clinical-placements .ca-btn:disabled{opacity:.5;cursor:not-allowed}
+#clinical-placements .ca-btn-primary{background:#0f766e;color:#fff;padding:11px 15px}
+#clinical-placements .ca-btn-green{background:#059669;color:#fff}
+#clinical-placements .ca-btn-amber{background:#d97706;color:#fff}
+#clinical-placements .ca-btn-purple{background:#6d28d9;color:#fff}
+#clinical-placements .ca-btn-light{background:var(--surface-bg,#f1f5f9);color:var(--text-color,#334155);border:1px solid var(--border-color,#e2e8f0)}
+#clinical-placements .ca-btn-hero{background:#ffffff1f;border:1px solid #ffffff5c;color:#fff;padding:11px 14px}
+#clinical-placements .ca-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+#clinical-placements .ca-table{width:100%;border-collapse:collapse;min-width:900px;font-size:11px}
+#clinical-placements .ca-preferences-table{min-width:1300px}
+#clinical-placements .ca-table th{background:var(--surface-bg,#f8fafc);text-align:left;text-transform:uppercase;letter-spacing:.35px;font-size:9px;color:var(--muted-color,#64748b);padding:12px 10px;border-bottom:1px solid var(--border-color,#e2e8f0);white-space:nowrap}
+#clinical-placements .ca-table td{padding:11px 10px;border-bottom:1px solid var(--border-color,#edf0f5);vertical-align:top;color:var(--text-color,#334155)}
+#clinical-placements .ca-table td strong,#clinical-placements .ca-table td small{display:block}
+#clinical-placements .ca-table td small{font-size:10px;color:var(--muted-color,#64748b);margin-top:4px;line-height:1.45}
+#clinical-placements .ca-table tbody tr:hover{background:var(--surface-bg,#f8fafc)}
+#clinical-placements .ca-table tr.ca-selected{background:#ecfeff}
+#clinical-placements .ca-empty{text-align:center;padding:25px!important;color:var(--muted-color,#64748b)!important}
+#clinical-placements .ca-pill{display:inline-flex;padding:4px 7px;border-radius:99px;background:#f1f5f9;color:#475569;font-size:9px;font-weight:800;text-transform:uppercase}
+#clinical-placements .ca-open{background:#dcfce7;color:#166534}#clinical-placements .ca-scheduled{background:#fef3c7;color:#92400e}#clinical-placements .ca-closed{background:#fee2e2;color:#991b1b}#clinical-placements .ca-published,#clinical-placements .ca-allocated{background:#dbeafe;color:#1d4ed8}
+#clinical-placements .ca-actions{display:flex;gap:5px;flex-wrap:wrap}
+#clinical-placements .ca-pref-list{margin:0;padding-left:18px;min-width:130px;line-height:1.8}
+#clinical-placements .ca-assign-fields{display:flex;flex-direction:column;gap:6px;min-width:210px}
+#clinical-placements .ca-date-pair{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#clinical-placements .ca-allocate{align-self:flex-start}
+#clinical-placements .ca-footer-note{display:flex;align-items:flex-start;gap:10px;color:var(--muted-color,#64748b);font-size:11px;line-height:1.6;padding:5px 3px 15px}
+#clinical-placements .ca-footer-note i{color:#0d9488;margin-top:2px}
+@media(max-width:900px){#clinical-placements .ca-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#clinical-placements .ca-capacity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){#clinical-placements{padding:11px}#clinical-placements .ca-metrics{gap:8px}#clinical-placements .ca-metric{padding:11px}#clinical-placements .ca-metric strong{font-size:22px}#clinical-placements .ca-metric span{font-size:10px}#clinical-placements .ca-form-grid{grid-template-columns:1fr}#clinical-placements .ca-span-2{grid-column:auto}#clinical-placements .ca-capacity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#clinical-placements .ca-hero{padding:18px}#clinical-placements .ca-card-heading h3{font-size:15px}}
+</style>
 </head>
 <body>
     <div class="container">
@@ -1094,6 +1157,12 @@
                             <a href="#" data-tab="attendance" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-clipboard-check" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>Attendance</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" data-tab="clinical-placements" style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:13px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.8)'">
+                                <i class="fas fa-hospital-user" style="width:18px;text-align:center;font-size:12px;color:#5eead4;"></i>
+                                <span>Clinical Placements</span>
                             </a>
                         </li>
                         <li>
@@ -9970,7 +10039,51 @@
     </div>
 </section>
 
-          <!-- Attendance Section - COMPLETE TVET SUPPORT -->
+          <!-- SUPER ADMIN: CLINICAL ROTATION BALLOTING & PLACEMENTS -->
+<section id="clinical-placements" class="tab-content" style="display:none">
+  <div class="ca-shell">
+    <header class="ca-hero">
+      <div><span class="ca-eyebrow">SCHOOL OF NURSING · CLINICAL GOVERNANCE</span><h2><i class="fas fa-hospital-user"></i> Clinical Rotation Management</h2><p>Create and schedule the final clinical rotation ballot, review student preferences, set department capacities, and record final placements.</p></div>
+      <button type="button" id="ca-refresh" class="ca-btn ca-btn-hero"><i class="fas fa-rotate"></i> Refresh data</button>
+    </header>
+    <div class="ca-status" id="clinical-admin-status" role="status">Connecting to clinical placement records…</div>
+    <div class="ca-metrics">
+      <div class="ca-metric"><span>Available ballots</span><strong id="ca-ballot-total">—</strong><small>Scheduled, open and completed</small></div>
+      <div class="ca-metric"><span>Student submissions</span><strong id="ca-pref-total">0</strong><small>For the selected ballot</small></div>
+      <div class="ca-metric"><span>Allocated placements</span><strong id="ca-allocated-total">0</strong><small>For the selected ballot</small></div>
+    </div>
+    <section class="ca-card">
+      <div class="ca-card-heading"><div><h3><i class="fas fa-sliders"></i> Ballot configuration</h3><p>Set eligibility, opening and closing times, and maximum places per department. A capacity of zero means no capacity limit is enforced.</p></div><span class="ca-tag">ADMINISTRATOR</span></div>
+      <form id="ca-ballot-form">
+        <input type="hidden" id="ca-edit-id" value="">
+        <div class="ca-form-grid">
+          <label class="ca-field ca-span-2"><span>Ballot title *</span><input class="ca-input" id="ca-title" required maxlength="150" placeholder="e.g. Block 5 Final Clinical Rotation"></label>
+          <label class="ca-field"><span>Program</span><input class="ca-input" id="ca-program" placeholder="e.g. KRCHN"></label>
+          <label class="ca-field"><span>Eligible block</span><input class="ca-input" id="ca-block" placeholder="e.g. Block 5"></label>
+          <label class="ca-field"><span>Intake year (optional)</span><input class="ca-input" id="ca-intake" placeholder="e.g. 2024"></label>
+          <label class="ca-field"><span>Opens at</span><input class="ca-input" id="ca-opens" type="datetime-local"></label>
+          <label class="ca-field"><span>Closes at</span><input class="ca-input" id="ca-closes" type="datetime-local"></label>
+        </div>
+        <div class="ca-capacity-heading"><div><h4>Department capacities</h4><p>Set the maximum number of students for each department.</p></div></div>
+        <div class="ca-capacity-grid">
+          <label class="ca-field ca-capacity"><span><i class="fas fa-heart-pulse"></i> Medical Ward</span><input class="ca-input" id="ca-cap-0" type="number" min="0" step="1" value="0" aria-label="Medical Ward capacity"></label><label class="ca-field ca-capacity"><span><i class="fas fa-user-doctor"></i> Surgical Ward</span><input class="ca-input" id="ca-cap-1" type="number" min="0" step="1" value="0" aria-label="Surgical Ward capacity"></label><label class="ca-field ca-capacity"><span><i class="fas fa-baby"></i> Maternity</span><input class="ca-input" id="ca-cap-2" type="number" min="0" step="1" value="0" aria-label="Maternity capacity"></label><label class="ca-field ca-capacity"><span><i class="fas fa-child"></i> Paediatric Ward</span><input class="ca-input" id="ca-cap-3" type="number" min="0" step="1" value="0" aria-label="Paediatric Ward capacity"></label>
+        </div>
+        <div class="ca-form-actions"><button type="submit" class="ca-btn ca-btn-primary" id="ca-save-ballot"><i class="fas fa-plus"></i> Create ballot</button><button type="button" class="ca-btn ca-btn-light" id="ca-reset-form">Clear form</button><span class="ca-form-hint">New ballots are created as scheduled. Open them only when ready for students to submit preferences.</span></div>
+      </form>
+    </section>
+    <section class="ca-card">
+      <div class="ca-card-heading"><div><h3><i class="fas fa-calendar-check"></i> Ballots & status</h3><p>Select a ballot to edit its configuration or manage submissions. Closing a ballot prevents further preference changes.</p></div></div>
+      <div class="ca-table-wrap"><table class="ca-table"><thead><tr><th>Ballot / eligibility</th><th>Intake</th><th>Submission window</th><th>Status</th><th>Submissions</th><th>Select</th><th>Actions</th></tr></thead><tbody id="ca-ballots-body"><tr><td colspan="7" class="ca-empty">Loading ballots…</td></tr></tbody></table></div>
+    </section>
+    <section class="ca-card">
+      <div class="ca-card-heading"><div><h3><i class="fas fa-users"></i> Student preferences & allocations</h3><p>Review each student's ranked choices and record the final facility, department, dates and required hours. Capacity warnings are advisory; allocation remains an administrator decision.</p></div><button type="button" class="ca-btn ca-btn-light" id="ca-load-preferences"><i class="fas fa-rotate"></i> Reload submissions</button></div>
+      <div class="ca-table-wrap"><table class="ca-table ca-preferences-table"><thead><tr><th>Student</th><th>Program</th><th>Block</th><th>Ranked preferences</th><th>Submitted</th><th>Placement status</th><th>Allocate / update</th></tr></thead><tbody id="ca-preferences-body"><tr><td colspan="7" class="ca-empty">Select a ballot to review student choices and assign placements.</td></tr></tbody></table></div>
+    </section>
+    <div class="ca-footer-note"><i class="fas fa-shield-halved"></i><span>Student preferences are private to the submitting student and authorized clinical administrators. Verify placement capacity and clinical site approval before finalizing allocations.</span></div>
+  </div>
+</section>
+
+<!-- Attendance Section - COMPLETE TVET SUPPORT -->
 <section id="attendance" class="tab-content">
     <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px;">
         <h2 style="color: white; margin: 0; display: flex; align-items: center; gap: 12px;">
@@ -15474,5 +15587,6 @@ console.log('✅ Search function loaded successfully!');
 <script src="./js/superadmin-dashboard-reliability.js"></script>
 <script src="./js/superadmin-rejection-fix.js?v=20261024-1"></script>
 <script src="./js/superadmin-unit-registration-init.js?v=20261025-1"></script>
+<script src="./js/superadmin-clinical-placements.js?v=20261027-1" defer></script>
 </body>
 </html>
