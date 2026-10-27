@@ -591,6 +591,7 @@
                             .select('*')
                             .eq('admission_number', admissionNumber)
                             .eq('published', true)
+                            .eq('approval_status', 'approved')
                             .order('published_at', { ascending: false }),
                         15000,
                         'Published marks request'
@@ -605,6 +606,7 @@
                             .select('*')
                             .eq('student_id', authUserId)
                             .eq('published', true)
+                            .eq('approval_status', 'approved')
                             .order('published_at', { ascending: false }),
                         15000,
                         'Published marks fallback request'
