@@ -209,7 +209,10 @@
     });
   }
   async function init() {
-    if(!$('clinical-placements')) return;
+    const panel = $('clinical-placements');
+    if(!panel) return;
+    // Let the existing Super Admin tab controller and .tab-content.active CSS control visibility.
+    panel.style.removeProperty('display');
     bind();
     try {
       await loadBallots();
