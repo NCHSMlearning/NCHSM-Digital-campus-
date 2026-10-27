@@ -251,19 +251,32 @@ function getStatusLabel(score, programCode) {
 }
 
 function calculateGPA(marks, programCode) {
-    if (!marks || marks.length === 0) return 0;
+    if (!Array.isArray(marks) || marks.length === 0) return 0;
+
+    // Only approved and published results contribute to transcript GPA.
+    const eligibleMarks = marks.filter(m => m && m.published === true &&
+        String(m.approval_status || '').trim().toLowerCase() === 'approved');
+
     let totalPoints = 0;
     let totalCredits = 0;
-    
-    marks.forEach(m => {
-        const score = m.final_score || 0;
-        if (score > 0) {
-            const gradeInfo = calculateOfficialGrade(score, programCode);
-            totalPoints += gradeInfo.points * GRADE_CONFIG.creditHours;
-            totalCredits += GRADE_CONFIG.creditHours;
-        }
+    const defaultCredits = Number(GRADE_CONFIG.creditHours) > 0 ? Number(GRADE_CONFIG.creditHours) : 3;
+
+    eligibleMarks.forEach(m => {
+        const rawScore = m.final_score !== null && m.final_score !== undefined && m.final_score !== ''
+            ? m.final_score
+            : (m.final_total !== undefined ? m.final_total : (m.total_score !== undefined ? m.total_score : m.total));
+        if (rawScore === null || rawScore === undefined || rawScore === '') return;
+        const score = Number(rawScore);
+        if (!Number.isFinite(score)) return;
+
+        // Include zero-score failures in the denominator instead of inflating GPA.
+        const gradeInfo = calculateOfficialGrade(score, programCode);
+        const rawCredits = Number(m.credits || m.credit_hours || m.creditHours);
+        const credits = Number.isFinite(rawCredits) && rawCredits > 0 ? rawCredits : defaultCredits;
+        totalPoints += Number(gradeInfo && gradeInfo.points || 0) * credits;
+        totalCredits += credits;
     });
-    
+
     return totalCredits > 0 ? Math.round((totalPoints / totalCredits) * 100) / 100 : 0;
 }
 
