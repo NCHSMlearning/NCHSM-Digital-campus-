@@ -256,18 +256,18 @@ function calculateGPA(marks) {
     var totalCredits = 0;
 
     eligibleMarks.forEach(function(mark) {
-        var rawPoints = mark.points;
-        if (rawPoints === null || rawPoints === undefined || rawPoints === '') {
-            var rawScore = mark.final_score;
-            if (rawScore === null || rawScore === undefined || rawScore === '') {
-                rawScore = mark.final_total !== undefined ? mark.final_total :
-                    (mark.total_score !== undefined ? mark.total_score : mark.total);
-            }
-            var score = Number(rawScore);
-            if (!Number.isFinite(score) || typeof calculateOfficialGrade !== 'function') return;
-            var gradeInfo = calculateOfficialGrade(score, mark.program_code || mark.program);
-            rawPoints = gradeInfo ? gradeInfo.points : null;
+        // Recalculate from effective result instead of trusting stale zero/wrong points.
+        var passedRetake = /^(pass|passed|competent)$/i.test(String(mark.retake_status || '').trim()) &&
+            mark.retake_score !== null && mark.retake_score !== undefined && mark.retake_score !== '';
+        var rawScore = passedRetake ? mark.retake_score : mark.final_score;
+        if (rawScore === null || rawScore === undefined || rawScore === '') {
+            rawScore = mark.final_total !== undefined ? mark.final_total :
+                (mark.total_score !== undefined ? mark.total_score : mark.total);
         }
+        var score = Number(rawScore);
+        if (!Number.isFinite(score) || typeof calculateOfficialGrade !== 'function') return;
+        var gradeInfo = calculateOfficialGrade(score, mark.program_code || mark.program);
+        var rawPoints = gradeInfo ? gradeInfo.points : null;
 
         var points = Number(rawPoints);
         // A value of zero is valid and must count as a failed unit.
