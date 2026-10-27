@@ -1032,69 +1032,125 @@ window.renderProgressionTable = function(students, marks) {
     const tbody = document.getElementById('analytics_progression_body');
     if (!tbody) return;
 
+    const normalizeIdentifier = value => String(value ?? '').trim().toLowerCase();
     const normalizeBlock = value => {
         const raw = String(value || '').trim().toLowerCase().normalize('NFKC')
-            .replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
-        if (raw === 'introductory' || raw === 'introduction' || raw === 'intro') return 'Introductory';
-        const match = raw.match(/^(?:block\s*)?(\d+)$/);
-        return match ? 'Block ' + match[1] : String(value || '').trim();
+            .replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ');
+        if (['introductory', 'introduction', 'intro'].includes(raw)) return 'Introductory';
+        if (/^(fqe|final qualifying examination|final qualifying exam)$/.test(raw)) return 'FQE';
+        const match = raw.match(/^(?:block\\s*)?(\\d+)$/);
+        if (match) return 'Block ' + match[1];
+        return String(value || '').trim();
     };
-    const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4'];
-    const scoreByIdentifier = new Map();
+    const blockRank = value => {
+        if (value === 'Introductory') return 0;
+        if (value === 'FQE' || /^final$/i.test(value)) return 100;
+        const match = String(value).match(/^Block (\\d+)$/);
+        return match ? Number(match[1]) : 50;
+    };
 
+    // Index every result row once by its possible learner identifiers. Keeping
+    // row indices lets us match admission number/student ID without double-counting
+    // the same result when a profile contains both identifiers.
+    const records = [];
+    const rowsByIdentifier = new Map();
     (marks || []).forEach(mark => {
-        const score = Number(window.getAnalyticsEffectiveScore(mark));
-        if (!Number.isFinite(score) || score <= 0) return;
+        if (!mark || !window.isAnalyticsMarkEligible(mark)) return;
+        const rawScore = window.getAnalyticsEffectiveScore(mark);
+        // Null/blank means no result yet; numeric 0 is a real failing result and
+        // must remain in the average denominator.
+        if (rawScore === null || rawScore === undefined || String(rawScore).trim() === '') return;
+        const score = Number(rawScore);
+        if (!Number.isFinite(score) || score < 0 || score > 100) return;
         const block = normalizeBlock(mark.block);
         if (!block) return;
-        const identifiers = [...new Set([mark.admission_number, mark.student_id].filter(Boolean).map(v => String(v).trim()))];
+        const recordIndex = records.length;
+        records.push({ score, block });
+        const identifiers = [...new Set([
+            mark.admission_number, mark.student_id, mark.student_uuid, mark.student_id_number
+        ].map(normalizeIdentifier).filter(Boolean))];
         identifiers.forEach(identifier => {
-            if (!scoreByIdentifier.has(identifier)) scoreByIdentifier.set(identifier, new Map());
-            const byBlock = scoreByIdentifier.get(identifier);
-            if (!byBlock.has(block)) byBlock.set(block, { total: 0, count: 0 });
-            const entry = byBlock.get(block);
-            entry.total += score;
-            entry.count++;
+            if (!rowsByIdentifier.has(identifier)) rowsByIdentifier.set(identifier, []);
+            rowsByIdentifier.get(identifier).push(recordIndex);
         });
     });
 
-    // Show every learner in the selected class; do not silently truncate at 100.
-    const topStudents = (students || []).filter(Boolean);
-    if (!topStudents.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding:30px;text-align:center;color:#94a3b8;">No progression data available</td></tr>';
+    const learners = (students || []).filter(Boolean);
+    const learnerData = learners.map(student => {
+        const identifiers = [...new Set([
+            student.admission_number, student.student_id, student.student_uuid, student.id
+        ].map(normalizeIdentifier).filter(Boolean))];
+        const recordIndices = new Set();
+        identifiers.forEach(identifier => (rowsByIdentifier.get(identifier) || []).forEach(index => recordIndices.add(index)));
+        const byBlock = new Map();
+        let total = 0;
+        let count = 0;
+        recordIndices.forEach(index => {
+            const record = records[index];
+            if (!byBlock.has(record.block)) byBlock.set(record.block, { total: 0, count: 0 });
+            const bucket = byBlock.get(record.block);
+            bucket.total += record.score;
+            bucket.count += 1;
+            total += record.score;
+            count += 1;
+        });
+        return { student, byBlock, average: count ? total / count : null, resultCount: count };
+    });
+
+    // Include all blocks present in the selected academic year, including Block 5,
+    // Block 6 and FQE, rather than silently omitting later progression periods.
+    const blockNames = [...new Set(records.map(record => record.block))]
+        .sort((a, b) => blockRank(a) - blockRank(b) || a.localeCompare(b));
+    const preferred = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'FQE'];
+    const orderedBlocks = [
+        ...preferred.filter(block => blockNames.includes(block)),
+        ...blockNames.filter(block => !preferred.includes(block))
+    ];
+
+    // Keep the header aligned with the dynamic block columns + overall average.
+    const table = tbody.closest('table');
+    const headerRow = table?.querySelector('thead tr');
+    if (headerRow) {
+        const nameHeader = headerRow.querySelector('th');
+        const nameText = nameHeader?.textContent?.trim() || 'Learner';
+        headerRow.innerHTML = '<th style="padding:10px 12px;text-align:left;">' + window.escapeHtml(nameText) + '</th>' +
+            orderedBlocks.map(block => '<th style="padding:10px 12px;text-align:center;">' + window.escapeHtml(block) + ' Avg (%)</th>').join('') +
+            '<th style="padding:10px 12px;text-align:center;">Overall Average (%)</th>' +
+            '<th style="padding:10px 12px;text-align:center;">Trend</th>';
+    }
+
+    if (!learnerData.length) {
+        const colCount = orderedBlocks.length + 3;
+        tbody.innerHTML = '<tr><td colspan="' + colCount + '" style="padding:30px;text-align:center;color:#64748b;">No learners match the selected class filters.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = topStudents.map(student => {
-        const identifiers = [...new Set([student.admission_number, student.student_id, student.id].filter(Boolean).map(v => String(v).trim()))];
-        const merged = new Map();
-        identifiers.forEach(identifier => {
-            const byBlock = scoreByIdentifier.get(identifier);
-            if (!byBlock) return;
-            byBlock.forEach((entry, block) => {
-                if (!merged.has(block)) merged.set(block, { total: 0, count: 0 });
-                const current = merged.get(block);
-                current.total += entry.total;
-                current.count += entry.count;
-            });
+    tbody.innerHTML = learnerData.map(({ student, byBlock, average, resultCount }) => {
+        const blockAverages = orderedBlocks.map(block => {
+            const entry = byBlock.get(block);
+            return entry && entry.count ? entry.total / entry.count : null;
         });
-
-        const scores = blockOrder.map(block => {
-            const entry = merged.get(block);
-            return entry && entry.count ? Math.round(entry.total / entry.count) : '-';
-        });
-        const valid = scores.filter(score => score !== '-');
-        let trend = '➡️', trendColor = '#94a3b8';
-        if (valid.length >= 2) {
-            if (valid[valid.length - 1] > valid[0]) { trend = '↗️'; trendColor = '#10b981'; }
-            else if (valid[valid.length - 1] < valid[0]) { trend = '↘️'; trendColor = '#ef4444'; }
-            else { trend = '➡️'; trendColor = '#f59e0b'; }
+        const observed = blockAverages.filter(value => value !== null);
+        let trend = '—', trendColor = '#94a3b8';
+        if (observed.length >= 2) {
+            if (observed[observed.length - 1] > observed[0]) { trend = '↗ Improving'; trendColor = '#059669'; }
+            else if (observed[observed.length - 1] < observed[0]) { trend = '↘ Declining'; trendColor = '#dc2626'; }
+            else { trend = '→ Stable'; trendColor = '#b45309'; }
         }
-        return `<tr style="border-bottom:1px solid #e5e7eb;">
-            <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(student.full_name || student.name || 'Unknown')}</td>
-            ${scores.map(score => `<td style="padding:10px 12px;text-align:center;font-weight:600;color:${score !== '-' && score >= 60 ? '#10b981' : score !== '-' ? '#ef4444' : '#94a3b8'};">${score}</td>`).join('')}
-            <td style="padding:10px 12px;text-align:center;font-size:20px;color:${trendColor};">${trend}</td>
-        </tr>`;
+        const blockCells = blockAverages.map(value => {
+            if (value === null) return '<td style="padding:9px 10px;text-align:center;color:#94a3b8;">—</td>';
+            const rounded = Math.round(value * 10) / 10;
+            const color = rounded >= 60 ? '#059669' : '#dc2626';
+            return '<td style="padding:9px 10px;text-align:center;font-weight:600;color:' + color + ';">' + rounded.toFixed(1) + '</td>';
+        }).join('');
+        const overall = average === null ? 'No published results' : (Math.round(average * 10) / 10).toFixed(1) + '%';
+        const overallColor = average === null ? '#64748b' : average >= 60 ? '#059669' : '#dc2626';
+        return '<tr style="border-bottom:1px solid #e5e7eb;">' +
+            '<td style="padding:9px 10px;font-weight:500;">' + window.escapeHtml(student.full_name || student.name || student.admission_number || student.student_id || 'Unknown') + '</td>' +
+            blockCells +
+            '<td title="' + resultCount + ' published/approved result(s)" style="padding:9px 10px;text-align:center;font-weight:700;color:' + overallColor + ';">' + overall + '</td>' +
+            '<td style="padding:9px 10px;text-align:center;font-weight:600;color:' + trendColor + ';">' + trend + '</td>' +
+            '</tr>';
     }).join('');
 };
 
