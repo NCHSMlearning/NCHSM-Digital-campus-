@@ -750,12 +750,12 @@ window.generateSelectedTranscript = async function() {
 
         if (year && year !== 'all') marksQuery = marksQuery.eq('academic_year', year);
 
-        const { data: studentMarks, error: marksError } = await marksQuery;
+        const { data: fetchedStudentMarks, error: marksError } = await marksQuery;
         if (marksError) throw marksError;
 
         // Never fall back to unfiltered years: unpublished or unapproved marks
         // must not enter a transcript preview.
-        studentMarks = studentMarks || [];
+        const studentMarks = fetchedStudentMarks || [];
         window.showTranscriptPreview(student, studentMarks, year);
 
         if (studentMarks.length === 0) {
