@@ -107,7 +107,7 @@
       const now = Date.now();
       const startWait = opens && now < opens ? opens - now : 0;
       const closeWait = closes && now > closes;
-      const canSpin = !startWait && !closeWait && !!state.ballot && ['open','scheduled'].includes(String(state.ballot.status||'').toLowerCase()) && (!opens || now >= opens) && (!closes || now <= closes);
+      const canSpin = !startWait && !closeWait && !!state.ballot && ['open','scheduled'].includes(String(state.ballot.status||'').toLowerCase()) && (!opens || now >= opens) && (!closes || now <= closes) && state.spinsUsed < 2;
       spin.disabled = !canSpin || state.busy || spin.dataset.spinning === '1';
       if (startWait > 0) {
         countdown.textContent = 'Wheel opens in ' + formatCountdown(startWait);
@@ -118,6 +118,9 @@
       } else if (canSpin) {
         countdown.textContent = 'The wheel is open. Spin to choose your first preference.';
         if (spin.dataset.spinning !== '1') spin.innerHTML = '<i class="fas fa-dharmachakra"></i> Spin department wheel';
+      } else if (state.spinsUsed >= 2) {
+        countdown.textContent = 'You have used both spins. Submit your preferences below.';
+        spin.innerHTML = '<i class="fas fa-check-circle"></i> Spins used — submit choice';
       } else {
         countdown.textContent = 'Waiting for the School of Nursing to open this ballot.';
         spin.innerHTML = '<i class="fas fa-clock"></i> Waiting to open';
