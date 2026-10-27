@@ -53,7 +53,8 @@
     const now = Date.now();
     const opens = ballot && ballot.opens_at ? new Date(ballot.opens_at).getTime() : 0;
     const closes = ballot && ballot.closes_at ? new Date(ballot.closes_at).getTime() : 0;
-    const open = !!ballot && String(ballot.status || '').toLowerCase() === 'open' && (!opens || now >= opens) && (!closes || now <= closes);
+    const ballotStatus = String(ballot?.status || '').toLowerCase();
+    const open = !!ballot && ['open','scheduled'].includes(ballotStatus) && (!opens || now >= opens) && (!closes || now <= closes);
     const oldPrefs = state.preference && Array.isArray(state.preference.preferences) ? state.preference.preferences : [];
     const prefOrder = oldPrefs.concat(departments.filter(d => !oldPrefs.includes(d)));
     const placementRows = state.placements.length ? state.placements.map(p =>
@@ -62,6 +63,7 @@
     const attendanceRows = state.attendance.length ? state.attendance.slice().sort((a,b) => String(b.shift_date||'').localeCompare(String(a.shift_date||''))).map(a =>
       '<tr><td>' + date(a.shift_date) + '</td><td>' + esc(a.department || current?.department || '—') + '</td><td>' + (Number(a.hours)||0) + '</td><td>' + statusPill(a.status) + '</td><td>' + esc(a.notes || '—') + '</td></tr>'
     ).join('') : '<tr><td colspan="5" class="cp-empty">No attendance entries recorded yet.</td></tr>';
+    ensureWheelStyles();
     mount.innerHTML =
       '<div class="cp-stats">' +
         '<div class="cp-stat"><span>Verified clinical hours</span><strong>' + hours + '</strong><small>Instructor-verified only</small></div>' +
@@ -71,7 +73,7 @@
       '</div>' +
       '<section class="cp-card"><div class="cp-card-head"><div><h2><i class="fas fa-vote-yea"></i> Final rotation department ballot</h2><p>Rank the departments you prefer. Allocation depends on available capacity and the college-approved rules.</p></div>' + statusPill(open ? 'open' : (ballot ? ballot.status || 'closed' : 'not available')) + '</div>' +
       (ballot ? '<div class="cp-ballot-meta"><span><i class="fas fa-calendar-day"></i> Opens: ' + date(ballot.opens_at) + '</span><span><i class="fas fa-calendar-check"></i> Closes: ' + date(ballot.closes_at) + '</span><span><i class="fas fa-users"></i> ' + esc(ballot.program || 'Eligible students') + '</span></div>' : '<div class="cp-notice"><i class="fas fa-info-circle"></i><div><strong>No ballot is currently available</strong><p>When the School of Nursing opens an eligible Block 5 ballot, it will appear here.</p></div></div>') +
-      (ballot ? '<form id="cp-preference-form"><p class="cp-instruction">Use the arrows to arrange your preferences from first to last choice.</p><div id="cp-preference-list">' + prefOrder.map((d,i) => '<div class="cp-pref-row" data-department="' + esc(d) + '"><span class="cp-rank">' + (i+1) + '</span><span class="cp-pref-name"><i class="fas ' + (d==='Medical Ward'?'fa-heart-pulse':d==='Surgical Ward'?'fa-user-doctor':d==='Maternity'?'fa-baby':'fa-child') + '"></i> ' + esc(d) + '</span><span class="cp-pref-actions"><button type="button" data-move="-1" aria-label="Move ' + esc(d) + ' up" ' + (!open || i===0 ? 'disabled':'') + '><i class="fas fa-chevron-up"></i></button><button type="button" data-move="1" aria-label="Move ' + esc(d) + ' down" ' + (!open || i===prefOrder.length-1 ? 'disabled':'') + '><i class="fas fa-chevron-down"></i></button></span></div>').join('') + '</div><button class="cp-primary" type="submit" ' + (!open || state.busy ? 'disabled':'') + '><i class="fas fa-paper-plane"></i> ' + (state.preference ? 'Update preferences' : 'Submit preferences') + '</button><span class="cp-save-note">' + (state.preference ? 'A preference submission exists for this ballot.' : 'Your choices are not submitted until you press the button.') + '</span></form>' : '') +
+      (ballot ? '<form id="cp-preference-form"><div id="cp-wheel-wrap" class="cp-wheel-wrap"><p class="cp-instruction">Spin the wheel to set your first-choice department. The remaining departments will follow in the displayed order.</p><div class="cp-wheel-stage"><div class="cp-wheel-pointer" aria-hidden="true"></div><div id="cp-department-wheel" class="cp-department-wheel"><div class="cp-wheel-label cp-wheel-label-0">Medical<br>Ward</div><div class="cp-wheel-label cp-wheel-label-1">Surgical<br>Ward</div><div class="cp-wheel-label cp-wheel-label-2">Maternity</div><div class="cp-wheel-label cp-wheel-label-3">Paediatric<br>Ward</div><div class="cp-wheel-center">NCHSM<br><small>ROTATION</small></div></div></div><div id="cp-wheel-countdown" class="cp-wheel-countdown" aria-live="polite"></div><button type="button" id="cp-spin-wheel" class="cp-primary cp-spin-wheel" ' + (!open || state.busy ? 'disabled':'') + '><i class="fas fa-dharmachakra"></i> Spin department wheel</button><p id="cp-wheel-result" class="cp-wheel-result" aria-live="polite">' + (state.preference ? 'Your submitted first choice: ' + esc((state.preference.preferences||[])[0]||'Not set') : 'Your preferences are not saved until you submit them below.') + '</p></div><p class="cp-instruction">You can review the full preference order below. Use the arrows if you need to adjust it after spinning.</p><div id="cp-preference-list">' + prefOrder.map((d,i) => '<div class="cp-pref-row" data-department="' + esc(d) + '"><span class="cp-rank">' + (i+1) + '</span><span class="cp-pref-name"><i class="fas ' + (d==='Medical Ward'?'fa-heart-pulse':d==='Surgical Ward'?'fa-user-doctor':d==='Maternity'?'fa-baby':'fa-child') + '"></i> ' + esc(d) + '</span><span class="cp-pref-actions"><button type="button" data-move="-1" aria-label="Move ' + esc(d) + ' up" ' + (!open || i===0 ? 'disabled':'') + '><i class="fas fa-chevron-up"></i></button><button type="button" data-move="1" aria-label="Move ' + esc(d) + ' down" ' + (!open || i===prefOrder.length-1 ? 'disabled':'') + '><i class="fas fa-chevron-down"></i></button></span></div>').join('') + '</div><button class="cp-primary" type="submit" ' + (!open || state.busy ? 'disabled':'') + '><i class="fas fa-paper-plane"></i> ' + (state.preference ? 'Update preferences' : 'Submit preferences') + '</button><span class="cp-save-note">' + (state.preference ? 'A preference submission exists for this ballot.' : 'Your choices are not submitted until you press the button.') + '</span></form>' : '') +
       '</section>' +
       '<section class="cp-card"><div class="cp-card-head"><div><h2><i class="fas fa-hospital-user"></i> My clinical placements</h2><p>Facility, assigned department and rotation dates.</p></div></div><div class="cp-table-wrap"><table class="cp-table"><thead><tr><th>Facility</th><th>Department</th><th>Start date</th><th>End date</th><th>Status</th></tr></thead><tbody>' + placementRows + '</tbody></table></div></section>' +
       '<section class="cp-card"><div class="cp-card-head"><div><h2><i class="fas fa-clock"></i> Clinical hours & attendance</h2><p>Hours count toward progress only after instructor verification.</p></div></div><div class="cp-table-wrap"><table class="cp-table"><thead><tr><th>Date</th><th>Department</th><th>Hours</th><th>Verification</th><th>Notes</th></tr></thead><tbody>' + attendanceRows + '</tbody></table></div></section>';
@@ -95,6 +97,89 @@
     }
     const form = $('cp-preference-form');
     if (form) form.addEventListener('submit', submitPreferences);
+    bindWheel(open, opens, closes);
+  }
+  let wheelTimer = null;
+  let wheelRotation = 0;
+  function ensureWheelStyles() {
+    if ($('cp-wheel-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'cp-wheel-styles';
+    style.textContent = `
+      .cp-wheel-wrap{margin:18px 0 24px;padding:18px 14px;border:1px solid #dbe6ef;border-radius:22px;background:linear-gradient(145deg,#f8fcff,#eef7fb);text-align:center}
+      .cp-wheel-stage{position:relative;width:min(76vw,300px);height:min(76vw,300px);margin:12px auto 18px}
+      .cp-department-wheel{position:relative;width:100%;height:100%;border-radius:50%;border:8px solid #fff;box-shadow:0 8px 26px #17324a2a,0 0 0 2px #c6dce8;overflow:hidden;background:conic-gradient(#d8f1f3 0 25%,#e8e4ff 25% 50%,#ffe8d7 50% 75%,#dff2dc 75% 100%);transition:transform 4.2s cubic-bezier(.12,.72,.12,1)}
+      .cp-wheel-pointer{position:absolute;z-index:3;top:-2px;left:calc(50% - 15px);width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-top:0;border-bottom:30px solid #f59e0b;filter:drop-shadow(0 3px 2px #0003)}
+      .cp-wheel-label{position:absolute;z-index:1;width:42%;font-weight:800;font-size:clamp(11px,3vw,14px);line-height:1.15;color:#17324a}
+      .cp-wheel-label-0{top:17%;left:8%;transform:rotate(-45deg)}.cp-wheel-label-1{top:17%;right:6%;transform:rotate(45deg)}.cp-wheel-label-2{bottom:17%;right:8%;transform:rotate(-45deg)}.cp-wheel-label-3{bottom:17%;left:6%;transform:rotate(45deg)}
+      .cp-wheel-center{position:absolute;z-index:2;top:50%;left:50%;transform:translate(-50%,-50%);width:26%;aspect-ratio:1;border-radius:50%;background:#123b5d;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:12px;box-shadow:0 2px 10px #0003}.cp-wheel-center small{font-size:7px;letter-spacing:1px}
+      .cp-wheel-countdown{font-weight:800;color:#244d68;margin:8px 0}.cp-spin-wheel{min-width:min(100%,260px);justify-content:center}.cp-spin-wheel:disabled{opacity:.55;cursor:not-allowed}.cp-wheel-result{font-weight:700;color:#187c73;margin:12px 0 0}
+      @media(prefers-reduced-motion:reduce){.cp-department-wheel{transition:none}}
+    `;
+    document.head.appendChild(style);
+  }
+  function bindWheel(open, opens, closes) {
+    const spin = $('cp-spin-wheel'), wheel = $('cp-department-wheel'), countdown = $('cp-wheel-countdown');
+    if (!spin || !wheel || !countdown) return;
+    const update = () => {
+      const now = Date.now();
+      const startWait = opens && now < opens ? opens - now : 0;
+      const closeWait = closes && now > closes;
+      const canSpin = !startWait && !closeWait && !!state.ballot && ['open','scheduled'].includes(String(state.ballot.status||'').toLowerCase());
+      spin.disabled = !canSpin || state.busy || spin.dataset.spinning === '1';
+      if (startWait > 0) {
+        countdown.textContent = 'Wheel opens in ' + formatCountdown(startWait);
+        spin.innerHTML = '<i class="fas fa-clock"></i> Opens in ' + formatCountdown(startWait);
+      } else if (closeWait) {
+        countdown.textContent = 'This ballot has closed.';
+        spin.innerHTML = '<i class="fas fa-lock"></i> Ballot closed';
+      } else if (canSpin) {
+        countdown.textContent = 'The wheel is open. Spin to choose your first preference.';
+        if (spin.dataset.spinning !== '1') spin.innerHTML = '<i class="fas fa-dharmachakra"></i> Spin department wheel';
+      } else {
+        countdown.textContent = 'Waiting for the School of Nursing to open this ballot.';
+        spin.innerHTML = '<i class="fas fa-clock"></i> Waiting to open';
+      }
+    };
+    update();
+    if (wheelTimer) clearInterval(wheelTimer);
+    wheelTimer = setInterval(update, 1000);
+    spin.addEventListener('click', () => {
+      if (spin.disabled || spin.dataset.spinning === '1') return;
+      const list = $('cp-preference-list');
+      if (!list) return;
+      const rows = Array.from(list.querySelectorAll('.cp-pref-row'));
+      if (rows.length !== departments.length) return notify('The department list is incomplete. Refresh the page and try again.', 'error');
+      spin.dataset.spinning = '1';
+      spin.disabled = true;
+      spin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Spinning…';
+      const chosenIndex = Math.floor(Math.random() * departments.length);
+      const chosen = departments[chosenIndex];
+      // Wheel sectors are equal; rotate so the selected sector finishes under the top pointer.
+      const targetSector = [45, 315, 225, 135][chosenIndex];
+      wheelRotation += 360 * (5 + Math.floor(Math.random() * 3)) + targetSector;
+      wheel.style.transform = 'rotate(' + wheelRotation + 'deg)';
+      window.setTimeout(() => {
+        const desired = [chosen].concat(departments.filter(d => d !== chosen));
+        desired.forEach(d => { const row = rows.find(r => r.dataset.department === d); if (row) list.appendChild(row); });
+        Array.from(list.querySelectorAll('.cp-pref-row')).forEach((row, i) => {
+          row.querySelector('.cp-rank').textContent = i + 1;
+          row.querySelectorAll('button[data-move]').forEach(b => {
+            b.disabled = (b.dataset.move === '-1' ? i === 0 : i === rows.length - 1);
+          });
+        });
+        const result = $('cp-wheel-result');
+        if (result) result.textContent = 'Wheel result: ' + chosen + ' is now your first choice. Review the order and submit to save it.';
+        spin.dataset.spinning = '0';
+        update();
+      }, 4300);
+    });
+  }
+  function formatCountdown(ms) {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const days = Math.floor(total / 86400), hours = Math.floor((total % 86400) / 3600);
+    const minutes = Math.floor((total % 3600) / 60), seconds = total % 60;
+    return (days ? days + 'd ' : '') + String(hours).padStart(2,'0') + ':' + String(minutes).padStart(2,'0') + ':' + String(seconds).padStart(2,'0');
   }
   async function submitPreferences(event) {
     event.preventDefault();
