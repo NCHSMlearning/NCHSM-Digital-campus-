@@ -69,6 +69,7 @@
       if(!pref.error) (pref.data||[]).forEach(p=>counts[p.ballot_id]=(counts[p.ballot_id]||0)+1);
     }
     state.ballots=ballots.map(b=>({...b,preference_count:counts[b.id]||0}));
+    const ballotTotal=$('ca-ballot-total'); if(ballotTotal) ballotTotal.textContent=state.ballots.length;
     if(state.selectedBallot) state.selectedBallot=state.ballots.find(b=>b.id===state.selectedBallot.id)||null;
     renderBallots();
     if(state.selectedBallot) await loadPreferences();
