@@ -644,7 +644,16 @@ if (window.location.pathname.endsWith('.html')) {
             lecturerExams = data || [];
             displayExams();
             loading.style.display = 'none';
-        } catch (e) { console.error(e); loading.innerHTML = 'Error loading exams'; }
+        } catch (e) {
+            console.error('Error loading lecturer exams:', e);
+            lecturerExams = [];
+            const tbody = document.getElementById('examsBody');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px;color:#b91c1c;">Unable to load exams. Please refresh and try again.</td></tr>';
+            if (loading) {
+                loading.style.display = 'none';
+                loading.innerHTML = '<i class="fas fa-exclamation-circle"></i> Unable to load exams';
+            }
+        }
     }
 
     function isLecturerOwnExam(exam) {
@@ -673,18 +682,27 @@ if (window.location.pathname.endsWith('.html')) {
             const mine = isLecturerOwnExam(e);
             const examName = String(e.exam_name || e.title || '').toLowerCase();
             const examType = String(e.exam_type || 'Exam').toLowerCase();
-            const examStatus = String(e.status || 'draft').toLowerCase();
-            const searchMatches = !search || examName.includes(search) || examType.includes(search);
+            const examStatus = String(e.status || 'draft').trim().toLowerCase().replace(/[ -]+/g, '_');
+            const searchMatches = !search || examName.includes(search) || examType.includes(search) || examStatus.includes(search);
             const ownerMatches = owner === 'all' || (owner === 'mine' && mine) || (owner === 'others' && !mine);
             const typeMatches = type === 'all' || (type === 'cat' && examType.includes('cat')) || (type === 'exam' && !examType.includes('cat'));
-            const statusMatches = status === 'all' || examStatus === status;
+            const statusMatches = status === 'all' ||
+                (status === 'published' && ['published', 'released'].includes(examStatus)) ||
+                (status === 'draft' && ['draft', 'pending', 'unpublished'].includes(examStatus)) ||
+                (status === 'active' && ['active', 'in_progress', 'ongoing', 'started'].includes(examStatus)) ||
+                (status === 'completed' && ['completed', 'closed', 'ended', 'submitted'].includes(examStatus));
             return searchMatches && ownerMatches && typeMatches && statusMatches;
         });
 
+        const examTimestamp = exam => {
+            const raw = exam.exam_date || exam.updated_at || exam.created_at;
+            const time = raw ? new Date(raw).getTime() : NaN;
+            return Number.isFinite(time) ? time : Number(exam.id || 0);
+        };
         filtered.sort((a, b) => {
             if (sort === 'name') return String(a.exam_name || a.title || '').localeCompare(String(b.exam_name || b.title || ''), undefined, { sensitivity: 'base' });
-            if (sort === 'oldest') return Number(a.id || 0) - Number(b.id || 0);
-            return Number(b.id || 0) - Number(a.id || 0);
+            if (sort === 'oldest') return examTimestamp(a) - examTimestamp(b);
+            return examTimestamp(b) - examTimestamp(a);
         });
 
         const summary = document.getElementById('examFilterSummary');
@@ -722,7 +740,8 @@ if (window.location.pathname.endsWith('.html')) {
             const examName = String(e.exam_name || e.title || 'Untitled exam');
             const examType = String(e.exam_type || 'Exam');
             const examStatus = String(e.status || 'draft');
-            const statusClass = examStatus.toLowerCase() === 'published' || examStatus.toLowerCase() === 'active' ? 'active' : examStatus.toLowerCase() === 'completed' ? 'completed' : 'pending';
+            const normalizedStatus = examStatus.trim().toLowerCase().replace(/[ -]+/g, '_');
+            const statusClass = ['published', 'released', 'active', 'ongoing', 'in_progress', 'started'].includes(normalizedStatus) ? 'active' : ['completed', 'closed', 'ended', 'submitted'].includes(normalizedStatus) ? 'completed' : 'pending';
             const safe = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
             return `
                 <tr>
