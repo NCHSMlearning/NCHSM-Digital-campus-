@@ -1390,6 +1390,49 @@ body{margin:0!important;background:#edf4f8!important;font-family:Inter,system-ui
 
 
 
+
+<style id="nchsm-theme-and-mobile-fix">
+/* Login theme support: paired with the existing NCHSMLogin theme toggle */
+body, .right-panel, .login-card, .form-input, .last-login-info, .attempts-info,
+.top-controls a, .top-controls button, .sso-btn, .signup-link, .theme-toggle-btn {
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+body.dark-theme { background:#071522!important; color:#e5eef5!important; }
+body.dark-theme .right-panel { background:linear-gradient(145deg,#0d2232,#102b3e)!important; color:#e5eef5!important; }
+body.dark-theme .login-card { background:#102536!important; border-color:#29475a!important; color:#e5eef5!important; box-shadow:0 18px 50px rgba(0,0,0,.28)!important; }
+body.dark-theme .welcome-title, body.dark-theme .form-label, body.dark-theme .form-options,
+body.dark-theme .login-card p, body.dark-theme .login-card label { color:#e5eef5; }
+body.dark-theme .welcome-subtitle, body.dark-theme .last-login-info,
+body.dark-theme .login-card small, body.dark-theme .signup-link { color:#afc4d3!important; }
+body.dark-theme .last-login-info, body.dark-theme .attempts-info { background:#142f42!important; border-color:#294b61!important; }
+body.dark-theme .form-input, body.dark-theme input.form-input { background:#0b1d2b!important; color:#f2f7fb!important; border-color:#35566b!important; }
+body.dark-theme .form-input::placeholder { color:#8da7b8!important; opacity:1; }
+body.dark-theme .form-input:focus { border-color:#38a6d7!important; box-shadow:0 0 0 3px rgba(56,166,215,.18)!important; }
+body.dark-theme .top-controls a, body.dark-theme .top-controls button,
+body.dark-theme .theme-toggle-btn, body.dark-theme .sso-btn {
+  background:#132e41!important; color:#e5eef5!important; border-color:#35566b!important;
+}
+body.dark-theme .top-controls .blog-btn { background:#f7b718!important; color:#142536!important; border-color:#f7b718!important; }
+body.dark-theme .divider { color:#a7bdcb!important; }
+body.dark-theme .right-panel a:not(.blog-btn) { color:#75c8f0; }
+body.dark-theme .right-panel .login-button, body.dark-theme #loginButton { background:linear-gradient(135deg,#0b6596,#073b5c)!important; color:#fff!important; }
+body.dark-theme .error-message { background:#3b1d27!important; border-color:#783b49!important; color:#ffe0e6!important; }
+body.dark-theme .success-message { background:#103b32!important; border-color:#236a57!important; color:#d5fff0!important; }
+body.dark-theme .mobile-header { color:#f1f7fb!important; }
+body.dark-theme .mobile-header .college-name, body.dark-theme .mobile-header .college-tagline { color:#f1f7fb!important; }
+body.dark-theme .right-panel .modal-content { background:#102536!important; color:#e5eef5!important; }
+body.dark-theme .right-panel .modal-content h2, body.dark-theme .right-panel .modal-content p { color:#e5eef5!important; }
+@media(max-width:720px) {
+  .container { overflow-x:hidden!important; }
+  .left-panel { min-width:0!important; }
+  .main-content { width:100%!important; min-width:0!important; }
+  .login-card { width:100%!important; min-width:0!important; }
+  .form-input { max-width:100%!important; }
+  .top-controls { align-items:center!important; }
+  .welcome-subtitle { max-width:100%; }
+}
+</style>
+
 </head>
 <body>
     <!-- Skip to content -->
