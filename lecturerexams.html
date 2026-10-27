@@ -187,6 +187,74 @@
                 </div>
             </div>
 
+            <style>
+                .exam-filter-panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin:0 0 16px;box-shadow:0 4px 16px rgba(15,23,42,.04)}
+                .exam-filter-stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+                .exam-filter-stat{display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:9px;background:#f8fafc;border:1px solid #e2e8f0;color:#475569;font-size:12px}
+                .exam-filter-stat strong{color:#0A3D62;font-size:13px}
+                .exam-filter-grid{display:grid;grid-template-columns:minmax(180px,2fr) repeat(4,minmax(130px,1fr));gap:11px;align-items:end}
+                .exam-filter-field label{display:block;font-size:11px;font-weight:700;color:#475569;margin:0 0 6px}
+                .exam-filter-field input,.exam-filter-field select{box-sizing:border-box;width:100%;min-height:41px;padding:9px 11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#0f172a;font:inherit;font-size:12px;outline:none}
+                .exam-filter-field input:focus,.exam-filter-field select:focus{border-color:#0A3D62;box-shadow:0 0 0 3px rgba(10,61,98,.10)}
+                .exam-filter-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+                .exam-filter-reset{border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;background:#fff;color:#334155;font-weight:600;font-size:12px;cursor:pointer}
+                .exam-filter-reset:hover{background:#f1f5f9}
+                #examFilterSummary{font-size:12px;color:#64748b}
+                #examsTable tbody tr:hover{background:#f8fafc}
+                @media(max-width:900px){.exam-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+                @media(max-width:520px){.exam-filter-panel{padding:13px}.exam-filter-grid{grid-template-columns:1fr}.exam-filter-stat{flex:1 1 42%}}
+            </style>
+            <div class="exam-filter-panel" aria-label="Filter department exams">
+                <div class="exam-filter-stats">
+                    <div class="exam-filter-stat"><i class="fas fa-file-alt"></i> All exams <strong id="examCountAll">0</strong></div>
+                    <div class="exam-filter-stat"><i class="fas fa-user-check" style="color:#059669;"></i> My exams <strong id="examCountMine">0</strong></div>
+                    <div class="exam-filter-stat"><i class="fas fa-users" style="color:#64748b;"></i> Other lecturers <strong id="examCountOthers">0</strong></div>
+                </div>
+                <div class="exam-filter-grid">
+                    <div class="exam-filter-field">
+                        <label for="examSearchFilter">Search exams</label>
+                        <input id="examSearchFilter" type="search" placeholder="Search by exam name or type…" oninput="applyExamFilters()" autocomplete="off">
+                    </div>
+                    <div class="exam-filter-field">
+                        <label for="examOwnerFilter">Exam ownership</label>
+                        <select id="examOwnerFilter" onchange="applyExamFilters()">
+                            <option value="all">All department exams</option>
+                            <option value="mine">My exams only</option>
+                            <option value="others">Other lecturers</option>
+                        </select>
+                    </div>
+                    <div class="exam-filter-field">
+                        <label for="examTypeFilter">Exam type</label>
+                        <select id="examTypeFilter" onchange="applyExamFilters()">
+                            <option value="all">All types</option>
+                            <option value="cat">CAT</option>
+                            <option value="exam">Other exams</option>
+                        </select>
+                    </div>
+                    <div class="exam-filter-field">
+                        <label for="examStatusFilter">Status</label>
+                        <select id="examStatusFilter" onchange="applyExamFilters()">
+                            <option value="all">All statuses</option>
+                            <option value="published">Published</option>
+                            <option value="draft">Draft</option>
+                            <option value="active">Active</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="exam-filter-field">
+                        <label for="examSortFilter">Sort by</label>
+                        <select id="examSortFilter" onchange="applyExamFilters()">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="name">Name A–Z</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="exam-filter-actions">
+                    <span id="examFilterSummary" aria-live="polite">Showing all exams</span>
+                    <button type="button" class="exam-filter-reset" onclick="resetExamFilters()"><i class="fas fa-undo"></i> Reset filters</button>
+                </div>
+            </div>
             <div style="background: white; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                 <div style="overflow-x: auto;">
                     <table id="examsTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
@@ -579,21 +647,90 @@ if (window.location.pathname.endsWith('.html')) {
         } catch (e) { console.error(e); loading.innerHTML = 'Error loading exams'; }
     }
 
+    function isLecturerOwnExam(exam) {
+        return String(exam?.created_by ?? '').trim() !== '' &&
+            String(exam.created_by).trim() === String(lecturerId ?? '').trim();
+    }
+
+    function applyExamFilters() {
+        const search = (document.getElementById('examSearchFilter')?.value || '').trim().toLowerCase();
+        const owner = document.getElementById('examOwnerFilter')?.value || 'all';
+        const type = document.getElementById('examTypeFilter')?.value || 'all';
+        const status = document.getElementById('examStatusFilter')?.value || 'all';
+        const sort = document.getElementById('examSortFilter')?.value || 'newest';
+
+        const all = Array.isArray(lecturerExams) ? lecturerExams : [];
+        const mineCount = all.filter(isLecturerOwnExam).length;
+        const othersCount = all.length - mineCount;
+        const countAll = document.getElementById('examCountAll');
+        const countMine = document.getElementById('examCountMine');
+        const countOthers = document.getElementById('examCountOthers');
+        if (countAll) countAll.textContent = all.length;
+        if (countMine) countMine.textContent = mineCount;
+        if (countOthers) countOthers.textContent = othersCount;
+
+        const filtered = all.filter(e => {
+            const mine = isLecturerOwnExam(e);
+            const examName = String(e.exam_name || e.title || '').toLowerCase();
+            const examType = String(e.exam_type || 'Exam').toLowerCase();
+            const examStatus = String(e.status || 'draft').toLowerCase();
+            const searchMatches = !search || examName.includes(search) || examType.includes(search);
+            const ownerMatches = owner === 'all' || (owner === 'mine' && mine) || (owner === 'others' && !mine);
+            const typeMatches = type === 'all' || (type === 'cat' && examType.includes('cat')) || (type === 'exam' && !examType.includes('cat'));
+            const statusMatches = status === 'all' || examStatus === status;
+            return searchMatches && ownerMatches && typeMatches && statusMatches;
+        });
+
+        filtered.sort((a, b) => {
+            if (sort === 'name') return String(a.exam_name || a.title || '').localeCompare(String(b.exam_name || b.title || ''), undefined, { sensitivity: 'base' });
+            if (sort === 'oldest') return Number(a.id || 0) - Number(b.id || 0);
+            return Number(b.id || 0) - Number(a.id || 0);
+        });
+
+        const summary = document.getElementById('examFilterSummary');
+        if (summary) summary.textContent = `Showing ${filtered.length} of ${all.length} exams${owner === 'mine' ? ' · Your exams' : owner === 'others' ? ' · Other lecturers' : ''}`;
+        renderExamRows(filtered);
+    }
+
+    function resetExamFilters() {
+        const defaults = { examSearchFilter: '', examOwnerFilter: 'all', examTypeFilter: 'all', examStatusFilter: 'all', examSortFilter: 'newest' };
+        Object.entries(defaults).forEach(([id, value]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        });
+        applyExamFilters();
+    }
+
     function displayExams() {
+        applyExamFilters();
+    }
+
+    function renderExamRows(exams) {
         const tbody = document.getElementById('examsBody');
-        if (!lecturerExams.length) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94A3B8;">No exams found in your program</td></tr>';
+        if (!tbody) return;
+        if (!exams.length) {
+            const hasAnyExams = Array.isArray(lecturerExams) && lecturerExams.length > 0;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:34px 18px;color:#64748b;">
+                <i class="fas fa-${hasAnyExams ? 'filter' : 'folder-open'}" style="display:block;font-size:24px;margin-bottom:10px;color:#94a3b8;"></i>
+                <strong style="display:block;color:#334155;margin-bottom:5px;">${hasAnyExams ? 'No exams match these filters' : 'No exams found in your program'}</strong>
+                <span style="font-size:12px;">${hasAnyExams ? 'Try changing your search or reset the filters.' : 'Department exams will appear here when available.'}</span>
+            </td></tr>`;
             return;
         }
-        tbody.innerHTML = lecturerExams.map(e => {
-            const mine = e.created_by === lecturerId;
+        tbody.innerHTML = exams.map(e => {
+            const mine = isLecturerOwnExam(e);
+            const examName = String(e.exam_name || e.title || 'Untitled exam');
+            const examType = String(e.exam_type || 'Exam');
+            const examStatus = String(e.status || 'draft');
+            const statusClass = examStatus.toLowerCase() === 'published' || examStatus.toLowerCase() === 'active' ? 'active' : examStatus.toLowerCase() === 'completed' ? 'completed' : 'pending';
+            const safe = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
             return `
                 <tr>
-                    <td><strong>${e.exam_name || e.title}</strong> ${!mine ? '<span style="font-size:10px;color:#94a3b8;">🔒</span>' : ''}</td>
-                    <td style="text-align:center;"><span class="status-badge ${e.exam_type?.includes('CAT') ? 'pending' : 'active'}">${e.exam_type || 'Exam'}</span></td>
-                    <td style="text-align:center;">${mine ? '<span style="color:#059669;font-weight:600;">You</span>' : '<span style="color:#94a3b8;">Other lecturer</span>'}</td>
-                    <td style="text-align:center;"><span class="status-badge ${e.status === 'published' ? 'active' : 'pending'}">${e.status || 'draft'}</span></td>
-                    <td style="text-align:center;"><span class="btn-view-only"><i class="fas fa-eye"></i> View Only</span></td>
+                    <td style="padding:12px 14px;"><strong>${safe(examName)}</strong> ${!mine ? '<span title="Created by another lecturer" style="font-size:10px;color:#94a3b8;">🔒</span>' : ''}</td>
+                    <td style="text-align:center;padding:12px 14px;"><span class="status-badge ${examType.toUpperCase().includes('CAT') ? 'pending' : 'active'}">${safe(examType)}</span></td>
+                    <td style="text-align:center;padding:12px 14px;">${mine ? '<span style="color:#059669;font-weight:600;">You</span>' : '<span style="color:#94a3b8;">Other lecturer</span>'}</td>
+                    <td style="text-align:center;padding:12px 14px;"><span class="status-badge ${statusClass}">${safe(examStatus)}</span></td>
+                    <td style="text-align:center;padding:12px 14px;"><span class="btn-view-only"><i class="fas fa-eye"></i> View Only</span></td>
                 </tr>
             `;
         }).join('');
