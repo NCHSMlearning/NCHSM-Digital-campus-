@@ -876,12 +876,51 @@ async function loadPublishedMarks() {
             allMarks = [];
         }
         
+        // Resolve complete student identity from profiles, not UUIDs stored on marks.
+        const admissionKeys = [...new Set(allMarks.map(m => String(m.admission_number || '').trim()).filter(Boolean))];
+        const studentUuidKeys = [...new Set(allMarks.map(m => String(m.student_id || '').trim()).filter(v => v && v.includes('-')))];
+        const profileAliases = {};
+        const profileRows = [];
+        for (let i = 0; i < admissionKeys.length; i += 100) {
+            const batch = admissionKeys.slice(i, i + 100);
+            const { data, error } = await window.sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name, program, phone_number')
+                .or('admission_number.in.(' + batch.join(',') + '),student_id.in.(' + batch.join(',') + ')');
+            if (error) console.warn('Student profile lookup by admission failed:', error.message);
+            if (data) profileRows.push(...data);
+        }
+        for (let i = 0; i < studentUuidKeys.length; i += 100) {
+            const batch = studentUuidKeys.slice(i, i + 100);
+            const { data, error } = await window.sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name, program, phone_number')
+                .or('user_id.in.(' + batch.join(',') + '),student_id.in.(' + batch.join(',') + ')');
+            if (error) console.warn('Student profile lookup by UUID failed:', error.message);
+            if (data) profileRows.push(...data);
+        }
+        profileRows.forEach(profile => {
+            const details = {
+                name: String(profile.full_name || '').trim(),
+                admission: String(profile.admission_number || '').trim(),
+                program: String(profile.program || '').trim(),
+                phone: String(profile.phone_number || '').trim()
+            };
+            [profile.user_id, profile.student_id, profile.admission_number].forEach(key => {
+                if (key !== null && key !== undefined && String(key).trim()) profileAliases[String(key).trim()] = details;
+            });
+        });
+
         await cacheUnitPrograms(allMarks);
         
         var processedMarks = [];
         for (var i = 0; i < allMarks.length; i++) {
             var mark = allMarks[i];
-            var program = PUBLISHED_STATE.unitProgramCache[mark.subject_name] || 'KRCHN';
+            var profile = profileAliases[String(mark.admission_number || '').trim()]
+                || profileAliases[String(mark.student_id || '').trim()] || {};
+            var resolvedAdmission = String(mark.admission_number || profile.admission || '').trim();
+            var resolvedName = String(profile.name || mark.student_name || '').trim() || 'Student profile not found';
+            var program = String(profile.program || mark.program || PUBLISHED_STATE.unitProgramCache[mark.subject_name] || 'KRCHN');
             
             var retakeInfo = getStudentRetakeInfo(mark.admission_number, mark.subject_name);
             var hasRetake = retakeInfo !== null && retakeInfo.count > 0;
@@ -893,8 +932,10 @@ async function loadPublishedMarks() {
             
             processedMarks.push({
                 id: mark.id,
-                admission_number: mark.admission_number,
-                student_name: mark.student_name,
+                student_id: mark.student_id || null,
+                admission_number: resolvedAdmission,
+                student_name: resolvedName,
+                student_phone: profile.phone || '',
                 subject_name: mark.subject_name,
                 block: mark.block,
                 cat1_score: mark.cat1_score,
