@@ -273,7 +273,6 @@
       $('ca-save-ballot').innerHTML='<i class="fas fa-plus"></i> Create ballot';
       DEPARTMENTS.forEach((d,i)=>{if($('ca-cap-'+i)) $('ca-cap-'+i).value='0';});
     });
-    $('ca-department-chips')?.addEventListener('click',e=>{const btn=e.target.closest('[data-remove-department]');if(!btn)return;const list=formDepartments().filter(d=>d!==btn.dataset.removeDepartment);$('ca-departments-list').value=list.join(', ');renderDepartmentChips();});
     $('ca-ballots-body')?.addEventListener('click',e=>{
       const edit=e.target.closest('[data-edit-ballot]'); if(edit) return selectBallot(edit.dataset.editBallot);
       const action=e.target.closest('[data-ballot-action]');
