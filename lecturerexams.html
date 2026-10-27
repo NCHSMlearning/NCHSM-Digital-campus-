@@ -523,7 +523,9 @@
     let currentPage = { results: 1 };
     const itemsPerPage = 10;
     let lecturerId = null;
-    let lecturerProgram = null;   // ✅ lecturer's program/department
+    let lecturerProgram = null;   // lecturer's program/department
+    let lecturerSessionData = null;
+    const lecturerOwnerIds = new Set();
 // Hides the .html extension in the URL  
 if (window.location.pathname.endsWith('.html')) {
     const cleanPath = window.location.pathname.replace(/\.html$/, '');
@@ -537,6 +539,7 @@ if (window.location.pathname.endsWith('.html')) {
         if (!session) { window.location.href = 'login.html'; return false; }
         try {
             const data = JSON.parse(session);
+            lecturerSessionData = data;
             const role = (data.role || data.user_role || '').toLowerCase();
             if (!['lecturer','instructor','teacher','admin','superadmin','administrator'].includes(role)) {
                 window.location.href = 'login.html';
@@ -546,7 +549,8 @@ if (window.location.pathname.endsWith('.html')) {
             const email = data.email || 'lecturer@nchsm.ac.ke';
             const initial = name.charAt(0).toUpperCase();
 
-            lecturerId = data.user_id || data.staff_id || data.id;
+            lecturerId = data.user_id || data.id || data.staff_id || data.auth_user_id || data.profile_id;
+            [data.user_id, data.id, data.staff_id, data.auth_user_id, data.profile_id].filter(Boolean).forEach(v => lecturerOwnerIds.add(String(v).trim().toLowerCase()));
             lecturerProgram = data.program || data.department || data.course || null;
 
             document.querySelectorAll('#adminName, #lecturerName, #profileName').forEach(el => { if (el) el.textContent = name; });
@@ -690,8 +694,35 @@ if (window.location.pathname.endsWith('.html')) {
     }
 
     function isLecturerOwnExam(exam) {
-        return String(exam?.created_by ?? '').trim() !== '' &&
-            String(exam.created_by).trim() === String(lecturerId ?? '').trim();
+        const ownerValues = [exam?.created_by, exam?.lecturer_id, exam?.created_by_user_id, exam?.owner_id]
+            .filter(v => v !== null && v !== undefined && String(v).trim() !== '')
+            .map(v => String(v).trim().toLowerCase());
+        return ownerValues.some(v => lecturerOwnerIds.has(v));
+    }
+
+    async function resolveLecturerOwnerIdentity() {
+        const session = lecturerSessionData || {};
+        [session.user_id, session.id, session.staff_id, session.auth_user_id, session.profile_id]
+            .filter(Boolean).forEach(v => lecturerOwnerIds.add(String(v).trim().toLowerCase()));
+
+        // Older lecturer sessions can contain staff_id while exams.created_by stores profile user_id.
+        try {
+            let query = sb.from('consolidated_user_profiles_table').select('user_id, staff_id, email');
+            if (session.email) query = query.eq('email', session.email);
+            else if (session.staff_id) query = query.eq('staff_id', session.staff_id);
+            else return;
+            const { data, error } = await query.limit(1);
+            if (error) {
+                console.warn('Lecturer identity lookup warning:', error.message);
+                return;
+            }
+            (data || []).forEach(profile => {
+                [profile.user_id, profile.staff_id, profile.email].filter(Boolean)
+                    .forEach(v => lecturerOwnerIds.add(String(v).trim().toLowerCase()));
+            });
+        } catch (error) {
+            console.warn('Lecturer identity resolution skipped:', error);
+        }
     }
 
     function applyExamFilters() {
@@ -797,9 +828,10 @@ if (window.location.pathname.endsWith('.html')) {
         if (loading) { loading.style.display = 'block'; loading.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading current student results...'; }
 
         try {
-            // ✅ Filter by program
+            await resolveLecturerOwnerIdentity();
+            // Filter by program
             let q = sb.from('exams')
-                .select('id, exam_name, exam_type, total_marks, pass_mark, created_at, updated_at, exam_date, exam_start_time, status, created_by')
+                .select('id, exam_name, exam_type, total_marks, pass_mark, created_at, updated_at, exam_date, exam_start_time, status, created_by, lecturer_id')
                 .order('id', { ascending: false });
             if (lecturerProgram) q = q.eq('target_program', lecturerProgram);
             const { data: exams, error: examError } = await q;
@@ -993,8 +1025,7 @@ if (window.location.pathname.endsWith('.html')) {
         }
         if (ownerFilter !== 'all') {
             filtered = filtered.filter(r => {
-                const creatorId = String(r.exam_info?.created_by || '').trim();
-                const isMine = ownerId !== '' && creatorId !== '' && creatorId === ownerId;
+                const isMine = isLecturerOwnExam(r.exam_info);
                 return ownerFilter === 'mine' ? isMine : !isMine;
             });
         }
@@ -1530,8 +1561,8 @@ if (window.location.pathname.endsWith('.html')) {
         // matches the user's current exam, status, and search selections.
         // Export permission is still independently restricted to exams created
         // by this lecturer, even if the visible Results table shows department-wide data.
-        const ownerId = String(lecturerId || '').trim();
-        if (!ownerId) {
+        await resolveLecturerOwnerIdentity();
+        if (!lecturerOwnerIds.size) {
             showToast('❌ Your lecturer identity could not be verified. Please sign in again.', 'error');
             return;
         }
@@ -1541,10 +1572,7 @@ if (window.location.pathname.endsWith('.html')) {
             ? window.lecturerFilteredResults
             : lecturerResults;
 
-        const ownedFilteredResults = currentlyFiltered.filter(r => {
-            const creatorId = String(r.exam_info?.created_by || '').trim();
-            return creatorId !== '' && creatorId === ownerId;
-        });
+        const ownedFilteredResults = currentlyFiltered.filter(r => isLecturerOwnExam(r.exam_info));
 
         if (!ownedFilteredResults.length) {
             showToast('⚠️ No results match the current filters for exams or CATs you created.', 'warning');
