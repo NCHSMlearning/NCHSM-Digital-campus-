@@ -10,10 +10,10 @@
   const departments = ['Medical Ward', 'Surgical Ward', 'Maternity', 'Paediatric Ward'];
 
   function client() {
-    return (window.db && window.db.supabase) || window.supabase || window.supabaseClient || null;
+    return (window.db && window.db.supabase) || window.sb || window.supabase || window.supabaseClient || null;
   }
   function userId() {
-    return (window.db && window.db.currentUserId) || window.currentUserId || null;
+    return (window.db && (window.db.currentUserId || window.db.currentUser?.id)) || window.currentUserId || window.currentUser?.id || null;
   }
   function profile() {
     return (window.db && window.db.currentUserProfile) || window.currentUserProfile || {};
@@ -125,7 +125,7 @@
       const now = Date.now();
       const startWait = opens && now < opens ? opens - now : 0;
       const closeWait = closes && now > closes;
-      const canSpin = !startWait && !closeWait && !!state.ballot && ['open','scheduled'].includes(String(state.ballot.status||'').toLowerCase());
+      const canSpin = !startWait && !closeWait && !!state.ballot && ['open','scheduled'].includes(String(state.ballot.status||'').toLowerCase()) && (!opens || now >= opens) && (!closes || now <= closes);
       spin.disabled = !canSpin || state.busy || spin.dataset.spinning === '1';
       if (startWait > 0) {
         countdown.textContent = 'Wheel opens in ' + formatCountdown(startWait);
@@ -156,7 +156,7 @@
       const chosenIndex = Math.floor(Math.random() * departments.length);
       const chosen = departments[chosenIndex];
       // Wheel sectors are equal; rotate so the selected sector finishes under the top pointer.
-      const targetSector = [45, 315, 225, 135][chosenIndex];
+      const targetSector = [315, 45, 135, 225][chosenIndex];
       wheelRotation += 360 * (5 + Math.floor(Math.random() * 3)) + targetSector;
       wheel.style.transform = 'rotate(' + wheelRotation + 'deg)';
       window.setTimeout(() => {
@@ -200,7 +200,7 @@
     } catch (error) {
       console.error('[Clinical placements] Preference submission failed:', error);
       notify('Could not save preferences. The database may not yet be configured for clinical balloting. No confirmation has been recorded.', 'error');
-    } finally { state.busy = false; }
+    } finally { state.busy = false; render(); }
   }
   async function load() {
     const sb = client(), id = userId();
