@@ -1950,6 +1950,9 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
         ` : ''}
         
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:16px;">
+            <button type="button" onclick="refreshLecturerMarksEntry()" style="background:#2563eb;padding:10px 18px;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:600;font-size:14px;">
+                <i class="fas fa-sync-alt"></i> Refresh Marks
+            </button>
             <button onclick="saveMarksEntry()" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-save"></i> 💾 Save All Marks
             </button>
@@ -1976,6 +1979,22 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
     
     if (!document.getElementById('lecturerRetakeModal')) {
         createLecturerRetakeModal();
+    }
+}
+
+// Refresh the currently selected lecturer marks without changing the selected filters.
+async function refreshLecturerMarksEntry() {
+    const button = document.querySelector('button[onclick="refreshLecturerMarksEntry()"]');
+    if (button) { button.disabled = true; button.style.opacity = "0.7"; button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...'; }
+    try {
+        await loadMarksEntry();
+        if (typeof showNotification === "function") showNotification("Marks entry refreshed.", "success");
+    } catch (error) {
+        console.error("Failed to refresh lecturer marks entry:", error);
+        if (typeof showNotification === "function") showNotification("Could not refresh marks: " + (error.message || error), "error");
+    } finally {
+        const refreshedButton = document.querySelector('button[onclick="refreshLecturerMarksEntry()"]');
+        if (refreshedButton) { refreshedButton.disabled = false; refreshedButton.style.opacity = "1"; refreshedButton.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Marks'; }
     }
 }
 
