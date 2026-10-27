@@ -1575,25 +1575,27 @@ body{margin:0!important;background:#edf4f8!important;font-family:Inter,system-ui
                         <!-- CSRF Token -->
                         <input type="hidden" name="csrf_token" id="csrfToken" value="">
                         
-                        <!-- Email -->
+                        <!-- Login identifier: username, email or staff ID -->
                         <div class="form-group">
                             <label for="email" class="form-label">
-                                <i data-feather="mail"></i>
-                                Email Address
+                                <i data-feather="user"></i>
+                                Username, Email Address or Staff ID
                             </label>
                             <div class="input-wrapper">
-                                <i data-feather="mail" class="input-icon"></i>
-                                <input type="email" 
-                                       id="email" 
-                                       class="form-input" 
-                                       placeholder="student@nchsm.ac.ke" 
+                                <i data-feather="user" class="input-icon"></i>
+                                <input type="text"
+                                       id="email"
+                                       name="identifier"
+                                       class="form-input"
+                                       placeholder="Enter username, email, or staff ID"
                                        required
-                                       autocomplete="email"
+                                       autocomplete="username"
                                        aria-describedby="emailHelp"
                                        maxlength="100"
-                                       pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$">
+                                       autocapitalize="none"
+                                       spellcheck="false">
                             </div>
-                            <small id="emailHelp" class="sr-only">Enter your college email address</small>
+                            <small id="emailHelp" class="sr-only">Enter your username, college email address, or staff ID</small>
                         </div>
                         
                         <!-- Password -->
