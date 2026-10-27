@@ -28,7 +28,7 @@
     const box = document.createElement('div');
     box.className = 'ca-field ca-departments-editor';
     box.style.cssText = 'grid-column:1/-1;padding:14px;border:1px solid #d7e4ed;border-radius:12px;background:#f7fbfd;margin:8px 0';
-    box.innerHTML = '<label for="ca-departments-list"><strong>Departments available on this ballot</strong></label><textarea id="ca-departments-list" class="ca-input" rows="3" style="width:100%;margin-top:8px" placeholder="Medical Ward, Surgical Ward, Maternity, Paediatric Ward"></textarea><small style="display:block;margin-top:6px">Enter department names separated by commas or new lines. These will appear on the student spin wheel.</small>';
+    box.innerHTML = '<label for="ca-departments-list"><strong>Departments available on this ballot</strong></label><textarea id="ca-departments-list" class="ca-input" rows="3" style="width:100%;margin-top:8px" placeholder="Medical Ward, Surgical Ward, Maternity, Paediatric Ward"></textarea><small style="display:block;margin-top:6px">Enter department names separated by commas or new lines. These will appear on the student spin wheel.</small><label for="ca-extra-capacities" style="display:block;margin-top:12px"><strong>Additional department capacities</strong></label><textarea id="ca-extra-capacities" class="ca-input" rows="2" style="width:100%;margin-top:6px" placeholder="Emergency Department=12&#10;ICU=6"></textarea><small style="display:block;margin-top:6px">Optional: one department=number per line. Leave out or use 0 for unlimited capacity.</small>';
     form.insertBefore(box, form.querySelector('button[type="submit"]')?.parentElement || form.lastElementChild);
     $('ca-departments-list').value = DEPARTMENTS.join(', ');
   }
@@ -60,6 +60,7 @@
       body.innerHTML = '<tr><td colspan="7" class="ca-empty">No student preferences submitted for this ballot yet.</td></tr>';
       return;
     }
+    const ballotDepartments = Array.isArray(state.selectedBallot.departments) && state.selectedBallot.departments.length ? state.selectedBallot.departments : DEPARTMENTS;
     const caps = state.selectedBallot.capacities || {};
     const used = {};
     state.placements.filter(p=>p.ballot_id===state.selectedBallot.id && !['cancelled'].includes(p.status)).forEach(p=>used[p.department]=(used[p.department]||0)+1);
@@ -67,7 +68,7 @@
       const profile = state.profiles[p.student_id] || {};
       const placement = state.placements.find(x=>x.student_id===p.student_id && x.ballot_id===state.selectedBallot.id);
       const prefs = Array.isArray(p.preferences) ? p.preferences : [];
-      const select = '<select class="ca-input ca-dept-select" data-dept-for="'+esc(p.student_id)+'">'+DEPARTMENTS.map(d=>'<option value="'+esc(d)+'" '+((placement?.department||prefs[0])===d?'selected':'')+'>'+esc(d)+(Number(caps[d]||0)>0?' ('+(used[d]||0)+'/'+Number(caps[d])+')':'')+'</option>').join('')+'</select>';
+      const select = '<select class="ca-input ca-dept-select" data-dept-for="'+esc(p.student_id)+'">'+ballotDepartments.map(d=>'<option value="'+esc(d)+'" '+((placement?.department||prefs[0])===d?'selected':'')+'>'+esc(d)+(Number(caps[d]||0)>0?' ('+(used[d]||0)+'/'+Number(caps[d])+')':'')+'</option>').join('')+'</select>';
       return '<tr><td><strong>'+esc(profile.full_name||profile.name||'Student')+'</strong><small>'+esc(profile.student_id||profile.admission_number||'')+'</small></td><td>'+esc(profile.program||state.selectedBallot.program||'—')+'</td><td>'+esc(profile.block||state.selectedBallot.block||'—')+'</td><td><ol class="ca-pref-list">'+prefs.map(d=>'<li>'+esc(d)+'</li>').join('')+'</ol></td><td>'+esc(p.submitted_at?new Date(p.submitted_at).toLocaleString():'—')+'</td><td>'+ (placement?'<span class="ca-pill ca-allocated">'+esc(placement.status||'allocated')+'</span><small>'+esc(placement.facility_name||'Facility pending')+'</small>':'<span class="ca-pill ca-scheduled">Not allocated</span>')+'</td><td><div class="ca-assign-fields">'+select+'<input class="ca-input ca-facility" data-facility-for="'+esc(p.student_id)+'" placeholder="Facility / hospital" value="'+esc(placement?.facility_name||'')+'"><div class="ca-date-pair"><input class="ca-input ca-start" type="date" data-start-for="'+esc(p.student_id)+'" aria-label="Start date" value="'+esc(dateOnly(placement?.start_date))+'"><input class="ca-input ca-end" type="date" data-end-for="'+esc(p.student_id)+'" aria-label="End date" value="'+esc(dateOnly(placement?.end_date))+'"></div><input class="ca-input ca-hours" type="number" min="0" step="1" data-hours-for="'+esc(p.student_id)+'" placeholder="Required hours" value="'+esc(placement?.required_hours??'')+'"><button type="button" class="ca-btn ca-btn-green ca-allocate" data-allocate="'+esc(p.student_id)+'">'+(placement?'Update placement':'Allocate')+'</button></div></td></tr>';
     }).join('');
   }
@@ -122,7 +123,7 @@
     const opens=$('ca-opens')?.value, closes=$('ca-closes')?.value;
     if(!title) return notify('Enter a ballot title.','warning');
     if(opens&&closes&&new Date(closes)<=new Date(opens)) return notify('Closing time must be after opening time.','warning');
-    const payload={title,program:program||null,block:block||null,intake_year:intake||null,departments:formDepartments(),capacities:{...getFormCapacities(),...Object.fromEntries(formDepartments().filter(d=>!DEPARTMENTS.includes(d)).map(d=>[d,0]))},opens_at:opens?new Date(opens).toISOString():null,closes_at:closes?new Date(closes).toISOString():null,updated_at:new Date().toISOString()};
+    const payload={title,program:program||null,block:block||null,intake_year:intake||null,departments:formDepartments(),capacities:{...getFormCapacities(),...Object.fromEntries(formDepartments().filter(d=>!DEPARTMENTS.includes(d)).map(d=>[d,0])),...Object.fromEntries(String($('ca-extra-capacities')?.value||'').split(/[,;\n]/).map(line=>line.split('=').map(x=>x.trim())).filter(pair=>pair.length===2&&pair[0]&&Number.isFinite(Number(pair[1]))).map(pair=>[pair[0],Math.max(0,Math.floor(Number(pair[1])))]))},opens_at:opens?new Date(opens).toISOString():null,closes_at:closes?new Date(closes).toISOString():null,updated_at:new Date().toISOString()};
     const editing=$('ca-edit-id')?.value;
     if(!editing) { payload.status='scheduled'; payload.created_by=id; }
     setLoading(true);
@@ -168,6 +169,7 @@
     $('ca-intake').value=state.selectedBallot.intake_year||'';
     ensureDepartmentEditor();
     if($('ca-departments-list')) $('ca-departments-list').value=(state.selectedBallot.departments||DEPARTMENTS).join(', ');
+    if($('ca-extra-capacities')) $('ca-extra-capacities').value=Object.entries(state.selectedBallot.capacities||{}).filter(([d])=>!DEPARTMENTS.includes(d)).map(([d,n])=>d+'='+n).join('\n');
     $('ca-opens').value=state.selectedBallot.opens_at?new Date(new Date(state.selectedBallot.opens_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
     $('ca-closes').value=state.selectedBallot.closes_at?new Date(new Date(state.selectedBallot.closes_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
     DEPARTMENTS.forEach((d,i)=>{if($('ca-cap-'+i)) $('ca-cap-'+i).value=Number((state.selectedBallot.capacities||{})[d]||0);});
