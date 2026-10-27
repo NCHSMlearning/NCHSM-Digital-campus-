@@ -831,7 +831,7 @@ if (window.location.pathname.endsWith('.html')) {
             await resolveLecturerOwnerIdentity();
             // Filter by program
             let q = sb.from('exams')
-                .select('id, exam_name, exam_type, total_marks, pass_mark, created_at, updated_at, exam_date, exam_start_time, status, created_by, lecturer_id')
+                .select('id, exam_name, exam_type, total_marks, pass_mark, created_at, updated_at, exam_date, exam_start_time, status, created_by')
                 .order('id', { ascending: false });
             if (lecturerProgram) q = q.eq('target_program', lecturerProgram);
             const { data: exams, error: examError } = await q;
@@ -1551,7 +1551,7 @@ if (window.location.pathname.endsWith('.html')) {
     // ============================================================
     // EXPORT
     // ============================================================
-    function exportMyData() {
+    async function exportMyData() {
         if (!Array.isArray(lecturerResults) || lecturerResults.length === 0) {
             showToast('⚠️ No marks are available to export.', 'warning');
             return;
