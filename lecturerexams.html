@@ -313,7 +313,7 @@
                     <div class="results-filter-field">
                         <label for="resultOwnerFilter">Exam creator</label>
                         <select id="resultOwnerFilter" onchange="applyLecturerResultFilters()">
-                            <option value="all">All department exams</option><option value="mine">My exams only</option><option value="others">Other lecturers</option>
+                            <option value="all">All department exams</option><option value="mine" selected>My exams only</option><option value="others">Other lecturers</option>
                         </select>
                     </div>
                     <div class="results-filter-field">
@@ -972,7 +972,7 @@ if (window.location.pathname.endsWith('.html')) {
         const examFilter = document.getElementById('resultExamFilter')?.value || '';
         const statusFilter = document.getElementById('resultStatusFilter')?.value || '';
         const typeFilter = document.getElementById('resultTypeFilter')?.value || '';
-        const ownerFilter = document.getElementById('resultOwnerFilter')?.value || 'all';
+        const ownerFilter = document.getElementById('resultOwnerFilter')?.value || 'mine';
         const sortFilter = document.getElementById('resultSortFilter')?.value || 'newest';
         const ownerId = String(lecturerId || '').trim();
 
@@ -1025,7 +1025,7 @@ if (window.location.pathname.endsWith('.html')) {
         currentPage.results = 1;
         displayResults(filtered);
         const summary = document.getElementById('resultsFilterSummary');
-        if (summary) summary.textContent = `Showing ${filtered.length} of ${lecturerResults.length} results • Export includes only your own exams`;
+        if (summary) { const ownerLabel = ownerFilter === 'mine' ? 'your exams only' : ownerFilter === 'others' ? 'other lecturers’ exams' : 'all department exams'; summary.textContent = `Showing ${filtered.length} of ${lecturerResults.length} results • View: ${ownerLabel} • Export: only your filtered exams`; }
     }
 
     function populateLecturerExamFilter(exams) {
@@ -1114,7 +1114,7 @@ if (window.location.pathname.endsWith('.html')) {
             if (el) el.value = '';
         });
         const owner = document.getElementById('resultOwnerFilter');
-        if (owner) owner.value = 'all';
+        if (owner) owner.value = 'mine';
         const sort = document.getElementById('resultSortFilter');
         if (sort) sort.value = 'newest';
         applyLecturerResultFilters();
