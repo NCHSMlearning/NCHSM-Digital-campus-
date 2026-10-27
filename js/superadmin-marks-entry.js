@@ -5484,7 +5484,7 @@ async function publishSelectedStudents() {
         
         for (const admission of selectedAdmissions) {
             try {
-                const { error } = await sb
+                const { data: updatedRows, error } = await sb
                     .from('student_marks')
                     .update({
                         published: true,
@@ -5499,8 +5499,8 @@ async function publishSelectedStudents() {
                     .eq('approval_status', 'approved')
                     .select('id');
                 
-                if (error) {
-                    console.error(`❌ Error publishing ${admission}:`, error);
+                if (error || !updatedRows?.length) {
+                    console.error(`❌ Error publishing ${admission}:`, error || 'No approved marks matched this student.');
                     errorCount++;
                 } else {
                     successCount++;
