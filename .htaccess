@@ -43,6 +43,9 @@ RewriteRule ^superadmin\.html$ - [L]
 RewriteRule ^lecturer\.html$ - [L]
 
 # ------------------------------------------------------------------
+# Clean student deep links (served by the student portal shell)
+RewriteRule ^student/timetable/?$ /student.html [L,QSA]
+
 # CUSTOM ROUTES
 # ------------------------------------------------------------------
 # Public academic transcript verification (clean URL)
