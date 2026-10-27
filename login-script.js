@@ -2595,36 +2595,49 @@ executeLogin: async function(identifier, password) {
     // ============================================
     redirectToDashboard: function(profileData) {
         console.log('🚀 Redirecting securely...');
-        
+
         let role = profileData.role?.toLowerCase() || 'student';
-        
-        if (profileData.is_staff || role === 'staff' || role === 'lecturer') {
-            role = 'lecturer';
-        }
-        
+        if (profileData.is_staff || role === 'staff' || role === 'lecturer') role = 'lecturer';
+
         const roleRedirects = {
             'admin': 'admin.html',
             'student': 'student.html',
             'lecturer': 'lecturer.html'
         };
-        
         let redirectFile = roleRedirects[role] || 'index.html';
-        
+
+        // Honor a same-site deep link only for the matching portal role.
+        // Reject protocol-relative/external URLs and routes for other user roles.
+        try {
+            const requested = new URLSearchParams(window.location.search).get('redirect');
+            if (requested && requested.startsWith('/') && !requested.startsWith('//')) {
+                const target = new URL(requested, window.location.origin);
+                const path = target.pathname.toLowerCase();
+                const isStudentRoute = role === 'student' && (
+                    path === '/student' || path === '/student.html' ||
+                    path.startsWith('/student/')
+                );
+                const isRoleDashboard = (
+                    (role === 'student' && (path === '/student.html' || path === '/student')) ||
+                    (role === 'admin' && (path === '/admin.html' || path === '/admin')) ||
+                    (role === 'lecturer' && (path === '/lecturer.html' || path === '/lecturer'))
+                );
+                if (isRoleDashboard || isStudentRoute) redirectFile = target.pathname + target.search + target.hash;
+            }
+        } catch (error) {
+            console.warn('Ignoring invalid post-login redirect:', error?.message || error);
+        }
+
         console.log(`🎯 Role: ${role} -> ${redirectFile}`);
-        
-        // ✅ Track redirect with Google Analytics
         trackGALogin('redirect_to_dashboard', {
             'event_category': 'Navigation',
             'event_label': redirectFile,
             'role': role
         });
-        
+
         document.body.style.opacity = '0';
         document.body.style.transition = 'opacity 0.3s ease';
-        
-        setTimeout(() => {
-            window.location.replace(redirectFile);
-        }, 300);
+        setTimeout(() => window.location.replace(redirectFile), 300);
     },
     
     // ============================================
