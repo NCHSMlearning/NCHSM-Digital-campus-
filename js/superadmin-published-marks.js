@@ -885,7 +885,7 @@ async function loadPublishedMarks() {
             const batch = admissionKeys.slice(i, i + 100);
             const { data, error } = await window.sb
                 .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, admission_number, full_name, program, phone_number')
+                .select('user_id, student_id, admission_number, full_name, program')
                 .or('admission_number.in.(' + batch.join(',') + '),student_id.in.(' + batch.join(',') + ')');
             if (error) console.warn('Student profile lookup by admission failed:', error.message);
             if (data) profileRows.push(...data);
@@ -894,7 +894,7 @@ async function loadPublishedMarks() {
             const batch = studentUuidKeys.slice(i, i + 100);
             const { data, error } = await window.sb
                 .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, admission_number, full_name, program, phone_number')
+                .select('user_id, student_id, admission_number, full_name, program')
                 .or('user_id.in.(' + batch.join(',') + '),student_id.in.(' + batch.join(',') + ')');
             if (error) console.warn('Student profile lookup by UUID failed:', error.message);
             if (data) profileRows.push(...data);
@@ -904,7 +904,7 @@ async function loadPublishedMarks() {
                 name: String(profile.full_name || '').trim(),
                 admission: String(profile.admission_number || '').trim(),
                 program: String(profile.program || '').trim(),
-                phone: String(profile.phone_number || '').trim()
+                phone: ''
             };
             [profile.user_id, profile.student_id, profile.admission_number].forEach(key => {
                 if (key !== null && key !== undefined && String(key).trim()) profileAliases[String(key).trim()] = details;
