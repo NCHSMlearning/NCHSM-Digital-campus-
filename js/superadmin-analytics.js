@@ -1925,7 +1925,7 @@ window.renderConsolidatedMarksheet = function() {
     });
     
     // 4. Calculate averages and grades - FIX POINTS
-    const consolidatedData = Object.values(studentData).map(data => {
+    const consolidatedData = [...new Set(Object.values(studentData))].map(data => {
         const avg = data.count > 0 ? Math.round((data.total / data.count) * 10) / 10 : 0;
         const gradeInfo = window.getGradeInfo(avg);
         
