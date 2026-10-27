@@ -3026,7 +3026,10 @@ async function confirmPublishMarks() {
                 published_at: new Date().toISOString(),
                 published_by: window.currentUser?.id || null
             })
-            .eq('subject_name', unit);
+            .eq('subject_name', unit)
+            // Never publish draft, pending, or rejected marks.
+            .eq('approval_status', 'approved')
+            .select('*');
         
         if (programType !== 'all') {
             if (programType === 'KRCHN') {
