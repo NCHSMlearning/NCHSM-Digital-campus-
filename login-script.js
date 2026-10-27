@@ -2070,8 +2070,37 @@ executeLogin: async function(identifier, password) {
     }
 
     try {
-        const { data: authData, error: authError } = await this.supabase.auth
-            .signInWithPassword({ email: identifier, password });
+        let authData = null;
+        let authError = null;
+
+        if (identifier.includes('@')) {
+            // Existing email + password authentication remains unchanged.
+            const authResult = await this.supabase.auth.signInWithPassword({
+                email: identifier,
+                password
+            });
+            authData = authResult.data;
+            authError = authResult.error;
+        } else {
+            // First try the existing staff ID flow above. Otherwise authenticate a
+            // username through the server-side resolver using the same password.
+            const usernameResult = await this.supabase.functions.invoke('username-login', {
+                body: { username: identifier, password }
+            });
+
+            if (usernameResult.error || !usernameResult.data?.access_token || !usernameResult.data?.refresh_token) {
+                authError = usernameResult.error || new Error('Invalid username or password');
+            } else {
+                const sessionResult = await this.supabase.auth.setSession({
+                    access_token: usernameResult.data.access_token,
+                    refresh_token: usernameResult.data.refresh_token
+                });
+                authData = {
+                    user: sessionResult.data?.user || sessionResult.data?.session?.user || usernameResult.data.user
+                };
+                authError = sessionResult.error;
+            }
+        }
 
         if (authError) {
             this.recordFailedAttempt();
@@ -2083,7 +2112,7 @@ executeLogin: async function(identifier, password) {
             });
 
             if (authError.message.includes('Invalid login credentials')) {
-                throw new Error('Invalid email or password');
+                throw new Error('Invalid username/email or password');
             } else if (authError.message.includes('Email not confirmed')) {
                 throw new Error('Please verify your email');
             } else {
@@ -2216,7 +2245,7 @@ executeLogin: async function(identifier, password) {
         }
         
         if (!identifier) {
-            this.showError('Please enter email or staff ID');
+            this.showError('Please enter username, email address, or staff ID');
             this.recordFailedAttempt();
             this.addRateLimitRequest();
             
