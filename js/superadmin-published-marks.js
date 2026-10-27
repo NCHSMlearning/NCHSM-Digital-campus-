@@ -1959,23 +1959,18 @@ async function publishSingleUnit(markId, subjectName, admissionNumber) {
                 var block = publishedMark.block || 'N/A';
                 var academicYear = publishedMark.academic_year || '2025/2026';
                 
-                var profileResult = await window.sb
-                    .from('consolidated_user_profiles_table')
-                    .select('email')
-                    .eq('admission_number', admissionNumber)
-                    .or('student_id.eq.' + admissionNumber)
-                    .maybeSingle();
+                var resolvedEmail = await resolvePublishedMarksStudentEmail(admissionNumber);
                 
-                if (profileResult.data && profileResult.data.email) {
+                if (resolvedEmail) {
                     await sendMarksPublishedEmail(
-                        profileResult.data.email,
+                        resolvedEmail,
                         studentName,
                         program,
                         block,
                         1,
                         academicYear
                     );
-                    console.log('✅ Email notification sent to ' + profileResult.data.email);
+                    console.log('✅ Email notification sent to ' + resolvedEmail);
                 }
             } catch (emailError) {
                 console.error('❌ Error sending email:', emailError);
@@ -2110,16 +2105,11 @@ async function publishStudentAllMarks(admissionNumber) {
                 var block = firstMark.block || 'N/A';
                 var academicYear = firstMark.academic_year || '2025/2026';
                 
-                var profileResult = await window.sb
-                    .from('consolidated_user_profiles_table')
-                    .select('email')
-                    .eq('admission_number', admissionNumber)
-                    .or('student_id.eq.' + admissionNumber)
-                    .maybeSingle();
+                var resolvedEmail = await resolvePublishedMarksStudentEmail(admissionNumber);
                 
-                if (profileResult.data && profileResult.data.email) {
+                if (resolvedEmail) {
                     await sendMarksPublishedEmail(
-                        profileResult.data.email,
+                        resolvedEmail,
                         studentName, program, block, count, academicYear
                     );
                 }
@@ -2472,23 +2462,18 @@ async function batchPublishMarks(marks) {
             var key = studentKeys[j];
             var student = publishedStudents[key];
             try {
-                var profileResult = await window.sb
-                    .from('consolidated_user_profiles_table')
-                    .select('email')
-                    .eq('admission_number', key)
-                    .or('student_id.eq.' + key)
-                    .maybeSingle();
+                var resolvedEmail = await resolvePublishedMarksStudentEmail(key);
                 
-                if (profileResult.data && profileResult.data.email) {
+                if (resolvedEmail) {
                     await sendMarksPublishedEmail(
-                        profileResult.data.email,
+                        resolvedEmail,
                         student.name,
                         student.program,
                         student.block,
                         student.marks.length,
                         student.academic_year
                     );
-                    console.log('✅ Email sent to ' + profileResult.data.email);
+                    console.log('✅ Email sent to ' + resolvedEmail);
                 }
             } catch (emailError) {
                 console.error('❌ Error sending email to student ' + key + ':', emailError);
@@ -2726,6 +2711,22 @@ function loadFilterState() {
 // EMAIL NOTIFICATION FUNCTION
 // ============================================================
 
+async function resolvePublishedMarksStudentEmail(admissionNumber) {
+    var key = String(admissionNumber || '').trim();
+    if (!key || !window.sb) return null;
+    // Admission number and student ID are alternatives, not simultaneous requirements.
+    for (const column of ['admission_number', 'student_id']) {
+        try {
+            var result = await window.sb.from('consolidated_user_profiles_table')
+                .select('email').eq(column, key).limit(1).maybeSingle();
+            if (!result.error && result.data && String(result.data.email || '').trim()) return String(result.data.email).trim();
+        } catch (error) {
+            console.warn('[Marks Publication] Email lookup failed using ' + column, error);
+        }
+    }
+    return null;
+}
+
 async function sendMarksPublishedEmail(studentEmail, studentName, program, block, marksCount, academicYear) {
     try {
         if (!studentEmail) {
@@ -2817,15 +2818,23 @@ async function sendMarksPublishedEmail(studentEmail, studentName, program, block
 '</body>' +
 '</html>';
 
+        var subject = '📊 Your Results Have Been Published - ' + (academicYear || '2025/2026');
+        // Use the same sender and fallback path as CATs/exams wherever available.
+        if (typeof window.sendEmailWithBrevo === 'function') {
+            return await window.sendEmailWithBrevo(studentEmail, subject, htmlContent);
+        }
+        // Standalone fallback for pages where the exams module isn't loaded.
+        var sessionResult = await window.sb?.auth?.getSession?.();
+        var accessToken = sessionResult?.data?.session?.access_token;
         var response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                'Authorization': 'Bearer ' + (accessToken || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlXW6k-IR1FK3Uj5ivZS7P17Wpk'),
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 to: studentEmail,
-                subject: '📊 Your Results Have Been Published - ' + (academicYear || '2025/2026'),
+                subject: subject,
                 html: htmlContent,
                 from: 'NCHSM Academic Office <admin@nchsm.co.ke>'
             })
@@ -3047,6 +3056,10 @@ async function confirmPublishMarks() {
         
         var count = result.data?.length || 0;
         
+        var emailSentCount = 0;
+        var emailFailedCount = 0;
+        var emailSkippedCount = 0;
+
         if (result.data && result.data.length > 0) {
             var studentMap = {};
             for (var i = 0; i < result.data.length; i++) {
@@ -3069,31 +3082,35 @@ async function confirmPublishMarks() {
                 var key = studentKeys[j];
                 var student = studentMap[key];
                 try {
-                    var profileResult = await window.sb
-                        .from('consolidated_user_profiles_table')
-                        .select('email')
-                        .eq('admission_number', key)
-                        .or('student_id.eq.' + key)
-                        .maybeSingle();
+                    var resolvedEmail = await resolvePublishedMarksStudentEmail(key);
                     
-                    if (profileResult.data && profileResult.data.email) {
-                        await sendMarksPublishedEmail(
-                            profileResult.data.email,
+                    if (resolvedEmail) {
+                        var emailResult = await sendMarksPublishedEmail(
+                            resolvedEmail,
                             student.name,
                             student.program,
                             student.block,
                             student.marks.length,
                             student.academic_year
                         );
+                        if (emailResult && emailResult.success) emailSentCount++;
+                        else emailFailedCount++;
+                    } else {
+                        emailSkippedCount++;
+                        console.warn('[Marks Publication] No email found for admission/student ID:', key);
                     }
                 } catch (emailError) {
+                    emailFailedCount++;
                     console.error('❌ Error sending email to ' + key + ':', emailError);
                 }
             }
         }
         
         if (typeof window.showNotification === 'function') {
-            window.showNotification('✅ Published ' + count + ' marks for "' + unit + '"!', 'success');
+            var emailSummary = ' Email notifications: ' + emailSentCount + ' sent';
+            if (emailFailedCount) emailSummary += ', ' + emailFailedCount + ' failed';
+            if (emailSkippedCount) emailSummary += ', ' + emailSkippedCount + ' missing email';
+            window.showNotification('✅ Published ' + count + ' marks for "' + unit + '".' + emailSummary + '.', emailFailedCount || emailSkippedCount ? 'warning' : 'success');
         }
         
         closePublishModal();
