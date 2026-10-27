@@ -615,7 +615,11 @@
                     if ((byStudentId.data || []).length) result = byStudentId;
                 }
 
-                const rows = result?.data || [];
+                // Fail closed in the student portal: only explicitly published AND approved marks may render.
+                // This defensive check remains in place even though both database queries are already filtered.
+                const rows = (result?.data || []).filter(mark =>
+                    mark && mark.published === true && String(mark.approval_status || '').trim().toLowerCase() === 'approved'
+                );
                 if (rows.length) {
                     // Keep published scores and grades authoritative; fill only missing display metadata.
                     marks = rows.map(mark => {
