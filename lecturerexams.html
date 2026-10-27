@@ -674,7 +674,8 @@ if (window.location.pathname.endsWith('.html')) {
         const tbody = document.getElementById('examsBody');
         loading.style.display = 'block';
         try {
-            // ✅ Filter by program, not by created_by
+            await resolveLecturerOwnerIdentity();
+            // Filter by program, not by created_by
             let q = sb.from('exams').select('*').order('id', { ascending: false });
             if (lecturerProgram) q = q.eq('target_program', lecturerProgram);
             const { data } = await q;
