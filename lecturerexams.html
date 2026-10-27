@@ -1459,40 +1459,51 @@ if (window.location.pathname.endsWith('.html')) {
             return;
         }
 
-        // Export permission is based on exam ownership, not program membership.
-        // The results page may show program-wide results, but a lecturer can
-        // download marks only for exams/CATs that they created.
+        // Re-apply the live Results filters at export time so the spreadsheet
+        // matches the user's current exam, status, and search selections.
+        // Export permission is still independently restricted to exams created
+        // by this lecturer, even if the visible Results table shows department-wide data.
         const ownerId = String(lecturerId || '').trim();
         if (!ownerId) {
             showToast('❌ Your lecturer identity could not be verified. Please sign in again.', 'error');
             return;
         }
 
-        const ownedResults = lecturerResults.filter(r => {
+        applyLecturerResultFilters();
+        const currentlyFiltered = Array.isArray(window.lecturerFilteredResults)
+            ? window.lecturerFilteredResults
+            : lecturerResults;
+
+        const ownedFilteredResults = currentlyFiltered.filter(r => {
             const creatorId = String(r.exam_info?.created_by || '').trim();
             return creatorId !== '' && creatorId === ownerId;
         });
 
-        if (!ownedResults.length) {
-            showToast('⚠️ You have no marks to export for exams or CATs you created.', 'warning');
+        if (!ownedFilteredResults.length) {
+            showToast('⚠️ No results match the current filters for exams or CATs you created.', 'warning');
             return;
         }
 
-        const data = ownedResults.map(r => ({
-            'Student ID': r.student?.student_id || 'N/A',
-            'Student Name': r.student?.full_name || 'Unknown',
-            'Exam / CAT': r.exam_name || r.exam_info?.exam_name || 'Exam',
-            'Score': r.marks ?? 0,
-            'Total Marks': r.total_marks ?? r.exam_info?.total_marks ?? 100,
-            'Percentage': Number(r.percentage ?? ((Number(r.marks ?? 0) / Number(r.total_marks ?? r.exam_info?.total_marks ?? 100)) * 100)).toFixed(1) + '%',
-            'Status': r.result_status || 'PENDING'
-        }));
+        const data = ownedFilteredResults.map(r => {
+            const totalMarks = Number(r.total_marks ?? r.exam_info?.total_marks ?? r.attempt_info?.total_marks ?? 100) || 100;
+            const score = Number(r.marks ?? r.score ?? r.attempt_info?.score ?? 0) || 0;
+            const percentage = Number(r.percentage ?? r.attempt_info?.percentage ?? ((score / totalMarks) * 100));
+            return {
+                'Student ID': r.student?.student_id || 'N/A',
+                'Student Name': r.student?.full_name || 'Unknown',
+                'Exam / CAT': r.exam_name || r.exam_info?.exam_name || 'Exam',
+                'Score': score,
+                'Total Marks': totalMarks,
+                'Percentage': percentage.toFixed(1) + '%',
+                'Status': r.result_status || r._status || r.attempt_info?.status || 'PENDING'
+            };
+        });
 
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'My Exam Marks');
-        XLSX.writeFile(wb, `My_Exam_Marks_${new Date().toISOString().split('T')[0]}.xlsx`);
-        showToast(`✅ Exported ${data.length} marks from your own exams/CATs only.`, 'success');
+        XLSX.utils.book_append_sheet(wb, ws, 'Filtered Exam Marks');
+        XLSX.writeFile(wb, `My_Filtered_Exam_Marks_${new Date().toISOString().split('T')[0]}.xlsx`);
+        showToast(`✅ Exported ${data.length} filtered marks from your own exams/CATs only.`, 'success');
     }
 
     // ============================================================
