@@ -1433,6 +1433,34 @@ body.dark-theme .right-panel .modal-content h2, body.dark-theme .right-panel .mo
 }
 </style>
 
+
+<style id="nchsm-dark-mode-contrast-fix">
+/* Ensure dark-mode text remains readable over the dark card */
+body.dark-theme .login-card .welcome-title,
+body.dark-theme .login-card .welcome-title span:not(.gold),
+body.dark-theme .login-card .form-label,
+body.dark-theme .login-card .form-group label,
+body.dark-theme .login-card .form-options,
+body.dark-theme .login-card .form-options label,
+body.dark-theme .login-card .last-login-info span,
+body.dark-theme .login-card .attempts-info span,
+body.dark-theme .login-card .signup-link,
+body.dark-theme .login-card .divider,
+body.dark-theme .login-card .welcome-subtitle {
+  color:#eaf4fb!important;
+}
+body.dark-theme .login-card .welcome-title .gold,
+body.dark-theme .login-card .gold { color:#ffc533!important; }
+body.dark-theme .login-card .form-label svg,
+body.dark-theme .login-card .form-label i { color:#8bc9e8!important; }
+body.dark-theme .login-card .form-input { color:#f5f9fc!important; }
+body.dark-theme .login-card .form-input::placeholder { color:#9db2c1!important; }
+body.dark-theme .login-card .last-login-info { color:#c4d8e5!important; }
+body.dark-theme .login-card .last-login-info svg,
+body.dark-theme .login-card .last-login-info i { color:#77c5e9!important; }
+body.dark-theme .login-card .theme-toggle-btn { color:#f0f7fb!important; }
+</style>
+
 </head>
 <body>
     <!-- Skip to content -->
