@@ -124,7 +124,7 @@
       const [ballots, placements, attendance] = await Promise.all([
         sb.from('clinical_rotation_ballots').select('*').in('status', ['open','scheduled']).order('created_at', { ascending:false }).limit(20),
         sb.from('clinical_placements').select('*').eq('student_id', id).order('start_date', { ascending:false }),
-        sb.from('clinical_attendance').select('*').eq('student_id', id).order('shift_date', { ascending:false }).limit(200)
+        sb.from('clinical_hours_logs').select('id,student_id,clinical_area,clinical_shift,hours_completed,hours_required,log_date,verified,verified_by_name,notes').eq('student_id', id).is('deleted_at', null).order('log_date', { ascending:false }).limit(200)
       ]);
       const failed = [ballots, placements, attendance].find(r => r.error);
       if (failed) throw failed.error;
@@ -132,7 +132,7 @@
       const program = String(p.program || p.course || '').toLowerCase();
       const block = String(p.block || p.current_block || '').toLowerCase();
       state.placements = placements.data || [];
-      state.attendance = attendance.data || [];
+      state.attendance = (attendance.data || []).map(a => Object.assign({}, a, { shift_date: a.log_date, department: a.clinical_area, hours: a.hours_completed, status: a.verified ? 'verified' : 'pending' }));
       state.ballot = (ballots.data || []).find(b => {
         const bp = String(b.program || '').toLowerCase(), bb = String(b.block || '').toLowerCase();
         return (!bp || !program || bp === program) && (!bb || !block || bb === block);
