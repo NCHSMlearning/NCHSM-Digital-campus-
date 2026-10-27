@@ -285,24 +285,57 @@
                 </div>
             </div>
 
-            <div style="background: white; border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
-                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                    <div style="flex:1; min-width:160px;">
-                        <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Exam</label>
-                        <select id="resultExamFilter" style="width:100%; padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem;"><option value="">All Exams</option></select>
+            <style>
+                .results-filter-panel{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px 18px;margin:0 0 16px;box-shadow:0 4px 16px rgba(15,23,42,.04)}
+                .results-filter-grid{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:12px;align-items:end}
+                .results-filter-field label{display:block;font-size:11px;font-weight:700;color:#475569;margin:0 0 6px}
+                .results-filter-field select,.results-filter-field input{box-sizing:border-box;width:100%;min-height:42px;padding:9px 11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#0f172a;font:inherit;font-size:12px}
+                .results-filter-field select:focus,.results-filter-field input:focus{outline:none;border-color:#0A3D62;box-shadow:0 0 0 3px rgba(10,61,98,.1)}
+                .results-filter-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+                #resultsFilterSummary{font-size:12px;color:#64748b}
+                .results-filter-reset{border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;background:#fff;color:#334155;font-weight:600;font-size:12px;cursor:pointer}
+                .results-filter-reset:hover{background:#f1f5f9}
+                @media(max-width:760px){.results-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+                @media(max-width:480px){.results-filter-grid{grid-template-columns:1fr}.results-filter-panel{padding:13px}}
+            </style>
+            <div class="results-filter-panel" aria-label="Filter student results">
+                <div class="results-filter-grid">
+                    <div class="results-filter-field">
+                        <label for="resultExamFilter">Exam / CAT</label>
+                        <select id="resultExamFilter" onchange="applyLecturerResultFilters()"><option value="">All Exams</option></select>
                     </div>
-                    <div style="flex:1; min-width:160px;">
-                        <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Status</label>
-                        <select id="resultStatusFilter" style="width:100%; padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem;">
-                            <option value="">All</option><option value="PASS">Pass</option><option value="FAIL">Fail</option><option value="PENDING">Pending</option>
+                    <div class="results-filter-field">
+                        <label for="resultTypeFilter">Exam type</label>
+                        <select id="resultTypeFilter" onchange="applyLecturerResultFilters()">
+                            <option value="">All types</option><option value="cat">CATs</option><option value="exam">Other exams</option>
                         </select>
                     </div>
-                    <div style="flex:1; min-width:160px; position:relative;">
-                        <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94A3B8;"></i>
-                        <input type="text" id="resultSearch" placeholder="Search student..." style="width:100%; padding: 8px 12px 8px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem;">
+                    <div class="results-filter-field">
+                        <label for="resultOwnerFilter">Exam creator</label>
+                        <select id="resultOwnerFilter" onchange="applyLecturerResultFilters()">
+                            <option value="all">All department exams</option><option value="mine">My exams only</option><option value="others">Other lecturers</option>
+                        </select>
                     </div>
-                    <button class="btn btn-primary" onclick="loadResults()" style="padding: 8px 16px; white-space:nowrap; margin-top:16px;"><i class="fas fa-search"></i> Search</button>
-                    <button class="btn btn-secondary" onclick="resetResultFilters()" style="padding: 8px 14px; white-space:nowrap; margin-top:16px;"><i class="fas fa-undo"></i> Reset</button>
+                    <div class="results-filter-field">
+                        <label for="resultStatusFilter">Result status</label>
+                        <select id="resultStatusFilter" onchange="applyLecturerResultFilters()">
+                            <option value="">All statuses</option><option value="PASS">Pass</option><option value="FAIL">Fail</option><option value="PENDING">Pending / In progress</option>
+                        </select>
+                    </div>
+                    <div class="results-filter-field">
+                        <label for="resultSearch">Search student or exam</label>
+                        <input type="search" id="resultSearch" placeholder="Name, student ID, email, exam…" oninput="applyLecturerResultFilters()" autocomplete="off">
+                    </div>
+                    <div class="results-filter-field">
+                        <label for="resultSortFilter">Sort results</label>
+                        <select id="resultSortFilter" onchange="applyLecturerResultFilters()">
+                            <option value="newest">Newest exam first</option><option value="oldest">Oldest exam first</option><option value="student">Student name A–Z</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="results-filter-footer">
+                    <span id="resultsFilterSummary" aria-live="polite">Showing all results</span>
+                    <button type="button" class="results-filter-reset" onclick="resetResultFilters()"><i class="fas fa-undo"></i> Reset filters</button>
                 </div>
             </div>
 
@@ -938,32 +971,61 @@ if (window.location.pathname.endsWith('.html')) {
         const search = (document.getElementById('resultSearch')?.value || '').trim().toLowerCase();
         const examFilter = document.getElementById('resultExamFilter')?.value || '';
         const statusFilter = document.getElementById('resultStatusFilter')?.value || '';
+        const typeFilter = document.getElementById('resultTypeFilter')?.value || '';
+        const ownerFilter = document.getElementById('resultOwnerFilter')?.value || 'all';
+        const sortFilter = document.getElementById('resultSortFilter')?.value || 'newest';
+        const ownerId = String(lecturerId || '').trim();
 
         let filtered = [...lecturerResults];
         if (search) {
             filtered = filtered.filter(r => {
-                const values = [r.student?.full_name, r.student?.student_id, r.student?.email, r.student?.program, r.exam_name].map(v => String(v || '').toLowerCase());
+                const values = [r.student?.full_name, r.student?.student_id, r.student?.email, r.student?.program, r.exam_name, r.exam_info?.exam_name, r.exam_info?.exam_type].map(v => String(v || '').toLowerCase());
                 return values.some(v => v.includes(search));
             });
         }
         if (examFilter) filtered = filtered.filter(r => String(r.exam_id) === String(examFilter));
+        if (typeFilter) {
+            filtered = filtered.filter(r => {
+                const type = String(r.exam_info?.exam_type || '').toLowerCase().replace(/[\s_-]+/g, '');
+                const isCat = type.includes('cat') || type.includes('continuousassessment');
+                return typeFilter === 'cat' ? isCat : !isCat;
+            });
+        }
+        if (ownerFilter !== 'all') {
+            filtered = filtered.filter(r => {
+                const creatorId = String(r.exam_info?.created_by || '').trim();
+                const isMine = ownerId !== '' && creatorId !== '' && creatorId === ownerId;
+                return ownerFilter === 'mine' ? isMine : !isMine;
+            });
+        }
         if (statusFilter) {
             filtered = filtered.filter(r => {
-                const status = String(r.result_status || r._status || 'PENDING').toUpperCase();
-                if (statusFilter === 'PENDING') return ['PENDING','PENDING_REVIEW','RESET_FOR_RETAKE','IN_PROGRESS'].includes(status);
+                const status = String(r.result_status || r._status || r.attempt_info?.status || 'PENDING').toUpperCase().replace(/[\s-]+/g, '_');
+                if (statusFilter === 'PENDING') return ['PENDING','PENDING_REVIEW','RESET_FOR_RETAKE','IN_PROGRESS','NOT_MARKED','AWAITING_REVIEW'].includes(status);
                 return status === statusFilter;
             });
         }
+        const examTime = r => {
+            const exam = r.exam_info || {};
+            if (exam.exam_date) {
+                const t = exam.exam_start_time || '00:00:00';
+                const parsed = new Date(`${exam.exam_date}T${t.length === 5 ? t + ':00' : t}`).getTime();
+                if (!Number.isNaN(parsed)) return parsed;
+            }
+            const fallback = new Date(exam.updated_at || exam.created_at || r.attempt_info?.updated_at || 0).getTime();
+            return !Number.isNaN(fallback) ? fallback : Number(r.exam_id || 0);
+        };
         filtered.sort((a, b) => {
-            const ea = new Date(a.exam_info?.exam_date || a.exam_info?.updated_at || a.exam_info?.created_at || 0).getTime();
-            const eb = new Date(b.exam_info?.exam_date || b.exam_info?.updated_at || b.exam_info?.created_at || 0).getTime();
-            if (eb !== ea && !Number.isNaN(eb) && !Number.isNaN(ea)) return eb - ea;
-            return Number(b.exam_id || 0) - Number(a.exam_id || 0);
+            if (sortFilter === 'student') return String(a.student?.full_name || '').localeCompare(String(b.student?.full_name || ''));
+            const diff = examTime(b) - examTime(a);
+            return sortFilter === 'oldest' ? -diff : diff;
         });
 
         window.lecturerFilteredResults = filtered;
         currentPage.results = 1;
         displayResults(filtered);
+        const summary = document.getElementById('resultsFilterSummary');
+        if (summary) summary.textContent = `Showing ${filtered.length} of ${lecturerResults.length} results • Export includes only your own exams`;
     }
 
     function populateLecturerExamFilter(exams) {
@@ -1047,9 +1109,14 @@ if (window.location.pathname.endsWith('.html')) {
     }
 
     function resetResultFilters() {
-        document.getElementById('resultSearch').value = '';
-        document.getElementById('resultExamFilter').value = '';
-        document.getElementById('resultStatusFilter').value = '';
+        ['resultSearch','resultExamFilter','resultStatusFilter','resultTypeFilter'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        const owner = document.getElementById('resultOwnerFilter');
+        if (owner) owner.value = 'all';
+        const sort = document.getElementById('resultSortFilter');
+        if (sort) sort.value = 'newest';
         applyLecturerResultFilters();
     }
 
