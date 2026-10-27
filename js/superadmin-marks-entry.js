@@ -2324,7 +2324,7 @@ function updateMarksEntryStats(marks, assessmentType) {
 }
 
 // ============================================================
-// SAVE MARKS - WITH AUTO-APPROVE
+// SAVE MARKS - CHANGES REQUIRE APPROVAL BEFORE PUBLICATION
 // ============================================================
 
 async function saveMarksEntry() {
@@ -2440,8 +2440,13 @@ async function saveMarksEntry() {
                 exam_score: Number(mark.exam_score),
                 final_score: Number(mark.final_score),
                 grade: mark.grade,
-                approval_status: 'approved',
-                approved_at: now,
+                // Saving/editing scores is not approval or publication.
+                approval_status: 'pending',
+                approved_by: null,
+                approved_at: null,
+                published: false,
+                published_at: null,
+                published_by: null,
                 updated_at: now
             };
 
@@ -2467,8 +2472,12 @@ async function saveMarksEntry() {
                         final_score: Number(mark.final_score),
                         grade: mark.grade,
                         academic_year: mark.academic_year,
-                        approval_status: 'approved',
-                        approved_at: now,
+                        approval_status: 'pending',
+                        approved_by: null,
+                        approved_at: null,
+                        published: false,
+                        published_at: null,
+                        published_by: null,
                         created_at: now,
                         updated_at: now
                     })
@@ -2520,7 +2529,7 @@ async function saveMarksEntry() {
             'warning'
         );
     } else {
-        showNotification(`✅ ${saved} marks saved and auto-approved!`, 'success');
+        showNotification(`✅ ${saved} marks saved and sent for approval. They remain unpublished until explicitly released.`, 'success');
     }
 
     // Keep the locally edited values until the refresh completes.
@@ -5108,7 +5117,10 @@ async function publishCurrentUnitMarks() {
             })
             .eq('subject_name', unit)
             .eq('block', block)
-            .eq('academic_year', year);
+            .eq('academic_year', year)
+            // Publishing is a separate action: only approved marks are eligible.
+            .eq('approval_status', 'approved')
+            .select('id');
         
         if (program) {
             query = query.eq('program', program);
@@ -5482,7 +5494,10 @@ async function publishSelectedStudents() {
                     .eq('admission_number', admission)
                     .eq('subject_name', unit)
                     .eq('block', block)
-                    .eq('academic_year', year);
+                    .eq('academic_year', year)
+                    // Prevent selected-student publication from bypassing approval.
+                    .eq('approval_status', 'approved')
+                    .select('id');
                 
                 if (error) {
                     console.error(`❌ Error publishing ${admission}:`, error);
