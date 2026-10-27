@@ -354,7 +354,9 @@ window.loadTranscriptStudents = async function() {
                 .from('student_marks')
                 .select('*')
                 .in('admission_number', studentIds)
-                .eq('academic_year', year);
+                .eq('academic_year', year)
+                .eq('published', true)
+                .eq('approval_status', 'approved');
             
             if (marksError) throw marksError;
             
@@ -742,24 +744,17 @@ window.generateSelectedTranscript = async function() {
         let marksQuery = sb
             .from('student_marks')
             .select('*')
-            .eq('admission_number', studentId);
+            .eq('admission_number', studentId)
+            .eq('published', true)
+            .eq('approval_status', 'approved');
 
         if (year && year !== 'all') marksQuery = marksQuery.eq('academic_year', year);
 
-        let { data: studentMarks, error: marksError } = await marksQuery;
+        const { data: studentMarks, error: marksError } = await marksQuery;
         if (marksError) throw marksError;
 
-        // If no marks exist for the selected academic year, retrieve all years so
-        // the generator can explain/show available records instead of silently failing.
-        if ((!studentMarks || studentMarks.length === 0) && year && year !== 'all') {
-            const fallback = await sb
-                .from('student_marks')
-                .select('*')
-                .eq('admission_number', studentId);
-            if (fallback.error) throw fallback.error;
-            studentMarks = fallback.data || [];
-        }
-
+        // Never fall back to unfiltered years: unpublished or unapproved marks
+        // must not enter a transcript preview.
         studentMarks = studentMarks || [];
         window.showTranscriptPreview(student, studentMarks, year);
 
@@ -843,7 +838,10 @@ window.generateSelectedTranscriptBatch = async function() {
                 }
                 if (!student) throw new Error('Student record not found');
 
-                const mr = await sb.from('student_marks').select('*').eq('admission_number', studentId);
+                const mr = await sb.from('student_marks').select('*')
+                    .eq('admission_number', studentId)
+                    .eq('published', true)
+                    .eq('approval_status', 'approved');
                 if (mr.error) throw mr.error;
                 let marks = mr.data || [];
                 const isKRCHN = isNursingProgram(student.program || 'KRCHN') && !isTVETProgram(student.program || 'KRCHN');
