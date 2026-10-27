@@ -329,7 +329,7 @@
     // 7. TVET GRADING FUNCTIONS (Min Pass: 50%)
     // ============================================================
     function calculateTVETGrade(score) {
-        if (score === null || score === undefined || score === 0) return 'FAIL';
+        if (score === null || score === undefined || score === '') return 'PENDING';
         if (score >= 75) return 'A';
         if (score >= 65) return 'B';
         if (score >= 50) return 'C';
@@ -348,7 +348,7 @@
     }
 
     function getTVETStatus(score) {
-        if (score === null || score === undefined || score === 0) return 'PENDING';
+        if (score === null || score === undefined || score === '') return 'PENDING';
         if (score >= 75) return 'EXCELLENT';
         if (score >= 65) return 'GOOD';
         if (score >= 50) return 'SATISFACTORY';
@@ -359,7 +359,7 @@
     // 8. NURSING GRADING FUNCTIONS (Min Pass: 60%)
     // ============================================================
     function calculateNursingGrade(score) {
-        if (score === null || score === undefined || score === 0) return 'D';
+        if (score === null || score === undefined || score === '') return 'PENDING';
         if (score >= 75) return 'A';
         if (score >= 65) return 'B';
         if (score >= 60) return 'C';
@@ -378,7 +378,7 @@
     }
 
     function getNursingStatus(score) {
-        if (score === null || score === undefined || score === 0) return 'PENDING';
+        if (score === null || score === undefined || score === '') return 'PENDING';
         if (score >= 75) return 'DISTINCTION';
         if (score >= 65) return 'CREDIT';
         if (score >= 60) return 'PASS';
@@ -434,25 +434,37 @@
         return publishedGrade ? calculatePoints(publishedGrade, program) : null;
     }
 
-    function calculateGPA(marks) {
+    function calculateGPA(marks, program) {
         if (!Array.isArray(marks) || marks.length === 0) return 0;
-        let weightedPoints = 0, totalCredits = 0;
+        const activeProgram = program || window.currentUserProfile?.program ||
+            window.db?.currentUserProfile?.program || '';
+        let weightedPoints = 0;
+        let totalCredits = 0;
 
-        // The caller supplies approved/published marks. Prefer the effective retake
-        // grade when one is present, then the published grade, before cached points.
-        marks.forEach(m => {
-            if (!m) return;
-            const effectiveGrade = m.retake_grade ?? m.published_grade ?? m.final_grade ?? m.grade ?? m.status;
+        marks.forEach(mark => {
+            if (!mark) return;
+
+            // Pending rows without a published grade/score are not GPA attempts.
+            const effectiveGrade = mark.retake_grade ?? mark.published_grade ??
+                mark.final_grade ?? mark.grade ?? mark.status;
+            const rawScore = getPublishedScore(mark);
+            const hasPublishedOutcome = String(effectiveGrade ?? '').trim() !== '' ||
+                rawScore !== null;
+            if (!hasPublishedOutcome) return;
+
+            // Published grade is authoritative; stored points are only a fallback.
             let points = pointsFromPublishedGrade(effectiveGrade);
-            if (points === null) points = numericMark(m, ['points', 'grade_points']);
-            if (points === null && effectiveGrade) points = calculatePoints(effectiveGrade, userProgram);
+            if (points === null && rawScore !== null) {
+                points = calculatePoints(calculateGrade(rawScore, activeProgram), activeProgram);
+            }
+            if (points === null) points = numericMark(mark, ['points', 'grade_points']);
             if (points === null || !Number.isFinite(points)) return;
 
-            // A zero-point failed unit is valid and stays in the denominator.
-            const credits = Number(m.credits ?? m.credit_hours ?? m.creditHours);
-            const c = Number.isFinite(credits) && credits > 0 ? credits : 3;
-            weightedPoints += points * c;
-            totalCredits += c;
+            // Zero points are valid for a failed unit and must remain in the denominator.
+            const rawCredits = Number(mark.credits ?? mark.credit_hours ?? mark.creditHours);
+            const credits = Number.isFinite(rawCredits) && rawCredits > 0 ? rawCredits : 3;
+            weightedPoints += points * credits;
+            totalCredits += credits;
         });
         return totalCredits > 0 ? weightedPoints / totalCredits : 0;
     }
@@ -1340,10 +1352,11 @@
         set('year-credits', credits);
         set('year-courses', grades.length);
         set('year-awards', Number.isFinite(Number(user.year_awards)) ? Number(user.year_awards) : 0);
-        set('year-grade', calculateGrade(
-            grades.length ? grades.reduce((sum, g) => sum + (Number(g.final_score) || 0), 0) / grades.length : 0,
-            program
-        ));
+        // The overall grade follows the same GPA scale as the displayed yearly GPA,
+        // rather than re-grading an unweighted average of raw marks.
+        set('year-grade', grades.length ? (PROGRAM.isTVET(program)
+            ? getGradeFromGPATVET(gpa)
+            : getGradeFromGPA(gpa)) : '-');
         set('year-rate', rate + '%');
     }
 
