@@ -437,12 +437,19 @@
     function calculateGPA(marks) {
         if (!Array.isArray(marks) || marks.length === 0) return 0;
         let weightedPoints = 0, totalCredits = 0;
+
+        // The caller supplies approved/published marks. Prefer the effective retake
+        // grade when one is present, then the published grade, before cached points.
         marks.forEach(m => {
-            // Prefer stored points; if missing, derive points only from the published grade.
-            let points = numericMark(m, ['points', 'grade_points']);
-            if (points === null) points = pointsFromPublishedGrade(m?.grade ?? m?.published_grade ?? m?.final_grade ?? m?.status);
+            if (!m) return;
+            const effectiveGrade = m.retake_grade ?? m.published_grade ?? m.final_grade ?? m.grade ?? m.status;
+            let points = pointsFromPublishedGrade(effectiveGrade);
+            if (points === null) points = numericMark(m, ['points', 'grade_points']);
+            if (points === null && effectiveGrade) points = calculatePoints(effectiveGrade, userProgram);
             if (points === null || !Number.isFinite(points)) return;
-            const credits = Number(m?.credits);
+
+            // A zero-point failed unit is valid and stays in the denominator.
+            const credits = Number(m.credits ?? m.credit_hours ?? m.creditHours);
             const c = Number.isFinite(credits) && credits > 0 ? credits : 3;
             weightedPoints += points * c;
             totalCredits += c;
