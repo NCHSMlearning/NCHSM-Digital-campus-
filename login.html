@@ -1508,6 +1508,144 @@ body.dark-theme .login-card .divider { color:#c5d9e6!important; }
 }
 </style>
 
+
+<style id="nchsm-modern-login-refresh">
+/* Modern NCHSM visual system — layout structure and authentication remain unchanged */
+:root{
+ --nchsm-modern-navy:#073b5c;
+ --nchsm-modern-deep:#052a43;
+ --nchsm-modern-blue:#087db4;
+ --nchsm-modern-gold:#f7b718;
+ --nchsm-modern-line:#dbe6ed;
+ --nchsm-modern-ink:#16384e;
+}
+html{background:#edf4f8!important}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+.container{
+ width:min(1600px,100%)!important;
+ grid-template-columns:minmax(0,1.08fr) minmax(440px,.92fr)!important;
+ box-shadow:0 28px 90px rgba(5,42,67,.16)!important;
+}
+.left-panel{
+ background-image:linear-gradient(180deg,rgba(3,38,61,.25) 0%,rgba(3,42,65,.58) 52%,rgba(3,35,55,.96) 100%),url("images/campus-header.jpg")!important;
+ background-position:center!important;
+}
+.panel-content{padding:clamp(28px,4vw,62px)!important}
+.logo-wrapper .logo{box-shadow:0 12px 34px rgba(0,0,0,.2)!important}
+.left-panel .welcome-section h2{max-width:690px!important;text-wrap:balance}
+.features-list{gap:12px!important}
+.feature{border-radius:16px!important;background:rgba(5,45,70,.48)!important;border-color:rgba(255,255,255,.18)!important}
+.stat .number{letter-spacing:-.035em!important}
+.right-panel{
+ background:radial-gradient(circle at 100% 0%,rgba(8,125,180,.09),transparent 35%),linear-gradient(145deg,#f7fafc,#edf4f8)!important;
+}
+.main-content{width:100%!important;max-width:760px!important;margin:auto!important;padding:clamp(22px,3.5vw,54px)!important}
+.login-card{
+ width:100%!important;max-width:540px!important;margin:auto!important;padding:clamp(24px,3vw,38px)!important;
+ border:1px solid rgba(214,228,237,.95)!important;border-radius:26px!important;
+ background:rgba(255,255,255,.96)!important;
+ box-shadow:0 22px 60px rgba(7,59,92,.11),0 2px 8px rgba(7,59,92,.04)!important;
+ backdrop-filter:blur(16px)!important;
+}
+.top-controls{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin-bottom:24px!important}
+.top-controls .left-group{display:flex!important;gap:8px!important;flex-wrap:wrap!important}
+.top-controls a,.top-controls button{
+ min-height:40px!important;padding:9px 13px!important;border-radius:12px!important;
+ font-weight:650!important;transition:transform .18s ease,box-shadow .18s ease,background .18s ease!important;
+}
+.top-controls a:hover,.top-controls button:hover{transform:translateY(-1px)!important}
+.top-controls .blog-btn{box-shadow:0 5px 12px rgba(247,183,24,.20)!important}
+.welcome-icon.logo-welcome{border-radius:18px!important;overflow:hidden!important;box-shadow:0 10px 25px rgba(7,59,92,.12)!important}
+.welcome-title{font-size:clamp(27px,2.6vw,34px)!important;font-weight:820!important;letter-spacing:-.045em!important;line-height:1.08!important;color:#123e5a!important}
+.welcome-subtitle{max-width:360px!important;margin-inline:auto!important;color:#718596!important;font-size:13px!important;line-height:1.6!important}
+.last-login-info,.attempts-info{border-radius:14px!important;padding:12px 14px!important;border:1px solid #dce8ef!important;background:#f4f9fc!important}
+.form-group{margin-bottom:19px!important}
+.form-label{display:flex!important;align-items:center!important;gap:8px!important;color:#29485b!important;font-size:13px!important;font-weight:700!important;margin-bottom:8px!important}
+.form-label svg,.form-label i{width:16px!important;height:16px!important}
+.input-wrapper{position:relative!important}
+.form-input{
+ min-height:52px!important;width:100%!important;box-sizing:border-box!important;
+ border:1px solid #d4e1e9!important;border-radius:13px!important;background:#fff!important;
+ padding:13px 15px 13px 44px!important;color:#16384e!important;font-size:15px!important;
+ box-shadow:0 1px 2px rgba(7,59,92,.025)!important;
+}
+.form-input:focus{outline:none!important;border-color:#1686c1!important;box-shadow:0 0 0 4px rgba(22,134,193,.12)!important}
+.form-input::placeholder{color:#8a9ba8!important;opacity:1!important}
+.input-icon{left:15px!important;color:#8196a5!important}
+#loginButton,.login-button{
+ min-height:52px!important;border:0!important;border-radius:13px!important;
+ font-size:15px!important;font-weight:800!important;letter-spacing:.01em!important;
+ box-shadow:0 9px 20px rgba(7,59,92,.16)!important;
+ transition:transform .18s ease,box-shadow .18s ease!important;
+}
+#loginButton:hover,.login-button:hover{transform:translateY(-1px)!important;box-shadow:0 13px 26px rgba(7,59,92,.21)!important}
+.sso-btn{min-height:44px!important;border-radius:12px!important;border:1px solid #dce7ee!important;background:#fff!important;font-weight:650!important}
+.signup-link{border-radius:12px!important}
+.theme-toggle-btn{border:1px solid #d9e5ed!important;background:#fff!important;border-radius:12px!important}
+.login-card a:focus-visible,.login-card button:focus-visible,.login-card input:focus-visible{outline:3px solid #1686c1!important;outline-offset:3px!important}
+body.dark-theme{background:#061725!important;color:#e9f3f8!important}
+body.dark-theme .right-panel{background:radial-gradient(circle at 100% 0%,rgba(16,126,178,.15),transparent 35%),linear-gradient(145deg,#0b1e2c,#102b3d)!important}
+body.dark-theme .login-card{background:rgba(11,30,44,.97)!important;border-color:#294657!important;box-shadow:0 22px 60px rgba(0,0,0,.28)!important}
+body.dark-theme .welcome-title,body.dark-theme .login-card .welcome-title{color:#f2f7fa!important}
+body.dark-theme .welcome-title .gold,body.dark-theme .login-card .gold{color:#ffc533!important}
+body.dark-theme .welcome-subtitle,body.dark-theme .login-card p,body.dark-theme .login-card small{color:#b8ccd8!important}
+body.dark-theme .form-label,body.dark-theme .login-card label,body.dark-theme .form-options{color:#e6f0f6!important}
+body.dark-theme .form-input,body.dark-theme input.form-input{background:#071a28!important;border-color:#355466!important;color:#f4f8fb!important}
+body.dark-theme .form-input::placeholder{color:#9bb0be!important}
+body.dark-theme .input-icon,body.dark-theme .form-label svg,body.dark-theme .form-label i{color:#8bc9e8!important}
+body.dark-theme .last-login-info,body.dark-theme .attempts-info{background:#102b3d!important;border-color:#2d5064!important;color:#d0e1ea!important}
+body.dark-theme .top-controls .theme-toggle-btn,body.dark-theme .sso-btn{background:#102b3d!important;border-color:#355466!important;color:#f0f6fa!important}
+body.dark-theme .top-controls .blog-btn{background:#f7b718!important;color:#122a3a!important;border-color:#f7b718!important}
+body.dark-theme .signup-link,body.dark-theme .divider{color:#c5d8e3!important}
+body.dark-theme .right-panel a:not(.blog-btn){color:#79cef4}
+body.dark-theme #loginButton,body.dark-theme .login-button{background:linear-gradient(135deg,#f7b718,#ffd05a)!important;color:#102c40!important}
+@media(max-width:1050px){
+ .container{grid-template-columns:minmax(0,1fr) minmax(390px,.95fr)!important}
+ .panel-content{padding:30px!important}
+ .main-content{padding:26px!important}
+}
+@media(max-width:720px){
+ .container{display:flex!important;flex-direction:column!important;width:100%!important;min-height:100vh!important;overflow:visible!important;box-shadow:none!important}
+ .left-panel{display:block!important;width:100%!important;min-height:330px!important;height:330px!important;background-position:center 44%!important}
+ .panel-content{min-height:330px!important;height:330px!important;padding:24px 22px 22px!important}
+ .logo-wrapper{display:flex!important;align-items:center!important;gap:12px!important}
+ .logo-wrapper .logo{flex:0 0 52px!important;width:52px!important;height:52px!important;margin:0!important}
+ .logo-wrapper .college-name{font-size:clamp(13px,3.6vw,17px)!important;line-height:1.12!important}
+ .logo-wrapper .motto{display:none!important}
+ .left-panel .welcome-section{position:absolute!important;left:22px!important;right:22px!important;bottom:25px!important;max-width:none!important}
+ .left-panel .welcome-section:before{font-size:10px!important;margin-bottom:10px!important}
+ .left-panel .welcome-section h2{font-size:clamp(27px,7vw,36px)!important;line-height:1.02!important;margin-bottom:8px!important}
+ .left-panel .welcome-section h2:after{margin-top:12px!important;width:38px!important;height:3px!important}
+ .left-panel .tagline{font-size:12px!important;line-height:1.4!important}
+ .left-panel .features-list,.left-panel .accreditation-scroll,.left-panel .stats{display:none!important}
+ .right-panel{width:100%!important;min-height:auto!important;background:#f1f6f9!important}
+ .main-content{width:100%!important;max-width:560px!important;min-height:auto!important;padding:0 14px 28px!important;margin:0 auto!important}
+ .login-card{width:100%!important;max-width:none!important;margin:-18px auto 0!important;padding:20px 17px 24px!important;border-radius:22px!important;position:relative!important;z-index:3!important}
+ .top-controls{margin-bottom:20px!important}
+ .top-controls a,.top-controls button{min-height:40px!important;padding:8px 11px!important;font-size:12px!important}
+ .welcome-icon.logo-welcome{width:56px!important;height:56px!important;margin:0 auto 12px!important;border-radius:15px!important}
+ .welcome-title{font-size:27px!important}
+ .welcome-subtitle{font-size:12px!important}
+ .last-login-info,.attempts-info{font-size:11px!important;padding:10px 12px!important}
+ .form-group{margin-bottom:16px!important}
+ .form-label{font-size:12px!important}
+ .form-input{height:51px!important;min-height:51px!important;font-size:16px!important;padding-left:42px!important}
+ #loginButton,.login-button{width:100%!important;min-height:51px!important}
+ .sso-btn{min-height:43px!important;font-size:12px!important}
+ body.dark-theme .right-panel{background:#081b29!important}
+}
+@media(max-width:390px){
+ .left-panel,.panel-content{height:305px!important;min-height:305px!important}
+ .panel-content{padding:20px 17px!important}
+ .left-panel .welcome-section{left:17px!important;right:17px!important;bottom:20px!important}
+ .left-panel .welcome-section h2{font-size:27px!important}
+ .main-content{padding:0 10px 22px!important}
+ .login-card{padding:18px 14px 22px!important}
+ .top-controls a,.top-controls button{font-size:11px!important;padding:7px 9px!important}
+}
+@media(prefers-reduced-motion:reduce){.login-card,.form-input,#loginButton,.login-button,.top-controls a,.top-controls button{transition:none!important}}
+</style>
+
 </head>
 <body>
     <!-- Skip to content -->
