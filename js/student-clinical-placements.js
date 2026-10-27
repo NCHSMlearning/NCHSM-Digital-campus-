@@ -138,7 +138,7 @@
       const chosenIndex = Math.floor(Math.random() * departments.length);
       const chosen = departments[chosenIndex];
       // Wheel sectors are equal; rotate so the selected sector finishes under the top pointer.
-      const targetSector = [315, 45, 135, 225][chosenIndex];
+      const targetSector = [45, 315, 225, 135][chosenIndex];
       wheelRotation += 360 * (5 + Math.floor(Math.random() * 3)) + targetSector;
       wheel.style.transform = 'rotate(' + wheelRotation + 'deg)';
       window.setTimeout(() => {
