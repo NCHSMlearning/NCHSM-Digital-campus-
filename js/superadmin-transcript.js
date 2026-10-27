@@ -262,14 +262,17 @@ function calculateGPA(marks, programCode) {
     const defaultCredits = Number(GRADE_CONFIG.creditHours) > 0 ? Number(GRADE_CONFIG.creditHours) : 3;
 
     eligibleMarks.forEach(m => {
-        const rawScore = m.final_score !== null && m.final_score !== undefined && m.final_score !== ''
-            ? m.final_score
-            : (m.final_total !== undefined ? m.final_total : (m.total_score !== undefined ? m.total_score : m.total));
+        const passedRetake = /^(pass|passed|competent)$/i.test(String(m.retake_status || '').trim()) &&
+            m.retake_score !== null && m.retake_score !== undefined && m.retake_score !== '';
+        const rawScore = passedRetake ? m.retake_score :
+            (m.final_score !== null && m.final_score !== undefined && m.final_score !== ''
+                ? m.final_score
+                : (m.final_total !== undefined ? m.final_total : (m.total_score !== undefined ? m.total_score : m.total)));
         if (rawScore === null || rawScore === undefined || rawScore === '') return;
         const score = Number(rawScore);
         if (!Number.isFinite(score)) return;
 
-        // Include zero-score failures in the denominator instead of inflating GPA.
+        // A passed retake replaces the original score. A failure remains zero-point and included.
         const gradeInfo = calculateOfficialGrade(score, programCode);
         const rawCredits = Number(m.credits || m.credit_hours || m.creditHours);
         const credits = Number.isFinite(rawCredits) && rawCredits > 0 ? rawCredits : defaultCredits;
