@@ -579,7 +579,10 @@ function filterPublishedMarks() {
         });
     }
     
-    // Status filter
+    // Publishing workspace shows approved marks only; draft, pending, and
+    // rejected records must be reviewed in the approval workflow first.
+    filtered = filtered.filter(function(m) { return m.approval_status === 'approved'; });
+
     if (statusFilter === 'published') {
         filtered = filtered.filter(function(m) { return m.published === true; });
     } else if (statusFilter === 'draft') {
@@ -901,7 +904,8 @@ async function loadPublishedMarks() {
                 original_score: mark.final_score,
                 grade: grade,
                 points: points,
-                published: mark.published,
+                published: mark.published === true,
+                approval_status: String(mark.approval_status || 'draft').toLowerCase(),
                 published_at: mark.published_at,
                 academic_year: mark.academic_year,
                 created_at: mark.created_at,
@@ -1868,9 +1872,13 @@ async function publishSingleUnit(markId, subjectName, admissionNumber) {
                 published_by: window.currentUser?.id || null
             })
             .eq('id', markId)
+            .eq('approval_status', 'approved')
             .select();
         
         if (result.error) throw result.error;
+        if (!result.data || result.data.length === 0) {
+            throw new Error('This mark is not approved or is no longer eligible for publication. Refresh the list and check its approval status.');
+        }
         
         var publishedMark = result.data && result.data[0];
         
@@ -2017,6 +2025,7 @@ async function publishStudentAllMarks(admissionNumber) {
                 published_by: window.currentUser?.id || null
             })
             .in('id', visibleMarkIds)
+            .eq('approval_status', 'approved')
             .select();
         
         if (result.error) throw result.error;
@@ -2152,7 +2161,8 @@ async function batchPublishSelected() {
                         published_at: new Date().toISOString(),
                         published_by: window.currentUser?.id || null
                     })
-                    .eq('admission_number', admission);
+                    .eq('admission_number', admission)
+                    .eq('approval_status', 'approved');
                 
                 if (!result.error) {
                     successCount++;
@@ -2331,9 +2341,17 @@ async function batchPublishMarks(marks) {
         return;
     }
     
+    // Defensive gate: only approved marks can be published from this module.
+    marks = marks.filter(function(mark) { return mark.approval_status === 'approved'; });
+    if (marks.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No approved marks available to publish. Approve marks first in Marks Approval.', 'warning');
+        }
+        return;
+    }
     var count = marks.length;
     
-    if (typeof window.showLoading === 'function') window.showLoading('Publishing ' + count + ' marks...');
+    if (typeof window.showLoading === 'function') window.showLoading('Publishing ' + count + ' approved marks...');
     
     try {
         var successCount = 0;
@@ -2356,7 +2374,8 @@ async function batchPublishMarks(marks) {
                     published_at: new Date().toISOString(),
                     published_by: window.currentUser?.id || null
                 })
-                .eq('id', mark.id);
+                .eq('id', mark.id)
+                .eq('approval_status', 'approved');
             
             if (!result.error) {
                 successCount++;
