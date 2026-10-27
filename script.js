@@ -25558,22 +25558,29 @@ async function approveByUnit(unitName) {
     if (!confirm(`✅ Approve ALL ${count} pending marks for unit "${unitName}"?`)) return;
     
     try {
-        const { error } = await sb
+        const { data: approvedRows, error } = await sb
             .from('student_marks')
             .update({
                 approval_status: 'approved',
-                published: true,
-                published_at: new Date().toISOString(),
+                published: false,
+                published_at: null,
                 approved_at: new Date().toISOString(),
                 approved_by: window.currentUser?.id || null
             })
             .eq('subject_name', unitName)
-            .eq('approval_status', 'pending');
+            .eq('approval_status', 'pending')
+            .select('id');
         
         if (error) throw error;
+        const approvedCount = approvedRows?.length || 0;
+        if (approvedCount === 0) {
+            showNotification('No pending marks remained for this unit. Refresh and try again.', 'warning');
+            await loadMarksApprovals();
+            return;
+        }
         
-        showNotification(`✅ All ${count} marks for "${unitName}" approved!`, 'success');
-        await logBulkApprovalAction('approved_by_unit', count, unitName);
+        showNotification(`✅ ${approvedCount} marks for "${unitName}" approved; not published.`, 'success');
+        await logBulkApprovalAction('approved_by_unit', approvedCount, unitName);
         await loadMarksApprovals();
         
     } catch (error) {
@@ -25631,27 +25638,45 @@ async function approveMark(id) {
     if (!confirm('✅ Approve this mark?')) return;
     
     try {
-        // Get mark details first for email
-        const { data: mark } = await sb
+        // Read the pending mark for the existing approval notification.
+        const { data: mark, error: markLookupError } = await sb
             .from('student_marks')
             .select('*')
             .eq('id', id)
-            .single();
+            .eq('approval_status', 'pending')
+            .maybeSingle();
         
-        const { error } = await sb
+        if (markLookupError) throw markLookupError;
+        if (!mark) {
+            showNotification('This mark is no longer pending approval. Refresh the list.', 'warning');
+            await loadMarksApprovals();
+            return;
+        }
+        
+        // Approval is deliberately separate from publication.
+        // The pending predicate also prevents overwriting a concurrent status change.
+        const { data: approvedMark, error } = await sb
             .from('student_marks')
             .update({
                 approval_status: 'approved',
-                published: true,
-                published_at: new Date().toISOString(),
+                published: false,
+                published_at: null,
                 approved_at: new Date().toISOString(),
                 approved_by: window.currentUser?.id || null
             })
-            .eq('id', id);
+            .eq('id', id)
+            .eq('approval_status', 'pending')
+            .select('id')
+            .maybeSingle();
         
         if (error) throw error;
+        if (!approvedMark) {
+            showNotification('This mark changed before approval could be saved. Refresh and try again.', 'warning');
+            await loadMarksApprovals();
+            return;
+        }
         
-        showNotification('✅ Mark approved successfully!', 'success');
+        showNotification('✅ Mark approved. It remains unpublished until separately published.', 'success');
         await logApprovalAction(id, 'approved');
         
         // Send email notification to student
@@ -25734,21 +25759,28 @@ async function approveAllPendingMarks() {
     if (!confirm(`✅ Approve ALL ${count} pending marks across all units?`)) return;
     
     try {
-        const { error } = await sb
+        const { data: approvedRows, error } = await sb
             .from('student_marks')
             .update({
                 approval_status: 'approved',
-                published: true,
-                published_at: new Date().toISOString(),
+                published: false,
+                published_at: null,
                 approved_at: new Date().toISOString(),
                 approved_by: window.currentUser?.id || null
             })
-            .eq('approval_status', 'pending');
+            .eq('approval_status', 'pending')
+            .select('id');
         
         if (error) throw error;
+        const approvedCount = approvedRows?.length || 0;
+        if (approvedCount === 0) {
+            showNotification('No pending marks remained to approve. Refresh the list.', 'warning');
+            await loadMarksApprovals();
+            return;
+        }
         
-        showNotification(`✅ All ${count} marks approved!`, 'success');
-        await logBulkApprovalAction('approved_all', count);
+        showNotification(`✅ ${approvedCount} marks approved; they remain unpublished until separately published.`, 'success');
+        await logBulkApprovalAction('approved_all', approvedCount);
         await loadMarksApprovals();
         
     } catch (error) {
