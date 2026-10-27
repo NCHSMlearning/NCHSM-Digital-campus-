@@ -517,7 +517,10 @@ const client = window.sb || window.supabase;
         const progressionRows = (progressionMarks || []).filter(window.isAnalyticsMarkEligible).filter(mark => intake === 'all' ||
             [mark.admission_number, mark.student_id].filter(Boolean).some(id => cohortIdentifiers.has(String(id)))
         );
-        window.renderProgressionTable(students || [], progressionRows);
+        // Learner Progress should be limited to learners in the currently selected
+        // analytics class/cohort (programme + intake + academic year/block filters).
+        // Keep all-block marks only for calculating each learner's progression trend.
+        window.renderProgressionTable(filteredStudents || [], progressionRows);
         
         // ============================================
         // 11. STORE DATA FOR CONSOLIDATED MARKSHEET
@@ -1055,7 +1058,8 @@ window.renderProgressionTable = function(students, marks) {
         });
     });
 
-    const topStudents = (students || []).filter(Boolean).slice(0, 100);
+    // Show every learner in the selected class; do not silently truncate at 100.
+    const topStudents = (students || []).filter(Boolean);
     if (!topStudents.length) {
         tbody.innerHTML = '<tr><td colspan="7" style="padding:30px;text-align:center;color:#94a3b8;">No progression data available</td></tr>';
         return;
