@@ -441,18 +441,28 @@
         let weightedPoints = 0;
         let totalCredits = 0;
 
+        const normalizeUnit = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         marks.forEach(mark => {
             if (!mark) return;
 
-            // Pending rows without a published grade/score are not GPA attempts.
-            const effectiveGrade = mark.retake_grade ?? mark.published_grade ??
-                mark.final_grade ?? mark.grade ?? mark.status;
-            const rawScore = getPublishedScore(mark);
-            const hasPublishedOutcome = String(effectiveGrade ?? '').trim() !== '' ||
-                rawScore !== null;
+            // A passed retake replaces the original attempt for GPA; never count both.
+            const retakes = studentRetakeMap[mark.subject_name] || Object.entries(studentRetakeMap)
+                .filter(([name]) => normalizeUnit(name) === normalizeUnit(mark.subject_name))
+                .flatMap(([, rows]) => rows || []);
+            const passedRetake = [...retakes].reverse().find(r =>
+                /^(pass|passed|competent)$/i.test(String(r.status || '').trim()) &&
+                String(r.grade || '').trim() !== '');
+            const hasPassedInlineRetake = /^(pass|passed|competent)$/i.test(String(mark.retake_status || '').trim()) &&
+                String(mark.retake_grade || '').trim() !== '';
+            const effectiveGrade = hasPassedInlineRetake ? mark.retake_grade :
+                (passedRetake ? passedRetake.grade :
+                (mark.published_grade ?? mark.final_grade ?? mark.grade ?? mark.status));
+            const rawScore = hasPassedInlineRetake ? numericMark(mark, ['retake_score']) :
+                (passedRetake ? numericMark(passedRetake, ['total_score', 'exam_score']) : getPublishedScore(mark));
+            const hasPublishedOutcome = String(effectiveGrade ?? '').trim() !== '' || rawScore !== null;
             if (!hasPublishedOutcome) return;
 
-            // Published grade is authoritative; stored points are only a fallback.
+            // Derive points from the effective published grade/score, not stale stored points.
             let points = pointsFromPublishedGrade(effectiveGrade);
             if (points === null && rawScore !== null) {
                 points = calculatePoints(calculateGrade(rawScore, activeProgram), activeProgram);
@@ -460,7 +470,7 @@
             if (points === null) points = numericMark(mark, ['points', 'grade_points']);
             if (points === null || !Number.isFinite(points)) return;
 
-            // Zero points are valid for a failed unit and must remain in the denominator.
+            // Failed units contribute zero points but remain in the denominator.
             const rawCredits = Number(mark.credits ?? mark.credit_hours ?? mark.creditHours);
             const credits = Number.isFinite(rawCredits) && rawCredits > 0 ? rawCredits : 3;
             weightedPoints += points * credits;
