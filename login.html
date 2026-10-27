@@ -1388,59 +1388,7 @@ body{margin:0!important;background:#edf4f8!important;font-family:Inter,system-ui
 </style>
 
 
-<!-- NCHSM login visual refinement: desktop and mobile -->
-<style id="nchsm-login-visual-refinement">
-:root{--nchsm-navy:#073b5c;--nchsm-blue:#0b6596;--nchsm-gold:#f7b718}
-.container{width:min(1560px,100%);grid-template-columns:minmax(0,1.08fr) minmax(420px,.92fr)!important;box-shadow:0 24px 70px rgba(7,59,92,.12)}
-.left-panel{background-position:center!important}
-.panel-content{padding:clamp(26px,3.2vw,52px) clamp(24px,4vw,64px) 24px}
-.left-panel .welcome-section h2{max-width:620px;font-size:clamp(30px,3.5vw,52px)!important;line-height:1.04!important}
-.features-list{gap:12px!important}
-.feature{min-height:76px!important;border-radius:13px!important}
-.right-panel{background:linear-gradient(145deg,#f7fafc 0%,#edf4f8 100%)!important}
-.main-content{width:100%;max-width:720px;margin-inline:auto;padding:clamp(20px,3.5vw,54px)!important}
-.login-card{width:100%;max-width:560px;margin-inline:auto;padding:clamp(22px,3vw,38px)!important;border:1px solid rgba(217,228,236,.9)!important;border-radius:22px!important;background:rgba(255,255,255,.97)!important;box-shadow:0 18px 48px rgba(7,59,92,.10)!important}
-.welcome-title{letter-spacing:-.035em}
-.welcome-subtitle{line-height:1.55}
-.form-input{min-height:50px!important;border-radius:11px!important;border:1px solid #d5e1ea!important;background:#fff!important;transition:border-color .18s ease,box-shadow .18s ease}
-.form-input:focus{border-color:#1686c1!important;box-shadow:0 0 0 3px rgba(22,134,193,.14)!important;outline:none!important}
-.form-label{font-weight:650!important}
-#loginButton{min-height:50px!important;border-radius:11px!important;font-weight:750!important;letter-spacing:.01em;box-shadow:0 7px 16px rgba(7,59,92,.14);transition:transform .18s ease,box-shadow .18s ease}
-#loginButton:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(7,59,92,.20)}
-.top-controls{gap:10px!important;flex-wrap:wrap}
-.top-controls a,.top-controls button{border-radius:9px!important}
-@media(max-width:1050px){
- .container{grid-template-columns:minmax(0,1fr) minmax(390px,.9fr)!important}
- .panel-content{padding:28px 28px 22px}
- .features-list{grid-template-columns:1fr 1fr!important}
- .stats{grid-template-columns:repeat(2,1fr)!important;row-gap:14px!important}
-}
-@media(max-width:720px){
- .container{display:flex!important;flex-direction:column!important;min-height:100vh!important;overflow:visible!important}
- .left-panel{display:none!important}
- .right-panel{width:100%!important;min-height:100vh!important;background:linear-gradient(180deg,#eaf3f8 0%,#f8fbfd 100%)!important}
- .mobile-header{display:flex!important;justify-content:center!important;padding:20px 18px 8px!important}
- .main-content{padding:10px 16px 28px!important}
- .login-card{max-width:520px!important;padding:22px 18px!important;border-radius:20px!important;box-shadow:0 12px 32px rgba(7,59,92,.09)!important}
- .top-controls{justify-content:space-between!important}
- .welcome-icon.logo-welcome{width:66px!important;height:66px!important;margin:0 auto 12px!important}
- .welcome-title{font-size:27px!important}
- .welcome-subtitle{font-size:13px!important}
- .form-group{margin-bottom:16px!important}
- .form-input{min-height:48px!important;font-size:16px!important}
- #loginButton{width:100%!important;min-height:50px!important}
- .features-list{grid-template-columns:1fr!important}
-}
-@media(max-width:390px){
- .main-content{padding:8px 10px 22px!important}
- .login-card{padding:19px 14px!important}
- .top-controls a,.top-controls button{font-size:11px!important}
- .welcome-title{font-size:24px!important}
-}
-@media(prefers-reduced-motion:reduce){
- .form-input,#loginButton{transition:none!important}
-}
-</style>
+
 
 </head>
 <body>
