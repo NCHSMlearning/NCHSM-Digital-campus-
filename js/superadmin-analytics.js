@@ -520,7 +520,9 @@ const client = window.sb || window.supabase;
         // Learner Progress should be limited to learners in the currently selected
         // analytics class/cohort (programme + intake + academic year/block filters).
         // Keep all-block marks only for calculating each learner's progression trend.
-        window.renderProgressionTable(filteredStudents || [], progressionRows);
+        // Pass the full selected programme/intake cohort, not only learners
+        // who already have marks; learners without results must still be listed.
+        window.renderProgressionTable(students || [], progressionRows);
         
         // ============================================
         // 11. STORE DATA FOR CONSOLIDATED MARKSHEET
