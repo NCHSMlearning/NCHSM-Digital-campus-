@@ -695,6 +695,8 @@ JAVASCRIPT
                 detail('Student name', result.student_name) +
                 detail('Admission number', result.student_id) +
                 detail('Program', result.program) +
+                detail('Intake year', result.intake_year || 'Not recorded') +
+                detail('Current block', result.current_block || 'Not recorded') +
                 detail('Registry issue date', result.issued_at ? new Date(result.issued_at).toLocaleString() : '');
             const blockNames = Array.isArray(result.blocks)
                 ? result.blocks.map(function(block) { return String(block || '').trim(); }).filter(Boolean)
