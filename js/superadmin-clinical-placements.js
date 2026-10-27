@@ -28,9 +28,31 @@
     const box = document.createElement('div');
     box.className = 'ca-field ca-departments-editor';
     box.style.cssText = 'grid-column:1/-1;padding:14px;border:1px solid #d7e4ed;border-radius:12px;background:#f7fbfd;margin:8px 0';
-    box.innerHTML = '<label for="ca-departments-list"><strong>Departments available on this ballot</strong></label><textarea id="ca-departments-list" class="ca-input" rows="3" style="width:100%;margin-top:8px" placeholder="Medical Ward, Surgical Ward, Maternity, Paediatric Ward"></textarea><small style="display:block;margin-top:6px">Enter department names separated by commas or new lines. These will appear on the student spin wheel.</small><label for="ca-extra-capacities" style="display:block;margin-top:12px"><strong>Additional department capacities</strong></label><textarea id="ca-extra-capacities" class="ca-input" rows="2" style="width:100%;margin-top:6px" placeholder="Emergency Department=12&#10;ICU=6"></textarea><small style="display:block;margin-top:6px">Optional: one department=number per line. Leave out or use 0 for unlimited capacity.</small>';
+    box.innerHTML = '<label for="ca-department-new"><strong>Departments for this ballot</strong></label><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><input id="ca-department-new" class="ca-input" style="flex:1;min-width:180px" placeholder="Type a department name"><button type="button" id="ca-add-department" class="ca-btn ca-btn-green"><i class="fas fa-plus"></i> Add department</button></div><div id="ca-department-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"></div><textarea id="ca-departments-list" hidden></textarea><small style="display:block;margin-top:6px">Add or remove departments with one click. Save ballot settings to apply changes to the student wheel.</small><label for="ca-extra-capacities" style="display:block;margin-top:12px"><strong>Additional department capacities</strong></label><textarea id="ca-extra-capacities" class="ca-input" rows="2" style="width:100%;margin-top:6px" placeholder="Emergency Department=12&#10;ICU=6"></textarea><small style="display:block;margin-top:6px">Optional: one department=number per line. Leave out or use 0 for unlimited capacity.</small>'; 
     form.insertBefore(box, form.querySelector('button[type="submit"]')?.parentElement || form.lastElementChild);
     $('ca-departments-list').value = DEPARTMENTS.join(', ');
+    renderDepartmentChips();
+    $('ca-add-department')?.addEventListener('click', addDepartmentFromInput);
+    $('ca-department-new')?.addEventListener('keydown', e=>{if(e.key==='Enter'){e.preventDefault();addDepartmentFromInput();}});
+  }
+  function renderDepartmentChips() {
+    const wrap=$('ca-department-chips'), hidden=$('ca-departments-list');
+    if(!wrap||!hidden) return;
+    const list=formDepartments();
+    hidden.value=list.join(', ');
+    wrap.innerHTML=list.map(d=>'<span style="display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#e8f5f3;color:#145e58;font-weight:700;border:1px solid #b9ded9">'+esc(d)+' <button type="button" data-remove-department="'+esc(d)+'" aria-label="Remove '+esc(d)+'" style="border:0;background:transparent;color:#9b2929;font-weight:900;cursor:pointer">×</button></span>').join('');
+  }
+  function addDepartmentFromInput() {
+    const input=$('ca-department-new');
+    const name=(input?.value||'').trim();
+    if(!name) return notify('Enter a department name first.','warning');
+    const list=formDepartments();
+    if(list.some(d=>d.toLowerCase()===name.toLowerCase())) return notify('That department is already on this ballot.','warning');
+    if(list.length>=30) return notify('A ballot can have at most 30 departments.','warning');
+    list.push(name);
+    $('ca-departments-list').value=list.join(', ');
+    input.value='';
+    renderDepartmentChips();
   }
   function getFormCapacities() {
     const obj = {};
@@ -46,7 +68,7 @@
     }
     body.innerHTML = state.ballots.map(b => {
       const active = state.selectedBallot && state.selectedBallot.id === b.id;
-      return '<tr class="'+(active?'ca-selected':'')+'"><td><strong>'+esc(b.title||'Clinical rotation ballot')+'</strong><small>'+esc(b.program||'All programs')+' · '+esc(b.block||'All blocks')+'</small></td><td>'+esc(b.intake_year||'Any intake')+'</td><td>'+esc(b.opens_at?new Date(b.opens_at).toLocaleString():'Not set')+'<small>to '+esc(b.closes_at?new Date(b.closes_at).toLocaleString():'Not set')+'</small></td><td><span class="ca-pill ca-'+esc(String(b.status||'scheduled').toLowerCase())+'">'+esc(b.status||'scheduled')+'</span></td><td>'+Number(b.preference_count||0)+'</td><td><button class="ca-btn ca-btn-light" data-select-ballot="'+esc(b.id)+'" type="button">Manage</button></td><td class="ca-actions">'+(b.status==='scheduled'?'<button type="button" class="ca-btn ca-btn-green" data-ballot-action="open" data-id="'+esc(b.id)+'">Open</button>':'')+(b.status==='open'?'<button type="button" class="ca-btn ca-btn-amber" data-ballot-action="closed" data-id="'+esc(b.id)+'">Close</button>':'')+(b.status==='closed'?'<button type="button" class="ca-btn ca-btn-purple" data-ballot-action="published" data-id="'+esc(b.id)+'">Publish</button>':'')+'</td></tr>';
+      return '<tr class="'+(active?'ca-selected':'')+'"><td><strong>'+esc(b.title||'Clinical rotation ballot')+'</strong><small>'+esc(b.program||'All programs')+' · '+esc(b.block||'All blocks')+'</small></td><td>'+esc(b.intake_year||'Any intake')+'</td><td>'+esc(b.opens_at?new Date(b.opens_at).toLocaleString():'Not set')+'<small>to '+esc(b.closes_at?new Date(b.closes_at).toLocaleString():'Not set')+'</small></td><td><span class="ca-pill ca-'+esc(String(b.status||'scheduled').toLowerCase())+'">'+esc(b.status||'scheduled')+'</span></td><td>'+Number(b.preference_count||0)+'</td><td><button class="ca-btn ca-btn-light" data-select-ballot="'+esc(b.id)+'" type="button">Manage</button> <button class="ca-btn ca-btn-amber" data-edit-ballot="'+esc(b.id)+'" type="button">Edit</button></td><td class="ca-actions">'+(b.status==='scheduled'?'<button type="button" class="ca-btn ca-btn-green" data-ballot-action="open" data-id="'+esc(b.id)+'">Open</button>':'')+(b.status==='open'?'<button type="button" class="ca-btn ca-btn-amber" data-ballot-action="closed" data-id="'+esc(b.id)+'">Close</button>':'')+(b.status==='closed'?'<button type="button" class="ca-btn ca-btn-purple" data-ballot-action="published" data-id="'+esc(b.id)+'">Publish</button>':'')+'</td></tr>';
     }).join('');
   }
   function renderPreferences() {
@@ -169,6 +191,7 @@
     $('ca-intake').value=state.selectedBallot.intake_year||'';
     ensureDepartmentEditor();
     if($('ca-departments-list')) $('ca-departments-list').value=(state.selectedBallot.departments||DEPARTMENTS).join(', ');
+    renderDepartmentChips();
     if($('ca-extra-capacities')) $('ca-extra-capacities').value=Object.entries(state.selectedBallot.capacities||{}).filter(([d])=>!DEPARTMENTS.includes(d)).map(([d,n])=>d+'='+n).join('\n');
     $('ca-opens').value=state.selectedBallot.opens_at?new Date(new Date(state.selectedBallot.opens_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
     $('ca-closes').value=state.selectedBallot.closes_at?new Date(new Date(state.selectedBallot.closes_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
@@ -213,10 +236,13 @@
     $('ca-load-preferences')?.addEventListener('click',()=>loadPreferences().catch(e=>notify(e.message,'error')));
     $('ca-reset-form')?.addEventListener('click',()=>{
       $('ca-ballot-form')?.reset(); $('ca-edit-id').value='';
+      if($('ca-departments-list')) $('ca-departments-list').value=DEPARTMENTS.join(', '); renderDepartmentChips();
       $('ca-save-ballot').innerHTML='<i class="fas fa-plus"></i> Create ballot';
       DEPARTMENTS.forEach((d,i)=>{if($('ca-cap-'+i)) $('ca-cap-'+i).value='0';});
     });
+    $('ca-department-chips')?.addEventListener('click',e=>{const btn=e.target.closest('[data-remove-department]');if(!btn)return;const list=formDepartments().filter(d=>d!==btn.dataset.removeDepartment);$('ca-departments-list').value=list.join(', ');renderDepartmentChips();});
     $('ca-ballots-body')?.addEventListener('click',e=>{
+      const edit=e.target.closest('[data-edit-ballot]'); if(edit) return selectBallot(edit.dataset.editBallot);
       const action=e.target.closest('[data-ballot-action]');
       if(action) return ballotAction(action.dataset.id,action.dataset.ballotAction);
       const select=e.target.closest('[data-select-ballot]');
