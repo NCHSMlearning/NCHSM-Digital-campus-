@@ -514,7 +514,7 @@ const client = window.sb || window.supabase;
         if (program === 'TVET') progressionQuery = progressionQuery.neq('program', 'KRCHN');
         const { data: progressionMarks, error: progressionError } = await progressionQuery;
         if (progressionError) throw progressionError;
-        const progressionRows = (progressionMarks || []).filter(mark => intake === 'all' ||
+        const progressionRows = (progressionMarks || []).filter(window.isAnalyticsMarkEligible).filter(mark => intake === 'all' ||
             [mark.admission_number, mark.student_id].filter(Boolean).some(id => cohortIdentifiers.has(String(id)))
         );
         window.renderProgressionTable(students || [], progressionRows);
@@ -668,7 +668,7 @@ window.renderBlockPerformanceChart = function(students, marks) {
     marks?.forEach(m => {
         const block = m.block || 'Unknown';
         const score = window.getAnalyticsEffectiveScore(m);
-        if (blockData[block] && score > 0) {
+        if (blockData[block] && score !== null) {
             blockData[block].total += score;
             blockData[block].count++;
             if (score >= 60) blockData[block].pass++;
@@ -1569,70 +1569,89 @@ window.renderUnitRankings = function(marks, students, program, block) {
 // RENDER TOP STUDENTS
 // ============================================================
 
-window.renderTopStudents = function(students, marks) {
+window.renderTopStudents = function(students, marks, rankingMode) {
     const container = document.getElementById('analytics_top_students');
     if (!container) return;
-    
+    const mode = rankingMode || window._analyticsTopRankingMode || 'gpa';
+    window._analyticsTopRankingMode = mode;
+
+    // Build a shared aggregate under every known identifier, while each learner
+    // reads only one aggregate. Pending marks are omitted; numeric zero is a failure.
     const studentAverages = {};
-    marks?.forEach(m => {
-        const score = window.getAnalyticsEffectiveScore(m);
+    (marks || []).filter(window.isAnalyticsMarkEligible).forEach(mark => {
+        const score = window.getAnalyticsEffectiveScore(mark);
         if (score === null) return;
-        const gradeInfo = window.getGradeInfo(score);
-        window.getAnalyticsStudentIdentifiers(m).forEach(admission => {
-            if (!studentAverages[admission]) studentAverages[admission] = { total: 0, count: 0, scores: [], points: 0 };
-            studentAverages[admission].total += score;
-            studentAverages[admission].count++;
-            studentAverages[admission].scores.push(score);
-            studentAverages[admission].points += gradeInfo.points;
+        const points = window.getGradeInfo(score).points;
+        window.getAnalyticsStudentIdentifiers(mark).forEach(id => {
+            if (!studentAverages[id]) studentAverages[id] = { total: 0, count: 0, scores: [], points: 0 };
+            studentAverages[id].total += score;
+            studentAverages[id].count += 1;
+            studentAverages[id].scores.push(score);
+            studentAverages[id].points += points;
         });
     });
-    
+
+    const seenStudents = new Set();
     const studentData = [];
-    students?.forEach(s => {
-        const data = window.getAnalyticsStudentIdentifiers(s).map(id => studentAverages[id]).find(Boolean);
-        if (data && data.count > 0) {
-            const avg = Math.round((data.total / data.count) * 10) / 10;
-            const avgPoints = Math.round((data.points / data.count) * 10) / 10;
-            const gradeInfo = window.getGradeInfo(avg);
-            studentData.push({
-                student: s,
-                avg: avg,
-                avgPoints: avgPoints,
-                grade: gradeInfo.grade,
-                points: gradeInfo.points,
-                count: data.count,
-                highest: data.scores.length > 0 ? Math.max(...data.scores) : 0,
-                lowest: data.scores.length > 0 ? Math.min(...data.scores) : 0
-            });
-        }
+    (students || []).forEach(student => {
+        const ids = window.getAnalyticsStudentIdentifiers(student);
+        const stableId = ids[0] || String(student.full_name || '');
+        if (seenStudents.has(stableId)) return;
+        seenStudents.add(stableId);
+        const data = ids.map(id => studentAverages[id]).find(Boolean);
+        if (!data || data.count === 0) return;
+        const avg = Math.round((data.total / data.count) * 10) / 10;
+        const avgPoints = Math.round((data.points / data.count) * 100) / 100;
+        studentData.push({
+            student, avg, avgPoints, count: data.count,
+            highest: Math.max(...data.scores), lowest: Math.min(...data.scores)
+        });
     });
-    
-    const topStudents = studentData.sort((a, b) => b.avgPoints - a.avgPoints || b.avg - a.avg).slice(0, 10);
+
+    const ranked = [...studentData].sort((a, b) =>
+        mode === 'average'
+            ? b.avg - a.avg || b.avgPoints - a.avgPoints
+            : b.avgPoints - a.avgPoints || b.avg - a.avg
+    );
+    const topStudents = ranked.slice(0, 10);
+    const modeLabel = mode === 'average' ? 'Average Marks (%)' : 'Average Grade Points';
+    const metricLabel = mode === 'average' ? 'Average' : 'Avg Points';
     if (topStudents.length === 0) {
-        container.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">No learner data available</p>';
+        container.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">No eligible published learner marks available</p>';
         return;
     }
-    
-    let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">`;
+
+    let html = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+        <button type="button" onclick="window.renderTopStudents(window._analyticsStudents || [], window._analyticsMarks || [], 'gpa')"
+          aria-pressed="${mode === 'gpa'}"
+          style="padding:9px 14px;border-radius:8px;border:1px solid ${mode === 'gpa' ? '#4f46e5' : '#cbd5e1'};background:${mode === 'gpa' ? '#4f46e5' : '#fff'};color:${mode === 'gpa' ? '#fff' : '#334155'};font-weight:600;cursor:pointer;">Rank by Grade Points</button>
+        <button type="button" onclick="window.renderTopStudents(window._analyticsStudents || [], window._analyticsMarks || [], 'average')"
+          aria-pressed="${mode === 'average'}"
+          style="padding:9px 14px;border-radius:8px;border:1px solid ${mode === 'average' ? '#4f46e5' : '#cbd5e1'};background:${mode === 'average' ? '#4f46e5' : '#fff'};color:${mode === 'average' ? '#fff' : '#334155'};font-weight:600;cursor:pointer;">Rank by Average Marks</button>
+        <span style="font-size:12px;color:#64748b;">Current ranking: ${modeLabel}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">`;
     topStudents.forEach((data, index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
-        const statusColor = data.grade === 'A' ? '#10b981' : data.grade === 'B' ? '#3b82f6' : data.grade === 'C' ? '#f59e0b' : '#ef4444';
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index + 1);
+        const scoreGrade = window.getGradeInfo(data.avg);
+        const statusColor = scoreGrade.grade === 'A' ? '#10b981' : scoreGrade.grade === 'B' ? '#3b82f6' : scoreGrade.grade === 'C' ? '#f59e0b' : '#ef4444';
         const bgColor = index === 0 ? '#fef3c7' : index === 1 ? '#f0fdf4' : index === 2 ? '#eff6ff' : '#f8fafc';
         const borderColor = index === 0 ? '#f59e0b' : index === 1 ? '#10b981' : index === 2 ? '#3b82f6' : '#e5e7eb';
+        const rankMetric = mode === 'average' ? `${data.avg}%` : data.avgPoints.toFixed(2);
         html += `
-            <div style="background:${bgColor};border:2px solid ${borderColor};border-radius:12px;padding:16px;text-align:center;">
-                <div style="font-size:28px;margin-bottom:8px;">${medal}</div>
-                <div style="font-weight:700;font-size:15px;color:#1e293b;">${window.escapeHtml(data.student.full_name || 'Unknown')}</div>
-                <div style="font-size:12px;color:#64748b;">${window.escapeHtml(data.student.student_id || 'N/A')}</div>
-                <div style="font-size:12px;color:#64748b;">${window.escapeHtml(data.student.program || 'N/A')}</div>
-                <div style="margin-top:10px;display:flex;justify-content:center;gap:15px;">
-                    <div><div style="font-size:11px;color:#94a3b8;">Average</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${data.avg}%</div></div>
-                    <div><div style="font-size:11px;color:#94a3b8;">Grade</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${data.grade}</div></div>
-                    <div><div style="font-size:11px;color:#94a3b8;">Points</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${data.points}</div></div>
-                </div>
-                <div style="font-size:11px;color:#94a3b8;margin-top:5px;">${data.count} units • Highest: ${data.highest}% • Lowest: ${data.lowest}%</div>
+          <div style="background:${bgColor};border:2px solid ${borderColor};border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:8px;">${medal}</div>
+            <div style="font-weight:700;font-size:15px;color:#1e293b;">${window.escapeHtml(data.student.full_name || 'Unknown')}</div>
+            <div style="font-size:12px;color:#64748b;">${window.escapeHtml(data.student.admission_number || data.student.student_id || 'N/A')}</div>
+            <div style="font-size:12px;color:#64748b;">${window.escapeHtml(data.student.program || 'N/A')}</div>
+            <div style="margin-top:10px;display:flex;justify-content:center;gap:15px;flex-wrap:wrap;">
+              <div><div style="font-size:11px;color:#94a3b8;">${metricLabel}</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${rankMetric}</div></div>
+              <div><div style="font-size:11px;color:#94a3b8;">Average Marks</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${data.avg}%</div></div>
+              <div><div style="font-size:11px;color:#94a3b8;">Grade</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${scoreGrade.grade}</div></div>
             </div>
-        `;
+            <div style="font-size:11px;color:#94a3b8;margin-top:5px;">${data.count} marked units • Highest: ${data.highest}% • Lowest: ${data.lowest}%</div>
+          </div>`;
     });
     html += '</div>';
     container.innerHTML = html;
@@ -1663,7 +1682,7 @@ window.renderWeakStudents = function(students, marks) {
         const data = window.getAnalyticsStudentIdentifiers(s).map(id => studentAverages[id]).find(Boolean);
         if (data && data.count > 0) {
             const avg = Math.round((data.total / data.count) * 10) / 10;
-            if (avg > 0 && avg < 60) {
+            if (avg < 60) {
                 studentData.push({
                     student: s,
                     avg: avg,
