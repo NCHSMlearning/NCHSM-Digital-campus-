@@ -575,6 +575,35 @@
             *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
         }
 
+        /* Premium, scan-first verification result */
+        .verification-result { position: relative; isolation: isolate; }
+        .verification-banner { position: relative; overflow: hidden; text-align: center; padding: 30px 22px 26px; border-radius: 22px; background: radial-gradient(circle at 50% 0%, rgba(16,185,129,.18), transparent 58%), linear-gradient(145deg,#073653,#0A3D62 58%,#145579); color: #fff; box-shadow: 0 18px 42px rgba(10,61,98,.22); animation: verifyPop .65s cubic-bezier(.2,.9,.2,1.15) both; }
+        .verification-banner::before,.verification-banner::after { content:""; position:absolute; border:1px solid rgba(255,255,255,.13); border-radius:50%; width:230px;height:230px;top:-145px;left:-65px;pointer-events:none; }
+        .verification-banner::after { width:300px;height:300px;top:auto;left:auto;right:-180px;bottom:-220px; }
+        .verification-emblem { position:relative; z-index:1; display:grid;place-items:center;width:76px;height:76px;margin:0 auto 14px;border-radius:50%;font-size:36px;color:#fff;background:linear-gradient(145deg,#22c55e,#059669);border:5px solid rgba(255,255,255,.9);box-shadow:0 0 0 8px rgba(34,197,94,.2),0 10px 24px rgba(0,0,0,.2); }
+        .verification-result.is-review .verification-emblem { background:linear-gradient(145deg,#fbbf24,#d97706); }
+        .verification-result.is-invalid .verification-emblem { background:linear-gradient(145deg,#fb7185,#dc2626); }
+        .verification-eyebrow { position:relative;z-index:1;font-size:10px;font-weight:800;letter-spacing:2px;color:#a7f3d0;margin-bottom:8px; }
+        .verification-headline { position:relative;z-index:1;font-size:clamp(25px,5vw,36px);line-height:1.12;letter-spacing:-1px;font-weight:900;color:#fff;margin:0 0 12px; }
+        .verification-message { position:relative;z-index:1;max-width:520px;margin:0 auto;color:#e2e8f0;font-size:14px;line-height:1.7; }
+        .verified-seal { position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:9px 16px;border:1px solid rgba(167,243,208,.5);border-radius:999px;background:rgba(6,95,70,.45);color:#d1fae5;font-size:11px;font-weight:900;letter-spacing:1.2px; }
+        .result-card { margin-top:18px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 12px 30px rgba(10,61,98,.07); }
+        .result-valid { border-left:5px solid #10b981; }
+        .result-error { background:#fffbeb;border-left:5px solid #f59e0b; }
+        .result-invalid { background:#fff5f5;border-left:5px solid #dc2626; }
+        .result-title { font-size:17px; }
+        .detail-grid { margin-top:12px;gap:0; }
+        .detail-row { align-items:flex-start;gap:14px;padding:12px 4px;border-bottom:1px solid #edf2f7; }
+        .detail-row strong { width:155px;flex:0 0 155px;color:#64748b;font-size:12px; }
+        .detail-row span { flex:1;color:#0A3D62;font-weight:700;font-size:13px;overflow-wrap:anywhere; }
+        .verification-footnote { display:flex;justify-content:center;align-items:center;gap:8px;text-align:center;margin:18px 0 0;color:#64748b;font-size:11px;line-height:1.6; }
+        .verification-footnote i { color:#0A3D62; }
+        .verification-confetti { position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5; }
+        .verification-confetti span { position:absolute;top:-12px;left:calc((var(--i) * 37) % 100 * 1%);width:7px;height:12px;border-radius:2px;background:hsl(calc(var(--i) * 47),75%,55%);animation:confettiFall 1.8s ease-in forwards;animation-delay:calc(var(--i) * 18ms); }
+        @keyframes confettiFall { to { transform:translate3d(20px,420px,0) rotate(680deg);opacity:0; } }
+        @keyframes verifyPop { from { opacity:0;transform:translateY(18px) scale(.97); } to { opacity:1;transform:translateY(0) scale(1); } }
+        @media(max-width:600px) { .verification-banner{padding:26px 16px 22px;border-radius:18px}.verification-emblem{width:66px;height:66px;font-size:30px}.verification-eyebrow{font-size:9px;letter-spacing:1.3px}.verification-headline{font-size:27px}.detail-row{flex-direction:row;gap:10px}.detail-row strong{width:115px;flex:0 0 115px;font-size:11px}.detail-row span{font-size:12px}.result-card{padding:18px 16px} }
+        @media(prefers-reduced-motion:reduce) { .verification-banner{animation:none}.verification-confetti{display:none} .verification-confetti span{animation:none} }
     </style>
 </head>
 <body>
@@ -653,15 +682,33 @@ JAVASCRIPT
         function showResult(kind, title, message, detailsHtml = '') {
             loadingState.style.display = 'none';
             resultState.style.display = 'block';
+            resultState.className = 'verification-result ' + (kind === 'valid' ? 'is-verified' : (kind === 'error' ? 'is-review' : 'is-invalid'));
             const icon = kind === 'valid' ? 'fa-circle-check' : (kind === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-exclamation');
-            const resultClass = kind === 'valid' ? 'result-valid' : 'result-invalid';
+            const resultClass = kind === 'valid' ? 'result-valid' : (kind === 'error' ? 'result-error' : 'result-invalid');
             const titleClass = kind === 'valid' ? 'valid' : (kind === 'error' ? 'error' : 'invalid');
             resultState.innerHTML = `
+                <div class="verification-banner" role="status" aria-live="polite">
+                    <div class="verification-emblem"><i class="fas ${icon}" aria-hidden="true"></i></div>
+                    <div class="verification-eyebrow">${kind === 'valid' ? 'AUTHENTIC RECORD CONFIRMED' : (kind === 'error' ? 'REVIEW REQUIRED' : 'VERIFICATION UNSUCCESSFUL')}</div>
+                    <h1 class="verification-headline">${escapeVerificationText(title)}</h1>
+                    <p class="verification-message">${escapeVerificationText(message)}</p>
+                    ${kind === 'valid' ? '<div class="verified-seal"><i class="fas fa-shield-check" aria-hidden="true"></i> NCHSM VERIFIED</div>' : ''}
+                </div>
                 <div class="result-card ${resultClass}">
-                    <div class="result-title ${titleClass}"><i class="fas ${icon}"></i> ${escapeVerificationText(title)}</div>
+                    <div class="result-title ${titleClass}"><i class="fas ${icon}" aria-hidden="true"></i> Verification Details</div>
                     ${detailsHtml ? '<div class="detail-grid">' + detailsHtml + '</div>' : ''}
-                    <p style="margin-top:14px;color:#64748b">${escapeVerificationText(message)}</p>
-                </div>`;
+                </div>
+                <div class="verification-footnote"><i class="fas fa-lock" aria-hidden="true"></i> Verification is based on the college registry and current published academic results.</div>`;
+            if (kind === 'valid') {
+                resultState.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                const confetti = document.createElement('div');
+                confetti.className = 'verification-confetti';
+                confetti.setAttribute('aria-hidden', 'true');
+                confetti.innerHTML = Array.from({ length: 28 }, (_, i) => '<span style="--i:' + i + '"></span>').join('');
+                resultState.appendChild(confetti);
+                window.setTimeout(() => confetti.remove(), 2200);
+            }
         }
         function detail(label, value) {
             return '<div class="detail-row"><strong>' + escapeVerificationText(label) + '</strong><span>' + escapeVerificationText(value || '—') + '</span></div>';
