@@ -7,7 +7,7 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const state = { ballot: null, placements: [], attendance: [], preference: null, busy: false, wheelOrder: [], spinsUsed: 0, capacity: {} };
-  const departments = ['Medical Ward', 'Surgical Ward', 'Maternity', 'Paediatric Ward'];
+  let departments = ['Medical Ward', 'Surgical Ward', 'Maternity', 'Paediatric Ward'];
 
   function client() {
     return (window.db && window.db.supabase) || window.sb || window.supabase || window.supabaseClient || null;
@@ -73,10 +73,12 @@
       '</div>' +
       '<section class="cp-card"><div class="cp-card-head"><div><h2><i class="fas fa-vote-yea"></i> Final rotation department ballot</h2><p>Rank the departments you prefer. Allocation depends on available capacity and the college-approved rules.</p></div>' + statusPill(open ? 'open' : (ballot ? ballot.status || 'closed' : 'not available')) + '</div>' +
       (ballot ? '<div class="cp-ballot-meta"><span><i class="fas fa-calendar-day"></i> Opens: ' + date(ballot.opens_at) + '</span><span><i class="fas fa-calendar-check"></i> Closes: ' + date(ballot.closes_at) + '</span><span><i class="fas fa-users"></i> ' + esc(ballot.program || 'Eligible students') + '</span></div>' : '<div class="cp-notice"><i class="fas fa-info-circle"></i><div><strong>No ballot is currently available</strong><p>When the School of Nursing opens an eligible Block 5 ballot, it will appear here.</p></div></div>') +
-      (ballot ? '<form id="cp-preference-form"><div id="cp-wheel-wrap" class="cp-wheel-wrap"><p class="cp-instruction">Spin the wheel to set your first-choice department. The remaining departments will follow in the displayed order.</p><div class="cp-wheel-stage"><div class="cp-wheel-pointer" aria-hidden="true"></div><div id="cp-department-wheel" class="cp-department-wheel"><div class="cp-wheel-label cp-wheel-label-0" data-wheel-department="Medical Ward">Medical<br>Ward</div><div class="cp-wheel-label cp-wheel-label-1" data-wheel-department="Surgical Ward">Surgical<br>Ward</div><div class="cp-wheel-label cp-wheel-label-2" data-wheel-department="Maternity">Maternity</div><div class="cp-wheel-label cp-wheel-label-3" data-wheel-department="Paediatric Ward">Paediatric<br>Ward</div><div class="cp-wheel-center">NCHSM<br><small>ROTATION</small></div></div></div><div id="cp-wheel-countdown" class="cp-wheel-countdown" aria-live="polite"></div><div id="cp-department-capacity-note" class="cp-wheel-order-note"></div><button type="button" id="cp-spin-wheel" class="cp-primary cp-spin-wheel" ' + (!open || state.busy ? 'disabled':'') + '><i class="fas fa-dharmachakra"></i> Spin department wheel</button><div id="cp-wheel-result-card" class="cp-wheel-result-card" aria-live="polite"><span class="cp-result-kicker">YOUR CURRENT FIRST CHOICE</span><strong id="cp-wheel-result">' + esc((state.preference && state.preference.preferences && state.preference.preferences[0]) || 'Spin the wheel to reveal your department') + '</strong><small id="cp-spin-remaining">' + (2-state.spinsUsed) + ' spin(s) remaining</small></div><p class="cp-wheel-order-note">Your full preference order will be saved automatically from the wheel result.</p></div><button class="cp-primary" type="submit" ' + (!open || state.busy ? 'disabled':'') + '><i class="fas fa-paper-plane"></i> ' + (state.preference ? 'Update preferences' : 'Submit preferences') + '</button><span class="cp-save-note">' + (state.preference ? 'A preference submission exists for this ballot.' : 'Your choices are not submitted until you press the button.') + '</span></form>' : '') +
+      (ballot ? '<form id="cp-preference-form"><div id="cp-wheel-wrap" class="cp-wheel-wrap"><p class="cp-instruction">Spin the wheel to set your first-choice department. The remaining departments will follow in the displayed order.</p><div class="cp-wheel-stage"><div class="cp-wheel-pointer" aria-hidden="true"></div><div id="cp-department-wheel" class="cp-department-wheel"><div class="cp-wheel-center">NCHSM<br><small>ROTATION</small></div></div></div><div id="cp-wheel-countdown" class="cp-wheel-countdown" aria-live="polite"></div><div id="cp-department-capacity-note" class="cp-wheel-order-note"></div><button type="button" id="cp-spin-wheel" class="cp-primary cp-spin-wheel" ' + (!open || state.busy ? 'disabled':'') + '><i class="fas fa-dharmachakra"></i> Spin department wheel</button><div id="cp-wheel-result-card" class="cp-wheel-result-card" aria-live="polite"><span class="cp-result-kicker">YOUR CURRENT FIRST CHOICE</span><strong id="cp-wheel-result">' + esc((state.preference && state.preference.preferences && state.preference.preferences[0]) || 'Spin the wheel to reveal your department') + '</strong><small id="cp-spin-remaining">' + (2-state.spinsUsed) + ' spin(s) remaining</small></div><p class="cp-wheel-order-note">Your full preference order will be saved automatically from the wheel result.</p></div><button class="cp-primary" type="submit" ' + (!open || state.busy ? 'disabled':'') + '><i class="fas fa-paper-plane"></i> ' + (state.preference ? 'Update preferences' : 'Submit preferences') + '</button><span class="cp-save-note">' + (state.preference ? 'A preference submission exists for this ballot.' : 'Your choices are not submitted until you press the button.') + '</span></form>' : '') +
       '</section>' +
       '<section class="cp-card"><div class="cp-card-head"><div><h2><i class="fas fa-hospital-user"></i> My clinical placements</h2><p>Facility, assigned department and rotation dates.</p></div></div><div class="cp-table-wrap"><table class="cp-table"><thead><tr><th>Facility</th><th>Department</th><th>Start date</th><th>End date</th><th>Status</th></tr></thead><tbody>' + placementRows + '</tbody></table></div></section>' +
       '<section class="cp-card"><div class="cp-card-head"><div><h2><i class="fas fa-clock"></i> Clinical hours & attendance</h2><p>Hours count toward progress only after instructor verification.</p></div></div><div class="cp-table-wrap"><table class="cp-table"><thead><tr><th>Date</th><th>Department</th><th>Hours</th><th>Verification</th><th>Notes</th></tr></thead><tbody>' + attendanceRows + '</tbody></table></div></section>';
+    const wheel = $('cp-department-wheel');
+    if (wheel) renderWheelDepartments(wheel);
     const form = $('cp-preference-form');
     if (form) form.addEventListener('submit', submitPreferences);
     bindWheel(open, opens, closes);
@@ -99,6 +101,22 @@
       @media(prefers-reduced-motion:reduce){.cp-department-wheel{transition:none}}
     `;
     document.head.appendChild(style);
+  }
+  function renderWheelDepartments(wheel) {
+    wheel.querySelectorAll('.cp-wheel-label').forEach(el=>el.remove());
+    const count = departments.length;
+    const colors = ['#d8f1f3','#e8e4ff','#ffe8d7','#dff2dc','#dce8ff','#ffe0ed','#e3f4d8','#f9edcc'];
+    wheel.style.background = 'conic-gradient(' + departments.map((d,i)=>colors[i%colors.length]+' '+(i*100/count)+'% '+((i+1)*100/count)+'%').join(',') + ')';
+    departments.forEach((department,index)=>{
+      const label=document.createElement('div');
+      label.className='cp-wheel-label';
+      label.dataset.wheelDepartment=department;
+      label.textContent=department;
+      const angle=(index*360/count)+(180/count);
+      label.style.cssText='position:absolute;top:50%;left:50%;width:44%;text-align:center;transform:translate(-50%,-50%) rotate('+angle+'deg) translateY(-'+(count>6?'82':'91')+'px) rotate(-'+angle+'deg);font-size:clamp(9px,2.7vw,13px);overflow-wrap:anywhere;';
+      wheel.appendChild(label);
+    });
+    updateWheelAvailability();
   }
   function availableDepartments() {
     return departments.filter(d => !state.capacity[d]?.is_full);
@@ -169,7 +187,7 @@
       const chosen = available[Math.floor(Math.random() * available.length)];
       const chosenIndex = departments.indexOf(chosen);
       // Wheel sectors are equal; rotate so the selected sector finishes under the top pointer.
-      const targetSector = [45, 315, 225, 135][chosenIndex];
+      const targetSector = (360 - ((chosenIndex + 0.5) * 360 / departments.length)) % 360;
       wheelRotation += 360 * (5 + Math.floor(Math.random() * 3)) + targetSector;
       wheel.style.transform = 'rotate(' + wheelRotation + 'deg)';
       window.setTimeout(() => {
@@ -214,7 +232,7 @@
       await load();
     } catch (error) {
       console.error('[Clinical placements] Preference submission failed:', error);
-      notify('Could not save preferences. The database may not yet be configured for clinical balloting. No confirmation has been recorded.', 'error');
+      notify('Could not save preferences: ' + (error?.message || 'database rejected the submission') + '. Please contact ICT if this persists.', 'error');
     } finally { state.busy = false; render(); }
   }
   async function load() {
@@ -238,6 +256,8 @@
         return (!bp || !program || bp === program) && (!bb || !block || bb === block);
       }) || null;
       state.preference = null;
+      if (state.ballot && Array.isArray(state.ballot.departments) && state.ballot.departments.length) departments = [...new Set(state.ballot.departments.map(d=>String(d).trim()).filter(Boolean))];
+      else departments = ['Medical Ward', 'Surgical Ward', 'Maternity', 'Paediatric Ward'];
       state.capacity = {};
       if (state.ballot) {
         const capacityResult = await sb.rpc('get_clinical_rotation_capacity', { p_ballot_id: state.ballot.id });
