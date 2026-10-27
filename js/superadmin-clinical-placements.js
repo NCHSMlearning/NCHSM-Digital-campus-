@@ -20,7 +20,7 @@
   function formDepartments() {
     const raw = $('ca-departments-list')?.value || DEPARTMENTS.join(', ');
     const list = raw.split(/[,;\n]/).map(v=>v.trim()).filter(Boolean);
-    return [...new Set(list)].slice(0,30);
+    return [...new Map(list.map(v=>[v.toLowerCase(),v])).values()].slice(0,30);
   }
   function ensureDepartmentEditor() {
     const form = $('ca-ballot-form');
@@ -28,19 +28,44 @@
     const box = document.createElement('div');
     box.className = 'ca-field ca-departments-editor';
     box.style.cssText = 'grid-column:1/-1;padding:14px;border:1px solid #d7e4ed;border-radius:12px;background:#f7fbfd;margin:8px 0';
-    box.innerHTML = '<label for="ca-department-new"><strong>Departments for this ballot</strong></label><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><input id="ca-department-new" class="ca-input" style="flex:1;min-width:180px" placeholder="Type a department name"><button type="button" id="ca-add-department" class="ca-btn ca-btn-green"><i class="fas fa-plus"></i> Add department</button></div><div id="ca-department-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"></div><textarea id="ca-departments-list" hidden></textarea><small style="display:block;margin-top:6px">Add or remove departments with one click. Save ballot settings to apply changes to the student wheel.</small><label for="ca-extra-capacities" style="display:block;margin-top:12px"><strong>Additional department capacities</strong></label><textarea id="ca-extra-capacities" class="ca-input" rows="2" style="width:100%;margin-top:6px" placeholder="Emergency Department=12&#10;ICU=6"></textarea><small style="display:block;margin-top:6px">Optional: one department=number per line. Leave out or use 0 for unlimited capacity.</small>'; 
+    box.innerHTML = '<label for="ca-department-new"><strong>Departments for this ballot</strong></label><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><input id="ca-department-new" class="ca-input" style="flex:1;min-width:180px" placeholder="Type a department name"><button type="button" id="ca-add-department" class="ca-btn ca-btn-green"><i class="fas fa-plus"></i> Add department</button></div><div id="ca-department-chips" style="display:grid;gap:8px;margin-top:12px"></div><textarea id="ca-departments-list" hidden></textarea><small style="display:block;margin-top:6px">Add or remove departments below. Set the capacity for each department here. Use 0 for unlimited.</small>';
     form.insertBefore(box, form.querySelector('button[type="submit"]')?.parentElement || form.lastElementChild);
     $('ca-departments-list').value = DEPARTMENTS.join(', ');
     renderDepartmentChips();
     $('ca-add-department')?.addEventListener('click', addDepartmentFromInput);
     $('ca-department-new')?.addEventListener('keydown', e=>{if(e.key==='Enter'){e.preventDefault();addDepartmentFromInput();}});
+    $('ca-department-chips')?.addEventListener('click',e=>{
+      const btn=e.target.closest('[data-remove-department]');
+      if(!btn) return;
+      const department=btn.dataset.removeDepartment;
+      if(state.selectedBallot && (state.selectedBallot.departments||DEPARTMENTS).includes(department)) {
+        const used=state.placements.filter(p=>p.ballot_id===state.selectedBallot.id&&p.department===department&&p.status!=='cancelled').length;
+        if(used>0&&!window.confirm(department+' already has '+used+' placement(s). Remove it from this ballot? Existing placement records will be preserved.')) return;
+      }
+      $('ca-departments-list').value=formDepartments().filter(d=>d!==department).join(', ');
+      renderDepartmentChips();
+    });
+    $('ca-department-chips')?.addEventListener('input',e=>{
+      const input=e.target.closest('[data-capacity-for]');
+      if(!input) return;
+      const capacities=JSON.parse($('ca-department-capacities').value||'{}');
+      capacities[input.dataset.capacityFor]=Math.max(0,Math.floor(Number(input.value||0)));
+      $('ca-department-capacities').value=JSON.stringify(capacities);
+    });
   }
   function renderDepartmentChips() {
     const wrap=$('ca-department-chips'), hidden=$('ca-departments-list');
     if(!wrap||!hidden) return;
     const list=formDepartments();
     hidden.value=list.join(', ');
-    wrap.innerHTML=list.map(d=>'<span style="display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#e8f5f3;color:#145e58;font-weight:700;border:1px solid #b9ded9">'+esc(d)+' <button type="button" data-remove-department="'+esc(d)+'" aria-label="Remove '+esc(d)+'" style="border:0;background:transparent;color:#9b2929;font-weight:900;cursor:pointer">×</button></span>').join('');
+    const previous=JSON.parse($('ca-department-capacities')?.value||'{}');
+    const caps=state.selectedBallot?.capacities||{};
+    list.forEach(d=>{if(previous[d]===undefined) previous[d]=caps[d]===undefined?0:Number(caps[d]);});
+    if(!$('ca-department-capacities')) {
+      const store=document.createElement('textarea');store.id='ca-department-capacities';store.hidden=true;wrap.parentElement.appendChild(store);
+    }
+    $('ca-department-capacities').value=JSON.stringify(previous);
+    wrap.innerHTML=list.map(d=>'<div style="display:grid;grid-template-columns:minmax(0,1fr) 95px auto;align-items:center;gap:8px;padding:9px 10px;border:1px solid #dce6ec;border-radius:10px;background:#fff"><strong>'+esc(d)+'</strong><label style="font-size:12px">Capacity <input class="ca-input" data-capacity-for="'+esc(d)+'" type="number" min="0" step="1" value="'+Math.max(0,Number(previous[d]||0))+'" style="width:76px;display:block;padding:6px;margin-top:3px"></label><button type="button" data-remove-department="'+esc(d)+'" aria-label="Remove '+esc(d)+'" class="ca-btn ca-btn-light" style="color:#a32121">Delete</button></div>').join('');
   }
   function addDepartmentFromInput() {
     const input=$('ca-department-new');
@@ -55,8 +80,12 @@
     renderDepartmentChips();
   }
   function getFormCapacities() {
-    const obj = {};
-    DEPARTMENTS.forEach((d,i) => { obj[d] = Math.max(0, Number($('ca-cap-'+i)?.value || 0)); });
+    const saved=JSON.parse($('ca-department-capacities')?.value||'{}');
+    const obj={};
+    formDepartments().forEach(d=>{
+      const input=Array.from(document.querySelectorAll('[data-capacity-for]')).find(el=>el.dataset.capacityFor===d);
+      obj[d]=Math.max(0,Math.floor(Number(input ? input.value : (saved[d]||0))));
+    });
     return obj;
   }
   function renderBallots() {
@@ -145,7 +174,7 @@
     const opens=$('ca-opens')?.value, closes=$('ca-closes')?.value;
     if(!title) return notify('Enter a ballot title.','warning');
     if(opens&&closes&&new Date(closes)<=new Date(opens)) return notify('Closing time must be after opening time.','warning');
-    const payload={title,program:program||null,block:block||null,intake_year:intake||null,departments:formDepartments(),capacities:{...getFormCapacities(),...Object.fromEntries(formDepartments().filter(d=>!DEPARTMENTS.includes(d)).map(d=>[d,0])),...Object.fromEntries(String($('ca-extra-capacities')?.value||'').split(/[,;\n]/).map(line=>line.split('=').map(x=>x.trim())).filter(pair=>pair.length===2&&pair[0]&&Number.isFinite(Number(pair[1]))).map(pair=>[pair[0],Math.max(0,Math.floor(Number(pair[1])))]))},opens_at:opens?new Date(opens).toISOString():null,closes_at:closes?new Date(closes).toISOString():null,updated_at:new Date().toISOString()};
+    const payload={title,program:program||null,block:block||null,intake_year:intake||null,departments:formDepartments(),capacities:getFormCapacities(),opens_at:opens?new Date(opens).toISOString():null,closes_at:closes?new Date(closes).toISOString():null,updated_at:new Date().toISOString()};
     const editing=$('ca-edit-id')?.value;
     if(!editing) { payload.status='scheduled'; payload.created_by=id; }
     setLoading(true);
@@ -158,6 +187,9 @@
       $('ca-ballot-form')?.reset();
       if($('ca-edit-id')) $('ca-edit-id').value='';
       if($('ca-save-ballot')) $('ca-save-ballot').innerHTML='<i class="fas fa-plus"></i> Create ballot';
+      if($('ca-departments-list')) $('ca-departments-list').value=DEPARTMENTS.join(', ');
+      if($('ca-department-capacities')) $('ca-department-capacities').value='{}';
+      state.selectedBallot=null; renderDepartmentChips();
       DEPARTMENTS.forEach((d,i)=>{if($('ca-cap-'+i)) $('ca-cap-'+i).value='0';});
       await loadBallots();
       await loadPreferences();
@@ -191,6 +223,7 @@
     $('ca-intake').value=state.selectedBallot.intake_year||'';
     ensureDepartmentEditor();
     if($('ca-departments-list')) $('ca-departments-list').value=(state.selectedBallot.departments||DEPARTMENTS).join(', ');
+    if($('ca-department-capacities')) $('ca-department-capacities').value=JSON.stringify(state.selectedBallot.capacities||{});
     renderDepartmentChips();
     if($('ca-extra-capacities')) $('ca-extra-capacities').value=Object.entries(state.selectedBallot.capacities||{}).filter(([d])=>!DEPARTMENTS.includes(d)).map(([d,n])=>d+'='+n).join('\n');
     $('ca-opens').value=state.selectedBallot.opens_at?new Date(new Date(state.selectedBallot.opens_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
@@ -236,7 +269,7 @@
     $('ca-load-preferences')?.addEventListener('click',()=>loadPreferences().catch(e=>notify(e.message,'error')));
     $('ca-reset-form')?.addEventListener('click',()=>{
       $('ca-ballot-form')?.reset(); $('ca-edit-id').value='';
-      if($('ca-departments-list')) $('ca-departments-list').value=DEPARTMENTS.join(', '); renderDepartmentChips();
+      if($('ca-departments-list')) $('ca-departments-list').value=DEPARTMENTS.join(', '); if($('ca-department-capacities')) $('ca-department-capacities').value='{}'; state.selectedBallot=null; renderDepartmentChips();
       $('ca-save-ballot').innerHTML='<i class="fas fa-plus"></i> Create ballot';
       DEPARTMENTS.forEach((d,i)=>{if($('ca-cap-'+i)) $('ca-cap-'+i).value='0';});
     });
