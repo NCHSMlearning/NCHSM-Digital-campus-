@@ -1543,26 +1543,45 @@ async function loadMarksEntry() {
             allProfiles = allProfiles.concat(byAdmission || []);
         }
         
-        // Query by UUID
+        // Query both UUID identity columns. Older marks may store either the
+        // profile user_id or the profile student_id in student_marks.student_id.
         if (studentUuids.length > 0) {
-            const { data: byUuid } = await sb
+            const { data: byUserId, error: userLookupError } = await sb
                 .from('consolidated_user_profiles_table')
                 .select('user_id, student_id, admission_number, full_name')
                 .in('user_id', studentUuids);
-            allProfiles = allProfiles.concat(byUuid || []);
+            if (userLookupError) console.warn('Student profile lookup by user_id failed:', userLookupError.message);
+            allProfiles = allProfiles.concat(byUserId || []);
+
+            const { data: byStudentId, error: studentLookupError } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name')
+                .in('student_id', studentUuids);
+            if (studentLookupError) console.warn('Student profile lookup by student_id failed:', studentLookupError.message);
+            allProfiles = allProfiles.concat(byStudentId || []);
         }
-        
-        // Build lookup that works with EITHER admission_number OR UUID
+
+        // Build aliases for admission number, student ID, and auth/profile UUID.
+        // Keep UUIDs as lookup keys too; some legacy marks have no admission number.
         const studentMap = {};
+        const studentDetailsMap = {};
         allProfiles.forEach(s => {
-            const name = s.full_name || 'Unknown';
-            if (s.admission_number) studentMap[s.admission_number] = name;
-            if (s.student_id && !String(s.student_id).includes('-')) studentMap[s.student_id] = name;
-            if (s.user_id) studentMap[s.user_id] = name;
+            const name = String(s.full_name || '').trim();
+            const admissionNumber = String(s.admission_number || s.student_id || '').trim();
+            if (!name) return;
+            const details = { name, admission: admissionNumber };
+            [s.admission_number, s.student_id, s.user_id].forEach(key => {
+                if (key !== null && key !== undefined && String(key).trim()) {
+                    studentMap[String(key).trim()] = name;
+                    studentDetailsMap[String(key).trim()] = details;
+                }
+            });
         });
         
         const fullMarks = marks.map(m => {
-            const admission = m.admission_number || '';
+            const matchedStudent = studentDetailsMap[String(m.student_id || '').trim()]
+                || studentDetailsMap[String(m.admission_number || '').trim()];
+            const admission = String(m.admission_number || matchedStudent?.admission || '').trim();
             const retakes = me_retakeData[admission] || [];
             const hasRetake = retakes.length > 0;
             const lastRetake = retakes[retakes.length - 1];
@@ -1570,7 +1589,7 @@ async function loadMarksEntry() {
             return {
                 admission: admission,
                 student_id: m.student_id || '',
-                name: studentMap[admission] || studentMap[m.student_id] || m.student_name || 'Unknown',
+                name: studentMap[admission] || studentMap[m.student_id] || String(m.student_name || '').trim() || 'Student profile not found',
                 program: program,
                 cat1: m.cat1_score || 0,
                 cat2: m.cat2_score || 0,
