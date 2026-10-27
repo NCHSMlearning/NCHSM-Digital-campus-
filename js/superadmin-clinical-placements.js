@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const DEPARTMENTS = ['Medical Ward', 'Surgical Ward', 'Maternity', 'Paediatric Ward'];
-  const state = { ballots: [], selectedBallot: null, preferences: [], profiles: {}, placements: [], loading: false };
+  const state = { ballots: [], selectedBallot: null, preferences: [], profiles: {}, placements: [], loading: false, departments: DEPARTMENTS.slice() };
   const $ = id => document.getElementById(id);
   const db = () => window.sb || window.db?.supabase || window.supabase || null;
   const uid = () => window.currentUser?.id || window.getCurrentUser?.()?.id || null;
@@ -16,6 +16,22 @@
   function setLoading(on) {
     state.loading = on;
     ['ca-save-ballot','ca-refresh','ca-load-preferences'].forEach(id => { const el=$(id); if(el) el.disabled=on; });
+  }
+  function formDepartments() {
+    const raw = $('ca-departments-list')?.value || DEPARTMENTS.join(', ');
+    const list = raw.split(/[,
+;]/).map(v=>v.trim()).filter(Boolean);
+    return [...new Set(list)].slice(0,30);
+  }
+  function ensureDepartmentEditor() {
+    const form = $('ca-ballot-form');
+    if (!form || $('ca-departments-list')) return;
+    const box = document.createElement('div');
+    box.className = 'ca-field ca-departments-editor';
+    box.style.cssText = 'grid-column:1/-1;padding:14px;border:1px solid #d7e4ed;border-radius:12px;background:#f7fbfd;margin:8px 0';
+    box.innerHTML = '<label for="ca-departments-list"><strong>Departments available on this ballot</strong></label><textarea id="ca-departments-list" class="ca-input" rows="3" style="width:100%;margin-top:8px" placeholder="Medical Ward, Surgical Ward, Maternity, Paediatric Ward"></textarea><small style="display:block;margin-top:6px">Enter department names separated by commas or new lines. These will appear on the student spin wheel.</small>';
+    form.insertBefore(box, form.querySelector('button[type="submit"]')?.parentElement || form.lastElementChild);
+    $('ca-departments-list').value = DEPARTMENTS.join(', ');
   }
   function getFormCapacities() {
     const obj = {};
@@ -107,7 +123,7 @@
     const opens=$('ca-opens')?.value, closes=$('ca-closes')?.value;
     if(!title) return notify('Enter a ballot title.','warning');
     if(opens&&closes&&new Date(closes)<=new Date(opens)) return notify('Closing time must be after opening time.','warning');
-    const payload={title,program:program||null,block:block||null,intake_year:intake||null,departments:DEPARTMENTS,capacities:getFormCapacities(),opens_at:opens?new Date(opens).toISOString():null,closes_at:closes?new Date(closes).toISOString():null,updated_at:new Date().toISOString()};
+    const payload={title,program:program||null,block:block||null,intake_year:intake||null,departments:formDepartments(),capacities:{...getFormCapacities(),...Object.fromEntries(formDepartments().filter(d=>!DEPARTMENTS.includes(d)).map(d=>[d,0]))},opens_at:opens?new Date(opens).toISOString():null,closes_at:closes?new Date(closes).toISOString():null,updated_at:new Date().toISOString()};
     const editing=$('ca-edit-id')?.value;
     if(!editing) { payload.status='scheduled'; payload.created_by=id; }
     setLoading(true);
@@ -151,6 +167,8 @@
     $('ca-program').value=state.selectedBallot.program||'';
     $('ca-block').value=state.selectedBallot.block||'';
     $('ca-intake').value=state.selectedBallot.intake_year||'';
+    ensureDepartmentEditor();
+    if($('ca-departments-list')) $('ca-departments-list').value=(state.selectedBallot.departments||DEPARTMENTS).join(', ');
     $('ca-opens').value=state.selectedBallot.opens_at?new Date(new Date(state.selectedBallot.opens_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
     $('ca-closes').value=state.selectedBallot.closes_at?new Date(new Date(state.selectedBallot.closes_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
     DEPARTMENTS.forEach((d,i)=>{if($('ca-cap-'+i)) $('ca-cap-'+i).value=Number((state.selectedBallot.capacities||{})[d]||0);});
@@ -214,6 +232,7 @@
     // Let the existing Super Admin tab controller and .tab-content.active CSS control visibility.
     panel.style.removeProperty('display');
     bind();
+    ensureDepartmentEditor();
     try {
       await loadBallots();
       setStatus('Connected. Create a ballot or select an existing one to manage preferences and allocations.',false);
