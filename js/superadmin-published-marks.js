@@ -244,12 +244,41 @@ function getGradeComment(score, program) {
 }
 
 function calculateGPA(marks) {
-    if (!marks || marks.length === 0) return 0;
-    var totalPoints = 0;
-    for (var i = 0; i < marks.length; i++) {
-        totalPoints = totalPoints + (marks[i].points || 0);
-    }
-    return marks.length > 0 ? (totalPoints / marks.length) : 0;
+    if (!Array.isArray(marks) || marks.length === 0) return 0;
+
+    // Prevent pending or unapproved results from contributing to published GPA.
+    var eligibleMarks = marks.filter(function(mark) {
+        return mark && mark.published === true &&
+            String(mark.approval_status || '').trim().toLowerCase() === 'approved';
+    });
+
+    var totalWeightedPoints = 0;
+    var totalCredits = 0;
+
+    eligibleMarks.forEach(function(mark) {
+        var rawPoints = mark.points;
+        if (rawPoints === null || rawPoints === undefined || rawPoints === '') {
+            var rawScore = mark.final_score;
+            if (rawScore === null || rawScore === undefined || rawScore === '') {
+                rawScore = mark.final_total !== undefined ? mark.final_total :
+                    (mark.total_score !== undefined ? mark.total_score : mark.total);
+            }
+            var score = Number(rawScore);
+            if (!Number.isFinite(score) || typeof calculateOfficialGrade !== 'function') return;
+            var gradeInfo = calculateOfficialGrade(score, mark.program_code || mark.program);
+            rawPoints = gradeInfo ? gradeInfo.points : null;
+        }
+
+        var points = Number(rawPoints);
+        // A value of zero is valid and must count as a failed unit.
+        if (!Number.isFinite(points)) return;
+        var rawCredits = Number(mark.credits || mark.credit_hours || mark.creditHours);
+        var credits = Number.isFinite(rawCredits) && rawCredits > 0 ? rawCredits : 3;
+        totalWeightedPoints += points * credits;
+        totalCredits += credits;
+    });
+
+    return totalCredits > 0 ? totalWeightedPoints / totalCredits : 0;
 }
 
 function isTVETProgram(program) {
