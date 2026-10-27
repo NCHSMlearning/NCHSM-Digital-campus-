@@ -53,7 +53,7 @@
     const now = Date.now();
     const opens = ballot && ballot.opens_at ? new Date(ballot.opens_at).getTime() : 0;
     const closes = ballot && ballot.closes_at ? new Date(ballot.closes_at).getTime() : 0;
-    const open = !!ballot && (!opens || now >= opens) && (!closes || now <= closes) && !['closed','published','cancelled'].includes(String(ballot.status || '').toLowerCase());
+    const open = !!ballot && String(ballot.status || '').toLowerCase() === 'open' && (!opens || now >= opens) && (!closes || now <= closes);
     const oldPrefs = state.preference && Array.isArray(state.preference.preferences) ? state.preference.preferences : [];
     const prefOrder = oldPrefs.concat(departments.filter(d => !oldPrefs.includes(d)));
     const placementRows = state.placements.length ? state.placements.map(p =>
