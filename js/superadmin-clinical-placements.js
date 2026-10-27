@@ -19,8 +19,7 @@
   }
   function formDepartments() {
     const raw = $('ca-departments-list')?.value || DEPARTMENTS.join(', ');
-    const list = raw.split(/[,
-;]/).map(v=>v.trim()).filter(Boolean);
+    const list = raw.split(/[,;\n]/).map(v=>v.trim()).filter(Boolean);
     return [...new Set(list)].slice(0,30);
   }
   function ensureDepartmentEditor() {
