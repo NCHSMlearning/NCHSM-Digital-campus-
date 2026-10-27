@@ -2852,6 +2852,16 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 </div>
 <!-- ========== PROFILE STATUS ========== -->
 <div id="profile-status" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;"></div>
+<div id="username-settings-card" style="background:#fff;border:1px solid #dbe7ef;border-radius:12px;padding:20px;margin:0 0 20px;box-shadow:0 2px 8px rgba(10,61,98,.05);">
+  <h3 style="margin:0 0 6px;color:#0A3D62;font-size:17px;"><i class="fas fa-at" style="color:#0b6596;"></i> Login Username</h3>
+  <p style="margin:0 0 14px;color:#64748b;font-size:13px;line-height:1.5;">Choose a unique username to sign in with your existing password. Your email login will continue to work.</p>
+  <form id="username-settings-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+    <input id="account-username" type="text" minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. kevin.tiongi" required style="flex:1;min-width:200px;padding:12px 14px;border:1px solid #cbd9e3;border-radius:8px;font-size:14px;">
+    <button id="save-account-username" type="submit" style="padding:12px 18px;border:0;border-radius:8px;background:#0A3D62;color:white;font-weight:700;cursor:pointer;">Save username</button>
+  </form>
+  <p id="username-settings-message" role="status" aria-live="polite" style="margin:10px 0 0;font-size:13px;"></p>
+  <small style="display:block;color:#64748b;margin-top:6px;">3–30 characters. Use letters, numbers, dots, underscores or hyphens. Usernames are case-insensitive.</small>
+</div>
 <!-- ========== PROFILE FORM ========== -->
 <form id="profile-form" novalidate="" style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #e5e7eb;">
 <!-- ===== PROFILE HEADER CARD ===== -->
@@ -13147,6 +13157,72 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
 <script src="/js/gamification.js"></script>
 <script src="/js/dashboard.js"></script>
 <script src="/js/profile.js"></script>
+<script id="nchsm-username-settings">
+(function () {
+  function initUsernameSettings() {
+    const form = document.getElementById('username-settings-form');
+    const field = document.getElementById('account-username');
+    const message = document.getElementById('username-settings-message');
+    const button = document.getElementById('save-account-username');
+    if (!form || !field || form.dataset.bound === 'true') return;
+    form.dataset.bound = 'true';
+
+    const getClient = () => window.db?.supabase || window.supabase || window.supabaseClient || null;
+    const loadUsername = async () => {
+      const client = getClient();
+      if (!client) return;
+      const { data: authData } = await client.auth.getUser();
+      const user = authData?.user;
+      if (!user) return;
+      const { data } = await client.from('consolidated_user_profiles_table')
+        .select('username').eq('user_id', user.id).maybeSingle();
+      if (data?.username) field.value = data.username;
+    };
+    loadUsername().catch(() => {});
+
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const username = field.value.trim().toLowerCase();
+      if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(username)) {
+        message.style.color = '#b91c1c';
+        message.textContent = 'Use 3–30 characters: letters, numbers, dots, underscores or hyphens.';
+        return;
+      }
+      const client = getClient();
+      if (!client) {
+        message.style.color = '#b91c1c';
+        message.textContent = 'Connection unavailable. Refresh the page and try again.';
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Saving…';
+      message.style.color = '#475569';
+      message.textContent = 'Saving your username securely…';
+      try {
+        const { data: authData, error: authError } = await client.auth.getUser();
+        if (authError || !authData?.user) throw new Error('Please sign in again before changing your username.');
+        const { data, error } = await client.rpc('set_my_username', { p_username: username });
+        if (error) throw error;
+        field.value = data || username;
+        message.style.color = '#047857';
+        message.textContent = 'Username saved. You can now sign in with this username and your existing password. Email login still works.';
+      } catch (error) {
+        message.style.color = '#b91c1c';
+        const detail = String(error?.message || '');
+        message.textContent = /already in use|unique/i.test(detail) ? 'That username is already taken. Choose another.' :
+          /Authentication required|sign in again/i.test(detail) ? 'Your session has expired. Sign in again, then retry.' :
+          detail || 'Could not save username. Please try again.';
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Save username';
+      }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUsernameSettings);
+  else initUsernameSettings();
+  document.addEventListener('supabaseReady', initUsernameSettings);
+})();
+</script>
 <script src="/js/attendance.js"></script>
 <script src="/js/courses.js"></script>
 <script src="/js/exams.js?v=20261004-responsive-review"></script>
