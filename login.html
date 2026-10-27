@@ -1461,6 +1461,53 @@ body.dark-theme .login-card .last-login-info i { color:#77c5e9!important; }
 body.dark-theme .login-card .theme-toggle-btn { color:#f0f7fb!important; }
 </style>
 
+
+<style id="nchsm-login-final-polish">
+/* Final visual polish: preserve the established layout and improve readability */
+.login-card .welcome-title { color:#123e5a!important; }
+.login-card .welcome-title .gold { color:#f5b51b!important; }
+.login-card .form-label { color:#29485b!important; }
+.login-card .form-input { color:#19394e!important; }
+.login-card .form-input::placeholder { color:#8194a2!important; opacity:1; }
+.login-card .last-login-info { color:#526e80!important; }
+.login-card .top-controls .theme-toggle-btn { min-height:42px; cursor:pointer; }
+.login-card .top-controls .theme-toggle-btn:focus-visible,
+.login-card .top-controls a:focus-visible,
+.login-card #loginButton:focus-visible { outline:3px solid #35a5d8!important; outline-offset:3px!important; }
+body.dark-theme .left-panel { filter:brightness(.82); }
+body.dark-theme .login-card .welcome-title { color:#f0f7fb!important; }
+body.dark-theme .login-card .welcome-title .gold { color:#ffc533!important; }
+body.dark-theme .login-card .form-label,
+body.dark-theme .login-card .form-group label,
+body.dark-theme .login-card .form-options,
+body.dark-theme .login-card .form-options label { color:#eaf4fb!important; }
+body.dark-theme .login-card .form-input { color:#f5f9fc!important; background:#0b1d2b!important; }
+body.dark-theme .login-card .form-input::placeholder { color:#a8bac7!important; }
+body.dark-theme .login-card .welcome-subtitle,
+body.dark-theme .login-card .last-login-info,
+body.dark-theme .login-card .last-login-info span,
+body.dark-theme .login-card small { color:#c1d3df!important; }
+body.dark-theme .login-card .last-login-info { background:#142f42!important; border-color:#31566d!important; }
+body.dark-theme .login-card .form-label svg,
+body.dark-theme .login-card .form-label i { color:#8bc9e8!important; }
+body.dark-theme .login-card .top-controls .theme-toggle-btn { color:#f0f7fb!important; background:#132e41!important; border-color:#35566b!important; }
+body.dark-theme .login-card .top-controls .blog-btn { background:#f7b718!important; color:#142536!important; }
+body.dark-theme .login-card .signup-link,
+body.dark-theme .login-card .divider { color:#c5d9e6!important; }
+@media(max-width:720px) {
+  .left-panel { background-position:center center!important; }
+  .login-card { box-sizing:border-box!important; }
+  .login-card .form-input { box-sizing:border-box!important; width:100%!important; }
+  .login-card .top-controls { gap:10px!important; }
+  .login-card .top-controls .theme-toggle-btn,
+  .login-card .top-controls a { min-height:40px!important; }
+}
+@media(prefers-reduced-motion:reduce) {
+  body, .right-panel, .login-card, .form-input, .last-login-info,
+  .top-controls a, .top-controls button { transition:none!important; }
+}
+</style>
+
 </head>
 <body>
     <!-- Skip to content -->
