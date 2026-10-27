@@ -562,8 +562,8 @@ window.renderGradeDistributionChart = function(marks) {
     
     const grades = { 'A': 0, 'B': 0, 'C': 0, 'FAIL': 0 };
     marks?.forEach(m => {
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
-        if (score > 0) {
+        const score = window.getAnalyticsEffectiveScore(m);
+        if (score !== null) {
             if (score >= 75) grades.A++;
             else if (score >= 65) grades.B++;
             else if (score >= 60) grades.C++;
@@ -609,9 +609,9 @@ window.renderSubjectPerformanceChart = function(marks) {
     const subjectData = {};
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0, pass: 0 };
-        if (score > 0) {
+        if (score !== null) {
             subjectData[subject].total += score;
             subjectData[subject].count++;
             if (score >= 60) subjectData[subject].pass++;
@@ -667,7 +667,7 @@ window.renderBlockPerformanceChart = function(students, marks) {
     
     marks?.forEach(m => {
         const block = m.block || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (blockData[block] && score > 0) {
             blockData[block].total += score;
             blockData[block].count++;
@@ -720,7 +720,7 @@ window.renderProgramComparisonChart = function(students, marks) {
     
     marks?.forEach(m => {
         const program = m.program_type || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (programData[program] && score > 0) {
             programData[program].total += score;
             programData[program].count++;
@@ -768,9 +768,9 @@ window.renderUnitRankingChart = function(marks) {
     const subjectData = {};
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0, pass: 0 };
-        if (score > 0) {
+        if (score !== null) {
             subjectData[subject].total += score;
             subjectData[subject].count++;
             if (score >= 60) subjectData[subject].pass++;
@@ -830,8 +830,8 @@ window.renderGenderChart = function(students, marks) {
         const gender = s.gender || 'Unknown';
         const studentMarks = marks?.filter(m => m.admission_number === s.student_id) || [];
         studentMarks.forEach(m => {
-            const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
-            if (score > 0) {
+            const score = window.getAnalyticsEffectiveScore(m);
+            if (score !== null) {
                 if (gender === 'Male') { maleTotal += score; maleCount++; }
                 else if (gender === 'Female') { femaleTotal += score; femaleCount++; }
             }
@@ -939,7 +939,7 @@ window.renderGradeByExamChart = function(marks) {
         ['cat1_score', 'cat2_score', 'exam_score'].forEach((field, idx) => {
             const score = m[field] || 0;
             const key = ['CAT1', 'CAT2', 'EXAM'][idx];
-            if (score > 0) {
+            if (score !== null) {
                 if (score >= 75) grades[key].A++;
                 else if (score >= 65) grades[key].B++;
                 else if (score >= 60) grades[key].C++;
@@ -978,9 +978,9 @@ window.renderDifficultyHeatmap = function(marks) {
     const subjectData = {};
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0 };
-        if (score > 0) {
+        if (score !== null) {
             subjectData[subject].total += score;
             subjectData[subject].count++;
         }
@@ -1275,7 +1275,7 @@ window.renderAnalyticsBlockTable = function(students, marks, selectedBlock) {
     
     marks?.forEach(m => {
         const block = m.block || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (blockData[block] && score > 0) {
             blockData[block].total += score;
             blockData[block].count++;
@@ -1331,7 +1331,7 @@ window.renderAnalyticsProgramTable = function(students, marks) {
     
     marks?.forEach(m => {
         const program = m.program_type || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (programData[program] && score > 0) {
             programData[program].total += score;
             programData[program].count++;
@@ -1391,7 +1391,7 @@ window.renderAnalyticsTrendsTable = function(students, marks) {
     
     marks?.forEach(m => {
         const year = m.academic_year || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (yearData[year] && score > 0) {
             yearData[year].total += score;
             yearData[year].count++;
@@ -1488,9 +1488,9 @@ window.renderUnitRankings = function(marks, students, program, block) {
     const subjectData = {};
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0, pass: 0, scores: [] };
-        if (score > 0) {
+        if (score !== null) {
             subjectData[subject].total += score;
             subjectData[subject].count++;
             subjectData[subject].scores.push(score);
@@ -1757,9 +1757,9 @@ window.renderBlockFilterStats = function(students, marks, selectedBlock) {
     
     marks?.forEach(m => {
         const block = m.block || 'Unknown';
-        const score = (window.getAnalyticsEffectiveScore(m) ?? 0);
+        const score = window.getAnalyticsEffectiveScore(m);
         if (blockStats[block]) {
-            if (score > 0) {
+            if (score !== null) {
                 blockStats[block].totalScore += score;
                 blockStats[block].scoredCount++;
                 if (score >= 60) blockStats[block].pass++;
