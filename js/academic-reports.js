@@ -454,20 +454,28 @@
                 String(r.grade || '').trim() !== '');
             const hasPassedInlineRetake = /^(pass|passed|competent)$/i.test(String(mark.retake_status || '').trim()) &&
                 String(mark.retake_grade || '').trim() !== '';
+            // Academic records have used several grade-column names over time.
+            // Read all known aliases so the transcript summary uses the same grade
+            // that the results table displays instead of silently producing 0.00.
             const effectiveGrade = hasPassedInlineRetake ? mark.retake_grade :
                 (passedRetake ? passedRetake.grade :
-                (mark.published_grade ?? mark.final_grade ?? mark.grade ?? mark.status));
+                (mark.published_grade ?? mark.final_grade ?? mark.final_grade_letter ??
+                 mark.letter_grade ?? mark.grade_letter ?? mark.result_grade ??
+                 mark.computed_grade ?? mark.grade ?? mark.status));
             const rawScore = hasPassedInlineRetake ? numericMark(mark, ['retake_score']) :
-                (passedRetake ? numericMark(passedRetake, ['total_score', 'exam_score']) : getPublishedScore(mark));
-            const hasPublishedOutcome = String(effectiveGrade ?? '').trim() !== '' || rawScore !== null;
+                (passedRetake ? numericMark(passedRetake, ['total_score', 'exam_score', 'final_score', 'score']) : getPublishedScore(mark));
+            const storedPoints = numericMark(mark, ['points', 'grade_points', 'grade_point', 'gpa_points']);
+            const hasPublishedOutcome = String(effectiveGrade ?? '').trim() !== '' ||
+                rawScore !== null || storedPoints !== null;
             if (!hasPublishedOutcome) return;
 
-            // Derive points from the effective published grade/score, not stale stored points.
+            // Prefer the published letter grade; use numeric score or saved grade
+            // points only when the letter grade is unavailable.
             let points = pointsFromPublishedGrade(effectiveGrade);
             if (points === null && rawScore !== null) {
                 points = calculatePoints(calculateGrade(rawScore, activeProgram), activeProgram);
             }
-            if (points === null) points = numericMark(mark, ['points', 'grade_points']);
+            if (points === null) points = storedPoints;
             if (points === null || !Number.isFinite(points)) return;
 
             // Failed units contribute zero points but remain in the denominator.
