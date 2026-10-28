@@ -1448,7 +1448,8 @@ function loadTranscript() {
         }).length;
         const blockCredits = blockMarks.reduce((sum, m) => sum + (m.credits || 3), 0);
         const blockPoints = blockMarks.reduce((sum, m) => {
-            const pts = m.points || calculatePoints(m.grade, userProgram) || 0;
+            const effectiveGrade = m.published_grade || m.final_grade || m.grade || calculateGrade(m.final_score || m.total || 0, userProgram);
+            const pts = resolveDisplayPoints(m, effectiveGrade, userProgram) ?? 0;
             return sum + (pts * (m.credits || 3));
         }, 0);
         const blockGPA = blockCredits > 0 ? (blockPoints / blockCredits) : 0;
@@ -1517,7 +1518,7 @@ function loadTranscript() {
         blockMarks.forEach((m, idx) => {
             const grade = m.grade || calculateGrade(m.final_score || m.total || 0, userProgram);
             const gradeColor = getGradeColor(grade);
-            const points = m.points || calculatePoints(grade, userProgram) || 0;
+            const points = resolveDisplayPoints(m, grade, userProgram) ?? 0;
             const pointsEarned = points * (m.credits || 3);
             const isPassing = (m.final_score || m.total || 0) >= passThreshold;
             
