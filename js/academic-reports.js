@@ -854,7 +854,7 @@
                     onmouseover="this.style.background='#f8fafc'" 
                     onmouseout="this.style.background='transparent'">
                     <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
-                    <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
+                    <td style="padding: 10px 14px; font-weight: 600; color: #1E559B;">${escapeHtml(unitCode)}</td>
                     <td style="padding: 10px 14px;">
                         ${escapeHtml(mark.subject_name || 'N/A')}
                         ${starIndicator}
@@ -976,7 +976,7 @@
                             {
                                 label: 'GPA (' + avgPoints.toFixed(2) + ')',
                                 data: gpaLine,
-                                borderColor: '#0A3D62',
+                                borderColor: '#1E559B',
                                 borderDash: [8, 4],
                                 borderWidth: 2,
                                 fill: false,
@@ -1505,7 +1505,7 @@ function loadTranscript() {
         }
         
         html += `
-            <tr style="background: #0A3D62; color: white; font-weight: 700;">
+            <tr style="background: #1E559B; color: white; font-weight: 700;">
                 <td colspan="6" style="padding: 8px 12px; text-align: center; font-size: 12px;">
                     <i class="fas fa-folder-open"></i> ${escapeHtml(block)} 
                     <span style="font-size: 10px; opacity: 0.8; margin-left: 10px;">
@@ -1539,7 +1539,7 @@ function loadTranscript() {
             html += `
                 <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 0 ? 'background: #f8fafc;' : ''}">
                     <td style="padding: 6px 10px; font-size: 11px; color: #94a3b8; text-align: center;">${idx + 1}</td>
-                    <td style="padding: 6px 10px; font-weight: 600; color: #0A3D62; font-size: 12px;">${escapeHtml(m.unit_code || getUnitCode(m.subject_name) || 'N/A')}</td>
+                    <td style="padding: 6px 10px; font-weight: 600; color: #1E559B; font-size: 12px;">${escapeHtml(m.unit_code || getUnitCode(m.subject_name) || 'N/A')}</td>
                     <td style="padding: 6px 10px; font-size: 12px;">
                         ${escapeHtml(m.subject_name || 'N/A')}
                         ${starIndicator}
@@ -1559,7 +1559,7 @@ function loadTranscript() {
         
         // ✅ Block Summary row
         html += `
-            <tr style="background: #f1f5f9; border-top: 2px solid #0A3D62;">
+            <tr style="background: #f1f5f9; border-top: 2px solid #1E559B;">
                 <td colspan="3" style="padding: 4px 10px; font-size: 10px; color: #64748b;">
                     <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%) · GPA: ${blockGPA.toFixed(2)}
                 </td>
@@ -1677,7 +1677,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         const w = window.open('', '_blank', 'width=1100,height=800');
         if (!w) { alert('Please allow popups to generate the transcript.'); return; }
         w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Academic Transcript</title><style>
-        body{font-family:Arial,sans-serif;margin:30px;color:#1e293b}h1{text-align:center;color:#0A3D62;font-size:22px;margin:0}h2{text-align:center;font-size:16px;margin:5px 0 20px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid #ddd;padding:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#0A3D62;color:white;padding:8px;border:1px solid #ccc}td{padding:7px;border:1px solid #ddd}.summary{margin-top:20px;font-weight:700}@media print{body{margin:12mm}.no-print{display:none}}</style></head><body>
+        body{font-family:Arial,sans-serif;margin:30px;color:#1e293b}h1{text-align:center;color:#1E559B;font-size:22px;margin:0}h2{text-align:center;font-size:16px;margin:5px 0 20px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid #ddd;padding:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#1E559B;color:white;padding:8px;border:1px solid #ccc}td{padding:7px;border:1px solid #ddd}.summary{margin-top:20px;font-weight:700}@media print{body{margin:12mm}.no-print{display:none}}</style></head><body>
         <h1>Nakuru College of Health Sciences and Management</h1><h2>Academic Transcript</h2>
         <div class="meta"><div><b>Student:</b> ${escapeHtml(user.full_name || 'Student')}</div><div><b>Admission:</b> ${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div><div><b>Program:</b> ${escapeHtml(userProgram || 'N/A')}</div></div>
         <table><thead><tr><th>#</th><th>Block/Term</th><th>Unit Code</th><th>Unit Name</th><th>Credits</th><th>Score</th><th>Grade</th><th>Grade Points</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
@@ -1933,7 +1933,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 tableRows += `
                     <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''}">
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
-                        <td style="padding: 4px 3px; border: 1px solid #d1d5db; font-weight: 600; color: #0A3D62; font-size: 8px; line-height: 1.1; overflow-wrap: anywhere;">${escapeHtml(unitCode)}</td>
+                        <td style="padding: 4px 3px; border: 1px solid #d1d5db; font-weight: 600; color: #1E559B; font-size: 8px; line-height: 1.1; overflow-wrap: anywhere;">${escapeHtml(unitCode)}</td>
                         <td style="padding: 4px 5px; border: 1px solid #d1d5db; font-size: 12px; line-height: 1.2; text-transform: uppercase; font-weight: 600; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}${starIndicator}</td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center;"><span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 10px; font-weight: 700; font-size: 10px; display: inline-block; min-width: 28px;">${escapeHtml(gradeDisplay)}</span></td>
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; font-size: 10px; color: ${gradeColor};">${points === null ? '—' : points.toFixed(1)}</td>
@@ -1958,11 +1958,11 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             if (isTVET) {
                 gradingScaleHTML = `
                     <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db;">
-                        <thead><tr style="background: #0A3D62; color: white;">
-                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Marks Range</th>
-                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Grade</th>
-                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Points</th>
-                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Status</th>
+                        <thead><tr style="background: #1E559B; color: white;">
+                            <th style="padding: 4px 8px; border: 1px solid #1E559B; text-align: center;">Marks Range</th>
+                            <th style="padding: 4px 8px; border: 1px solid #1E559B; text-align: center;">Grade</th>
+                            <th style="padding: 4px 8px; border: 1px solid #1E559B; text-align: center;">Points</th>
+                            <th style="padding: 4px 8px; border: 1px solid #1E559B; text-align: center;">Status</th>
                         </tr></thead>
                         <tbody>
                             <tr style="background: #d1fae5;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">75 - 100%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #065f46;">A</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">4.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #065f46;">EXCELLENT</td></tr>
@@ -1971,16 +1971,16 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             <tr style="background: #fee2e2;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">Below 50%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #991b1b;">FAIL</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">0.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td></tr>
                             <tr style="background: #f3f4f6;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-style: italic;">No Score</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td></tr>
                         </tbody>
-                        <tfoot><tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 50%</td></tr></tfoot>
+                        <tfoot><tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #1E559B; font-size: 7px;">Min Pass: 50%</td></tr></tfoot>
                     </table>`;
             } else {
                 gradingScaleHTML = `
                     <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db;">
-                        <thead><tr style="background: #0A3D62; color: white;">
-                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Marks Range</th>
-                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Grade</th>
-                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Points</th>
-                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Status</th>
+                        <thead><tr style="background: #1E559B; color: white;">
+                            <th style="padding: 4px 8px; border: 1px solid #1E559B; text-align: center;">Marks Range</th>
+                            <th style="padding: 4px 8px; border: 1px solid #1E559B; text-align: center;">Grade</th>
+                            <th style="padding: 4px 8px; border: 1px solid #1E559B; text-align: center;">Points</th>
+                            <th style="padding: 4px 8px; border: 1px solid #1E559B; text-align: center;">Status</th>
                         </tr></thead>
                         <tbody>
                             <tr style="background: #d1fae5;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">75 - 100%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #065f46;">A</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">4.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #065f46;">DISTINCTION</td></tr>
@@ -1989,7 +1989,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                             <tr style="background: #fee2e2;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">Below 60%</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #991b1b;">D</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">0.0</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td></tr>
                             <tr style="background: #f3f4f6;"><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-style: italic;">No Score</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td><td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td></tr>
                         </tbody>
-                        <tfoot><tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 60%</td></tr></tfoot>
+                        <tfoot><tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #1E559B; font-size: 7px;">Min Pass: 60%</td></tr></tfoot>
                     </table>`;
             }
 
@@ -1997,7 +1997,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             if (profilePicture) {
                 profilePictureHTML = `
                     <div style="text-align: center; margin-right: 12px; flex-shrink: 0;">
-                        <img src="${profilePicture}" alt="Student Photo" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #0A3D62; padding: 2px; background: white;" onerror="this.style.display='none'">
+                        <img src="${profilePicture}" alt="Student Photo" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #1E559B; padding: 2px; background: white;" onerror="this.style.display='none'">
                     </div>`;
             }
 
@@ -2026,7 +2026,17 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4 portrait; margin: 6mm; }
         body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
-        .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 7px 8px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; box-shadow: none; }
+        .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 7px 8px; background: #ffffff; border: 2px solid #1E559B; border-radius: 6px; box-shadow: none; }
+        /* Official NCHSM crest palette: institutional blue with the crest's red cross as an accent. */
+        .container { border-top: 4px solid #1E559B; }
+        .header { border-bottom: 3px double #D62828; }
+        .header .subtitle { border-bottom: 3px solid #D62828; }
+        .student-info-wrapper { border-left: 4px solid #D62828; }
+        .summary-card:nth-child(even) { border-top-color: #D62828; }
+        .semester-results-title { border-left: 4px solid #D62828; }
+        thead th { border-bottom: 2px solid #D62828; }
+        .grading-scale-table .title { border-bottom: 2px solid #D62828; }
+
         /* Subtle institutional watermark: recognizable, never competing with marks or unit names. */
         .container { position: relative; isolation: isolate; overflow: hidden; }
         .container::before {
@@ -2047,31 +2057,31 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .transcript-top { position: relative; display: block; width: 100%; padding-top: 1px; }
         .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 126px; }
         .transcript-top > .verification-qr { position: absolute; top: 27px; right: 0; z-index: 2; }
-        .transcript-top > .transcript-generation-number { position: absolute; top: 0; right: 0; z-index: 3; display: none; width: 126px; margin: 0; padding: 0; border: 0; color: #0A3D62; font-family: Arial, sans-serif; font-size: 9px; line-height: 1.15; font-weight: 800; text-align: center; white-space: nowrap; overflow: visible; }
+        .transcript-top > .transcript-generation-number { position: absolute; top: 0; right: 0; z-index: 3; display: none; width: 126px; margin: 0; padding: 0; border: 0; color: #1E559B; font-family: Arial, sans-serif; font-size: 9px; line-height: 1.15; font-weight: 800; text-align: center; white-space: nowrap; overflow: visible; }
         .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 2px; color: #64748b; font-size: 6px; letter-spacing: .5px; white-space: nowrap; }
         .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; font-size: 8px; letter-spacing: 0; white-space: nowrap; }
-        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 76px; padding: 3px; border: 1px solid #0A3D62; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #0A3D62; }
+        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 76px; padding: 3px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #1E559B; }
         .verification-qr img { display: block; width: 66px; height: 66px; object-fit: contain; image-rendering: pixelated; }
-        .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 5px; margin-bottom: 6px; }
+        .header { text-align: center; border-bottom: 3px double #1E559B; padding-bottom: 5px; margin-bottom: 6px; }
         .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-width: 0; overflow: hidden; }
         .header-top img { display: block; flex: 0 0 62px; width: 62px; height: 62px; max-height: 62px; max-width: 62px; object-fit: contain; object-position: center; }
         .header-top > div { flex: 1 1 auto; min-width: 0; text-align: center; }
-        .header .school { font-size: 16px; line-height: 1.2; font-weight: 800; color: #0A3D62; font-family: 'Georgia', serif; white-space: normal; overflow-wrap: break-word; word-break: normal; }
+        .header .school { font-size: 16px; line-height: 1.2; font-weight: 800; color: #1E559B; font-family: 'Georgia', serif; white-space: normal; overflow-wrap: break-word; word-break: normal; }
         .header .motto { font-size: 8px; line-height: 1.25; color: #64748b; font-style: italic; }
-        .header .subtitle { display: inline-block; font-size: 17px; color: #ffffff; background: #0A3D62; font-weight: 800; margin-top: 10px; padding: 7px 28px; border-radius: 4px; letter-spacing: 2px; font-family: 'Georgia', serif; }
+        .header .subtitle { display: inline-block; font-size: 17px; color: #ffffff; background: #1E559B; font-weight: 800; margin-top: 10px; padding: 7px 28px; border-radius: 4px; letter-spacing: 2px; font-family: 'Georgia', serif; }
         .header .date { font-size: 8px; color: #94a3b8; margin-top: 2px; }
-        .student-info-wrapper { display: flex; align-items: center; gap: 10px; margin: 5px 0 7px; padding: 7px 9px; background: #f1f6fb; border-radius: 8px; border: 1px solid #cbdbea; border-left: 5px solid #0A3D62; }
+        .student-info-wrapper { display: flex; align-items: center; gap: 10px; margin: 5px 0 7px; padding: 7px 9px; background: #f1f6fb; border-radius: 8px; border: 1px solid #cbdbea; border-left: 5px solid #1E559B; }
         .student-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; flex: 1; }
         .student-info .field { display: flex; flex-direction: column; }
         .student-info .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; }
-        .student-info .value { font-weight: 800; font-size: 12px; line-height: 1.35; color: #0A3D62; margin-top: 3px; overflow-wrap: anywhere; }
-        .student-photo { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #0A3D62; padding: 2px; background: white; flex-shrink: 0; }
+        .student-info .value { font-weight: 800; font-size: 12px; line-height: 1.35; color: #1E559B; margin-top: 3px; overflow-wrap: anywhere; }
+        .student-photo { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #1E559B; padding: 2px; background: white; flex-shrink: 0; }
         .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
-        .summary-card { background: linear-gradient(180deg,#ffffff,#f3f7fb); border-radius: 8px; padding: 12px 10px; text-align: center; border: 1px solid #cbdbea; border-top: 4px solid #0A3D62; }
-        .summary-card .value { font-size: 24px; line-height: 1.2; font-weight: 800; color: #0A3D62; }
+        .summary-card { background: linear-gradient(180deg,#ffffff,#f3f7fb); border-radius: 8px; padding: 12px 10px; text-align: center; border: 1px solid #cbdbea; border-top: 4px solid #1E559B; }
+        .summary-card .value { font-size: 24px; line-height: 1.2; font-weight: 800; color: #1E559B; }
         .summary-card .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 800; margin-top: 3px; }
         table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; border: 1px solid #d1d5db; }
-        .semester-results-title { margin: 5px 0 0; padding: 6px 10px; background: #0A3D62; color: #ffffff; border-radius: 7px 7px 0 0; font-size: 11px; line-height: 1.15; font-weight: 800; letter-spacing: 0.35px; text-transform: uppercase; }
+        .semester-results-title { margin: 5px 0 0; padding: 6px 10px; background: #1E559B; color: #ffffff; border-radius: 7px 7px 0 0; font-size: 11px; line-height: 1.15; font-weight: 800; letter-spacing: 0.35px; text-transform: uppercase; }
         table.semester-results-table { margin: 0 0 5px; font-size: 9px; table-layout: fixed; }
         table.semester-results-table thead th { padding: 5px 4px; font-size: 8px; line-height: 1.1; }
         table.semester-results-table tbody td { padding: 4px 4px; font-size: 9px; line-height: 1.15; }
@@ -2092,39 +2102,39 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             padding: 0 !important;
             border-radius: 0 !important;
         }
-        thead th { background: #0A3D62; color: white; padding: 10px 12px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; border: 1px solid #0A3D62; }
+        thead th { background: #1E559B; color: white; padding: 10px 12px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; border: 1px solid #1E559B; }
         tbody td { padding: 9px 12px; border: 1px solid #d1d5db; font-size: 10px; line-height: 1.35; }
         .chart-container { margin: 10px 0 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
-        .chart-container .title { font-weight: 700; font-size: 8px; color: #0A3D62; text-align: center; margin-bottom: 4px; }
+        .chart-container .title { font-weight: 700; font-size: 8px; color: #1E559B; text-align: center; margin-bottom: 4px; }
         .chart-container canvas { width: 100% !important; height: 145px !important; max-height: 145px; }
         .transcript-lower-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 10px; margin: 8px 0; }
         .transcript-lower-grid > * { min-width: 0; }
         .academic-summary-panel { margin: 0; padding: 10px 12px; background: #f8fafc; border: 1px solid #cbdbea; border-radius: 8px; }
-        .academic-summary-title { margin: 0 0 6px; color: #0A3D62; text-align: center; font-size: 11px; font-weight: 800; }
+        .academic-summary-title { margin: 0 0 6px; color: #1E559B; text-align: center; font-size: 11px; font-weight: 800; }
         .transcript-lower-grid .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin: 0; }
         .transcript-lower-grid .summary-card { padding: 7px 4px; border-radius: 5px; border-top-width: 2px; }
         .transcript-lower-grid .summary-card .value { font-size: 17px; line-height: 1.1; }
         .transcript-lower-grid .summary-card .label { font-size: 7px; letter-spacing: .2px; }
         .grading-scale-table { margin: 0; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
-        .semester-results-title { background: #0A3D62 !important; color: #ffffff !important; }
-        .grading-scale-table .title { font-weight: 800; font-size: 11px; color: #ffffff; background: #0A3D62; text-align: center; margin: 0 0 8px; padding: 6px 8px; border-radius: 5px; }
+        .semester-results-title { background: #1E559B !important; color: #ffffff !important; }
+        .grading-scale-table .title { font-weight: 800; font-size: 11px; color: #ffffff; background: #1E559B; text-align: center; margin: 0 0 8px; padding: 6px 8px; border-radius: 5px; }
         .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db; }
-        .grading-scale-table th { background: #0A3D62; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #0A3D62; }
+        .grading-scale-table th { background: #1E559B; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #1E559B; }
         .grading-scale-table td { padding: 4px 8px; text-align: center; border: 1px solid #d1d5db; font-size: 7px; }
         .declaration { margin: 4px 0 5px; padding: 5px 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; font-size: 8px; line-height: 1.25; }
-        .declaration .title { font-weight: 700; color: #0A3D62; font-size: 8px; }
-        .declaration .checkbox { display: inline-block; width: 9px; height: 9px; border: 2px solid #0A3D62; border-radius: 2px; margin-right: 4px; vertical-align: middle; background: #0A3D62; position: relative; }
+        .declaration .title { font-weight: 700; color: #1E559B; font-size: 8px; }
+        .declaration .checkbox { display: inline-block; width: 9px; height: 9px; border: 2px solid #1E559B; border-radius: 2px; margin-right: 4px; vertical-align: middle; background: #1E559B; position: relative; }
         .declaration .checkbox::after { content: "✓"; color: white; font-size: 6px; position: absolute; top: -2px; left: 0px; }
         .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; min-height: 62px; }
         .signature-box { text-align: center; }
         .signature-box .line { border-bottom: 1px solid #1e293b; width: 155px; height: 24px; margin: 0 auto 2px auto; }
         .signature-box .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-        .signature-box .name { font-weight: 600; font-size: 10px; color: #0A3D62; }
-        .footer { text-align: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid #0A3D62; font-size: 8px; line-height: 1.2; color: #52677a; }
-        .footer strong { color: #0A3D62; }
+        .signature-box .name { font-weight: 600; font-size: 10px; color: #1E559B; }
+        .footer { text-align: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid #1E559B; font-size: 8px; line-height: 1.2; color: #52677a; }
+        .footer strong { color: #1E559B; }
         .no-print { text-align: center; margin-top: 8px; }
         .no-print button { padding: 5px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 10px; }
-        .no-print .btn-print { background: #0A3D62; color: white; }
+        .no-print .btn-print { background: #1E559B; color: white; }
         .no-print .btn-close { background: #e2e8f0; color: #475569; margin-left: 6px; }
         @media screen and (max-width: 600px) {
             body { font-size: 14px; padding: 8px; }
@@ -2183,12 +2193,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         <table class="semester-results-table">
             <thead>
                 <tr>
-                    <th style="text-align: center; width: 25px; border: 1px solid #0A3D62;">#</th>
-                    <th style="width: 76px; border: 1px solid #0A3D62;">Unit Code</th>
-                    <th style="min-width: 170px; border: 1px solid #0A3D62;">Unit Name</th>
-                    <th style="text-align: center; width: 50px; border: 1px solid #0A3D62;">Grade</th>
-                    <th style="text-align: center; width: 70px; border: 1px solid #0A3D62;">Grade Points</th>
-                    <th style="text-align: center; width: 82px; border: 1px solid #0A3D62;">Status</th>
+                    <th style="text-align: center; width: 25px; border: 1px solid #1E559B;">#</th>
+                    <th style="width: 76px; border: 1px solid #1E559B;">Unit Code</th>
+                    <th style="min-width: 170px; border: 1px solid #1E559B;">Unit Name</th>
+                    <th style="text-align: center; width: 50px; border: 1px solid #1E559B;">Grade</th>
+                    <th style="text-align: center; width: 70px; border: 1px solid #1E559B;">Grade Points</th>
+                    <th style="text-align: center; width: 82px; border: 1px solid #1E559B;">Status</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
@@ -2203,10 +2213,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             <div class="academic-summary-panel">
                 <div class="academic-summary-title">Academic Summary</div>
                 <div class="summary-grid">
-                    <div class="summary-card"><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
+                    <div class="summary-card"><div class="value" style="color: #1E559B;">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
                     <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div><div class="label">Overall Grade</div></div>
-                    <div class="summary-card"><div class="value" style="color: #0A3D62;">${totalUnits}</div><div class="label">Units Reported</div></div>
-                    <div class="summary-card"><div class="value" style="color: #0A3D62;">${passRate}%</div><div class="label">Pass Rate</div></div>
+                    <div class="summary-card"><div class="value" style="color: #1E559B;">${totalUnits}</div><div class="label">Units Reported</div></div>
+                    <div class="summary-card"><div class="value" style="color: #1E559B;">${passRate}%</div><div class="label">Pass Rate</div></div>
                 </div>
             </div>
         </div>
@@ -2442,7 +2452,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     html, body { min-height: 100%; background: #eef2f7 !important; }
                     body { margin: 0 !important; padding: 74px 16px 24px !important; }
                     .container { display: block !important; width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 0 !important; height: auto !important; margin: 0 auto !important; padding: 20px 24px !important; background: #fff !important; box-shadow: 0 8px 30px rgba(15,23,42,.18) !important; border-radius: 2px !important; }
-                    .transcript-preview-toolbar { position: fixed; z-index: 99999; top: 0; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: #0A3D62; box-shadow: 0 2px 10px #0002; }
+                    .transcript-preview-toolbar { position: fixed; z-index: 99999; top: 0; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: #1E559B; box-shadow: 0 2px 10px #0002; }
                     .transcript-preview-toolbar button { border: 0; border-radius: 7px; padding: 10px 16px; font: 600 14px Arial,sans-serif; cursor: pointer; }
                     .transcript-preview-toolbar .download { background: #10b981; color: #fff; }
                     .transcript-preview-toolbar .download:disabled { opacity: .78; cursor: wait; }
