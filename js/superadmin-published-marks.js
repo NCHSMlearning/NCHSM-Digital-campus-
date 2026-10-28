@@ -1777,7 +1777,7 @@ function viewStudentMarks(admissionNumber) {
                 '<td style="padding: 8px 12px; text-align: center;">' +
                     '<span style="background: ' + gradeColor + '; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 12px;">' + (mark.grade || '-') + '</span>' +
                 '</td>' +
-                '<td style="padding: 8px 12px; text-align: center; font-weight: 600;">' + (mark.points || 0) + '</td>' +
+                '<td style="padding: 8px 12px; text-align: center; font-weight: 600;">' + getEffectiveMarksPoints(mark) + '</td>' +
                 '<td style="padding: 8px 12px; text-align: center;">' +
                     '<span style="background: ' + statusColor + '; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 600; font-size: 10px;">' + status + '</span>' +
                 '</td>' +
@@ -3172,7 +3172,7 @@ function exportPublishedMarksToCSV() {
             '"' + (mark.program || '').replace(/"/g, '""') + '"',
             mark.final_score || 0,
             mark.grade || '-',
-            mark.points || 0,
+            getEffectiveMarksPoints(mark),
             '"' + comment + '"',
             mark.published ? 'Yes' : 'No',
             mark.hasRetake ? 'Yes' : 'No',
@@ -3235,7 +3235,7 @@ function printPublishedMarks() {
                 '<td style="padding: 6px 10px; border: 1px solid #ddd;">' + (mark.admission_number || '-') + '</td>' +
                 '<td style="padding: 6px 10px; border: 1px solid #ddd;">' + (mark.subject_name || 'N/A') + '</td>' +
                 '<td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">' + (mark.final_score || 0) + '%</td>' +
-                '<td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">' + (mark.grade || '-') + ' (' + (mark.points || 0) + ')</td>' +
+                '<td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">' + (mark.grade || '-') + ' (' + getEffectiveMarksPoints(mark) + ')</td>' +
                 '<td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">' + (mark.block || '-') + '</td>' +
                 '<td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">' + programIcon + ' ' + (mark.program || 'N/A') + '</td>' +
                 '<td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">' + comment + '</td>' +
