@@ -1677,7 +1677,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         const w = window.open('', '_blank', 'width=1100,height=800');
         if (!w) { alert('Please allow popups to generate the transcript.'); return; }
         w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Academic Transcript</title><style>
-        body{font-family:Arial,sans-serif;margin:30px;color:#1e293b}h1{text-align:center;color:#1E559B;font-size:22px;margin:0}h2{text-align:center;font-size:16px;margin:5px 0 20px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid #ddd;padding:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#1E559B;color:white;padding:8px;border:1px solid #ccc}td{padding:7px;border:1px solid #ddd}.summary{margin-top:20px;font-weight:700}@media print{body{margin:12mm}.no-print{display:none}}</style></head><body>
+        body{font-family:Arial,sans-serif;margin:30px;color:#1e293b}h1{text-align:center;color:#1E559B;font-size:22px;margin:0}h2{text-align:center;font-size:16px;margin:5px 0 20px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid #ddd;padding:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#1E559B;color:white;padding:8px;border:1px solid #ccc}td{padding:7px;border:1px solid #ddd}table tbody td:nth-child(3),table tbody td:nth-child(8),table tbody td:nth-child(3) *,table tbody td:nth-child(8) *{color:#000!important;font-weight:900!important;-webkit-text-fill-color:#000!important}.summary{margin-top:20px;font-weight:700}@media print{body{margin:12mm}.no-print{display:none}}</style></head><body>
         <h1>Nakuru College of Health Sciences and Management</h1><h2>Academic Transcript</h2>
         <div class="meta"><div><b>Student:</b> ${escapeHtml(user.full_name || 'Student')}</div><div><b>Admission:</b> ${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div><div><b>Program:</b> ${escapeHtml(userProgram || 'N/A')}</div></div>
         <table><thead><tr><th>#</th><th>Block/Term</th><th>Unit Code</th><th>Unit Name</th><th>Credits</th><th>Score</th><th>Grade</th><th>Grade Points</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
@@ -2085,20 +2085,21 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         table.semester-results-table { margin: 0 0 5px; font-size: 9px; table-layout: fixed; }
         table.semester-results-table thead th { padding: 5px 4px; font-size: 8px; line-height: 1.1; }
         table.semester-results-table tbody td { padding: 4px 4px; font-size: 9px; line-height: 1.15; }
-        /* Keep the key academic results clearly readable in both preview and PDF. */
-        table.semester-results-table tbody td:nth-child(3),
-        table.semester-results-table tbody td:nth-child(4),
-        table.semester-results-table tbody td:nth-child(6) {
-            font-weight: 800 !important;
+        /* Unit codes and grade points must always print in bold black, including PDF export. */
+        table.semester-results-table tbody td:nth-child(2),
+        table.semester-results-table tbody td:nth-child(5),
+        table.semester-results-table tbody td:nth-child(2) *,
+        table.semester-results-table tbody td:nth-child(5) * {
             color: #000000 !important;
+            font-weight: 900 !important;
+            -webkit-text-fill-color: #000000 !important;
         }
-        table.semester-results-table tbody td:nth-child(4),
-        table.semester-results-table tbody td:nth-child(6) { text-align: center; }
-        table.semester-results-table tbody td:nth-child(4) span,
-        table.semester-results-table tbody td:nth-child(6) span {
+        table.semester-results-table tbody td:nth-child(5) { text-align: center; }
+        table.semester-results-table tbody td:nth-child(2) span,
+        table.semester-results-table tbody td:nth-child(5) span {
             color: #000000 !important;
             background: transparent !important;
-            font-weight: 800 !important;
+            font-weight: 900 !important;
             padding: 0 !important;
             border-radius: 0 !important;
         }
