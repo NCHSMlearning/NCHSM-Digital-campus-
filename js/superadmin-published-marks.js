@@ -2427,6 +2427,29 @@ async function batchPublishMarks(marks) {
         }
         return;
     }
+
+    // Publication safeguard: never release an approved row with no numeric final score.
+    // Grade points are enforced by the database trigger from final_score + program.
+    var missingScoreMarks = marks.filter(function(mark) {
+        return mark.final_score === null || mark.final_score === undefined ||
+            String(mark.final_score).trim() === '' || !Number.isFinite(Number(mark.final_score));
+    });
+    if (missingScoreMarks.length > 0) {
+        var preview = missingScoreMarks.slice(0, 5).map(function(mark) {
+            return (mark.student_name || mark.admission_number || 'Unknown student') +
+                ' — ' + (mark.subject_name || 'Unknown unit');
+        }).join('; ');
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(
+                'Publication blocked: ' + missingScoreMarks.length +
+                ' approved mark(s) have no valid final score. Complete these records first. ' + preview,
+                'error'
+            );
+        }
+        console.error('Publication blocked due to missing final scores:', missingScoreMarks);
+        return;
+    }
+
     var count = marks.length;
     
     if (typeof window.showLoading === 'function') window.showLoading('Publishing ' + count + ' approved marks...');
