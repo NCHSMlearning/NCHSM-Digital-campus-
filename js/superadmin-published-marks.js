@@ -98,6 +98,24 @@ function getGradeColor(grade) {
     return colors[grade] || '#6b7280';
 }
 
+// Resolve GPA points consistently with the published grade and official program scale.
+// Stored points can be stale or zero even when a valid grade has been published.
+function getEffectiveMarksPoints(mark) {
+    if (!mark) return 0;
+    var program = mark.program || mark.program_code || '';
+    var grade = String(mark.published_grade || mark.final_grade || mark.grade || mark.letter_grade || '').trim().toUpperCase();
+    var scoreValue = mark.final_score !== null && mark.final_score !== undefined && mark.final_score !== ''
+        ? Number(mark.final_score) : null;
+
+    if (grade && grade !== 'PENDING') return calculatePoints(grade, program);
+    if (scoreValue !== null && Number.isFinite(scoreValue) && scoreValue > 0) {
+        return calculatePoints(calculateGrade(scoreValue, program), program);
+    }
+
+    var stored = Number(mark.points);
+    return Number.isFinite(stored) && stored > 0 ? stored : 0;
+}
+
 function getStatusColor(status) {
     var colors = {
         'EXCELLENT': '#10b981',
@@ -1316,7 +1334,7 @@ function renderPublishedMarks() {
         for (var m = 0; m < studentMarks.length; m++) {
             var sm = studentMarks[m];
             totalScore = totalScore + (sm.final_score || 0);
-            totalPoints = totalPoints + (sm.points || 0);
+            totalPoints = totalPoints + getEffectiveMarksPoints(sm);
             if (sm.final_score >= threshold) passedUnits++;
             else if (sm.final_score > 0 && sm.final_score < threshold) failedUnits++;
             else pendingUnits++;
@@ -1636,7 +1654,7 @@ function updateStats(marks) {
         else unpublished++;
         
         totalScore = totalScore + (m.final_score || 0);
-        totalPoints = totalPoints + (m.points || 0);
+        totalPoints = totalPoints + getEffectiveMarksPoints(m);
         if (m.hasRetake) retakeCount++;
     }
     
