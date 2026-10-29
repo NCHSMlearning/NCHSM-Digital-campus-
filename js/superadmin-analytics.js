@@ -332,7 +332,7 @@ window.loadAnalyticsData = async function() {
     console.log('📊 Loading analytics data...');
     
     const program = document.getElementById('analytics_program_select')?.value || 'all';
-    const year = document.getElementById('analytics_year_select')?.value || '2025';
+    const year = document.getElementById('analytics_year_select')?.value || '2026';
     const intake = document.getElementById('analytics_intake_select')?.value || 'all';
     const block = document.getElementById('analytics_block_select')?.value || 'all';
     const metric = document.getElementById('analytics_metric_select')?.value || 'overview';
@@ -2232,7 +2232,7 @@ window.printConsolidatedMarksheet = function() {
     const tableHTML = table.outerHTML;
     const summaryHTML = document.getElementById('consolidatedSummary')?.outerHTML || '';
     const programLabel = document.getElementById('analytics_program_label')?.textContent || 'All Programs';
-    const year = document.getElementById('analytics_year_select')?.value || '2025';
+    const year = document.getElementById('analytics_year_select')?.value || '2026';
     const block = document.getElementById('analytics_block_select')?.value || 'All';
     
     const html = `
