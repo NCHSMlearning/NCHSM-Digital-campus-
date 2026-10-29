@@ -255,7 +255,19 @@ function calculateGPA(marks, programCode) {
  if (!Array.isArray(marks) || !marks.length) return 0;
  const rows = getEffectiveUnitMarks(marks.filter(m => m && m.published === true && String(m.approval_status || '').trim().toLowerCase() === 'approved'));
  let points = 0, creditsTotal = 0;
- rows.forEach(m => { const score = getEffectiveMarkScore(m); if (score === null) return; const grade = calculateOfficialGrade(score, programCode); const raw = Number(m.credits || m.credit_hours || m.creditHours); const credits = Number.isFinite(raw) && raw > 0 ? raw : GRADE_CONFIG.creditHours; points += Number(grade.points || 0) * credits; creditsTotal += credits; });
+ rows.forEach(m => {
+  const score = getEffectiveMarkScore(m);
+  const gradeLabel = String(m.published_grade ?? m.final_grade ?? m.final_grade_letter ?? m.letter_grade ?? m.grade_letter ?? m.result_grade ?? m.computed_grade ?? m.grade ?? '').trim().toUpperCase();
+  const storedPointsRaw = m.points ?? m.grade_points ?? m.grade_point ?? m.gpa_points;
+  const storedPoints = storedPointsRaw !== null && storedPointsRaw !== undefined && storedPointsRaw !== '' && Number.isFinite(Number(storedPointsRaw)) ? Number(storedPointsRaw) : null;
+  const gradePointMap = { A:4, DISTINCTION:4, EXCELLENT:4, B:3, CREDIT:3, GOOD:3, C:2, PASS:2, SATISFACTORY:2, D:0, F:0, FAIL:0, E:0, 'NOT YET COMPETENT':0 };
+  let gradePoints = Object.prototype.hasOwnProperty.call(gradePointMap, gradeLabel) ? gradePointMap[gradeLabel] : storedPoints;
+  if (gradePoints === null && score !== null) gradePoints = Number(calculateOfficialGrade(score, programCode).points || 0);
+  if (gradePoints === null || !Number.isFinite(gradePoints)) return;
+  const raw = Number(m.credits ?? m.credit_hours ?? m.creditHours);
+  const credits = Number.isFinite(raw) && raw > 0 ? raw : GRADE_CONFIG.creditHours;
+  points += gradePoints * credits; creditsTotal += credits;
+ });
  return creditsTotal ? Math.round(points / creditsTotal * 100) / 100 : 0;
 }
 
@@ -263,7 +275,7 @@ function getEffectiveMarkScore(mark) {
  if (!mark) return null;
  const status = String(mark.retake_status || '').trim().toLowerCase();
  if (['pass','passed','competent'].includes(status) && mark.retake_score !== null && mark.retake_score !== undefined && mark.retake_score !== '') { const n = Number(mark.retake_score); if (Number.isFinite(n)) return n; }
- const raw = mark.final_score !== null && mark.final_score !== undefined && mark.final_score !== '' ? mark.final_score : (mark.final_total !== null && mark.final_total !== undefined && mark.final_total !== '' ? mark.final_total : (mark.total_score !== null && mark.total_score !== undefined && mark.total_score !== '' ? mark.total_score : mark.total));
+ const raw = mark.final_score ?? mark.published_score ?? mark.overall_score ?? mark.final_total ?? mark.total_score ?? mark.total ?? mark.score ?? mark.marks;
  if (raw === null || raw === undefined || raw === '') return null; const n = Number(raw); return Number.isFinite(n) ? n : null;
 }
 function getEffectiveUnitMarks(marks) {
@@ -840,6 +852,70 @@ window.generateSelectedTranscriptBatch = async function() {
 // SHOW TRANSCRIPT PREVIEW - WITH BLOCK NAVIGATION
 // Academic Registrar & Director signatures ONLY
 // ============================================================
+
+
+// ------------------------------------------------------------
+// Transcript issuance analytics (registry-backed; no fabricated totals)
+// ------------------------------------------------------------
+window.loadTranscriptIssuanceAnalytics = async function() {
+    const ids = ['transcriptIssuedCount','transcriptStudentCount','transcriptQrCount','transcriptNumberCount'];
+    const setMessage = (message, error=false) => {
+        const node = document.getElementById('transcriptAnalyticsMessage');
+        if (node) { node.textContent = message; node.style.color = error ? '#b91c1c' : '#64748b'; }
+    };
+    const body = document.getElementById('transcriptIssuanceRows');
+    if (!body) return;
+    body.innerHTML = '<tr><td colspan="7" style="padding:18px;text-align:center;color:#64748b;">Loading transcript issuance records…</td></tr>';
+    const sb = window.sb || window.supabaseClient ||
+        (window.supabase && typeof window.supabase.from === 'function' ? window.supabase : null);
+    if (!sb || typeof sb.from !== 'function') {
+        body.innerHTML = '<tr><td colspan="7" style="padding:18px;text-align:center;color:#b91c1c;">Database client unavailable.</td></tr>';
+        setMessage('Could not load registry: Supabase client is not initialized.', true); return;
+    }
+    try {
+        const { data, error } = await sb.from('transcript_verification_registry')
+            .select('token,student_id,student_name,program,document_type,status,issued_at,transcript_number,transcript_block')
+            .order('issued_at', { ascending: false }).limit(1000);
+        if (error) throw error;
+        const rows = Array.isArray(data) ? data : [];
+        const uniqueStudents = new Set(rows.map(r => String(r.student_id || r.student_name || '').trim()).filter(Boolean));
+        const uniqueNumbers = new Set(rows.map(r => String(r.transcript_number || '').trim()).filter(Boolean));
+        const put = (id, value) => { const node = document.getElementById(id); if (node) node.textContent = String(value); };
+        put('transcriptIssuedCount', rows.length);
+        put('transcriptStudentCount', uniqueStudents.size);
+        put('transcriptQrCount', rows.filter(r => !!r.token).length);
+        put('transcriptNumberCount', uniqueNumbers.size);
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="7" style="padding:18px;text-align:center;color:#64748b;">No transcript records found in the verification registry.</td></tr>';
+            setMessage('Showing 0 records.'); return;
+        }
+        const escape = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        body.innerHTML = rows.map(r => {
+            const token = String(r.token || '');
+            const verifyUrl = token ? new URL('graduation.html', window.location.href).href + '?token=' + encodeURIComponent(token) : '';
+            const issued = r.issued_at ? new Date(r.issued_at).toLocaleString() : '—';
+            const qrCell = token
+                ? '<a href="' + escape(verifyUrl) + '" target="_blank" rel="noopener noreferrer" style="color:#0369a1;font-weight:600;">Open QR verification</a><div style="font-size:11px;color:#64748b;margin-top:3px;">Token: ' + escape(token.slice(0,12)) + '…</div>'
+                : '<span style="color:#94a3b8;">No token</span>';
+            return '<tr style="border-top:1px solid #e2e8f0;">' +
+                '<td style="padding:11px;">' + escape(r.student_name || '—') + '</td>' +
+                '<td style="padding:11px;">' + escape(r.student_id || '—') + '</td>' +
+                '<td style="padding:11px;">' + escape(r.program || '—') + '</td>' +
+                '<td style="padding:11px;font-weight:700;color:#0A3D62;">' + escape(r.transcript_number || 'Not assigned') + (r.transcript_block && r.transcript_block !== 'ALL' ? '<div style="font-size:11px;color:#64748b;font-weight:400;">' + escape(r.transcript_block) + '</div>' : '') + '</td>' +
+                '<td style="padding:11px;">' + qrCell + '</td>' +
+                '<td style="padding:11px;white-space:nowrap;">' + escape(issued) + '</td>' +
+                '<td style="padding:11px;">' + escape(r.status || 'issued') + '</td></tr>';
+        }).join('');
+        setMessage('Showing the latest ' + rows.length + ' registry records. Counts reflect records visible to this logged-in account (maximum 1,000 per refresh).');
+    } catch (error) {
+        console.error('[Transcript analytics] Registry query failed:', error);
+        body.innerHTML = '<tr><td colspan="7" style="padding:18px;text-align:center;color:#b91c1c;">Unable to load transcript records.</td></tr>';
+        setMessage('Registry access failed: ' + (error?.message || 'permission denied or query error') + '. Check the transcript registry read policy for authorized Super Admins.', true);
+    }
+};
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('transcriptIssuanceAnalytics')) window.loadTranscriptIssuanceAnalytics();
+});
 
 window.showTranscriptPreview = function(student, marks, year) {
     // Only approved and published marks may appear on an official transcript.
