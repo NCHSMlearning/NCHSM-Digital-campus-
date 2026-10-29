@@ -2298,7 +2298,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         'apikey': portalConfig.SUPABASE_ANON_KEY,
                         'Authorization': 'Bearer ' + accessToken
                     },
-                    body: JSON.stringify({ action: 'issue' })
+                    body: JSON.stringify({ action: "issue", block: ${JSON.stringify(blockFilter === "all" ? "ALL" : blockFilter)} })
                 });
                 const registryResult = await registryResponse.json().catch(() => ({}));
                 if (!registryResponse.ok || !registryResult.token) {
