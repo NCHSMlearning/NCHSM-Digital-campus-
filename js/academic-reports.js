@@ -2056,7 +2056,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .transcript-top { position: relative; display: block; width: 100%; padding-top: 1px; }
         .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: start; column-gap: 8px; }
         .transcript-top > .header { width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
-        .transcript-top > .verification-qr { position: relative; top: auto; right: auto; z-index: 2; grid-column: 2; grid-row: 1 / span 2; width: 88px; min-height: 90px; justify-self: end; }
+        .transcript-top > .verification-qr { position: relative; top: auto; right: auto; z-index: 2; grid-column: 2; grid-row: 2; width: 88px; min-height: 90px; justify-self: end; }
         .transcript-top > .transcript-generation-number { position: relative; top: auto; right: auto; z-index: 3; display: none; grid-column: 2; grid-row: 1; width: 88px; margin: 0 0 4px; padding: 2px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; color: #1E559B; font-family: Arial, sans-serif; font-size: 9px; line-height: 1.15; font-weight: 800; text-align: center; white-space: normal; overflow: visible; }
         .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 2px; color: #334155; font-size: 7px; letter-spacing: .25px; white-space: normal; }
         .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; font-size: 10px; letter-spacing: 0; white-space: normal; overflow-wrap: anywhere; }
