@@ -6292,6 +6292,24 @@
         </div>
 
         <!-- Transcript Preview -->
+        <!-- Transcript issuance analytics -->
+        <section id="transcriptIssuanceAnalytics" style="margin:0 0 20px;background:#fff;border:1px solid #dbe3ee;border-radius:14px;padding:20px;box-shadow:0 2px 8px rgba(15,23,42,.04);">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+            <div><h3 style="margin:0;color:#0A3D62;font-size:18px;"><i class="fas fa-chart-line"></i> Transcript Issuance & Verification</h3><p style="margin:5px 0 0;color:#64748b;font-size:13px;">Issued transcript records, student counts, transcript numbers and QR verification tokens.</p></div>
+            <button type="button" onclick="window.loadTranscriptIssuanceAnalytics && window.loadTranscriptIssuanceAnalytics()" style="border:1px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:9px 13px;cursor:pointer;color:#0f172a;"><i class="fas fa-sync-alt"></i> Refresh stats</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px;">
+            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:15px;"><div style="font-size:12px;color:#64748b;">Transcripts issued</div><strong id="transcriptIssuedCount" style="display:block;font-size:28px;color:#0A3D62;margin-top:5px;">—</strong></div>
+            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:15px;"><div style="font-size:12px;color:#64748b;">Students with transcripts</div><strong id="transcriptStudentCount" style="display:block;font-size:28px;color:#0A3D62;margin-top:5px;">—</strong></div>
+            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:15px;"><div style="font-size:12px;color:#64748b;">QR verification codes</div><strong id="transcriptQrCount" style="display:block;font-size:28px;color:#0A3D62;margin-top:5px;">—</strong></div>
+            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:15px;"><div style="font-size:12px;color:#64748b;">Unique transcript numbers</div><strong id="transcriptNumberCount" style="display:block;font-size:28px;color:#0A3D62;margin-top:5px;">—</strong></div>
+          </div>
+          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:760px;font-size:13px;">
+            <thead><tr style="background:#f1f5f9;text-align:left;"><th style="padding:11px;">Student</th><th style="padding:11px;">Admission No.</th><th style="padding:11px;">Programme</th><th style="padding:11px;">Transcript No.</th><th style="padding:11px;">QR / Verification</th><th style="padding:11px;">Issued</th><th style="padding:11px;">Status</th></tr></thead>
+            <tbody id="transcriptIssuanceRows"><tr><td colspan="7" style="padding:18px;text-align:center;color:#64748b;">Loading transcript issuance records…</td></tr></tbody>
+          </table></div>
+          <p id="transcriptAnalyticsMessage" role="status" style="font-size:12px;color:#64748b;margin:10px 0 0;"></p>
+        </section>
         <div id="transcriptPreviewContainer" style="display: none; background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
                 <h4 style="margin: 0; color: #0A3D62;">
