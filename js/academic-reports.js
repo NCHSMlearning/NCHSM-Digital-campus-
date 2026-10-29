@@ -2054,13 +2054,14 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .container .transcript-top { z-index: 2; }
 
         .transcript-top { position: relative; display: block; width: 100%; padding-top: 1px; }
-        .transcript-top > .header { width: 100%; box-sizing: border-box; padding-right: 126px; }
-        .transcript-top > .verification-qr { position: absolute; top: 27px; right: 0; z-index: 2; }
-        .transcript-top > .transcript-generation-number { position: absolute; top: 0; right: 0; z-index: 3; display: none; width: 126px; margin: 0; padding: 0; border: 0; color: #1E559B; font-family: Arial, sans-serif; font-size: 9px; line-height: 1.15; font-weight: 800; text-align: center; white-space: nowrap; overflow: visible; }
-        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 2px; color: #64748b; font-size: 6px; letter-spacing: .5px; white-space: nowrap; }
-        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; font-size: 8px; letter-spacing: 0; white-space: nowrap; }
-        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 76px; padding: 3px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 6px; font-weight: 700; color: #1E559B; }
-        .verification-qr img { display: block; width: 66px; height: 66px; object-fit: contain; image-rendering: pixelated; }
+        .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: start; column-gap: 8px; }
+        .transcript-top > .header { width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
+        .transcript-top > .verification-qr { position: relative; top: auto; right: auto; z-index: 2; grid-column: 2; grid-row: 1 / span 2; width: 88px; min-height: 90px; justify-self: end; }
+        .transcript-top > .transcript-generation-number { position: relative; top: auto; right: auto; z-index: 3; display: none; grid-column: 2; grid-row: 1; width: 88px; margin: 0 0 4px; padding: 2px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; color: #1E559B; font-family: Arial, sans-serif; font-size: 9px; line-height: 1.15; font-weight: 800; text-align: center; white-space: normal; overflow: visible; }
+        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 2px; color: #334155; font-size: 7px; letter-spacing: .25px; white-space: normal; }
+        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; font-size: 10px; letter-spacing: 0; white-space: normal; overflow-wrap: anywhere; }
+        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 88px; padding: 4px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
+        .verification-qr img { display: block; width: 76px; height: 76px; min-width: 76px; min-height: 76px; object-fit: contain; image-rendering: pixelated; }
         .header { text-align: center; border-bottom: 3px double #1E559B; padding-bottom: 5px; margin-bottom: 6px; }
         .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-width: 0; overflow: hidden; }
         .header-top img { display: block; flex: 0 0 62px; width: 62px; height: 62px; max-height: 62px; max-width: 62px; object-fit: contain; object-position: center; }
@@ -2127,8 +2128,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .declaration .checkbox::after { content: "✓"; color: white; font-size: 6px; position: absolute; top: -2px; left: 0px; }
         .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; min-height: 62px; }
         .signature-box { text-align: center; }
-        .signature-box .line { border-bottom: 1px solid #1e293b; width: 155px; height: 24px; margin: 0 auto 2px auto; }
-        .signature-box .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .signature-box .line { border-bottom: 3px solid #1e293b; width: 155px; height: 24px; margin: 0 auto 3px auto; }
+        .signature-box .label { font-size: 8px; color: #1e293b; text-transform: uppercase; letter-spacing: 0.35px; font-weight: 900; }
+        .signature-box .date { font-weight: 800; color: #1e293b; }
         .signature-box .name { font-weight: 600; font-size: 10px; color: #1E559B; }
         .footer { text-align: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid #1E559B; font-size: 8px; line-height: 1.2; color: #52677a; }
         .footer strong { color: #1E559B; }
@@ -2257,7 +2259,15 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
             if (!qrImage) return;
             const hideQrBox = (reason) => {
                 const box = qrImage.closest('.verification-qr');
-                if (box) box.style.display = 'none';
+                if (box) {
+                    box.style.display = 'flex';
+                    box.style.visibility = 'visible';
+                    box.style.minHeight = '90px';
+                    let status = box.querySelector('.qr-status');
+                    if (!status) { status = document.createElement('span'); status.className = 'qr-status'; status.style.cssText = 'font-size:6px;color:#b91c1c;text-align:center;overflow-wrap:anywhere;'; box.appendChild(status); }
+                    status.textContent = 'Verification unavailable';
+                    status.title = String(reason || 'QR unavailable');
+                }
                 qrImage.dataset.error = String(reason || 'QR unavailable');
                 qrImage.alt = 'QR unavailable';
                 console.warn('[Transcript QR] Not available:', reason);
