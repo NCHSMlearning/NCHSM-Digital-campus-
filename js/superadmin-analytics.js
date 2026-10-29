@@ -506,17 +506,39 @@ const client = window.sb || window.supabase;
         window.renderDifficultyHeatmap(filteredMarks);
         // Progression must use all blocks for the selected academic year.
         // The selected block filter is for the other analytics panels only.
-        let progressionQuery = client
-            .from('student_marks')
-            .select('*')
-            .eq('academic_year', year);
-        if (program !== 'all' && program !== 'TVET') progressionQuery = progressionQuery.eq('program', program);
-        if (program === 'TVET') progressionQuery = progressionQuery.neq('program', 'KRCHN');
-        const { data: progressionMarks, error: progressionError } = await progressionQuery;
-        if (progressionError) throw progressionError;
-        const progressionRows = (progressionMarks || []).filter(window.isAnalyticsMarkEligible).filter(mark => intake === 'all' ||
-            [mark.admission_number, mark.student_id].filter(Boolean).some(id => cohortIdentifiers.has(String(id)))
-        );
+        // Fetch every page: Supabase commonly caps a single select response at 1,000 rows.
+        // A single-page query can silently omit later learners' Block 4 results.
+        const progressionMarks = [];
+        const progressionPageSize = 1000;
+        for (let from = 0; ; from += progressionPageSize) {
+            let progressionQuery = client
+                .from('student_marks')
+                .select('*')
+                .eq('academic_year', year);
+            if (program !== 'all' && program !== 'TVET') progressionQuery = progressionQuery.eq('program', program);
+            if (program === 'TVET') progressionQuery = progressionQuery.neq('program', 'KRCHN');
+
+            const { data: progressionPage, error: progressionError } = await progressionQuery
+                .order('id', { ascending: true })
+                .range(from, from + progressionPageSize - 1);
+            if (progressionError) throw progressionError;
+            progressionMarks.push(...(progressionPage || []));
+            if (!progressionPage || progressionPage.length < progressionPageSize) break;
+        }
+
+        const normalizeProgressionId = value => String(value ?? '').trim().toLowerCase();
+        const progressionCohortIdentifiers = new Set((students || []).flatMap(student =>
+            [student.admission_number, student.student_id, student.student_uuid, student.id]
+                .map(normalizeProgressionId).filter(Boolean)
+        ));
+        const progressionRows = progressionMarks
+            .filter(window.isAnalyticsMarkEligible)
+            .filter(mark => intake === 'all' ||
+                [mark.admission_number, mark.student_id, mark.student_uuid, mark.student_id_number]
+                    .map(normalizeProgressionId)
+                    .filter(Boolean)
+                    .some(id => progressionCohortIdentifiers.has(id))
+            );
         // Learner Progress should be limited to learners in the currently selected
         // analytics class/cohort (programme + intake + academic year/block filters).
         // Keep all-block marks only for calculating each learner's progression trend.
@@ -1036,18 +1058,19 @@ window.renderProgressionTable = function(students, marks) {
 
     const normalizeIdentifier = value => String(value ?? '').trim().toLowerCase();
     const normalizeBlock = value => {
-        const raw = String(value || '').trim().toLowerCase().normalize('NFKC')
-            .replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ');
+        const raw = String(value ?? '').trim().toLowerCase().normalize('NFKC')
+            .replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
         if (['introductory', 'introduction', 'intro'].includes(raw)) return 'Introductory';
         if (/^(fqe|final qualifying examination|final qualifying exam)$/.test(raw)) return 'FQE';
-        const match = raw.match(/^(?:block\\s*)?(\\d+)$/);
+        if (/^(final|final block|final exam)$/.test(raw)) return 'FQE';
+        const match = raw.match(/^(?:block\s*)?(\d+)$/);
         if (match) return 'Block ' + match[1];
-        return String(value || '').trim();
+        return String(value ?? '').trim();
     };
     const blockRank = value => {
         if (value === 'Introductory') return 0;
         if (value === 'FQE' || /^final$/i.test(value)) return 100;
-        const match = String(value).match(/^Block (\\d+)$/);
+        const match = String(value).match(/^Block (\d+)$/);
         return match ? Number(match[1]) : 50;
     };
 
