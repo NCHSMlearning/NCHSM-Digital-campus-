@@ -1699,6 +1699,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         const transcriptProgramName = normalizedProgramCode === 'KRCHN'
             ? 'Kenya Registered Community Health Nursing (KRCHN)'
             : userProgram;
+        // Signature roles follow the student's program: KRCHN uses Nursing; all other programs use TVET.
+        const transcriptSchool = normalizedProgramCode === 'KRCHN' ? 'School of Nursing' : 'School of TVET';
         const transcriptIntakeYear = user.intake_year || user.admission_year || '';
         const transcriptCurrentBlock = user.current_block || user.block || '';
         // Ensure retake records are loaded even when the transcript is opened directly
@@ -2232,13 +2234,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         <div class="signatures">
             <div class="signature-box">
                 <div class="line"></div>
-                <div class="label">Student Signature</div>
-                <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
+                <div class="label">Principal — ${transcriptSchool}</div>
                 <div class="date">Date: _____________</div>
             </div>
             <div class="signature-box">
                 <div class="line"></div>
-                <div class="label">Head of Department (HOD)</div>
+                <div class="label">Head of Department (HOD) — ${transcriptSchool}</div>
                 <div class="date">Date: _____________</div>
             </div>
         </div>
