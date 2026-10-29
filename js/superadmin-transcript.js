@@ -245,42 +245,30 @@ function getStatusLabel(score, programCode) {
     const config = getGradingConfig(programCode);
     const passMark = config.passMark;
     
-    if (score === null || score === undefined || score === 0) return 'PENDING';
+    if (score === null || score === undefined || score === '') return 'PENDING';
+    if (Number(score) === 0) return config === GRADE_CONFIG.tvet ? 'NOT YET COMPETENT' : 'FAIL';
     if (score >= passMark) return config === GRADE_CONFIG.tvet ? 'COMPETENT' : 'PASS';
     return config === GRADE_CONFIG.tvet ? 'NOT YET COMPETENT' : 'FAIL';
 }
 
 function calculateGPA(marks, programCode) {
-    if (!Array.isArray(marks) || marks.length === 0) return 0;
+ if (!Array.isArray(marks) || !marks.length) return 0;
+ const rows = getEffectiveUnitMarks(marks.filter(m => m && m.published === true && String(m.approval_status || '').trim().toLowerCase() === 'approved'));
+ let points = 0, creditsTotal = 0;
+ rows.forEach(m => { const score = getEffectiveMarkScore(m); if (score === null) return; const grade = calculateOfficialGrade(score, programCode); const raw = Number(m.credits || m.credit_hours || m.creditHours); const credits = Number.isFinite(raw) && raw > 0 ? raw : GRADE_CONFIG.creditHours; points += Number(grade.points || 0) * credits; creditsTotal += credits; });
+ return creditsTotal ? Math.round(points / creditsTotal * 100) / 100 : 0;
+}
 
-    // Only approved and published results contribute to transcript GPA.
-    const eligibleMarks = marks.filter(m => m && m.published === true &&
-        String(m.approval_status || '').trim().toLowerCase() === 'approved');
-
-    let totalPoints = 0;
-    let totalCredits = 0;
-    const defaultCredits = Number(GRADE_CONFIG.creditHours) > 0 ? Number(GRADE_CONFIG.creditHours) : 3;
-
-    eligibleMarks.forEach(m => {
-        const passedRetake = /^(pass|passed|competent)$/i.test(String(m.retake_status || '').trim()) &&
-            m.retake_score !== null && m.retake_score !== undefined && m.retake_score !== '';
-        const rawScore = passedRetake ? m.retake_score :
-            (m.final_score !== null && m.final_score !== undefined && m.final_score !== ''
-                ? m.final_score
-                : (m.final_total !== undefined ? m.final_total : (m.total_score !== undefined ? m.total_score : m.total)));
-        if (rawScore === null || rawScore === undefined || rawScore === '') return;
-        const score = Number(rawScore);
-        if (!Number.isFinite(score)) return;
-
-        // A passed retake replaces the original score. A failure remains zero-point and included.
-        const gradeInfo = calculateOfficialGrade(score, programCode);
-        const rawCredits = Number(m.credits || m.credit_hours || m.creditHours);
-        const credits = Number.isFinite(rawCredits) && rawCredits > 0 ? rawCredits : defaultCredits;
-        totalPoints += Number(gradeInfo && gradeInfo.points || 0) * credits;
-        totalCredits += credits;
-    });
-
-    return totalCredits > 0 ? Math.round((totalPoints / totalCredits) * 100) / 100 : 0;
+function getEffectiveMarkScore(mark) {
+ if (!mark) return null;
+ const status = String(mark.retake_status || '').trim().toLowerCase();
+ if (['pass','passed','competent'].includes(status) && mark.retake_score !== null && mark.retake_score !== undefined && mark.retake_score !== '') { const n = Number(mark.retake_score); if (Number.isFinite(n)) return n; }
+ const raw = mark.final_score !== null && mark.final_score !== undefined && mark.final_score !== '' ? mark.final_score : (mark.final_total !== null && mark.final_total !== undefined && mark.final_total !== '' ? mark.final_total : (mark.total_score !== null && mark.total_score !== undefined && mark.total_score !== '' ? mark.total_score : mark.total));
+ if (raw === null || raw === undefined || raw === '') return null; const n = Number(raw); return Number.isFinite(n) ? n : null;
+}
+function getEffectiveUnitMarks(marks) {
+ const chosen = new Map(); const time = m => { const n = Date.parse(m.updated_at || m.created_at || m.marked_at || m.published_at || ''); return Number.isFinite(n) ? n : 0; }; const rank = m => (Number(m.retake_count) > 0 || m.retake_score !== null && m.retake_score !== undefined || Boolean(m.retake_status)) ? 1 : 0;
+ (Array.isArray(marks) ? marks : []).forEach(m => { if (!m) return; const block = normalizeKRCHNBlock(m.block || 'General').toLowerCase(); const unit = String(m.subject_name || m.unit_name || m.unit_code || m.course_code || m.id || m.mark_id || 'unknown-unit').trim().toLowerCase().replace(/\\s+/g, ' '); const key = block + '::' + unit; const old = chosen.get(key); if (!old || rank(m) > rank(old) || (rank(m) === rank(old) && time(m) >= time(old))) chosen.set(key, m); }); return Array.from(chosen.values());
 }
 
 function escapeHtml(str) {
@@ -412,70 +400,13 @@ window.loadTranscriptStudents = async function() {
 // ============================================================
 
 window.updateTranscriptStats = function(students, marks) {
-    const totalStudents = students?.length || 0;
-    
-    let passing = 0;
-    let failing = 0;
-    let pending = 0;
-    let totalScore = 0;
-    let scoredCount = 0;
-    let totalCreditHours = 0;
-    let totalGradePoints = 0;
-    
-    const studentMarks = {};
-    marks?.forEach(m => {
-        const admission = m.admission_number;
-        if (!studentMarks[admission]) studentMarks[admission] = [];
-        studentMarks[admission].push(m);
-    });
-    
-    for (const [admission, markList] of Object.entries(studentMarks)) {
-        let studentTotal = 0;
-        let studentCount = 0;
-        let studentPoints = 0;
-        const program = markList[0]?.program || 'KRCHN';
-        const config = getGradingConfig(program);
-        const passMark = config.passMark;
-        
-        markList.forEach(m => {
-            const score = m.final_score || 0;
-            const gradeInfo = calculateOfficialGrade(score, program);
-            
-            if (score > 0) {
-                studentTotal += score;
-                studentCount++;
-                studentPoints += gradeInfo.points * GRADE_CONFIG.creditHours;
-                totalScore += score;
-                scoredCount++;
-            }
-        });
-        
-        const avg = studentCount > 0 ? studentTotal / studentCount : 0;
-        
-        if (avg >= passMark) passing++;
-        else if (avg > 0) failing++;
-        else pending++;
-        
-        totalCreditHours += studentCount * GRADE_CONFIG.creditHours;
-        totalGradePoints += studentPoints;
-    }
-    
-    const avg = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
-    const overallGPA = totalCreditHours > 0 ? Math.round((totalGradePoints / totalCreditHours) * 100) / 100 : 0;
-    
-    const elements = {
-        'transcript_total_students': totalStudents,
-        'transcript_passing': passing,
-        'transcript_failing': failing,
-        'transcript_pending': pending,
-        'transcript_avg': avg + '%',
-        'transcript_overall_gpa': overallGPA.toFixed(2)
-    };
-    
-    for (const [id, value] of Object.entries(elements)) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = value;
-    }
+ const totalStudents = students?.length || 0; let passing = 0, failing = 0, pending = 0, sum = 0, count = 0, creditsTotal = 0, pointsTotal = 0; const grouped = {};
+ getEffectiveUnitMarks(marks || []).forEach(m => { const id = m.admission_number; (grouped[id] ||= []).push(m); });
+ for (const [id, rows] of Object.entries(grouped)) { const student = (students || []).find(s => String(s.student_id) === String(id)); const program = rows[0]?.program || student?.program || 'KRCHN'; const pass = getGradingConfig(program).passMark; let ssum = 0, scount = 0;
+ rows.forEach(m => { const score = getEffectiveMarkScore(m); if (score === null) return; const grade = calculateOfficialGrade(score, program); const raw = Number(m.credits || m.credit_hours || m.creditHours); const credits = Number.isFinite(raw) && raw > 0 ? raw : GRADE_CONFIG.creditHours; ssum += score; scount++; sum += score; count++; pointsTotal += grade.points * credits; creditsTotal += credits; });
+ if (!scount) pending++; else if (ssum / scount >= pass) passing++; else failing++; }
+ const avg = count ? Math.round(sum / count * 10) / 10 : 0; const gpa = creditsTotal ? Math.round(pointsTotal / creditsTotal * 100) / 100 : 0; const values = { transcript_total_students: totalStudents, transcript_passing: passing, transcript_failing: failing, transcript_pending: Math.max(pending, totalStudents - Object.keys(grouped).length), transcript_avg: avg + '%', transcript_overall_gpa: gpa.toFixed(2) };
+ Object.entries(values).forEach(([id, value]) => { const el = document.getElementById(id); if (el) el.textContent = value; });
 };
 
 // ============================================================
@@ -497,27 +428,13 @@ window.renderTranscriptStudentList = function(students, marks) {
     }
     
     const studentAverages = {};
-    marks?.forEach(m => {
-        const admission = m.admission_number;
-        const score = m.final_score || 0;
-        const program = m.program || 'KRCHN';
-        if (!studentAverages[admission]) {
-            studentAverages[admission] = { total: 0, count: 0, scores: [], points: 0, program: program };
-        }
-        const gradeInfo = calculateOfficialGrade(score, program);
-        if (score > 0) {
-            studentAverages[admission].total += score;
-            studentAverages[admission].count++;
-            studentAverages[admission].scores.push(score);
-            studentAverages[admission].points += gradeInfo.points * GRADE_CONFIG.creditHours;
-        }
-    });
+    getEffectiveUnitMarks(marks || []).forEach(mark => { const admission = mark.admission_number; const score = getEffectiveMarkScore(mark); if (score === null) return; const owner = students.find(s => String(s.student_id) === String(admission)); const program = mark.program || owner?.program || 'KRCHN'; if (!studentAverages[admission]) studentAverages[admission] = { total: 0, count: 0, points: 0, credits: 0, program }; const grade = calculateOfficialGrade(score, program); const raw = Number(mark.credits || mark.credit_hours || mark.creditHours); const credits = Number.isFinite(raw) && raw > 0 ? raw : GRADE_CONFIG.creditHours; const item = studentAverages[admission]; item.total += score; item.count++; item.points += grade.points * credits; item.credits += credits; });
     
     let html = '';
     students.forEach((student, index) => {
         const avgData = studentAverages[student.student_id] || { total: 0, count: 0, scores: [], points: 0, program: 'KRCHN' };
         const avg = avgData.count > 0 ? Math.round((avgData.total / avgData.count) * 10) / 10 : 0;
-        const gpa = avgData.count > 0 ? Math.round((avgData.points / (avgData.count * GRADE_CONFIG.creditHours)) * 100) / 100 : 0;
+        const gpa = avgData.credits > 0 ? Math.round((avgData.points / avgData.credits) * 100) / 100 : 0;
         const program = avgData.program || student.program || 'KRCHN';
         const isTVET = isTVETProgram(program);
         const config = getGradingConfig(program);
@@ -525,7 +442,7 @@ window.renderTranscriptStudentList = function(students, marks) {
         const gradeInfo = calculateOfficialGrade(avg, program);
         const isPassing = avg >= passMark;
         const statusColor = isPassing ? '#059669' : (avg > 0 ? '#dc2626' : '#f59e0b');
-        const statusText = isPassing ? '✅ Pass' : (avg > 0 ? '❌ Fail' : '⏳ Pending');
+        const statusText = avgData.count === 0 ? '⏳ Pending' : (isPassing ? '✅ Pass' : '❌ Fail');
         const blockLabel = isTVET ? 'Term' : 'Block';
         
         const isSelected = window.transcriptData.selectedStudents.includes(student.student_id);
@@ -925,6 +842,8 @@ window.generateSelectedTranscriptBatch = async function() {
 // ============================================================
 
 window.showTranscriptPreview = function(student, marks, year) {
+    // Only approved and published marks may appear on an official transcript.
+    marks = getEffectiveUnitMarks((Array.isArray(marks) ? marks : []).filter(m => m && m.published === true && String(m.approval_status || '').trim().toLowerCase() === 'approved'));
     const container = document.getElementById('transcriptPreviewContainer');
     const content = document.getElementById('transcriptPreviewContent');
     
@@ -1248,29 +1167,19 @@ window.renderTranscriptBlock = function(index) {
     let retakeCount = 0;
 
     blockMarks.forEach((m) => {
-        const score = m.final_score || 0;
-        const gradeInfo = calculateOfficialGrade(score, program);
-        const isPassing = score >= passMark;
-        const unitCode = getUnitCode(m.subject_name);
-        const credits = GRADE_CONFIG.creditHours;
+        const score = getEffectiveMarkScore(m);
+        const gradeInfo = calculateOfficialGrade(score === null ? 0 : score, program);
+        const isPassing = score !== null && score >= passMark;
+        const unitCode = getUnitCode(m.subject_name || m.unit_name);
+        const rawCredits = Number(m.credits || m.credit_hours || m.creditHours);
+        const credits = Number.isFinite(rawCredits) && rawCredits > 0 ? rawCredits : GRADE_CONFIG.creditHours;
         const pointsEarned = gradeInfo.points * credits;
-        const hasRetake = m.retake_count > 0 || false;
+        const hasRetake = Number(m.retake_count) > 0 || (m.retake_score !== null && m.retake_score !== undefined) || Boolean(m.retake_status);
         
         if (hasRetake) retakeCount++;
-        if (isPassing) {
-            blockPassed++;
-            passedUnits++;
-        } else {
-            failedUnits++;
-        }
-        
-        if (score > 0) {
-            totalScore += score;
-            scoredCount++;
-            totalPoints += pointsEarned;
-            totalCredits += credits;
-            blockPoints += pointsEarned;
-            blockCredits += credits;
+        if (score !== null) {
+            if (isPassing) { blockPassed++; passedUnits++; } else { failedUnits++; }
+            totalScore += score; scoredCount++; totalPoints += pointsEarned; totalCredits += credits; blockPoints += pointsEarned; blockCredits += credits;
         }
         
         // Subtle retake indicator (star)
@@ -1289,10 +1198,10 @@ window.renderTranscriptBlock = function(index) {
                     ${credits}
                 </td>
                 <td style="padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 700; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
-                    ${gradeInfo.grade}
+                    ${score === null ? 'PENDING' : gradeInfo.grade}
                 </td>
                 <td style="padding: 6px 12px; text-align: center; font-size: 11px; font-weight: 600; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
-                    ${pointsEarned.toFixed(1)}
+                    ${score === null ? '—' : pointsEarned.toFixed(1)}
                 </td>
             </tr>
         `;
@@ -1351,6 +1260,8 @@ window.renderTranscriptBlock = function(index) {
             'Block 3': { year: 1, label: 'Year 2' },
             'Block 4': { year: 2, label: 'Year 3' },
             'Block 5': { year: 2, label: 'Year 3' },
+            'Block 6': { year: 2, label: 'Year 3' },
+            'FQE': { year: 2, label: 'Year 3' },
             'Final': { year: 2, label: 'Year 3' }
         };
         
@@ -1739,27 +1650,23 @@ window.exportAllTranscripts = function() {
         let pending = 0;
         let retakes = 0;
         
-        studentMarks.forEach(m => {
-            const score = m.final_score || 0;
+        const effectiveMarks = getEffectiveUnitMarks(studentMarks);
+        effectiveMarks.forEach(m => {
+            const score = getEffectiveMarkScore(m);
+            if (score === null) { pending++; return; }
             const gradeInfo = calculateOfficialGrade(score, program);
-            if (score > 0) {
-                totalScore += score;
-                scoredCount++;
-                totalPoints += gradeInfo.points * GRADE_CONFIG.creditHours;
-                totalCredits += GRADE_CONFIG.creditHours;
-                if (score >= (isTVET ? 50 : 60)) passed++;
-                else failed++;
-            } else {
-                pending++;
-            }
-            if (m.retake_count > 0) retakes++;
+            const rawCredits = Number(m.credits || m.credit_hours || m.creditHours);
+            const credits = Number.isFinite(rawCredits) && rawCredits > 0 ? rawCredits : GRADE_CONFIG.creditHours;
+            totalScore += score; scoredCount++; totalPoints += gradeInfo.points * credits; totalCredits += credits;
+            if (score >= getGradingConfig(program).passMark) passed++; else failed++;
+            if (Number(m.retake_count) > 0 || m.retake_score !== null && m.retake_score !== undefined || m.retake_status) retakes++;
         });
         
         const avg = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
         const gpa = totalCredits > 0 ? Math.round((totalPoints / totalCredits) * 100) / 100 : 0;
         const gradeInfo = calculateOfficialGrade(avg, program);
         const config = getGradingConfig(program);
-        const status = avg >= config.passMark ? 'PASS' : (avg > 0 ? 'FAIL' : 'PENDING');
+        const status = scoredCount === 0 ? 'PENDING' : (avg >= config.passMark ? 'PASS' : 'FAIL');
         
         rows.push([
             student.student_id || 'N/A',
