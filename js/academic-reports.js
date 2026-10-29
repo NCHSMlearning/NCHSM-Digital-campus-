@@ -1918,7 +1918,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const score = getPublishedScore(mark);
                 const baseGradeDisplay = mark.grade || mark.published_grade || mark.final_grade || (score !== null ? calculateGrade(score, userProgram) : '-');
                 const gradeDisplay = retakenPassed ? (String(baseGradeDisplay).replace(/[*]+$/, '') + '*') : baseGradeDisplay;
-                const gradeColor = (typeof getGradeColor === 'function' ? getGradeColor(baseGradeDisplay) : '#64748b');
+                const gradeColor = '#000000'; // Transcript grade text is monochrome by design.
                 const points = resolveDisplayPoints(mark, baseGradeDisplay, userProgram);
                 const rawStatus = String(mark.final_status || mark.status || mark.published_status || mark.result_status || '').trim().toUpperCase();
                 const allowedStatuses = ['DISTINCTION','CREDIT','PASS','FAIL','PENDING','EXCELLENT','GOOD','SATISFACTORY'];
@@ -1926,10 +1926,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     ? 'PENDING'
                     : (allowedStatuses.includes(rawStatus) ? rawStatus : getGradingStatus(score, userProgram));
                 const statusDisplay = retakenPassed ? (String(baseStatusDisplay).replace(/[*]+$/, '') + '*') : baseStatusDisplay;
-                const statusColor = statusDisplay === 'DISTINCTION' || statusDisplay === 'EXCELLENT' ? '#047857'
-                    : statusDisplay === 'CREDIT' || statusDisplay === 'GOOD' ? '#1d4ed8'
-                    : statusDisplay === 'PASS' || statusDisplay === 'SATISFACTORY' ? '#b45309'
-                    : statusDisplay === 'FAIL' ? '#b91c1c' : '#64748b';
+                const statusColor = '#000000'; // Transcript status text is monochrome by design.
                 const starIndicator = retakenPassed ? '*' : '';
 
                 tableRows += `
@@ -1937,9 +1934,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
                         <td style="padding: 4px 3px; border: 1px solid #d1d5db; font-weight: 600; color: #1E559B; font-size: 8px; line-height: 1.1; overflow-wrap: anywhere;">${escapeHtml(unitCode)}</td>
                         <td style="padding: 4px 5px; border: 1px solid #d1d5db; font-size: 12px; line-height: 1.2; text-transform: uppercase; font-weight: 600; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}${starIndicator}</td>
-                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center;"><span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 10px; font-weight: 700; font-size: 10px; display: inline-block; min-width: 28px;">${escapeHtml(gradeDisplay)}</span></td>
-                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; font-size: 10px; color: ${gradeColor};">${points === null ? '—' : points.toFixed(1)}</td>
-                        <td style="padding: 4px 4px; border: 1px solid #d1d5db; text-align: center;"><span style="display:inline-block;background:${statusColor};color:#fff;padding:4px 7px;border-radius:10px;font-weight:700;font-size:10px;white-space:normal;">${escapeHtml(statusDisplay)}</span></td>
+                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; color: #000000; font-weight: 900;"><span style="background: transparent; color: #000000; padding: 0; border-radius: 0; font-weight: 900; font-size: 10px; display: inline-block; min-width: 28px;">${escapeHtml(gradeDisplay)}</span></td>
+                        <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-weight: 900; font-size: 10px; color: #000000;">${points === null ? '—' : points.toFixed(1)}</td>
+                        <td style="padding: 4px 4px; border: 1px solid #d1d5db; text-align: center; color: #000000; font-weight: 900;"><span style="display:inline-block;background:transparent;color:#000000;padding:0;border-radius:0;font-weight:900;font-size:10px;white-space:normal;">${escapeHtml(statusDisplay)}</span></td>
                     </tr>`;
             });
 
