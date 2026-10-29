@@ -2266,182 +2266,70 @@ window.refreshAnalytics = function() {
 
 // ============================================================
 // ============================================================
-// EXPORT DETAILED ANALYTICS REPORT (HTML WITH EMBEDDED GRAPHS + TABLES)
-// ============================================================
-// Exports a standalone report so charts remain visible offline. The HTML can
-// be opened in any browser and printed/saved as PDF using the browser's Print
-// dialog. Tables are copied from the currently rendered analytics view, so
-// they reflect the filters that were active when the report was exported.
-window.exportAnalyticsReport = function() {
-    console.log('📤 Exporting detailed analytics report...');
-
-    const dynamicRoot = document.getElementById('analyticsDynamicContent');
-    if (!dynamicRoot || dynamicRoot.style.display === 'none') {
-        alert('Please load analytics first, then export the report.');
-        return;
-    }
-
-    const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[ch]));
-
-    const read = id => document.getElementById(id)?.textContent?.trim() || '—';
-    const program = read('analytics_program_label');
-    const year = document.getElementById('analytics_year_select')?.value || 'All years';
-    const block = document.getElementById('analytics_block_select')?.value || 'All blocks';
-    const intake = document.getElementById('analytics_intake_select')?.selectedOptions?.[0]?.textContent?.trim() ||
-        document.getElementById('analytics_intake_select')?.value || 'All intakes';
-    const metric = document.getElementById('analytics_metric_select')?.selectedOptions?.[0]?.textContent?.trim() ||
-        document.getElementById('analytics_metric_select')?.value || 'Overview';
-    const generated = new Date();
-    const dateStamp = generated.toISOString().slice(0, 10);
-
-    const statItems = [
-        ['Total learners', read('analytics_total_students')],
-        ['Pass rate', read('analytics_pass_rate')],
-        ['Average score', read('analytics_avg_score')],
-        ['At-risk results', read('analytics_at_risk')],
-        ['Active units/subjects', read('analytics_active_subjects')],
-        ['Gender ratio (female : male)', read('analytics_gender_ratio')],
-        ['Failing units', read('analytics_failing_units')],
-        ['Improvement', read('analytics_improvement')]
+// EXPORT DETAILED ANALYTICS REPORT (DIRECT PDF DOWNLOAD)
+window.exportAnalyticsReport = async function() {
+    const root = document.getElementById('analyticsDynamicContent');
+    if (!root || root.style.display === 'none') { alert('Please load analytics first, then export the report.'); return; }
+    if (window._analyticsPdfExportRunning) return;
+    window._analyticsPdfExportRunning = true;
+    const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const read = id => document.getElementById(id)?.textContent?.trim() || 'Not available';
+    const selected = id => { const el = document.getElementById(id); return el?.selectedOptions?.[0]?.textContent?.trim() || el?.value || 'All'; };
+    const now = new Date(), dateStamp = now.toISOString().slice(0,10);
+    const program = read('analytics_program_label'), year = selected('analytics_year_select');
+    const block = selected('analytics_block_select'), intake = selected('analytics_intake_select'), metric = selected('analytics_metric_select');
+    const stats = [
+        ['Total learners',read('analytics_total_students'),'Learners represented in the selected analytics view.'],
+        ['Overall pass rate',read('analytics_pass_rate'),'Share of recorded results at or above the pass threshold.'],
+        ['Average score',read('analytics_avg_score'),'Mean score reported by the selected analytics view.'],
+        ['At-risk results',read('analytics_at_risk'),'Results or learners flagged by the dashboard risk indicator.'],
+        ['Units / subjects',read('analytics_active_subjects'),'Units represented in this dataset.'],
+        ['Gender ratio (F : M)',read('analytics_gender_ratio'),'Based on gender information recorded in learner profiles.'],
+        ['Failing units',read('analytics_failing_units'),'Units flagged below the pass threshold.'],
+        ['Improvement indicator',read('analytics_improvement'),'Progress indicator shown by the dashboard, where available.']
     ];
-    const statsHtml = statItems.map(([label, value]) =>
-        '<div class="stat"><div class="stat-label">' + safe(label) +
-        '</div><div class="stat-value">' + safe(value) + '</div></div>'
-    ).join('');
-
-    // Embed charts as PNGs; this preserves the actual rendered chart, including
-    // labels and legends, without requiring Chart.js in the exported document.
-    const chartTitle = canvas => {
-        const parent = canvas.closest('.chart-card, .analytics-chart-card, .card, section, .chart-container') || canvas.parentElement;
-        const heading = parent?.querySelector('h2,h3,h4,.card-title,.chart-title');
-        if (heading?.textContent?.trim()) return heading.textContent.trim();
-        const label = canvas.getAttribute('aria-label') || canvas.id || 'Analytics chart';
-        return label.replace(/([A-Z])/g, ' $1').replace(/^analytics\s*/i, '').replace(/Chart$/, ' chart').trim();
+    const statsHtml = stats.map(x => '<article class="stat"><b class="label">'+safe(x[0])+'</b><strong>'+safe(x[1])+'</strong><p>'+safe(x[2])+'</p></article>').join('');
+    const titleFor = canvas => {
+        const p = canvas.closest('.chart-card,.analytics-chart-card,.card,section,.chart-container') || canvas.parentElement;
+        const h = p?.querySelector('h2,h3,h4,.card-title,.chart-title');
+        return h?.textContent?.trim() || (canvas.getAttribute('aria-label') || canvas.id || 'Analytics chart').replace(/([A-Z])/g,' $1').replace(/^analytics\s*/i,'').replace(/Chart$/,' chart').trim();
     };
-    const chartHtml = Array.from(dynamicRoot.querySelectorAll('canvas')).map((canvas, index) => {
+    const charts = Array.from(root.querySelectorAll('canvas')).map(canvas => {
         try {
             if (!canvas.width || !canvas.height) return '';
-            const image = canvas.toDataURL('image/png');
-            const title = chartTitle(canvas);
-            return '<section class="report-section chart-section"><h2>' + safe(title) +
-                '</h2><img class="chart-image" src="' + image + '" alt="' + safe(title) +
-                '"></section>';
-        } catch (error) {
-            console.warn('Could not embed analytics chart:', canvas.id, error);
-            return '<section class="report-section"><h2>' + safe(chartTitle(canvas)) +
-                '</h2><p class="muted">This chart could not be embedded by the browser.</p></section>';
-        }
+            const title = titleFor(canvas);
+            return '<section class="section chart"><h2>'+safe(title)+'</h2><img alt="'+safe(title)+'" src="'+canvas.toDataURL('image/png')+'"><p class="note">How to read this visual: compare the displayed labels and values within the selected programme, year, block and intake. An unavailable chart is not evidence of a zero result.</p></section>';
+        } catch (e) { return '<section class="section"><h2>'+safe(titleFor(canvas))+'</h2><p class="note">The chart could not be captured. Consult the related data table where available.</p></section>'; }
     }).filter(Boolean).join('');
-
-    // Include all currently rendered analytics tables (not only the first one).
-    const tablesHtml = Array.from(dynamicRoot.querySelectorAll('table')).map((table, index) => {
-        const parent = table.closest('.card, section, .table-container, .analytics-table-card') || table.parentElement;
-        const heading = parent?.querySelector('h2,h3,h4,.card-title,.table-title');
-        const title = heading?.textContent?.trim() || table.getAttribute('aria-label') ||
-            table.id?.replace(/([A-Z])/g, ' $1').replace(/^analytics\s*/i, '') || ('Detailed data table ' + (index + 1));
-        return '<section class="report-section table-section"><h2>' + safe(title) +
-            '</h2><div class="table-wrap">' + table.outerHTML + '</div></section>';
+    const tables = Array.from(root.querySelectorAll('table')).map((table,i) => {
+        const p = table.closest('.card,section,.table-container,.analytics-table-card') || table.parentElement;
+        const h = p?.querySelector('h2,h3,h4,.card-title,.table-title');
+        const title = h?.textContent?.trim() || table.getAttribute('aria-label') || table.id || ('Detailed data table '+(i+1));
+        const clone = table.cloneNode(true);
+        clone.querySelectorAll('button,input,select,textarea,[aria-hidden="true"]').forEach(el=>el.remove());
+        clone.querySelectorAll('[style]').forEach(el=>el.removeAttribute('style'));
+        return '<section class="section table-section"><h2>'+safe(title)+'</h2><div class="table-wrap">'+clone.outerHTML+'</div><p class="note">Interpretation: use the column headings to compare learners or units. A dash or blank means no value is displayed and must not automatically be treated as zero. Verify source marks and publication status before taking academic action.</p></section>';
     }).join('');
-
-    const gradingScale = `
-        <section class="report-section">
-          <h2>Grading scale used for this analytics view</h2>
-          <table class="report-table grading">
-            <thead><tr><th>Score range</th><th>Grade</th><th>Grade points</th><th>Interpretation</th></tr></thead>
-            <tbody>
-              <tr><td>75–100%</td><td>A</td><td>4</td><td>Distinction</td></tr>
-              <tr><td>65–74.99%</td><td>B</td><td>3</td><td>Credit</td></tr>
-              <tr><td>60–64.99%</td><td>C</td><td>2</td><td>Pass</td></tr>
-              <tr><td>0–59.99%</td><td>Fail</td><td>0</td><td>Fail</td></tr>
-            </tbody>
-          </table>
-          <p class="muted">Blank or unavailable results may be pending and are not the same as a recorded zero. A passed retake replaces the original score where retake data is available.</p>
-        </section>`;
-
-    const styles = `
-      :root { color-scheme: light; }
-      * { box-sizing: border-box; }
-      body { margin: 0; background: #f1f5f9; color: #172033; font: 13px/1.5 Arial, Helvetica, sans-serif; }
-      .toolbar { position: sticky; top: 0; z-index: 5; padding: 12px 20px; background: #102a43; color: #fff; display:flex; gap:10px; align-items:center; justify-content:space-between; }
-      .toolbar button { border:0; border-radius:7px; padding:10px 15px; background:#fff; color:#102a43; font-weight:700; cursor:pointer; }
-      .page { max-width: 1180px; margin: 22px auto; padding: 28px; background:#fff; box-shadow:0 5px 24px #0f172a12; }
-      header { border-bottom:3px solid #0f766e; padding-bottom:18px; margin-bottom:20px; }
-      .eyebrow { color:#0f766e; text-transform:uppercase; letter-spacing:2px; font-size:10px; font-weight:800; }
-      h1 { font-size:25px; margin:5px 0; color:#102a43; }
-      .subtitle { color:#64748b; margin:3px 0; }
-      .meta { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:18px; }
-      .meta div,.stat { border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; background:#f8fafc; }
-      .meta strong,.stat-label { display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.4px; }
-      .meta span,.stat-value { display:block; font-size:13px; font-weight:700; margin-top:3px; overflow-wrap:anywhere; }
-      .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:18px 0 24px; }
-      .stat-value { font-size:21px; color:#0f766e; }
-      .report-section { margin:26px 0; break-inside:avoid; }
-      h2 { font-size:16px; color:#102a43; padding-bottom:7px; border-bottom:1px solid #cbd5e1; margin:0 0 12px; }
-      .chart-image { display:block; width:100%; max-height:480px; object-fit:contain; margin:0 auto; }
-      .table-wrap { width:100%; overflow-x:auto; }
-      table { width:100%; border-collapse:collapse; font-size:10px; }
-      th { background:#102a43 !important; color:#fff !important; text-align:left; }
-      th,td { border:1px solid #dbe3ec; padding:6px 7px; vertical-align:top; }
-      tbody tr:nth-child(even) { background:#f8fafc; }
-      .muted { color:#64748b; font-size:11px; }
-      footer { border-top:1px solid #cbd5e1; margin-top:30px; padding-top:12px; color:#64748b; font-size:10px; display:flex; justify-content:space-between; gap:15px; }
-      @media (max-width:700px) { .page{padding:14px;margin:0}.meta,.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar{position:static} }
-      @media print {
-        @page { size:A4 landscape; margin:12mm; }
-        body { background:#fff; font-size:10px; }
-        .toolbar { display:none !important; }
-        .page { max-width:none; margin:0; padding:0; box-shadow:none; }
-        .report-section { break-inside:avoid; }
-        .table-section { break-inside:auto; }
-        .table-wrap { overflow:visible; }
-        table { font-size:8px; }
-        th,td { padding:4px; }
-        .chart-image { max-height:155mm; }
-        .stats { grid-template-columns:repeat(4,minmax(0,1fr)); }
-        * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-      }
-    `;
-
-    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
-        '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-        '<title>NCHSM Detailed Marks Analysis Report</title><style>' + styles + '</style></head><body>' +
-        '<div class="toolbar"><strong>NCHSM · Detailed Marks Analysis</strong>' +
-        '<span><button onclick="window.print()">Print / Save as PDF</button></span></div>' +
-        '<main class="page"><header><div class="eyebrow">Academic performance intelligence</div>' +
-        '<h1>NAKURU COLLEGE OF HEALTH SCIENCES &amp; MANAGEMENT</h1>' +
-        '<p class="subtitle">Detailed Marks Analysis Report</p>' +
-        '<p class="subtitle">Generated ' + safe(generated.toLocaleString()) + '</p>' +
-        '<div class="meta"><div><strong>Programme</strong><span>' + safe(program) +
-        '</span></div><div><strong>Academic year</strong><span>' + safe(year) +
-        '</span></div><div><strong>Block / term</strong><span>' + safe(block) +
-        '</span></div><div><strong>Intake</strong><span>' + safe(intake) +
-        '</span></div><div><strong>Selected metric</strong><span>' + safe(metric) +
-        '</span></div><div><strong>Scope</strong><span>Current analytics filters</span></div>' +
-        '<div><strong>Report status</strong><span>Generated from displayed analytics</span></div>' +
-        '<div><strong>Charts included</strong><span>' + Array.from(dynamicRoot.querySelectorAll('canvas')).length +
-        ' chart(s)</span></div></div></header>' +
-        '<section class="report-section"><h2>Executive summary and key indicators</h2><div class="stats">' + statsHtml +
-        '</div><p>Interpret the results alongside the programme, academic year, block/term and intake filters recorded above. Detailed charts and rendered analytics tables follow.</p></section>' +
-        '<section class="report-section"><h2>Performance charts and visual analysis</h2>' +
-        (chartHtml || '<p class="muted">No chart canvases were available in the current analytics view.</p>') + '</section>' +
-        (tablesHtml || '<section class="report-section"><h2>Detailed tables</h2><p class="muted">No analytics tables were rendered for the current selection.</p></section>') +
-        gradingScale +
-        '<footer><span>Confidential academic performance report · For authorised institutional use</span><span>Generated ' +
-        safe(generated.toLocaleString()) + '</span></footer></main></body></html>';
-
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'NCHSM_detailed_marks_analysis_' + dateStamp + '.html';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    const css = " *{box-sizing:border-box}body{margin:0;background:#fff;color:#172033;font:10pt/1.45 Arial,Helvetica,sans-serif}.cover{background:#102a43;color:#fff;padding:26px 30px;border-bottom:5px solid #c6a84a}.eyebrow{font-size:8pt;letter-spacing:2px;text-transform:uppercase;color:#e3c66d;font-weight:bold}h1{font-size:25pt;margin:8px 0;color:#fff}.subtitle{color:#e2e8f0;margin:3px 0}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px}.meta div{border:1px solid #ffffff44;padding:8px;background:#ffffff0d}.meta b{display:block;color:#e3c66d;font-size:7pt;text-transform:uppercase}.meta span{display:block;margin-top:3px;font-size:9pt;font-weight:bold;overflow-wrap:anywhere}.body{padding:20px 25px}.kicker{font-size:8pt;letter-spacing:1.5px;text-transform:uppercase;color:#9a7a22;font-weight:bold;margin-bottom:4px}h2{font-size:15pt;color:#102a43;border-bottom:2px solid #c6a84a;padding-bottom:7px;margin:0 0 12px}.intro{color:#475569;margin-bottom:15px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 18px}.stat{border:1px solid #dbe3ec;border-left:4px solid #0f766e;padding:9px;background:#f8fafc;break-inside:avoid}.label{display:block;font-size:7pt;color:#64748b;text-transform:uppercase}.stat strong{display:block;font-size:18pt;color:#102a43;margin:4px 0}.stat p,.note{font-size:8pt;color:#475569;margin:5px 0}.callout{border:1px solid #dbe3ec;border-left:4px solid #c6a84a;background:#fffbeb;padding:11px;margin:12px 0;break-inside:avoid}.section{margin:22px 0}.chart{break-inside:avoid}.chart img{display:block;width:100%;max-width:100%;max-height:155mm;object-fit:contain;margin:8px auto}.table-wrap{width:100%;overflow:visible}table{width:100%;border-collapse:collapse;font-size:7.5pt;table-layout:auto}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}th{background:#102a43!important;color:#fff!important;text-align:left}th,td{border:1px solid #d5dde7;padding:5px 6px;vertical-align:top;overflow-wrap:anywhere}tbody tr:nth-child(even){background:#f3f6fa}.guide{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.method{border:1px solid #dbe3ec;padding:10px;break-inside:avoid}.method h3{color:#102a43;margin:0 0 5px;font-size:10pt}.method p{margin:0;font-size:8.5pt}footer{border-top:2px solid #102a43;padding-top:9px;margin-top:25px;font-size:8pt;color:#64748b;display:flex;justify-content:space-between;gap:10px}@media print{@page{size:A4 landscape;margin:12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.table-section{break-inside:auto}}";
+    const report = document.createElement('div');
+    report.id = 'nchsmAnalyticsPdfReport';
+    report.style.cssText = 'position:fixed;left:-20000px;top:0;width:1100px;background:#fff;z-index:-1;';
+    report.innerHTML = '<style>'+css+'</style><header class="cover"><div class="eyebrow">Academic performance intelligence</div><h1>Detailed Marks Analysis Report</h1><p class="subtitle">Nakuru College of Health Sciences &amp; Management · School of Nursing</p><div class="meta"><div><b>Programme</b><span>'+safe(program)+'</span></div><div><b>Academic year</b><span>'+safe(year)+'</span></div><div><b>Block / term</b><span>'+safe(block)+'</span></div><div><b>Intake</b><span>'+safe(intake)+'</span></div><div><b>Selected metric</b><span>'+safe(metric)+'</span></div><div><b>Generated</b><span>'+safe(now.toLocaleString())+'</span></div><div><b>Scope</b><span>Current dashboard filters</span></div><div><b>Visuals included</b><span>'+root.querySelectorAll('canvas').length+' chart(s)</span></div></div></header><main class="body"><section class="section"><div class="kicker">Executive summary</div><h2>Key indicators and what they mean</h2><p class="intro">This report summarizes the analytics currently loaded in the Super Admin dashboard. Figures apply only to the programme, academic year, block/term and intake shown above. Review the charts, detailed tables and data-quality notes before making progression, resit or disciplinary decisions.</p><div class="stats">'+statsHtml+'</div><div class="callout"><b>Recommended reading order:</b> review the key indicators, inspect charts for patterns, use unit tables to locate subjects needing attention, then use learner-level tables for targeted follow-up. Verify unusual zeros, blanks, duplicate/test records and approval/publication status in the source records before acting.</div></section><section class="section"><div class="kicker">Visual analysis</div><h2>Charts and performance patterns</h2>'+(charts||'<p class="note">No chart canvases were available in the current dashboard view.</p>')+'</section>'+(tables||'<section class="section"><h2>Detailed tables</h2><p class="note">No analytics tables were rendered for the current selection.</p></section>')+'<section class="section"><div class="kicker">Reference</div><h2>Grading scale and interpretation guide</h2><table><thead><tr><th>Score range</th><th>Grade</th><th>Grade points</th><th>Interpretation</th></tr></thead><tbody><tr><td>75–100%</td><td>A</td><td>4</td><td>Distinction</td></tr><tr><td>65–74.99%</td><td>B</td><td>3</td><td>Credit</td></tr><tr><td>60–64.99%</td><td>C</td><td>2</td><td>Pass</td></tr><tr><td>0–59.99%</td><td>Fail</td><td>0</td><td>Fail</td></tr></tbody></table><div class="guide"><article class="method"><h3>Average score</h3><p>Mean of available recorded scores included in the current view. Check the filters and table heading to understand the population.</p></article><article class="method"><h3>Pass rate</h3><p>Share of included results at or above 60%, consistent with the scale shown here.</p></article><article class="method"><h3>Zero versus missing</h3><p>A recorded zero is a numeric score and may count as a failure. A blank or unavailable mark may be pending; verify before interpreting.</p></article><article class="method"><h3>Approval and publication</h3><p>Before communicating results, confirm the source mark is approved and published. Dashboard inclusion alone does not confirm release to learners.</p></article><article class="method"><h3>Risk and follow-up</h3><p>Use low averages and failed units to identify learners for review, academic support and possible resit planning. Apply college policy before decisions.</p></article><article class="method"><h3>Data-quality checks</h3><p>Investigate unusual zeros, very low scores, missing blocks, duplicate identities and incomplete unit sets. Averages may be misleading when learners have different unit sets.</p></article></div><p class="note">Limitations: this report reflects data and tables rendered when export was initiated. If a dashboard panel is unavailable or does not calculate a metric, this export cannot independently infer it. Blank values are not silently converted to zero.</p></section><footer><span>Confidential academic performance report · For authorised institutional use only</span><span>Generated '+safe(now.toLocaleString())+' · A4 landscape</span></footer></main>';
+    document.body.appendChild(report);
+    const busy = value => document.querySelectorAll('[onclick*="exportAnalyticsReport"],[data-export-analytics]').forEach(button=>{if(!button.dataset.originalText)button.dataset.originalText=button.textContent;button.disabled=value;button.textContent=value?'Preparing PDF…':button.dataset.originalText;});
+    const loadLibrary = () => new Promise((resolve,reject)=>{if(window.html2pdf)return resolve();const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';script.async=true;script.onload=()=>window.html2pdf?resolve():reject(new Error('PDF library did not initialize'));script.onerror=()=>reject(new Error('Could not load PDF generator'));document.head.appendChild(script);});
+    busy(true);
+    try {
+        await loadLibrary();
+        await window.html2pdf().set({margin:[10,10,12,10],filename:'NCHSM_Detailed_Marks_Analysis_'+dateStamp+'.pdf',image:{type:'jpeg',quality:0.96},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:1100},jsPDF:{unit:'mm',format:'a4',orientation:'landscape',compress:true},pagebreak:{mode:['css','legacy'],avoid:['.stat','.method','.chart','tr']}}).from(report).save();
+    } catch(error) {
+        console.error('PDF download failed:',error);
+        const preview=window.open('','_blank');
+        if(preview){preview.document.open();preview.document.write('<!doctype html><html><head><meta charset="utf-8"><title>NCHSM Detailed Marks Analysis</title><style>'+css+'body{padding:12px}.cover{margin-bottom:10px}@media print{body{padding:0}}</style></head><body><div style="padding:10px;background:#102a43;color:white;margin-bottom:12px">Automatic PDF download was unavailable. Select Print, then choose “Save as PDF”. <button onclick="window.print()">Print / Save as PDF</button></div>'+report.innerHTML+'</body></html>');preview.document.close();}
+        else alert('PDF generation could not load. Enable pop-ups or allow the PDF library, then use Print → Save as PDF.');
+    } finally { report.remove();busy(false);window._analyticsPdfExportRunning=false; }
 };
- 
+
 // FILTER ANALYTICS BY PROGRAM
 // ============================================================
 
