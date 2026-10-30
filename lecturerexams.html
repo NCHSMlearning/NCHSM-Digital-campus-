@@ -274,6 +274,126 @@
             </div>
         </section>
 
+
+        <!-- Lecturer exam edit form: opens from the selected table row -->
+        <div id="lecturerExamEditModal" class="lecturer-edit-overlay" aria-hidden="true">
+            <div class="lecturer-edit-card" role="dialog" aria-modal="true" aria-labelledby="lecturerExamEditTitle">
+                <div class="lecturer-edit-header">
+                    <div>
+                        <span class="lecturer-edit-kicker"><i class="fas fa-pen-to-square"></i> ASSESSMENT MANAGEMENT</span>
+                        <h2 id="lecturerExamEditTitle">Edit Exam / CAT</h2>
+                        <p>Update the selected assessment. Changes are saved to the existing record.</p>
+                    </div>
+                    <button type="button" class="lecturer-edit-close" onclick="closeLecturerExamEdit()" aria-label="Close edit form">&times;</button>
+                </div>
+                <form id="lecturerExamEditForm" class="lecturer-edit-form">
+                    <input type="hidden" id="lecturerEditExamId">
+                    <div class="lecturer-edit-section-title"><i class="fas fa-file-alt"></i> Assessment details</div>
+                    <div class="lecturer-edit-grid">
+                        <label class="lecturer-edit-field lecturer-edit-span-2">Exam / CAT title
+                            <input id="lecturerEditTitle" type="text" maxlength="180" required>
+                        </label>
+                        <label class="lecturer-edit-field">Assessment type
+                            <select id="lecturerEditType" required>
+                                <option value="CAT">CAT</option>
+                                <option value="CAT_1">CAT 1</option>
+                                <option value="CAT_2">CAT 2</option>
+                                <option value="EXAM">Final Exam</option>
+                                <option value="ASSIGNMENT">Assignment</option>
+                                <option value="PRACTICAL">Practical</option>
+                                <option value="OSCE">OSCE</option>
+                            </select>
+                        </label>
+                        <label class="lecturer-edit-field">Status
+                            <select id="lecturerEditStatus">
+                                <option value="draft">Draft</option>
+                                <option value="pending">Pending</option>
+                                <option value="active">Active</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </label>
+                        <label class="lecturer-edit-field">Program
+                            <input id="lecturerEditProgram" type="text" maxlength="120">
+                        </label>
+                        <label class="lecturer-edit-field">Unit code
+                            <input id="lecturerEditUnitCode" type="text" maxlength="80">
+                        </label>
+                        <label class="lecturer-edit-field">Intake year
+                            <input id="lecturerEditIntake" type="text" maxlength="20">
+                        </label>
+                        <label class="lecturer-edit-field">Block / Semester
+                            <input id="lecturerEditBlock" type="text" maxlength="50">
+                        </label>
+                    </div>
+                    <div class="lecturer-edit-section-title"><i class="fas fa-calendar-alt"></i> Schedule and marks</div>
+                    <div class="lecturer-edit-grid">
+                        <label class="lecturer-edit-field">Exam date
+                            <input id="lecturerEditDate" type="date" required>
+                        </label>
+                        <label class="lecturer-edit-field">Start time
+                            <input id="lecturerEditTime" type="time">
+                        </label>
+                        <label class="lecturer-edit-field">Duration (minutes)
+                            <input id="lecturerEditDuration" type="number" min="1" max="600" required>
+                        </label>
+                        <label class="lecturer-edit-field">Total marks
+                            <input id="lecturerEditTotalMarks" type="number" min="1" step="0.5" required>
+                        </label>
+                        <label class="lecturer-edit-field">Pass mark
+                            <input id="lecturerEditPassMark" type="number" min="0" step="0.5" required>
+                        </label>
+                        <label class="lecturer-edit-field lecturer-edit-span-2">Online exam link
+                            <input id="lecturerEditLink" type="url" placeholder="https://">
+                        </label>
+                    </div>
+                    <div class="lecturer-edit-section-title"><i class="fas fa-align-left"></i> Instructions</div>
+                    <div class="lecturer-edit-grid">
+                        <label class="lecturer-edit-field lecturer-edit-span-2">Description
+                            <textarea id="lecturerEditDescription" rows="2"></textarea>
+                        </label>
+                        <label class="lecturer-edit-field lecturer-edit-span-2">Student instructions
+                            <textarea id="lecturerEditInstructions" rows="3"></textarea>
+                        </label>
+                    </div>
+                    <div class="lecturer-edit-footer">
+                        <span id="lecturerEditFeedback" role="status" aria-live="polite"></span>
+                        <div class="lecturer-edit-actions">
+                            <button type="button" class="lecturer-edit-cancel" onclick="closeLecturerExamEdit()">Cancel</button>
+                            <button type="submit" id="lecturerEditSaveButton" class="lecturer-edit-save"><i class="fas fa-check"></i> Save Changes</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <style>
+            .lecturer-edit-overlay{display:none;position:fixed;inset:0;z-index:10050;background:rgba(15,23,42,.62);padding:22px;overflow-y:auto;align-items:center;justify-content:center}
+            .lecturer-edit-overlay.open{display:flex}
+            .lecturer-edit-card{width:min(850px,100%);background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.28);animation:lecturerEditIn .2s ease}
+            @keyframes lecturerEditIn{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+            .lecturer-edit-header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:22px 26px;background:linear-gradient(125deg,#065f46,#059669);color:#fff}
+            .lecturer-edit-kicker{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#bbf7d0}
+            .lecturer-edit-header h2{font-size:21px;margin:7px 0 4px;color:#fff}
+            .lecturer-edit-header p{font-size:12px;margin:0;color:#d1fae5}
+            .lecturer-edit-close{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;border-radius:10px;width:36px;height:36px;font-size:24px;cursor:pointer}
+            .lecturer-edit-form{padding:22px 26px 24px}
+            .lecturer-edit-section-title{font-size:12px;font-weight:800;color:#047857;padding:10px 0;border-bottom:1px solid #d1fae5;margin:2px 0 14px;display:flex;align-items:center;gap:8px}
+            .lecturer-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:20px}
+            .lecturer-edit-field{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:#334155}
+            .lecturer-edit-field input,.lecturer-edit-field select,.lecturer-edit-field textarea{box-sizing:border-box;width:100%;min-height:41px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#0f172a;font:inherit;font-size:13px;font-weight:500;outline:none}
+            .lecturer-edit-field textarea{resize:vertical;min-height:68px}
+            .lecturer-edit-field input:focus,.lecturer-edit-field select:focus,.lecturer-edit-field textarea:focus{border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.13)}
+            .lecturer-edit-span-2{grid-column:span 2}
+            .lecturer-edit-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #e2e8f0;padding-top:17px}
+            .lecturer-edit-actions{display:flex;gap:9px}
+            .lecturer-edit-cancel,.lecturer-edit-save{border:0;border-radius:9px;padding:11px 17px;font-size:12px;font-weight:800;cursor:pointer}
+            .lecturer-edit-cancel{background:#f1f5f9;color:#475569}
+            .lecturer-edit-save{background:#059669;color:#fff;box-shadow:0 4px 10px rgba(5,150,105,.2)}
+            .lecturer-edit-save:hover{background:#047857}
+            .lecturer-edit-save:disabled{opacity:.6;cursor:wait}
+            #lecturerEditFeedback{font-size:11px;color:#64748b}
+            @media(max-width:600px){.lecturer-edit-overlay{padding:10px;align-items:flex-start}.lecturer-edit-card{margin:auto 0}.lecturer-edit-header,.lecturer-edit-form{padding:17px}.lecturer-edit-grid{grid-template-columns:1fr}.lecturer-edit-span-2{grid-column:span 1}.lecturer-edit-footer{align-items:stretch;flex-direction:column}.lecturer-edit-actions{width:100%}.lecturer-edit-actions button{flex:1}}
+        </style>
+
         <section id="results" class="tab-content">
             <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
                 <div>
@@ -807,18 +927,155 @@ if (window.location.pathname.endsWith('.html')) {
             const examStatus = String(e.status || 'draft');
             const normalizedStatus = examStatus.trim().toLowerCase().replace(/[ -]+/g, '_');
             const statusClass = ['published', 'released', 'active', 'ongoing', 'in_progress', 'started'].includes(normalizedStatus) ? 'active' : ['completed', 'closed', 'ended', 'submitted'].includes(normalizedStatus) ? 'completed' : 'pending';
-            const safe = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+            const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+            const actions = mine
+                ? `<button type="button" onclick="openLecturerExamEdit('${safe(e.id)}')" style="background:#059669;color:#fff;border:0;padding:7px 12px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:700;margin-right:5px;"><i class="fas fa-pen"></i> Edit</button>`
+                : '<span class="btn-view-only"><i class="fas fa-eye"></i> View Only</span>';
             return `
                 <tr>
                     <td style="padding:12px 14px;"><strong>${safe(examName)}</strong> ${!mine ? '<span title="Created by another lecturer" style="font-size:10px;color:#94a3b8;">🔒</span>' : ''}</td>
                     <td style="text-align:center;padding:12px 14px;"><span class="status-badge ${examType.toUpperCase().includes('CAT') ? 'pending' : 'active'}">${safe(examType)}</span></td>
                     <td style="text-align:center;padding:12px 14px;">${mine ? '<span style="color:#059669;font-weight:600;">You</span>' : '<span style="color:#94a3b8;">Other lecturer</span>'}</td>
                     <td style="text-align:center;padding:12px 14px;"><span class="status-badge ${statusClass}">${safe(examStatus)}</span></td>
-                    <td style="text-align:center;padding:12px 14px;"><span class="btn-view-only"><i class="fas fa-eye"></i> View Only</span></td>
+                    <td style="text-align:center;padding:12px 14px;white-space:nowrap;">${actions}</td>
                 </tr>
             `;
         }).join('');
     }
+
+    function openLecturerExamEdit(examId) {
+        const exam = lecturerExams.find(item => String(item.id) === String(examId));
+        if (!exam) {
+            showToast('The selected exam could not be found. Refresh the table and try again.', 'error');
+            return;
+        }
+        if (!isLecturerOwnExam(exam)) {
+            showToast('You can only edit exams that you created.', 'warning');
+            return;
+        }
+        const set = (id, value) => {
+            const field = document.getElementById(id);
+            if (field) field.value = value == null ? '' : String(value);
+        };
+        const dateValue = exam.exam_date ? String(exam.exam_date).slice(0, 10) : '';
+        const typeValue = String(exam.exam_type || 'CAT').toUpperCase();
+        const allowedTypes = ['CAT','CAT_1','CAT_2','EXAM','ASSIGNMENT','PRACTICAL','OSCE'];
+        set('lecturerEditExamId', exam.id);
+        set('lecturerEditTitle', exam.exam_name || exam.title || '');
+        set('lecturerEditType', allowedTypes.includes(typeValue) ? typeValue : 'CAT');
+        set('lecturerEditStatus', String(exam.status || 'draft').toLowerCase());
+        set('lecturerEditProgram', exam.target_program || exam.program_type || lecturerProgram || '');
+        set('lecturerEditUnitCode', exam.course_code || exam.unit_code || '');
+        set('lecturerEditIntake', exam.intake_year || '');
+        set('lecturerEditBlock', exam.block_term || exam.block || '');
+        set('lecturerEditDate', dateValue);
+        set('lecturerEditTime', exam.exam_start_time || exam.start_time || '');
+        set('lecturerEditDuration', exam.duration_minutes ?? 120);
+        set('lecturerEditTotalMarks', exam.total_marks ?? exam.marks_out_of ?? exam.MARKS ?? 100);
+        set('lecturerEditPassMark', exam.pass_mark ?? 50);
+        set('lecturerEditLink', exam.online_link || exam.exam_link || '');
+        set('lecturerEditDescription', exam.description || '');
+        set('lecturerEditInstructions', exam.instructions || '');
+        const feedback = document.getElementById('lecturerEditFeedback');
+        if (feedback) feedback.textContent = '';
+        const modal = document.getElementById('lecturerExamEditModal');
+        if (modal) {
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => document.getElementById('lecturerEditTitle')?.focus(), 50);
+        }
+    }
+
+    function closeLecturerExamEdit() {
+        const modal = document.getElementById('lecturerExamEditModal');
+        if (modal) {
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        document.body.style.overflow = '';
+        const form = document.getElementById('lecturerExamEditForm');
+        if (form) form.reset();
+        const feedback = document.getElementById('lecturerEditFeedback');
+        if (feedback) feedback.textContent = '';
+    }
+
+    async function saveLecturerExamEdit(event) {
+        event.preventDefault();
+        const id = document.getElementById('lecturerEditExamId')?.value;
+        const exam = lecturerExams.find(item => String(item.id) === String(id));
+        if (!exam || !isLecturerOwnExam(exam)) {
+            showToast('You are not permitted to edit this assessment.', 'error');
+            return;
+        }
+        const title = document.getElementById('lecturerEditTitle').value.trim();
+        const totalMarks = Number(document.getElementById('lecturerEditTotalMarks').value);
+        const passMark = Number(document.getElementById('lecturerEditPassMark').value);
+        const duration = Number(document.getElementById('lecturerEditDuration').value);
+        if (!title || !document.getElementById('lecturerEditDate').value ||
+            !Number.isFinite(totalMarks) || totalMarks <= 0 ||
+            !Number.isFinite(passMark) || passMark < 0 || passMark > totalMarks ||
+            !Number.isInteger(duration) || duration < 1) {
+            showToast('Check the title, date, duration and marks. Pass mark cannot exceed total marks.', 'warning');
+            return;
+        }
+        const saveButton = document.getElementById('lecturerEditSaveButton');
+        const feedback = document.getElementById('lecturerEditFeedback');
+        const original = saveButton.innerHTML;
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        if (feedback) feedback.textContent = 'Saving your changes…';
+        try {
+            const link = document.getElementById('lecturerEditLink').value.trim() || null;
+            const changes = {
+                exam_name: title,
+                title,
+                exam_type: document.getElementById('lecturerEditType').value,
+                status: document.getElementById('lecturerEditStatus').value,
+                target_program: document.getElementById('lecturerEditProgram').value.trim() || null,
+                course_code: document.getElementById('lecturerEditUnitCode').value.trim() || null,
+                intake_year: document.getElementById('lecturerEditIntake').value.trim() || null,
+                block: document.getElementById('lecturerEditBlock').value.trim() || null,
+                block_term: document.getElementById('lecturerEditBlock').value.trim() || null,
+                exam_date: document.getElementById('lecturerEditDate').value,
+                exam_start_time: document.getElementById('lecturerEditTime').value || null,
+                duration_minutes: duration,
+                total_marks: totalMarks,
+                marks_out_of: totalMarks,
+                pass_mark: passMark,
+                online_link: link,
+                exam_link: link,
+                description: document.getElementById('lecturerEditDescription').value.trim() || null,
+                instructions: document.getElementById('lecturerEditInstructions').value.trim() || null,
+                updated_at: new Date().toISOString()
+            };
+            let query = sb.from('exams').update(changes).eq('id', exam.id);
+            if (exam.created_by) query = query.eq('created_by', exam.created_by);
+            const { data, error } = await query.select('id').maybeSingle();
+            if (error) throw error;
+            if (!data) throw new Error('No exam was updated. Check that you still own this exam and have permission to edit it.');
+            Object.assign(exam, changes);
+            displayExams();
+            showToast('Exam / CAT updated successfully.', 'success');
+            closeLecturerExamEdit();
+        } catch (error) {
+            console.error('Lecturer exam edit failed:', error);
+            if (feedback) feedback.textContent = error.message || 'Unable to save changes.';
+            showToast('Could not update the exam: ' + (error.message || 'Unknown error'), 'error');
+        } finally {
+            saveButton.disabled = false;
+            saveButton.innerHTML = original;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('lecturerExamEditForm');
+        if (form) form.addEventListener('submit', saveLecturerExamEdit);
+        const modal = document.getElementById('lecturerExamEditModal');
+        if (modal) modal.addEventListener('click', event => {
+            if (event.target === modal) closeLecturerExamEdit();
+        });
+    });
 
     // ============================================================
     // RESULTS — all results across the program
