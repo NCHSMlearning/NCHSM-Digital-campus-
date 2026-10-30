@@ -611,17 +611,18 @@
             <div style="background: #FEF2F2; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #DC2626;">
                 <p style="margin: 0; color: #991B1B; font-size: 14px;"><i class="fas fa-info-circle"></i> This will:</p>
                 <ul style="margin: 8px 0 0 20px; color: #991B1B; font-size: 13px;">
-                    <li>✅ PRESERVE all answered questions</li>
-                    <li>✅ KEEP their current score</li>
-                    <li>✅ RESET their timer (full time)</li>
-                    <li>✅ ALLOW them to continue where they left off</li>
+                    <li>✅ PRESERVE all saved answers and progress</li>
+                    <li>✅ KEEP the same attempt ID and attempt number</li>
+                    <li>✅ REOPEN the submitted attempt with a fresh timer</li>
+                    <li>✅ Recalculate the score after the student resubmits</li>
+                    <li>❌ Does NOT clear the student's choices</li>
                 </ul>
             </div>
             <input type="hidden" id="resetStudentUserId">
             <input type="hidden" id="resetExamId">
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
                 <button class="btn btn-secondary" onclick="closeResetModal()" style="padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">Cancel</button>
-                <button class="btn btn-danger" id="confirmResetBtn" onclick="confirmResetStudent()" style="padding: 8px 24px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;"><i class="fas fa-undo"></i> Reset Student</button>
+                <button class="btn btn-danger" id="confirmResetBtn" onclick="confirmResetStudent()" style="padding: 8px 24px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;"><i class="fas fa-redo"></i> Authorize Retake</button>
             </div>
         </div>
     </div>
@@ -1695,17 +1696,16 @@ if (window.location.pathname.endsWith('.html')) {
         }
 
         if (!confirm(
-            `🔄 RESET / CONTINUE EXAM\n\n` +
-            `Student: ${studentName}\n` +
-            `Exam: ${examName}\n\n` +
-            `The SAME current attempt will be reopened.\n` +
-            `✅ Saved answers are preserved\n` +
-            `✅ Attempt ID is retained\n` +
-            `✅ Student continues from saved progress\n` +
-            `✅ Final score is recalculated after submission\n` +
-            `✅ Previous released-result state is removed\n\n` +
-            `⚠️ No new Attempt #2 will be created.\n\n` +
-            `Allow the student to continue?`
+            'AUTHORIZE RETAKE — PRESERVE ANSWERS\n\n' +
+            'Student: ' + studentName + '\n' +
+            'Exam: ' + examName + '\n\n' +
+            'The same submitted attempt will be reopened.\n' +
+            '✓ Saved answers and progress are preserved\n' +
+            '✓ Attempt ID and attempt number are retained\n' +
+            '✓ A fresh timer starts when the student re-enters\n' +
+            '✓ Score is recalculated after resubmission\n' +
+            '✗ This action does NOT clear choices\n\n' +
+            'Authorize this retake?'
         )) return;
 
         const btn = document.getElementById('confirmResetBtn');
@@ -1814,7 +1814,7 @@ if (window.location.pathname.endsWith('.html')) {
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-undo"></i> Reset Student';
+                btn.innerHTML = '<i class="fas fa-redo"></i> Authorize Retake';
             }
         }
     }
