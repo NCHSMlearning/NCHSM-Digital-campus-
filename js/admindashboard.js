@@ -6338,6 +6338,61 @@ window.displayLiveFeed = function() {
         }
     };
 
+    window.clearStudentExamChoices = async function() {
+        const student = window.resetTargetStudent;
+        const currentSearch = String(document.getElementById('resetEmailInput')?.value || '').trim().toLowerCase();
+        const examId = parseInt(document.getElementById('resetExamSelect')?.value, 10);
+        const clearBtn = document.getElementById('clearChoicesResetBtn');
+
+        if (!student?.user_id || !currentSearch || currentSearch !== window.resetTargetSearchTerm) {
+            showToast('Search for and select the student again before clearing answers.', 'warning');
+            return;
+        }
+        if (!examId) {
+            showToast('Select the exam for this student.', 'warning');
+            document.getElementById('resetExamSelect')?.focus();
+            return;
+        }
+
+        const examName = document.getElementById('resetExamSelect')?.selectedOptions?.[0]?.textContent || ('Exam ' + examId);
+        const confirmed = confirm(
+            'CLEAR SAVED ANSWERS AND RESET EXAM\\n\\n' +
+            'Student: ' + student.full_name + ' (' + (student.email || 'no email') + ')\\n' +
+            'Exam: ' + examName + '\\n\\n' +
+            'This permanently deletes the saved question choices for this student and exam, clears the attempt score, and authorizes a clean restart. The attempt number and audit history are retained.\\n\\nContinue?'
+        );
+        if (!confirmed) return;
+
+        if (clearBtn) {
+            clearBtn.disabled = true;
+            clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
+        }
+        try {
+            const { data, error } = await sb.rpc('admin_clear_exam_choices', {
+                p_student_id: student.user_id,
+                p_exam_id: examId
+            });
+            if (error) throw error;
+            const deletedGrades = Number(data?.deleted_grade_answer_rows || 0);
+            const deletedAnswers = Number(data?.deleted_exam_answer_rows || 0);
+            showToast(
+                'Clean restart authorized. Cleared ' + (deletedGrades + deletedAnswers) + ' saved answer rows for ' + student.full_name + '.',
+                'success'
+            );
+            window.closeResetByEmailModal();
+            await Promise.allSettled([loadStudentsWithResults(), loadAllExams(), loadAllStudents()]);
+            updateStats();
+        } catch (error) {
+            console.error('Clear choices/reset failed:', error);
+            showToast('Unable to clear choices: ' + (error?.message || 'Unknown error'), 'error');
+        } finally {
+            if (clearBtn) {
+                clearBtn.disabled = false;
+                clearBtn.innerHTML = '<i class="fas fa-eraser"></i> Clear Choices & Reset';
+            }
+        }
+    };
+
     window.closeResetByEmailModal = function() {
         const modal = document.getElementById('resetByEmailModal');
         if (modal) modal.style.display = 'none';
