@@ -310,6 +310,11 @@
                                 <option value="pending">Pending</option>
                                 <option value="active">Active</option>
                                 <option value="completed">Completed</option>
+                                <option value="published">Published</option>
+                                <option value="released">Released</option>
+                                <option value="scheduled">Scheduled</option>
+                                <option value="in_progress">In progress</option>
+                                <option value="closed">Closed</option>
                             </select>
                         </label>
                         <label class="lecturer-edit-field">Program
@@ -963,7 +968,15 @@ if (window.location.pathname.endsWith('.html')) {
         set('lecturerEditExamId', exam.id);
         set('lecturerEditTitle', exam.exam_name || exam.title || '');
         set('lecturerEditType', allowedTypes.includes(typeValue) ? typeValue : 'CAT');
-        set('lecturerEditStatus', String(exam.status || 'draft').toLowerCase());
+        const statusField = document.getElementById('lecturerEditStatus');
+        const statusValue = String(exam.status || 'draft').toLowerCase();
+        if (statusField && !Array.from(statusField.options).some(option => option.value === statusValue)) {
+            const statusOption = document.createElement('option');
+            statusOption.value = statusValue;
+            statusOption.textContent = statusValue.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+            statusField.appendChild(statusOption);
+        }
+        set('lecturerEditStatus', statusValue);
         set('lecturerEditProgram', exam.target_program || exam.program_type || lecturerProgram || '');
         set('lecturerEditUnitCode', exam.course_code || exam.unit_code || '');
         set('lecturerEditIntake', exam.intake_year || '');
