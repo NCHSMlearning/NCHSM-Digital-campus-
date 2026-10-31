@@ -120,7 +120,71 @@
         },
 
         notify(msg, type) {
-            window.showNotification(msg, type || 'info');
+            const kind = ['success', 'error', 'warning', 'info'].includes(type)
+                ? type
+                : 'info';
+
+            let host = document.getElementById('lecturer-exam-toast-host');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'lecturer-exam-toast-host';
+                host.setAttribute('aria-live', 'polite');
+                host.setAttribute('aria-atomic', 'false');
+                host.style.cssText =
+                    'position:fixed;top:18px;right:18px;z-index:100500;' +
+                    'display:flex;flex-direction:column;gap:8px;' +
+                    'width:min(320px,calc(100vw - 36px));pointer-events:none;';
+                document.body.appendChild(host);
+            }
+
+            const palette = {
+                success: { bg: '#ecfdf5', border: '#86efac', color: '#166534', icon: '✓' },
+                error:   { bg: '#fef2f2', border: '#fca5a5', color: '#b91c1c', icon: '!' },
+                warning: { bg: '#fffbeb', border: '#fcd34d', color: '#92400e', icon: '!' },
+                info:    { bg: '#eff6ff', border: '#93c5fd', color: '#1d4ed8', icon: 'i' }
+            };
+            const p = palette[kind];
+            const toast = document.createElement('div');
+            toast.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+            toast.style.cssText =
+                'display:flex;align-items:flex-start;gap:9px;padding:10px 12px;' +
+                'background:' + p.bg + ';border:1px solid ' + p.border + ';' +
+                'border-left:3px solid ' + p.color + ';border-radius:9px;' +
+                'box-shadow:0 5px 18px rgba(15,23,42,.12);color:' + p.color + ';' +
+                'font:500 12px/1.45 Inter,system-ui,sans-serif;' +
+                'pointer-events:auto;opacity:0;transform:translateY(-6px);' +
+                'transition:opacity .18s ease,transform .18s ease;';
+            const icon = document.createElement('span');
+            icon.textContent = p.icon;
+            icon.style.cssText =
+                'flex:0 0 17px;width:17px;height:17px;border-radius:50%;' +
+                'display:inline-flex;align-items:center;justify-content:center;' +
+                'font-weight:800;font-size:11px;background:' + p.color + ';color:#fff;margin-top:1px;';
+            const message = document.createElement('span');
+            message.textContent = String(msg || 'Operation completed.');
+            message.style.cssText = 'flex:1;overflow-wrap:anywhere;';
+            const close = document.createElement('button');
+            close.type = 'button';
+            close.textContent = '×';
+            close.setAttribute('aria-label', 'Dismiss notification');
+            close.style.cssText =
+                'border:0;background:transparent;color:' + p.color + ';' +
+                'font-size:17px;line-height:14px;padding:0 0 0 4px;cursor:pointer;';
+            const dismiss = () => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-6px)';
+                setTimeout(() => toast.remove(), 200);
+            };
+            close.addEventListener('click', dismiss);
+            toast.append(icon, message, close);
+            host.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            });
+            const timeout = kind === 'error' ? 6500 : 3800;
+            const timer = setTimeout(dismiss, timeout);
+            close.addEventListener('click', () => clearTimeout(timer), { once: true });
         },
 
         esc(value) {
@@ -753,6 +817,7 @@
                 console.error('Student search:', err);
                 results.innerHTML =
                     '<div style="padding:10px;color:#dc2626;">Search failed.</div>';
+                this.notify('Student search failed: ' + (err.message || err), 'error');
             }
         },
 
@@ -2254,11 +2319,16 @@
         // --------------------------------------------------------
 
         async refresh() {
-            await this.loadExams();
-            this.notify(
-                'Assessments refreshed.',
-                'success'
-            );
+            try {
+                const before = this.exams.length;
+                await this.loadExams();
+                if (this.exams.length || before === 0) {
+                    this.notify('Assessments refreshed.', 'success');
+                }
+            } catch (err) {
+                console.error('refresh:', err);
+                this.notify('Unable to refresh assessments: ' + (err.message || err), 'error');
+            }
         },
 
         // --------------------------------------------------------
