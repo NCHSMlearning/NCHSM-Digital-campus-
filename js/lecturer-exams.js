@@ -1757,6 +1757,86 @@
         },
 
         // --------------------------------------------------------
+        // EDIT MODAL (created here so lecturer.html remains unchanged)
+        // --------------------------------------------------------
+
+        openEditModal() {
+            const form = this.$('addExamForm');
+            if (!form) {
+                this.notify('Assessment form is unavailable.', 'error');
+                return false;
+            }
+
+            let modal = this.$('lecturerAssessmentEditModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'lecturerAssessmentEditModal';
+                modal.innerHTML = `
+                    <div class="la-edit-backdrop" data-close-edit="1">
+                        <section class="la-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="laEditTitle">
+                            <header class="la-edit-header">
+                                <div><span class="la-edit-kicker">LECTURER WORKSPACE</span><h2 id="laEditTitle">Edit Assessment / CAT</h2><p>Update the assessment details, then save your changes.</p></div>
+                                <button type="button" class="la-edit-close" aria-label="Close edit window" data-close-edit="1">&times;</button>
+                            </header>
+                            <div class="la-edit-body" id="laEditFormHost"></div>
+                        </section>
+                    </div>`;
+                const style = document.createElement('style');
+                style.id = 'lecturerAssessmentEditStyles';
+                style.textContent = `
+                    #lecturerAssessmentEditModal{position:fixed;inset:0;z-index:100050;display:none}
+                    #lecturerAssessmentEditModal.is-open{display:block}
+                    #lecturerAssessmentEditModal .la-edit-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.72);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto}
+                    #lecturerAssessmentEditModal .la-edit-dialog{width:min(980px,100%);max-height:94vh;display:flex;flex-direction:column;background:var(--card-bg,#fff);color:var(--text-color,#172033);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.35);overflow:hidden}
+                    #lecturerAssessmentEditModal .la-edit-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 24px;border-bottom:1px solid #e2e8f0;background:linear-gradient(135deg,#0a3d62,#164e75);color:#fff}
+                    #lecturerAssessmentEditModal .la-edit-header h2{margin:4px 0;font-size:21px;font-weight:800}
+                    #lecturerAssessmentEditModal .la-edit-header p{margin:0;font-size:13px;opacity:.85}
+                    #lecturerAssessmentEditModal .la-edit-kicker{font-size:10px;letter-spacing:1.5px;font-weight:800;opacity:.8}
+                    #lecturerAssessmentEditModal .la-edit-close{border:0;background:rgba(255,255,255,.16);color:#fff;width:36px;height:36px;border-radius:10px;font-size:25px;cursor:pointer}
+                    #lecturerAssessmentEditModal .la-edit-body{padding:20px 24px;overflow:auto}
+                    #lecturerAssessmentEditModal #addExamForm{margin:0!important;width:100%}
+                    #lecturerAssessmentEditModal #addExamForm .form-actions{position:sticky;bottom:-20px;background:var(--card-bg,#fff);padding:14px 0 4px;z-index:2}
+                    body.la-edit-modal-open{overflow:hidden}
+                    @media(max-width:640px){#lecturerAssessmentEditModal .la-edit-backdrop{padding:0;align-items:flex-end}#lecturerAssessmentEditModal .la-edit-dialog{max-height:96vh;border-radius:18px 18px 0 0}#lecturerAssessmentEditModal .la-edit-header{padding:16px}#lecturerAssessmentEditModal .la-edit-body{padding:14px}}
+                `;
+                document.head.appendChild(style);
+                document.body.appendChild(modal);
+
+                modal.addEventListener('click', event => {
+                    if (event.target.closest('[data-close-edit="1"]')) this.closeEditModal();
+                });
+                document.addEventListener('keydown', event => {
+                    if (event.key === 'Escape' && modal.classList.contains('is-open')) this.closeEditModal();
+                });
+            }
+
+            if (!this._editFormPlaceholder) {
+                const placeholder = document.createComment('assessment-form-original-position');
+                form.parentNode.insertBefore(placeholder, form);
+                this._editFormPlaceholder = placeholder;
+            }
+
+            const host = modal.querySelector('#laEditFormHost');
+            if (form.parentNode !== host) host.appendChild(form);
+            modal.classList.add('is-open');
+            document.body.classList.add('la-edit-modal-open');
+            modal.querySelector('.la-edit-close')?.focus();
+            return true;
+        },
+
+        closeEditModal() {
+            const modal = this.$('lecturerAssessmentEditModal');
+            const form = this.$('addExamForm');
+            if (this._editFormPlaceholder?.parentNode && form) {
+                this._editFormPlaceholder.parentNode.insertBefore(form, this._editFormPlaceholder);
+                this._editFormPlaceholder.remove();
+                this._editFormPlaceholder = null;
+            }
+            modal?.classList.remove('is-open');
+            document.body.classList.remove('la-edit-modal-open');
+        },
+
+        // --------------------------------------------------------
         // EDIT / UPDATE
         // --------------------------------------------------------
 
@@ -1886,13 +1966,7 @@
             this.updateNotificationTargetVisibility();
             await this.updateStudentCount();
 
-            const form = this.$('addExamForm');
-            if (form) {
-                form.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
+            this.openEditModal();
 
             this.notify(
                 '✏️ Editing "' + (ex.title || ex.exam_name || 'assessment') + '".',
@@ -1901,6 +1975,7 @@
         },
 
         cancelEdit() {
+            this.closeEditModal();
             this.editingExamId = null;
 
             const form = this.$('addExamForm');
@@ -2066,6 +2141,7 @@
                 );
 
                 this.editingExamId = null;
+                this.closeEditModal();
 
                 if (btn) {
                     btn.innerHTML =
