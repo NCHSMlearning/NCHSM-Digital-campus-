@@ -2130,13 +2130,20 @@
                     updated_at: new Date().toISOString()
                 };
 
-                const { error } = await sb
+                const { data: updatedRows, error } = await sb
                     .from('exams')
                     .update(row)
                     .eq('id', this.editingExamId)
-                    .eq('created_by', this.lecturerUuid);
+                    .eq('created_by', this.lecturerUuid)
+                    .select('id');
 
                 if (error) throw error;
+
+                if (!updatedRows || updatedRows.length === 0) {
+                    throw new Error(
+                        'No assessment was updated. Check that you created this assessment and that your lecturer account matches its created_by record. Database access may also be restricted by RLS.'
+                    );
+                }
 
                 this.notify(
                     '✅ Assessment updated successfully.',
