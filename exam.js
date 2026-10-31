@@ -4330,7 +4330,7 @@ class SecureFaceProctor {
                     head_tilted_down: 'looking down'
                 }[pose.reason] || 'not facing the camera';
                 updateCameraStatus('warning', `⚠️ Head ${direction}`, 'Face turned');
-                if (Date.now() - this.state.headTurnStartedAt >= 5000 || this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) this.handleViolation();
+                if (Date.now() - this.state.headTurnStartedAt >= 10000 || this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) this.handleViolation();
                 return;
             }
             this.state.headTurnStartedAt = 0;
