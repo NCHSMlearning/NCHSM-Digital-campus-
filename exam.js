@@ -78,6 +78,11 @@ const AppState = {
     attendanceRecorded: false,
     blurCount: 0,
     tabSwitchCount: 0,
+    visibilityLossActive: false,
+    pendingFocusReturnNotice: false,
+    pendingTabSwitchWarning: 0,
+    tabSwitchTimeout: null,
+    tabSwitchGraceExpired: false,
     multipleFacesCount: 0,
     timerInterval: null,
     snapshotInterval: null,
@@ -3458,49 +3463,91 @@ function startFullscreenExitWarning() {
 }
 
 function handleWindowBlur() {
-    if (!AppState.isExamActive || AppState.isExamPaused) return;
-    
-    AppState.blurCount++;
-    console.log('🚨 Window blurred (minimized) - count:', AppState.blurCount);
-    
-    showToast('🚨 Window minimized! Auto-submitting...', 'error');
-    logProctoringEvent('window_blur', 'Window minimized during exam - count: ' + AppState.blurCount, 'critical');
-    
-    // Auto-submit immediately
-    if (!AppState.isSubmitting && AppState.isExamActive && !AppState.examAutoSubmitted) {
-        AppState.examAutoSubmitted = true;
-        setTimeout(() => executeSubmissionWithLoading(), 1000);
-    }
+    // A blur can be caused by mobile notifications, permission prompts,
+    // incoming calls or browser chrome. Visibility changes are tracked
+    // separately so one interruption is never counted twice.
+    if (!AppState.isExamActive || AppState.isExamPaused || AppState.isSubmitting) return;
+    AppState.blurCount = (AppState.blurCount || 0) + 1;
+    AppState.pendingFocusReturnNotice = true;
+    console.info('ℹ️ Exam window lost focus; awaiting visibility state.');
+    logProctoringEvent(
+        'window_blur',
+        'Window focus lost. No violation counted until document visibility confirms a tab switch.',
+        'info'
+    );
 }
 
 function handleWindowFocus() {
-    if (AppState.isExamActive) {
-        AppState.blurCount = 0;
-        if (DOM.appBlockOverlay) {
-            DOM.appBlockOverlay.style.display = 'none';
-            DOM.appBlockOverlay.classList.remove('active');
-        }
+    if (!AppState.isExamActive) return;
+    if (AppState.pendingFocusReturnNotice && !document.hidden) {
+        AppState.pendingFocusReturnNotice = false;
+        showToast('You are back in the exam. Please keep this exam tab active.', 'warning', 4500);
+    }
+    if (DOM.appBlockOverlay) {
+        DOM.appBlockOverlay.style.display = 'none';
+        DOM.appBlockOverlay.classList.remove('active');
     }
 }
 
 function handleVisibilityChange() {
-    if (document.hidden && AppState.isExamActive && !AppState.isExamPaused) {
-        AppState.tabSwitchCount++;
-        console.log('🚨 Tab switched - count:', AppState.tabSwitchCount);
-        
-        showToast('🚨 Tab switch detected! Auto-submitting...', 'error');
-        logProctoringEvent('tab_switch', 'Tab switched during exam - count: ' + AppState.tabSwitchCount, 'critical');
-        
-        // Auto-submit immediately
-        if (!AppState.isSubmitting && AppState.isExamActive && !AppState.examAutoSubmitted) {
-            AppState.examAutoSubmitted = true;
-            setTimeout(() => executeSubmissionWithLoading(), 1000);
+    if (!AppState.isExamActive || AppState.isExamPaused || AppState.isSubmitting) return;
+
+    if (document.hidden) {
+        // Ignore duplicate hidden events while the same interruption is active.
+        if (AppState.visibilityLossActive) return;
+        AppState.visibilityLossActive = true;
+        AppState.tabSwitchCount = (AppState.tabSwitchCount || 0) + 1;
+
+        const count = AppState.tabSwitchCount;
+        const limit = Number(CONFIG.MAX_TAB_SWITCHES || 2);
+        console.warn('⚠️ Exam tab left:', count, 'of', limit, 'warning opportunities');
+        logProctoringEvent(
+            'tab_switch',
+            'Exam tab became hidden. Warning ' + count + ' of ' + limit + '.',
+            'warning'
+        );
+
+        if (count <= limit) {
+            AppState.pendingTabSwitchWarning = count;
+        } else {
+            // Give the student a short chance to return before final submission.
+            AppState.tabSwitchGraceExpired = false;
+            clearTimeout(AppState.tabSwitchTimeout);
+            AppState.tabSwitchTimeout = setTimeout(() => {
+                AppState.tabSwitchGraceExpired = true;
+                if (AppState.isExamActive && !AppState.isSubmitting) {
+                    AppState.examAutoSubmitted = true;
+                    logProctoringEvent(
+                        'tab_switch_limit_exceeded',
+                        'Exam submitted after repeated tab switches and a 10-second return grace period.',
+                        'critical'
+                    );
+                    executeSubmissionWithLoading();
+                }
+            }, 10000);
         }
-    } else if (!document.hidden && AppState.isExamActive) {
-        if (DOM.appBlockOverlay) {
-            DOM.appBlockOverlay.style.display = 'none';
-            DOM.appBlockOverlay.classList.remove('active');
-        }
+        return;
+    }
+
+    AppState.visibilityLossActive = false;
+    if (AppState.tabSwitchTimeout && !AppState.tabSwitchGraceExpired) {
+        clearTimeout(AppState.tabSwitchTimeout);
+        AppState.tabSwitchTimeout = null;
+        showToast('Final warning: please remain on the exam tab. Another tab switch may submit your exam.', 'error', 6000);
+    } else if (AppState.pendingTabSwitchWarning) {
+        showToast(
+            'You returned to the exam. Tab-switch warning ' +
+            AppState.pendingTabSwitchWarning + ' of ' +
+            Number(CONFIG.MAX_TAB_SWITCHES || 2) + '.',
+            'warning',
+            5000
+        );
+        AppState.pendingTabSwitchWarning = 0;
+    }
+
+    if (DOM.appBlockOverlay) {
+        DOM.appBlockOverlay.style.display = 'none';
+        DOM.appBlockOverlay.classList.remove('active');
     }
 }
 
@@ -3513,8 +3560,7 @@ function returnToExam() {
         document.documentElement.requestFullscreen().catch(() => {});
     }
     window.focus();
-    AppState.blurCount = 0;
-    AppState.tabSwitchCount = 0;
+    // Keep cumulative tab-switch warnings for the full attempt.
 }
 
 // ============================================================
