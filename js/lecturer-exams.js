@@ -1803,10 +1803,13 @@
                 document.body.appendChild(modal);
 
                 modal.addEventListener('click', event => {
-                    if (event.target.closest('[data-close-edit="1"]')) this.closeEditModal();
+                    if (
+                        event.target.classList.contains('la-edit-backdrop') ||
+                        event.target.closest('.la-edit-close')
+                    ) this.cancelEdit();
                 });
                 document.addEventListener('keydown', event => {
-                    if (event.key === 'Escape' && modal.classList.contains('is-open')) this.closeEditModal();
+                    if (event.key === 'Escape' && modal.classList.contains('is-open')) this.cancelEdit();
                 });
             }
 
