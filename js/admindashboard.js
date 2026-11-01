@@ -7925,7 +7925,12 @@ window.loadAssessmentApprovals = async function() {
         if (error) throw error;
         const rows = data || [];
         const pending = rows.filter(r => String(r.approval_status || '').toLowerCase() === 'pending');
-        const approved = rows.filter(r => String(r.approval_status || '').toLowerCase() === 'approved' && r.is_published !== true);
+        const approved = rows.filter(r => {
+            const state = String(r.status || '').toLowerCase();
+            const isLegacyAlreadyReleased = ['published','active','released','available','completed'].includes(state) || r.released === true;
+            return String(r.approval_status || '').toLowerCase() === 'approved' &&
+                   r.is_published !== true && !isLegacyAlreadyReleased;
+        });
         const rejected = rows.filter(r => String(r.approval_status || '').toLowerCase() === 'rejected');
         const setText = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=String(v); };
         setText('assessmentPendingCount',pending.length); setText('assessmentApprovedCount',approved.length); setText('assessmentRejectedCount',rejected.length);
