@@ -291,6 +291,38 @@ function escapeHtml(str) {
 }
 
 // ============================================================
+function ensureTranscriptBatchActions() {
+    const list = document.getElementById('transcriptStudentList');
+    if (!list || document.getElementById('transcriptBatchActions')) return;
+    const toolbar = document.createElement('div');
+    toolbar.id = 'transcriptBatchActions';
+    toolbar.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:12px 0;padding:12px;border:1px solid #dbe4ee;border-radius:10px;background:#f8fafc;';
+    toolbar.innerHTML = `
+      <div style="min-width:180px;flex:1;">
+        <div style="font-weight:800;color:#0A3D62;font-size:14px;">Transcript generation</div>
+        <div id="transcriptBatchScopeLabel" style="font-size:12px;color:#64748b;margin-top:3px;">Load an intake year and block to begin.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" id="transcriptGenerateSingleAction" style="background:#0A3D62;color:#fff;border:0;border-radius:7px;padding:10px 14px;font-weight:700;cursor:pointer;"><i class="fas fa-file-alt"></i> Generate Single Student</button>
+        <button type="button" id="transcriptGenerateBlockAction" style="background:#047857;color:#fff;border:0;border-radius:7px;padding:10px 14px;font-weight:700;cursor:pointer;"><i class="fas fa-users"></i> Generate Entire Filtered Block</button>
+      </div>`;
+    list.parentNode.insertBefore(toolbar, list);
+    toolbar.querySelector('#transcriptGenerateSingleAction').addEventListener('click', () => window.generateSelectedTranscript());
+    toolbar.querySelector('#transcriptGenerateBlockAction').addEventListener('click', () => {
+        window.transcriptData.selectedStudents = [];
+        window.generateSelectedTranscriptBatch();
+    });
+}
+
+function updateTranscriptBatchActionLabel() {
+    ensureTranscriptBatchActions();
+    const node = document.getElementById('transcriptBatchScopeLabel');
+    if (!node) return;
+    const ctx = getTranscriptFilterContext();
+    const count = (window.transcriptData?.filteredStudents || []).length;
+    node.textContent = `Intake ${ctx.intakeYear} · ${ctx.block === 'all' ? 'All blocks' : ctx.block} · ${count} eligible student(s) with approved and published marks`;
+}
+
 // LOAD TRANSCRIPT STUDENTS
 // ============================================================
 
@@ -528,6 +560,7 @@ window.filterTranscriptStudents = function() {
     
     window.transcriptData.filteredStudents = filtered;
     window.renderTranscriptStudentList(filtered, window.transcriptData.marks);
+    updateTranscriptBatchActionLabel();
     
     const countEl = document.getElementById('transcript_student_count');
     if (countEl) countEl.textContent = filtered.length;
@@ -670,22 +703,16 @@ window.generateSelectedTranscript = async function() {
 
         // Fetch marks for the selected student at generation time rather than relying
         // on a potentially stale list loaded for a different year/block filter.
-        let marksQuery = sb
-            .from('student_marks')
-            .select('*')
-            .eq('admission_number', studentId)
-            .eq('published', true)
-            .eq('approval_status', 'approved');
-
-        if (year && year !== 'all') marksQuery = marksQuery.eq('academic_year', year);
-
-        const { data: fetchedStudentMarks, error: marksError } = await marksQuery;
-        if (marksError) throw marksError;
-
-        // Never fall back to unfiltered years: unpublished or unapproved marks
-        // must not enter a transcript preview.
-        const studentMarks = fetchedStudentMarks || [];
-        window.showTranscriptPreview(student, studentMarks, year);
+        const context = getTranscriptFilterContext();
+        const fetchedStudentMarks = await fetchTranscriptMarksForStudents(sb, [studentId]);
+        const studentMarks = context.block === 'all'
+            ? fetchedStudentMarks
+            : fetchedStudentMarks.filter(mark => transcriptMarkMatchesBlock(mark, context.block));
+        if (!studentMarks.length) {
+            notify('No approved and published marks were found for this student in the selected block.', 'warning');
+            return;
+        }
+        window.showTranscriptPreview(student, studentMarks, context.block === 'all' ? 'Cumulative' : context.block);
 
         if (studentMarks.length === 0) {
             notify('Transcript preview opened, but no marks are recorded for this student yet. Enter/release marks to complete it.', 'warning');
@@ -722,19 +749,25 @@ window.generateSelectedTranscriptBatch = async function() {
     const checkedIds = Array.from(document.querySelectorAll('#transcriptStudentList input[type="checkbox"]:checked'))
         .map(box => box.dataset.transcriptStudentId || box.value || '')
         .map(id => String(id).trim()).filter(Boolean);
-    const selectedIds = [...new Set(checkedIds.length ? checkedIds : (window.transcriptData?.selectedStudents || []).map(String))];
-    window.transcriptData.selectedStudents = selectedIds;
-
+    const explicitSelection = checkedIds.length
+        ? checkedIds
+        : (window.transcriptData?.selectedStudents || []).map(String);
+    const selectedIds = [...new Set(explicitSelection.length
+        ? explicitSelection
+        : (window.transcriptData?.filteredStudents || window.transcriptData?.students || []).map(s => String(s.student_id || '')))];
     if (!selectedIds.length) {
-        notify('Select at least one student using the checkbox or student card.', 'warning');
+        notify('No eligible students are loaded. Select intake year and block, then click Load Students.', 'warning');
         return;
     }
     if (selectedIds.length > 50 && !confirm(`Generate ${selectedIds.length} transcripts? This may take a few minutes.`)) return;
 
-    const year = document.getElementById('transcript_year_select')?.value || String(new Date().getFullYear());
+    const filterContext = getTranscriptFilterContext();
+    const year = filterContext.intakeYear;
+    const blockFilter = filterContext.block;
     const mode = document.getElementById('transcript_scope_select')?.value || 'cumulative';
-    const scopeLabels = { study_year_1: 'KRCHN Study Year 1', study_year_2: 'KRCHN Study Year 2', study_year_3: 'KRCHN Study Year 3', cumulative: 'Cumulative' };
-    const scopeLabel = scopeLabels[mode] || `Academic Year ${year}`;
+    const scopeLabel = blockFilter !== 'all'
+        ? `Intake ${year} · ${blockFilter}`
+        : (year !== 'all' ? `Intake ${year} · Cumulative` : 'Cumulative');
     const content = document.getElementById('transcriptPreviewContent');
     const container = document.getElementById('transcriptPreviewContainer');
     if (!content || !container) {
@@ -767,17 +800,14 @@ window.generateSelectedTranscriptBatch = async function() {
                 }
                 if (!student) throw new Error('Student record not found');
 
-                const mr = await sb.from('student_marks').select('*')
-                    .eq('admission_number', studentId)
-                    .eq('published', true)
-                    .eq('approval_status', 'approved');
-                if (mr.error) throw mr.error;
-                let marks = mr.data || [];
-                const isKRCHN = isNursingProgram(student.program || 'KRCHN') && !isTVETProgram(student.program || 'KRCHN');
-                if (isKRCHN && mode.startsWith('study_year_')) {
-                    marks = filterKRCHNMarksByStudyYear(marks, Number(mode.slice(-1)));
-                } else if (!isKRCHN && mode !== 'cumulative' && year && year !== 'all') {
-                    marks = marks.filter(mark => String(mark.academic_year) === String(year));
+                let marks = await fetchTranscriptMarksForStudents(sb, [studentId]);
+                if (blockFilter !== 'all') {
+                    marks = marks.filter(mark => transcriptMarkMatchesBlock(mark, blockFilter));
+                } else {
+                    const isKRCHN = isNursingProgram(student.program || 'KRCHN') && !isTVETProgram(student.program || 'KRCHN');
+                    if (isKRCHN && mode.startsWith('study_year_')) {
+                        marks = filterKRCHNMarksByStudyYear(marks, Number(mode.slice(-1)));
+                    }
                 }
                 if (!marks.length) {
                     failures.push(`${studentId}: no marks found for ${scopeLabel}`);
