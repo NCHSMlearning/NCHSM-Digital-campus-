@@ -13281,15 +13281,28 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
             document.body.style.overflow = '';
         }
         
+        // Keep CSS visibility and the HTML hidden attribute in sync.
+        // Legacy tab handlers may set [hidden] on every inactive section;
+        // changing only style.display would leave the selected tab invisible.
         document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
+            const isSelected = tab.id === tabId;
+            tab.classList.toggle('active', isSelected);
+            tab.style.display = isSelected ? 'block' : 'none';
+            if (isSelected) {
+                tab.removeAttribute('hidden');
+                tab.setAttribute('aria-hidden', 'false');
+            } else {
+                tab.setAttribute('hidden', '');
+                tab.setAttribute('aria-hidden', 'true');
+            }
         });
         
         const target = document.getElementById(tabId);
         if (target) {
+            target.removeAttribute('hidden');
             target.style.display = 'block';
             target.classList.add('active');
+            target.setAttribute('aria-hidden', 'false');
         }
         
         document.querySelectorAll('.sidebar-nav-premium a[data-tab], .dropdown-submenu a[data-tab]').forEach(link => {
