@@ -736,8 +736,16 @@ JAVASCRIPT
                 body: JSON.stringify({ action: 'verify', token })
             });
             const result = await response.json().catch(() => ({}));
+            // The registry intentionally returns HTTP 400 for malformed UUID tokens.
+            // Treat that as a failed verification, not as a registry outage.
+            if (response.status === 400 && result.status === 'invalid') {
+                showResult('invalid', 'Transcript not verified',
+                    result.message || 'The verification reference is invalid.');
+                return;
+            }
             if (!response.ok) throw new Error(result.error || 'The registry could not be reached.');
-            const details = detail('Document type', 'Provisional academic transcript') +
+            const details = detail('Document type', result.document_type === 'provisional-transcript'
+                ? 'Provisional academic transcript' : (result.document_type || 'Academic transcript')) +
                 detail('Transcript generation number', result.transcript_number || 'Not available on this registry record') +
                 detail('Student name', result.student_name) +
                 detail('Admission number', result.student_id) +
