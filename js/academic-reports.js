@@ -2054,7 +2054,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .container .transcript-top { z-index: 2; }
 
         .transcript-top { position: relative; display: block; width: 100%; padding-top: 1px; }
-        .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: start; column-gap: 8px; }
+        .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 120px; align-items: start; column-gap: 8px; }
         .transcript-top > .header { width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
         .transcript-top > .verification-qr { position: relative; top: auto; right: auto; z-index: 2; grid-column: 2; grid-row: 1; width: 88px; min-height: 90px; justify-self: end; align-self: start; margin-top: 2px; }
         .transcript-top > .transcript-generation-number { position: relative; top: auto; right: auto; z-index: 3; display: none; grid-column: 2; grid-row: 1; width: 112px; margin: 0 0 5px; padding: 6px 5px 7px; border: 1.5px solid #C9A54C; border-radius: 7px; background: linear-gradient(145deg,#fffdf5 0%,#f4ead0 100%); color: #173F70; font-family: Arial, sans-serif; line-height: 1.15; text-align: center; box-shadow: 0 2px 5px rgba(15,42,72,.16), inset 0 0 0 1px rgba(255,255,255,.9); }
@@ -2122,11 +2122,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db; }
         .grading-scale-table th { background: #1E559B; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #1E559B; }
         .grading-scale-table td { padding: 4px 8px; text-align: center; border: 1px solid #d1d5db; font-size: 7px; }
-        .declaration { margin: 4px 0 5px; padding: 5px 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; font-size: 8px; line-height: 1.25; }
-        .declaration .title { font-weight: 700; color: #1E559B; font-size: 8px; }
-        .declaration .checkbox { display: inline-block; width: 9px; height: 9px; border: 2px solid #1E559B; border-radius: 2px; margin-right: 4px; vertical-align: middle; background: #1E559B; position: relative; }
-        .declaration .checkbox::after { content: "✓"; color: white; font-size: 6px; position: absolute; top: -2px; left: 0px; }
-        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; min-height: 62px; }
+                .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; min-height: 62px; }
         .signature-box { text-align: center; }
         .signature-box .line { border-bottom: 3px solid #1e293b; width: 155px; height: 24px; margin: 0 auto 3px auto; }
         .signature-box .label { font-size: 8px; color: #1e293b; text-transform: uppercase; letter-spacing: 0.35px; font-weight: 900; }
