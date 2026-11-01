@@ -1914,7 +1914,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #DC2626; padding-bottom: 15px; position: sticky; top: 0; background: white; z-index: 10;">
                 <div>
                     <h3 style="margin: 0; color: #DC2626;">
-                        <i class="fas fa-redo"></i> Authorize Retakes
+                        <i class="fas fa-play-circle"></i> Retake / Continues
                     </h3>
                     <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
                         <i class="fas fa-shield-alt"></i> Authorize fresh attempts without deleting history
@@ -1926,7 +1926,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
             
             <div style="background: #FEF2F2; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #DC2626;">
                 <p style="margin: 0; color: #991B1B; font-size: 14px;">
-                    <i class="fas fa-info-circle"></i> Use Authorize Retake to continue with saved answers. Use Clear Choices & Reset to delete this student’s saved question answers for this exam and authorize a clean restart. The action is recorded in the audit log.
+                    <i class="fas fa-info-circle"></i> Retake / Continue preserves the student’s saved answers and resumes the same attempt. Reset / Clear deletes saved question answers and the current score, then authorizes a clean restart. Both actions are recorded in the audit log and may be used again when necessary.
                 </p>
             </div>
             
@@ -1950,7 +1950,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
                         <i class="fas fa-user-check"></i> Authorize Student Retake
                     </h3>
                     <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
-                        <i class="fas fa-shield-alt"></i> Choose whether to resume saved progress or clear answers for a clean restart
+                        <i class="fas fa-shield-alt"></i> Retake / Continue preserves saved progress; Reset / Clear removes saved answers for a fresh restart
                     </p>
                 </div>
                 <button onclick="closeResetByEmailModal()" 
@@ -1973,7 +1973,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
                     <select id="resetExamSelect" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
                         <option value="">-- SELECT AN EXAM --</option>
                     </select>
-                    <small style="color: #64748B; display: block; margin-top: 4px;">Select the specific exam for which the student should receive one fresh retake attempt</small>
+                    <small style="color: #64748B; display: block; margin-top: 4px;">Select the exam for this student. You can authorize continuation or a clean reset more than once.</small>
                 </div>
                 <div id="resetStudentInfo" style="display: none; background: #F0FDF4; padding: 12px; border-radius: 8px; border-left: 3px solid #10B981;"></div>
                 <div id="resetErrorInfo" style="display: none; background: #FEE2E2; padding: 12px; border-radius: 8px; border-left: 3px solid #DC2626; color: #B91C1C;"></div>
@@ -1982,7 +1982,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
                 <button class="btn btn-danger" onclick="closeResetByEmailModal()" style="padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">Cancel</button>
                 <button class="btn btn-warning" id="clearChoicesResetBtn" onclick="clearStudentExamChoices()" style="background: #991B1B; color: white; padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700;">
-                    <i class="fas fa-eraser"></i> Clear Choices & Reset
+                    <i class="fas fa-eraser"></i> Reset / Clear Answers
                 </button>
                 <button class="btn btn-warning" id="confirmResetByEmailBtn" onclick="confirmResetByEmail()" disabled style="background: #DC2626; color: white; padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-redo"></i> Authorize Retake
