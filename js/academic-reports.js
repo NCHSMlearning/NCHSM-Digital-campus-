@@ -2057,9 +2057,9 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: start; column-gap: 8px; }
         .transcript-top > .header { width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
         .transcript-top > .verification-qr { position: relative; top: auto; right: auto; z-index: 2; grid-column: 2; grid-row: 1; width: 88px; min-height: 90px; justify-self: end; align-self: start; margin-top: 2px; }
-        .transcript-top > .transcript-generation-number { position: relative; top: auto; right: auto; z-index: 3; display: none; grid-column: 2; grid-row: 1; width: 88px; margin: 0 0 4px; padding: 2px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; color: #1E559B; font-family: Arial, sans-serif; font-size: 9px; line-height: 1.15; font-weight: 800; text-align: center; white-space: normal; overflow: visible; }
-        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 2px; color: #334155; font-size: 7px; letter-spacing: .25px; white-space: normal; }
-        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; font-size: 10px; letter-spacing: 0; white-space: normal; overflow-wrap: anywhere; }
+        .transcript-top > .transcript-generation-number { position: relative; top: auto; right: auto; z-index: 3; display: none; grid-column: 2; grid-row: 1; width: 112px; margin: 0 0 5px; padding: 6px 5px 7px; border: 1.5px solid #C9A54C; border-radius: 7px; background: linear-gradient(145deg,#fffdf5 0%,#f4ead0 100%); color: #173F70; font-family: Arial, sans-serif; line-height: 1.15; text-align: center; box-shadow: 0 2px 5px rgba(15,42,72,.16), inset 0 0 0 1px rgba(255,255,255,.9); }
+        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 4px; color: #8A6A25; font-size: 6px; letter-spacing: 1.1px; font-weight: 900; white-space: normal; }
+        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; color: #123B68; font-family: 'Georgia',serif; font-size: 9px; line-height: 1.25; letter-spacing: .1px; font-weight: 900; white-space: normal; overflow-wrap: anywhere; }
         .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 88px; padding: 4px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
         .verification-qr img { display: block; width: 76px; height: 76px; min-width: 76px; min-height: 76px; object-fit: contain; image-rendering: pixelated; }
         .header { text-align: center; border-bottom: 3px double #1E559B; padding-bottom: 5px; margin-bottom: 6px; }
@@ -2221,13 +2221,6 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                     <div class="summary-card"><div class="value" style="color: #1E559B;">${passRate}%</div><div class="label">Pass Rate</div></div>
                 </div>
             </div>
-        </div>
-
-        <div class="declaration">
-            <span class="title">Student Declaration:</span>
-            <span class="checkbox"></span>
-            <span>I confirm that the grades presented are accurate and reflect my academic performance.</span>
-            <div style="font-size: 6px; color: #94a3b8; margin-top: 2px;">I understand that falsification will result in disciplinary action.</div>
         </div>
 
         <div class="signatures">
@@ -2914,7 +2907,7 @@ const chartCanvas = printWindow.document.querySelector('.chart-container canvas'
                                     }
                                 },
                                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-                                pagebreak: { mode: ['css'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.declaration', '.signatures', '.footer'] }
+                                pagebreak: { mode: ['css'], avoid: ['.transcript-top', '.student-info-wrapper', '.semester-results-title', '.chart-container', '.signatures', '.footer'] }
                             };
                             await printWindow.html2pdf().set(options).from(target).save();
                             downloadStarted = true;
