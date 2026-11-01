@@ -7956,7 +7956,7 @@ window.loadAssessmentApprovals = async function() {
             if (!canReview) {
                 actions='<span style="font-size:11px;color:#64748b;">Administrator review only</span>';
             } else if (assessmentApprovalFilter==='pending') {
-                actions='<button type="button" onclick="approveAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#059669;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-check"></i> Approve</button><button type="button" onclick="rejectAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#dc2626;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-times"></i> Reject</button>';
+                actions='<button type="button" onclick="approveAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#059669;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-check"></i> Approve &amp; Publish</button><button type="button" onclick="rejectAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#dc2626;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-times"></i> Reject</button>';
             } else if (assessmentApprovalFilter==='approved') {
                 actions='<button type="button" onclick="publishApprovedAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#0A3D62;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-bullhorn"></i> Publish</button>';
             } else actions='<span style="font-size:11px;color:#64748b;">Decision recorded</span>';
@@ -7974,11 +7974,20 @@ window.approveAssessment = async function(examId) {
         const {data:authData,error:authError}=await sb.auth.getUser();
         if(authError) throw authError;
         if(!authData?.user?.id) throw new Error('Secure login could not be verified. Please sign in again.');
-        if(!confirm('Approve this CAT/Exam? It will remain unpublished until you explicitly publish it.')) return;
-        const {data,error}=await sb.from('exams').update({approval_status:'approved',approved_by:authData.user.id,approved_at:new Date().toISOString(),rejection_reason:null,is_published:false,status:'draft',updated_at:new Date().toISOString()}).eq('id',examId).eq('approval_status','pending').select('id');
+        if(!confirm('Approve and publish this CAT/Exam now? Students will be able to access it according to its schedule and exam settings.')) return;
+        const decisionTime = new Date().toISOString();
+        const {data,error}=await sb.from('exams').update({
+            approval_status:'approved',
+            approved_by:authData.user.id,
+            approved_at:decisionTime,
+            rejection_reason:null,
+            is_published:true,
+            status:'published',
+            updated_at:decisionTime
+        }).eq('id',examId).eq('approval_status','pending').select('id');
         if(error) throw error;
         if(!data?.length) throw new Error('No record updated. It may already have been reviewed or your account lacks permission.');
-        showAssessmentApprovalMessage('Assessment approved and kept unpublished.');
+        showAssessmentApprovalMessage('Assessment approved and published successfully.');
         await loadAssessmentApprovals(); await loadAllExams();
     } catch(error) { console.error(error); showAssessmentApprovalMessage(error.message||'Approval failed.',true); alert(error.message||'Approval failed.'); }
 };
