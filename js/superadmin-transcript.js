@@ -319,7 +319,7 @@ function updateTranscriptBatchActionLabel() {
     const node = document.getElementById('transcriptBatchScopeLabel');
     if (!node) return;
     const ctx = getTranscriptFilterContext();
-    const count = (window.transcriptData?.filteredStudents || []).length;
+    const count = (window.transcriptData?.students || []).length;
     node.textContent = `Intake ${ctx.intakeYear} · ${ctx.block === 'all' ? 'All blocks' : ctx.block} · ${count} eligible student(s) with approved and published marks`;
 }
 
@@ -789,7 +789,7 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
     const explicitSelection = checkedIds.length
         ? checkedIds
         : (window.transcriptData?.selectedStudents || []).map(String);
-    const filteredIds = (window.transcriptData?.filteredStudents || window.transcriptData?.students || []).map(s => String(s.student_id || ''));
+    const filteredIds = (window.transcriptData?.students || []).map(s => String(s.student_id || ''));
     const selectedIds = [...new Set(options.allFiltered
         ? filteredIds
         : (explicitSelection.length ? explicitSelection : filteredIds))];
