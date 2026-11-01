@@ -118,15 +118,20 @@
     });
     updateWheelAvailability();
   }
+  function isDepartmentFull(department) {
+    const row = state.capacity[department];
+    if (!row) return false;
+    const value = row.is_full;
+    return value === true || value === 1 || ['true', '1', 'yes', 'full'].includes(String(value).trim().toLowerCase());
+  }
   function availableDepartments() {
-    return departments.filter(d => !state.capacity[d]?.is_full);
+    return departments.filter(d => !isDepartmentFull(d));
   }
   function updateWheelAvailability() {
     departments.forEach(d => {
       const label = document.querySelector('[data-wheel-department="' + d + '"]');
       if (!label) return;
-      const row = state.capacity[d];
-      const full = !!(row && row.is_full);
+      const full = isDepartmentFull(d);
       label.classList.toggle('cp-department-full', full);
       const existing = label.querySelector('.cp-full-tag');
       if (existing) existing.remove();
@@ -146,64 +151,123 @@
   function bindWheel(open, opens, closes) {
     const spin = $('cp-spin-wheel'), wheel = $('cp-department-wheel'), countdown = $('cp-wheel-countdown');
     if (!spin || !wheel || !countdown) return;
+
     const update = () => {
       const now = Date.now();
-      const startWait = opens && now < opens ? opens - now : 0;
-      const closeWait = closes && now > closes;
-      const canSpin = !startWait && !closeWait && !!state.ballot && ['open','scheduled'].includes(String(state.ballot.status||'').toLowerCase()) && (!opens || now >= opens) && (!closes || now <= closes) && state.spinsUsed < 2 && availableDepartments().length > 0;
+      const startWait = Number.isFinite(opens) && opens > now ? opens - now : 0;
+      const closeWait = Number.isFinite(closes) && closes > 0 && now > closes;
+      const ballotIsOpen = !!state.ballot &&
+        ['open', 'scheduled'].includes(String(state.ballot.status || '').toLowerCase()) &&
+        !startWait && !closeWait;
+      const available = availableDepartments();
+      const canSpin = ballotIsOpen && state.spinsUsed < 2 && available.length > 0;
+
       spin.disabled = !canSpin || state.busy || spin.dataset.spinning === '1';
       if (startWait > 0) {
         countdown.textContent = 'Wheel opens in ' + formatCountdown(startWait);
         spin.innerHTML = '<i class="fas fa-clock"></i> Opens in ' + formatCountdown(startWait);
-      } else if (closeWait) {
-        countdown.textContent = 'This ballot has closed.';
+      } else if (closeWait || !ballotIsOpen) {
+        countdown.textContent = 'This ballot is not currently open for spinning.';
         spin.innerHTML = '<i class="fas fa-lock"></i> Ballot closed';
-      } else if (canSpin) {
-        countdown.textContent = 'The wheel is open. Spin to choose your first preference.';
-        if (spin.dataset.spinning !== '1') spin.innerHTML = '<i class="fas fa-dharmachakra"></i> Spin department wheel';
-      } else if (!availableDepartments().length) {
+      } else if (!available.length) {
         countdown.textContent = 'All departments are full. Contact the School of Nursing.';
         spin.innerHTML = '<i class="fas fa-ban"></i> No departments available';
       } else if (state.spinsUsed >= 2) {
         countdown.textContent = 'You have used both spins. Submit your preferences below.';
         spin.innerHTML = '<i class="fas fa-check-circle"></i> Spins used — submit choice';
-      } else {
-        countdown.textContent = 'Waiting for the School of Nursing to open this ballot.';
-        spin.innerHTML = '<i class="fas fa-clock"></i> Waiting to open';
+      } else if (spin.dataset.spinning !== '1') {
+        countdown.textContent = 'The wheel is open. Tap the button to spin.';
+        spin.innerHTML = '<i class="fas fa-dharmachakra"></i> Spin department wheel';
       }
     };
+
     updateWheelAvailability();
     update();
     if (wheelTimer) clearInterval(wheelTimer);
     wheelTimer = setInterval(update, 1000);
-    spin.addEventListener('click', () => {
-      if (spin.disabled || spin.dataset.spinning === '1' || state.spinsUsed >= 2) return;
-      if (state.spinsUsed >= 2) return notify('You have used both spins for this ballot. Submit your preference order to continue.', 'warning');
+
+    // Assign one handler to the newly rendered button. This avoids stale listeners
+    // when the student switches tabs or the section is refreshed.
+    spin.onclick = (event) => {
+      event.preventDefault();
+      if (spin.disabled || spin.dataset.spinning === '1') return;
+
+      const now = Date.now();
+      const ballotOpen = !!state.ballot &&
+        ['open', 'scheduled'].includes(String(state.ballot.status || '').toLowerCase()) &&
+        (!Number.isFinite(opens) || !opens || now >= opens) &&
+        (!Number.isFinite(closes) || !closes || now <= closes);
+      if (!ballotOpen) {
+        update();
+        return notify('The department ballot is not open yet. Please check the opening and closing time.', 'warning');
+      }
+      if (state.spinsUsed >= 2) {
+        update();
+        return notify('You have used both spins for this ballot. Submit your preference order to continue.', 'warning');
+      }
+
+      const available = availableDepartments();
+      if (!available.length) {
+        update();
+        return notify('All departments are currently full. Please contact the School of Nursing.', 'warning');
+      }
+
+      const chosen = available[Math.floor(Math.random() * available.length)];
+      const chosenIndex = departments.indexOf(chosen);
+      const sectorSize = 360 / departments.length;
+      const targetSector = (360 - ((chosenIndex + 0.5) * sectorSize)) % 360;
+      const currentAngle = ((wheelRotation % 360) + 360) % 360;
+      const correction = (targetSector - currentAngle + 360) % 360;
+      const turns = 5 + Math.floor(Math.random() * 3);
+
       spin.dataset.spinning = '1';
       spin.disabled = true;
       spin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Spinning…';
-      const available = availableDepartments();
-      if (!available.length) { spin.dataset.spinning = '0'; update(); return notify('All departments are full. Please contact the School of Nursing.', 'warning'); }
-      const chosen = available[Math.floor(Math.random() * available.length)];
-      const chosenIndex = departments.indexOf(chosen);
-      // Wheel sectors are equal; rotate so the selected sector finishes under the top pointer.
-      const targetSector = (360 - ((chosenIndex + 0.5) * 360 / departments.length)) % 360;
-      wheelRotation += 360 * (5 + Math.floor(Math.random() * 3)) + targetSector;
+      countdown.textContent = 'The wheel is spinning. Your result will appear shortly.';
+
+      // Force a clean starting frame so the CSS transition also works after
+      // tab changes, refreshes, and browsers that batch style updates.
+      wheel.style.transition = 'none';
       wheel.style.transform = 'rotate(' + wheelRotation + 'deg)';
-      window.setTimeout(() => {
-        const desired = [chosen].concat(availableDepartments().filter(d => d !== chosen));
-        state.wheelOrder = desired;
+      void wheel.offsetWidth;
+      wheel.style.transition = 'transform 4.2s cubic-bezier(.12,.72,.12,1)';
+      wheelRotation += turns * 360 + correction;
+      window.requestAnimationFrame(() => {
+        wheel.style.transform = 'rotate(' + wheelRotation + 'deg)';
+      });
+
+      let completed = false;
+      const finishSpin = () => {
+        if (completed) return;
+        completed = true;
+        const stillAvailable = availableDepartments();
+        state.wheelOrder = [chosen].concat(stillAvailable.filter(d => d !== chosen));
         state.spinsUsed += 1;
+
         const result = $('cp-wheel-result');
         const remaining = $('cp-spin-remaining');
         if (result) result.textContent = chosen;
-        if (remaining) remaining.textContent = (2-state.spinsUsed) + ' spin(s) remaining';
+        if (remaining) remaining.textContent = (2 - state.spinsUsed) + ' spin(s) remaining';
         const resultCard = $('cp-wheel-result-card');
         if (resultCard) resultCard.classList.add('cp-result-revealed');
+
         spin.dataset.spinning = '0';
         update();
-      }, 4300);
-    });
+      };
+
+      // transitionend is the normal completion path; timeout is a fallback for
+      // reduced-motion settings or browsers that do not emit transition events.
+      const onTransitionEnd = (event) => {
+        if (event.target !== wheel || event.propertyName !== 'transform') return;
+        wheel.removeEventListener('transitionend', onTransitionEnd);
+        finishSpin();
+      };
+      wheel.addEventListener('transitionend', onTransitionEnd);
+      window.setTimeout(() => {
+        wheel.removeEventListener('transitionend', onTransitionEnd);
+        finishSpin();
+      }, 4500);
+    };
   }
   function formatCountdown(ms) {
     const total = Math.max(0, Math.floor(ms / 1000));
