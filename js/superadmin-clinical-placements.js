@@ -63,6 +63,9 @@
     box.style.cssText = 'grid-column:1/-1;padding:14px;border:1px solid #d7e4ed;border-radius:12px;background:#f7fbfd;margin:8px 0';
     box.innerHTML = '<label for="ca-department-new"><strong>Departments for this ballot</strong></label><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><input id="ca-department-new" class="ca-input" style="flex:1;min-width:180px" placeholder="Type a department name"><button type="button" id="ca-add-department" class="ca-btn ca-btn-green"><i class="fas fa-plus"></i> Add department</button></div><div id="ca-department-chips" style="display:grid;gap:8px;margin-top:12px"></div><textarea id="ca-departments-list" hidden></textarea><small style="display:block;margin-top:6px">Add or remove departments below. Set the capacity for each department here. Use 0 for unlimited.</small>';
     form.insertBefore(box, form.querySelector('button[type="submit"]')?.parentElement || form.lastElementChild);
+    // The newer department editor is the single source of capacity values.
+    const legacyCapacityGrid=form.querySelector('.ca-capacity-grid');
+    if(legacyCapacityGrid) legacyCapacityGrid.hidden=true;
     $('ca-departments-list').value = DEPARTMENTS.join(', ');
     renderDepartmentChips();
     $('ca-add-department')?.addEventListener('click', addDepartmentFromInput);
@@ -93,7 +96,12 @@
     hidden.value=list.join(', ');
     const previous=JSON.parse($('ca-department-capacities')?.value||'{}');
     const caps=state.selectedBallot?.capacities||{};
-    list.forEach(d=>{if(previous[d]===undefined) previous[d]=caps[d]===undefined?0:Number(caps[d]);});
+    list.forEach(d=>{
+      if(previous[d]!==undefined) return;
+      const legacyIndex=DEPARTMENTS.indexOf(d);
+      const legacyValue=legacyIndex>=0 ? $('ca-cap-'+legacyIndex)?.value : undefined;
+      previous[d]=caps[d]===undefined ? Math.max(0,Number(legacyValue||0)) : Number(caps[d]);
+    });
     if(!$('ca-department-capacities')) {
       const store=document.createElement('textarea');store.id='ca-department-capacities';store.hidden=true;wrap.parentElement.appendChild(store);
     }
@@ -297,26 +305,34 @@
   }
   function bind() {
     const form=$('ca-ballot-form');
-    if(form) form.addEventListener('submit',saveBallot);
-    $('ca-refresh')?.addEventListener('click',()=>loadBallots().then(()=>setStatus('Data refreshed.',false)).catch(e=>{setStatus(e.message,true);notify(e.message,'error');}));
-    $('ca-load-preferences')?.addEventListener('click',()=>loadPreferences().catch(e=>notify(e.message,'error')));
-    $('ca-reset-form')?.addEventListener('click',()=>{
+    if(form && form.dataset.caBound!=='1') { form.dataset.caBound='1'; form.addEventListener('submit',saveBallot); }
+    const refresh=$('ca-refresh');
+    if(refresh && refresh.dataset.caBound!=='1') {
+      refresh.dataset.caBound='1';
+      refresh.addEventListener('click',refreshSafely);
+    }
+    const reload=$('ca-load-preferences');
+    if(reload && reload.dataset.caBound!=='1') { reload.dataset.caBound='1'; reload.addEventListener('click',()=>loadPreferences().catch(e=>notify(e.message,'error'))); }
+    const reset=$('ca-reset-form');
+    if(reset && reset.dataset.caBound!=='1') { reset.dataset.caBound='1'; reset.addEventListener('click',()=>{
       $('ca-ballot-form')?.reset(); $('ca-edit-id').value='';
       if($('ca-departments-list')) $('ca-departments-list').value=DEPARTMENTS.join(', '); if($('ca-department-capacities')) $('ca-department-capacities').value='{}'; state.selectedBallot=null; renderDepartmentChips();
       $('ca-save-ballot').innerHTML='<i class="fas fa-plus"></i> Create ballot';
       DEPARTMENTS.forEach((d,i)=>{if($('ca-cap-'+i)) $('ca-cap-'+i).value='0';});
-    });
-    $('ca-ballots-body')?.addEventListener('click',e=>{
+    }); }
+    const ballotsBody=$('ca-ballots-body');
+    if(ballotsBody && ballotsBody.dataset.caBound!=='1') { ballotsBody.dataset.caBound='1'; ballotsBody.addEventListener('click',e=>{
       const edit=e.target.closest('[data-edit-ballot]'); if(edit) return selectBallot(edit.dataset.editBallot);
       const action=e.target.closest('[data-ballot-action]');
       if(action) return ballotAction(action.dataset.id,action.dataset.ballotAction);
       const select=e.target.closest('[data-select-ballot]');
       if(select) selectBallot(select.dataset.selectBallot);
-    });
-    $('ca-preferences-body')?.addEventListener('click',e=>{
+    }); }
+    const preferencesBody=$('ca-preferences-body');
+    if(preferencesBody && preferencesBody.dataset.caBound!=='1') { preferencesBody.dataset.caBound='1'; preferencesBody.addEventListener('click',e=>{
       const btn=e.target.closest('[data-allocate]');
       if(btn) allocate(btn.dataset.allocate);
-    });
+    }); }
   }
   let initialized = false;
   let loadInProgress = false;
@@ -324,8 +340,10 @@
     const panel = $('clinical-placements');
     if(!panel || initialized) return;
     initialized = true;
-    // The main Super Admin application creates window.sb in a deferred module.
-    // Wait for that client instead of failing during the first page parse.
+    // Bind controls immediately; the main application may still be creating its
+    // Supabase client in a deferred module.
+    bind();
+    ensureDepartmentEditor();
     setStatus('Connecting to the clinical placement database…', false);
     const client = await waitForClient();
     if (!client) {
@@ -334,8 +352,6 @@
       return;
     }
     // Let the existing Super Admin tab controller manage section visibility.
-    bind();
-    ensureDepartmentEditor();
     try {
       await loadBallots();
       setStatus('Connected. Create a ballot or select an existing one to manage preferences and allocations.',false);
