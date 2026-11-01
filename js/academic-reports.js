@@ -2312,7 +2312,8 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 });
                 const registryResult = await registryResponse.json().catch(() => ({}));
                 if (!registryResponse.ok || !registryResult.token) {
-                    throw new Error('Registry request failed (' + registryResponse.status + ')');
+                    const registryMessage = registryResult && (registryResult.error || registryResult.message);
+                    throw new Error('Transcript registry failed (' + registryResponse.status + '): ' + (registryMessage || 'No verification token was returned.'));
                 }
                 registryToken = registryResult.token;
                 const transcriptNumberBox = document.getElementById('transcriptGenerationNumber');
