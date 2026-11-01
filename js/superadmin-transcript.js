@@ -310,7 +310,7 @@ function ensureTranscriptBatchActions() {
     toolbar.querySelector('#transcriptGenerateSingleAction').addEventListener('click', () => window.generateSelectedTranscript());
     toolbar.querySelector('#transcriptGenerateBlockAction').addEventListener('click', () => {
         window.transcriptData.selectedStudents = [];
-        window.generateSelectedTranscriptBatch();
+        window.generateSelectedTranscriptBatch({ allFiltered: true });
     });
 }
 
@@ -734,7 +734,7 @@ window.generateSelectedTranscript = async function() {
 // GENERATE SELECTED TRANSCRIPTS (Bulk)
 // ============================================================
 
-window.generateSelectedTranscriptBatch = async function() {
+window.generateSelectedTranscriptBatch = async function(options = {}) {
     const notify = (message, type = 'info') => {
         if (typeof window.showNotification === 'function') window.showNotification(message, type);
         else console.info('[Transcript Generator]', message);
@@ -752,9 +752,10 @@ window.generateSelectedTranscriptBatch = async function() {
     const explicitSelection = checkedIds.length
         ? checkedIds
         : (window.transcriptData?.selectedStudents || []).map(String);
-    const selectedIds = [...new Set(explicitSelection.length
-        ? explicitSelection
-        : (window.transcriptData?.filteredStudents || window.transcriptData?.students || []).map(s => String(s.student_id || '')))];
+    const filteredIds = (window.transcriptData?.filteredStudents || window.transcriptData?.students || []).map(s => String(s.student_id || ''));
+    const selectedIds = [...new Set(options.allFiltered
+        ? filteredIds
+        : (explicitSelection.length ? explicitSelection : filteredIds))];
     if (!selectedIds.length) {
         notify('No eligible students are loaded. Select intake year and block, then click Load Students.', 'warning');
         return;
