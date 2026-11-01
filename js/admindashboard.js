@@ -1434,6 +1434,9 @@ function displayAllExams(exams, countMap, hasResultsMap) {
                 
                 <!-- Column 10: Published -->
                 <td style="text-align:center;">
+                    <div style="font-size:10px;font-weight:800;margin-bottom:5px;color:${String(e.approval_status || 'draft').toLowerCase() === 'approved' ? '#047857' : String(e.approval_status || 'draft').toLowerCase() === 'rejected' ? '#b91c1c' : '#b45309'};">
+                        ${escapeAdminHtml(String(e.approval_status || 'draft').toUpperCase())}
+                    </div>
                     <label class="publish-toggle">
                         <input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} 
                                onchange="togglePublish(${Number(e.id)}, ${escapeAdminHtml(JSON.stringify(String(publishStatus)))})">
@@ -7876,14 +7879,149 @@ window.batchResendReleaseEmails = async function(examId) {
         loadAllExams();
     };
 
+// ============================================================
+// CATs & EXAMS APPROVAL WORKFLOW
+// ============================================================
+let assessmentApprovalFilter = 'pending';
+
+function getAssessmentReviewer() {
+    const raw = localStorage.getItem('adminSession') || localStorage.getItem('userProfile');
+    let session = {};
+    try { session = JSON.parse(raw || '{}'); } catch (_) {}
+    const role = String(session.role || session.user_role || '').toLowerCase();
+    if (!['admin','superadmin','super_admin','administrator'].includes(role)) {
+        throw new Error('Only an Admin or Super Admin can approve, reject or publish assessments.');
+    }
+    return session;
+}
+function escapeAssessmentText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function showAssessmentApprovalMessage(message, isError = false) {
+    const el = document.getElementById('assessmentApprovalMessage');
+    if (!el) return;
+    el.textContent = message;
+    el.style.display = 'block';
+    el.style.background = isError ? '#fef2f2' : '#ecfdf5';
+    el.style.color = isError ? '#991b1b' : '#065f46';
+    el.style.border = '1px solid ' + (isError ? '#fecaca' : '#a7f3d0');
+}
+window.setAssessmentApprovalFilter = function(filter) {
+    if (!['pending','approved','rejected'].includes(filter)) return;
+    assessmentApprovalFilter = filter;
+    ['pending','approved','rejected'].forEach(key => {
+        const button = document.getElementById('assessmentFilter' + key.charAt(0).toUpperCase() + key.slice(1));
+        if (button) button.className = key === filter ? 'btn btn-primary' : 'btn';
+    });
+    loadAssessmentApprovals();
+};
+window.loadAssessmentApprovals = async function() {
+    const body = document.getElementById('assessmentApprovalsBody');
+    const badge = document.getElementById('assessmentApprovalBadge');
+    if (!body) return;
+    body.innerHTML = '<tr><td colspan="7" style="padding:28px;text-align:center;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Loading assessments…</td></tr>';
+    try {
+        const {data,error} = await sb.from('exams').select('id,title,exam_name,exam_type,course_code,course_name,program_type,target_program,block,block_term,intake_year,total_marks,marks_out_of,duration_minutes,exam_date,created_at,created_by,approval_status,approved_by,approved_at,rejection_reason,is_published,status').order('created_at',{ascending:false});
+        if (error) throw error;
+        const rows = data || [];
+        const pending = rows.filter(r => String(r.approval_status || '').toLowerCase() === 'pending');
+        const approved = rows.filter(r => String(r.approval_status || '').toLowerCase() === 'approved' && r.is_published !== true);
+        const rejected = rows.filter(r => String(r.approval_status || '').toLowerCase() === 'rejected');
+        const setText = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=String(v); };
+        setText('assessmentPendingCount',pending.length); setText('assessmentApprovedCount',approved.length); setText('assessmentRejectedCount',rejected.length);
+        if (badge) { badge.textContent=String(pending.length); badge.style.display=pending.length?'inline-flex':'none'; }
+        const visible = assessmentApprovalFilter === 'pending' ? pending : assessmentApprovalFilter === 'approved' ? approved : rejected;
+        if (!visible.length) { body.innerHTML='<tr><td colspan="7" style="padding:32px;text-align:center;color:#64748b;">No '+assessmentApprovalFilter+' assessments found.</td></tr>'; return; }
+        body.innerHTML = visible.map(r => {
+            const name=escapeAssessmentText(r.title||r.exam_name||('Assessment #'+r.id));
+            const course=escapeAssessmentText(r.course_name||r.course_code||'—');
+            const programme=escapeAssessmentText(r.target_program||r.program_type||'All programmes');
+            const block=escapeAssessmentText(r.block||r.block_term||'—');
+            const submitted=r.created_at?new Date(r.created_at).toLocaleString():'—';
+            const type=escapeAssessmentText(r.exam_type||'Assessment');
+            const marks=Number(r.total_marks||r.marks_out_of||0);
+            const meta='ID: '+escapeAssessmentText(r.id)+(r.intake_year?' · Intake '+escapeAssessmentText(r.intake_year):'')+(marks?' · '+marks+' marks':'')+(r.duration_minutes?' · '+escapeAssessmentText(r.duration_minutes)+' min':'');
+            const decision=assessmentApprovalFilter==='approved'
+                ? '<span style="color:#047857;font-weight:800;">Approved</span><div style="font-size:11px;color:#64748b;margin-top:4px;">Awaiting publication</div>'
+                : assessmentApprovalFilter==='rejected'
+                    ? '<span style="color:#b91c1c;font-weight:800;">Rejected</span><div style="font-size:11px;color:#64748b;margin-top:4px;max-width:220px;">'+escapeAssessmentText(r.rejection_reason||'No reason recorded')+'</div>'
+                    : '<span style="color:#b45309;font-weight:800;">Pending review</span>';
+            let actions='';
+            if (assessmentApprovalFilter==='pending') {
+                actions='<button type="button" onclick="approveAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#059669;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-check"></i> Approve</button><button type="button" onclick="rejectAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#dc2626;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-times"></i> Reject</button>';
+            } else if (assessmentApprovalFilter==='approved') {
+                actions='<button type="button" onclick="publishApprovedAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#0A3D62;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-bullhorn"></i> Publish</button>';
+            } else actions='<span style="font-size:11px;color:#64748b;">Decision recorded</span>';
+            return '<tr style="border-top:1px solid #edf2f7;"><td style="padding:12px;vertical-align:top;"><strong>'+name+'</strong><div style="color:#64748b;font-size:11px;margin-top:4px;">'+meta+'</div></td><td style="padding:12px;vertical-align:top;">'+type+'</td><td style="padding:12px;vertical-align:top;">'+course+'</td><td style="padding:12px;vertical-align:top;">'+programme+'<div style="font-size:11px;color:#64748b;margin-top:3px;">'+block+'</div></td><td style="padding:12px;vertical-align:top;white-space:nowrap;">'+escapeAssessmentText(submitted)+'<div style="font-size:10px;color:#64748b;">By: '+escapeAssessmentText(r.created_by||'Unknown')+'</div></td><td style="padding:12px;vertical-align:top;">'+decision+'</td><td style="padding:12px;text-align:center;vertical-align:top;white-space:nowrap;">'+actions+'</td></tr>';
+        }).join('');
+    } catch(error) {
+        console.error('Assessment approval queue failed:',error);
+        body.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:#b91c1c;">Unable to load assessments: '+escapeAssessmentText(error.message||error)+'</td></tr>';
+        showAssessmentApprovalMessage(error.message||'Unable to load assessment approvals.',true);
+    }
+};
+window.approveAssessment = async function(examId) {
+    try {
+        getAssessmentReviewer();
+        const {data:authData,error:authError}=await sb.auth.getUser();
+        if(authError) throw authError;
+        if(!authData?.user?.id) throw new Error('Secure login could not be verified. Please sign in again.');
+        if(!confirm('Approve this CAT/Exam? It will remain unpublished until you explicitly publish it.')) return;
+        const {data,error}=await sb.from('exams').update({approval_status:'approved',approved_by:authData.user.id,approved_at:new Date().toISOString(),rejection_reason:null,is_published:false,status:'draft',updated_at:new Date().toISOString()}).eq('id',examId).eq('approval_status','pending').select('id');
+        if(error) throw error;
+        if(!data?.length) throw new Error('No record updated. It may already have been reviewed or your account lacks permission.');
+        showAssessmentApprovalMessage('Assessment approved and kept unpublished.');
+        await loadAssessmentApprovals(); await loadAllExams();
+    } catch(error) { console.error(error); showAssessmentApprovalMessage(error.message||'Approval failed.',true); alert(error.message||'Approval failed.'); }
+};
+window.rejectAssessment = async function(examId) {
+    try {
+        getAssessmentReviewer();
+        const {data:authData,error:authError}=await sb.auth.getUser();
+        if(authError) throw authError;
+        if(!authData?.user?.id) throw new Error('Secure login could not be verified. Please sign in again.');
+        const reason=prompt('Enter the reason for rejecting this CAT/Exam:');
+        if(reason===null) return;
+        if(!reason.trim()) { alert('A rejection reason is required.'); return; }
+        const {data,error}=await sb.from('exams').update({approval_status:'rejected',approved_by:authData.user.id,approved_at:new Date().toISOString(),rejection_reason:reason.trim(),is_published:false,status:'draft',updated_at:new Date().toISOString()}).eq('id',examId).eq('approval_status','pending').select('id');
+        if(error) throw error;
+        if(!data?.length) throw new Error('No record updated. It may already have been reviewed or your account lacks permission.');
+        showAssessmentApprovalMessage('Assessment rejected. Reason recorded.');
+        await loadAssessmentApprovals(); await loadAllExams();
+    } catch(error) { console.error(error); showAssessmentApprovalMessage(error.message||'Rejection failed.',true); alert(error.message||'Rejection failed.'); }
+};
+window.publishApprovedAssessment = async function(examId) {
+    try {
+        getAssessmentReviewer();
+        const {data:authData,error:authError}=await sb.auth.getUser();
+        if(authError) throw authError;
+        if(!authData?.user?.id) throw new Error('Secure login could not be verified. Please sign in again.');
+        if(!confirm('Publish this approved assessment to students now?')) return;
+        const {data,error}=await sb.from('exams').update({is_published:true,status:'published',updated_at:new Date().toISOString()}).eq('id',examId).eq('approval_status','approved').eq('is_published',false).select('id');
+        if(error) throw error;
+        if(!data?.length) throw new Error('Publication not completed. Confirm it is approved and unpublished.');
+        showAssessmentApprovalMessage('Assessment published successfully.');
+        await loadAssessmentApprovals(); await loadAllExams();
+    } catch(error) { console.error(error); showAssessmentApprovalMessage(error.message||'Publication failed.',true); alert(error.message||'Publication failed.'); }
+};
+
     window.togglePublish = async function(examId, currentStatus) {
-        const newStatus = currentStatus === 'published' ? 'draft' : 'published';
-        const { error } = await sb.from('exams').update({ status: newStatus }).eq('id', examId);
-        if (error) { 
-            alert('Error: ' + error.message); 
-        } else { 
-            loadAllExams(); 
+        const exam = (allExams || []).find(row => Number(row.id) === Number(examId));
+        const isCurrentlyPublished = currentStatus === 'published' || exam?.is_published === true;
+        if (!isCurrentlyPublished && String(exam?.approval_status || '').toLowerCase() !== 'approved') {
+            alert('This assessment must be approved before it can be published.');
+            await loadAllExams();
+            return;
         }
+        const nextPublished = !isCurrentlyPublished;
+        if (nextPublished && !confirm('Publish this approved assessment to students?')) return;
+        const { error } = await sb.from('exams').update({
+            status: nextPublished ? 'published' : 'draft',
+            is_published: nextPublished,
+            updated_at: new Date().toISOString()
+        }).eq('id', examId);
+        if (error) alert('Unable to update publication status: ' + error.message);
+        else { await loadAllExams(); await loadAssessmentApprovals(); }
     };
 
     window.openResetModal = function(examId, examName) {
@@ -8071,6 +8209,14 @@ window.batchResendReleaseEmails = async function(examId) {
     if (examId) {
         result = await sb.from('exams').update(examData).eq('id', parseInt(examId));
     } else {
+        const { data: authData, error: authError } = await sb.auth.getUser();
+        if (authError) { alert('Unable to verify your login: ' + authError.message); return; }
+        examData.approval_status = 'approved';
+        examData.approved_by = authData?.user?.id || null;
+        examData.approved_at = new Date().toISOString();
+        examData.rejection_reason = null;
+        examData.is_published = false;
+        examData.status = 'draft';
         result = await sb.from('exams').insert([examData]);
     }
     
@@ -8169,6 +8315,7 @@ window.batchResendReleaseEmails = async function(examId) {
         'students': ['Students Results', 'View and manage student exam results', 'fa-graduation-cap'],
         'allStudents': ['All Students', 'View all registered students', 'fa-users'],
         'exams': ['Exam Management', 'Create, edit and manage exams', 'fa-file-alt'],
+        'assessmentApprovals': ['CATs & Exams Approval', 'Review lecturer-submitted CATs and exams', 'fa-clipboard-check'],
         'questions': ['Question Bank', 'Create and manage exam questions', 'fa-question-circle'],
         'pendingQuestions': ['Pending Questions', 'Review and approve questions from lecturers', 'fa-clock'],
         'proctoring': ['Proctoring Alerts', 'Live monitoring and alerts', 'fa-video'],
@@ -8225,6 +8372,7 @@ window.batchResendReleaseEmails = async function(examId) {
     if (tab === 'students') loadStudentsWithResults();
     if (tab === 'allStudents') loadAllStudents();
     if (tab === 'exams') loadAllExams();
+    if (tab === 'assessmentApprovals') loadAssessmentApprovals();
     
     // ✅ QUESTIONS TAB - Call external function
     if (tab === 'questions') {
@@ -8312,6 +8460,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAllStudents();
     loadAllExams();
     loadProctoringLogs();
+    loadAssessmentApprovals();
     
     // Then load results after exams map is ready
     setTimeout(() => {
