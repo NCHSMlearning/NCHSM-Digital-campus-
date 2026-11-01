@@ -13292,7 +13292,7 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
             target.classList.add('active');
         }
         
-        document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
+        document.querySelectorAll('.sidebar-nav-premium a[data-tab], .dropdown-submenu a[data-tab]').forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('data-tab') === tabId) {
                 link.classList.add('active');
@@ -13363,7 +13363,7 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
         });
     });
     
-    const hubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
+    const hubLink = document.querySelector('.sidebar-nav-premium a[data-tab="learning-hub"]');
     if (hubLink) {
         const newLink = hubLink.cloneNode(true);
         hubLink.parentNode.replaceChild(newLink, hubLink);
@@ -13385,7 +13385,7 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
         });
     }
     
-    document.querySelectorAll('.nav a[data-tab]').forEach(link => {
+    document.querySelectorAll('.sidebar-nav-premium a[data-tab]').forEach(link => {
         if (link.getAttribute('data-tab') === 'learning-hub') return;
         const tabId = link.getAttribute('data-tab');
         const newLink = link.cloneNode(true);
