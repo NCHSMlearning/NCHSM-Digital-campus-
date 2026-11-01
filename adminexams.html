@@ -209,6 +209,10 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
         <li><a data-tab="exams" onclick="switchTab('exams')">
             <i class="fas fa-file-alt"></i> Exam Management
         </a></li>
+        <li><a data-tab="assessmentApprovals" onclick="switchTab('assessmentApprovals')">
+            <i class="fas fa-clipboard-check"></i> CATs &amp; Exams Approval
+            <span class="badge-sidebar warning" id="assessmentApprovalBadge">0</span>
+        </a></li>
         <li><a data-tab="createExam" onclick="switchTab('createExam')">
             <i class="fas fa-plus-circle"></i> Create Exam
         </a></li>
@@ -578,6 +582,33 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
                 </div>
                 <div class="pagination" id="examsPagination"></div>
             </div>
+        </section>
+
+        <!-- CATs & Exams Approval Queue -->
+        <section id="assessmentApprovals" class="tab-content" style="display:none;">
+            <div style="background:linear-gradient(135deg,#0A3D62,#174f75);border-radius:16px;padding:20px 24px;margin-bottom:18px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">
+                <div><h2 style="margin:0;font-weight:800;"><i class="fas fa-clipboard-check" style="color:#FDB913;"></i> CATs &amp; Exams Approval</h2>
+                <p style="margin:5px 0 0;color:#dbeafe;font-size:13px;">Review lecturer-submitted assessments. Approval and publication are separate actions.</p></div>
+                <button type="button" onclick="loadAssessmentApprovals()" style="background:#FDB913;color:#0A3D62;border:0;border-radius:8px;padding:10px 16px;font-weight:800;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;">
+                <div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:12px;padding:15px;"><div id="assessmentPendingCount" style="font-size:25px;font-weight:800;color:#0A3D62;">—</div><div style="font-size:12px;color:#64748b;">Awaiting review</div></div>
+                <div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid #10b981;border-radius:12px;padding:15px;"><div id="assessmentApprovedCount" style="font-size:25px;font-weight:800;color:#0A3D62;">—</div><div style="font-size:12px;color:#64748b;">Approved, not published</div></div>
+                <div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:12px;padding:15px;"><div id="assessmentRejectedCount" style="font-size:25px;font-weight:800;color:#0A3D62;">—</div><div style="font-size:12px;color:#64748b;">Rejected</div></div>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary" onclick="setAssessmentApprovalFilter('pending')" id="assessmentFilterPending">Pending</button>
+                <button type="button" class="btn" onclick="setAssessmentApprovalFilter('approved')" id="assessmentFilterApproved">Approved — Unpublished</button>
+                <button type="button" class="btn" onclick="setAssessmentApprovalFilter('rejected')" id="assessmentFilterRejected">Rejected</button>
+                <span style="margin-left:auto;color:#64748b;font-size:12px;">Administrator access required for decisions.</span>
+            </div>
+            <div id="assessmentApprovalMessage" role="status" style="display:none;padding:12px 14px;border-radius:9px;margin-bottom:12px;font-size:13px;"></div>
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;"><div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;min-width:900px;font-size:13px;">
+                    <thead><tr style="background:#f8fafc;color:#475569;text-align:left;"><th style="padding:12px;">Assessment</th><th style="padding:12px;">Type</th><th style="padding:12px;">Course / Unit</th><th style="padding:12px;">Programme / Block</th><th style="padding:12px;">Submitted</th><th style="padding:12px;">Decision</th><th style="padding:12px;text-align:center;">Actions</th></tr></thead>
+                    <tbody id="assessmentApprovalsBody"><tr><td colspan="7" style="padding:28px;text-align:center;color:#64748b;">Loading assessment submissions…</td></tr></tbody>
+                </table>
+            </div></div>
         </section>
 
         <!-- ============================================================ -->
