@@ -164,6 +164,65 @@
       return '<tr><td><strong>'+esc(profile.full_name||profile.name||'Student')+'</strong><small>'+esc(profile.student_id||profile.admission_number||'')+'</small></td><td>'+esc(profile.program||state.selectedBallot.program||'—')+'</td><td>'+esc(profile.block||state.selectedBallot.block||'—')+'</td><td><ol class="ca-pref-list">'+prefs.map(d=>'<li>'+esc(d)+'</li>').join('')+'</ol></td><td>'+esc(p.submitted_at?new Date(p.submitted_at).toLocaleString():'—')+'</td><td>'+ (placement?'<span class="ca-pill ca-allocated">'+esc(placement.status||'allocated')+'</span><small>'+esc(placement.facility_name||'Facility pending')+'</small>':'<span class="ca-pill ca-scheduled">Not allocated</span>')+'</td><td><div class="ca-assign-fields">'+select+'<input class="ca-input ca-facility" data-facility-for="'+esc(p.student_id)+'" placeholder="Facility / hospital" value="'+esc(placement?.facility_name||'')+'"><div class="ca-date-pair"><input class="ca-input ca-start" type="date" data-start-for="'+esc(p.student_id)+'" aria-label="Start date" value="'+esc(dateOnly(placement?.start_date))+'"><input class="ca-input ca-end" type="date" data-end-for="'+esc(p.student_id)+'" aria-label="End date" value="'+esc(dateOnly(placement?.end_date))+'"></div><input class="ca-input ca-hours" type="number" min="0" step="1" data-hours-for="'+esc(p.student_id)+'" placeholder="Required hours" value="'+esc(placement?.required_hours??'')+'"><button type="button" class="ca-btn ca-btn-green ca-allocate" data-allocate="'+esc(p.student_id)+'">'+(placement?'Update placement':'Allocate')+'</button></div></td></tr>';
     }).join('');
   }
+  function finalAllocationRows() {
+    if (!state.selectedBallot) return [];
+    return state.preferences.map(pref => {
+      const profile = state.profiles[pref.student_id] || {};
+      const placement = state.placements.find(p => p.student_id === pref.student_id && p.ballot_id === state.selectedBallot.id && p.status !== 'cancelled');
+      return {
+        'Student Name': profile.full_name || profile.name || 'Student',
+        'Admission Number': profile.student_id || profile.admission_number || '',
+        'Program': profile.program || state.selectedBallot.program || '',
+        'Block': profile.block || state.selectedBallot.block || '',
+        'Intake': profile.intake_year || profile.intake || state.selectedBallot.intake_year || '',
+        'Ranked Preferences': (Array.isArray(pref.preferences) ? pref.preferences : []).join(' > '),
+        'Allocated Facility': placement?.facility_name || '',
+        'Final Department': placement?.department || '',
+        'Start Date': dateOnly(placement?.start_date),
+        'End Date': dateOnly(placement?.end_date),
+        'Required Hours': placement?.required_hours ?? '',
+        'Placement Status': placement?.status || 'Not allocated',
+        'Submitted At': pref.submitted_at ? new Date(pref.submitted_at).toLocaleString() : ''
+      };
+    });
+  }
+  function exportFinalAllocations() {
+    if (!state.selectedBallot) return notify('Select a ballot before exporting.', 'warning');
+    const rows = finalAllocationRows();
+    if (!rows.length) return notify('There are no student submissions to export for this ballot.', 'warning');
+    if (!window.XLSX || !window.XLSX.utils) return notify('Excel export library is unavailable. Refresh the page and try again.', 'error');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = Object.keys(rows[0]).map(key => ({ wch: Math.min(32, Math.max(key.length + 2, ...rows.map(row => String(row[key] ?? '').length + 2))) }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Final Allocations');
+    const summary = XLSX.utils.aoa_to_sheet([
+      ['Nakuru College of Health Sciences & Management'],
+      ['FINAL CLINICAL ROTATION ALLOCATION'],
+      ['Ballot', state.selectedBallot.title || 'Clinical Rotation'],
+      ['Program', state.selectedBallot.program || 'All programs'],
+      ['Block', state.selectedBallot.block || 'All blocks'],
+      ['Intake', state.selectedBallot.intake_year || 'Any intake'],
+      ['Generated', new Date().toLocaleString()],
+      ['Students', rows.length],
+      ['Allocated', rows.filter(row => row['Final Department']).length],
+      ['Pending', rows.filter(row => !row['Final Department']).length]
+    ]);
+    XLSX.utils.book_append_sheet(wb, summary, 'Summary');
+    const safeName = String(state.selectedBallot.title || 'clinical-rotations').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    XLSX.writeFile(wb, safeName + '-final-allocations.xlsx');
+  }
+  function printFinalAllocations() {
+    if (!state.selectedBallot) return notify('Select a ballot before printing.', 'warning');
+    const rows = finalAllocationRows();
+    if (!rows.length) return notify('There are no student submissions to print for this ballot.', 'warning');
+    const columns = ['Student Name','Admission Number','Program','Block','Intake','Allocated Facility','Final Department','Start Date','End Date','Required Hours','Placement Status'];
+    const escHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const htmlRows = rows.map(row => '<tr>' + columns.map(col => '<td>' + escHtml(row[col]) + '</td>').join('') + '</tr>').join('');
+    const win = window.open('', '_blank');
+    if (!win) return notify('Allow pop-ups to print the final allocation list.', 'warning');
+    win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Final Clinical Rotation Allocations</title><style>@page{size:A4 landscape;margin:12mm}body{font:11px Arial,sans-serif;color:#111}h1{font-size:18px;margin:0 0 5px}h2{font-size:14px;margin:0 0 12px}p{margin:3px 0 12px}.meta{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:9px}th,td{border:1px solid #777;padding:5px;text-align:left;vertical-align:top}th{background:#e8eef5}thead{display:table-header-group}tr{break-inside:avoid}.sign{display:flex;justify-content:space-between;margin-top:35px}.sign span{border-top:1px solid #333;padding-top:5px;width:30%;text-align:center}@media print{button{display:none}}</style></head><body><h1>Nakuru College of Health Sciences &amp; Management</h1><h2>FINAL CLINICAL ROTATION ALLOCATION</h2><div class="meta"><span><b>Ballot:</b> '+escHtml(state.selectedBallot.title)+'</span><span><b>Program:</b> '+escHtml(state.selectedBallot.program||'All programs')+'</span><span><b>Block:</b> '+escHtml(state.selectedBallot.block||'All blocks')+'</span><span><b>Intake:</b> '+escHtml(state.selectedBallot.intake_year||'Any intake')+'</span><span><b>Generated:</b> '+escHtml(new Date().toLocaleString())+'</span></div><table><thead><tr>'+columns.map(col=>'<th>'+escHtml(col)+'</th>').join('')+'</tr></thead><tbody>'+htmlRows+'</tbody></table><div class="sign"><span>Prepared by</span><span>HOD / Clinical Coordinator</span><span>Authorized by</span></div><script>window.onload=()=>window.print();<\/script></body></html>');
+    win.document.close();
+  }
   async function loadBallots() {
     const client=db();
     if (!client) throw new Error('Supabase client is not available on this page.');
@@ -311,6 +370,10 @@
       refresh.dataset.caBound='1';
       refresh.addEventListener('click',refreshSafely);
     }
+    const excel=$('ca-export-final');
+    if(excel && excel.dataset.caBound!=='1') { excel.dataset.caBound='1'; excel.addEventListener('click',exportFinalAllocations); }
+    const print=$('ca-print-final');
+    if(print && print.dataset.caBound!=='1') { print.dataset.caBound='1'; print.addEventListener('click',printFinalAllocations); }
     const reload=$('ca-load-preferences');
     if(reload && reload.dataset.caBound!=='1') { reload.dataset.caBound='1'; reload.addEventListener('click',()=>loadPreferences().catch(e=>notify(e.message,'error'))); }
     const reset=$('ca-reset-form');
