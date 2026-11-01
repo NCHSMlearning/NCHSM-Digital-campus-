@@ -1084,6 +1084,7 @@ window.loadStudentsWithResults = async function(options = {}) {
         const viewProgressHandler = escapeAdminHtml(`viewStudentProgress(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId})`);
         const timerHandler = escapeAdminHtml(`openTimerModal(${JSON.stringify(studentUserId)}, ${JSON.stringify(studentNameRaw)}, ${examId}, ${JSON.stringify(examNameRaw)})`);
         const resetHandler = escapeAdminHtml(`resetSingleStudent(${JSON.stringify(studentUserId)}, ${examId}, ${JSON.stringify(studentNameRaw)}, ${JSON.stringify(examNameRaw)})`);
+        const clearResetHandler = escapeAdminHtml(`resetSingleStudentAnswers(${JSON.stringify(studentUserId)}, ${examId}, ${JSON.stringify(studentNameRaw)}, ${JSON.stringify(examNameRaw)})`);
         
         return `<tr>
             <td style="padding:10px 14px; vertical-align:middle;">
@@ -1137,8 +1138,11 @@ window.loadStudentsWithResults = async function(options = {}) {
                     <button class="action-btn btn-info exam-attempt-history-btn" onclick="viewAttemptHistory(${safeStudentArgument}, ${examId})" title="View current final result">
                         <i class="fas fa-history"></i> Current
                     </button>
-                    <button class="action-btn btn-reset-student" onclick="${resetHandler}" title="Reset exam and continue from saved progress">
-                        <i class="fas fa-redo"></i> Retake
+                    <button class="action-btn btn-reset-student" onclick="${resetHandler}" title="Authorize continuation; preserve saved answers and progress">
+                        <i class="fas fa-play-circle"></i> Retake / Continue
+                    </button>
+                    <button class="action-btn btn-danger" onclick="${clearResetHandler}" title="Clear saved answers and score, then authorize a clean restart">
+                        <i class="fas fa-eraser"></i> Reset / Clear
                     </button>
                 </div>
             </td>
@@ -2148,6 +2152,48 @@ window.resetSingleStudent = async function(studentId, examId, studentName, examN
         if (targetBtn) {
             targetBtn.innerHTML = '<i class="fas fa-rotate-right"></i> Continue Reset';
             targetBtn.disabled = false;
+        }
+    }
+};
+
+// Clear saved responses and authorize a clean restart for one student/exam.
+// This is intentionally separate from resetSingleStudent(), which preserves progress.
+window.resetSingleStudentAnswers = async function(studentId, examId, studentName, examName) {
+    if (!studentId || !Number(examId)) {
+        showToast('Student and exam are required.', 'warning');
+        return;
+    }
+    const confirmed = confirm(
+        'CLEAR ANSWERS & RESET EXAM\\n\\n' +
+        'Student: ' + studentName + '\\n' +
+        'Exam: ' + examName + '\\n\\n' +
+        'This deletes saved question choices and the current score for this student/exam, then authorizes a clean restart.\\n' +
+        'The audit history is retained. You may perform this reset again if needed.\\n\\nContinue?'
+    );
+    if (!confirmed) return;
+    const rowButtons = Array.from(document.querySelectorAll('button[onclick*="resetSingleStudentAnswers"]'));
+    const targetBtn = rowButtons.find(btn => btn.getAttribute('onclick')?.includes(String(studentId)) && btn.getAttribute('onclick')?.includes(String(examId)));
+    if (targetBtn) {
+        targetBtn.disabled = true;
+        targetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
+    }
+    try {
+        const { data, error } = await sb.rpc('admin_clear_exam_choices', {
+            p_student_id: studentId,
+            p_exam_id: Number(examId)
+        });
+        if (error) throw error;
+        const cleared = Number(data?.deleted_grade_answer_rows || 0) + Number(data?.deleted_exam_answer_rows || 0);
+        showToast('Clean restart authorized for ' + studentName + '. Cleared ' + cleared + ' saved answer rows.', 'success');
+        await Promise.allSettled([loadStudentsWithResults(), loadAllExams(), loadAllStudents()]);
+        updateStats();
+    } catch (error) {
+        console.error('Student exam clear/reset failed:', error);
+        showToast('Unable to clear and reset exam: ' + (error?.message || 'Unknown error'), 'error');
+    } finally {
+        if (targetBtn) {
+            targetBtn.disabled = false;
+            targetBtn.innerHTML = '<i class="fas fa-eraser"></i> Reset / Clear';
         }
     }
 };
