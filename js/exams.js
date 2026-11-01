@@ -1456,9 +1456,12 @@ applyDataFilter() {
                 if (isReleased) {
                     actionHtml = `<div class="row-actions"><button type="button" class="result-btn" onclick="window.openNurseIQExamReview?.(${exam.id})"><i class="fas fa-chart-column"></i> View Result</button><button type="button" class="review-btn" onclick="window.openNurseIQExamReview?.(${exam.id})"><i class="fas fa-book-open"></i> Review Questions</button></div>`;
                 } else if (isRetake) {
-                    // Retake authorizations are displayed only in Current Assessments.
-                    // Keep the Completed table free of a second Retake action.
-                    actionHtml = '<span class="status-pill status-retake">Continue from Current Assessments</span>';
+                    const userId = this.userId || window.db?.currentUserId || '';
+                    const examLink = exam.examLink;
+                    if (examLink && examLink.startsWith('http')) {
+                        const fullUrl = examLink.split('?')[0] + '?' + new URLSearchParams({user_id:userId,exam_id:exam.id,retake:'true'}).toString();
+                        actionHtml = `<a href="${fullUrl}" target="_blank" class="retake-link" onclick="sessionStorage.setItem('returningFromExam','true');"><i class="fas fa-rotate-right"></i> Retake</a>`;
+                    } else actionHtml = '<span class="status-pill status-retake">Retake</span>';
                 } else if (isPendingRelease) {
                     actionHtml = '<span style="color:#b45309;font-size:8px;font-weight:800">Awaiting marking/release</span>';
                 }
