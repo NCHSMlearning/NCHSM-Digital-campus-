@@ -7930,6 +7930,7 @@ window.loadAssessmentApprovals = async function() {
         const setText = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=String(v); };
         setText('assessmentPendingCount',pending.length); setText('assessmentApprovedCount',approved.length); setText('assessmentRejectedCount',rejected.length);
         if (badge) { badge.textContent=String(pending.length); badge.style.display=pending.length?'inline-flex':'none'; }
+        const canReview = (() => { try { getAssessmentReviewer(); return true; } catch (_) { return false; } })();
         const visible = assessmentApprovalFilter === 'pending' ? pending : assessmentApprovalFilter === 'approved' ? approved : rejected;
         if (!visible.length) { body.innerHTML='<tr><td colspan="7" style="padding:32px;text-align:center;color:#64748b;">No '+assessmentApprovalFilter+' assessments found.</td></tr>'; return; }
         body.innerHTML = visible.map(r => {
@@ -7947,7 +7948,9 @@ window.loadAssessmentApprovals = async function() {
                     ? '<span style="color:#b91c1c;font-weight:800;">Rejected</span><div style="font-size:11px;color:#64748b;margin-top:4px;max-width:220px;">'+escapeAssessmentText(r.rejection_reason||'No reason recorded')+'</div>'
                     : '<span style="color:#b45309;font-weight:800;">Pending review</span>';
             let actions='';
-            if (assessmentApprovalFilter==='pending') {
+            if (!canReview) {
+                actions='<span style="font-size:11px;color:#64748b;">Administrator review only</span>';
+            } else if (assessmentApprovalFilter==='pending') {
                 actions='<button type="button" onclick="approveAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#059669;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-check"></i> Approve</button><button type="button" onclick="rejectAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#dc2626;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-times"></i> Reject</button>';
             } else if (assessmentApprovalFilter==='approved') {
                 actions='<button type="button" onclick="publishApprovedAssessment('+Number(r.id)+')" style="border:0;border-radius:7px;background:#0A3D62;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer;margin:2px;"><i class="fas fa-bullhorn"></i> Publish</button>';
