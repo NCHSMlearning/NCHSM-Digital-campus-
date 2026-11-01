@@ -493,12 +493,18 @@ async function loadExams(showLoading = true) {
             const isPendingReview = grade && (grade.result_status === 'PENDING_REVIEW' || grade.result_status === 'PENDING');
             
             // ----- Check if exam is released by admin -----
-            const isExamReleased = exam.status === 'Released' || 
-                                   exam.status === 'Active' || 
-                                   exam.status === 'Published' || 
+            const approvalStatus = String(exam.approval_status || '').toLowerCase();
+            const approvalBlocksAccess = approvalStatus === 'pending' ||
+                                         approvalStatus === 'rejected' ||
+                                         (approvalStatus === 'approved' && exam.is_published !== true);
+            const isExamReleased = !approvalBlocksAccess && (
+                                   exam.status === 'Released' ||
+                                   exam.status === 'Active' ||
+                                   exam.status === 'Published' ||
                                    exam.status === 'Available' ||
                                    exam.released === true ||
-                                   exam.is_published === true;
+                                   exam.is_published === true
+            );
             
             // ----- Determine exam status -----
             let examStatus = 'upcoming';
