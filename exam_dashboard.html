@@ -494,9 +494,10 @@ async function loadExams(showLoading = true) {
             
             // ----- Check if exam is released by admin -----
             const approvalStatus = String(exam.approval_status || '').toLowerCase();
+            const legacyReleasedStatus = ['released','active','published','available'].includes(String(exam.status || '').toLowerCase()) || exam.released === true;
             const approvalBlocksAccess = approvalStatus === 'pending' ||
                                          approvalStatus === 'rejected' ||
-                                         (approvalStatus === 'approved' && exam.is_published !== true);
+                                         (approvalStatus === 'approved' && exam.is_published !== true && !legacyReleasedStatus);
             const isExamReleased = !approvalBlocksAccess && (
                                    exam.status === 'Released' ||
                                    exam.status === 'Active' ||
