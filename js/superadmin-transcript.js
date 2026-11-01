@@ -323,6 +323,44 @@ function updateTranscriptBatchActionLabel() {
     node.textContent = `Intake ${ctx.intakeYear} · ${ctx.block === 'all' ? 'All blocks' : ctx.block} · ${count} eligible student(s) with approved and published marks`;
 }
 
+// Fetch all eligible marks for a cohort, paging beyond Supabase's default row cap.
+async function fetchTranscriptMarksForStudents(sb, studentIds) {
+    const ids = [...new Set((studentIds || []).map(id => String(id || '').trim()).filter(Boolean))];
+    const all = [];
+    for (let start = 0; start < ids.length; start += 100) {
+        const chunk = ids.slice(start, start + 100);
+        let offset = 0;
+        while (true) {
+            const { data, error } = await sb.from('student_marks').select('*')
+                .in('admission_number', chunk)
+                .eq('published', true)
+                .eq('approval_status', 'approved')
+                .range(offset, offset + 999);
+            if (error) throw error;
+            const rows = data || [];
+            all.push(...rows);
+            if (rows.length < 1000) break;
+            offset += 1000;
+        }
+    }
+    return all;
+}
+
+function getTranscriptFilterContext() {
+    return {
+        program: document.getElementById('transcript_program_select')?.value || 'all',
+        intakeYear: document.getElementById('transcript_year_select')?.value || 'all',
+        block: document.getElementById('transcript_block_select')?.value || 'all'
+    };
+}
+
+function transcriptMarkMatchesBlock(mark, block) {
+    if (!block || block === 'all') return true;
+    const wanted = normalizeKRCHNBlock(block);
+    const actual = normalizeKRCHNBlock(mark.block || mark.unit_name || mark.assessment_name || mark.exam_title || '');
+    return actual === wanted;
+}
+
 // LOAD TRANSCRIPT STUDENTS
 // ============================================================
 
@@ -364,13 +402,9 @@ window.loadTranscriptStudents = async function() {
             }
         }
         
-        if (block !== 'all') {
-            query = query.eq('block', block);
-        }
-        
-        if (year) {
-            query = query.eq('intake_year', year);
-        }
+        // Intake year identifies the cohort. The selected block is verified against
+        // the student's actual published and approved exam marks, not their current profile block.
+        if (year && year !== 'all') query = query.eq('intake_year', year);
         
         const { data: students, error: studentError } = await query;
         
@@ -382,23 +416,24 @@ window.loadTranscriptStudents = async function() {
         
         if (students && students.length > 0) {
             const studentIds = students.map(s => s.student_id);
-            const { data: marks, error: marksError } = await window.sb
-                .from('student_marks')
-                .select('*')
-                .in('admission_number', studentIds)
-                .eq('academic_year', year)
-                .eq('published', true)
-                .eq('approval_status', 'approved');
-            
-            if (marksError) throw marksError;
-            
-            window.transcriptData.marks = marks || [];
-            
-            window.updateTranscriptStats(students, marks);
-            window.renderTranscriptStudentList(students, marks);
+            const allApprovedMarks = await fetchTranscriptMarksForStudents(window.sb, studentIds);
+            const marks = block === 'all'
+                ? allApprovedMarks
+                : allApprovedMarks.filter(mark => transcriptMarkMatchesBlock(mark, block));
+            const eligibleStudents = block === 'all'
+                ? students
+                : students.filter(student => marks.some(mark => String(mark.admission_number) === String(student.student_id)));
+
+            window.transcriptData.students = eligibleStudents;
+            window.transcriptData.filteredStudents = eligibleStudents;
+            window.transcriptData.marks = marks;
+            ensureTranscriptBatchActions();
+            updateTranscriptBatchActionLabel();
+            window.updateTranscriptStats(eligibleStudents, marks);
+            window.renderTranscriptStudentList(eligibleStudents, marks);
             
             const countEl = document.getElementById('transcript_student_count');
-            if (countEl) countEl.textContent = students.length;
+            if (countEl) countEl.textContent = eligibleStudents.length;
             
             if (placeholder) placeholder.style.display = 'none';
             if (dynamicContent) dynamicContent.style.display = 'block';
@@ -419,7 +454,8 @@ window.loadTranscriptStudents = async function() {
             if (placeholder) placeholder.style.display = 'none';
         }
         
-        window.populateTranscriptStudentDropdown(students);
+        window.populateTranscriptStudentDropdown(window.transcriptData.students);
+        updateTranscriptBatchActionLabel();
         
         console.log(`✅ Loaded ${students?.length || 0} students`);
         
@@ -560,6 +596,7 @@ window.filterTranscriptStudents = function() {
     
     window.transcriptData.filteredStudents = filtered;
     window.renderTranscriptStudentList(filtered, window.transcriptData.marks);
+    updateTranscriptBatchActionLabel();
     updateTranscriptBatchActionLabel();
     
     const countEl = document.getElementById('transcript_student_count');
