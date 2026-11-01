@@ -8213,10 +8213,21 @@ window.publishApprovedAssessment = async function(examId) {
         result = await sb.from('exams').update(examData).eq('id', parseInt(examId));
     } else {
         const { data: authData, error: authError } = await sb.auth.getUser();
-        if (authError) { alert('Unable to verify your login: ' + authError.message); return; }
-        examData.approval_status = 'approved';
-        examData.approved_by = authData?.user?.id || null;
-        examData.approved_at = new Date().toISOString();
+        if (authError || !authData?.user?.id) {
+            alert('Unable to verify your secure login. Please sign in again.');
+            return;
+        }
+        const rawSession = localStorage.getItem('adminSession') || localStorage.getItem('userProfile');
+        let sessionRole = '';
+        try {
+            const savedSession = JSON.parse(rawSession || '{}');
+            sessionRole = String(savedSession.role || savedSession.user_role || '').toLowerCase();
+        } catch (_) {}
+        const adminCreating = ['admin', 'superadmin', 'super_admin', 'administrator'].includes(sessionRole);
+        examData.created_by = authData.user.id;
+        examData.approval_status = adminCreating ? 'approved' : 'pending';
+        examData.approved_by = adminCreating ? authData.user.id : null;
+        examData.approved_at = adminCreating ? new Date().toISOString() : null;
         examData.rejection_reason = null;
         examData.is_published = false;
         examData.status = 'draft';
