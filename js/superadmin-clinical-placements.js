@@ -4,8 +4,41 @@
   const DEPARTMENTS = ['Medical Ward', 'Surgical Ward', 'Maternity', 'Paediatric Ward'];
   const state = { ballots: [], selectedBallot: null, preferences: [], profiles: {}, placements: [], loading: false, departments: DEPARTMENTS.slice() };
   const $ = id => document.getElementById(id);
-  const db = () => window.sb || window.db?.supabase || window.supabase || null;
-  const uid = () => window.currentUser?.id || window.getCurrentUser?.()?.id || null;
+  // Accept only an actual Supabase client, not the CDN namespace or a fallback stub.
+  const db = () => {
+    const candidates = [
+      window.db?.supabase,
+      window.sb,
+      window.supabaseClient,
+      window.NCHSMLogin?.supabase,
+      window.supabase
+    ];
+    return candidates.find(client => client && typeof client.from === 'function' &&
+      client.auth && typeof client.auth.getUser === 'function') ||
+      candidates.find(client => client && typeof client.from === 'function') || null;
+  };
+  async function uid() {
+    const client = db();
+    if (client?.auth?.getUser) {
+      try {
+        const result = await client.auth.getUser();
+        if (!result.error && result.data?.user?.id) return result.data.user.id;
+      } catch (error) {
+        console.warn('[Clinical admin] Could not resolve authenticated user:', error?.message || error);
+      }
+    }
+    return window.db?.currentUserId || window.currentUserId ||
+      window.currentUser?.id || window.getCurrentUser?.()?.id || null;
+  }
+  async function waitForClient(timeoutMs = 15000) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      const client = db();
+      if (client) return client;
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    return db();
+  }
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const notify = (m,t) => typeof window.showNotification === 'function' ? window.showNotification(m,t||'info') : window.alert(m);
   const dateOnly = v => v ? String(v).slice(0,10) : '';
@@ -165,7 +198,7 @@
   }
   async function saveBallot(event) {
     event.preventDefault();
-    const client=db(), id=uid();
+    const client=db(), id=await uid();
     if(!client) return notify('Supabase client not ready. Refresh and try again.','error');
     const title=$('ca-title')?.value.trim();
     const program=$('ca-program')?.value.trim();
@@ -251,7 +284,7 @@
       const proceed=window.confirm(department+' capacity is '+cap+' and '+occupied+' other student(s) are already assigned. Continue anyway?');
       if(!proceed) return;
     }
-    const payload={student_id:studentId,ballot_id:ballot.id,department,facility_name:facility||null,start_date:start,end_date:end,required_hours:hours,status:'allocated',allocated_by:uid(),allocated_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+    const payload={student_id:studentId,ballot_id:ballot.id,department,facility_name:facility||null,start_date:start,end_date:end,required_hours:hours,status:'allocated',allocated_by:await uid(),allocated_at:new Date().toISOString(),updated_at:new Date().toISOString()};
     try {
       const r=existing
         ? await client.from('clinical_placements').update(payload).eq('id',existing.id).select().single()
@@ -285,11 +318,22 @@
       if(btn) allocate(btn.dataset.allocate);
     });
   }
+  let initialized = false;
+  let loadInProgress = false;
   async function init() {
     const panel = $('clinical-placements');
-    if(!panel) return;
-    // Let the existing Super Admin tab controller and .tab-content.active CSS control visibility.
-    panel.style.removeProperty('display');
+    if(!panel || initialized) return;
+    initialized = true;
+    // The main Super Admin application creates window.sb in a deferred module.
+    // Wait for that client instead of failing during the first page parse.
+    setStatus('Connecting to the clinical placement database…', false);
+    const client = await waitForClient();
+    if (!client) {
+      initialized = false;
+      setStatus('Database client is not ready. Check the Super Admin connection, then use Refresh data.', true);
+      return;
+    }
+    // Let the existing Super Admin tab controller manage section visibility.
     bind();
     ensureDepartmentEditor();
     try {
@@ -297,12 +341,43 @@
       setStatus('Connected. Create a ballot or select an existing one to manage preferences and allocations.',false);
     } catch(e) {
       console.error('[Clinical admin] Initial load failed:',e);
-      setStatus('Could not load clinical rotation data: '+(e.message||'check session and RLS policies'),true);
+      setStatus('Could not load clinical rotation data: '+(e.message||'check administrator permissions and RLS policies'),true);
       const body=$('ca-ballots-body');
       if(body) body.innerHTML='<tr><td colspan="7" class="ca-empty">Could not load ballots. Confirm you are signed in as an authorized administrator and refresh.</td></tr>';
     }
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true}); else init();
-  document.addEventListener('click',e=>{if(e.target.closest('[data-tab="clinical-placements"]')) setTimeout(()=>loadBallots().catch(err=>setStatus(err.message,true)),250);});
-  window.NCHSMClinicalRotationAdmin={refresh:()=>loadBallots(),loadPreferences,selectBallot};
+  async function refreshSafely() {
+    if (loadInProgress) return;
+    loadInProgress = true;
+    try {
+      if (!db()) {
+        const client = await waitForClient();
+        if (!client) throw new Error('Supabase connection is not ready. Refresh the dashboard and try again.');
+      }
+      await loadBallots();
+      setStatus('Clinical placement data refreshed.', false);
+    } catch (error) {
+      console.error('[Clinical admin] Refresh failed:', error);
+      setStatus('Could not refresh clinical placement data: ' + (error.message || 'unknown error'), true);
+    } finally {
+      loadInProgress = false;
+    }
+  }
+  function boot() {
+    init().catch(error => {
+      initialized = false;
+      console.error('[Clinical admin] Initialization failed:', error);
+      setStatus('Clinical placement module failed to initialize: ' + (error.message || error), true);
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true}); else boot();
+  // Recover when the app finishes initializing its Supabase client after this module.
+  ['appReady','supabaseReady','databaseReady'].forEach(eventName =>
+    document.addEventListener(eventName, () => { if (!initialized) boot(); else refreshSafely(); })
+  );
+  document.addEventListener('click',e=>{
+    const link = e.target?.closest?.('[data-tab="clinical-placements"]');
+    if (link) setTimeout(refreshSafely, 250);
+  });
+  window.NCHSMClinicalRotationAdmin={refresh:refreshSafely,loadPreferences,selectBallot};
 })();
