@@ -13434,7 +13434,7 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
     
     // NCHSM_DEEP_LINK_ROUTE_MAP: translate clean student URLs into portal tab IDs before restore.
     (function mapStudentDeepLink() {
-        const path = (window.location.pathname || '').replace(/\\/+$/, '') || '/';
+        const path = (window.location.pathname || '').replace(/\/+$/, '') || '/';
         const routeTabs = {
             '/student/timetable': 'hub-timetable',
             '/student/calendar': 'hub-timetable',
