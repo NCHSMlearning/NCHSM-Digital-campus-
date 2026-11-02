@@ -969,10 +969,12 @@ async function submitReview(e) {
         return;
     }
     
-    if (!review || review.length < 10) {
-        logReview('validation_failed_review_text', { length: review?.length || 0 });
-        showFeedback('Please write at least 10 characters', 'error');
-        if (diagnostic) { diagnostic.style.display = 'block'; diagnostic.style.color = '#991b1b'; diagnostic.style.background = '#fef2f2'; diagnostic.textContent = 'Submission stopped: write at least 10 characters.'; }
+    // Reviews have no minimum word or character count and no maximum length.
+    // Keep the required field meaningful by rejecting only an empty submission.
+    if (!review) {
+        logReview('validation_failed_review_text', { length: 0 });
+        showFeedback('Please enter your review', 'error');
+        if (diagnostic) { diagnostic.style.display = 'block'; diagnostic.style.color = '#991b1b'; diagnostic.style.background = '#fef2f2'; diagnostic.textContent = 'Submission stopped: please enter your review.'; }
         return;
     }
     
