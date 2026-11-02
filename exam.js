@@ -5076,8 +5076,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (sessionError || !authUser || !authUser.id) {
         console.warn('No verified Supabase session; returning to student sign-in.');
         const requestedExamUrl = window.location.pathname + window.location.search + window.location.hash;
-        const loginUrl = new URL('student-login.html', window.location.href);
-        // Preserve the requested exam deep link through a separate-browser sign-in.
+        const loginUrl = new URL('https://nchsm.co.ke/login');
+        // Preserve the requested exam deep link through the canonical NCHSM login route.
         loginUrl.searchParams.set('redirect', requestedExamUrl);
         window.location.replace(loginUrl.toString());
         return;
