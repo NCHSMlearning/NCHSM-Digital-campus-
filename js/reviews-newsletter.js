@@ -537,7 +537,7 @@ function closeDetailModal() {
     }
 }
 
-function closeSuccessPopup() {
+function closeReviewSuccessPopup() {
     const popup = document.getElementById('reviewSuccessPopup');
     if (popup) {
         popup.style.opacity = '0';
@@ -1085,7 +1085,7 @@ async function submitReview(e) {
         
         // Close modal and show success popup
         closeReviewModal();
-        showSuccessPopup(rating, title, review, anonymous);
+        showReviewSuccessPopup(rating, title, review, anonymous);
         
         // Reset form
         document.getElementById('selectedComponent').value = '';
@@ -1156,7 +1156,7 @@ async function submitReview(e) {
 // SHOW SUCCESS POPUP
 // ============================================
 
-function showSuccessPopup(rating, title, review, anonymous) {
+function showReviewSuccessPopup(rating, title, review, anonymous) {
     document.getElementById('reviewSuccessPopup')?.remove();
     document.getElementById('nchsmReviewToast')?.remove();
     const overlay = document.createElement('div');
@@ -1298,7 +1298,7 @@ function showSuccessPopup(rating, title, review, anonymous) {
             </div>
             
             <div style="display: flex; gap: 12px; position: relative; z-index: 1; flex-wrap: wrap; justify-content: center;">
-                <button onclick="closeSuccessPopup(); loadReviews();" style="
+                <button onclick="closeReviewSuccessPopup(); loadReviews();" style="
                     flex: 1;
                     min-width: 120px;
                     padding: 12px 24px;
@@ -1316,7 +1316,7 @@ function showSuccessPopup(rating, title, review, anonymous) {
                 >
                     <i class="fas fa-thumbs-up"></i> View Reviews
                 </button>
-                <button onclick="closeSuccessPopup(); openReviewModal();" style="
+                <button onclick="closeReviewSuccessPopup(); openReviewModal();" style="
                     flex: 1;
                     min-width: 120px;
                     padding: 12px 24px;
@@ -1336,7 +1336,7 @@ function showSuccessPopup(rating, title, review, anonymous) {
                 </button>
             </div>
             
-            <button onclick="closeSuccessPopup()" style="
+            <button onclick="closeReviewSuccessPopup()" style="
                 position: absolute;
                 top: 12px;
                 right: 16px;
@@ -1384,7 +1384,7 @@ function showSuccessPopup(rating, title, review, anonymous) {
     }, 8000);
 }
 
-function closeSuccessPopup() {
+function closeReviewSuccessPopup() {
     const popup = document.getElementById('reviewSuccessPopup');
     if (popup) {
         popup.style.opacity = '0';
@@ -1813,7 +1813,7 @@ window.escapeHtml = escapeHtml;
 window.refreshReviews = refreshReviews;
 window.initCategoryFilters = initCategoryFilters;
 window.updateFilterResultsCount = updateFilterResultsCount;
-window.closeSuccessPopup = closeSuccessPopup;
+window.closeReviewSuccessPopup = closeReviewSuccessPopup;
 
 console.log('✅ Reviews & Newsletter module loaded with working modals!');
 // ============================================
