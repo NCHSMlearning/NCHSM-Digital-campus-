@@ -442,26 +442,56 @@ function buildMenu() {
 }
 
 async function init() {
-    const { data: { user }, error: authError } = await sb.auth.getUser();
-    if (authError || !user) { window.location.replace('drms_login.html'); return; }
-    const { data: profile, error: profileError } = await sb.from('consolidated_user_profiles_table')
-        .select('user_id,email,full_name,role,program,intake_year,block,status,login_enabled')
-        .eq('user_id', user.id).maybeSingle();
-    if (profileError || !profile) { await sb.auth.signOut(); window.location.replace('drms_login.html'); return; }
-    const roleRaw = String(profile.role || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
-    const role = roleRaw === 'super_admin' ? 'superadmin' : roleRaw;
-    const allowed = ['lecturer','hod','nursing_hod','tvet_hod','admin','superadmin','academic_registrar','registrar','student'];
-    if (!allowed.includes(role) || profile.login_enabled === false || !['active','approved'].includes(String(profile.status || '').toLowerCase())) {
-        await sb.auth.signOut(); window.location.replace('drms_login.html'); return;
+    const showGateError = (message) => {
+        const main = document.getElementById('mainContent');
+        if (main) main.innerHTML = '<section class="dash-panel"><h3>Academic Records access check</h3><p style="color:#a33;margin:12px 0">'+escapeHtml(message)+'</p><button class="btn btn-primary" onclick="location.reload()">Retry</button> <button class="btn btn-outline" onclick="location.href=\'drms_login.html\'">Return to login</button></section>';
+    };
+    try {
+        const { data: { user }, error: authError } = await sb.auth.getUser();
+        if (authError) throw new Error('Session verification failed: '+authError.message);
+        if (!user) { window.location.replace('drms_login.html'); return; }
+
+        const fields='user_id,email,full_name,role,program,intake_year,block,status,login_enabled';
+        let { data: profile, error: profileError } = await sb.from('consolidated_user_profiles_table')
+            .select(fields).eq('user_id', user.id).maybeSingle();
+
+        if (profileError) throw new Error('Could not read your NCHSM profile: '+profileError.message);
+        if (!profile && user.email) {
+            const byEmail=await sb.from('consolidated_user_profiles_table').select(fields).ilike('email',user.email.trim()).maybeSingle();
+            if (byEmail.error) throw new Error('Could not verify your NCHSM profile: '+byEmail.error.message);
+            profile=byEmail.data;
+        }
+        if (!profile) { showGateError('Your signed-in account ('+escapeHtml(user.email||'')+') has no matching NCHSM profile. Your session has been kept; contact an administrator to reconcile the profile.'); return; }
+
+        const roleRaw=String(profile.role||'').normalize('NFKC').trim().toLowerCase();
+        const role=roleRaw.replace(/[\\s-]+/g,'_').replace(/_+/g,'_');
+        const compactRole=roleRaw.replace(/[^a-z]/g,'');
+        const allowed=['lecturer','hod','nursing_hod','tvet_hod','admin','superadmin','super_admin','academic_registrar','registrar','student'];
+        if (!allowed.includes(role) && compactRole!=='superadmin') {
+            showGateError('Your NCHSM profile role ('+(profile.role||'not set')+') is not authorised. Your session has been kept so the administrator can correct the profile.');
+            return;
+        }
+        if (profile.login_enabled===false) {
+            showGateError('Portal access is disabled for this account. Your session has been kept.');
+            return;
+        }
+        if (!['active','approved'].includes(String(profile.status||'').trim().toLowerCase())) {
+            showGateError('Your account status ('+(profile.status||'not set')+') is not active or approved. Your session has been kept.');
+            return;
+        }
+
+        currentUser={...profile,user_id:user.id,email:user.email||profile.email,role:compactRole==='superadmin'?'superadmin':role};
+        document.getElementById('userName').innerText=currentUser.full_name||currentUser.email;
+        document.getElementById('userRole').innerText=currentUser.role.toUpperCase();
+        document.getElementById('userProgram').innerText=currentUser.program==='KRCHN'?'🎓 KRCHN':(currentUser.program?'🛠️ '+currentUser.program:'NCHSM');
+        document.getElementById('userProgram').style.background=currentUser.program==='KRCHN'?'#4C1D95':'#f59e0b';
+        buildMenu();
+        setupWorkspaceChrome();
+        await renderDashboard();
+    } catch (error) {
+        console.error('DRMS access initialisation failed:',error);
+        showGateError(error.message||'Unable to initialise Academic Records. Your session has been kept; retry shortly.');
     }
-    currentUser = { ...profile, user_id: user.id, email: user.email || profile.email, role };
-    document.getElementById('userName').innerText = currentUser.full_name || currentUser.email;
-    document.getElementById('userRole').innerText = role.toUpperCase();
-    document.getElementById('userProgram').innerText = currentUser.program === 'KRCHN' ? '🎓 KRCHN' : (currentUser.program ? '🛠️ ' + currentUser.program : 'NCHSM');
-    document.getElementById('userProgram').style.background = currentUser.program === 'KRCHN' ? '#4C1D95' : '#f59e0b';
-    buildMenu();
-    setupWorkspaceChrome();
-    await renderDashboard();
 }
 document.getElementById('logoutBtn').onclick = async () => { await sb.auth.signOut(); window.location.replace('drms_login.html'); };
 init();
