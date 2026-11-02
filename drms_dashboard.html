@@ -310,7 +310,7 @@ async function renderDashboard() {
         document.getElementById('dashOpenRecords')?.addEventListener('click',()=>openTeaching(false));
         document.getElementById('dashTeaching')?.addEventListener('click',e=>{e.preventDefault();openTeaching(false);});
         document.getElementById('dashDocuments')?.addEventListener('click',e=>{e.preventDefault();document.querySelector('#navMenu [data-view="documents"]')?.click();});
-        document.getElementById('dashApprovals')?.addEventListener('click',e=>{e.preventDefault();document.querySelector('#navMenu [data-view="approvals"]')?.click();});
+        document.getElementById('dashApprovals')?.addEventListener('click',e=>{e.preventDefault();(document.querySelector('#navMenu [data-view="approvals"]')||document.querySelector('#navMenu [data-view="teaching"]'))?.click();});
         document.getElementById('dashRefresh')?.addEventListener('click',renderDashboard);
     } catch (error) {
         console.error('DRMS dashboard load failed:',error);
