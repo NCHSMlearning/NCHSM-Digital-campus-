@@ -2194,39 +2194,23 @@ window.initReviewsModule = initReviewsModule;
             window.__nchsmReviewSubmitDelegated = true;
             window.__nchsmReviewSubmitInFlight = false;
 
-            function showReviewDebug(message, isError = false) {
-                let panel = document.getElementById('nchsmReviewDebugPanel');
-                if (!panel) {
-                    panel = document.createElement('div');
-                    panel.id = 'nchsmReviewDebugPanel';
-                    panel.setAttribute('role', 'status');
-                    panel.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483647;padding:14px 16px;border-radius:12px;font:14px/1.45 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.25);';
-                    document.body.appendChild(panel);
-                }
-                panel.style.background = isError ? '#fee2e2' : '#dbeafe';
-                panel.style.color = isError ? '#991b1b' : '#1e3a8a';
-                panel.style.border = '2px solid ' + (isError ? '#ef4444' : '#3b82f6');
-                panel.textContent = 'NCHSM Review Diagnostic: ' + message;
-                // Keep validation visible in the page without writing routine diagnostics to the browser console.
-            }
 
-            async function runReviewSubmission(event, source) {
+            async function runReviewSubmission(event) {
                 if (window.__nchsmReviewSubmitInFlight) return;
                 window.__nchsmReviewSubmitInFlight = true;
                 if (event) event.preventDefault();
-                showReviewDebug('Tap received (' + source + '). Preparing submission…');
                 try {
                     if (typeof submitReview !== 'function') {
                         throw new Error('submitReview function is not loaded. Check the reviews JavaScript deployment.');
                     }
                     await submitReview(event || { preventDefault() {} });
-                    const feedback = document.getElementById('reviewFormFeedback');
-                    const feedbackText = feedback?.textContent?.trim();
-                    if (feedbackText) showReviewDebug(feedbackText, /error|failed|not submitted|stopped/i.test(feedbackText));
-                    else if (document.getElementById('reviewSuccessPopup')) showReviewDebug('Review submitted successfully.');
-                    else showReviewDebug('Submission handler finished. Check the form validation messages and browser console.');
                 } catch (error) {
-                    showReviewDebug((error?.message || String(error)), true);
+                    const feedback = document.getElementById('reviewFormFeedback');
+                    if (feedback) {
+                        feedback.textContent = error?.message || 'Unable to submit your review. Please try again.';
+                        feedback.style.display = 'block';
+                        feedback.style.color = '#991b1b';
+                    }
                 } finally {
                     window.__nchsmReviewSubmitInFlight = false;
                 }
@@ -2237,18 +2221,14 @@ window.initReviewsModule = initReviewsModule;
                 if (!button) return;
                 event.preventDefault();
                 event.stopPropagation();
-                runReviewSubmission(event, 'Submit Review button').catch(error => {
-                    showReviewDebug(error?.message || String(error), true);
-                });
+                runReviewSubmission(event).catch(() => {});
             }, true);
 
             document.addEventListener('submit', function (event) {
                 const form = event.target;
                 if (!form || form.id !== 'studentReviewForm') return;
                 event.preventDefault();
-                runReviewSubmission(event, 'review form').catch(error => {
-                    showReviewDebug(error?.message || String(error), true);
-                });
+                runReviewSubmission(event).catch(() => {});
             }, true);
         }
 
