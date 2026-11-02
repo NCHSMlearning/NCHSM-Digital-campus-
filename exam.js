@@ -5075,7 +5075,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     const authUser = sessionData && sessionData.session && sessionData.session.user;
     if (sessionError || !authUser || !authUser.id) {
         console.warn('No verified Supabase session; returning to student sign-in.');
-        window.location.replace('student-login.html');
+        const requestedExamUrl = window.location.pathname + window.location.search + window.location.hash;
+        const loginUrl = new URL('student-login.html', window.location.href);
+        // Preserve the requested exam deep link through a separate-browser sign-in.
+        loginUrl.searchParams.set('redirect', requestedExamUrl);
+        window.location.replace(loginUrl.toString());
         return;
     }
     const studentId = authUser.id;
