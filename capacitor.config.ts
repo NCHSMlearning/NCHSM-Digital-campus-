@@ -3,8 +3,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'ke.ac.nchsm.digitalcampus',
   appName: 'NCHSM Digital Campus',
-  webDir: '.',
-  bundledWebRuntime: false,
+  webDir: 'www',
   server: {
     // Load the live campus portal so all existing modules remain available in the APK.
     // The app requires an internet connection; authenticated data is not bundled offline.
