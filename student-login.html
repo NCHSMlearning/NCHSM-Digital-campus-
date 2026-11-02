@@ -375,10 +375,25 @@
                     })
                     .eq('user_id', profile.user_id);
 
-                // Step 8: Redirect to student dashboard
+                // Step 8: Return to a validated same-site exam deep link when one was requested.
+                // Never accept external URLs or arbitrary privileged routes from query parameters.
+                const requestedRedirect = new URLSearchParams(window.location.search).get('redirect');
+                let postLoginTarget = '/student.html';
+                if (requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//')) {
+                    try {
+                        const target = new URL(requestedRedirect, window.location.origin);
+                        const targetPath = target.pathname.toLowerCase();
+                        if (target.origin === window.location.origin &&
+                            (targetPath === '/exam.html' || targetPath === '/exam')) {
+                            postLoginTarget = target.pathname + target.search + target.hash;
+                        }
+                    } catch (redirectError) {
+                        console.warn('Ignoring invalid post-login redirect:', redirectError);
+                    }
+                }
                 setTimeout(() => {
-                    window.location.href = '/student.html';
-                }, 1500);
+                    window.location.replace(postLoginTarget);
+                }, 800);
 
             } catch (error) {
                 console.error('💥 Login error:', error);
@@ -421,7 +436,21 @@
                         .maybeSingle();
 
                     if (profile?.role === 'student') {
-                        window.location.href = '/student.html';
+                        // Restore a requested exam link after an existing session is detected.
+                        const requestedRedirect = new URLSearchParams(window.location.search).get('redirect');
+                        let targetUrl = '/student.html';
+                        if (requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//')) {
+                            try {
+                                const target = new URL(requestedRedirect, window.location.origin);
+                                const path = target.pathname.toLowerCase();
+                                if (target.origin === window.location.origin && (path === '/exam.html' || path === '/exam')) {
+                                    targetUrl = target.pathname + target.search + target.hash;
+                                }
+                            } catch (redirectError) {
+                                console.warn('Ignoring invalid post-login redirect:', redirectError);
+                            }
+                        }
+                        window.location.replace(targetUrl);
                     }
                 }
             } catch (error) {
