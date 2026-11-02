@@ -14947,6 +14947,71 @@ function boot(){var a=document.getElementById('clinical-add-entry');if(a)a.oncli
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();document.addEventListener('appReady',function(){setTimeout(function(){pending();renderClinical();renderDates()},250)});
 })();
 </script>
+
+<!-- NCHSM MOBILE HEADER VISIBILITY FIX -->
+<style id="nchsm-mobile-header-visibility-fix">
+@media (max-width: 1023px) {
+  .main-header.nchsm-reference-header {
+    height: 64px !important;
+    min-height: 64px !important;
+    max-height: 64px !important;
+    padding: 6px 12px !important;
+    box-sizing: border-box !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+  .nchsm-header-left {
+    display: flex !important;
+    align-items: center !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+  #mobile-menu-toggle.nchsm-header-menu {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 38px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 9px !important;
+    background: #eef4fa !important;
+    color: #062f55 !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+  #mobile-menu-toggle i,
+  #mobile-menu-toggle .fas,
+  #mobile-menu-toggle .fa-bars {
+    display: inline-block !important;
+    color: #062f55 !important;
+    font-size: 21px !important;
+    line-height: 1 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+  .nchsm-header-brand {
+    min-width: 0 !important;
+    gap: 7px !important;
+  }
+  .nchsm-header-logo {
+    width: 34px !important;
+    height: 34px !important;
+    flex: 0 0 34px !important;
+  }
+  .nchsm-header-title { font-size: 15px !important; }
+  .nchsm-header-subtitle { font-size: 9px !important; }
+  .nchsm-header-right { flex: 0 0 auto !important; gap: 2px !important; }
+}
+</style>
+
 <!-- NCHSM_STUDENT_FINAL_NAV_GUARD -->
 <script id="nchsm-student-final-nav-guard">
 (function () {
