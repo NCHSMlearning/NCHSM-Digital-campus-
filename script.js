@@ -24076,7 +24076,7 @@ async function loadAllReviews() {
     try {
         const { data: reviews, error } = await sb
             .from('student_reviews')
-            .select('*, student:student_id(full_name, email, program)')
+            .select('*, student:consolidated_user_profiles_table!student_reviews_student_id_fkey(full_name, email, program)')
             .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -24113,59 +24113,69 @@ async function loadAllReviews() {
 function renderReviewsTable() {
     const tbody = document.getElementById('reviewsTableBody');
     if (!tbody) return;
-    
-    const searchTerm = document.getElementById('reviewsSearch')?.value?.toLowerCase() || '';
+    const searchTerm = document.getElementById('reviewsSearch')?.value?.toLowerCase().trim() || '';
     const ratingFilter = document.getElementById('reviewsRatingFilter')?.value || 'all';
     const statusFilter = document.getElementById('reviewsStatusFilter')?.value || 'all';
-    
     let filtered = [...allReviews];
-    
-    if (searchTerm) {
-        filtered = filtered.filter(r => 
-            (r.review || '').toLowerCase().includes(searchTerm) ||
-            (r.student?.full_name || '').toLowerCase().includes(searchTerm)
-        );
-    }
-    
-    if (ratingFilter !== 'all') {
-        filtered = filtered.filter(r => (r.rating || 0) == ratingFilter);
-    }
-    
-    if (statusFilter !== 'all') {
-        filtered = filtered.filter(r => r.status === statusFilter);
-    }
-    
-    if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">No reviews found</td></tr>';
-        return;
-    }
-    
+    if (searchTerm) filtered = filtered.filter(r => (r.review || '').toLowerCase().includes(searchTerm) || (r.review_title || '').toLowerCase().includes(searchTerm) || (r.student?.full_name || '').toLowerCase().includes(searchTerm) || (r.student?.email || '').toLowerCase().includes(searchTerm) || (r.student?.program || '').toLowerCase().includes(searchTerm));
+    if (ratingFilter !== 'all') filtered = filtered.filter(r => String(r.rating || 0) === String(ratingFilter));
+    if (statusFilter !== 'all') filtered = filtered.filter(r => r.status === statusFilter);
+    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:42px;color:#6b7280;">No reviews match your filters.</td></tr>'; return; }
     tbody.innerHTML = '';
-    
     filtered.forEach(review => {
-        const stars = getStarHTML(review.rating || 0);
-        const statusClass = review.status === 'approved' ? 'badge-success' : 
-                           review.status === 'rejected' ? 'badge-danger' : 'badge-warning';
+        const status = review.status || 'pending';
+        const statusClass = status === 'approved' ? 'badge-success' : status === 'rejected' ? 'badge-danger' : 'badge-warning';
         const date = review.created_at ? new Date(review.created_at).toLocaleDateString() : 'N/A';
-        
+        const preview = (review.review || '').replace(/\s+/g, ' ').trim();
         const row = document.createElement('tr');
-        row.innerHTML = `
-            <td style="padding: 12px;"><strong>${escapeHtml(review.student?.full_name || 'Anonymous')}</strong><br><small style="color: #6b7280;">${escapeHtml(review.student?.email || '')}</small></td>
-            <td style="padding: 12px;">${stars}</td>
-            <td style="padding: 12px;">${escapeHtml((review.review || '').substring(0, 100))}${(review.review?.length || 0) > 100 ? '...' : ''}</td>
-            <td style="padding: 12px;">${escapeHtml(review.student?.program || 'N/A')}</td>
-            <td style="padding: 12px;">${date}</td>
-            <td style="padding: 12px;"><span class="badge ${statusClass}">${escapeHtml(review.status || 'pending')}</span></td>
-            <td style="padding: 12px;">
-                ${review.status === 'pending' ? `
-                    <button onclick="approveReview('${review.id}')" class="btn-sm" style="background: #059669; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; margin-right: 4px;"><i class="fas fa-check"></i></button>
-                    <button onclick="rejectReview('${review.id}')" class="btn-sm" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; margin-right: 4px;"><i class="fas fa-times"></i></button>
-                ` : ''}
-                <button onclick="deleteReview('${review.id}')" class="btn-sm" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer;"><i class="fas fa-trash"></i></button>
-            </td>
-        `;
+        row.innerHTML = '<td style="padding:14px 12px;"><strong>' + escapeHtml(review.is_anonymous ? 'Anonymous' : (review.student?.full_name || 'Student')) + '</strong><br><small style="color:#6b7280;">' + (review.is_anonymous ? 'Identity hidden' : escapeHtml(review.student?.email || '')) + '</small></td>' +
+          '<td style="padding:14px 12px;white-space:nowrap;">' + getStarHTML(review.rating || 0) + '</td>' +
+          '<td style="padding:14px 12px;min-width:220px;"><strong>' + escapeHtml(review.review_title || 'Student review') + '</strong><br><span style="color:#64748b;">' + escapeHtml(preview.substring(0,90)) + (preview.length > 90 ? '…' : '') + '</span></td>' +
+          '<td style="padding:14px 12px;">' + escapeHtml(review.target_program || review.student?.program || 'N/A') + '</td>' +
+          '<td style="padding:14px 12px;white-space:nowrap;">' + escapeHtml(date) + '</td>' +
+          '<td style="padding:14px 12px;"><span class="badge ' + statusClass + '">' + escapeHtml(status) + '</span></td>' +
+          '<td style="padding:14px 12px;white-space:nowrap;"><button type="button" onclick="viewStudentReview(\'' + review.id + '\')" style="background:#4f46e5;color:#fff;border:0;padding:7px 11px;border-radius:7px;cursor:pointer;margin:2px;"><i class="fas fa-eye"></i> View Review</button>' +
+          (status === 'pending' ? '<button type="button" onclick="approveReview(\'' + review.id + '\')" title="Approve" style="background:#059669;color:#fff;border:0;padding:7px 9px;border-radius:7px;cursor:pointer;margin:2px;"><i class="fas fa-check"></i></button><button type="button" onclick="rejectReview(\'' + review.id + '\')" title="Reject" style="background:#dc2626;color:#fff;border:0;padding:7px 9px;border-radius:7px;cursor:pointer;margin:2px;"><i class="fas fa-times"></i></button>' : '') +
+          '<button type="button" onclick="deleteReview(\'' + review.id + '\')" title="Delete" style="background:#64748b;color:#fff;border:0;padding:7px 9px;border-radius:7px;cursor:pointer;margin:2px;"><i class="fas fa-trash"></i></button></td>';
         tbody.appendChild(row);
     });
+}
+
+function viewStudentReview(reviewId) {
+    const review = allReviews.find(item => String(item.id) === String(reviewId));
+    if (!review) { showFeedback('Review could not be found. Refresh the list and try again.', 'error'); return; }
+    const modal = document.getElementById('studentReviewDetailModal');
+    const meta = document.getElementById('studentReviewDetailMeta');
+    const body = document.getElementById('studentReviewDetailText');
+    const extras = document.getElementById('studentReviewExtraDetails');
+    if (!modal || !meta || !body || !extras) return;
+    const anonymous = !!review.is_anonymous;
+    const makeItem = (label, value) => '<div style="padding:12px;border:1px solid #e5e7eb;border-radius:10px;"><div style="font-size:11px;text-transform:uppercase;color:#64748b;font-weight:800;margin-bottom:5px;">' + label + '</div><div style="font-weight:650;overflow-wrap:anywhere;">' + escapeHtml(String(value ?? 'N/A')) + '</div></div>';
+    meta.innerHTML = makeItem('Student', anonymous ? 'Anonymous' : (review.student?.full_name || 'Student')) +
+      (!anonymous && review.student?.email ? makeItem('Email', review.student.email) : '') +
+      makeItem('Rating', (Number(review.rating) || 0) + ' / 5 ★') +
+      makeItem('Submitted', review.created_at ? new Date(review.created_at).toLocaleString() : 'N/A') +
+      makeItem('Status', review.status || 'pending') +
+      makeItem('Programme', review.target_program || review.student?.program || 'N/A');
+    body.textContent = review.review || 'No written comment was provided.';
+    extras.innerHTML = (review.review_title ? makeItem('Review title', review.review_title) : '') +
+      (review.component_type ? makeItem('Feedback type', review.component_type) : '') +
+      (review.component_name ? makeItem('Area reviewed', review.component_name) : '') +
+      (review.target_block ? makeItem('Block', review.target_block) : '') +
+      (review.pros ? makeItem('What went well', review.pros) : '') +
+      (review.cons ? makeItem('What needs improvement', review.cons) : '') +
+      (review.suggestions ? makeItem('Suggestions', review.suggestions) : '');
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    modal.querySelector('button[aria-label="Close review"]')?.focus();
+}
+function closeStudentReviewModal() {
+    const modal = document.getElementById('studentReviewDetailModal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
 }
 
 // ============================================
@@ -24556,6 +24566,8 @@ function initReviewsNewsletter() {
 window.loadAllReviews = loadAllReviews;
 window.loadSubscribers = loadSubscribers;
 window.renderReviewsTable = renderReviewsTable;
+window.viewStudentReview = viewStudentReview;
+window.closeStudentReviewModal = closeStudentReviewModal;
 window.renderSubscribers = renderSubscribers;
 window.approveReview = approveReview;
 window.rejectReview = rejectReview;
