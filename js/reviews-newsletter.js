@@ -293,6 +293,24 @@ function initReviewsModule() {
         // ✅ FIXED: EVENT LISTENERS
         // ============================================
         
+        // Review card click handling (delegated for dynamically rendered cards)
+        const reviewsGrid = document.getElementById('reviewsGrid');
+        if (reviewsGrid && !reviewsGrid.dataset.reviewClickBound) {
+            reviewsGrid.dataset.reviewClickBound = 'true';
+            reviewsGrid.addEventListener('click', function (event) {
+                if (event.target.closest('.helpful-btn, .share-btn')) return;
+                const card = event.target.closest('[data-review-id]');
+                if (card) openReviewDetail(card.getAttribute('data-review-id'));
+            });
+            reviewsGrid.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                const card = event.target.closest('[data-review-id]');
+                if (!card) return;
+                event.preventDefault();
+                openReviewDetail(card.getAttribute('data-review-id'));
+            });
+        }
+        
         // Write Review Button
         const writeBtn = document.getElementById('writeReviewBtn');
         if (writeBtn) {
@@ -735,7 +753,7 @@ function renderReviews(reviews) {
         const blockDisplay = review.target_block || review.block || 'N/A';
         
         return `
-            <div class="review-card-premium" onclick="openReviewDetail('${review.id}')">
+            <div class="review-card-premium" data-review-id="${escapeHtml(review.id)}" role="button" tabindex="0" aria-label="Open review details">
                 <div class="review-card-header">
                     <div class="reviewer-info">
                         ${!review.is_anonymous && review.student?.profile_photo_url ? 
@@ -1445,7 +1463,7 @@ function updateFilterResultsCount(count) {
 // ============================================
 
 function openReviewDetail(reviewId) {
-    const review = allReviews.find(r => r.id === reviewId);
+    const review = allReviews.find(r => String(r.id) === String(reviewId));
     if (!review) return;
     
     const modal = document.getElementById('reviewDetailModal');
@@ -1606,7 +1624,7 @@ function loadMoreReviews() {
                 });
                 
                 return `
-                    <div class="review-card-premium" onclick="openReviewDetail('${review.id}')">
+                    <div class="review-card-premium" data-review-id="${escapeHtml(review.id)}" role="button" tabindex="0" aria-label="Open review details">
                         <div class="review-card-header">
                             <div class="reviewer-info">
                                 <div class="reviewer-avatar-placeholder">${name.charAt(0).toUpperCase()}</div>
