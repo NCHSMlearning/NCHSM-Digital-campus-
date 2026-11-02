@@ -3058,93 +3058,158 @@ window.viewStudentProfile = async function(pid) {
     // 📝 VIEW STUDENT PROGRESS
     // ============================================
     window.viewStudentProgress = async function(studentId, studentName, examId) {
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
+        const modal = document.getElementById('studentModal');
+        const safe = value => escapeAdminHtml(value == null ? '' : String(value));
+        const answerValue = row => {
+            const value = row?.selected_answer ?? row?.student_answer ?? row?.answer ?? row?.response ?? '';
+            return value == null ? '' : String(value).trim();
+        };
+        const optionText = (question, answer) => {
+            if (!answer) return '';
+            const key = String(answer).trim().toLowerCase();
+            const optionMap = {
+                a: question.option_a, b: question.option_b, c: question.option_c,
+                d: question.option_d, e: question.option_e
+            };
+            const option = optionMap[key];
+            return option ? key.toUpperCase() + '. ' + option : String(answer);
+        };
+
         try {
-            const studentNameSafe = escapeAdminHtml(studentName || 'Unknown');
-            document.getElementById('modalTitle').innerHTML = `<i class="fas fa-chart-line"></i> Student Progress`;
-            document.getElementById('modalContent').innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading...</div>';
-            document.getElementById('studentModal').style.display = 'flex';
-            
-            const { data: answers } = await sb
-                .from('exam_grades')
-                .select('*')
-                .eq('student_id', studentId)
-                .eq('exam_id', parseInt(examId))
-                .neq('question_id', '00000000-0000-0000-0000-000000000000');
-            
-            const { data: questions } = await sb
-                .from('exam_questions')
-                .select('*')
-                .eq('exam_id', parseInt(examId))
-                .order('question_number');
-            
-            const { data: exam } = await sb
-                .from('exams')
-                .select('exam_name')
-                .eq('id', parseInt(examId))
-                .single();
-            
-            const examName = escapeAdminHtml(exam?.exam_name || 'Exam ' + examId);
-            const answeredCount = answers?.length || 0;
-            const totalQuestions = questions?.length || 0;
-            const correctCount = answers?.filter(a => a.selected_answer && a.marks > 0).length || 0;
-            
+            if (!studentId || !Number.isFinite(Number(examId))) {
+                throw new Error('Missing student or exam identifier. Please close this window and try again.');
+            }
+
+            if (modalTitle) modalTitle.innerHTML = '<i class="fas fa-chart-line"></i> Student Progress';
+            if (modalContent) modalContent.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading this student\'s saved answers...</div>';
+            if (modal) modal.style.display = 'flex';
+
+            const numericExamId = Number(examId);
+
+            // Always identify the latest attempt first. Without this filter, old
+            // attempts/retakes were being added together in the progress totals.
+            const { data: attempts, error: attemptError } = await sb
+                .from('exam_attempts')
+                .select('id, attempt_number, status, is_retake, started_at, submitted_at, updated_at')
+                .eq('student_id', String(studentId))
+                .eq('exam_id', numericExamId)
+                .order('updated_at', { ascending: false })
+                .limit(1);
+
+            if (attemptError) console.warn('Progress viewer: latest attempt lookup unavailable; using student/exam grade fallback.', attemptError);
+            const latestAttempt = Array.isArray(attempts) && attempts.length ? attempts[0] : null;
+
+            const [{ data: questions, error: questionsError }, gradeResult, { data: exam, error: examError }] = await Promise.all([
+                sb.from('exam_questions')
+                    .select('id, exam_id, question_number, question_text, question_type, option_a, option_b, option_c, option_d, option_e, correct_answer, marks, image_url')
+                    .eq('exam_id', numericExamId)
+                    .order('question_number', { ascending: true }),
+                (async () => {
+                    let query = sb.from('exam_grades').select('*')
+                        .eq('student_id', String(studentId))
+                        .eq('exam_id', numericExamId)
+                        .neq('question_id', ZERO_QUESTION_ID);
+                    if (latestAttempt?.id) query = query.eq('attempt_id', latestAttempt.id);
+                    return await query;
+                })(),
+                sb.from('exams').select('exam_name, total_marks').eq('id', numericExamId).maybeSingle()
+            ]);
+
+            if (questionsError) throw new Error('Could not load the exam questions: ' + questionsError.message);
+            if (gradeResult.error) throw new Error('Could not load the student\'s saved answers: ' + gradeResult.error.message);
+            if (examError) console.warn('Progress viewer: exam title lookup failed.', examError);
+
+            const questionRows = Array.isArray(questions) ? questions : [];
+            const gradeRows = Array.isArray(gradeResult.data) ? gradeResult.data : [];
+            const answerByQuestion = new Map();
+            gradeRows.forEach(row => {
+                if (!row?.question_id) return;
+                const existing = answerByQuestion.get(String(row.question_id));
+                // Prefer the most recently updated row if duplicate grade rows exist.
+                if (!existing || new Date(row.updated_at || row.created_at || 0) >= new Date(existing.updated_at || existing.created_at || 0)) {
+                    answerByQuestion.set(String(row.question_id), row);
+                }
+            });
+
+            const answeredRows = questionRows.filter(q => answerValue(answerByQuestion.get(String(q.id))) !== '');
+            const answeredCount = answeredRows.length;
+            const totalQuestions = questionRows.length;
+            const unansweredCount = Math.max(0, totalQuestions - answeredCount);
+            const correctCount = answeredRows.filter(q => {
+                const row = answerByQuestion.get(String(q.id));
+                if (row && row.marks != null) return Number(row.marks) > 0;
+                const selected = answerValue(row).trim().toLowerCase();
+                const correct = String(q.correct_answer ?? '').trim().toLowerCase();
+                return !!selected && !!correct && selected === correct;
+            }).length;
+
+            const examName = safe(exam?.exam_name || ('Exam ' + numericExamId));
+            const attemptLabel = latestAttempt
+                ? 'Attempt #' + Number(latestAttempt.attempt_number || 1) + (latestAttempt.is_retake ? ' · Retake' : '')
+                : 'Available saved grade records';
+            const totalAnsweredMarks = answeredRows.reduce((sum, q) => sum + Number(answerByQuestion.get(String(q.id))?.marks || 0), 0);
+
             let html = `
                 <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
-                    <h3>${escapeAdminHtml(studentName)}</h3>
-                    <p style="color:#64748B;">${examName}</p>
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;">
-                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;">
-                            <div style="font-size:1.5rem;font-weight:700;color:#0A3D62;">${answeredCount}/${totalQuestions}</div>
-                            <div style="font-size:0.7rem;color:#64748B;">Answered</div>
-                        </div>
-                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;">
-                            <div style="font-size:1.5rem;font-weight:700;color:#38A169;">${correctCount}</div>
-                            <div style="font-size:0.7rem;color:#64748B;">Correct</div>
-                        </div>
-                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;">
-                            <div style="font-size:1.5rem;font-weight:700;color:#F59E0B;">${totalQuestions - answeredCount}</div>
-                            <div style="font-size:0.7rem;color:#64748B;">Unanswered</div>
-                        </div>
+                    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+                        <div><h3 style="margin:0;color:#0f172a;">${safe(studentName || 'Unknown student')}</h3>
+                        <p style="color:#64748B;margin:5px 0 0;">${examName}</p>
+                        <small style="color:#64748B;">${safe(attemptLabel)}</small></div>
+                        <button type="button" onclick="viewStudentProgress(${JSON.stringify(String(studentId))},${JSON.stringify(String(studentName || 'Student'))},${numericExamId})" style="border:1px solid #cbd5e1;background:#fff;padding:7px 11px;border-radius:8px;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px;">
+                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:1.35rem;font-weight:800;color:#0A3D62;">${answeredCount}/${totalQuestions}</div><div style="font-size:.7rem;color:#64748B;">Answered</div></div>
+                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:1.35rem;font-weight:800;color:#15803d;">${correctCount}</div><div style="font-size:.7rem;color:#64748B;">Correct</div></div>
+                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:1.35rem;font-weight:800;color:#d97706;">${unansweredCount}</div><div style="font-size:.7rem;color:#64748B;">Unanswered</div></div>
+                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:1.35rem;font-weight:800;color:#0A3D62;">${totalAnsweredMarks}</div><div style="font-size:.7rem;color:#64748B;">Marks awarded</div></div>
                     </div>
                 </div>
-                <div style="max-height:400px;overflow-y:auto;">
-                    <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
-                        <thead>
-                            <tr style="background:#F1F5F9;">
-                                <th style="padding:8px;text-align:left;">Q#</th>
-                                <th style="padding:8px;text-align:left;">Question</th>
-                                <th style="padding:8px;text-align:center;">Answer</th>
-                                <th style="padding:8px;text-align:center;">Correct</th>
-                                <th style="padding:8px;text-align:center;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-            
-            questions?.forEach((q, index) => {
-                const answer = answers?.find(a => a.question_id === q.id);
-                const isCorrect = answer?.selected_answer === q.correct_answer;
-                const isAnswered = !!answer?.selected_answer;
-                const statusIcon = isAnswered ? (isCorrect ? '✅' : '❌') : '⬜';
-                const statusText = isAnswered ? (isCorrect ? 'Correct' : 'Wrong') : 'Not answered';
-                const statusColor = isAnswered ? (isCorrect ? '#38A169' : '#DC2626') : '#94A3B8';
-                
-                html += `
-                    <tr style="border-bottom:1px solid #E2E8F0;">
-                        <td style="padding:8px;">${index + 1}</td>
-                        <td style="padding:8px;">${escapeAdminHtml(q.question_text.substring(0, 60))}...</td>
-                        <td style="padding:8px;text-align:center;">${escapeAdminHtml(answer?.selected_answer || '-')}</td>
-                        <td style="padding:8px;text-align:center;">${escapeAdminHtml(q.correct_answer || '')}</td>
-                        <td style="padding:8px;text-align:center;color:${statusColor};font-weight:600;">${statusIcon} ${statusText}</td>
-                    </tr>
-                `;
+                <div style="max-height:52vh;overflow:auto;border:1px solid #E2E8F0;border-radius:10px;">
+                    <table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:680px;">
+                        <thead style="position:sticky;top:0;z-index:1;background:#F1F5F9;"><tr>
+                            <th style="padding:10px;text-align:left;">Question</th>
+                            <th style="padding:10px;text-align:left;">Question & options</th>
+                            <th style="padding:10px;text-align:left;">Student answer</th>
+                            <th style="padding:10px;text-align:left;">Correct answer</th>
+                            <th style="padding:10px;text-align:center;">Marks</th>
+                            <th style="padding:10px;text-align:center;">Status</th>
+                        </tr></thead><tbody>`;
+
+            questionRows.forEach((q, index) => {
+                const row = answerByQuestion.get(String(q.id));
+                const selected = answerValue(row);
+                const isAnswered = selected !== '';
+                const isCorrect = isAnswered && (row?.marks != null
+                    ? Number(row.marks) > 0
+                    : String(selected).trim().toLowerCase() === String(q.correct_answer ?? '').trim().toLowerCase());
+                const options = [['A',q.option_a],['B',q.option_b],['C',q.option_c],['D',q.option_d],['E',q.option_e]]
+                    .filter(([,value]) => value != null && String(value).trim() !== '')
+                    .map(([letter,value]) => '<div style="margin-top:3px;color:#475569;">' + letter + '. ' + safe(value) + '</div>').join('');
+                const questionText = q.question_text || 'Question text unavailable';
+                const status = !isAnswered ? '<span style="color:#64748b;">Not answered</span>'
+                    : isCorrect ? '<span style="color:#15803d;font-weight:700;">Correct</span>'
+                    : '<span style="color:#b91c1c;font-weight:700;">Incorrect</span>';
+                const correctAnswer = q.correct_answer ?? '';
+                html += `<tr style="border-bottom:1px solid #E2E8F0;vertical-align:top;">
+                    <td style="padding:10px;font-weight:700;">Q${safe(q.question_number || index + 1)}</td>
+                    <td style="padding:10px;white-space:normal;min-width:220px;"><div style="font-weight:600;color:#0f172a;">${safe(questionText)}</div>${options}</td>
+                    <td style="padding:10px;white-space:normal;">${isAnswered ? safe(optionText(q, selected)) : '<span style="color:#94a3b8;">—</span>'}</td>
+                    <td style="padding:10px;white-space:normal;">${safe(optionText(q, correctAnswer) || '—')}</td>
+                    <td style="padding:10px;text-align:center;">${row?.marks == null ? '—' : safe(row.marks)} / ${safe(q.marks ?? 1)}</td>
+                    <td style="padding:10px;text-align:center;">${status}</td>
+                </tr>`;
             });
-            
-            html += `</tbody></table></div>`;
-            document.getElementById('modalContent').innerHTML = html;
-            
+
+            if (!questionRows.length) {
+                html += '<tr><td colspan="6" style="padding:24px;text-align:center;color:#64748b;">No questions were found for this exam. Check the exam ID and question records.</td></tr>';
+            }
+            html += '</tbody></table></div>';
+            if (modalContent) modalContent.innerHTML = html;
         } catch (error) {
-            document.getElementById('modalContent').innerHTML = `<div style="color:#DC2626;padding:20px;">Error: ${escapeAdminHtml(error.message)}</div>`;
+            console.error('Student progress load failed:', error);
+            if (modalContent) modalContent.innerHTML = `<div style="color:#991b1b;background:#fef2f2;padding:18px;border-radius:10px;"><strong><i class="fas fa-exclamation-circle"></i> Unable to load student progress</strong><p style="margin:8px 0 0;">${safe(error?.message || error || 'Unknown error')}</p><button type="button" onclick="viewStudentProgress(${JSON.stringify(String(studentId || ''))},${JSON.stringify(String(studentName || 'Student'))},${Number(examId) || 0})" style="margin-top:12px;padding:8px 12px;border:0;border-radius:7px;background:#991b1b;color:#fff;cursor:pointer;">Retry</button></div>`;
         }
     };
 
