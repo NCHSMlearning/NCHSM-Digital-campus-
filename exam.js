@@ -29,6 +29,8 @@ const CONFIG = {
     INACTIVITY_TIMEOUT: 30 * 60 * 1000,
     MULTIPLE_FACES_TIMEOUT: 45,
     FULLSCREEN_EXIT_TIMEOUT: 10,
+    STUDENT_DASHBOARD_URL: 'https://nchsm.co.ke/student/',
+    STUDENT_LOGIN_URL: 'https://nchsm.co.ke/login',
     VIOLATION_COOLDOWN: 5000,
     EXAM_SESSION_KEY: 'exam_session',
     MAX_SESSION_AGE: 5 * 60 * 1000,
@@ -52,6 +54,8 @@ const AppState = {
     fullscreenLockActive: false,
     fullscreenOverlay: null,
     fullscreenWarningInterval: null,
+    fullscreenExitDeadline: null,
+    fullscreenAutoSubmitTriggered: false,
     studentId: null,
     studentProfile: null,
     examId: null,
@@ -2955,10 +2959,6 @@ async function executeSubmissionWithLoading() {
         if (DOM.submissionProgress) DOM.submissionProgress.classList.remove('active');
         showCompletionCertificate();
 
-        setTimeout(() => {
-            window.location.href = 'https://nakurucollegeofhealthelearning.site/student/cats';
-        }, 5000);
-
     } catch (error) {
         console.error('❌ Submission error:', error);
         if (DOM.submissionProgress) DOM.submissionProgress.classList.remove('active');
@@ -3292,7 +3292,7 @@ function showCompletionCertificate() {
                     <p style="color:#64748b; font-size:0.85rem; margin-top:12px;">Your results will be available after the exam is reviewed by the admin.</p>
                 </div>
                 <div style="margin:12px 0; font-size:0.9rem; color:#94a3b8;">Redirecting in <span id="countdown-number" style="font-weight:700; color:#0A3D62;">5</span> seconds...</div>
-                <a href="https://nakurucollegeofhealthelearning.site/student/cats" style="display:inline-block; background:#0A3D62; color:white; padding:12px 28px; border-radius:30px; text-decoration:none; font-weight:600;">📊 Go to Dashboard Now</a>
+                <a href="${CONFIG.STUDENT_DASHBOARD_URL}" style="display:inline-block; background:#0A3D62; color:white; padding:12px 28px; border-radius:30px; text-decoration:none; font-weight:600;">📊 Go to Dashboard Now</a>
             </div>
         `;
     }
@@ -3310,7 +3310,7 @@ function showCompletionCertificate() {
         if (el) el.textContent = countdown;
         if (countdown <= 0) {
             clearInterval(redirectInterval);
-            window.location.href = 'https://nakurucollegeofhealthelearning.site/student/cats';
+            window.location.href = CONFIG.STUDENT_DASHBOARD_URL;
         }
     }, 1000);
 }
@@ -3466,33 +3466,53 @@ function lockExamForFullscreenExit() {
         setTimeout(handleFullscreenChange, 150);
     };
 
-    let remaining = Number(CONFIG.FULLSCREEN_EXIT_TIMEOUT || 10);
+    // Absolute deadline prevents background-tab timer throttling from extending grace.
+    const graceSeconds = Math.max(1, Number(CONFIG.FULLSCREEN_EXIT_TIMEOUT) || 10);
+    AppState.fullscreenExitDeadline = Date.now() + graceSeconds * 1000;
+    AppState.fullscreenAutoSubmitTriggered = false;
     const counter = overlay.querySelector('#nchsm-fullscreen-countdown');
-    if (counter) counter.textContent = remaining;
+    if (counter) counter.textContent = String(graceSeconds);
 
-    clearInterval(AppState.fullscreenWarningInterval);
-    AppState.fullscreenWarningInterval = setInterval(() => {
+    if (AppState.fullscreenWarningInterval) clearInterval(AppState.fullscreenWarningInterval);
+    const checkFullscreenRecoveryDeadline = () => {
+        if (AppState.isSubmitting || AppState.fullscreenAutoSubmitTriggered) {
+            clearInterval(AppState.fullscreenWarningInterval);
+            AppState.fullscreenWarningInterval = null;
+            return;
+        }
         if (isExamFullscreen()) {
             clearInterval(AppState.fullscreenWarningInterval);
             AppState.fullscreenWarningInterval = null;
+            AppState.fullscreenExitDeadline = null;
             unlockFullscreenExam();
             return;
         }
-        remaining -= 1;
-        if (counter) counter.textContent = Math.max(0, remaining);
-        if (remaining <= 0) {
+
+        const remainingMs = Math.max(0, AppState.fullscreenExitDeadline - Date.now());
+        if (counter) counter.textContent = String(Math.ceil(remainingMs / 1000));
+        if (remainingMs <= 0) {
             clearInterval(AppState.fullscreenWarningInterval);
             AppState.fullscreenWarningInterval = null;
-            showToast('❌ Fullscreen timeout. Submitting exam.', 'error', 4000);
+            AppState.fullscreenExitDeadline = null;
+            AppState.fullscreenAutoSubmitTriggered = true;
+            showToast('❌ Fullscreen recovery time expired. Submitting your exam now.', 'error', 4000);
+            logProctoringEvent('fullscreen_exit_timeout',
+                'Student did not restore fullscreen within the 10-second recovery window; exam auto-submitted.',
+                'critical');
             submitExam(true);
         }
-    },1000);
+    };
+
+    AppState.fullscreenWarningInterval = setInterval(checkFullscreenRecoveryDeadline, 200);
+    checkFullscreenRecoveryDeadline();
 }
 
 function unlockFullscreenExam() {
     AppState.fullscreenLockActive = false;
     clearInterval(AppState.fullscreenWarningInterval);
     AppState.fullscreenWarningInterval = null;
+    AppState.fullscreenExitDeadline = null;
+    AppState.fullscreenAutoSubmitTriggered = false;
 
     if (DOM.examInterface) {
         DOM.examInterface.style.filter = '';
