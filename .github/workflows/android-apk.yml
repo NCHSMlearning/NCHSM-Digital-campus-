@@ -39,6 +39,9 @@ jobs:
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Verify Capacitor config compiler
+        run: npx tsc --version
+
       - name: Generate Android native project
         run: |
           if [ ! -d android ]; then
