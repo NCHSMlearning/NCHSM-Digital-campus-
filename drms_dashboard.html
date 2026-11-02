@@ -102,6 +102,9 @@
         
         @media (max-width: 768px) { .app-container { flex-direction: column; } .sidebar { width: 100%; } .stats-grid { grid-template-columns: repeat(2, 1fr); } }
     </style>
+<style id="drms-academic-workflow-styles">
+.drms-academic-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}.drms-academic-heading h2{margin:0 0 6px;color:#102f43}.drms-academic-heading p,.drms-academic-help{color:#64748b;font-size:13px;line-height:1.6;margin:0}.drms-academic-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px;margin-bottom:18px}.drms-academic-stats>div{background:#fff;border:1px solid #e5eaf0;border-radius:14px;padding:15px;display:flex;flex-direction:column;gap:4px}.drms-academic-stats b{font-size:25px;color:#123e52}.drms-academic-stats span{font-size:11px;color:#64748b}.drms-academic-panel{background:#fff;border:1px solid #e5eaf0;border-radius:16px;padding:18px;margin:0 0 18px;box-shadow:0 3px 12px #0f2b3d08}.drms-academic-panel h3{margin:0 0 14px;color:#123e52}.drms-academic-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.drms-academic-table-wrap{width:100%;overflow:auto}.drms-academic-form{display:grid;gap:14px}.drms-academic-form label{display:block;font-size:12px;font-weight:700;color:#334e60;margin:0 0 6px}.drms-academic-form input,.drms-academic-form select,.drms-academic-form textarea{width:100%;min-width:0;padding:11px 12px;border:1px solid #dbe3ea;border-radius:9px;font:inherit;font-size:13px;background:#fff;color:#1f2937}.drms-academic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.drms-academic-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}.drms-academic-actions button{width:auto;margin:0}.drms-academic-modal{position:fixed;inset:0;z-index:3000;background:#061827b8;display:grid;place-items:center;padding:18px}.drms-academic-modal-card{width:min(760px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:16px;color:#1f2937}.drms-academic-modal-head{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;background:#123e52;color:#fff}.drms-academic-modal-head button{width:36px;margin:0;padding:4px;background:transparent;font-size:24px}.drms-academic-panel .btn{margin:0}.drms-academic-panel .search-input{max-width:260px}@media(max-width:640px){.drms-academic-grid{grid-template-columns:1fr}.drms-academic-heading>.btn{width:100%;justify-content:center}.drms-academic-panel{padding:13px}.drms-academic-actions{display:grid;grid-template-columns:1fr}.drms-academic-actions button{width:100%}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -142,6 +145,7 @@
 
 <div id="toast" class="toast"></div>
 
+<script src="drms-workflow.js"></script>
 <script>
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
@@ -157,7 +161,12 @@ window.viewDoc = async function(id) {
     const doc = allDocs.find(d => d.id === id);
     if(!doc) { showToast('Document not found', true); return; }
     
-    const fileUrl = doc.file_url;
+    let fileUrl = doc.file_url;
+    if (doc.file_path) {
+        const { data: signed, error: signedError } = await sb.storage.from('drms_academic_records').createSignedUrl(doc.file_path, 600);
+        if (signedError) { showToast('Unable to access document: ' + signedError.message, true); return; }
+        fileUrl = signed.signedUrl;
+    }
     const fileName = doc.file_name || 'document';
     const fileExt = (fileName.split('.').pop() || '').toLowerCase();
     
