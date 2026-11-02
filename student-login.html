@@ -378,7 +378,7 @@
                 // Step 8: Return to a validated same-site exam deep link when one was requested.
                 // Never accept external URLs or arbitrary privileged routes from query parameters.
                 const requestedRedirect = new URLSearchParams(window.location.search).get('redirect');
-                let postLoginTarget = '/student.html';
+                let postLoginTarget = '/student';
                 if (requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//')) {
                     try {
                         const target = new URL(requestedRedirect, window.location.origin);
@@ -438,7 +438,7 @@
                     if (profile?.role === 'student') {
                         // Restore a requested exam link after an existing session is detected.
                         const requestedRedirect = new URLSearchParams(window.location.search).get('redirect');
-                        let targetUrl = '/student.html';
+                        let targetUrl = '/student';
                         if (requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//')) {
                             try {
                                 const target = new URL(requestedRedirect, window.location.origin);
