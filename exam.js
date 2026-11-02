@@ -5,9 +5,11 @@ const CONFIG = {
     SUPABASE_URL: 'https://lwhtjozfsmbyihenfunw.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
     FACE_MODEL_URL: 'https://justadudewhohacks.github.io/face-api.js/models',
-    FACE_DETECTION_INTERVAL: 500,
-    FACE_SCORE_THRESHOLD: 0.35,
-    FACE_INPUT_SIZE: 224,
+    FACE_DETECTION_INTERVAL: 650,
+    // Slightly more sensitive detection plus adaptive frame brightening improves
+    // reliability in dim rooms without relaxing the one-person requirement.
+    FACE_SCORE_THRESHOLD: 0.25,
+    FACE_INPUT_SIZE: 320,
     // Approximate normalized head-pose thresholds; tune with real device testing.
     FACE_YAW_THRESHOLD: 0.24,
     FACE_PITCH_UPPER_THRESHOLD: 0.18,
@@ -328,6 +330,36 @@ async function getIPAddress() {
 // FACE DETECTION
 // ============================================================
 let faceModelsLoaded = false;
+let faceDetectionCanvas = null;
+let faceDetectionContext = null;
+
+function getEnhancedFaceDetectionFrame(videoElement) {
+    if (!videoElement || !videoElement.videoWidth || !videoElement.videoHeight) return videoElement;
+    try {
+        if (!faceDetectionCanvas) {
+            faceDetectionCanvas = document.createElement('canvas');
+            faceDetectionContext = faceDetectionCanvas.getContext('2d', { willReadFrequently: true });
+        }
+        const width = videoElement.videoWidth;
+        const height = videoElement.videoHeight;
+        if (faceDetectionCanvas.width !== width || faceDetectionCanvas.height !== height) {
+            faceDetectionCanvas.width = width;
+            faceDetectionCanvas.height = height;
+        }
+
+        // Brighten and gently increase contrast for face detection only.
+        // The original camera feed remains unchanged and is still displayed.
+        faceDetectionContext.save();
+        faceDetectionContext.clearRect(0, 0, width, height);
+        faceDetectionContext.filter = 'brightness(1.28) contrast(1.12)';
+        faceDetectionContext.drawImage(videoElement, 0, 0, width, height);
+        faceDetectionContext.restore();
+        return faceDetectionCanvas;
+    } catch (error) {
+        console.warn('Enhanced camera frame unavailable; using original frame:', error);
+        return videoElement;
+    }
+}
 
 async function loadFaceDetectionModels() {
     if (faceModelsLoaded) return true;
@@ -397,8 +429,11 @@ async function fastDetectFace(videoElement) {
             inputSize: CONFIG.FACE_INPUT_SIZE,
             scoreThreshold: CONFIG.FACE_SCORE_THRESHOLD
         });
+        // Run detection on a gently brightened copy to reduce false negatives in dim rooms.
+        // Keep the original video for the student's preview and proctoring snapshots.
+        const detectionFrame = getEnhancedFaceDetectionFrame(videoElement);
         // Landmarks let us estimate head orientation; face presence alone is not enough.
-        const results = await faceapi.detectAllFaces(videoElement, options).withFaceLandmarks();
+        const results = await faceapi.detectAllFaces(detectionFrame, options).withFaceLandmarks();
         return results.map(result => ({
             ...result.detection,
             landmarks: result.landmarks,
@@ -4705,13 +4740,22 @@ retryCamera() {
                     }
 
                     if (oneFaceHits >= 2) {
+                        // Clear the recovery latch, but leave the paused flag intact
+                        // until resumeExam() clears BOTH proctor and AppState pause flags.
                         this.state.cameraRecoveryShown = false;
-                        this.state.isPaused = false;
                         console.log('✅ Stable face detected after retry');
                         this.state.faceConfirmations = this.config.FACE_CONFIRMATIONS_REQUIRED;
                         this.state.consecutiveLost = 0;
+                        this.state.detectionErrors = 0;
+                        this.state.headTurnStartedAt = 0;
                         this.state.faceStable = true;
-                        if (this.state.isPaused) {
+
+                        // Restart continuous detection on the replacement stream.
+                        // retryCamera() stopped the old interval before requesting media.
+                        this.startDetection(this.video, this.canvas);
+
+                        if (this.state.isPaused || AppState.isExamPaused) {
+                            this.state.isPaused = true;
                             this.resumeExam();
                         } else {
                             updateCameraStatus('good', '✅ Face detected', '1 face');
