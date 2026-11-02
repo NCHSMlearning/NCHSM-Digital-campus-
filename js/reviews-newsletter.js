@@ -950,9 +950,39 @@ async function submitReview(e) {
     }
     
     const btn = document.getElementById('submitReviewBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-    
+    if (btn?.dataset.submitting === 'true') return;
+
+    // Show a visible, full-screen progress state while the review is saved.
+    // This remains visible even when the modal content is scrolled.
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'reviewSubmitLoadingOverlay';
+    loadingOverlay.setAttribute('role', 'status');
+    loadingOverlay.setAttribute('aria-live', 'assertive');
+    loadingOverlay.innerHTML = `
+        <div class="review-submit-loading-card">
+            <span class="review-submit-spinner" aria-hidden="true"></span>
+            <strong>Submitting your review</strong>
+            <span>Please wait while we securely save your feedback...</span>
+        </div>`;
+    loadingOverlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.62);backdrop-filter:blur(3px);';
+    const loadingStyle = document.createElement('style');
+    loadingStyle.id = 'reviewSubmitLoadingStyles';
+    loadingStyle.textContent = `
+        #reviewSubmitLoadingOverlay .review-submit-loading-card{width:min(360px,100%);display:flex;flex-direction:column;align-items:center;gap:12px;padding:30px 24px;border-radius:18px;background:#fff;color:#172033;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:inherit}
+        #reviewSubmitLoadingOverlay .review-submit-loading-card strong{font-size:17px}
+        #reviewSubmitLoadingOverlay .review-submit-loading-card span:last-child{font-size:13px;color:#64748b;line-height:1.5}
+        #reviewSubmitLoadingOverlay .review-submit-spinner{width:42px;height:42px;border:4px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:reviewSubmitSpin .8s linear infinite}
+        @keyframes reviewSubmitSpin{to{transform:rotate(360deg)}}
+    `;
+    document.head.appendChild(loadingStyle);
+    document.body.appendChild(loadingOverlay);
+    if (btn) {
+        btn.disabled = true;
+        btn.dataset.submitting = 'true';
+        btn.setAttribute('aria-busy', 'true');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Submitting...';
+    }
+
     try {
         const supabase = getSupabaseClient();
         if (!supabase) throw new Error('Database connection error');
@@ -1038,8 +1068,14 @@ async function submitReview(e) {
         showFeedback('Error submitting review: ' + error.message, 'error');
         console.error('Error:', error);
     } finally {
+        document.getElementById('reviewSubmitLoadingOverlay')?.remove();
+        document.getElementById('reviewSubmitLoadingStyles')?.remove();
+        if (btn) {
         btn.disabled = false;
+        delete btn.dataset.submitting;
+        btn.removeAttribute('aria-busy');
         btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Review';
+        }
     }
 }
 
