@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isLoginPage) {
             console.log('🔄 Already logged in, redirecting to dashboard...');
             const requested = new URLSearchParams(window.location.search).get('redirect');
-            let target = 'student.html';
+            let target = '/student';
             if (requested && requested.startsWith('/') && !requested.startsWith('//')) {
                 try {
                     const candidate = new URL(requested, window.location.origin);
@@ -2620,7 +2620,7 @@ executeLogin: async function(identifier, password) {
 
         const roleRedirects = {
             'admin': 'admin.html',
-            'student': 'student.html',
+            'student': '/student',
             'lecturer': 'lecturer.html'
         };
         let redirectFile = roleRedirects[role] || 'index.html';
