@@ -249,7 +249,14 @@ function getStarHTML(rating) {
 
 function showFeedback(message, type = 'success') {
     const prefix = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
-    const toast = document.getElementById('toast') || document.querySelector('.toast');
+    let toast = document.getElementById('nchsmReviewToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'nchsmReviewToast';
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        document.body.appendChild(toast);
+    }
     if (toast) {
         toast.textContent = `${prefix} ${message}`;
         toast.style.display = 'block';
@@ -1148,6 +1155,8 @@ async function submitReview(e) {
 // ============================================
 
 function showSuccessPopup(rating, title, review, anonymous) {
+    document.getElementById('reviewSuccessPopup')?.remove();
+    document.getElementById('nchsmReviewToast')?.remove();
     const overlay = document.createElement('div');
     overlay.id = 'reviewSuccessPopup';
     overlay.style.cssText = `
