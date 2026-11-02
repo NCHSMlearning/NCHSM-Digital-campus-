@@ -450,6 +450,123 @@ function getPurposeBadge(basis) {
     return `<span style="background:${c.bg};color:${c.color};padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">${escapeHtml(label)}</span>`;
 }
 
+
+// ============================================
+// SUPER ADMIN — STUDENT EXAM ATTEMPT MANAGEMENT
+// Retake/Continue preserves the same attempt and answers.
+// Reset/Clear removes saved choices/current score via secure RPC.
+// ============================================
+async function openSuperadminExamAttempts(examId, examTitle = 'Assessment') {
+    const supabase = window.sb || window.supabase;
+    if (!supabase) { showFeedback('Supabase client is not available.', 'error'); return; }
+    const existing = document.getElementById('superadminExamAttemptsModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'superadminExamAttemptsModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = `<section style="background:#fff;width:min(1100px,100%);max-height:90vh;overflow:auto;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.3);">
+        <header style="position:sticky;top:0;background:#fff;border-bottom:1px solid #e2e8f0;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;z-index:2;">
+            <div><h3 style="margin:0;color:#0f172a;">Student Attempt Management</h3><p style="margin:4px 0 0;color:#64748b;font-size:12px;">${escapeHtml(examTitle)} · Retake preserves progress; Reset/Clear starts clean.</p></div>
+            <div style="display:flex;gap:8px;"><button id="refreshSuperadminAttempts" type="button" style="padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;cursor:pointer;">↻ Refresh</button><button type="button" aria-label="Close" onclick="document.getElementById('superadminExamAttemptsModal')?.remove()" style="border:0;background:#f1f5f9;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:18px;">×</button></div>
+        </header>
+        <div id="superadminExamAttemptsBody" style="padding:18px 22px;"><div style="padding:28px;text-align:center;color:#64748b;">Loading student attempts…</div></div>
+    </section>`;
+    document.body.appendChild(modal);
+
+    const body = modal.querySelector('#superadminExamAttemptsBody');
+    const load = async () => {
+        body.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;">Loading student attempts…</div>';
+        try {
+            const { data: attempts, error } = await supabase.from('exam_attempts')
+                .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks')
+                .eq('exam_id', Number(examId))
+                .order('attempt_number', { ascending: false });
+            if (error) throw error;
+            const latestByStudent = new Map();
+            (attempts || []).forEach(a => {
+                if (a.student_id && !latestByStudent.has(String(a.student_id))) latestByStudent.set(String(a.student_id), a);
+            });
+            const latest = [...latestByStudent.values()];
+            if (!latest.length) {
+                body.innerHTML = '<div style="padding:32px;text-align:center;color:#64748b;">No student attempts have been recorded for this assessment yet.</div>';
+                return;
+            }
+            const ids = latest.map(a => a.student_id);
+            const { data: profiles, error: profileError } = await supabase.from('consolidated_user_profiles_table')
+                .select('user_id, full_name, email, admission_number, student_id, program, current_block, block')
+                .in('user_id', ids);
+            if (profileError) throw profileError;
+            const profileMap = new Map((profiles || []).map(p => [String(p.user_id), p]));
+            const rows = latest.map(a => {
+                const p = profileMap.get(String(a.student_id)) || {};
+                const name = p.full_name || 'Student';
+                const attemptNo = Number(a.attempt_number || 1);
+                const status = String(a.status || 'Unknown').replace(/_/g, ' ');
+                const score = a.score == null ? '—' : a.score;
+                const pct = a.percentage == null ? '—' : Number(a.percentage).toFixed(1) + '%';
+                const started = a.started_at ? new Date(a.started_at).toLocaleString('en-KE') : '—';
+                const safeStudent = JSON.stringify(String(a.student_id));
+                const safeName = JSON.stringify(name);
+                const safeTitle = JSON.stringify(examTitle);
+                return `<tr style="border-bottom:1px solid #e2e8f0;">
+                    <td style="padding:11px 8px;"><strong>${escapeHtml(name)}</strong><div style="font-size:11px;color:#64748b;">${escapeHtml(p.email || '')}</div><div style="font-size:11px;color:#64748b;">${escapeHtml(p.admission_number || p.student_id || '')}</div></td>
+                    <td style="padding:11px 8px;">${escapeHtml(p.program || '')}<div style="font-size:11px;color:#64748b;">${escapeHtml(p.current_block || p.block || '')}</div></td>
+                    <td style="padding:11px 8px;text-align:center;">#${attemptNo}${a.is_retake ? '<div style="font-size:10px;color:#7c3aed;">Retake</div>' : ''}</td>
+                    <td style="padding:11px 8px;">${escapeHtml(status)}</td><td style="padding:11px 8px;text-align:center;">${escapeHtml(String(score))} / ${escapeHtml(String(a.total_marks ?? '—'))}<div style="font-size:11px;color:#64748b;">${escapeHtml(String(pct))}</div></td>
+                    <td style="padding:11px 8px;font-size:11px;">${escapeHtml(started)}</td>
+                    <td style="padding:11px 8px;"><div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button type="button" data-action="continue" data-student="${escapeHtml(String(a.student_id))}" data-name="${escapeHtml(name)}" style="padding:7px 9px;border:0;border-radius:7px;background:#2563eb;color:#fff;cursor:pointer;font-size:11px;font-weight:700;">↻ Retake / Continue</button>
+                        <button type="button" data-action="clear" data-student="${escapeHtml(String(a.student_id))}" data-name="${escapeHtml(name)}" style="padding:7px 9px;border:0;border-radius:7px;background:#b91c1c;color:#fff;cursor:pointer;font-size:11px;font-weight:700;">Reset / Clear</button>
+                    </div></td>
+                </tr>`;
+            }).join('');
+            body.innerHTML = `<div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:850px;"><thead><tr style="background:#f8fafc;text-align:left;"><th style="padding:10px 8px;">Student</th><th style="padding:10px 8px;">Program / Block</th><th style="padding:10px 8px;">Attempt</th><th style="padding:10px 8px;">Status</th><th style="padding:10px 8px;">Score</th><th style="padding:10px 8px;">Started</th><th style="padding:10px 8px;">Actions</th></tr></thead><tbody>${rows}</tbody></table></div><p style="font-size:11px;color:#64748b;margin:12px 0 0;">Showing the latest attempt per student. Reset/Clear is repeatable; the secure server action retains audit history.</p>`;
+        } catch (error) {
+            console.error('Failed to load Super Admin exam attempts:', error);
+            body.innerHTML = `<div style="padding:24px;color:#b91c1c;">Unable to load attempts: ${escapeHtml(error.message || 'Unknown error')}</div>`;
+        }
+    };
+    modal.querySelector('#refreshSuperadminAttempts').addEventListener('click', load);
+    body.addEventListener('click', async event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const studentId = button.dataset.student;
+        const studentName = button.dataset.name || 'Student';
+        const action = button.dataset.action;
+        if (action === 'continue') {
+            if (!confirm('RETAKE / CONTINUE EXAM\n\nStudent: ' + studentName + '\n\nThe same attempt will be reopened. Saved answers and progress will be preserved. Continue?')) return;
+            button.disabled = true; button.textContent = 'Authorizing…';
+            try {
+                const { data, error } = await supabase.rpc('admin_authorize_exam_retake', { p_student_id: studentId, p_exam_id: Number(examId) });
+                if (error) throw error;
+                const attempt = data?.attempt || data;
+                if (!attempt?.id || attempt.attempt_number == null) throw new Error('The server returned an invalid attempt record.');
+                showFeedback(studentName + ' can continue the same attempt #' + attempt.attempt_number + '.', 'success');
+                await load();
+            } catch (error) {
+                showFeedback('Unable to authorize continuation: ' + (error.message || 'Unknown error'), 'error');
+                button.disabled = false; button.textContent = '↻ Retake / Continue';
+            }
+        } else if (action === 'clear') {
+            if (!confirm('RESET / CLEAR ANSWERS\n\nStudent: ' + studentName + '\n\nThis clears saved question choices and the current score, then authorizes a clean restart. Audit history is retained. You may repeat this action when needed.\n\nContinue?')) return;
+            button.disabled = true; button.textContent = 'Clearing…';
+            try {
+                const { data, error } = await supabase.rpc('admin_clear_exam_choices', { p_student_id: studentId, p_exam_id: Number(examId) });
+                if (error) throw error;
+                const cleared = Number(data?.deleted_grade_answer_rows || 0) + Number(data?.deleted_exam_answer_rows || 0);
+                showFeedback('Clean restart authorized for ' + studentName + '. Cleared ' + cleared + ' saved answer rows.', 'success');
+                await load();
+            } catch (error) {
+                showFeedback('Unable to reset/clear: ' + (error.message || 'Unknown error'), 'error');
+                button.disabled = false; button.textContent = 'Reset / Clear';
+            }
+        }
+    });
+    await load();
+}
+window.openSuperadminExamAttempts = openSuperadminExamAttempts;
+
 function renderExamsTable(exams) {
     const D = window.DOM;
     if (!D.examsTbody) return;
@@ -518,6 +635,7 @@ function renderExamsTable(exams) {
         <td style="padding:8px 10px;text-align:center;white-space:nowrap;">
         <button onclick="openEditExamModal('${e.id}')" style="padding:4px 10px;background:#3b82f6;color:white;border:none;border-radius:4px;cursor:pointer;" title="Edit"><i class="fas fa-edit"></i></button>
         <button onclick="openGradeModal('${e.id}')" style="padding:4px 10px;background:#10b981;color:white;border:none;border-radius:4px;cursor:pointer;" title="Grade"><i class="fas fa-check-double"></i></button>
+        <button onclick="openSuperadminExamAttempts('${e.id}', '${escapeHtml(title).replace(/'/g, '&#39;')}')" style="padding:4px 10px;background:#7c3aed;color:white;border:none;border-radius:4px;cursor:pointer;" title="Manage student attempts"><i class="fas fa-users-cog"></i></button>
         ${status !== 'Completed' && status !== 'Closed' && status !== 'completed' ? `<button onclick="closeExam('${e.id}')" style="padding:4px 10px;background:#f59e0b;color:white;border:none;border-radius:4px;cursor:pointer;" title="Close"><i class="fas fa-lock"></i></button>` : ''}
         <button onclick="deleteExam('${e.id}', '${escapeHtml(title)}')" style="padding:4px 10px;background:#dc2626;color:white;border:none;border-radius:4px;cursor:pointer;" title="Delete"><i class="fas fa-trash"></i></button>
         ${link ? `<a href="${escapeHtml(link)}" target="_blank" style="padding:4px 10px;background:#059669;color:white;border-radius:4px;text-decoration:none;display:inline-block;" title="Open"><i class="fas fa-external-link-alt"></i></a>` : ''}
