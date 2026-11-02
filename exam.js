@@ -2405,6 +2405,11 @@ function updateQuestionTimer() {
 // TIMER
 // ============================================================
 function startTimer(seconds) {
+    // Prevent duplicate countdowns when a recovered exam re-enters the timer setup.
+    if (AppState.timerInterval) {
+        clearInterval(AppState.timerInterval);
+        AppState.timerInterval = null;
+    }
     const timerEl = document.getElementById('timer');
     const timerDisplayHeader = document.getElementById('timerDisplayHeader');
     const timerProgressBar = document.getElementById('timerProgressBar');
@@ -2528,9 +2533,16 @@ window.toggleReviewMode = function() {
 // ============================================================
 // ✅ FIXED: submitExam - with confirmation and no auto-submit on minimize
 // ============================================================
-function submitExam() {
+function submitExam(forceAutoSubmit = false) {
     if (AppState.isSubmitting) {
         showToast('⏳ Submission already in progress...', 'warning');
+        return;
+    }
+
+    // Automatic policy-triggered submissions (exam timer/fullscreen timeout) must not
+    // wait for a student confirmation dialog that may no longer be accessible.
+    if (forceAutoSubmit === true) {
+        executeSubmissionWithLoading();
         return;
     }
 
@@ -5383,111 +5395,6 @@ initExam = async function(...args) {
     return result;
 };
 
-// Best-effort server-side submission when the student closes/reloads the exam tab
-// or closes the browser window. The database RPC performs authoritative grading.
-let exitSubmissionStarted = false;
-function submitActiveExamOnExit() {
-    if (exitSubmissionStarted || !AppState.isExamActive || AppState.isSubmitting ||
-        AppState.examAutoSubmitted || !AppState.attemptId || !AppState.studentId || !AppState.examId) return;
-    exitSubmissionStarted = true;
-
-    try {
-        // Flush the currently visible control before the browser tears the page down.
-        // Text answers use a debounce timer, so AppState.answers may otherwise lag
-        // behind the last keystroke when the student closes the tab.
-        const currentQuestion = (AppState.questions || [])[AppState.currentIndex];
-        if (currentQuestion && currentQuestion.id) {
-            const textControl = document.getElementById(`text-answer-${currentQuestion.id}`);
-            if (textControl && typeof textControl.value === 'string') {
-                AppState.answers[currentQuestion.id] = textControl.value;
-            } else {
-                const selected = document.querySelector(`input[name="answer-${currentQuestion.id}"]:checked`);
-                if (selected) AppState.answers[currentQuestion.id] = selected.value;
-            }
-        }
-
-        const answerPayload = {};
-        (AppState.questions || []).forEach((question) => {
-            if (!question || !question.id) return;
-            const textControl = document.getElementById(`text-answer-${question.id}`);
-            if (textControl && typeof textControl.value === 'string') {
-                AppState.answers[question.id] = textControl.value;
-            } else {
-                const selected = document.querySelector(`input[name="answer-${question.id}"]:checked`);
-                if (selected) AppState.answers[question.id] = selected.value;
-            }
-            if (AppState.answers[question.id] != null) {
-                answerPayload[question.id] = String(AppState.answers[question.id]);
-                saveToLocalStorage(`draft_${question.id}`, {
-                    answer: answerPayload[question.id],
-                    timestamp: Date.now(),
-                    attemptId: AppState.attemptId
-                });
-            }
-        });
-        saveProgressLocally();
-
-        // Supabase JS persists the authenticated session in localStorage.
-        // Use keepalive fetch so the request can outlive page teardown.
-        let accessToken = null;
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (!key || !/^sb-.+-auth-token$/.test(key)) continue;
-            try {
-                const stored = JSON.parse(localStorage.getItem(key) || '{}');
-                if (stored.access_token) { accessToken = stored.access_token; break; }
-            } catch (_) {}
-        }
-        if (!accessToken) {
-            console.warn('Exit auto-submit could not find an authenticated session; answers remain saved for recovery.');
-            exitSubmissionStarted = false;
-            return;
-        }
-
-        const body = JSON.stringify({
-            p_student_id: AppState.studentId,
-            p_exam_id: parseInt(AppState.examId, 10),
-            p_attempt_id: AppState.attemptId,
-            p_answers: answerPayload,
-            p_attempt_number: AppState.attemptNumber || 1,
-            p_is_retake: !!AppState.isRetake,
-            p_retake_count: AppState.retakeCount || 0
-        });
-        fetch(CONFIG.SUPABASE_URL + '/rest/v1/rpc/submit_exam_attempt_secure', {
-            method: 'POST',
-            keepalive: true,
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': CONFIG.SUPABASE_ANON_KEY,
-                'Authorization': 'Bearer ' + accessToken
-            },
-            body
-        }).then((response) => {
-            if (response.ok) {
-                AppState.examAutoSubmitted = true;
-                AppState.isExamActive = false;
-                try { localStorage.setItem(getStorageKey('exit_submitted'), String(Date.now())); } catch (_) {}
-            } else {
-                console.warn('Exit auto-submit was rejected; server will retain the attempt for recovery.');
-                exitSubmissionStarted = false;
-            }
-        }).catch((error) => {
-            console.warn('Exit auto-submit request failed; local progress was preserved.', error);
-            exitSubmissionStarted = false;
-        });
-    } catch (error) {
-        console.warn('Could not prepare exit submission:', error);
-        exitSubmissionStarted = false;
-    }
-}
-
-window.addEventListener('pagehide', () => {
-    submitActiveExamOnExit();
-    closeNchsmWebRTCSignaling();
-    releaseSingleExamTabLock();
-});
-
-// beforeunload catches additional browser exits; the guard prevents duplicate calls.
-window.addEventListener('beforeunload', () => {
-    submitActiveExamOnExit();
-});
+// SAFETY: closing, refreshing, or navigating away must NOT submit an exam.
+// The active attempt and locally saved answers remain recoverable; only an
+// explicit submission, exam timeout, or confirmed proctoring policy submits it.
