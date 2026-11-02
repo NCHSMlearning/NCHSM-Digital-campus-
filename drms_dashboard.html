@@ -323,10 +323,10 @@ function buildMenu() {
     const role = currentUser?.role;
     const navMenu = document.getElementById('navMenu');
     let menuHtml = '<div class="nav-group"><div class="nav-header">📊 DASHBOARD</div><a href="#" data-view="dashboard" class="nav-item active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></div>';
-    if (['admin','superadmin','hod','nursing_hod','tvet_hod','academic_registrar','registrar'].includes(role)) {
+    if (['admin','superadmin'].includes(role)) {
         menuHtml += '<div class="nav-group"><div class="nav-header">👑 ADMINISTRATION</div><a href="#" data-view="students" class="nav-item"><i class="fas fa-user-graduate"></i> Student Records</a><a href="#" data-view="upload" class="nav-item"><i class="fas fa-upload"></i> Upload Student Document</a><a href="#" data-view="documents" class="nav-item"><i class="fas fa-folder-open"></i> All Documents</a><a href="#" data-view="approvals" class="nav-item"><i class="fas fa-check-double"></i> Pending Approvals</a><a href="#" data-view="teaching" class="nav-item"><i class="fas fa-clipboard-check"></i> Academic Submissions & Reviews</a></div>';
-    } else if (role === 'lecturer') {
-        menuHtml += '<div class="nav-group"><div class="nav-header">📚 LECTURER WORKSPACE</div><a href="#" data-view="teaching" class="nav-item"><i class="fas fa-file-circle-plus"></i> Academic Submissions</a><a href="#" data-view="documents" class="nav-item"><i class="fas fa-folder-open"></i> My Documents</a></div>';
+    } else if (['lecturer','hod','nursing_hod','tvet_hod','academic_registrar','registrar'].includes(role)) {
+        menuHtml += '<div class="nav-group"><div class="nav-header">📚 LECTURER / REVIEWER WORKSPACE</div><a href="#" data-view="teaching" class="nav-item"><i class="fas fa-file-circle-plus"></i> Academic Submissions & Reviews</a><a href="#" data-view="documents" class="nav-item"><i class="fas fa-folder-open"></i> My Documents</a></div>';
     } else if (role === 'student') {
         menuHtml += '<div class="nav-group"><div class="nav-header">🎓 STUDENT</div><a href="#" data-view="documents" class="nav-item"><i class="fas fa-id-card"></i> My Documents</a></div>';
     }
