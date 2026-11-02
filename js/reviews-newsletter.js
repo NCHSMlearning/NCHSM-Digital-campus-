@@ -918,7 +918,25 @@ async function updateReviewStats() {
 // ============================================
 
 async function submitReview(e) {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
+    const diagnostic = document.getElementById('reviewFormFeedback');
+    let submitStage = 'started';
+    const logReview = (stage, details = {}) => {
+        submitStage = stage;
+        console.info('[NCHSM Review Submit]', stage, details);
+        if (diagnostic) {
+            diagnostic.style.display = 'block';
+            diagnostic.style.background = '#eff6ff';
+            diagnostic.style.color = '#1e3a8a';
+            diagnostic.style.border = '1px solid #bfdbfe';
+            diagnostic.textContent = 'Review submission: ' + stage.replace(/_/g, ' ') + '...';
+        }
+    };
+    logReview('submit_event_received', {
+        formFound: !!document.getElementById('studentReviewForm'),
+        buttonFound: !!document.getElementById('submitReviewBtn'),
+        clientFound: !!getSupabaseClient()
+    });
     
     const component = document.getElementById('selectedComponent')?.value;
     const rating = parseInt(document.getElementById('reviewRatingValue')?.value || 0);
@@ -931,17 +949,23 @@ async function submitReview(e) {
     const componentName = document.getElementById('componentNameInput')?.value?.trim() || '';
     
     if (!component) {
+        logReview('validation_failed_component');
         showFeedback('Please select what you are reviewing', 'error');
+        if (diagnostic) { diagnostic.style.display = 'block'; diagnostic.style.color = '#991b1b'; diagnostic.style.background = '#fef2f2'; diagnostic.textContent = 'Submission stopped: please select what you are reviewing.'; }
         return;
     }
     
     if (rating === 0) {
+        logReview('validation_failed_rating');
         showFeedback('Please select a rating', 'error');
+        if (diagnostic) { diagnostic.style.display = 'block'; diagnostic.style.color = '#991b1b'; diagnostic.style.background = '#fef2f2'; diagnostic.textContent = 'Submission stopped: please select a star rating.'; }
         return;
     }
     
     if (!review || review.length < 10) {
+        logReview('validation_failed_review_text', { length: review?.length || 0 });
         showFeedback('Please write at least 10 characters', 'error');
+        if (diagnostic) { diagnostic.style.display = 'block'; diagnostic.style.color = '#991b1b'; diagnostic.style.background = '#fef2f2'; diagnostic.textContent = 'Submission stopped: write at least 10 characters.'; }
         return;
     }
     
@@ -980,8 +1004,9 @@ async function submitReview(e) {
     }
 
     try {
+        logReview('checking_supabase_client');
         const supabase = getSupabaseClient();
-        if (!supabase) throw new Error('Database connection error');
+        if (!supabase) throw new Error('Database connection error: Supabase client was not found on this page.');
         
         // Resolve the signed-in student's UUID from the portal profile first,
         // then fall back to the active Supabase Auth session.
@@ -989,6 +1014,7 @@ async function submitReview(e) {
         // The RLS policy requires student_id to equal auth.uid(); always prefer
         // the authenticated Supabase user over a potentially different profile ID.
         let userId = null;
+        logReview('checking_authenticated_session');
         if (supabase.auth?.getUser) {
             const { data: authData, error: authError } = await supabase.auth.getUser();
             if (authError) throw new Error('Could not verify your login: ' + authError.message);
@@ -1008,6 +1034,14 @@ async function submitReview(e) {
         const reviewBlock = currentUser?.block || currentUser?.current_block || window.userBlock || 'Block 1';
         const reviewProgramType = isTVETStudent ? 'TVET' : (currentUser?.program_type || 'KRCHN');
         
+        logReview('sending_insert_to_database', {
+            userIdPresent: !!userId,
+            component,
+            rating,
+            reviewLength: review.length,
+            program: reviewProgram,
+            block: reviewBlock
+        });
         const { data, error } = await supabase
             .from('student_reviews')
             .insert([{
@@ -1028,7 +1062,17 @@ async function submitReview(e) {
                 created_at: new Date().toISOString()
             }]);
         
-        if (error) throw error;
+        if (error) {
+            console.error('[NCHSM Review Submit] Database insert failed', {
+                stage: submitStage,
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint
+            });
+            throw error;
+        }
+        logReview('database_insert_succeeded', { returnedRow: !!data });
         
         // Close modal and show success popup
         closeReviewModal();
@@ -1065,8 +1109,28 @@ async function submitReview(e) {
         }, 500);
         
     } catch (error) {
-        showFeedback('Error submitting review: ' + error.message, 'error');
-        console.error('Error:', error);
+        const details = {
+            stage: submitStage,
+            name: error?.name || 'Error',
+            message: error?.message || String(error),
+            code: error?.code || null,
+            details: error?.details || null,
+            hint: error?.hint || null
+        };
+        console.error('[NCHSM Review Submit] FAILED', details, error);
+        showFeedback('Error submitting review: ' + details.message, 'error');
+        if (diagnostic) {
+            diagnostic.style.display = 'block';
+            diagnostic.style.background = '#fef2f2';
+            diagnostic.style.color = '#991b1b';
+            diagnostic.style.border = '1px solid #fecaca';
+            diagnostic.innerHTML = '<strong>Review was not submitted.</strong><br>' +
+                'Stage: ' + escapeHtml(details.stage) + '<br>' +
+                'Error: ' + escapeHtml(details.message) +
+                (details.code ? '<br>Code: ' + escapeHtml(details.code) : '') +
+                (details.details ? '<br>Details: ' + escapeHtml(details.details) : '') +
+                (details.hint ? '<br>Hint: ' + escapeHtml(details.hint) : '');
+        }
     } finally {
         document.getElementById('reviewSubmitLoadingOverlay')?.remove();
         document.getElementById('reviewSubmitLoadingStyles')?.remove();
