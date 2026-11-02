@@ -14950,65 +14950,72 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <!-- NCHSM MOBILE HEADER VISIBILITY FIX -->
 <style id="nchsm-mobile-header-visibility-fix">
+/* Compact mobile header: prevent oversized inherited button dimensions and overlap. */
 @media (max-width: 1023px) {
-  .main-header.nchsm-reference-header {
-    height: 64px !important;
-    min-height: 64px !important;
-    max-height: 64px !important;
-    padding: 6px 12px !important;
-    box-sizing: border-box !important;
-    gap: 8px !important;
-    overflow: visible !important;
+  #main-header.nchsm-reference-header {
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    width:100%!important;
+    height:64px!important;
+    min-height:64px!important;
+    max-height:64px!important;
+    padding:6px 10px!important;
+    box-sizing:border-box!important;
+    gap:6px!important;
+    overflow:visible!important;
   }
-  .nchsm-header-left {
-    display: flex !important;
-    align-items: center !important;
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-    gap: 8px !important;
+  #main-header .nchsm-header-left {
+    display:flex!important;align-items:center!important;
+    flex:1 1 auto!important;min-width:0!important;gap:7px!important;
   }
-  #mobile-menu-toggle.nchsm-header-menu {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    flex: 0 0 38px !important;
-    width: 38px !important;
-    min-width: 38px !important;
-    max-width: 38px !important;
-    height: 38px !important;
-    min-height: 38px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: 0 !important;
-    border-radius: 9px !important;
-    background: #eef4fa !important;
-    color: #062f55 !important;
-    box-shadow: none !important;
-    opacity: 1 !important;
-    visibility: visible !important;
+  #main-header #mobile-menu-toggle.nchsm-header-menu {
+    display:flex!important;flex:0 0 38px!important;
+    width:38px!important;min-width:38px!important;max-width:38px!important;
+    height:38px!important;min-height:38px!important;max-height:38px!important;
+    padding:0!important;margin:0!important;box-sizing:border-box!important;
+    border:0!important;border-radius:9px!important;background:#eef4fa!important;
+    color:#062f55!important;line-height:1!important;
+    align-items:center!important;justify-content:center!important;
   }
-  #mobile-menu-toggle i,
-  #mobile-menu-toggle .fas,
-  #mobile-menu-toggle .fa-bars {
-    display: inline-block !important;
-    color: #062f55 !important;
-    font-size: 21px !important;
-    line-height: 1 !important;
-    opacity: 1 !important;
-    visibility: visible !important;
+  #main-header #mobile-menu-toggle i {
+    display:block!important;width:auto!important;height:auto!important;
+    margin:0!important;padding:0!important;font-size:20px!important;
+    line-height:1!important;color:#062f55!important;
   }
-  .nchsm-header-brand {
-    min-width: 0 !important;
-    gap: 7px !important;
+  #main-header .nchsm-header-brand {
+    display:flex!important;align-items:center!important;gap:6px!important;
+    min-width:0!important;white-space:nowrap!important;
   }
-  .nchsm-header-logo {
-    width: 34px !important;
-    height: 34px !important;
-    flex: 0 0 34px !important;
+  #main-header .nchsm-header-logo {
+    display:block!important;width:34px!important;height:34px!important;
+    min-width:34px!important;max-width:34px!important;object-fit:contain!important;
   }
-  .nchsm-header-title { font-size: 15px !important; }
-  .nchsm-header-subtitle { font-size: 9px !important; }
-  .nchsm-header-right { flex: 0 0 auto !important; gap: 2px !important; }
+  #main-header .nchsm-header-title {font-size:15px!important;line-height:1!important}
+  #main-header .nchsm-header-subtitle {font-size:9px!important;line-height:1.1!important;margin-top:3px!important}
+  #main-header .nchsm-header-right {
+    display:flex!important;align-items:center!important;flex:0 0 auto!important;gap:2px!important;
+  }
+  #main-header .nchsm-header-icon {
+    width:32px!important;min-width:32px!important;height:36px!important;
+    padding:0!important;margin:0!important;font-size:17px!important;
+  }
+  #main-header .nchsm-header-profile .profile-trigger {padding:0!important;gap:0!important}
+  #main-header .nchsm-header-profile .profile-avatar {
+    display:block!important;width:34px!important;height:34px!important;
+    min-width:34px!important;object-fit:cover!important;
+  }
+  /* The fixed header must reserve its own space; don't hide the first content row. */
+  #app-content>.container {padding-top:64px!important}
+  #main-content.main {padding-top:10px!important}
+}
+@media(max-width:380px) {
+  #main-header.nchsm-reference-header {padding-left:7px!important;padding-right:7px!important;gap:3px!important}
+  #main-header .nchsm-header-logo {width:30px!important;height:30px!important;min-width:30px!important}
+  #main-header .nchsm-header-title {font-size:14px!important}
+  #main-header .nchsm-header-subtitle {font-size:8px!important}
+  #main-header .nchsm-header-icon {width:29px!important;min-width:29px!important}
+  #main-header .nchsm-header-profile .profile-avatar {width:30px!important;height:30px!important;min-width:30px!important}
 }
 </style>
 
