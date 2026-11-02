@@ -2178,19 +2178,68 @@ window.initReviewsModule = initReviewsModule;
         if (window.__nchsmReviewsModuleStarted) return;
         window.__nchsmReviewsModuleStarted = true;
 
-        // Delegate form submission from document so it works even if the review
-        // modal/form is inserted or initialized after this script runs.
+        // Bind both the actual submit event and the visible button click.
+        // The click path is intentional: it proves whether the browser receives
+        // the tap even if another script interferes with native form submission.
         if (!window.__nchsmReviewSubmitDelegated) {
             window.__nchsmReviewSubmitDelegated = true;
+            window.__nchsmReviewSubmitInFlight = false;
+
+            function showReviewDebug(message, isError = false) {
+                let panel = document.getElementById('nchsmReviewDebugPanel');
+                if (!panel) {
+                    panel = document.createElement('div');
+                    panel.id = 'nchsmReviewDebugPanel';
+                    panel.setAttribute('role', 'status');
+                    panel.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483647;padding:14px 16px;border-radius:12px;font:14px/1.45 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.25);';
+                    document.body.appendChild(panel);
+                }
+                panel.style.background = isError ? '#fee2e2' : '#dbeafe';
+                panel.style.color = isError ? '#991b1b' : '#1e3a8a';
+                panel.style.border = '2px solid ' + (isError ? '#ef4444' : '#3b82f6');
+                panel.textContent = 'NCHSM Review Diagnostic: ' + message;
+                console[isError ? 'error' : 'info']('[NCHSM Review Diagnostic]', message);
+            }
+
+            async function runReviewSubmission(event, source) {
+                if (window.__nchsmReviewSubmitInFlight) return;
+                window.__nchsmReviewSubmitInFlight = true;
+                if (event) event.preventDefault();
+                showReviewDebug('Tap received (' + source + '). Preparing submission…');
+                try {
+                    if (typeof submitReview !== 'function') {
+                        throw new Error('submitReview function is not loaded. Check the reviews JavaScript deployment.');
+                    }
+                    await submitReview(event || { preventDefault() {} });
+                    const feedback = document.getElementById('reviewFormFeedback');
+                    const feedbackText = feedback?.textContent?.trim();
+                    if (feedbackText) showReviewDebug(feedbackText, /error|failed|not submitted|stopped/i.test(feedbackText));
+                    else if (document.getElementById('reviewSuccessPopup')) showReviewDebug('Review submitted successfully.');
+                    else showReviewDebug('Submission handler finished. Check the form validation messages and browser console.');
+                } catch (error) {
+                    showReviewDebug((error?.message || String(error)), true);
+                } finally {
+                    window.__nchsmReviewSubmitInFlight = false;
+                }
+            }
+
+            document.addEventListener('click', function (event) {
+                const button = event.target?.closest?.('#submitReviewBtn');
+                if (!button) return;
+                event.preventDefault();
+                event.stopPropagation();
+                runReviewSubmission(event, 'Submit Review button').catch(error => {
+                    showReviewDebug(error?.message || String(error), true);
+                });
+            }, true);
+
             document.addEventListener('submit', function (event) {
                 const form = event.target;
-                if (form && form.id === 'studentReviewForm') {
-                    event.preventDefault();
-                    submitReview(event).catch(function (error) {
-                        console.error('[Reviews] Unhandled submit failure:', error);
-                        showFeedback('Could not submit your review. Please try again.', 'error');
-                    });
-                }
+                if (!form || form.id !== 'studentReviewForm') return;
+                event.preventDefault();
+                runReviewSubmission(event, 'review form').catch(error => {
+                    showReviewDebug(error?.message || String(error), true);
+                });
             }, true);
         }
 
