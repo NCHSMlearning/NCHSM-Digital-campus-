@@ -130,12 +130,12 @@ async function handleUpload(e) {
     const description = document.getElementById('docDescription').value.trim();
     const file = document.getElementById('docFile').files[0];
     if (!studentId || !title || !file) { showToast('Fill all required fields', true); return; }
-    const fileName = `${studentId}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const filePath = `drms/${studentId}/${fileName}`;
-    const { error: uploadError } = await sb.storage.from('drms_files').upload(filePath, file);
+    const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const filePath = `${currentUser.user_id}/${fileName}`;
+    const { error: uploadError } = await sb.storage.from('drms_academic_records').upload(filePath, file);
     if (uploadError) { showToast('Upload failed: ' + uploadError.message, true); return; }
-    const { data: { publicUrl } } = sb.storage.from('drms_files').getPublicUrl(filePath);
-    await sb.from('drms_documents').insert([{ student_id: studentId, title, category, description, file_name: file.name, file_url: publicUrl, file_size: `${(file.size/1024).toFixed(2)} KB`, uploaded_by: currentUser?.user_id, created_at: new Date().toISOString() }]);
+    const { error: insertError } = await sb.from('drms_documents').insert([{ student_id: studentId, owner_id: currentUser.user_id, title, category, description, file_name: file.name, file_url: 'private://' + filePath, file_path: filePath, file_size: `${(file.size/1024).toFixed(2)} KB`, uploaded_by: currentUser.user_id, uploaded_by_name: currentUser.full_name, created_at: new Date().toISOString() }]);
+    if (insertError) { await sb.storage.from('drms_academic_records').remove([filePath]); showToast('Record save failed: ' + insertError.message, true); return; }
     await addAuditLog('UPLOAD', `Uploaded: ${title}`);
     showToast('Uploaded successfully!');
     document.getElementById('uploadForm').reset();
@@ -165,12 +165,12 @@ async function handleBulkUpload(e) {
     let success = 0, failed = 0;
     for (const file of files) {
         const title = file.name.replace(/\.[^/.]+$/, '').substring(0, 100);
-        const fileName = `${studentId}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const filePath = `drms/${studentId}/${fileName}`;
-        const { error } = await sb.storage.from('drms_files').upload(filePath, file);
+        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const filePath = `${currentUser.user_id}/${fileName}`;
+        const { error } = await sb.storage.from('drms_academic_records').upload(filePath, file);
         if (error) { failed++; continue; }
-        const { data: { publicUrl } } = sb.storage.from('drms_files').getPublicUrl(filePath);
-        await sb.from('drms_documents').insert([{ student_id: studentId, title, category: defaultCategory, file_name: file.name, file_url: publicUrl, file_size: `${(file.size/1024).toFixed(2)} KB`, uploaded_by: currentUser?.user_id, created_at: new Date().toISOString() }]);
+        const { error: insertError } = await sb.from('drms_documents').insert([{ student_id: studentId, owner_id: currentUser.user_id, title, category: defaultCategory, file_name: file.name, file_url: 'private://' + filePath, file_path: filePath, file_size: `${(file.size/1024).toFixed(2)} KB`, uploaded_by: currentUser.user_id, uploaded_by_name: currentUser.full_name, created_at: new Date().toISOString() }]);
+        if (insertError) { await sb.storage.from('drms_academic_records').remove([filePath]); failed++; continue; }
         success++;
     }
     await addAuditLog('BULK_UPLOAD', `Uploaded ${success} documents`);
@@ -186,9 +186,15 @@ async function viewDocument(docId) {
     const modal = document.getElementById('docViewerModal');
     document.getElementById('viewerTitle').innerHTML = `<i class="fas fa-file"></i> ${escapeHtml(doc.title)}`;
     const iframe = document.getElementById('documentIframe');
-    if (doc.file_url.endsWith('.pdf')) iframe.src = doc.file_url;
-    else iframe.srcdoc = `<html><body style="display:flex;justify-content:center;align-items:center;height:100vh;"><div><i class="fas fa-file-alt" style="font-size:48px;"></i><h3>${escapeHtml(doc.title)}</h3><p><a href="${doc.file_url}" target="_blank">Click to download</a></p></div></body></html>`;
-    document.getElementById('downloadDocBtn').onclick = () => window.open(doc.file_url, '_blank');
+    let documentUrl = doc.file_url;
+    if (doc.file_path) {
+        const { data: signed, error: signedError } = await sb.storage.from('drms_academic_records').createSignedUrl(doc.file_path, 600);
+        if (signedError) { showToast('Unable to access document: ' + signedError.message, true); return; }
+        documentUrl = signed.signedUrl;
+    }
+    if (documentUrl && documentUrl.toLowerCase().split('?')[0].endsWith('.pdf')) iframe.src = documentUrl;
+    else iframe.srcdoc = `<html><body style="display:flex;justify-content:center;align-items:center;height:100vh;"><div><i class="fas fa-file-alt" style="font-size:48px;"></i><h3>${escapeHtml(doc.title)}</h3><p><a href="${documentUrl}" target="_blank" rel="noopener">Click to download</a></p></div></body></html>`;
+    document.getElementById('downloadDocBtn').onclick = () => window.open(documentUrl, '_blank', 'noopener');
     modal.style.display = 'flex';
 }
 
@@ -294,12 +300,19 @@ document.querySelectorAll('.drms-nav-item').forEach(item => {
 });
 
 async function init() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session?.user) {
-        const { data: profile } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', session.user.id).single();
-        currentUser = profile;
-        document.getElementById('drmsUserName').innerText = profile?.full_name || 'Admin';
-    } else { currentUser = { user_id: 'demo', full_name: 'Demo Admin' }; document.getElementById('drmsUserName').innerText = 'Demo Admin'; }
+    const { data: { user }, error: authError } = await sb.auth.getUser();
+    if (authError || !user) { window.location.replace('drms_login.html'); return; }
+    const { data: profile, error: profileError } = await sb.from('consolidated_user_profiles_table').select('*').eq('user_id', user.id).maybeSingle();
+    if (profileError || !profile) { await sb.auth.signOut(); window.location.replace('drms_login.html'); return; }
+    const roleRaw = String(profile.role || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
+    const role = roleRaw === 'super_admin' ? 'superadmin' : roleRaw;
+    if (!['lecturer','hod','nursing_hod','tvet_hod','admin','superadmin','academic_registrar','registrar','student'].includes(role) || profile.login_enabled === false || !['active','approved'].includes(String(profile.status || '').toLowerCase())) {
+        await sb.auth.signOut(); window.location.replace('drms_login.html'); return;
+    }
+    currentUser = { ...profile, user_id: user.id, email: user.email || profile.email, role };
+    document.getElementById('drmsUserName').innerText = currentUser.full_name || currentUser.email;
     await renderDashboard();
 }
+const drmsLogout = document.getElementById('drmsLogoutBtn');
+if (drmsLogout) drmsLogout.addEventListener('click', async () => { await sb.auth.signOut(); window.location.replace('drms_login.html'); });
 init();
