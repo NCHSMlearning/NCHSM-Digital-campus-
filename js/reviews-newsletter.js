@@ -957,14 +957,26 @@ async function submitReview(e) {
         const supabase = getSupabaseClient();
         if (!supabase) throw new Error('Database connection error');
         
-        const currentUser = window.currentUserProfile || window.currentUserId;
-        const userId = currentUser?.user_id || currentUser;
-        
-        if (!userId) throw new Error('User not logged in');
-        
-        const userProgram = currentUser?.program || userProgramCode || 'KRCHN';
-        const userBlock = currentUser?.block || userBlock || 'Block 1';
-        const userProgramType = isTVETStudent ? 'TVET' : 'KRCHN';
+        // Resolve the signed-in student's UUID from the portal profile first,
+        // then fall back to the active Supabase Auth session.
+        const currentUser = window.currentUserProfile || window.db?.currentUserProfile || window.userProfile || null;
+        let userId = currentUser?.user_id || currentUser?.id || window.currentUserId || null;
+
+        if (!userId && supabase.auth?.getUser) {
+            const { data: authData, error: authError } = await supabase.auth.getUser();
+            if (authError) console.warn('Could not resolve Supabase user:', authError.message);
+            userId = authData?.user?.id || null;
+        }
+
+        if (!userId || typeof userId !== 'string') {
+            throw new Error('Your student login session could not be verified. Please sign in again and retry.');
+        }
+
+        // Avoid shadowing the module-level userBlock variable (which caused a
+        // temporal-dead-zone ReferenceError and stopped every submission).
+        const reviewProgram = currentUser?.program || currentUser?.program_name || userProgramCode || 'KRCHN';
+        const reviewBlock = currentUser?.block || currentUser?.current_block || window.userBlock || 'Block 1';
+        const reviewProgramType = isTVETStudent ? 'TVET' : (currentUser?.program_type || 'KRCHN');
         
         const { data, error } = await supabase
             .from('student_reviews')
