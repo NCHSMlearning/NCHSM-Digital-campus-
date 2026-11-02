@@ -6488,7 +6488,9 @@ async function saveResearchCorrection(submit){
     }).reduce(function(mx,x){return Math.max(mx,Number(x.version_number)||1)},Number(r.version_number)||1)+1;
     var fileName=(String(r.title||'research').replace(/[^a-zA-Z0-9_-]+/g,'_')+'_V'+next+'.html');
     var path=id+'/'+(r.research_group_id||r.id)+'/'+Date.now()+'_'+fileName;
-    var blob=new Blob(['<!doctype html><html><head><meta charset="utf-8"><title>'+esc(r.title||'Research Paper')+'</title></head><body>'+html+'</body></html>'],{type:'text/html'});
+    var blob=new Blob(['<!doctype html><html><head><meta charset="utf-8"><title>'+esc(r.title||'Research Paper')+'</title></head><body>'+html+'
+<script src="script.js?v=nchsm-smooth-refresh" defer></script>
+</body></html>'],{type:'text/html'});
     var up=await sb.storage.from('research-papers').upload(path,blob,{upsert:false,contentType:'text/html'});
     if(up.error)throw up.error;
     var payload={
