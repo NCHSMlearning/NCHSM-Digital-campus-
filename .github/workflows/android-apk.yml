@@ -42,6 +42,20 @@ jobs:
       - name: Verify Capacitor config compiler
         run: npx tsc --version
 
+      - name: Stage web assets outside the Android project
+        run: |
+          rm -rf /tmp/nchsm-web
+          mkdir -p /tmp/nchsm-web
+          rsync -a ./ /tmp/nchsm-web/ \
+            --exclude='.git/' \
+            --exclude='node_modules/' \
+            --exclude='android/' \
+            --exclude='www/' \
+            --exclude='.github/' \
+            --exclude='release/'
+          rm -rf www
+          mv /tmp/nchsm-web www
+
       - name: Generate Android native project
         run: |
           if [ ! -d android ]; then
