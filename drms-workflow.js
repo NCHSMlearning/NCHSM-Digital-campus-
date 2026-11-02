@@ -2,7 +2,7 @@
 (function(){
 const BUCKET='drms_academic_records';
 const TYPES=['Scheme of Work','Lesson Plan','Record of Work','Assessment Record','CAT / Continuous Assessment','OSCE / Practical Assessment Record','Examination Paper','Mark Sheet / Examination Marks','Marking Scheme','Examination Report','Block / Semester Academic Report','Clinical Placement Report','Clinical Assessment Record','Other Academic Record'];
-const PROGRAMS=['KRCHN','DPOTT','DCH','DHRIT','DSL','DSW','DCJS','DICT','CCH','CICT'];
+const PROGRAMS=['KRCHN','DPOTT','CPOTT','DCH','DHRIT','DSL','DSW','DCJS','DICT','CCH','CICT','TVET'];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const admin=()=>['admin','superadmin'].includes(String(currentUser?.role||'').toLowerCase());
 const labels={draft:'Draft',submitted:'Submitted',under_review:'Under Review',revision_required:'Revision Required',approved:'Approved',rejected:'Rejected',pending:'Pending'};
