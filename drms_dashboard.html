@@ -249,27 +249,74 @@ async function loadStudents() { const { data } = await sb.from('consolidated_use
 async function loadDocs() { const { data } = await sb.from('drms_documents').select('*').order('created_at', false); allDocs = data || []; return allDocs; }
 
 async function renderDashboard() {
-    await loadDocs(); await loadStudents();
-    const totalDocs = allDocs.length;
-    const pendingApprovals = allDocs.filter(d => d.status === 'pending').length;
-    const categoryCount = { Admission:0, Academic:0, Financial:0, Medical:0 };
-    allDocs.forEach(d => { if(categoryCount[d.category] !== undefined) categoryCount[d.category]++; });
-    
-    setTimeout(() => {
-        const ctx = document.getElementById('statsChart')?.getContext('2d');
-        if(ctx && chart) chart.destroy();
-        if(ctx) chart = new Chart(ctx, { type: 'bar', data: { labels: Object.keys(categoryCount), datasets: [{ label: 'Documents by Category', data: Object.values(categoryCount), backgroundColor: '#f5b042' }] } });
-    }, 100);
-    
-    let recentHtml = '';
-    for(let i = 0; i < Math.min(10, allDocs.length); i++) {
-        const d = allDocs[i];
-        const s = allStudents.find(st => st.user_id === d.student_id);
-        recentHtml += '<tr><td>' + escapeHtml(s?.full_name || 'Unknown') + '</td><td>' + escapeHtml(d.title) + '</td><td><span class="badge">' + (d.category || 'Other') + '</span></td><td>' + new Date(d.created_at).toLocaleDateString() + '</td><td><span class="badge ' + (d.status === 'approved' ? 'badge-approved' : 'badge-pending') + '">' + (d.status || 'pending') + '</span></td><td><button class="btn btn-sm btn-primary" onclick="viewDoc(' + d.id + ')">View</button></td></tr>';
+    const main = document.getElementById('mainContent');
+    main.innerHTML = '<div class="loading"><div class="spinner"></div> Preparing your workspace…</div>';
+    try {
+        await loadDocs();
+        try { await loadStudents(); } catch (studentError) { console.warn('Student summary is not available for this role:', studentError.message); allStudents = []; }
+        const docs = Array.isArray(allDocs) ? allDocs : [];
+        const total = docs.length;
+        const submitted = docs.filter(d => ['submitted','pending'].includes(String(d.status||'').toLowerCase())).length;
+        const review = docs.filter(d => String(d.status||'').toLowerCase() === 'under_review').length;
+        const approved = docs.filter(d => String(d.status||'').toLowerCase() === 'approved').length;
+        const drafts = docs.filter(d => String(d.status||'').toLowerCase() === 'draft').length;
+        const needsWork = docs.filter(d => ['revision_required','rejected'].includes(String(d.status||'').toLowerCase())).length;
+        const firstName = (currentUser?.full_name || currentUser?.name || 'there').trim().split(/\s+/)[0];
+        const roleLabel = String(currentUser?.role || 'Staff').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+        const recent = docs.slice(0,8).map(d => {
+            const status = String(d.status||'pending').toLowerCase();
+            const who = d.uploaded_by_name || (allStudents.find(s=>s.user_id===d.student_id)?.full_name) || 'Academic record';
+            const title = d.title || d.file_name || 'Untitled record';
+            const action = d.document_type ? 'openAcademicRecord('+Number(d.id)+')' : 'viewDoc('+Number(d.id)+')';
+            return '<tr><td><strong>'+escapeHtml(title)+'</strong><small style="display:block;color:#82909d;margin-top:4px">'+escapeHtml(d.document_type||d.category||'Academic record')+'</small></td><td>'+escapeHtml(who)+'</td><td>'+escapeHtml(d.program||'—')+' / '+escapeHtml(d.block||'—')+'</td><td><span class="dash-status '+escapeHtml(status)+'">'+escapeHtml(status.replace(/_/g,' '))+'</span></td><td>'+new Date(d.created_at||Date.now()).toLocaleDateString()+'</td><td><button class="btn btn-sm btn-outline" onclick="'+action+'">Open</button></td></tr>';
+        }).join('');
+        main.innerHTML = `
+        <div class="dashboard-shell">
+          <section class="dash-welcome">
+            <div class="dash-eyebrow">NCHSM · DOCUMENT & ACADEMIC RECORDS</div>
+            <h2>Good day, ${escapeHtml(firstName)}.</h2>
+            <p>Your ${escapeHtml(roleLabel)} workspace is ready. Manage academic submissions, follow review decisions and keep institutional records organised in one place.</p>
+            <div class="dash-welcome-actions">
+              <button class="btn btn-primary" id="dashNewSubmission"><i class="fas fa-plus"></i> New academic submission</button>
+              <button class="btn btn-glass" id="dashOpenRecords"><i class="fas fa-folder-open"></i> View my records</button>
+            </div>
+          </section>
+          <section class="dash-metrics">
+            <article class="dash-metric"><div class="dash-metric-top"><span>All records</span><span class="dash-metric-icon"><i class="fas fa-layer-group"></i></span></div><strong>${total}</strong><small>Records available to your account</small></article>
+            <article class="dash-metric"><div class="dash-metric-top"><span>Awaiting review</span><span class="dash-metric-icon"><i class="fas fa-hourglass-half"></i></span></div><strong>${submitted+review}</strong><small>${submitted} submitted · ${review} under review</small></article>
+            <article class="dash-metric"><div class="dash-metric-top"><span>Approved</span><span class="dash-metric-icon"><i class="fas fa-circle-check"></i></span></div><strong>${approved}</strong><small>Approved academic records</small></article>
+            <article class="dash-metric"><div class="dash-metric-top"><span>Needs attention</span><span class="dash-metric-icon"><i class="fas fa-pen-to-square"></i></span></div><strong>${drafts+needsWork}</strong><small>${drafts} drafts · ${needsWork} returned / rejected</small></article>
+          </section>
+          <div class="dash-grid">
+            <section class="dash-panel">
+              <div class="dash-panel-head"><div><h3>Recent activity</h3><div class="dash-panel-sub">Latest records visible to your account</div></div><button class="btn btn-outline btn-sm" id="dashRefresh"><i class="fas fa-rotate"></i> Refresh</button></div>
+              <div class="dash-table-wrap"><table class="dash-activity"><thead><tr><th>Record</th><th>Submitted by</th><th>Programme / block</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody>${recent||'<tr><td colspan="6"><div class="dash-empty">No academic records yet. Start by creating your first submission.</div></td></tr>'}</tbody></table></div>
+            </section>
+            <aside class="dash-panel">
+              <div class="dash-panel-head"><div><h3>Quick access</h3><div class="dash-panel-sub">Your everyday workspace shortcuts</div></div></div>
+              <a class="dash-shortcut" id="dashTeaching" href="#"><i class="fas fa-file-circle-plus"></i><span><b>Academic submissions</b><small>Create, track and revise records</small></span></a>
+              <a class="dash-shortcut" id="dashDocuments" href="#"><i class="fas fa-folder-open"></i><span><b>My documents</b><small>Browse your submitted documents</small></span></a>
+              <a class="dash-shortcut" id="dashApprovals" href="#"><i class="fas fa-clipboard-check"></i><span><b>Review workspace</b><small>Check records awaiting your review</small></span></a>
+              <div style="margin-top:18px;padding:14px;border-radius:14px;background:#f2f7f8;color:#476273;font-size:11px;line-height:1.6"><b style="color:#18364a">Submission tip</b><br>Choose the official unit from the catalogue, attach the latest document and submit it for review. You can save incomplete work as a draft.</div>
+            </aside>
+          </div>
+        </div>`;
+        const openTeaching = async (newRecord=false) => {
+            if (typeof window.renderTeachingRecords !== 'function') { showToast('Academic submissions are still loading. Refresh and try again.', true); return; }
+            await window.renderTeachingRecords();
+            if (newRecord) document.getElementById('newAcademicSubmission')?.click();
+        };
+        document.getElementById('dashNewSubmission')?.addEventListener('click',()=>openTeaching(true));
+        document.getElementById('dashOpenRecords')?.addEventListener('click',()=>openTeaching(false));
+        document.getElementById('dashTeaching')?.addEventListener('click',e=>{e.preventDefault();openTeaching(false);});
+        document.getElementById('dashDocuments')?.addEventListener('click',e=>{e.preventDefault();document.querySelector('#navMenu [data-view="documents"]')?.click();});
+        document.getElementById('dashApprovals')?.addEventListener('click',e=>{e.preventDefault();document.querySelector('#navMenu [data-view="approvals"]')?.click();});
+        document.getElementById('dashRefresh')?.addEventListener('click',renderDashboard);
+    } catch (error) {
+        console.error('DRMS dashboard load failed:',error);
+        main.innerHTML = '<section class="dash-panel"><h3>Dashboard could not load</h3><p style="color:#718096;margin:10px 0">'+escapeHtml(error.message)+'</p><button class="btn btn-primary" onclick="renderDashboard()">Try again</button></section>';
     }
-    document.getElementById('mainContent').innerHTML = '<div class="stats-grid"><div class="stat-card"><div class="stat-number">' + totalDocs + '</div><div class="stat-label">Total Documents</div></div><div class="stat-card"><div class="stat-number">' + pendingApprovals + '</div><div class="stat-label">Pending Approval</div></div><div class="stat-card"><div class="stat-number">' + allStudents.length + '</div><div class="stat-label">Active Students</div></div></div><div class="chart-container"><canvas id="statsChart" width="400" height="200"></canvas></div><div class="table-container"><h3 style="padding:1rem">📋 Recent Documents</h3><table class="data-table"><thead><tr><th>Student</th><th>Title</th><th>Category</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>' + (recentHtml || '<tr><td colspan="6">No documents found</td></tr>') + '</tbody></table></div>';
 }
-
 async function renderAllDocuments() {
     await loadDocs(); await loadStudents();
     let html = '';
