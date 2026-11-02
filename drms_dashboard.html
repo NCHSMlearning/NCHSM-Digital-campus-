@@ -270,11 +270,17 @@ async function renderUpload() {
         e.preventDefault();
         const file = document.getElementById('docFile').files[0];
         if(!file) { showToast('Select a file', true); return; }
-        const filePath = 'drms/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const { error: upErr } = await sb.storage.from('drms_files').upload(filePath, file);
+        const filePath = currentUser.user_id + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const { error: upErr } = await sb.storage.from('drms_academic_records').upload(filePath, file, { upsert: false });
         if(upErr) { showToast('Upload failed: ' + upErr.message, true); return; }
-        const { data: { publicUrl } } = sb.storage.from('drms_files').getPublicUrl(filePath);
-        await sb.from('drms_documents').insert([{ student_id: document.getElementById('uploadStudentId').value, title: document.getElementById('docTitle').value, category: document.getElementById('docCategory').value, description: document.getElementById('docDesc').value, file_url: publicUrl, file_name: file.name, status: 'pending', created_at: new Date().toISOString() }]);
+        const { error: insertError } = await sb.from('drms_documents').insert([{
+            student_id: document.getElementById('uploadStudentId').value, owner_id: currentUser.user_id,
+            uploaded_by: currentUser.user_id, uploaded_by_name: currentUser.full_name,
+            title: document.getElementById('docTitle').value, category: document.getElementById('docCategory').value,
+            description: document.getElementById('docDesc').value, file_url: 'private://' + filePath, file_path: filePath,
+            file_name: file.name, file_size: (file.size / 1024).toFixed(2) + ' KB', status: 'pending', created_at: new Date().toISOString()
+        }]);
+        if (insertError) { await sb.storage.from('drms_academic_records').remove([filePath]); showToast('Record save failed: ' + insertError.message, true); return; }
         showToast('Document uploaded!');
         document.getElementById('uploadForm').reset();
         await loadDocs();
@@ -308,10 +314,10 @@ function buildMenu() {
     const role = currentUser?.role;
     const navMenu = document.getElementById('navMenu');
     let menuHtml = '<div class="nav-group"><div class="nav-header">📊 DASHBOARD</div><a href="#" data-view="dashboard" class="nav-item active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></div>';
-    if (role === 'admin' || role === 'superadmin') {
-        menuHtml += '<div class="nav-group"><div class="nav-header">👑 ADMIN</div><a href="#" data-view="students" class="nav-item"><i class="fas fa-user-graduate"></i> Student Records</a><a href="#" data-view="upload" class="nav-item"><i class="fas fa-upload"></i> Upload Document</a><a href="#" data-view="documents" class="nav-item"><i class="fas fa-folder-open"></i> All Documents</a><a href="#" data-view="approvals" class="nav-item"><i class="fas fa-check-double"></i> Pending Approvals</a></div>';
+    if (['admin','superadmin','hod','nursing_hod','tvet_hod','academic_registrar','registrar'].includes(role)) {
+        menuHtml += '<div class="nav-group"><div class="nav-header">👑 ADMINISTRATION</div><a href="#" data-view="students" class="nav-item"><i class="fas fa-user-graduate"></i> Student Records</a><a href="#" data-view="upload" class="nav-item"><i class="fas fa-upload"></i> Upload Student Document</a><a href="#" data-view="documents" class="nav-item"><i class="fas fa-folder-open"></i> All Documents</a><a href="#" data-view="approvals" class="nav-item"><i class="fas fa-check-double"></i> Pending Approvals</a><a href="#" data-view="teaching" class="nav-item"><i class="fas fa-clipboard-check"></i> Academic Submissions & Reviews</a></div>';
     } else if (role === 'lecturer') {
-        menuHtml += '<div class="nav-group"><div class="nav-header">📚 LECTURER</div><a href="#" data-view="students" class="nav-item"><i class="fas fa-user-graduate"></i> My Students</a><a href="#" data-view="upload" class="nav-item"><i class="fas fa-upload"></i> Upload Document</a><a href="#" data-view="documents" class="nav-item"><i class="fas fa-folder-open"></i> My Uploads</a></div>';
+        menuHtml += '<div class="nav-group"><div class="nav-header">📚 LECTURER WORKSPACE</div><a href="#" data-view="teaching" class="nav-item"><i class="fas fa-file-circle-plus"></i> Academic Submissions</a><a href="#" data-view="documents" class="nav-item"><i class="fas fa-folder-open"></i> My Documents</a></div>';
     } else if (role === 'student') {
         menuHtml += '<div class="nav-group"><div class="nav-header">🎓 STUDENT</div><a href="#" data-view="documents" class="nav-item"><i class="fas fa-id-card"></i> My Documents</a></div>';
     }
@@ -327,23 +333,34 @@ function buildMenu() {
             else if (view === 'upload') await renderUpload();
             else if (view === 'documents') await renderAllDocuments();
             else if (view === 'approvals') await renderApprovals();
+            else if (view === 'teaching') await window.renderTeachingRecords();
             else await renderDashboard();
         });
     });
 }
 
 async function init() {
-    const sessionData = localStorage.getItem('drms_session');
-    if (!sessionData) { window.location.href = 'drms_login.html'; return; }
-    currentUser = JSON.parse(sessionData);
+    const { data: { user }, error: authError } = await sb.auth.getUser();
+    if (authError || !user) { window.location.replace('drms_login.html'); return; }
+    const { data: profile, error: profileError } = await sb.from('consolidated_user_profiles_table')
+        .select('user_id,email,full_name,role,program,intake_year,block,status,login_enabled')
+        .eq('user_id', user.id).maybeSingle();
+    if (profileError || !profile) { await sb.auth.signOut(); window.location.replace('drms_login.html'); return; }
+    const roleRaw = String(profile.role || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
+    const role = roleRaw === 'super_admin' ? 'superadmin' : roleRaw;
+    const allowed = ['lecturer','hod','nursing_hod','tvet_hod','admin','superadmin','academic_registrar','registrar','student'];
+    if (!allowed.includes(role) || profile.login_enabled === false || !['active','approved'].includes(String(profile.status || '').toLowerCase())) {
+        await sb.auth.signOut(); window.location.replace('drms_login.html'); return;
+    }
+    currentUser = { ...profile, user_id: user.id, email: user.email || profile.email, role };
     document.getElementById('userName').innerText = currentUser.full_name || currentUser.email;
-    document.getElementById('userRole').innerText = (currentUser.role || 'USER').toUpperCase();
-    document.getElementById('userProgram').innerText = currentUser.program === 'KRCHN' ? '🎓 KRCHN' : '🛠️ TVET';
+    document.getElementById('userRole').innerText = role.toUpperCase();
+    document.getElementById('userProgram').innerText = currentUser.program === 'KRCHN' ? '🎓 KRCHN' : (currentUser.program ? '🛠️ ' + currentUser.program : 'NCHSM');
     document.getElementById('userProgram').style.background = currentUser.program === 'KRCHN' ? '#4C1D95' : '#f59e0b';
     buildMenu();
     await renderDashboard();
 }
-document.getElementById('logoutBtn').onclick = () => { localStorage.removeItem('drms_session'); window.location.href = 'drms_login.html'; };
+document.getElementById('logoutBtn').onclick = async () => { await sb.auth.signOut(); window.location.replace('drms_login.html'); };
 init();
 </script>
 </body>
