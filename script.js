@@ -148,10 +148,72 @@
     install.style.cssText = 'position:fixed;z-index:9998;left:max(16px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));padding:11px 16px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 13px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.2);cursor:pointer';
     document.body.appendChild(install);
 
+    // A friendly install invitation. The browser's native install prompt is
+    // only opened after the user presses the Install button (user gesture).
+    const inviteStyle = document.createElement('style');
+    inviteStyle.textContent = `
+      .nchsm-install-invite{position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;padding:20px;background:rgba(5,25,40,.58);backdrop-filter:blur(7px);opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}
+      .nchsm-install-invite.open{opacity:1;visibility:visible}
+      .nchsm-install-card{position:relative;width:min(440px,100%);padding:30px 26px 24px;border:1px solid rgba(255,255,255,.7);border-radius:24px;background:#fff;color:#172a37;box-shadow:0 24px 80px rgba(0,0,0,.25);font-family:system-ui,-apple-system,Segoe UI,sans-serif;text-align:center;transform:translateY(12px);transition:transform .22s ease}
+      .nchsm-install-invite.open .nchsm-install-card{transform:translateY(0)}
+      .nchsm-install-logo{width:68px;height:68px;object-fit:contain;margin:0 auto 14px}
+      .nchsm-install-card h2{margin:0 0 9px;color:#073b5c;font-size:22px;line-height:1.2}
+      .nchsm-install-card p{margin:0 auto 18px;max-width:340px;color:#5d6e79;font-size:14px;line-height:1.6}
+      .nchsm-install-benefits{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 20px;text-align:left}
+      .nchsm-install-benefits span{padding:10px;border-radius:12px;background:#f2f7fa;color:#244454;font-size:12px;font-weight:650}
+      .nchsm-install-actions{display:flex;gap:10px}
+      .nchsm-install-actions button{flex:1;min-height:45px;border:0;border-radius:12px;font-size:14px;font-weight:750;cursor:pointer}
+      .nchsm-install-accept{background:#073b5c;color:white}
+      .nchsm-install-later{background:#edf2f5;color:#38505e}
+      .nchsm-install-close{position:absolute;top:10px;right:12px;width:34px;height:34px;border:0;border-radius:50%;background:#f1f4f6;color:#49616e;font-size:21px;cursor:pointer}
+      @media(prefers-reduced-motion:reduce){.nchsm-install-invite,.nchsm-install-card{transition:none}}
+    `;
+    document.head.appendChild(inviteStyle);
+
+    const invite = document.createElement('div');
+    invite.className = 'nchsm-install-invite';
+    invite.setAttribute('role', 'dialog');
+    invite.setAttribute('aria-modal', 'true');
+    invite.setAttribute('aria-labelledby', 'nchsmInstallTitle');
+    invite.innerHTML = `
+      <div class="nchsm-install-card">
+        <button class="nchsm-install-close" type="button" aria-label="Close install invitation">×</button>
+        <img class="nchsm-install-logo" src="/images/Logo_NCHSM.png" alt="NCHSM logo">
+        <h2 id="nchsmInstallTitle">Take NCHSM Digital Campus with you</h2>
+        <p>Install the campus app on this device for faster access from your desktop, Start menu or home screen.</p>
+        <div class="nchsm-install-benefits">
+          <span>✓ Opens like an app</span><span>✓ Quick access</span>
+          <span>✓ Updates automatically</span><span>✓ No app-store search</span>
+        </div>
+        <div class="nchsm-install-actions">
+          <button class="nchsm-install-later" type="button">Maybe later</button>
+          <button class="nchsm-install-accept" type="button">Install app</button>
+        </div>
+      </div>`;
+    document.body.appendChild(invite);
+
+    const inviteAccept = invite.querySelector('.nchsm-install-accept');
+    const closeInvite = function () {
+      invite.classList.remove('open');
+      try { localStorage.setItem('nchsm-install-invite-dismissed', String(Date.now())); } catch (_) {}
+    };
+    const showInvite = function () {
+      if (standalone) return;
+      let dismissedAt = 0;
+      try { dismissedAt = Number(localStorage.getItem('nchsm-install-invite-dismissed') || 0); } catch (_) {}
+      // Respect a dismissal for seven days; don't repeatedly interrupt users.
+      if (dismissedAt && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000) return;
+      window.setTimeout(function () { invite.classList.add('open'); }, 1100);
+    };
+    invite.querySelector('.nchsm-install-close').addEventListener('click', closeInvite);
+    invite.querySelector('.nchsm-install-later').addEventListener('click', closeInvite);
+    invite.addEventListener('click', function (event) { if (event.target === invite) closeInvite(); });
+
     window.addEventListener('beforeinstallprompt', function (event) {
       event.preventDefault();
       installPrompt = event;
       install.hidden = false;
+      showInvite();
     });
 
     window.addEventListener('appinstalled', function () {
@@ -159,12 +221,20 @@
       install.hidden = true;
     });
 
-    install.addEventListener('click', async function () {
+    const triggerInstall = async function () {
       if (installPrompt) {
-        installPrompt.prompt();
-        try { await installPrompt.userChoice; } catch (_) {}
+        const promptEvent = installPrompt;
         installPrompt = null;
-        install.hidden = true;
+        try {
+          await promptEvent.prompt();
+          const choice = await promptEvent.userChoice;
+          if (choice && choice.outcome === 'accepted') {
+            closeInvite();
+            install.hidden = true;
+          }
+        } catch (error) {
+          console.warn('NCHSM install prompt could not be opened:', error);
+        }
         return;
       }
       const isAppleMobile = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -176,7 +246,9 @@
       } else {
         window.alert(message);
       }
-    });
+    };
+    inviteAccept.addEventListener('click', triggerInstall);
+    install.addEventListener('click', triggerInstall);
 
     let refreshing = false;
     navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).then(function (registration) {
