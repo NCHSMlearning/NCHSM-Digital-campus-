@@ -1841,7 +1841,7 @@ window.renderTranscriptBlock = function(index) {
             const { data: sessionData, error: sessionError } = await client.auth.getSession();
             const accessToken = sessionData?.session?.access_token;
             if (sessionError || !accessToken) throw new Error('Sign in again to issue verification.');
-            const response = await fetch(supabaseUrl.replace(/\\/$/, '') + '/functions/v1/transcript-registry', {
+            const response = await fetch(supabaseUrl.replace(/\/$/, '') + '/functions/v1/transcript-registry', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: 'Bearer ' + accessToken },
                 body: JSON.stringify({ action: 'issue', block: blockName })
