@@ -1,7 +1,7 @@
 {
-  "name": "nchsm-secure-exam",
+  "name": "nchsm-digital-campus",
   "version": "1.0.0",
-  "description": "NCHSM Secure Exam Proctoring Application",
+  "description": "NCHSM Digital Campus Android and web application",
   "main": "index.js",
   "scripts": {
     "build:android": "npx cap copy android && npx cap sync android && cd android && ./gradlew assembleRelease",
@@ -16,7 +16,6 @@
     "@capacitor/android": "^5.7.0",
     "@capacitor/app": "^5.0.7",
     "@capacitor/core": "^5.7.0",
-    "@capacitor/electron": "^5.1.0",
     "@capacitor/keyboard": "^5.0.7",
     "@capacitor/screen-orientation": "^5.0.7",
     "@capacitor/splash-screen": "^5.0.7",
@@ -29,7 +28,13 @@
     "type": "git",
     "url": "https://github.com/yourusername/your-repo-name.git"
   },
-  "keywords": ["exam", "proctoring", "secure", "android", "windows"],
+  "keywords": [
+    "NCHSM",
+    "digital-campus",
+    "education",
+    "android",
+    "student-portal"
+  ],
   "author": "NCHSM",
   "license": "MIT"
 }
