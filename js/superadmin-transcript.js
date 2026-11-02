@@ -1620,10 +1620,148 @@ window.renderTranscriptBlock = function(index) {
             <td style="text-align:center;font-weight:800;">${status}</td>
         </tr>`;
     }).join('');
+    const transcriptStyles = String.raw`
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page { size: A4 portrait; margin: 6mm; }
+        body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
+        .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 7px 8px; background: #ffffff; border: 2px solid #1E559B; border-radius: 6px; box-shadow: none; }
+        /* Official NCHSM crest palette: institutional blue with the crest's red cross as an accent. */
+        .container { border-top: 4px solid #1E559B; }
+        .header { border-bottom: 3px double #D62828; }
+        .header .subtitle { border-bottom: 3px solid #D62828; }
+        .student-info-wrapper { border-left: 4px solid #D62828; }
+        .summary-card:nth-child(even) { border-top-color: #D62828; }
+        .semester-results-title { border-left: 4px solid #D62828; }
+        thead th { border-bottom: 2px solid #D62828; }
+        .grading-scale-table .title { border-bottom: 2px solid #D62828; }
+
+        /* Subtle institutional watermark: recognizable, never competing with marks or unit names. */
+        .container { position: relative; isolation: isolate; overflow: hidden; }
+        .container::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image: url("https://nchsm.co.ke/images/Logo_NCHSM.png");
+            background-repeat: no-repeat;
+            background-position: center 53%;
+            background-size: 30% auto;
+            opacity: 0.045;
+        }
+        .container > * { position: relative; z-index: 1; }
+        .container .transcript-top { z-index: 2; }
+
+        .transcript-top { position: relative; display: block; width: 100%; padding-top: 1px; }
+        .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 120px; align-items: start; column-gap: 8px; }
+        .transcript-top > .header { width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
+        .transcript-top > .verification-qr { position: relative; top: auto; right: auto; z-index: 2; grid-column: 2; grid-row: 1; width: 88px; min-height: 90px; justify-self: end; align-self: start; margin-top: 2px; }
+        .transcript-top > .transcript-generation-number { position: relative; top: auto; right: auto; z-index: 3; display: none; grid-column: 2; grid-row: 1; width: 120px; min-width: 120px; margin: 0 0 5px; padding: 6px 3px 7px; border: 1.5px solid #C9A54C; border-radius: 7px; background: linear-gradient(145deg,#fffdf5 0%,#f4ead0 100%); color: #173F70; font-family: Arial, sans-serif; line-height: 1.15; text-align: center; box-shadow: 0 2px 5px rgba(15,42,72,.16), inset 0 0 0 1px rgba(255,255,255,.9); }
+        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 4px; color: #8A6A25; font-size: 6px; letter-spacing: 1.1px; font-weight: 900; white-space: normal; }
+        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; color: #123B68; font-family: 'Georgia',serif; font-size: 7px; line-height: 1.2; letter-spacing: 0; font-weight: 900; white-space: nowrap; word-break: keep-all; overflow-wrap: normal; }
+        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 88px; padding: 4px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
+        .verification-qr img { display: block; width: 76px; height: 76px; min-width: 76px; min-height: 76px; object-fit: contain; image-rendering: pixelated; }
+        .header { text-align: center; border-bottom: 3px double #1E559B; padding-bottom: 5px; margin-bottom: 6px; }
+        .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-width: 0; overflow: hidden; }
+        .header-top img { display: block; flex: 0 0 62px; width: 62px; height: 62px; max-height: 62px; max-width: 62px; object-fit: contain; object-position: center; }
+        .header-top > div { flex: 1 1 auto; min-width: 0; text-align: center; }
+        .header .school { font-size: 16px; line-height: 1.2; font-weight: 800; color: #1E559B; font-family: 'Georgia', serif; white-space: normal; overflow-wrap: break-word; word-break: normal; }
+        .header .motto { font-size: 8px; line-height: 1.25; color: #64748b; font-style: italic; }
+        .header .subtitle { display: inline-block; font-size: 17px; color: #ffffff; background: #1E559B; font-weight: 800; margin-top: 10px; padding: 7px 28px; border-radius: 4px; letter-spacing: 2px; font-family: 'Georgia', serif; }
+        .header .date { font-size: 8px; color: #94a3b8; margin-top: 2px; }
+        .student-info-wrapper { display: flex; align-items: center; gap: 10px; margin: 5px 0 7px; padding: 7px 9px; background: #f1f6fb; border-radius: 8px; border: 1px solid #cbdbea; border-left: 5px solid #1E559B; }
+        .student-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; flex: 1; }
+        .student-info .field { display: flex; flex-direction: column; }
+        .student-info .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; }
+        .student-info .value { font-weight: 800; font-size: 12px; line-height: 1.35; color: #1E559B; margin-top: 3px; overflow-wrap: anywhere; }
+        .student-photo { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #1E559B; padding: 2px; background: white; flex-shrink: 0; }
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
+        .summary-card { background: linear-gradient(180deg,#ffffff,#f3f7fb); border-radius: 8px; padding: 12px 10px; text-align: center; border: 1px solid #cbdbea; border-top: 4px solid #1E559B; }
+        .summary-card .value { font-size: 24px; line-height: 1.2; font-weight: 800; color: #1E559B; }
+        .summary-card .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 800; margin-top: 3px; }
+        table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; border: 1px solid #d1d5db; }
+        .semester-results-title { margin: 5px 0 0; padding: 6px 10px; background: #1E559B; color: #ffffff; border-radius: 7px 7px 0 0; font-size: 11px; line-height: 1.15; font-weight: 800; letter-spacing: 0.35px; text-transform: uppercase; }
+        table.semester-results-table { margin: 0 0 5px; font-size: 9px; table-layout: fixed; }
+        table.semester-results-table thead th { padding: 5px 4px; font-size: 8px; line-height: 1.1; }
+        table.semester-results-table tbody td { padding: 4px 4px; font-size: 9px; line-height: 1.15; }
+        /* Unit codes and grade points must always print in bold black, including PDF export. */
+        table.semester-results-table tbody td:nth-child(2),
+        table.semester-results-table tbody td:nth-child(5),
+        table.semester-results-table tbody td:nth-child(2) *,
+        table.semester-results-table tbody td:nth-child(5) * {
+            color: #000000 !important;
+            font-weight: 900 !important;
+            -webkit-text-fill-color: #000000 !important;
+        }
+        table.semester-results-table tbody td:nth-child(5) { text-align: center; }
+        table.semester-results-table tbody td:nth-child(2) span,
+        table.semester-results-table tbody td:nth-child(5) span {
+            color: #000000 !important;
+            background: transparent !important;
+            font-weight: 900 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+        }
+        thead th { background: #1E559B; color: white; padding: 10px 12px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 800; border: 1px solid #1E559B; }
+        tbody td { padding: 9px 12px; border: 1px solid #d1d5db; font-size: 10px; line-height: 1.35; }
+        .chart-container { margin: 10px 0 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
+        .chart-container .title { font-weight: 700; font-size: 8px; color: #1E559B; text-align: center; margin-bottom: 4px; }
+        .chart-container canvas { width: 100% !important; height: 145px !important; max-height: 145px; }
+        .transcript-lower-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 10px; margin: 8px 0; }
+        .transcript-lower-grid > * { min-width: 0; }
+        .academic-summary-panel { margin: 0; padding: 10px 12px; background: #f8fafc; border: 1px solid #cbdbea; border-radius: 8px; }
+        .academic-summary-title { margin: 0 0 6px; color: #1E559B; text-align: center; font-size: 11px; font-weight: 800; }
+        .transcript-lower-grid .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin: 0; }
+        .transcript-lower-grid .summary-card { padding: 7px 4px; border-radius: 5px; border-top-width: 2px; }
+        .transcript-lower-grid .summary-card .value { font-size: 17px; line-height: 1.1; }
+        .transcript-lower-grid .summary-card .label { font-size: 7px; letter-spacing: .2px; }
+        .grading-scale-table { margin: 0; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
+        .semester-results-title { background: #1E559B !important; color: #ffffff !important; }
+        .grading-scale-table .title { font-weight: 800; font-size: 11px; color: #ffffff; background: #1E559B; text-align: center; margin: 0 0 8px; padding: 6px 8px; border-radius: 5px; }
+        .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db; }
+        .grading-scale-table th { background: #1E559B; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #1E559B; }
+        .grading-scale-table td { padding: 4px 8px; text-align: center; border: 1px solid #d1d5db; font-size: 7px; }
+                .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; min-height: 62px; }
+        .signature-box { text-align: center; }
+        .signature-box .line { border-bottom: 3px solid #1e293b; width: 155px; height: 24px; margin: 0 auto 3px auto; }
+        .signature-box .label { font-size: 8px; color: #1e293b; text-transform: uppercase; letter-spacing: 0.35px; font-weight: 900; }
+        .signature-box .date { font-weight: 800; color: #1e293b; }
+        .signature-box .name { font-weight: 600; font-size: 10px; color: #1E559B; }
+        .footer { text-align: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid #1E559B; font-size: 8px; line-height: 1.2; color: #52677a; }
+        .footer strong { color: #1E559B; }
+        .no-print { text-align: center; margin-top: 8px; }
+        .no-print button { padding: 5px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 10px; }
+        .no-print .btn-print { background: #1E559B; color: white; }
+        .no-print .btn-close { background: #e2e8f0; color: #475569; margin-left: 6px; }
+        @media screen and (max-width: 600px) {
+            body { font-size: 14px; padding: 8px; }
+            .container { width: 100%; max-width: 100%; padding: 12px 10px; }
+            .student-info { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+            .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+            .summary-card .value { font-size: 22px; }
+            table.semester-results-table { table-layout: fixed; font-size: 13px; }
+            table.semester-results-table thead th { font-size: 13px !important; padding: 11px 6px !important; }
+            table.semester-results-table tbody td { font-size: 13px !important; line-height: 1.5 !important; padding: 12px 6px !important; }
+            .chart-container canvas { height: 160px !important; max-height: 160px; }
+        }
+        /* Print the same transcript layout shown in preview; only remove controls and outer preview chrome. */
+        @media print {
+            @page { size: A4 portrait; margin: 5mm; }
+            html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; min-height: 0 !important; height: auto !important; }
+            .transcript-preview-toolbar, .no-print, .btn-print, .btn-close { display: none !important; }
+            .container { width: 100% !important; max-width: none !important; min-height: 0 !important; height: auto !important; margin: 0 !important; box-shadow: none !important; }
+        }
+    
+.transcript-admin-actions { display:flex; justify-content:center; gap:8px; margin-top:8px; }
+.transcript-admin-actions button { border:0; border-radius:6px; padding:6px 16px; font-weight:700; cursor:pointer; }
+.transcript-admin-actions .btn-print { background:#1E559B; color:#fff; }
+.transcript-admin-actions .btn-close { background:#e2e8f0; color:#475569; }
+.verification-qr .qr-placeholder { width:76px;height:76px;display:flex;align-items:center;justify-content:center;text-align:center;background:#f1f6fb;color:#52677a;font-size:7px;border:1px dashed #94a3b8; }
+`;
     const transcriptHtml = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Provisional Academic Transcript - ${escapeHtml(student.full_name || 'Student')}</title>
-<style>${css}
+<style>${transcriptStyles}
     body { padding:0; }
     .container { max-width: none; }
 </style></head><body>
