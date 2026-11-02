@@ -93,7 +93,23 @@ document.addEventListener('DOMContentLoaded', function() {
                            window.location.pathname.includes('exam_login.html');
         if (isLoginPage) {
             console.log('🔄 Already logged in, redirecting to dashboard...');
-            window.location.replace('student.html');
+            const requested = new URLSearchParams(window.location.search).get('redirect');
+            let target = 'student.html';
+            if (requested && requested.startsWith('/') && !requested.startsWith('//')) {
+                try {
+                    const candidate = new URL(requested, window.location.origin);
+                    const path = candidate.pathname.toLowerCase();
+                    if (candidate.origin === window.location.origin &&
+                        (path === '/exam.html' || path === '/exam' ||
+                         path === '/student.html' || path === '/student' ||
+                         path.startsWith('/student/'))) {
+                        target = candidate.pathname + candidate.search + candidate.hash;
+                    }
+                } catch (redirectError) {
+                    console.warn('Ignoring invalid login redirect:', redirectError);
+                }
+            }
+            window.location.replace(target);
         }
     } else {
         console.log('ℹ️ No active session found.');
@@ -2615,7 +2631,8 @@ executeLogin: async function(identifier, password) {
                 const path = target.pathname.toLowerCase();
                 const isStudentRoute = role === 'student' && (
                     path === '/student' || path === '/student.html' ||
-                    path.startsWith('/student/')
+                    path.startsWith('/student/') ||
+                    path === '/exam' || path === '/exam.html'
                 );
                 const isRoleDashboard = (
                     (role === 'student' && (path === '/student.html' || path === '/student')) ||
