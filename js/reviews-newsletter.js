@@ -350,13 +350,9 @@ function initReviewsModule() {
             refreshBtn.addEventListener('click', refreshReviews);
         }
         
-        // Review Form
-        const form = document.getElementById('studentReviewForm');
-        if (form) {
-            form.removeEventListener('submit', submitReview);
-            form.addEventListener('submit', submitReview);
-        }
-        
+        // Review form submission is handled by the delegated bootstrap listener below.
+        // This avoids losing the handler if the reviews module initializes before the form exists.
+
         // Review Text Input
         const reviewText = document.getElementById('reviewTextInput');
         if (reviewText) {
@@ -990,12 +986,16 @@ async function submitReview(e) {
         // Resolve the signed-in student's UUID from the portal profile first,
         // then fall back to the active Supabase Auth session.
         const currentUser = window.currentUserProfile || window.db?.currentUserProfile || window.userProfile || null;
-        let userId = currentUser?.user_id || currentUser?.id || window.currentUserId || null;
-
-        if (!userId && supabase.auth?.getUser) {
+        // The RLS policy requires student_id to equal auth.uid(); always prefer
+        // the authenticated Supabase user over a potentially different profile ID.
+        let userId = null;
+        if (supabase.auth?.getUser) {
             const { data: authData, error: authError } = await supabase.auth.getUser();
-            if (authError) console.warn('Could not resolve Supabase user:', authError.message);
+            if (authError) throw new Error('Could not verify your login: ' + authError.message);
             userId = authData?.user?.id || null;
+        }
+        if (!userId) {
+            throw new Error('Your student login session could not be verified. Please sign out and sign in again.');
         }
 
         if (!userId || typeof userId !== 'string') {
@@ -2113,6 +2113,22 @@ window.initReviewsModule = initReviewsModule;
     function startReviewsModule() {
         if (window.__nchsmReviewsModuleStarted) return;
         window.__nchsmReviewsModuleStarted = true;
+
+        // Delegate form submission from document so it works even if the review
+        // modal/form is inserted or initialized after this script runs.
+        if (!window.__nchsmReviewSubmitDelegated) {
+            window.__nchsmReviewSubmitDelegated = true;
+            document.addEventListener('submit', function (event) {
+                const form = event.target;
+                if (form && form.id === 'studentReviewForm') {
+                    event.preventDefault();
+                    submitReview(event).catch(function (error) {
+                        console.error('[Reviews] Unhandled submit failure:', error);
+                        showFeedback('Could not submit your review. Please try again.', 'error');
+                    });
+                }
+            }, true);
+        }
 
         // Bind the primary action independently of the full module init.
         const writeButton = document.getElementById('writeReviewBtn');
