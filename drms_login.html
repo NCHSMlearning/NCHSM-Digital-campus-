@@ -4,8 +4,8 @@
 <body><main class="login-shell"><div class="brand"><div class="brand-icon"><i class="fa-solid fa-folder-tree"></i></div><h1>NCHSM Academic Records</h1><p>Document Records Management System<br>Institutional access for lecturers, reviewers and administrators</p></div><div id="errorMsg" class="error" role="alert" aria-live="polite"></div><form id="loginForm" autocomplete="on"><label for="email">Institutional email</label><div class="field"><i class="fa-regular fa-envelope"></i><input type="email" id="email" name="username" placeholder="Your NCHSM portal email" autocomplete="username" required></div><label for="password">Password</label><div class="field"><i class="fa-solid fa-lock"></i><input type="password" id="password" name="password" placeholder="Your portal password" autocomplete="current-password" required></div><button id="loginButton" type="submit"><i class="fa-solid fa-right-to-bracket"></i> Sign in with my NCHSM account</button></form><div class="hint"><strong>One institutional account.</strong><br>Use the same email and password as your Lecturer or Super Admin portal. Your role and permissions are checked against your NCHSM profile.</div></main>
 <script>
 const SUPABASE_URL='https://lwhtjozfsmbyihenfunw.supabase.co';const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-const allowedRoles=new Set(['lecturer','hod','nursing_hod','tvet_hod','admin','superadmin','academic_registrar','registrar','student']);
-function normalizeRole(v){let r=String(v??'').normalize('NFKC').trim().toLowerCase().replace(/[\\s-]+/g,'_').replace(/_+/g,'_');if(r==='super_admin'||r==='super_administrator'||r==='super_administrator_role')return 'superadmin';return r;}
+const allowedRoles=['lecturer','hod','nursing_hod','tvet_hod','admin','superadmin','super_admin','academic_registrar','registrar','student'];
+function normalizeRole(v){return String(v??'').normalize('NFKC').trim().toLowerCase().replace(/[\\s-]+/g,'_').replace(/_+/g,'_');}
 function showError(m){const e=document.getElementById('errorMsg');e.textContent=m;e.style.display='block';}
 async function validateAndEnter(user){
  if(!user)throw new Error('Please sign in with your institutional account.');
@@ -14,11 +14,15 @@ async function validateAndEnter(user){
  if(error)throw new Error('Unable to verify your NCHSM profile: '+error.message);
  if(!p&&user.email){const byEmail=await sb.from('consolidated_user_profiles_table').select(fields).ilike('email',user.email.trim()).maybeSingle();if(byEmail.error)throw new Error('Unable to verify your NCHSM profile: '+byEmail.error.message);p=byEmail.data;}
  if(!p)throw new Error('Your account has no NCHSM profile. Contact the administrator.');
- const role=normalizeRole(p.role);
- if(!allowedRoles.has(role))throw new Error('Your NCHSM profile role ('+(p.role||'not set')+') is not authorised for Academic Records. Ask an administrator to correct the role.');
+ const rawRole=String(p.role??'').normalize('NFKC').trim().toLowerCase();
+ const role=normalizeRole(rawRole);
+ const compactRole=rawRole.replace(/[^a-z]/g,'');
+ const isSuperAdmin=compactRole==='superadmin';
+ const authorised=isSuperAdmin||allowedRoles.includes(role)||allowedRoles.includes(rawRole);
+ if(!authorised)throw new Error('Your NCHSM profile role ('+(p.role||'not set')+') is not authorised for Academic Records. Ask an administrator to correct the role.');
  if(p.login_enabled===false)throw new Error('Portal access is disabled for this account.');
  if(!['active','approved'].includes(String(p.status||'').trim().toLowerCase()))throw new Error('Your account is not active or approved. Contact the administrator.');
- window.location.replace('drms_dashboard.html?v=20261102a');
+ window.location.replace('drms_dashboard.html?v=20261102b');
 }
 document.getElementById('loginForm').addEventListener('submit',async e=>{e.preventDefault();const b=document.getElementById('loginButton');document.getElementById('errorMsg').style.display='none';b.disabled=true;b.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Signing in...';try{const {data,error}=await sb.auth.signInWithPassword({email:document.getElementById('email').value.trim(),password:document.getElementById('password').value});if(error)throw new Error('Invalid email or password. Use your NCHSM portal credentials.');await validateAndEnter(data.user);}catch(err){showError(err.message||'Unable to sign in.');b.disabled=false;b.innerHTML='<i class="fa-solid fa-right-to-bracket"></i> Sign in with my NCHSM account';}});
 (async()=>{const {data:{user},error}=await sb.auth.getUser();if(!error&&user){try{await validateAndEnter(user);}catch(e){await sb.auth.signOut();}}})();
