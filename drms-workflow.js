@@ -4,7 +4,7 @@ const BUCKET='drms_academic_records';
 const TYPES=['Scheme of Work','Lesson Plan','Record of Work','Assessment Record','CAT / Continuous Assessment','OSCE / Practical Assessment Record','Examination Paper','Mark Sheet / Examination Marks','Marking Scheme','Examination Report','Block / Semester Academic Report','Clinical Placement Report','Clinical Assessment Record','Other Academic Record'];
 const PROGRAMS=['KRCHN','DPOTT','DCH','DHRIT','DSL','DSW','DCJS','DICT','CCH','CICT'];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const admin=()=>['admin','superadmin','hod','nursing_hod','tvet_hod','academic_registrar','registrar'].includes(String(currentUser?.role||'').toLowerCase());
+const admin=()=>['admin','superadmin'].includes(String(currentUser?.role||'').toLowerCase());
 const labels={draft:'Draft',submitted:'Submitted',under_review:'Under Review',revision_required:'Revision Required',approved:'Approved',rejected:'Rejected',pending:'Pending'};
 const colors={draft:'#64748b',submitted:'#2563eb',under_review:'#7c3aed',revision_required:'#d97706',approved:'#15803d',rejected:'#b91c1c',pending:'#64748b'};
 const toast=(m,bad=false)=>showToast(m,bad);
