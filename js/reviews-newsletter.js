@@ -2207,7 +2207,7 @@ window.initReviewsModule = initReviewsModule;
                 panel.style.color = isError ? '#991b1b' : '#1e3a8a';
                 panel.style.border = '2px solid ' + (isError ? '#ef4444' : '#3b82f6');
                 panel.textContent = 'NCHSM Review Diagnostic: ' + message;
-                console[isError ? 'error' : 'info']('[NCHSM Review Diagnostic]', message);
+                // Keep validation visible in the page without writing routine diagnostics to the browser console.
             }
 
             async function runReviewSubmission(event, source) {
