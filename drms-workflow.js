@@ -36,33 +36,31 @@ function formHtml(r=null){return `<form id="academicSubmissionForm" class="drms-
 async function save(e,status='submitted',id=null){
  e?.preventDefault();
  const form=document.getElementById('academicSubmissionForm');
- if(!form)return;
- if(!form.reportValidity())return;
+ if(!form||form.dataset.saving==='true')return;
  const fd=new FormData(form),file=fd.get('file');
  if(!String(fd.get('title')||'').trim())return toast('Enter a submission title.',true);
+ if(!String(fd.get('program')||'').trim())return toast('Choose a programme.',true);
+ if(!String(fd.get('block')||'').trim())return toast('Enter the block or term.',true);
+ if(!String(fd.get('academic_year')||'').trim())return toast('Enter the academic year.',true);
  if(file?.size>20*1024*1024)return toast('File exceeds the 20 MB limit.',true);
  const hasExistingFile=form.dataset.existingFile==='true';
  if(status==='submitted'&&(!file||!file.size)&&!hasExistingFile)return toast('Attach the document before submitting for review.',true);
- const {data:authData,error:authError}=await sb.auth.getUser();
- const uid=authData?.user?.id;
- if(authError||!uid)return toast('Your session has expired. Sign in again before submitting.',true);
- if(currentUser?.user_id&&String(currentUser.user_id)!==String(uid))return toast('Your staff profile does not match the active login. Sign out and sign in again.',true);
  const buttons=[...form.querySelectorAll('button')],submitButton=form.querySelector('button[type="submit"]');
+ form.dataset.saving='true';
  buttons.forEach(b=>b.disabled=true);
- if(submitButton)submitButton.innerHTML='<i class="fas fa-spinner fa-spin"></i> '+(status==='draft'?'Saving draft…':'Submitting…');
+ if(submitButton)submitButton.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting…';
  let path=null;
  try{
   if(file?.size){
-   path=uid+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+   path=currentUser.user_id+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
    const {error:uploadError}=await sb.storage.from(BUCKET).upload(path,file,{upsert:false,contentType:file.type||undefined});
    if(uploadError)throw new Error('File upload failed: '+uploadError.message);
   }
   const state=status==='draft'?'draft':'submitted';
   const payload={
-   owner_id:uid,uploaded_by:uid,uploaded_by_name:currentUser.full_name||currentUser.email||'Staff',
-   student_id:null,title:String(fd.get('title')).trim(),category:'Academic',
-   document_type:String(fd.get('document_type')),program:String(fd.get('program')),
-   block:String(fd.get('block')).trim(),unit_code:String(fd.get('unit_code')||'').trim()||null,
+   owner_id:currentUser.user_id,uploaded_by:currentUser.user_id,uploaded_by_name:currentUser.full_name||currentUser.email,
+   student_id:null,title:String(fd.get('title')).trim(),category:'Academic',document_type:String(fd.get('document_type')),
+   program:String(fd.get('program')),block:String(fd.get('block')),unit_code:String(fd.get('unit_code')||'').trim()||null,
    unit_name:String(fd.get('unit_name')||'').trim()||null,academic_year:String(fd.get('academic_year')||'').trim(),
    term:String(fd.get('term')||'').trim()||null,period_start:String(fd.get('period_start')||'')||null,
    period_end:String(fd.get('period_end')||'')||null,description:String(fd.get('description')||'').trim()||null,
@@ -72,18 +70,20 @@ async function save(e,status='submitted',id=null){
   if(path){payload.file_path=path;payload.file_url='private://'+path;payload.file_name=file.name;payload.file_size=(file.size/1024).toFixed(2)+' KB';}
   else if(!id){payload.file_path=null;payload.file_url='draft://no-file-attached';payload.file_name='Pending attachment';payload.file_size=null;}
   const result=id
-   ?await sb.from('drms_documents').update(payload).eq('id',id).eq('owner_id',uid).select('id').single()
+   ?await sb.from('drms_documents').update(payload).eq('id',id).eq('owner_id',currentUser.user_id).select('id').single()
    :await sb.from('drms_documents').insert([payload]).select('id').single();
-  if(result.error)throw new Error('Database save failed: '+result.error.message);
+  if(result.error)throw new Error('Could not save the academic record: '+result.error.message);
   await audit(state==='draft'?'ACADEMIC_RECORD_DRAFT_SAVED':'ACADEMIC_RECORD_SUBMITTED',payload.title,result.data.id);
-  toast(state==='draft'?'Draft saved successfully.':'Submission sent for review successfully.');
+  toast(state==='draft'?'Draft saved successfully.':'Submitted for review successfully.');
   await window.renderTeachingRecords();
  }catch(err){
   if(path)await sb.storage.from(BUCKET).remove([path]);
-  console.error('DRMS submission error:',err);
-  toast(err.message||'The submission could not be saved. Please try again.',true);
+  console.error('DRMS academic submission failed:',err);
+  toast(err.message||'Unable to save this submission. Please retry.',true);
+ }finally{
+  form.dataset.saving='false';
   buttons.forEach(b=>b.disabled=false);
-  if(submitButton)submitButton.innerHTML='Submit for Review';
+  if(submitButton&&submitButton.isConnected)submitButton.textContent='Submit for Review';
  }
 }
 function showForm(r=null,id=null){document.getElementById('mainContent').innerHTML=`<section class="drms-academic-panel"><h2>${r?'Revise and resubmit':'New academic submission'}</h2>${r?`<p class="drms-academic-help">Reviewer feedback: ${esc(r.revision_reason||r.review_notes||'Please attach the corrected document.')}</p>`:''}${formHtml(r)}</section>`;const form=document.getElementById('academicSubmissionForm');document.getElementById('chooseUnitBtn')?.addEventListener('click',showUnitPicker);form.addEventListener('submit',e=>save(e,'submitted',id));document.getElementById('saveAcademicDraft').addEventListener('click',()=>save(null,'draft',id));}
