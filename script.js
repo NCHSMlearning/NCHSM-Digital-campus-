@@ -122,4 +122,100 @@
     refreshButton.innerHTML = '&#8635;';
     indicator.classList.remove('visible');
   });
+
+  // Progressive Web App: desktop/mobile installation and automatic web updates.
+  (function initNchsmPwa() {
+    if (!('serviceWorker' in navigator)) return;
+
+    const manifest = document.createElement('link');
+    manifest.rel = 'manifest';
+    manifest.href = '/manifest.json?v=3';
+    document.head.appendChild(manifest);
+
+    const theme = document.createElement('meta');
+    theme.name = 'theme-color';
+    theme.content = '#073b5c';
+    document.head.appendChild(theme);
+
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    let installPrompt = null;
+    const install = document.createElement('button');
+    install.type = 'button';
+    install.className = 'nchsm-pwa-install';
+    install.textContent = 'Install NCHSM';
+    install.setAttribute('aria-label', 'Install NCHSM Digital Campus on this device');
+    install.hidden = standalone;
+    install.style.cssText = 'position:fixed;z-index:9998;left:max(16px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));padding:11px 16px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 13px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.2);cursor:pointer';
+    document.body.appendChild(install);
+
+    window.addEventListener('beforeinstallprompt', function (event) {
+      event.preventDefault();
+      installPrompt = event;
+      install.hidden = false;
+    });
+
+    window.addEventListener('appinstalled', function () {
+      installPrompt = null;
+      install.hidden = true;
+    });
+
+    install.addEventListener('click', async function () {
+      if (installPrompt) {
+        installPrompt.prompt();
+        try { await installPrompt.userChoice; } catch (_) {}
+        installPrompt = null;
+        install.hidden = true;
+        return;
+      }
+      const isAppleMobile = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const message = isAppleMobile
+        ? 'To install, tap Share, then choose Add to Home Screen.'
+        : 'In Chrome or Microsoft Edge, open the browser menu and choose Install NCHSM Digital Campus (or Apps → Install this site as an app).';
+      if (window.Swal && typeof window.Swal.fire === 'function') {
+        window.Swal.fire({ title: 'Install NCHSM Digital Campus', text: message, icon: 'info', confirmButtonColor: '#073b5c' });
+      } else {
+        window.alert(message);
+      }
+    });
+
+    let refreshing = false;
+    navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).then(function (registration) {
+      registration.update().catch(function () {});
+      registration.addEventListener('updatefound', function () {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', function () {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+            if (window.Swal && typeof window.Swal.fire === 'function') {
+              window.Swal.fire({
+                title: 'NCHSM has been updated',
+                text: 'A new version is ready. Reload to use the latest improvements.',
+                icon: 'success',
+                confirmButtonText: 'Reload now',
+                confirmButtonColor: '#073b5c',
+                allowOutsideClick: false
+              }).then(function (result) { if (result.isConfirmed) window.location.reload(); });
+            } else if (window.confirm('A new NCHSM version is ready. Reload now?')) {
+              window.location.reload();
+            }
+          }
+        });
+      });
+    }).catch(function (error) {
+      console.warn('NCHSM PWA registration failed:', error);
+    });
+
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (refreshing) return;
+      refreshing = true;
+    });
+    window.addEventListener('focus', function () {
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.getRegistration('/').then(function (registration) {
+          if (registration) registration.update().catch(function () {});
+        }).catch(function () {});
+      }
+    });
+  })();
+
 })();
