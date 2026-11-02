@@ -3064,7 +3064,7 @@ window.viewStudentProfile = async function(pid) {
         const safe = value => escapeAdminHtml(value == null ? '' : String(value));
         const sentinel = '00000000-0000-0000-0000-000000000000';
         const answerValue = row => row?.selected_answer ?? row?.student_answer ?? row?.answer ?? row?.response ?? '';
-        const normalize = value => String(value ?? '').trim().toUpperCase().replace(/[()\\s.\\-_:]/g, '');
+        const normalize = value => String(value ?? '').trim().toUpperCase().replace(/[()\s.\-_:]/g, '');
         const optionKeyMatches = (value, letter, optionText) => {
             const v = normalize(value);
             return !!v && (v === normalize(letter) || v === normalize(optionText) || v === 'OPTION' + normalize(letter));
