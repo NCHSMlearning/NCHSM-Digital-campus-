@@ -1775,7 +1775,8 @@ window.renderTranscriptBlock = function(index) {
       <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
       <div class="date">Generated: ${now}</div>
     </div>
-    <div class="verification-qr"><div class="qr-placeholder">Verification QR<br>issued at registry</div><span>VERIFY</span></div>
+    <div class="transcript-generation-number" id="transcriptGenerationNumber" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"></span></div>
+    <div class="verification-qr"><div id="transcriptVerificationQr" class="qr-placeholder">Preparing<br>verification…</div><span>VERIFY</span></div>
   </div>
   <div class="student-info-wrapper">
     <div class="student-info">
@@ -1821,6 +1822,70 @@ window.renderTranscriptBlock = function(index) {
   </div>
 </div></body></html>`;
     content.innerHTML = transcriptHtml;
+
+    // Issue a real, authenticated provisional-transcript verification token.
+    (async function issueAdminTranscriptVerification() {
+        const qrHost = content.querySelector('#transcriptVerificationQr');
+        const config = window.APP_CONFIG || {};
+        const client = window.sb || window.supabaseClient || window.supabase;
+        const supabaseUrl = config.SUPABASE_URL;
+        const anonKey = config.SUPABASE_ANON_KEY;
+        const setQrError = (message) => {
+            if (qrHost) qrHost.textContent = message || 'Verification unavailable';
+        };
+        try {
+            if (!qrHost || !supabaseUrl || !anonKey || !client?.auth) {
+                setQrError('Verification unavailable');
+                return;
+            }
+            const { data: sessionData, error: sessionError } = await client.auth.getSession();
+            const accessToken = sessionData?.session?.access_token;
+            if (sessionError || !accessToken) throw new Error('Sign in again to issue verification.');
+            const response = await fetch(supabaseUrl.replace(/\\/$/, '') + '/functions/v1/transcript-registry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: 'Bearer ' + accessToken },
+                body: JSON.stringify({ action: 'issue', block: blockName })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !result.token) throw new Error(result.error || result.message || 'Registry did not return a verification token.');
+            const numberBox = content.querySelector('#transcriptGenerationNumber');
+            const numberValue = content.querySelector('#transcriptGenerationNumberValue');
+            if (numberBox && numberValue && result.transcript_number) {
+                numberValue.textContent = result.transcript_number;
+                numberBox.style.display = 'block';
+            }
+            const verifyUrl = new URL('/transcripts', window.location.origin);
+            verifyUrl.searchParams.set('token', result.token);
+            verifyUrl.searchParams.set('type', 'provisional-transcript');
+            let QR = window.QRCode;
+            if (!QR) {
+                for (const url of [
+                    'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+                    'https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js'
+                ]) {
+                    try {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = url;
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                        if (window.QRCode) { QR = window.QRCode; break; }
+                    } catch (_) {}
+                }
+            }
+            if (!QR) throw new Error('QR library could not be loaded.');
+            qrHost.innerHTML = '';
+            qrHost.className = '';
+            qrHost.style.cssText = 'width:76px;height:76px;display:flex;align-items:center;justify-content:center;';
+            new QR(qrHost, { text: verifyUrl.href, width: 76, height: 76, correctLevel: QR.CorrectLevel?.M || 0 });
+        } catch (error) {
+            console.error('[Transcript QR] Verification issuance failed:', error);
+            setQrError('Verification unavailable');
+            qrHost.title = error?.message || 'Verification unavailable';
+        }
+    })();
 
 };
 
