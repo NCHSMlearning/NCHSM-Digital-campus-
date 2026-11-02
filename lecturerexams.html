@@ -1606,7 +1606,7 @@ window.viewLecturerStudentProgress = async function(studentId, studentName, exam
         const modalTitle = document.getElementById('lecturerProgressTitle');
         const modalContent = document.getElementById('lecturerProgressContent');
         const modal = document.getElementById('lecturerProgressModal');
-        const safe = value => String(value == null ? '' : value).replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[ch]));
+        const safe = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
         const sentinel = '00000000-0000-0000-0000-000000000000';
         const answerValue = row => row?.selected_answer ?? row?.student_answer ?? row?.answer ?? row?.response ?? '';
         const normalize = value => String(value ?? '').trim().toUpperCase().replace(/[()\s.\-_:]/g, '');
