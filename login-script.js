@@ -89,8 +89,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Check if on login page, redirect to dashboard
-        const isLoginPage = window.location.pathname.includes('login.html') || 
-                           window.location.pathname.includes('exam_login.html');
+        const loginPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+        const isLoginPage = loginPath === '/login' ||
+                           loginPath.endsWith('/login') ||
+                           loginPath.endsWith('/login.html') ||
+                           loginPath.endsWith('/exam_login.html');
         if (isLoginPage) {
             console.log('🔄 Already logged in, redirecting to dashboard...');
             const requested = new URLSearchParams(window.location.search).get('redirect');
