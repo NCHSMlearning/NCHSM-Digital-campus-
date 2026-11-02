@@ -399,8 +399,8 @@ const LecturerStudents = {
             // legacy shape used by the lecturer modal to avoid a second file list.
             const { data: documents, error } = await supabase
                 .from('drms_documents')
-                .select('id, student_id, title, category, description, file_name, file_url, file_size, uploaded_by, uploaded_at, status')
-                .order('uploaded_at', { ascending: false });
+                .select('id, student_id, title, category, description, file_name, file_url, file_path, file_size, uploaded_by, uploaded_by_name, created_at, status')
+                .order('created_at', { ascending: false });
 
             if (error) {
                 console.error('Error loading DRMS documents:', error);
@@ -860,11 +860,11 @@ const LecturerStudents = {
 
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-150);
-        const storagePath = `drms/${studentId}/lecturer-${Date.now()}-${safeName}`;
+        const storagePath = `${profile?.user_id}/${studentId}/lecturer-${Date.now()}-${safeName}`;
 
         try {
             const { data: stored, error: storageError } = await supabase.storage
-                .from('drms_files')
+                .from('drms_academic_records')
                 .upload(storagePath, file, {
                     contentType: file.type || 'application/octet-stream',
                     upsert: false
@@ -874,23 +874,25 @@ const LecturerStudents = {
 
             // DRMS is the shared document register; never write a duplicate
             // metadata-only row to student_uploads.
-            const { data: publicData } = supabase.storage.from('drms_files').getPublicUrl(stored.path);
             const { error: documentError } = await supabase.from('drms_documents').insert({
                 student_id: studentId,
+                owner_id: profile?.user_id,
                 title: file.name,
                 category: 'Lecturer Supporting Document',
+                document_type: 'Student Supporting Document',
                 description: 'Uploaded by a lecturer for the student record.',
                 file_name: file.name,
-                file_url: publicData?.publicUrl || null,
-                file_size: file.size,
-                uploaded_by: profile?.user_id || null,
-                uploaded_at: new Date().toISOString(),
-                status: 'Pending Approval'
+                file_url: 'private://' + stored.path,
+                file_path: stored.path,
+                file_size: (file.size / 1024).toFixed(2) + ' KB',
+                uploaded_by: profile?.user_id,
+                uploaded_by_name: profile?.full_name || 'Lecturer',
+                created_at: new Date().toISOString(),
+                status: 'pending'
             });
 
             if (documentError) {
-                // Remove the orphaned object if the document register rejects it.
-                await supabase.storage.from('drms_files').remove([stored.path]);
+                await supabase.storage.from('drms_academic_records').remove([stored.path]);
                 throw documentError;
             }
 
@@ -915,12 +917,13 @@ const LecturerStudents = {
             // Prefer a signed link for private buckets; public URLs remain a
             // compatibility fallback for existing DRMS records.
             let url = document.storage_url || document.file_url || document.file_path || null;
-            const storagePath = document.storage_path || document.file_path;
+            const storagePath = document.file_path || document.storage_path;
             if (storagePath) {
                 const { data, error } = await supabase.storage
-                    .from('drms_files')
-                    .createSignedUrl(storagePath, 60);
-                if (!error && data?.signedUrl) url = data.signedUrl;
+                    .from('drms_academic_records')
+                    .createSignedUrl(storagePath, 600);
+                if (error) throw error;
+                if (data?.signedUrl) url = data.signedUrl;
             }
             if (!url) throw new Error('No file URL is stored for this document.');
 
