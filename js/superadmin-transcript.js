@@ -1595,156 +1595,95 @@ window.renderTranscriptBlock = function(index) {
     }
 
     // Build full official transcript HTML for current block
-    const html = `
-        <div id="transcriptDocument" style="background: white; padding: 30px 35px; border: 2px solid #0A3D62; border-radius: 8px; box-shadow: 0 4px 20px rgba(10,61,98,0.12); font-family: 'Times New Roman', Times, serif; max-width: 850px; margin: 0 auto;">
-            
-            <!-- HEADER WITH LOGO -->
-            <div style="text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 14px; margin-bottom: 18px;">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 4px;">
-                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-                         alt="NCHSM Logo" 
-                         style="max-height: 55px; width: auto;"
-                         onerror="this.style.display='none'">
-                    <div>
-                        <div style="font-size: 18px; font-weight: 700; color: #0A3D62; letter-spacing: 1px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
-                        <div style="font-size: 14px; font-weight: 600; color: #0A3D62; letter-spacing: 0.5px;">AND MANAGEMENT (NCHSM)</div>
-                    </div>
-                </div>
-                <div style="font-size: 10px; color: #64748b; line-height: 1.6; margin-top: 4px;">
-                    KIAMUNYI CAMPUS · P.O. Box 12906 - 20100, Nakuru<br>
-                    Tel: 0703 345 771 · Email: info@nakurucollegeofhealth.ac.ke · Website: www.nchsm.co.ke
-                </div>
-                <div style="font-size: 15px; font-weight: 700; color: #0A3D62; letter-spacing: 2px; margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px;">OFFICIAL ACADEMIC TRANSCRIPT</div>
-            </div>
-            
-            <!-- STUDENT INFO -->
-            <div style="margin-bottom: 16px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 30px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
-                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">NAME</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.full_name || 'Unknown')}</span></div>
-                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">ADMISSION NUMBER</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.student_id || 'N/A')}</span></div>
-                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">PROGRAMME</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.program || 'N/A')}</span></div>
-                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">YEAR OF STUDY</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(yearOfStudy)}</span></div>
-                </div>
-            </div>
-            
-            <!-- BLOCK HEADER -->
-            <div style="margin-bottom: 10px; padding: 6px 14px; background: #e0e7ff; border-radius: 4px; border-left: 4px solid #0A3D62;">
-                <span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(blockName)}</span>
-                <span style="font-size: 11px; color: #64748b; margin-left: 12px;">${blockTotal} units</span>
-                <span style="float: right; font-size: 11px; font-weight: 600; color: ${allPassed ? '#059669' : (hasFailed ? '#dc2626' : '#f59e0b')};">
-                    ${allPassed ? 'COMPLETED' : (hasFailed ? 'RETAKE REQUIRED' : 'PENDING')}
-                </span>
-            </div>
-            
-            <!-- MARKS TABLE - ALL BORDERS -->
-            <div style="overflow-x: auto; margin-bottom: 16px;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #0A3D62;">
-                    <thead>
-                        <tr style="background: #0A3D62; color: white;">
-                            <th style="padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62;">CODE</th>
-                            <th style="padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62;">COURSE TITLE</th>
-                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">CREDIT</th>
-                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">GRADE</th>
-                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">POINTS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${marksHtml}
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- GPA SUMMARY -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; padding: 10px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
-                <div style="text-align: center;">
-                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">GPA FOR THE YEAR</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${gpa.toFixed(2)}</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">CUMULATIVE GPA</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${gpa.toFixed(2)}</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">CREDITS COVERED</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalCredits}</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL CREDITS</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalCredits}</div>
-                </div>
-            </div>
-            
-            <!-- PROGRESSION MESSAGE - BEFORE GRADING SCALE -->
-            <div style="text-align: center; padding: 4px 0 10px 0; font-size: 11px; color: ${messageColor}; font-weight: 500; border-bottom: 1px dashed #e5e7eb; margin-bottom: 12px;">
-                ${progressionMessage}
-            </div>
-            
-            <!-- GRADING SCALE -->
-            <div style="margin-bottom: 14px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
-                <div style="font-weight: 600; color: #0A3D62; font-size: 10px; text-align: center; margin-bottom: 4px;">GRADING SCALE (${programType})</div>
-                <div style="text-align: center; font-size: 9px; color: #64748b; margin-bottom: 4px;">${gradingDisplay}</div>
-                <table style="width: 100%; border-collapse: collapse; font-size: 9px; border: 1px solid #0A3D62;">
-                    <thead>
-                        <tr style="background: #0A3D62; color: white;">
-                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">GRADE</th>
-                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">RANGE</th>
-                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">POINTS</th>
-                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">REMARKS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${gradingScaleHtml}
-                        <tr>
-                            <td colspan="4" style="padding: 3px 8px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 8px; border-top: 2px solid #0A3D62;">
-                                Min Pass: ${passMark}% · Credit Hours: ${GRADE_CONFIG.creditHours} per unit
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- SIGNATURES - Principal & Director ONLY -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
-                <div style="text-align: center;">
-                    <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">_________________________</div>
-                    <div style="border-bottom: 2px solid #1e293b; width: 180px; margin: 6px auto 2px auto;"></div>
-                    <div style="font-size: 9px; color: #0A3D62; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">PRINCIPAL</div>
-                    <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">_________________________</div>
-                    <div style="border-bottom: 2px solid #1e293b; width: 180px; margin: 6px auto 2px auto;"></div>
-                    <div style="font-size: 9px; color: #0A3D62; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">DIRECTOR</div>
-                    <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
-                </div>
-            </div>
-            
-            <!-- FOOTER -->
-            <div style="text-align: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #94a3b8;">
-                <p style="font-style: italic;">This Transcript is issued without any alteration whatsoever, and is only valid with the College Seal.</p>
-                <p>Any queries relating to this document should be addressed to the Principal.</p>
-                <p style="font-size: 7px; color: #cbd5e1; margin-top: 4px;">Document ID: ${Date.now().toString(36).toUpperCase()} · Generated: ${now}</p>
-            </div>
-            
-            <!-- NAVIGATION BUTTONS -->
-            ${navHtml}
-            
-            <!-- ACTION BUTTONS -->
-            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
-                <button onclick="window.printTranscriptDocument()" style="background: #0A3D62; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                    Print / PDF
-                </button>
-                <button onclick="window.downloadTranscript()" style="background: #059669; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(5,150,105,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                    Download
-                </button>
-                <button onclick="window.closeTranscriptPreview()" style="background: #6b7280; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-                    Close
-                </button>
-            </div>
-        </div>
-    `;
-    
-    content.innerHTML = html;
+    // PROVISIONAL TEMPLATE SYNC: academic-reports.js
+    // Keep the Super Admin renderer on the exact student-facing transcript layout.
+    const overallGrade = overallGradeInfo.grade || 'PENDING';
+    const passRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
+    const transcriptAdmission = student.admission_number || student.student_id || student.user_id || 'N/A';
+    const academicYearLabel = yearOfStudy || (intakeYear + '/' + (intakeYear + 1));
+    const marksTableRows = blockMarks.map((m, rowIndex) => {
+        const score = getEffectiveMarkScore(m);
+        const gradeInfo = calculateOfficialGrade(score === null ? 0 : score, program);
+        const creditsRaw = Number(m.credits || m.credit_hours || m.creditHours);
+        const credits = Number.isFinite(creditsRaw) && creditsRaw > 0 ? creditsRaw : GRADE_CONFIG.creditHours;
+        const points = score === null ? '—' : (gradeInfo.points * credits).toFixed(1);
+        const unitCode = getUnitCode(m.subject_name || m.unit_name);
+        const unitName = m.subject_name || m.unit_name || 'N/A';
+        const status = score === null ? 'PENDING' : (score >= passMark ? (score >= 75 ? 'DISTINCTION' : score >= 65 ? 'CREDIT' : 'PASS') : 'FAIL');
+        const retakeMark = Number(m.retake_count) > 0 || m.retake_score != null || Boolean(m.retake_status);
+        return `<tr>
+            <td style="text-align:center;">${rowIndex + 1}</td>
+            <td>${escapeHtml(unitCode)}</td>
+            <td><strong>${escapeHtml(unitName)}</strong>${retakeMark ? '<span style="color:#94a3b8;margin-left:4px;">☆</span>' : ''}</td>
+            <td style="text-align:center;font-weight:900;">${score === null ? 'PENDING' : escapeHtml(gradeInfo.grade)}</td>
+            <td style="text-align:center;font-weight:900;">${points}</td>
+            <td style="text-align:center;font-weight:800;">${status}</td>
+        </tr>`;
+    }).join('');
+    const transcriptHtml = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Provisional Academic Transcript - ${escapeHtml(student.full_name || 'Student')}</title>
+<style>${css}
+    body { padding:0; }
+    .container { max-width: none; }
+</style></head><body>
+<div class="container">
+  <div class="transcript-top">
+    <div class="header">
+      <div class="header-top">
+        <img src="https://nchsm.co.ke/images/Logo_NCHSM.png" alt="NCHSM Logo">
+        <div><div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div><div class="motto">"Excellence in Health Sciences Education"</div></div>
+      </div>
+      <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
+      <div class="date">Generated: ${now}</div>
+    </div>
+    <div class="verification-qr"><div class="qr-placeholder">Verification QR<br>issued at registry</div><span>VERIFY</span></div>
+  </div>
+  <div class="student-info-wrapper">
+    <div class="student-info">
+      <div class="field"><span class="label">Student Name</span><span class="value">${escapeHtml(student.full_name || 'Student')}</span></div>
+      <div class="field"><span class="label">Admission Number</span><span class="value">${escapeHtml(transcriptAdmission)}</span></div>
+      <div class="field"><span class="label">Program</span><span class="value">${escapeHtml(program)}</span></div>
+      <div class="field"><span class="label">Academic Year</span><span class="value">${escapeHtml(academicYearLabel)}</span></div>
+      <div class="field"><span class="label">Intake Year</span><span class="value">${escapeHtml(student.intake_year || intakeYear)}</span></div>
+      <div class="field"><span class="label">${isTVET ? 'Current Term' : 'Current Block'}</span><span class="value">${escapeHtml(blockName)}</span></div>
+    </div>
+  </div>
+  <div class="semester-results-title">End of ${escapeHtml(blockName)} Results</div>
+  <table class="semester-results-table">
+    <thead><tr>
+      <th style="text-align:center;width:25px;">#</th><th style="width:76px;">Unit Code</th><th>Unit Name</th>
+      <th style="text-align:center;width:65px;">Grade</th><th style="text-align:center;width:75px;">Grade Points</th><th style="text-align:center;width:82px;">Status</th>
+    </tr></thead>
+    <tbody>${marksTableRows || '<tr><td colspan="6" style="text-align:center;">No approved and published results.</td></tr>'}</tbody>
+  </table>
+  <div class="transcript-lower-grid">
+    <div class="grading-scale-table"><div class="title">Grading Scale (${programType})</div>
+      <table><thead><tr><th>Grade</th><th>Range</th><th>Points</th><th>Remarks</th></tr></thead><tbody>${gradingScaleHtml}</tbody></table>
+      <div style="font-size:7px;margin-top:3px;color:#475569;">Minimum pass mark: ${passMark}%</div>
+    </div>
+    <div class="academic-summary-panel"><div class="academic-summary-title">Academic Summary</div>
+      <div class="summary-grid">
+        <div class="summary-card"><div class="value">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
+        <div class="summary-card"><div class="value">${escapeHtml(overallGrade)}</div><div class="label">Overall Grade</div></div>
+        <div class="summary-card"><div class="value">${blockTotal}</div><div class="label">Units Reported</div></div>
+        <div class="summary-card"><div class="value">${passRate}%</div><div class="label">Pass Rate</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="signatures">
+    <div class="signature-box"><div class="line"></div><div class="label">Principal — Nakuru College of Health Sciences &amp; Management</div><div class="date">Date: _____________</div></div>
+    <div class="signature-box"><div class="line"></div><div class="label">Head of Department — School of Nursing</div><div class="date">Date: _____________</div></div>
+  </div>
+  <div class="footer"><p>Accredited &amp; Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences &amp; Management</p>
+    <p><strong>NCHSM</strong> · Tel: 0703 345 771 · Email: <a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a></p></div>
+  <div class="transcript-admin-actions no-print">
+    <button class="btn-print" onclick="window.print()">Print / Save PDF</button>
+    <button class="btn-close" onclick="window.closeTranscriptPreview()">Close Preview</button>
+  </div>
+</div></body></html>`;
+    content.innerHTML = transcriptHtml;
+
 };
 
 // ============================================================
