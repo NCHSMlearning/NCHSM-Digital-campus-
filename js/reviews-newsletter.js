@@ -2049,3 +2049,42 @@ window.loadSubscriptionStatus = loadSubscriptionStatus;
 window.initNewsletterModule = initNewsletterModule;
 
 console.log('✅ Newsletter functions loaded!');
+
+
+// ============================================
+// REVIEWS MODULE BOOTSTRAP
+// Ensure review controls work even when the page
+// does not explicitly call initReviewsModule().
+// ============================================
+window.openReviewModal = openReviewModal;
+window.closeReviewModal = closeReviewModal;
+window.openReviewDetail = openReviewDetail;
+window.initReviewsModule = initReviewsModule;
+
+(function ensureReviewsModuleStarts() {
+    function startReviewsModule() {
+        if (window.__nchsmReviewsModuleStarted) return;
+        window.__nchsmReviewsModuleStarted = true;
+
+        // Bind the primary action independently of the full module init.
+        const writeButton = document.getElementById('writeReviewBtn');
+        if (writeButton && !writeButton.dataset.reviewActionBound) {
+            writeButton.dataset.reviewActionBound = 'true';
+            writeButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                openReviewModal();
+            });
+        }
+
+        // Start loading reviews and bind the rest of the review controls.
+        if (typeof initReviewsModule === 'function') {
+            initReviewsModule();
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startReviewsModule, { once: true });
+    } else {
+        startReviewsModule();
+    }
+})();
