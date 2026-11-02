@@ -3062,154 +3062,177 @@ window.viewStudentProfile = async function(pid) {
         const modalContent = document.getElementById('modalContent');
         const modal = document.getElementById('studentModal');
         const safe = value => escapeAdminHtml(value == null ? '' : String(value));
-        const answerValue = row => {
-            const value = row?.selected_answer ?? row?.student_answer ?? row?.answer ?? row?.response ?? '';
-            return value == null ? '' : String(value).trim();
-        };
-        const optionText = (question, answer) => {
-            if (!answer) return '';
-            const key = String(answer).trim().toLowerCase();
-            const optionMap = {
-                a: question.option_a, b: question.option_b, c: question.option_c,
-                d: question.option_d, e: question.option_e
-            };
-            const option = optionMap[key];
-            return option ? key.toUpperCase() + '. ' + option : String(answer);
+        const sentinel = '00000000-0000-0000-0000-000000000000';
+        const answerValue = row => row?.selected_answer ?? row?.student_answer ?? row?.answer ?? row?.response ?? '';
+        const normalize = value => String(value ?? '').trim().toUpperCase().replace(/[()\\s.\\-_:]/g, '');
+        const optionKeyMatches = (value, letter, optionText) => {
+            const v = normalize(value);
+            return !!v && (v === normalize(letter) || v === normalize(optionText) || v === 'OPTION' + normalize(letter));
         };
 
         try {
-            if (!studentId || !Number.isFinite(Number(examId))) {
-                throw new Error('Missing student or exam identifier. Please close this window and try again.');
+            const numericExamId = Number(examId);
+            if (!studentId || !Number.isFinite(numericExamId) || numericExamId <= 0) {
+                throw new Error('Missing or invalid student/exam identifier.');
             }
 
             if (modalTitle) modalTitle.innerHTML = '<i class="fas fa-chart-line"></i> Student Progress';
-            if (modalContent) modalContent.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading this student\'s saved answers...</div>';
+            if (modalContent) modalContent.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading saved answers...</div>';
             if (modal) modal.style.display = 'flex';
 
-            const numericExamId = Number(examId);
-
-            // Always identify the latest attempt first. Without this filter, old
-            // attempts/retakes were being added together in the progress totals.
-            const { data: attempts, error: attemptError } = await sb
-                .from('exam_attempts')
-                .select('id, attempt_number, status, is_retake, started_at, submitted_at, updated_at')
-                .eq('student_id', String(studentId))
-                .eq('exam_id', numericExamId)
-                .order('updated_at', { ascending: false })
-                .limit(1);
-
-            if (attemptError) console.warn('Progress viewer: latest attempt lookup unavailable; using student/exam grade fallback.', attemptError);
-            const latestAttempt = Array.isArray(attempts) && attempts.length ? attempts[0] : null;
-
-            const [{ data: questions, error: questionsError }, gradeResult, { data: exam, error: examError }] = await Promise.all([
+            // Find the current attempt, never combine answers from an earlier retake.
+            const [attemptResult, questionsResult, examResult] = await Promise.all([
+                sb.from('exam_attempts')
+                    .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+                    .eq('student_id', String(studentId))
+                    .eq('exam_id', numericExamId)
+                    .order('attempt_number', { ascending: false })
+                    .limit(1),
                 sb.from('exam_questions')
-                    .select('id, exam_id, question_number, question_text, question_type, option_a, option_b, option_c, option_d, option_e, correct_answer, marks, image_url')
+                    .select('*')
                     .eq('exam_id', numericExamId)
                     .order('question_number', { ascending: true }),
-                (async () => {
-                    let query = sb.from('exam_grades').select('*')
-                        .eq('student_id', String(studentId))
-                        .eq('exam_id', numericExamId)
-                        .neq('question_id', ZERO_QUESTION_ID);
-                    if (latestAttempt?.id) query = query.eq('attempt_id', latestAttempt.id);
-                    return await query;
-                })(),
                 sb.from('exams').select('exam_name, total_marks').eq('id', numericExamId).maybeSingle()
             ]);
 
-            if (questionsError) throw new Error('Could not load the exam questions: ' + questionsError.message);
-            if (gradeResult.error) throw new Error('Could not load the student\'s saved answers: ' + gradeResult.error.message);
-            if (examError) console.warn('Progress viewer: exam title lookup failed.', examError);
+            if (questionsResult.error) throw new Error('Could not load exam questions: ' + questionsResult.error.message);
+            const questions = questionsResult.data || [];
+            const latestAttempt = !attemptResult.error ? (attemptResult.data || [])[0] || null : null;
+            if (attemptResult.error) console.warn('Could not read exam_attempts; deriving attempt from saved grade rows.', attemptResult.error);
 
-            const questionRows = Array.isArray(questions) ? questions : [];
-            const gradeRows = Array.isArray(gradeResult.data) ? gradeResult.data : [];
-            const answerByQuestion = new Map();
+            // The secure submission RPC writes per-question rows into exam_grades.
+            // If attempt table access is restricted, derive the latest attempt_id
+            // from the sentinel summary row before loading question answers.
+            let attemptId = latestAttempt?.id || null;
+            if (!attemptId) {
+                const { data: summaries, error: summaryError } = await sb.from('exam_grades')
+                    .select('attempt_id, updated_at, attempt_number')
+                    .eq('student_id', String(studentId))
+                    .eq('exam_id', numericExamId)
+                    .eq('question_id', sentinel)
+                    .order('updated_at', { ascending: false })
+                    .limit(1);
+                if (summaryError) console.warn('Could not derive attempt from summary row:', summaryError);
+                attemptId = summaries?.[0]?.attempt_id || null;
+            }
+
+            let answersQuery = sb.from('exam_grades')
+                .select('*')
+                .eq('student_id', String(studentId))
+                .eq('exam_id', numericExamId)
+                .neq('question_id', sentinel);
+            if (attemptId) answersQuery = answersQuery.eq('attempt_id', attemptId);
+            const { data: answerRows, error: answersError } = await answersQuery.order('updated_at', { ascending: false });
+            if (answersError) throw new Error('Could not load saved student answers: ' + answersError.message);
+
+            let gradeRows = answerRows || [];
+            // Legacy rows may have no attempt_id. In that case, avoid mixing attempts:
+            // select only rows belonging to the newest available attempt id.
+            if (!attemptId && gradeRows.some(row => row.attempt_id)) {
+                const newestAttemptId = gradeRows.find(row => row.attempt_id)?.attempt_id;
+                gradeRows = gradeRows.filter(row => row.attempt_id === newestAttemptId);
+                attemptId = newestAttemptId;
+            }
+
+            const answerMap = new Map();
             gradeRows.forEach(row => {
-                if (!row?.question_id) return;
-                const existing = answerByQuestion.get(String(row.question_id));
-                // Prefer the most recently updated row if duplicate grade rows exist.
-                if (!existing || new Date(row.updated_at || row.created_at || 0) >= new Date(existing.updated_at || existing.created_at || 0)) {
-                    answerByQuestion.set(String(row.question_id), row);
-                }
+                const key = String(row.question_id);
+                if (!answerMap.has(key)) answerMap.set(key, row);
             });
 
-            const answeredRows = questionRows.filter(q => answerValue(answerByQuestion.get(String(q.id))) !== '');
-            const answeredCount = answeredRows.length;
-            const totalQuestions = questionRows.length;
-            const unansweredCount = Math.max(0, totalQuestions - answeredCount);
-            const correctCount = answeredRows.filter(q => {
-                const row = answerByQuestion.get(String(q.id));
-                if (row && row.marks != null) return Number(row.marks) > 0;
-                const selected = answerValue(row).trim().toLowerCase();
-                const correct = String(q.correct_answer ?? '').trim().toLowerCase();
-                return !!selected && !!correct && selected === correct;
-            }).length;
+            const reviewRows = questions.map((q, index) => {
+                const row = answerMap.get(String(q.id));
+                const selected = answerValue(row);
+                const isAnswered = !!row && normalize(selected) !== '';
+                const correct = q.correct_answer ?? q.correct_option ?? q.answer ?? '';
+                const options = [
+                    ['A', q.option_a], ['B', q.option_b], ['C', q.option_c],
+                    ['D', q.option_d], ['E', q.option_e]
+                ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '');
 
-            const examName = safe(exam?.exam_name || ('Exam ' + numericExamId));
+                const explicitCorrect = row?.is_correct === true || row?.correct === true;
+                const explicitWrong = row?.is_correct === false || row?.correct === false;
+                const numericMarks = Number(row?.marks ?? row?.marks_obtained);
+                const hasNumericMarks = row?.marks != null || row?.marks_obtained != null;
+                const comparedCorrect = options.some(([letter, value]) =>
+                    optionKeyMatches(selected, letter, value) && optionKeyMatches(correct, letter, value)
+                );
+                const isCorrect = isAnswered && (
+                    explicitCorrect || (!explicitWrong && (comparedCorrect || (hasNumericMarks && Number.isFinite(numericMarks) && numericMarks > 0)))
+                );
+                const selectedOption = options.find(([letter, value]) => optionKeyMatches(selected, letter, value));
+                const correctOption = options.find(([letter, value]) => optionKeyMatches(correct, letter, value));
+                return {
+                    number: q.question_number ?? index + 1,
+                    text: q.question_text || q.question || ('Question ' + (index + 1)),
+                    options,
+                    selectedText: selectedOption ? selectedOption[0] + '. ' + selectedOption[1] : selected,
+                    correctText: correctOption ? correctOption[0] + '. ' + correctOption[1] : correct,
+                    isAnswered,
+                    isCorrect,
+                    marks: row?.marks ?? row?.marks_obtained ?? 0,
+                    totalMarks: q.marks ?? 1
+                };
+            });
+
+            const answeredCount = reviewRows.filter(q => q.isAnswered).length;
+            const correctCount = reviewRows.filter(q => q.isCorrect).length;
+            const wrongCount = reviewRows.filter(q => q.isAnswered && !q.isCorrect).length;
+            const unansweredCount = Math.max(0, reviewRows.length - answeredCount);
             const attemptLabel = latestAttempt
                 ? 'Attempt #' + Number(latestAttempt.attempt_number || 1) + (latestAttempt.is_retake ? ' · Retake' : '')
-                : 'Available saved grade records';
-            const totalAnsweredMarks = answeredRows.reduce((sum, q) => sum + Number(answerByQuestion.get(String(q.id))?.marks || 0), 0);
+                : (attemptId ? 'Latest saved attempt' : 'Legacy result records');
+            const examName = safe(examResult.data?.exam_name || ('Exam ' + numericExamId));
 
             let html = `
                 <div style="background:#F8FAFC;padding:16px;border-radius:12px;margin-bottom:16px;">
-                    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
-                        <div><h3 style="margin:0;color:#0f172a;">${safe(studentName || 'Unknown student')}</h3>
-                        <p style="color:#64748B;margin:5px 0 0;">${examName}</p>
-                        <small style="color:#64748B;">${safe(attemptLabel)}</small></div>
-                        <button type="button" onclick="viewStudentProgress(${JSON.stringify(String(studentId))},${JSON.stringify(String(studentName || 'Student'))},${numericExamId})" style="border:1px solid #cbd5e1;background:#fff;padding:7px 11px;border-radius:8px;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+                        <div><h3 style="margin:0;color:#0f172a;">${safe(studentName || 'Student')}</h3>
+                        <p style="color:#64748B;margin:5px 0;">${examName}</p><small style="color:#64748B;">${safe(attemptLabel)}</small></div>
+                        <button type="button" onclick="viewStudentProgress(${JSON.stringify(String(studentId))},${JSON.stringify(String(studentName || 'Student'))},${numericExamId})" style="padding:7px 11px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh</button>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px;">
-                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:1.35rem;font-weight:800;color:#0A3D62;">${answeredCount}/${totalQuestions}</div><div style="font-size:.7rem;color:#64748B;">Answered</div></div>
-                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:1.35rem;font-weight:800;color:#15803d;">${correctCount}</div><div style="font-size:.7rem;color:#64748B;">Correct</div></div>
-                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:1.35rem;font-weight:800;color:#d97706;">${unansweredCount}</div><div style="font-size:.7rem;color:#64748B;">Unanswered</div></div>
-                        <div style="background:white;padding:10px;border-radius:8px;text-align:center;"><div style="font-size:1.35rem;font-weight:800;color:#0A3D62;">${totalAnsweredMarks}</div><div style="font-size:.7rem;color:#64748B;">Marks awarded</div></div>
+                        <div style="background:#fff;padding:10px;border-radius:8px;text-align:center;"><strong style="font-size:1.3rem;color:#0A3D62;">${answeredCount}/${reviewRows.length}</strong><div style="font-size:.7rem;color:#64748B;">Answered</div></div>
+                        <div style="background:#fff;padding:10px;border-radius:8px;text-align:center;"><strong style="font-size:1.3rem;color:#15803d;">${correctCount}</strong><div style="font-size:.7rem;color:#64748B;">Correct</div></div>
+                        <div style="background:#fff;padding:10px;border-radius:8px;text-align:center;"><strong style="font-size:1.3rem;color:#b91c1c;">${wrongCount}</strong><div style="font-size:.7rem;color:#64748B;">Incorrect</div></div>
+                        <div style="background:#fff;padding:10px;border-radius:8px;text-align:center;"><strong style="font-size:1.3rem;color:#d97706;">${unansweredCount}</strong><div style="font-size:.7rem;color:#64748B;">Unanswered</div></div>
                     </div>
                 </div>
                 <div style="max-height:52vh;overflow:auto;border:1px solid #E2E8F0;border-radius:10px;">
-                    <table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:680px;">
-                        <thead style="position:sticky;top:0;z-index:1;background:#F1F5F9;"><tr>
-                            <th style="padding:10px;text-align:left;">Question</th>
-                            <th style="padding:10px;text-align:left;">Question & options</th>
-                            <th style="padding:10px;text-align:left;">Student answer</th>
-                            <th style="padding:10px;text-align:left;">Correct answer</th>
-                            <th style="padding:10px;text-align:center;">Marks</th>
-                            <th style="padding:10px;text-align:center;">Status</th>
-                        </tr></thead><tbody>`;
+                <table style="width:100%;min-width:700px;border-collapse:collapse;font-size:.82rem;">
+                    <thead style="position:sticky;top:0;background:#F1F5F9;z-index:1;"><tr>
+                        <th style="padding:10px;text-align:left;">Q#</th><th style="padding:10px;text-align:left;">Question & options</th>
+                        <th style="padding:10px;text-align:left;">Student answer</th><th style="padding:10px;text-align:left;">Correct answer</th>
+                        <th style="padding:10px;text-align:center;">Marks</th><th style="padding:10px;text-align:center;">Status</th>
+                    </tr></thead><tbody>`;
 
-            questionRows.forEach((q, index) => {
-                const row = answerByQuestion.get(String(q.id));
-                const selected = answerValue(row);
-                const isAnswered = selected !== '';
-                const isCorrect = isAnswered && (row?.marks != null
-                    ? Number(row.marks) > 0
-                    : String(selected).trim().toLowerCase() === String(q.correct_answer ?? '').trim().toLowerCase());
-                const options = [['A',q.option_a],['B',q.option_b],['C',q.option_c],['D',q.option_d],['E',q.option_e]]
-                    .filter(([,value]) => value != null && String(value).trim() !== '')
-                    .map(([letter,value]) => '<div style="margin-top:3px;color:#475569;">' + letter + '. ' + safe(value) + '</div>').join('');
-                const questionText = q.question_text || 'Question text unavailable';
-                const status = !isAnswered ? '<span style="color:#64748b;">Not answered</span>'
-                    : isCorrect ? '<span style="color:#15803d;font-weight:700;">Correct</span>'
-                    : '<span style="color:#b91c1c;font-weight:700;">Incorrect</span>';
-                const correctAnswer = q.correct_answer ?? '';
+            reviewRows.forEach(q => {
+                const optionsHtml = q.options.map(([letter, value]) =>
+                    '<div style="margin-top:3px;color:#64748b;">' + letter + '. ' + safe(value) + '</div>'
+                ).join('');
+                const status = !q.isAnswered ? '<span style="color:#64748b;">Not answered</span>'
+                    : q.isCorrect ? '<strong style="color:#15803d;">Correct</strong>'
+                    : '<strong style="color:#b91c1c;">Incorrect</strong>';
                 html += `<tr style="border-bottom:1px solid #E2E8F0;vertical-align:top;">
-                    <td style="padding:10px;font-weight:700;">Q${safe(q.question_number || index + 1)}</td>
-                    <td style="padding:10px;white-space:normal;min-width:220px;"><div style="font-weight:600;color:#0f172a;">${safe(questionText)}</div>${options}</td>
-                    <td style="padding:10px;white-space:normal;">${isAnswered ? safe(optionText(q, selected)) : '<span style="color:#94a3b8;">—</span>'}</td>
-                    <td style="padding:10px;white-space:normal;">${safe(optionText(q, correctAnswer) || '—')}</td>
-                    <td style="padding:10px;text-align:center;">${row?.marks == null ? '—' : safe(row.marks)} / ${safe(q.marks ?? 1)}</td>
+                    <td style="padding:10px;font-weight:700;">${safe(q.number)}</td>
+                    <td style="padding:10px;white-space:normal;min-width:230px;"><strong>${safe(q.text)}</strong>${optionsHtml}</td>
+                    <td style="padding:10px;white-space:normal;">${q.isAnswered ? safe(q.selectedText) : '<span style="color:#94a3b8;">—</span>'}</td>
+                    <td style="padding:10px;white-space:normal;">${safe(q.correctText || '—')}</td>
+                    <td style="padding:10px;text-align:center;">${safe(q.marks)} / ${safe(q.totalMarks)}</td>
                     <td style="padding:10px;text-align:center;">${status}</td>
                 </tr>`;
             });
 
-            if (!questionRows.length) {
-                html += '<tr><td colspan="6" style="padding:24px;text-align:center;color:#64748b;">No questions were found for this exam. Check the exam ID and question records.</td></tr>';
-            }
+            if (!reviewRows.length) html += '<tr><td colspan="6" style="padding:24px;text-align:center;color:#64748b;">No questions found for this exam.</td></tr>';
             html += '</tbody></table></div>';
+
+            if (!gradeRows.length) {
+                html += '<p style="margin-top:12px;padding:12px;background:#fff7ed;color:#9a3412;border-radius:8px;">No per-question answer records were returned for this attempt. The attempt may have a final score without saved question-level responses, or access to the answer records may be restricted.</p>';
+            }
             if (modalContent) modalContent.innerHTML = html;
         } catch (error) {
             console.error('Student progress load failed:', error);
-            if (modalContent) modalContent.innerHTML = `<div style="color:#991b1b;background:#fef2f2;padding:18px;border-radius:10px;"><strong><i class="fas fa-exclamation-circle"></i> Unable to load student progress</strong><p style="margin:8px 0 0;">${safe(error?.message || error || 'Unknown error')}</p><button type="button" onclick="viewStudentProgress(${JSON.stringify(String(studentId || ''))},${JSON.stringify(String(studentName || 'Student'))},${Number(examId) || 0})" style="margin-top:12px;padding:8px 12px;border:0;border-radius:7px;background:#991b1b;color:#fff;cursor:pointer;">Retry</button></div>`;
+            if (modalContent) modalContent.innerHTML = `<div style="padding:18px;background:#fef2f2;color:#991b1b;border-radius:10px;"><strong>Unable to load student progress</strong><p>${safe(error?.message || error)}</p><button type="button" onclick="viewStudentProgress(${JSON.stringify(String(studentId || ''))},${JSON.stringify(String(studentName || 'Student'))},${Number(examId) || 0})" style="padding:8px 12px;border:0;border-radius:7px;background:#991b1b;color:#fff;">Retry</button></div>`;
         }
     };
 
