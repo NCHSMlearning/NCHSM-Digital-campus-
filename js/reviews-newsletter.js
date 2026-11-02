@@ -991,9 +991,9 @@ async function submitReview(e) {
                 cons: cons || null,
                 suggestions: suggestions || null,
                 is_anonymous: anonymous,
-                target_block: userBlock,
-                target_program: userProgram,
-                target_program_type: userProgramType,
+                target_block: reviewBlock,
+                target_program: reviewProgram,
+                target_program_type: reviewProgramType,
                 status: 'pending',
                 created_at: new Date().toISOString()
             }]);
