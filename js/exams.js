@@ -1,4 +1,4 @@
-(function() {
+ (function() {
     'use strict';
      
     console.log('✅ exams.js - COMPLETE FIXED VERSION WITH RETAKE SUPPORT');
