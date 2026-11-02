@@ -101,7 +101,10 @@
         .doc-viewer-fallback i { font-size: 48px; color: #999; margin-bottom: 20px; }
         
         @media (max-width: 768px) { .app-container { flex-direction: column; } .sidebar { width: 100%; } .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-    </style>
+    
+/* Responsive DRMS workspace */
+:root{--canvas:#f3f6fa;--line:#e6edf2;--ink:#172b3a}body{background:var(--canvas)}.header{height:76px;padding:0 24px;background:linear-gradient(115deg,#0b2638,#164b63);box-shadow:0 8px 24px #0b26381c}.logo h1{font-size:1.18rem}.app-container{min-height:calc(100vh - 76px);align-items:stretch}.sidebar{width:276px;flex:0 0 276px;min-height:calc(100vh - 76px);height:calc(100vh - 76px);position:sticky;top:76px;display:flex;flex-direction:column;box-shadow:8px 0 28px #17364a08;transition:width .25s,flex-basis .25s;z-index:80}.nav{padding:18px 12px;overflow-y:auto;flex:1}.nav-header{padding:9px 12px;color:#8a99a7;font-size:10px;letter-spacing:1.2px}.nav-item{margin:3px 0;padding:11px 13px;border-radius:11px;border-left:0;font-size:13px}.nav-item i{width:18px;text-align:center}.nav-item.active{background:linear-gradient(90deg,#fff4df,#fffaf1);color:#9b6412;border-left:0;box-shadow:inset 3px 0 #f3b34c}.main{padding:28px;min-width:0;max-width:1700px;width:100%;margin:0 auto}.workspace-toolbar{display:flex;align-items:center;gap:14px;margin:0 0 22px}.icon-btn{width:42px;height:42px;border:1px solid var(--line);border-radius:12px;background:#fff;color:#24465a;cursor:pointer;font-size:17px}.global-search{display:flex;align-items:center;gap:10px;max-width:520px;width:100%;height:44px;padding:0 14px;background:#fff;border:1px solid var(--line);border-radius:13px;color:#8a99a7}.global-search input{border:0;outline:0;min-width:0;flex:1;font:inherit;color:var(--ink);background:transparent}.global-search kbd{font-size:10px;padding:3px 6px;border:1px solid #e2e8ef;border-radius:5px;background:#f8fafc}.workspace-breadcrumb{margin-left:auto;color:#82909d;font-size:12px}body.sidebar-collapsed .sidebar{width:82px;flex-basis:82px}body.sidebar-collapsed .nav-header,body.sidebar-collapsed .nav-item span,body.sidebar-collapsed .sidebar-footer{display:none}body.sidebar-collapsed .nav-item{justify-content:center;padding:13px 8px}body.sidebar-collapsed .nav-item i{width:auto;font-size:17px}.stat-card,.table-container,.chart-container{border:1px solid var(--line);border-radius:17px;box-shadow:0 5px 20px #17364a08}.table-container{overflow:auto}.table-container table{min-width:720px}th{font-size:11px;text-transform:uppercase;letter-spacing:.55px;color:#718096}.btn{border-radius:10px}@media(max-width:900px){.sidebar{position:fixed;left:0;top:76px;height:calc(100vh - 76px);transform:translateX(-105%);width:280px;flex-basis:280px;box-shadow:15px 0 40px #102f4330}.sidebar.mobile-open{transform:translateX(0)}body.sidebar-collapsed .sidebar{width:280px;flex-basis:280px}body.sidebar-collapsed .nav-header,body.sidebar-collapsed .nav-item span,body.sidebar-collapsed .sidebar-footer{display:block}body.sidebar-collapsed .nav-item{justify-content:flex-start}.main{padding:18px}.workspace-breadcrumb{display:none}}@media(max-width:600px){.header{padding:0 12px;height:68px}.sidebar{top:68px;height:calc(100vh - 68px)}.header .logo h1{font-size:1rem}.header .logo p{display:none}.user-info #userName{max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.main{padding:14px}.workspace-toolbar{gap:8px}.global-search{height:42px}.global-search kbd{display:none}}
+</style>
 <style id="drms-academic-workflow-styles">
 .drms-academic-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}.drms-academic-heading h2{margin:0 0 6px;color:#102f43}.drms-academic-heading p,.drms-academic-help{color:#64748b;font-size:13px;line-height:1.6;margin:0}.drms-academic-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px;margin-bottom:18px}.drms-academic-stats>div{background:#fff;border:1px solid #e5eaf0;border-radius:14px;padding:15px;display:flex;flex-direction:column;gap:4px}.drms-academic-stats b{font-size:25px;color:#123e52}.drms-academic-stats span{font-size:11px;color:#64748b}.drms-academic-panel{background:#fff;border:1px solid #e5eaf0;border-radius:16px;padding:18px;margin:0 0 18px;box-shadow:0 3px 12px #0f2b3d08}.drms-academic-panel h3{margin:0 0 14px;color:#123e52}.drms-academic-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.drms-academic-table-wrap{width:100%;overflow:auto}.drms-academic-form{display:grid;gap:14px}.drms-academic-form label{display:block;font-size:12px;font-weight:700;color:#334e60;margin:0 0 6px}.drms-academic-form input,.drms-academic-form select,.drms-academic-form textarea{width:100%;min-width:0;padding:11px 12px;border:1px solid #dbe3ea;border-radius:9px;font:inherit;font-size:13px;background:#fff;color:#1f2937}.drms-academic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.drms-academic-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}.drms-academic-actions button{width:auto;margin:0}.drms-academic-modal{position:fixed;inset:0;z-index:3000;background:#061827b8;display:grid;place-items:center;padding:18px}.drms-academic-modal-card{width:min(760px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:16px;color:#1f2937}.drms-academic-modal-head{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;background:#123e52;color:#fff}.drms-academic-modal-head button{width:36px;margin:0;padding:4px;background:transparent;font-size:24px}.drms-academic-panel .btn{margin:0}.drms-academic-panel .search-input{max-width:260px}@media(max-width:640px){.drms-academic-grid{grid-template-columns:1fr}.drms-academic-heading>.btn{width:100%;justify-content:center}.drms-academic-panel{padding:13px}.drms-academic-actions{display:grid;grid-template-columns:1fr}.drms-academic-actions button{width:100%}}
 </style>
@@ -110,7 +113,7 @@
 <div class="app">
     <header class="header">
         <div class="logo"><h1><i class="fas fa-folder-open"></i> NCHSM DRMS Pro</h1><p>Document Records Management | TVET & KRCHN</p></div>
-        <div class="header-right">
+        <div class="header-right"><button class="icon-btn" id="sidebarToggle" type="button" aria-label="Toggle navigation" style="color:#fff;background:#ffffff14;border-color:#ffffff2b"><i class="fas fa-bars"></i></button>
             <div class="user-info"><i class="fas fa-user-circle"></i><span id="userName">Loading...</span><span id="userRole" class="role-badge"></span><span id="userProgram" class="program-badge"></span></div>
             <button id="logoutBtn" class="btn btn-outline"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </div>
@@ -118,7 +121,7 @@
 
     <div class="app-container">
         <aside class="sidebar" id="sidebar"><nav class="nav" id="navMenu"></nav><div class="sidebar-footer"><small>DRMS Pro v6.0 | Enterprise</small></div></aside>
-        <main class="main" id="mainContent"><div class="loading"><div class="spinner"></div> Loading...</div></main>
+        <main class="main" id="mainContent"><div class="workspace-toolbar"><button class="icon-btn" id="desktopSidebarToggle" type="button" aria-label="Toggle sidebar"><i class="fas fa-bars"></i></button><label class="global-search"><i class="fas fa-search"></i><input id="globalNavSearch" type="search" placeholder="Search menu and pages…"><kbd>Ctrl K</kbd></label><span class="workspace-breadcrumb">NCHSM / Academic Records</span></div><div class="loading"><div class="spinner"></div> Loading...</div></main>
     </div>
 </div>
 
@@ -319,6 +322,16 @@ function closeUploadModal() { document.getElementById('uploadModal').style.displ
 function closeStudentRecordModal() { document.getElementById('studentRecordModal').style.display = 'none'; }
 window.exportStudentPDF = () => showToast('PDF export would generate here');
 
+
+function setupWorkspaceChrome(){
+ const toggle=()=>{if(window.matchMedia('(max-width:900px)').matches){document.getElementById('sidebar')?.classList.toggle('mobile-open');}else{document.body.classList.toggle('sidebar-collapsed');}};
+ document.getElementById('sidebarToggle')?.addEventListener('click',toggle);document.getElementById('desktopSidebarToggle')?.addEventListener('click',toggle);
+ document.getElementById('globalNavSearch')?.addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();document.querySelectorAll('#navMenu .nav-item').forEach(a=>{a.style.display=!q||a.textContent.toLowerCase().includes(q)?'':'none';});document.querySelectorAll('#navMenu .nav-group').forEach(g=>{g.style.display=[...g.querySelectorAll('.nav-item')].some(a=>a.style.display!=='none')?'':'none';});});
+ document.getElementById('globalNavSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter'){const first=[...document.querySelectorAll('#navMenu .nav-item')].find(a=>a.style.display!=='none');if(first)first.click();}});
+ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.getElementById('globalNavSearch')?.focus();}});
+ document.getElementById('sidebar')?.addEventListener('click',e=>{if(e.target.closest('.nav-item')&&window.matchMedia('(max-width:900px)').matches)document.getElementById('sidebar').classList.remove('mobile-open');});
+}
+
 function buildMenu() {
     const role = currentUser?.role;
     const navMenu = document.getElementById('navMenu');
@@ -331,6 +344,7 @@ function buildMenu() {
         menuHtml += '<div class="nav-group"><div class="nav-header">🎓 STUDENT</div><a href="#" data-view="documents" class="nav-item"><i class="fas fa-id-card"></i> My Documents</a></div>';
     }
     navMenu.innerHTML = menuHtml;
+    navMenu.querySelectorAll('.nav-item').forEach(a => { const icon = a.querySelector('i'); const label = (a.textContent || '').trim(); a.innerHTML = (icon ? icon.outerHTML : '') + '<span>' + escapeHtml(label) + '</span>'; a.title = label; });
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', async function(e) {
             e.preventDefault();
@@ -367,6 +381,7 @@ async function init() {
     document.getElementById('userProgram').innerText = currentUser.program === 'KRCHN' ? '🎓 KRCHN' : (currentUser.program ? '🛠️ ' + currentUser.program : 'NCHSM');
     document.getElementById('userProgram').style.background = currentUser.program === 'KRCHN' ? '#4C1D95' : '#f59e0b';
     buildMenu();
+    setupWorkspaceChrome();
     await renderDashboard();
 }
 document.getElementById('logoutBtn').onclick = async () => { await sb.auth.signOut(); window.location.replace('drms_login.html'); };
