@@ -1,44 +1,46 @@
 {
-  "id": "/",
-  "name": "NCHSM Student Portal",
-  "short_name": "NCHSM Portal",
-  "description": "Nakuru College of Health Sciences and Management Student Portal",
-  "start_url": ".",
+  "id": "/login.html",
+  "name": "NCHSM Digital Campus",
+  "short_name": "NCHSM Campus",
+  "description": "Secure access to Nakuru College of Health Sciences and Management academic and campus services.",
+  "start_url": "/login.html?source=installed-app",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0A3D62",
-  "theme_color": "#0A3D62",
-  "orientation": "portrait",
-  "categories": ["education", "productivity"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#f4f7fb",
+  "theme_color": "#073b5c",
+  "orientation": "any",
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
-      "sizes": "100x100",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
+      "src": "/images/Logo_NCHSM.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
+      "src": "/images/Logo_NCHSM.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "shortcuts": [
     {
-      "name": "Login",
+      "name": "Sign in",
       "short_name": "Login",
-      "description": "Go to login page",
-      "url": "/",
+      "url": "/login.html",
       "icons": [
         {
-          "src": "https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png",
-          "sizes": "100x100"
+          "src": "/images/Logo_NCHSM.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }
