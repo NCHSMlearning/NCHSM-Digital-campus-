@@ -1,11 +1,13 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.nchsm.secureexam',
-  appName: 'NCHSM Secure Exam',
-  webDir: '.',
-  bundledWebRuntime: false,
+  appId: 'ke.ac.nchsm.digitalcampus',
+  appName: 'NCHSM Digital Campus',
+  webDir: 'www',
   server: {
+    // Load the live campus portal so all existing modules remain available in the APK.
+    // The app requires an internet connection; authenticated data is not bundled offline.
+    url: 'https://nchsm.co.ke/login.html',
     androidScheme: 'https',
     cleartext: true,
     allowNavigation: ['*'],

@@ -1,0 +1,185 @@
+name: Build NCHSM Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - feature/unified-digital-campus-mobile
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    name: Build installable Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_ANDROID_SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'true' || 'false' }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify Capacitor config compiler
+        run: npx tsc --version
+
+      - name: Stage web assets outside the Android project
+        run: |
+          rm -rf /tmp/nchsm-web
+          mkdir -p /tmp/nchsm-web
+          rsync -a ./ /tmp/nchsm-web/ \
+            --exclude='.git/' \
+            --exclude='node_modules/' \
+            --exclude='android/' \
+            --exclude='www/' \
+            --exclude='.github/' \
+            --exclude='release/'
+          rm -rf www
+          mv /tmp/nchsm-web www
+
+      - name: Generate Android native project
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Apply official NCHSM launcher icon
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          RES="android/app/src/main/res"
+          mkdir -p "$RES/drawable" "$RES/mipmap-anydpi-v26"
+          convert -size 432x432 xc:none \
+            \( images/Logo_NCHSM.png -resize 288x288 \) \
+            -gravity center -composite "$RES/drawable/ic_launcher_foreground.png"
+          for spec in "mdpi 48" "hdpi 72" "xhdpi 96" "xxhdpi 144" "xxxhdpi 192"; do
+            set -- $spec
+            density="$1"
+            pixels="$2"
+            mkdir -p "$RES/mipmap-$density"
+            inner=$((pixels * 80 / 100))
+            convert -size "${pixels}x${pixels}" xc:'#0A3D62' \
+              \( images/Logo_NCHSM.png -resize "${inner}x${inner}" \) \
+              -gravity center -composite "$RES/mipmap-$density/ic_launcher.png"
+            cp "$RES/mipmap-$density/ic_launcher.png" "$RES/mipmap-$density/ic_launcher_round.png"
+          done
+          cat > "$RES/mipmap-anydpi-v26/ic_launcher.xml" <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@color/ic_launcher_background"/>
+              <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+          </adaptive-icon>
+          EOF
+          cp "$RES/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/ic_launcher_round.xml"
+          mkdir -p "$RES/values"
+          cat > "$RES/values/ic_launcher_background.xml" <<'EOF'
+          <resources>
+              <color name="ic_launcher_background">#0A3D62</color>
+          </resources>
+          EOF
+          test -s "$RES/drawable/ic_launcher_foreground.png"
+          echo "Official NCHSM logo applied."
+
+      - name: Set build version
+        run: |
+          VERSION_CODE="$((GITHUB_RUN_NUMBER + 1))"
+          VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}"
+          sed -i -E "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/" android/app/build.gradle
+          sed -i -E "s/versionName \"[^\"]+\"/versionName \"${VERSION_NAME}\"/" android/app/build.gradle
+          echo "Building version ${VERSION_NAME} (${VERSION_CODE})"
+
+      - name: Decode permanent signing keystore
+        if: github.ref == 'refs/heads/main' && env.HAS_ANDROID_SIGNING_KEY == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/nchsm-release.jks
+          test -s android/app/nchsm-release.jks
+
+      - name: Configure permanent release signing
+        if: github.ref == 'refs/heads/main' && env.HAS_ANDROID_SIGNING_KEY == 'true'
+        run: |
+          cat >> android/app/build.gradle <<'EOF'
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file("nchsm-release.jks")
+                      storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                      minifyEnabled false
+                  }
+              }
+          }
+          EOF
+
+      - name: Build signed release APK
+        if: github.ref == 'refs/heads/main' && env.HAS_ANDROID_SIGNING_KEY == 'true'
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cd ..
+          rm -f android/app/nchsm-release.jks
+
+      - name: Build debug APK for feature branch or unsigned fallback
+        if: github.ref != 'refs/heads/main' || env.HAS_ANDROID_SIGNING_KEY != 'true'
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Upload signed release APK
+        if: github.ref == 'refs/heads/main' && env.HAS_ANDROID_SIGNING_KEY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NCHSM-Digital-Campus-Android-Release
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish signed APK GitHub release
+        if: github.ref == 'refs/heads/main' && env.HAS_ANDROID_SIGNING_KEY == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v1.0.${{ github.run_number }}
+          name: NCHSM Digital Campus v1.0.${{ github.run_number }}
+          generate_release_notes: true
+          files: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload debug APK artifact
+        if: github.ref != 'refs/heads/main' || env.HAS_ANDROID_SIGNING_KEY != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NCHSM-Digital-Campus-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
