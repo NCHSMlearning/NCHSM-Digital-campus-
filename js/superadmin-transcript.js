@@ -857,6 +857,7 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
                 }
 
                 window.showTranscriptPreview(student, marks, scopeLabel);
+                if (window._transcriptVerificationPromise) await window._transcriptVerificationPromise;
                 const transcriptState = window._transcriptData;
                 const renderedBlocks = [];
                 // The preview normally shows one block at a time. Bulk output must
@@ -900,9 +901,9 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
             button,.no-print{display:none!important}
             table{page-break-inside:auto} tr{page-break-inside:avoid;page-break-after:auto}
           </style></head><body>
-          <h2 style="font-size:16px;margin:0 0 12px">NCHSM — ${scopeLabel} Transcripts</h2>
-          <p style="font-size:11px;margin:0 0 18px">Generated ${new Date().toLocaleString()} · ${pages.length} student(s)</p>
-          ${pages.map((p,i)=>`<section class="bulk-transcript"><div class="bulk-label">${i+1} of ${pages.length} · ${p.name} · ${p.id}</div>${p.html}</section>`).join('')}
+          
+          
+          ${pages.map((p,i)=>`<section class="bulk-transcript">${p.html}</section>`).join('')}
           <script>window.onload=function(){setTimeout(function(){window.print()},700)};<\/script>
           </body></html>`);
         printWindow.document.close();
@@ -1832,7 +1833,7 @@ window.renderTranscriptBlock = function(index) {
     content.innerHTML = transcriptHtml;
 
     // Issue a real, authenticated provisional-transcript verification token.
-    (async function issueAdminTranscriptVerification() {
+    window._transcriptVerificationPromise = (async function issueAdminTranscriptVerification() {
         const qrHost = content.querySelector('#transcriptVerificationQr');
         const config = window.APP_CONFIG || {};
         const client = window.sb || window.supabaseClient || window.supabase;
@@ -1852,7 +1853,7 @@ window.renderTranscriptBlock = function(index) {
             const response = await fetch(supabaseUrl.replace(/\/$/, '') + '/functions/v1/transcript-registry', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: 'Bearer ' + accessToken },
-                body: JSON.stringify({ action: 'issue', block: blockName })
+                body: JSON.stringify({ action: 'issue', block: blockName, admission_number: transcriptAdmission })
             });
             const result = await response.json().catch(() => ({}));
             if (!response.ok || !result.token) throw new Error(result.error || result.message || 'Registry did not return a verification token.');
@@ -1905,6 +1906,7 @@ window.renderTranscriptBlock = function(index) {
             qrHost.title = error?.message || 'Verification unavailable';
         }
     })();
+    return window._transcriptVerificationPromise;
 
 };
 
