@@ -38,6 +38,8 @@
             this.userId = null;
             this.isLoading = false;
             this.pastExamRecords = [];
+            this.publishedMarks = [];
+            this.completedUnits = [];
             this.isTVET = false;
             this.userLevel = 'KRCHN';
             this._boundHandlers = {};
@@ -397,6 +399,119 @@
             }
         }
         
+
+        async loadPublishedMarksFromDB() {
+            const supabase = window.db?.supabase || window.supabase;
+            this.publishedMarks = [];
+            if (!supabase || !this.userProfile) return false;
+            const admissionNumber = String(this.userProfile.admission_number || this.userProfile.student_id || '').trim();
+            const authUserId = this.userProfile.user_id || this.userProfile.id || this.userProfile.student_uuid;
+            try {
+                let rows = [];
+                if (admissionNumber) {
+                    const result = await supabase.from('student_marks').select('*')
+                        .eq('admission_number', admissionNumber).eq('published', true)
+                        .eq('approval_status', 'approved').order('published_at', { ascending: false });
+                    if (result.error) throw result.error;
+                    rows = result.data || [];
+                }
+                if (!rows.length && authUserId) {
+                    const result = await supabase.from('student_marks').select('*')
+                        .eq('student_id', authUserId).eq('published', true)
+                        .eq('approval_status', 'approved').order('published_at', { ascending: false });
+                    if (result.error) throw result.error;
+                    rows = result.data || [];
+                }
+                this.publishedMarks = rows.filter(m => m && m.published === true &&
+                    String(m.approval_status || '').trim().toLowerCase() === 'approved');
+                return true;
+            } catch (error) {
+                console.warn('Could not verify completed units; retaining registrations:', error);
+                this.publishedMarks = [];
+                return false;
+            }
+        }
+
+        normalizeUnitIdentity(value) {
+            return String(value || '').trim().toLowerCase().replace(/&/g, 'and')
+                .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+
+        findPublishedMarkForUnit(unit) {
+            const code = this.normalizeUnitIdentity(unit.unit_code || unit.course_code || unit.code);
+            const name = this.normalizeUnitIdentity(unit.unit_name || unit.subject_name || unit.name);
+            return this.publishedMarks.find(mark => {
+                const markCode = this.normalizeUnitIdentity(mark.unit_code || mark.course_code || mark.subject_code);
+                const markName = this.normalizeUnitIdentity(mark.subject_name || mark.unit_name || mark.course_name);
+                if (code && markCode && code === markCode) return true;
+                return Boolean(name && markName && name === markName);
+            }) || null;
+        }
+
+        isUnitPassed(mark) {
+            if (!mark) return false;
+            const rs = String(mark.retake_status || '').trim().toLowerCase();
+            const retakeScore = Number(mark.retake_score);
+            if (['pass', 'passed', 'competent'].includes(rs) && mark.retake_score !== null &&
+                mark.retake_score !== undefined && mark.retake_score !== '' && Number.isFinite(retakeScore)) return true;
+            const grade = String(mark.published_grade ?? mark.final_grade ?? mark.final_grade_letter ??
+                mark.letter_grade ?? mark.grade_letter ?? mark.result_grade ?? mark.computed_grade ??
+                mark.grade ?? mark.final_status ?? mark.status ?? '').trim().toUpperCase();
+            if (['PASS','PASSED','CREDIT','DISTINCTION','COMPETENT','SATISFACTORY','PROFICIENT','MASTERY'].includes(grade)) return true;
+            if (['FAIL','FAILED','NOT YET COMPETENT','NYC'].includes(grade)) return false;
+            const raw = mark.retake_score ?? mark.final_score ?? mark.published_score ?? mark.overall_score ??
+                mark.final_total ?? mark.total_score ?? mark.total ?? mark.score ?? mark.marks;
+            if (raw === null || raw === undefined || raw === '') return false;
+            const score = Number(raw);
+            if (!Number.isFinite(score)) return false;
+            const program = String(this.userProfile?.program || this.userProfile?.program_type || '').toUpperCase();
+            return score >= (TVET_PROGRAMS.includes(program) || program === 'TVET' ? 50 : 60);
+        }
+
+        separateCompletedUnits() {
+            this.completedUnits = [];
+            const current = [];
+            (this.approvedUnits || []).forEach(unit => {
+                const mark = this.findPublishedMarkForUnit(unit);
+                if (mark && this.isUnitPassed(mark)) this.completedUnits.push({ unit, mark });
+                else current.push(unit);
+            });
+            this.approvedUnits = current;
+            console.log('Exam-card unit split:', { current: current.length, completed: this.completedUnits.length });
+        }
+
+        renderCompletedUnitCards() {
+            if (!this.examCardContent) return;
+            const old = this.examCardContent.querySelector('.completed-unit-cards');
+            if (old) old.remove();
+            if (!this.completedUnits.length) return;
+            const section = document.createElement('section');
+            section.className = 'completed-unit-cards';
+            section.style.cssText = 'margin-top:24px;padding:22px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;';
+            const cards = this.completedUnits.map(item => {
+                const unit = item.unit, mark = item.mark;
+                const code = this.cleanText(unit.unit_code || unit.course_code || unit.code || '');
+                const name = this.cleanText(unit.unit_name || unit.name || mark.subject_name || 'Completed unit');
+                const grade = this.cleanText(mark.published_grade || mark.final_grade || mark.final_grade_letter ||
+                    mark.letter_grade || mark.grade || mark.final_status || 'PASS');
+                const raw = mark.retake_score ?? mark.final_score ?? mark.published_score ?? mark.overall_score ??
+                    mark.final_total ?? mark.total_score ?? mark.total ?? mark.score ?? mark.marks;
+                const score = raw !== null && raw !== undefined && raw !== '' ?
+                    '<span style="font-weight:700;color:#166534;">' + this.cleanText(String(raw)) + '%</span>' : '';
+                return '<article style="background:#fff;border:1px solid #dcfce7;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
+                    '<div><div style="font-size:11px;font-weight:800;color:#64748b;">' + code + '</div>' +
+                    '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-top:3px;">' + name + '</div></div>' +
+                    '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' + score +
+                    '<span style="background:#dcfce7;color:#166534;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:800;">✓ COMPLETED · ' + grade + '</span></div></article>';
+            }).join('');
+            section.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">' +
+                '<div><h3 style="margin:0;color:#166534;font-size:17px;">✓ Completed Exams</h3>' +
+                '<p style="margin:4px 0 0;color:#64748b;font-size:12px;">Passed units are excluded from your current exam card.</p></div>' +
+                '<span style="background:#dcfce7;color:#166534;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:800;">' +
+                this.completedUnits.length + ' completed</span></div><div style="display:grid;gap:10px;">' + cards + '</div>';
+            this.examCardContent.appendChild(section);
+        }
+
         // ============================================
         // LOAD EXAM CARD - FIXED
         // ============================================
@@ -414,6 +529,8 @@
             try {
                 const success = await this.loadApprovedUnitsFromDB();
                 if (success) {
+                    await this.loadPublishedMarksFromDB();
+                    this.separateCompletedUnits();
                     await this.updateDashboard();
                     
                     // Check what types of units we have
@@ -443,6 +560,7 @@
                     } else {
                         this.displayExamCard();
                     }
+                    this.renderCompletedUnitCards();
                     this.loaded = true;
                 } else {
                     this.showNoUnitsMessage();
