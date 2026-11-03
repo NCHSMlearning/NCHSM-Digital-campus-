@@ -1654,7 +1654,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
             password,
             options: { 
                 data: userMetadata,
-                emailRedirectTo: window.location.origin + '/verify-email.html'
+                emailRedirectTo: window.location.origin + '/login.html'
             }
         });
         
