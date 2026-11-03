@@ -1742,95 +1742,104 @@
         // ============================================
         
         async downloadExamCardDirect() {
-            const cardElement = document.getElementById('exam-card-print-area');
-            if (!cardElement) {
+            this.openExamCardPrintView();
+        }
+
+        // Use the same standalone A4 HTML/print workflow as Academic Reports.
+        // The existing exam-card data, eligibility and rendering logic remain unchanged.
+        openExamCardPrintView() {
+            const sourceCard = document.getElementById('exam-card-print-area');
+            if (!sourceCard) {
                 alert('Exam card not found. Please refresh and try again.');
                 return;
             }
-            
-            const downloadBtn = document.getElementById('downloadExamCardBtn');
-            const originalText = downloadBtn?.innerHTML || '📥 Download PDF';
-            if (downloadBtn) {
-                downloadBtn.innerHTML = '⏳ Generating PDF...';
-                downloadBtn.disabled = true;
-            }
-            
-            try {
-                await this.waitForLibraries();
-                
-                const cloneCard = this.prepareCardForPrint(cardElement);
-                const scale = this.calculateOptimalScale(cloneCard);
-                
-                const tempContainer = this.createTempContainer(cloneCard);
-                document.body.appendChild(tempContainer);
-                
-                await new Promise(resolve => setTimeout(resolve, 300));
-                
-                const canvas = await html2canvas(cloneCard, {
-                    scale: scale,
-                    backgroundColor: '#ffffff',
-                    logging: false,
-                    useCORS: true,
-                    allowTaint: false,
-                    width: CONFIG.A4.PIXEL_WIDTH,
-                    height: CONFIG.A4.PIXEL_HEIGHT,
-                });
-                
-                document.body.removeChild(tempContainer);
-                
-                const { jsPDF } = window.jspdf;
-                const imgData = canvas.toDataURL('image/png', 1.0);
-                
-                const margin = CONFIG.A4.MARGIN_MM;
-                const imgWidth = CONFIG.A4.WIDTH_MM - (margin * 2);
-                const pageHeight = CONFIG.A4.HEIGHT_MM;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                
-                pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-                
-                if (imgHeight > (pageHeight - margin * 2)) {
-                    let position = -(pageHeight - margin * 2);
-                    let heightLeft = imgHeight - (pageHeight - margin * 2);
-                    while (heightLeft > 0) {
-                        pdf.addPage();
-                        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-                        position -= (pageHeight - margin * 2);
-                        heightLeft -= (pageHeight - margin * 2);
-                    }
+
+            const existingOverlay = document.getElementById('exam-card-document-preview');
+            if (existingOverlay) existingOverlay.remove();
+
+            const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
+            const card = this.prepareCardForPrint(sourceCard);
+            const overlay = document.createElement('div');
+            overlay.id = 'exam-card-document-preview';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-label', 'Exam card print preview');
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#eef2f7;display:flex;flex-direction:column;padding:0;';
+
+            const toolbar = document.createElement('div');
+            toolbar.style.cssText = 'flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:12px;background:#1e3a5f;color:#fff;font:600 13px Arial,sans-serif;';
+            toolbar.innerHTML = '<span style="margin-right:8px">Exam Card Preview</span><button type="button" data-action="print" style="border:0;border-radius:7px;padding:10px 16px;background:#10b981;color:#fff;font-weight:700">⬇ Save as PDF / Print</button><button type="button" data-action="close" style="border:0;border-radius:7px;padding:10px 16px;background:#e2e8f0;color:#1e293b;font-weight:700">Close</button>';
+
+            const frame = document.createElement('iframe');
+            frame.title = 'A4 Examination Card';
+            frame.style.cssText = 'display:block;flex:1 1 auto;width:100%;min-height:0;border:0;background:#eef2f7;';
+            overlay.append(toolbar, frame);
+            document.body.appendChild(overlay);
+
+            const frameDoc = frame.contentDocument;
+            frameDoc.open();
+            frameDoc.write(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Examination Card - ${this.cleanText(this.userProfile?.full_name || 'Student')}</title>
+<style>
+${styles}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#eef2f7;color:#1e293b;font-family:Arial,sans-serif}
+body{padding:24px;overflow:auto}
+.exam-card-wrapper{width:100%;max-width:794px;margin:0 auto;padding:0!important}
+.exam-card-compact{width:100%;max-width:none;margin:0 auto;background:#fff;box-shadow:0 4px 24px rgba(15,23,42,.12)}
+.exam-card-compact table{width:100%;border-collapse:collapse;table-layout:fixed}
+.exam-card-compact img{max-width:100%}
+@page{size:A4 portrait;margin:5mm}
+@media print{
+ html,body{width:100%;height:auto;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}
+ .exam-card-wrapper{width:100%!important;max-width:none!important;margin:0!important;padding:0!important}
+ .exam-card-compact{width:100%!important;max-width:none!important;border-radius:0!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid}
+ .card-header,.status-badge,.total-row,thead th{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+ tr{break-inside:avoid;page-break-inside:avoid}
+}
+@media screen and (max-width:600px){body{padding:10px}.exam-card-wrapper{min-width:680px}}
+</style>
+</head>
+<body>${card.outerHTML}</body>
+</html>`);
+            frameDoc.close();
+
+            toolbar.querySelector('[data-action="close"]').addEventListener('click', () => overlay.remove());
+            toolbar.querySelector('[data-action="print"]').addEventListener('click', async () => {
+                const button = toolbar.querySelector('[data-action="print"]');
+                button.disabled = true;
+                button.textContent = 'Preparing document…';
+                try {
+                    const images = Array.from(frameDoc.images);
+                    await Promise.all(images.map(img => {
+                        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+                        return new Promise(resolve => {
+                            img.addEventListener('load', resolve, { once: true });
+                            img.addEventListener('error', resolve, { once: true });
+                            setTimeout(resolve, 5000);
+                        });
+                    }));
+                    if (frameDoc.fonts?.ready) await frameDoc.fonts.ready;
+                    button.textContent = 'Opening print…';
+                    frame.contentWindow.focus();
+                    frame.contentWindow.print();
+                } catch (error) {
+                    console.error('[Exam Card] Print preparation failed:', error);
+                    alert('Could not prepare the exam card for printing. Please try again.');
+                } finally {
+                    button.disabled = false;
+                    button.textContent = '⬇ Save as PDF / Print';
                 }
-                
-                if (this.isExamOver()) {
-                    pdf.setFontSize(8);
-                    pdf.setTextColor(100, 100, 100);
-                    pdf.text('This is a historical record of units registered for this exam period', margin + 5, pageHeight - 10);
-                }
-                
-                const studentName = this.userProfile?.full_name || 'Student';
-                const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                const date = this.formatDate().replace(/[, ]/g, '_');
-                const suffix = this.isExamOver() ? '_historical_record' : '';
-                pdf.save(`Exam_Card_${safeName}_${date}${suffix}.pdf`);
-                
-                if (downloadBtn) {
-                    downloadBtn.innerHTML = '✅ Downloaded!';
-                    setTimeout(() => {
-                        downloadBtn.innerHTML = originalText;
-                        downloadBtn.disabled = false;
-                    }, 2000);
-                }
-                
-            } catch (error) {
-                console.error('PDF generation failed:', error);
-                alert('Failed to generate PDF. Please try again.');
-                if (downloadBtn) {
-                    downloadBtn.innerHTML = originalText;
-                    downloadBtn.disabled = false;
-                }
-            }
+            });
+
+            overlay.addEventListener('click', event => {
+                if (event.target === overlay) overlay.remove();
+            });
         }
-        
+
         calculateOptimalScale(element) {
             const contentHeight = element.scrollHeight;
             const contentWidth = element.scrollWidth;
@@ -1962,103 +1971,9 @@
         // ============================================
         
         printExamCard() {
-            const printContent = document.getElementById('exam-card-print-area');
-            if (!printContent) return;
-            
-            const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
-            const cloneCard = this.prepareCardForPrint(printContent);
-            
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                alert('Please allow popups to print the exam card.');
-                return;
-            }
-            
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Exam Card - ${this.userProfile?.full_name || 'Student'}</title>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        ${styles}
-                        body {
-                            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-                            padding: 0;
-                            margin: 0;
-                            background: white;
-                        }
-                        .action-buttons, button {
-                            display: none !important;
-                        }
-                        .exam-card-wrapper {
-                            max-width: 794px;
-                            margin: 0 auto;
-                            padding: 10px;
-                        }
-                        .past-exams-container, .past-exams-section {
-                            display: none !important;
-                        }
-                        .signature-line, .sign-line, .signature-line-inline {
-                            width: 80% !important;
-                            margin: 8px auto !important;
-                            border-top: 2px solid #000 !important;
-                            height: 2px !important;
-                        }
-                        .signature-cell .signature-line {
-                            width: 90% !important;
-                            margin: 8px auto !important;
-                        }
-                        @media print {
-                            body { padding: 0; margin: 0; }
-                            .card-header { 
-                                background: #1e3a5f !important; 
-                                -webkit-print-color-adjust: exact; 
-                                print-color-adjust: exact; 
-                            }
-                            .status-badge.eligible { 
-                                background: #10b981 !important; 
-                                -webkit-print-color-adjust: exact; 
-                                print-color-adjust: exact; 
-                            }
-                            .status-badge.completed { 
-                                background: #059669 !important; 
-                                -webkit-print-color-adjust: exact; 
-                                print-color-adjust: exact; 
-                            }
-                            .past-exams-container, .past-exams-section { display: none !important; }
-                            .signature-line, .sign-line, .signature-line-inline {
-                                width: 80% !important;
-                                margin: 8px auto !important;
-                                border-top: 2px solid #000 !important;
-                                height: 2px !important;
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                            }
-                            .exam-card-compact {
-                                border: 1px solid #000 !important;
-                                border-radius: 0 !important;
-                            }
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${cloneCard.outerHTML}
-                    <script>
-                        window.onload = function() {
-                            setTimeout(function() {
-                                window.print();
-                                setTimeout(function() { window.close(); }, 500);
-                            }, 300);
-                        };
-                    <\/script>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
+            this.openExamCardPrintView();
         }
-        
+
         // ============================================
         // PAST EXAM PDF
         // ============================================
