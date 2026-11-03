@@ -1771,7 +1771,7 @@
 
             const toolbar = document.createElement('div');
             toolbar.style.cssText = 'flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:12px;background:#1e3a5f;color:#fff;font:600 13px Arial,sans-serif;';
-            toolbar.innerHTML = '<span style="margin-right:8px">Exam Card Preview</span><button type="button" data-action="print" style="border:0;border-radius:7px;padding:10px 16px;background:#10b981;color:#fff;font-weight:700">⬇ Save as PDF / Print</button><button type="button" data-action="close" style="border:0;border-radius:7px;padding:10px 16px;background:#e2e8f0;color:#1e293b;font-weight:700">Close</button>';
+            toolbar.innerHTML = '<span style="margin-right:8px">Exam Card Preview</span><button type="button" data-action="download" style="border:0;border-radius:7px;padding:10px 16px;background:#1f5796;color:#fff;font-weight:700">⬇ Download PDF</button><button type="button" data-action="print" style="border:0;border-radius:7px;padding:10px 16px;background:#fff;color:#1e293b;font-weight:700">Print</button><button type="button" data-action="close" style="border:0;border-radius:7px;padding:10px 16px;background:#e2e8f0;color:#1e293b;font-weight:700">Close</button>';
 
             const frame = document.createElement('iframe');
             frame.title = 'A4 Examination Card';
@@ -1926,10 +1926,67 @@ body{padding:24px;overflow:auto}
             frameDoc.close();
 
             toolbar.querySelector('[data-action="close"]').addEventListener('click', () => overlay.remove());
+
+            toolbar.querySelector('[data-action="download"]').addEventListener('click', async () => {
+                const button = toolbar.querySelector('[data-action="download"]');
+                const printButton = toolbar.querySelector('[data-action="print"]');
+                button.disabled = true;
+                button.textContent = 'Generating PDF…';
+                try {
+                    await this.waitForLibraries();
+                    if (typeof html2canvas === 'undefined' || !window.jspdf?.jsPDF) {
+                        throw new Error('PDF generation libraries are unavailable');
+                    }
+                    const images = Array.from(frameDoc.images);
+                    await Promise.all(images.map(img => {
+                        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+                        return new Promise(resolve => {
+                            img.addEventListener('load', resolve, { once: true });
+                            img.addEventListener('error', resolve, { once: true });
+                            setTimeout(resolve, 5000);
+                        });
+                    }));
+                    if (frameDoc.fonts?.ready) await frameDoc.fonts.ready;
+                    const target = frameDoc.querySelector('.exam-card-compact') || frameDoc.querySelector('.exam-card-wrapper');
+                    if (!target) throw new Error('Exam card content is missing');
+                    const canvas = await html2canvas(target, {
+                        scale: 2,
+                        backgroundColor: '#ffffff',
+                        useCORS: true,
+                        logging: false,
+                        windowWidth: target.scrollWidth,
+                        windowHeight: target.scrollHeight
+                    });
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+                    const margin = 5;
+                    const pageWidth = 210;
+                    const pageHeight = 297;
+                    const availableWidth = pageWidth - margin * 2;
+                    const availableHeight = pageHeight - margin * 2;
+                    const ratio = Math.min(availableWidth / canvas.width, availableHeight / canvas.height);
+                    const renderWidth = canvas.width * ratio;
+                    const renderHeight = canvas.height * ratio;
+                    const x = (pageWidth - renderWidth) / 2;
+                    const y = (pageHeight - renderHeight) / 2;
+                    pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', x, y, renderWidth, renderHeight, undefined, 'FAST');
+                    const studentName = String(this.userProfile?.full_name || 'Student').replace(/[^a-z0-9_-]+/gi, '_');
+                    const admission = String(this.userProfile?.admission_number || this.userProfile?.student_id || '').replace(/[^a-z0-9_-]+/gi, '_');
+                    pdf.save('NCHSM_Exam_Card_' + (admission ? admission + '_' : '') + studentName + '.pdf');
+                    button.textContent = 'Downloaded';
+                } catch (error) {
+                    console.error('[Exam Card] PDF download failed:', error);
+                    alert('Could not download the exam card PDF. Please try again or use Print.');
+                    button.textContent = '⬇ Download PDF';
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
             toolbar.querySelector('[data-action="print"]').addEventListener('click', async () => {
                 const button = toolbar.querySelector('[data-action="print"]');
                 button.disabled = true;
-                button.textContent = 'Preparing document…';
+                button.textContent = 'Preparing print…';
                 try {
                     const images = Array.from(frameDoc.images);
                     await Promise.all(images.map(img => {
@@ -1941,7 +1998,6 @@ body{padding:24px;overflow:auto}
                         });
                     }));
                     if (frameDoc.fonts?.ready) await frameDoc.fonts.ready;
-                    button.textContent = 'Opening print…';
                     frame.contentWindow.focus();
                     frame.contentWindow.print();
                 } catch (error) {
@@ -1949,7 +2005,7 @@ body{padding:24px;overflow:auto}
                     alert('Could not prepare the exam card for printing. Please try again.');
                 } finally {
                     button.disabled = false;
-                    button.textContent = '⬇ Save as PDF / Print';
+                    button.textContent = 'Print';
                 }
             });
 
