@@ -112,7 +112,11 @@ const TVET_PROGRAMS = {
     artisan: ['ACH', 'AAG', 'ASW']
 };
 
-// KRCHN study-year structure (study year is determined by block, not calendar year).
+// KRCHN annual academic structure (academic year is determined by block, not calendar year).
+// Year 1: Introductory + Block 1
+// Year 2: Block 2 + Block 3
+// Year 3: Block 4 + Block 5 + FQE
+// Block 6 is not assigned to an annual year until its curriculum placement is confirmed.
 const KRCHN_BLOCKS = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'FQE'];
 
 function normalizeKRCHNBlock(value) {
@@ -130,7 +134,7 @@ function getKRCHNStudyYear(value) {
     const block = normalizeKRCHNBlock(value);
     if (block === 'Introductory' || block === 'Block 1') return 1;
     if (block === 'Block 2' || block === 'Block 3') return 2;
-    if (['Block 4', 'Block 5', 'Block 6', 'FQE'].includes(block)) return 3;
+    if (['Block 4', 'Block 5', 'FQE'].includes(block)) return 3;
     return 0;
 }
 
