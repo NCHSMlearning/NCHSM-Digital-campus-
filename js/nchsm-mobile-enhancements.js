@@ -221,7 +221,9 @@
       install.hidden = true;
     });
 
+    let installHelpOpen = false;
     const triggerInstall = async function () {
+      if (installHelpOpen) { installHelpOpen = false; closeInvite(); return; }
       if (installPrompt) {
         const promptEvent = installPrompt;
         installPrompt = null;
@@ -245,6 +247,7 @@
       const description = invite.querySelector('.nchsm-install-card p');
       const benefits = invite.querySelector('.nchsm-install-benefits');
       const accept = invite.querySelector('.nchsm-install-accept');
+      installHelpOpen = true;
       if (title) title.textContent = 'Install NCHSM Digital Campus';
       if (description) description.textContent = isAppleMobile
         ? 'Your browser has not provided a direct install prompt. Use the Share menu, then choose Add to Home Screen.'
@@ -254,10 +257,7 @@
       if (benefits) benefits.innerHTML = isAppleMobile
         ? '<span>1. Tap Share</span><span>2. Add to Home Screen</span>'
         : '<span>1. Open browser menu ⋮</span><span>2. Choose Install app</span>';
-      if (accept) {
-        accept.textContent = 'Got it';
-        accept.onclick = function () { closeInvite(); };
-      }
+      if (accept) accept.textContent = 'Got it';
       invite.classList.add('open');
     };
     inviteAccept.addEventListener('click', triggerInstall);
