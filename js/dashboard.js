@@ -1692,8 +1692,10 @@ class DashboardModule {
         console.log('⭐ Loading reviews snapshot...');
         
         try {
-            if (!this.sb) return;
-            
+            if (!this.sb?.auth?.getSession) return;
+            const { data: { session }, error: sessionError } = await this.sb.auth.getSession();
+            if (sessionError || !session?.user?.id) return;
+
             const { count: totalReviews, error: totalError } = await this.sb
                 .from('student_reviews')
                 .select('*', { count: 'exact', head: true })
