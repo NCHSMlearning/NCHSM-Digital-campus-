@@ -950,7 +950,8 @@
                     const { data: userProfile, error: profileError } = await supabaseClient
                         .from('consolidated_user_profiles_table')
                         .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
-                        .eq('email', identifier)
+                        // Bind the profile to the authenticated Supabase identity, not a case-sensitive email string.
+                        .eq('user_id', authData.user.id)
                         .maybeSingle();
 
                     if (profileError || !userProfile) {
@@ -965,7 +966,7 @@
                     }
 
                     // Check if user has admin or lecturer role
-                    const userRole = (userProfile.role || '').toLowerCase();
+                    const userRole = String(userProfile.role || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
                     const allowedRoles = ['super_admin', 'superadmin', 'admin', 'administrator', 'super', 'admin_user', 'lecturer', 'instructor', 'teacher'];
 
                     if (!allowedRoles.includes(userRole)) {
