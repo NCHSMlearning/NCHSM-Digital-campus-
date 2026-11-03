@@ -92,11 +92,13 @@ RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
 # ------------------------------------------------------------------
-# 🔥 FIXED: SPA ROUTING - Only if file doesn't exist
+# STUDENT PORTAL DEEP LINKS ONLY
+# Preserve /student/<tab> URLs while serving the shared student shell.
+# Do not send unrelated or unknown public URLs to the student dashboard.
 # ------------------------------------------------------------------
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ student.html [END,QSA]
+RewriteRule ^student/.+$ student.html [END,QSA]
 
 # ------------------------------------------------------------------
 # 🔥 FIXED: SECURITY HEADERS WITH CORRECT CSP
