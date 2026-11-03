@@ -34,7 +34,8 @@ async function checkAuth() {
     try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error || !session) {
-            window.location.href = '/parents.html';
+            // The login form is already rendered in parents.html; do not reload it.
+            updateConnectionStatus(false);
             return null;
         }
         
@@ -48,7 +49,7 @@ async function checkAuth() {
         if (parentError || !parent) {
             console.error('Parent profile not found:', parentError);
             await supabase.auth.signOut();
-            window.location.href = '/parents.html';
+            updateConnectionStatus(false);
             return null;
         }
         
