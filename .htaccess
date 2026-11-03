@@ -62,7 +62,7 @@ RewriteRule ^student/timetable/?$ student.html [END,QSA]
 # ------------------------------------------------------------------
 # Public academic transcript verification (clean URL)
 RewriteRule ^transcripts\.html$ /transcripts [R=301,L]
-RewriteRule ^transcripts$ /transcripts.html [L,QSA]
+RewriteRule ^transcripts$ transcripts.html [END,QSA]
 
 RewriteRule ^home$ student.html [END,QSA]
 RewriteRule ^dashboard$ student.html [END,QSA]
