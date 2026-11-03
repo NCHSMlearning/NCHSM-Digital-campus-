@@ -638,7 +638,7 @@ const LecturerSessions = {
             return;
         }
 
-        const link = `${window.location.origin}/attendance?session=${sessionId}`;
+        const link = `${window.location.origin}/student/attendance?session=${encodeURIComponent(sessionId)}`;
 
         navigator.clipboard?.writeText(link).then(() => {
             window.showNotification('✅ Attendance link copied to clipboard!', 'success');
