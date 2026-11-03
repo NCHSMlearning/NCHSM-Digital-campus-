@@ -594,7 +594,7 @@
         window.redirectToLoginPage = function() {
             console.log('Redirecting to login...');
             localStorage.removeItem('nurseiq_admin_session');
-            window.location.href = 'https://nakurucollegeofhealthelearning.site/nurseiq-admin-login.html';
+            window.location.href = '/nurseiq-admin-login.html';
         };
 
         // ==================== NURSEIQ ADMIN PANEL ====================
@@ -885,7 +885,7 @@
                 if (confirm('Are you sure you want to logout?')) {
                     localStorage.removeItem('nurseiq_admin_session');
                     document.cookie = 'nurseiq_admin=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-                    window.location.href = 'https://nakurucollegeofhealthelearning.site/nurseiq-admin-login.html';
+                    window.location.href = '/nurseiq-admin-login.html';
                 }
             }
             
