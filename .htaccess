@@ -41,6 +41,8 @@ RewriteRule ^student\.html$ /student [R=301,L]
 
 # Clean, stable entry points for role-specific portals (all map to real files).
 RewriteRule ^adminlogin/?$ adminlogin.html [END,QSA]
+RewriteRule ^lecturerexams/?$ lecturerexams.html [END,QSA]
+RewriteRule ^register/?$ register.html [END,QSA]
 RewriteRule ^financelogin/?$ financelogin.html [END,QSA]
 RewriteRule ^finance-login/?$ financelogin.html [END,QSA]
 RewriteRule ^parents-login/?$ parents.html [END,QSA]
