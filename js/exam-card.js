@@ -459,8 +459,10 @@
                 mark.grade ?? mark.final_status ?? mark.status ?? '').trim().toUpperCase();
             if (['PASS','PASSED','CREDIT','DISTINCTION','COMPETENT','SATISFACTORY','PROFICIENT','MASTERY'].includes(grade)) return true;
             if (['FAIL','FAILED','NOT YET COMPETENT','NYC'].includes(grade)) return false;
-            const raw = mark.retake_score ?? mark.final_score ?? mark.published_score ?? mark.overall_score ??
-                mark.final_total ?? mark.total_score ?? mark.total ?? mark.score ?? mark.marks;
+            const raw = (['pass', 'passed', 'competent'].includes(rs) && mark.retake_score !== null &&
+                mark.retake_score !== undefined && mark.retake_score !== '') ? mark.retake_score :
+                (mark.final_score ?? mark.published_score ?? mark.overall_score ?? mark.final_total ??
+                mark.total_score ?? mark.total ?? mark.score ?? mark.marks);
             if (raw === null || raw === undefined || raw === '') return false;
             const score = Number(raw);
             if (!Number.isFinite(score)) return false;
@@ -494,8 +496,10 @@
                 const name = this.cleanText(unit.unit_name || unit.name || mark.subject_name || 'Completed unit');
                 const grade = this.cleanText(mark.published_grade || mark.final_grade || mark.final_grade_letter ||
                     mark.letter_grade || mark.grade || mark.final_status || 'PASS');
-                const raw = mark.retake_score ?? mark.final_score ?? mark.published_score ?? mark.overall_score ??
-                    mark.final_total ?? mark.total_score ?? mark.total ?? mark.score ?? mark.marks;
+                const passedRetake = ['pass', 'passed', 'competent'].includes(String(mark.retake_status || '').trim().toLowerCase());
+                const raw = (passedRetake && mark.retake_score !== null && mark.retake_score !== undefined && mark.retake_score !== '')
+                    ? mark.retake_score : (mark.final_score ?? mark.published_score ?? mark.overall_score ??
+                    mark.final_total ?? mark.total_score ?? mark.total ?? mark.score ?? mark.marks);
                 const score = raw !== null && raw !== undefined && raw !== '' ?
                     '<span style="font-weight:700;color:#166534;">' + this.cleanText(String(raw)) + '%</span>' : '';
                 return '<article style="background:#fff;border:1px solid #dcfce7;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
