@@ -1883,19 +1883,41 @@ body{padding:24px;overflow:auto}
  tr{break-inside:avoid;page-break-inside:avoid}
 }
 @media screen and (max-width:600px){body{padding:10px}.exam-card-wrapper{min-width:680px}}
-/* High-contrast monochrome print: every label and value is bold black. */
-.exam-card-compact,.exam-card-compact *{color:#000!important;font-weight:700!important;text-shadow:none!important}
-.exam-card-compact{background:#fff!important}
-.exam-card-compact .card-header{background:#f1f1f1!important;color:#000!important}
-.exam-card-compact .card-header *{color:#000!important}
-.exam-card-compact .info-grid,.exam-card-compact .card-footer{background:#fff!important}
-.exam-card-compact .status-badge,.exam-card-compact [style*="background"]{background:#e5e7eb!important;color:#000!important}
-.exam-card-compact .rules-header,.exam-card-compact .rule-item,.exam-card-compact .student-declaration,.exam-card-compact .student-label,.exam-card-compact .student-date,.exam-card-compact .signature-cell span,.exam-card-compact .signature div,.exam-card-compact .info-label{color:#000!important;font-weight:700!important}
+/* NCHSM transcript-matched visual theme: navy blue, pale blue, white and restrained red. */
+.exam-card-compact,.exam-card-compact *{font-family:Arial,sans-serif;color:#000;font-weight:700;text-shadow:none}
+.exam-card-compact{background:#fff!important;border:1.5px solid #1f5796!important;color:#000!important}
+.exam-card-compact .card-header{background:#fff!important;color:#000!important;border-bottom:3px solid #9dbbd4!important;position:relative}
+.exam-card-compact .card-header:after{content:"";position:absolute;left:0;bottom:-3px;width:22%;height:3px;background:#b83a42}
+.exam-card-compact .card-logo{background:#fff!important;border:1px solid #d5e2ed}
+.exam-card-compact .institution{color:#1f5796!important;font-weight:800!important}
+.exam-card-compact .card-title{display:inline-flex;align-items:center;background:#1f5796!important;color:#fff!important;padding:5px 12px;border-radius:4px;font-weight:800!important;letter-spacing:.6px}
+.exam-card-compact .card-title *{color:#fff!important}
+.exam-card-compact .card-subtitle{color:#000!important}
+.exam-card-compact .status-badge{background:#dceaf5!important;color:#000!important;border:1px solid #b8cde0;border-radius:4px}
+.exam-card-compact .info-grid{background:#edf4fa!important;border:1px solid #c7d9e8!important;border-left:4px solid #1f5796!important}
+.exam-card-compact .info-item,.exam-card-compact .info-label{color:#000!important}
+.exam-card-compact .units-table{background:#fff!important}
+.exam-card-compact .units-table th{background:#1f5796!important;color:#fff!important;border-color:#174675!important;font-weight:800!important}
+.exam-card-compact .units-table th *{color:#fff!important}
+.exam-card-compact .units-table td{background:#fff!important;color:#000!important;border-bottom:1px solid #cbd8e3!important}
+.exam-card-compact .units-table tbody tr:nth-child(even):not(.total-row):not(.compressed-row) td{background:#f6f9fc!important}
+.exam-card-compact .total-row td{background:#e5eff7!important;color:#000!important;border-top:2px solid #1f5796!important}
+.exam-card-compact .signatures-row{background:#fff!important;border-top:1px solid #b8cde0!important}
+.exam-card-compact .signature,.exam-card-compact .signature div{color:#000!important}
 .exam-card-compact .signature-line,.exam-card-compact .sign-line,.exam-card-compact .signature-line-inline{border-color:#000!important}
+.exam-card-compact .card-footer{background:#f5f9fc!important;border-top:2px solid #b8cde0!important}
+.exam-card-compact .rules-header{color:#1f5796!important;font-weight:800!important}
+.exam-card-compact .rule-item,.exam-card-compact .student-declaration,.exam-card-compact .student-label,.exam-card-compact .student-date,.exam-card-compact .signature-cell span{color:#000!important}
+.exam-card-compact .student-section{border-top:1px dashed #b8cde0!important}
+.exam-card-compact .student-sign-line{color:#000!important}
+.exam-card-compact .compressed-row td{background:#edf4fa!important;color:#000!important}
+.exam-card-compact [style*="background:#dc2626"],.exam-card-compact [style*="background: #dc2626"],.exam-card-compact [style*="background:linear-gradient(135deg,#dc2626"]{background:#dceaf5!important;color:#000!important}
+.exam-card-compact [style*="color:white"],.exam-card-compact [style*="color: white"]{color:#000!important}
 @media print{
- .exam-card-compact,.exam-card-compact *{color:#000!important;font-weight:700!important}
- .exam-card-compact .card-header{background:#f1f1f1!important}
- .exam-card-compact .status-badge,.exam-card-compact [style*="background"]{background:#e5e7eb!important}
+ .exam-card-compact{border-color:#1f5796!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+ .exam-card-compact .card-header{background:#fff!important}
+ .exam-card-compact .card-title,.exam-card-compact .units-table th{background:#1f5796!important;color:#fff!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+ .exam-card-compact .info-grid,.exam-card-compact .units-table tbody tr:nth-child(even):not(.total-row):not(.compressed-row) td,.exam-card-compact .total-row td,.exam-card-compact .card-footer{ -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 </style>
 </head>
