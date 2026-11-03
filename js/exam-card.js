@@ -146,6 +146,7 @@
                         this.userProfile = e.detail.profile;
                         this.updateUserData();
                         this.loadExamCard();
+                        this.loadPastExamRecords();
                     }
                 },
                 unitRegistrationReady: () => this.loadExamCard(),
@@ -329,6 +330,7 @@
                 this.userProfile = profile;
                 this.updateUserData();
                 this.loadExamCard();
+                this.loadPastExamRecords();
             } else {
                 this.showLoginMessage();
             }
@@ -483,37 +485,65 @@
         }
 
         renderCompletedUnitCards() {
-            if (!this.examCardContent) return;
-            const old = this.examCardContent.querySelector('.completed-unit-cards');
-            if (old) old.remove();
-            if (!this.completedUnits.length) return;
-            const section = document.createElement('section');
-            section.className = 'completed-unit-cards';
-            section.style.cssText = 'margin-top:24px;padding:22px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;';
-            const cards = this.completedUnits.map(item => {
-                const unit = item.unit, mark = item.mark;
-                const code = this.cleanText(unit.unit_code || unit.course_code || unit.code || '');
-                const name = this.cleanText(unit.unit_name || unit.name || mark.subject_name || 'Completed unit');
+            const container = document.getElementById('completed-units-table-container');
+            if (!container) {
+                console.warn('Completed-units table container is missing from student.html');
+                return;
+            }
+
+            if (!Array.isArray(this.completedUnits) || this.completedUnits.length === 0) {
+                container.innerHTML = '';
+                container.style.display = 'none';
+                return;
+            }
+
+            const rows = this.completedUnits.map((item, index) => {
+                const unit = item.unit || {};
+                const mark = item.mark || {};
+                const code = this.cleanText(unit.unit_code || unit.course_code || unit.code || mark.unit_code || mark.course_code || '—');
+                const name = this.cleanText(unit.unit_name || unit.subject_name || unit.name || mark.subject_name || mark.unit_name || 'Completed unit');
+                const block = this.cleanText(unit.block || unit.block_term || unit.term || mark.block || mark.block_term || mark.term || '—');
+                const retakePassed = ['pass', 'passed', 'competent'].includes(String(mark.retake_status || '').trim().toLowerCase());
+                const rawScore = retakePassed && mark.retake_score !== null && mark.retake_score !== undefined && mark.retake_score !== ''
+                    ? mark.retake_score
+                    : (mark.final_score ?? mark.published_score ?? mark.overall_score ?? mark.final_total ??
+                       mark.total_score ?? mark.total ?? mark.score ?? mark.marks);
+                const score = rawScore !== null && rawScore !== undefined && rawScore !== ''
+                    ? this.cleanText(String(rawScore)) + '%' : '—';
                 const grade = this.cleanText(mark.published_grade || mark.final_grade || mark.final_grade_letter ||
-                    mark.letter_grade || mark.grade || mark.final_status || 'PASS');
-                const passedRetake = ['pass', 'passed', 'competent'].includes(String(mark.retake_status || '').trim().toLowerCase());
-                const raw = (passedRetake && mark.retake_score !== null && mark.retake_score !== undefined && mark.retake_score !== '')
-                    ? mark.retake_score : (mark.final_score ?? mark.published_score ?? mark.overall_score ??
-                    mark.final_total ?? mark.total_score ?? mark.total ?? mark.score ?? mark.marks);
-                const score = raw !== null && raw !== undefined && raw !== '' ?
-                    '<span style="font-weight:700;color:#166534;">' + this.cleanText(String(raw)) + '%</span>' : '';
-                return '<article style="background:#fff;border:1px solid #dcfce7;border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
-                    '<div><div style="font-size:11px;font-weight:800;color:#64748b;">' + code + '</div>' +
-                    '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-top:3px;">' + name + '</div></div>' +
-                    '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' + score +
-                    '<span style="background:#dcfce7;color:#166534;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:800;">✓ COMPLETED · ' + grade + '</span></div></article>';
+                    mark.letter_grade || mark.grade_letter || mark.result_grade || mark.grade || 'PASS');
+
+                return '<tr style="border-bottom:1px solid #e2e8f0;">' +
+                    '<td style="padding:11px 12px;text-align:center;color:#64748b;">' + (index + 1) + '</td>' +
+                    '<td style="padding:11px 12px;font-weight:700;color:#0f3b5d;white-space:nowrap;">' + code + '</td>' +
+                    '<td style="padding:11px 12px;color:#1e293b;font-weight:600;">' + name + '</td>' +
+                    '<td style="padding:11px 12px;text-align:center;color:#475569;">' + block + '</td>' +
+                    '<td style="padding:11px 12px;text-align:center;font-weight:700;color:#166534;">' + score + '</td>' +
+                    '<td style="padding:11px 12px;text-align:center;font-weight:700;color:#166534;">' + grade + '</td>' +
+                    '<td style="padding:11px 12px;text-align:center;"><span style="display:inline-block;background:#dcfce7;color:#166534;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;">PASSED</span></td>' +
+                    '</tr>';
             }).join('');
-            section.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">' +
-                '<div><h3 style="margin:0;color:#166534;font-size:17px;">✓ Completed Exams</h3>' +
-                '<p style="margin:4px 0 0;color:#64748b;font-size:12px;">Passed units are excluded from your current exam card.</p></div>' +
-                '<span style="background:#dcfce7;color:#166534;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:800;">' +
-                this.completedUnits.length + ' completed</span></div><div style="display:grid;gap:10px;">' + cards + '</div>';
-            this.examCardContent.appendChild(section);
+
+            container.style.display = 'block';
+            container.innerHTML =
+                '<div style="background:#fff;border:1px solid #bbf7d0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.04);">' +
+                    '<div style="padding:14px 18px;background:#f0fdf4;border-bottom:1px solid #bbf7d0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">' +
+                        '<div><h3 style="margin:0;color:#166534;font-size:15px;font-weight:800;">✓ Passed Units</h3>' +
+                        '<p style="margin:4px 0 0;color:#64748b;font-size:12px;">Approved and published passes are listed here and excluded from the current exam card.</p></div>' +
+                        '<span style="background:#dcfce7;color:#166534;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:800;">' +
+                            this.completedUnits.length + ' completed</span>' +
+                    '</div>' +
+                    '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:680px;">' +
+                        '<thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">' +
+                            '<th style="padding:11px 12px;text-align:center;font-size:11px;color:#64748b;">#</th>' +
+                            '<th style="padding:11px 12px;text-align:left;font-size:11px;color:#64748b;">UNIT CODE</th>' +
+                            '<th style="padding:11px 12px;text-align:left;font-size:11px;color:#64748b;">UNIT NAME</th>' +
+                            '<th style="padding:11px 12px;text-align:center;font-size:11px;color:#64748b;">BLOCK / TERM</th>' +
+                            '<th style="padding:11px 12px;text-align:center;font-size:11px;color:#64748b;">SCORE</th>' +
+                            '<th style="padding:11px 12px;text-align:center;font-size:11px;color:#64748b;">GRADE</th>' +
+                            '<th style="padding:11px 12px;text-align:center;font-size:11px;color:#64748b;">STATUS</th>' +
+                        '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+                '</div>';
         }
 
         // ============================================
@@ -1034,228 +1064,75 @@
         // ============================================
         
         displayPastExams() {
-            if (!this.pastExamRecords || this.pastExamRecords.length === 0) {
+            const tbody = document.getElementById('pastExamRecordsBody');
+            const count = document.getElementById('pastExamCount');
+            const empty = document.getElementById('pastExamEmpty');
+            if (!tbody) {
+                console.warn('Past-exam table body #pastExamRecordsBody is missing from student.html');
+                return;
+            }
+
+            const records = Array.isArray(this.pastExamRecords) ? this.pastExamRecords : [];
+            if (count) count.textContent = records.length + (records.length === 1 ? ' record' : ' records');
+            if (empty) empty.style.display = records.length ? 'none' : 'block';
+
+            if (!records.length) {
                 this.displayNoPastExams();
                 return;
             }
-            
-            let container = document.querySelector('.past-exams-container, .past-exams-section');
-            const wrapper = document.querySelector('.exam-card-wrapper');
-            
-            if (!wrapper) {
-                console.warn('⚠️ No exam card wrapper found');
-                return;
-            }
-            
-            // Remove existing container
-            const existing = wrapper.querySelector('.past-exams-container, .past-exams-section');
-            if (existing) existing.remove();
-            
-            container = document.createElement('div');
-            container.className = 'past-exams-container';
-            container.style.cssText = `
-                margin-top: 30px;
-                border-top: 2px solid #e2e8f0;
-                padding-top: 20px;
-                width: 100%;
-            `;
-            
-            const tableRows = this.pastExamRecords.map((record, index) => {
-                const recordId = record.id || record.exam_id || index;
-                const period = record.period || record.exam_period || record.semester || 'N/A';
-                const units = record.units || record.total_units || record.unit_count || 0;
-                const credits = record.credits || record.total_credits || 0;
-                const date = record.date || record.completed_date || record.created_at || new Date().toISOString();
-                const status = record.status || 'Completed';
-                const dateFormatted = new Date(date).toLocaleDateString('en-KE', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                
-                let statusColor = '#059669';
-                if (status.toLowerCase().includes('pending')) statusColor = '#f59e0b';
-                else if (status.toLowerCase().includes('failed')) statusColor = '#dc2626';
-                else if (status.toLowerCase().includes('incomplete')) statusColor = '#6b7280';
-                
-                return `
-                    <tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
-                        <td style="padding: 10px 12px; text-align: center; font-weight: 500; color: #64748b;">${index + 1}</td>
-                        <td style="padding: 10px 12px; font-weight: 500; color: #1e3a5f;">${this.cleanText(period)}</td>
-                        <td style="padding: 10px 12px; text-align: center;">
-                            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">${units}</span>
-                        </td>
-                        <td style="padding: 10px 12px; text-align: center;">
-                            <span style="background: #fef3c7; color: #92400e; padding: 2px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">${credits}</span>
-                        </td>
-                        <td style="padding: 10px 12px; font-size: 12px; color: #64748b;">${dateFormatted}</td>
-                        <td style="padding: 10px 12px; text-align: center;">
-                            <span style="background: ${statusColor}; color: white; padding: 3px 14px; border-radius: 20px; font-size: 11px; font-weight: 600;">
-                                ${status.toUpperCase()}
-                            </span>
-                        </td>
-                        <td style="padding: 10px 12px; text-align: center;">
-                            <button onclick="window.examCardModule?.viewPastExam('${recordId}')" style="
-                                background: #1e3a5f;
-                                color: white;
-                                border: none;
-                                padding: 5px 16px;
-                                border-radius: 20px;
-                                font-size: 11px;
-                                cursor: pointer;
-                                font-weight: 500;
-                                transition: all 0.2s;
-                            " onmouseenter="this.style.background='#2c5a8c'; this.style.transform='scale(1.02)'" onmouseleave="this.style.background='#1e3a5f'; this.style.transform='scale(1)'">
-                                📄 View
-                            </button>
-                        </td>
-                    </tr>
-                `;
+
+            tbody.innerHTML = records.map((record, index) => {
+                const period = this.cleanText(record.period || record.exam_period || record.semester || 'N/A');
+                const units = Number(record.units || record.total_units || record.unit_count || 0);
+                const credits = Number(record.credits || record.total_credits || 0);
+                const rawDate = record.date || record.completed_date || record.created_at;
+                const parsedDate = rawDate ? new Date(rawDate) : null;
+                const date = parsedDate && !Number.isNaN(parsedDate.getTime())
+                    ? parsedDate.toLocaleDateString('en-KE', {year:'numeric',month:'long',day:'numeric'}) : '—';
+                const statusRaw = String(record.status || 'Completed');
+                const status = this.cleanText(statusRaw);
+                const statusLower = statusRaw.toLowerCase();
+                const statusColor = statusLower.includes('pending') ? '#f59e0b' :
+                    (statusLower.includes('fail') ? '#dc2626' :
+                    (statusLower.includes('incomplete') ? '#6b7280' : '#059669'));
+
+                return '<tr style="border-bottom:1px solid #e2e8f0;">' +
+                    '<td style="padding:10px 12px;text-align:center;color:#64748b;">' + (index + 1) + '</td>' +
+                    '<td style="padding:10px 12px;font-weight:600;color:#1e3a5f;">' + period + '</td>' +
+                    '<td style="padding:10px 12px;text-align:center;">' + units + '</td>' +
+                    '<td style="padding:10px 12px;text-align:center;">' + credits + '</td>' +
+                    '<td style="padding:10px 12px;color:#64748b;">' + date + '</td>' +
+                    '<td style="padding:10px 12px;text-align:center;"><span style="background:' + statusColor +
+                    ';color:#fff;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;">' +
+                    status.toUpperCase() + '</span></td>' +
+                    '<td style="padding:10px 12px;text-align:center;"><button type="button" data-past-exam-index="' + index +
+                    '" style="background:#1e3a5f;color:#fff;border:0;padding:5px 16px;border-radius:20px;font-size:11px;cursor:pointer;font-weight:600;">View</button></td>' +
+                    '</tr>';
             }).join('');
-            
-            container.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <h3 style="font-size: 16px; color: #1e3a5f; margin: 0;">
-                            📚 Completed Exam Cards
-                        </h3>
-                        <span style="background: #e2e8f0; color: #475569; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                            ${this.pastExamRecords.length} records
-                        </span>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <span style="font-size: 12px; color: #94a3b8;">View your previous exam cards from past periods</span>
-                        <button onclick="window.examCardModule?.loadPastExamRecords()" style="
-                            background: none;
-                            border: none;
-                            color: #1e3a5f;
-                            cursor: pointer;
-                            font-size: 13px;
-                            padding: 4px 12px;
-                            border-radius: 6px;
-                            background: #f1f5f9;
-                            font-weight: 500;
-                            transition: background 0.2s;
-                        " onmouseenter="this.style.background='#e2e8f0'" onmouseleave="this.style.background='#f1f5f9'">
-                            🔄 Refresh
-                        </button>
-                    </div>
-                </div>
-                
-                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: white;">
-                        <thead>
-                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">#</th>
-                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Exam Period</th>
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Units</th>
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Credits</th>
-                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Date</th>
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Status</th>
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableRows}
-                        </tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 10px; font-size: 11px; color: #94a3b8; text-align: center;">
-                    Click "View" to see the full exam card for each past period
-                </div>
-            `;
-            
-            wrapper.appendChild(container);
+
+            tbody.querySelectorAll('[data-past-exam-index]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const record = this.pastExamRecords[Number(button.getAttribute('data-past-exam-index'))];
+                    if (record) this.viewPastExam(record.id ?? record.exam_id);
+                });
+            });
         }
-        
+
         // ============================================
         // DISPLAY NO PAST EXAMS
         // ============================================
-        
+
         displayNoPastExams() {
-            const wrapper = document.querySelector('.exam-card-wrapper');
-            if (!wrapper) return;
-            
-            // Remove existing
-            const existing = wrapper.querySelector('.past-exams-container, .past-exams-section');
-            if (existing) existing.remove();
-            
-            const container = document.createElement('div');
-            container.className = 'past-exams-container';
-            container.style.cssText = `
-                margin-top: 30px;
-                border-top: 2px solid #e2e8f0;
-                padding-top: 20px;
-                width: 100%;
-            `;
-            
-            container.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <h3 style="font-size: 16px; color: #1e3a5f; margin: 0;">
-                            📚 Completed Exam Cards
-                        </h3>
-                        <span style="background: #e2e8f0; color: #475569; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                            0 records
-                        </span>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <span style="font-size: 12px; color: #94a3b8;">View your previous exam cards from past periods</span>
-                        <button onclick="window.examCardModule?.loadPastExamRecords()" style="
-                            background: none;
-                            border: none;
-                            color: #1e3a5f;
-                            cursor: pointer;
-                            font-size: 13px;
-                            padding: 4px 12px;
-                            border-radius: 6px;
-                            background: #f1f5f9;
-                            font-weight: 500;
-                        ">
-                            🔄 Refresh
-                        </button>
-                    </div>
-                </div>
-                
-                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: white;">
-                        <thead>
-                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">#</th>
-                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Exam Period</th>
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Units</th>
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Credits</th>
-                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Date</th>
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Status</th>
-                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 30px 20px; color: #94a3b8;">
-                                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                                        <span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #e2e8f0; border-top-color: #1e3a5f; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
-                                        Loading past exam records...
-                                    </div>
-                                    <style>
-                                        @keyframes spin {
-                                            to { transform: rotate(360deg); }
-                                        }
-                                    </style>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            
-            wrapper.appendChild(container);
+            const tbody = document.getElementById('pastExamRecordsBody');
+            const count = document.getElementById('pastExamCount');
+            const empty = document.getElementById('pastExamEmpty');
+            if (count) count.textContent = '0 records';
+            if (empty) empty.style.display = 'block';
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px 16px;color:#94a3b8;">No previous exam-period records found.</td></tr>';
+            }
         }
-        
-        // ============================================
-        // VIEW PAST EXAM
-        // ============================================
-        
+
         viewPastExam(examId) {
             const record = this.pastExamRecords.find(r => r.id == examId);
             if (!record) {
@@ -1399,12 +1276,13 @@
         
         showNoUnitsMessage() {
             if (this.examCardContent) {
+                const hasCompleted = Array.isArray(this.completedUnits) && this.completedUnits.length > 0;
                 this.examCardContent.innerHTML = `
                     <div style="text-align: center; padding: 40px; color: #64748b;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
-                        <h3 style="color: #1e3a5f;">No Approved Units</h3>
-                        <p>You don't have any approved units for this exam period.</p>
-                        <p style="font-size: 13px; margin-top: 8px;">Please contact the academic office for assistance.</p>
+                        <div style="font-size: 48px; margin-bottom: 16px;">${hasCompleted ? '🎓' : '📋'}</div>
+                        <h3 style="color: #1e3a5f;">${hasCompleted ? 'All Current Units Completed' : 'No Approved Units'}</h3>
+                        <p>${hasCompleted ? 'You have no outstanding approved units for the current exam period.' : 'You don\'t have any approved units for this exam period.'}</p>
+                        <p style="font-size: 13px; margin-top: 8px;">${hasCompleted ? 'Your passed units are listed in the Completed Exam Cards section below.' : 'Please contact the academic office for assistance.'}</p>
                     </div>
                 `;
             }
