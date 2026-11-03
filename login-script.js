@@ -74,52 +74,10 @@ function trackGALogin(eventName, eventData) {
 })();
 
 // ============================================
-// ✅ SESSION VERIFICATION ON PAGE LOAD
+// SESSION RESTORATION
+// Do not treat cached localStorage profile data as an authenticated session.
+// Existing sessions are verified against Supabase after the client is initialized.
 // ============================================
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if user is already logged in
-    const userId = localStorage.getItem('currentUserId');
-    const userProfile = localStorage.getItem('userProfile');
-    
-    if (userId && userId !== 'null' && userProfile) {
-        console.log('✅ User is logged in. User ID:', userId);
-        trackGALogin('session_restored', {
-            'event_category': 'Authentication',
-            'user_id': userId
-        });
-        
-        // Check if on login page, redirect to dashboard
-        const loginPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
-        const isLoginPage = loginPath === '/login' ||
-                           loginPath.endsWith('/login') ||
-                           loginPath.endsWith('/login.html') ||
-                           loginPath === '/verify-email' ||
-                           loginPath.endsWith('/verify-email.html') ||
-                           loginPath.endsWith('/exam_login.html');
-        if (isLoginPage) {
-            console.log('🔄 Already logged in, redirecting to dashboard...');
-            const requested = new URLSearchParams(window.location.search).get('redirect');
-            let target = '/student';
-            if (requested && requested.startsWith('/') && !requested.startsWith('//')) {
-                try {
-                    const candidate = new URL(requested, window.location.origin);
-                    const path = candidate.pathname.toLowerCase();
-                    if (candidate.origin === window.location.origin &&
-                        (path === '/exam.html' || path === '/exam' ||
-                         path === '/student.html' || path === '/student' ||
-                         path.startsWith('/student/'))) {
-                        target = candidate.pathname + candidate.search + candidate.hash;
-                    }
-                } catch (redirectError) {
-                    console.warn('Ignoring invalid login redirect:', redirectError);
-                }
-            }
-            window.location.replace(target);
-        }
-    } else {
-        console.log('ℹ️ No active session found.');
-    }
-});
 
 // ============================================
 // 🚀 HIDE .html EXTENSION IN URL
@@ -3245,6 +3203,52 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedTime) window.NCHSMLogin.state.lastFailedTime = parseInt(savedTime);
     
     window.NCHSMLogin.init();
+
+    // Only redirect an already-authenticated visitor after Supabase confirms
+    // the persisted session and the matching database profile.
+    (async function restoreVerifiedLoginSession() {
+        const loginPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+        const isLoginPage = loginPath === '/login' ||
+            loginPath.endsWith('/login') ||
+            loginPath.endsWith('/login.html') ||
+            loginPath === '/verify-email' ||
+            loginPath.endsWith('/verify-email.html');
+        if (!isLoginPage) return;
+
+        const client = window.NCHSMLogin?.supabase;
+        if (!client?.auth?.getSession) return;
+
+        try {
+            const { data, error } = await client.auth.getSession();
+            const session = data?.session;
+            if (error || !session?.user?.id) {
+                console.log('ℹ️ No verified Supabase session; showing login form.');
+                return;
+            }
+
+            const { data: profile, error: profileError } = await client
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+
+            if (profileError || !profile) {
+                console.warn('Existing Supabase session has no matching portal profile.');
+                return;
+            }
+
+            trackGALogin('session_restored', {
+                event_category: 'Authentication',
+                user_id: session.user.id
+            });
+            window.NCHSMLogin.redirectToDashboard({
+                ...profile,
+                user_id: profile.user_id || session.user.id
+            });
+        } catch (restoreError) {
+            console.warn('Unable to restore an existing Supabase login session:', restoreError);
+        }
+    })();
     
     console.log('✅ Secure application ready');
     console.log('🔐 2FA support: ENABLED');
