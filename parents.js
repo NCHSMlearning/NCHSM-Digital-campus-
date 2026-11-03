@@ -34,7 +34,7 @@ async function checkAuth() {
     try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error || !session) {
-            window.location.href = '/parents-login.html';
+            window.location.href = '/parents.html';
             return null;
         }
         
@@ -48,7 +48,7 @@ async function checkAuth() {
         if (parentError || !parent) {
             console.error('Parent profile not found:', parentError);
             await supabase.auth.signOut();
-            window.location.href = '/parents-login.html';
+            window.location.href = '/parents.html';
             return null;
         }
         
@@ -650,7 +650,7 @@ studentSelector.addEventListener('change', () => {
 
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
     await supabase.auth.signOut();
-    window.location.href = '/parents-login.html';
+    window.location.href = '/parents.html';
 });
 
 // ============================================================
