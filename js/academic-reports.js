@@ -2238,7 +2238,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
 
         <div class="footer">
             <p>Accredited &amp; Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences &amp; Management</p>
-            <p><strong>NCHSM</strong> · Tel: 0703 345 771 · Email: <a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a></p>
+            <p><strong>NCHSM</strong> · Tel: 0790 969 743 / 0722 351 791 · Email: <a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a></p>
         </div>
 
         <div class="no-print">
