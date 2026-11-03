@@ -326,7 +326,7 @@ async function checkUserSession() {
             }
             
             if (profile.role === 'superadmin' || profile.role === 'super_admin') {
-                window.location.href = 'super_admin.html';
+                window.location.href = 'superadmin.html';
                 return;
             }
         }
