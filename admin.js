@@ -209,7 +209,7 @@ function setupBlockTermDropdowns() {
 // ------------------------------------------------------------------
 // INITIALIZATION
 // ------------------------------------------------------------------
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 Admin panel loading...');
     
     // Set current date
@@ -224,24 +224,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    if (typeof supabase !== 'undefined') {
-        db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    } else {
-        setTimeout(function() {
-            if (typeof supabase !== 'undefined') {
-                db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            }
-        }, 500);
+    // Wait for the Supabase SDK before creating the client.
+    for (let attempt = 0; attempt < 30 && typeof supabase === 'undefined'; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
-    checkUserSession();
+    if (typeof supabase === 'undefined') {
+        console.error('Supabase SDK did not load; admin dashboard initialization stopped.');
+        return;
+    }
+    db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     setupNavigation();
     setupMobileMenu();
     setupDropdowns();
-    loadDashboardNumbers();
     setupBlockTermDropdowns();
     setupAssignmentEventListeners();
     initCharts();
+
+    // Session/profile validation must finish before any protected table queries.
+    const authenticatedAdmin = await checkUserSession();
+    if (!authenticatedAdmin) return;
+    await loadDashboardNumbers();
 });
 
 // ------------------------------------------------------------------
@@ -300,14 +303,14 @@ function setupAssignmentEventListeners() {
 // CHECK USER SESSION
 // ------------------------------------------------------------------
 async function checkUserSession() {
-    if (!db) return;
+    if (!db) return false;
     
     try {
         const session = await db.auth.getSession();
         
         if (!session.data.session) {
             window.location.href = 'login.html';
-            return;
+            return false;
         }
         
         const userEmail = session.data.session.user.email;
@@ -317,22 +320,26 @@ async function checkUserSession() {
             .eq('email', userEmail)
             .single();
         
-        if (profile) {
-            currentAdmin = profile;
-            
-            const nameSpan = document.getElementById('adminName');
+        if (!profile) {
+            window.location.href = 'login.html';
+            return false;
+        }
+        currentAdmin = profile;
+        
+        const nameSpan = document.getElementById('adminName');
             if (nameSpan && profile.full_name) {
                 nameSpan.textContent = profile.full_name;
             }
             
-            if (profile.role === 'superadmin' || profile.role === 'super_admin') {
-                window.location.href = 'superadmin.html';
-                return;
-            }
+        if (profile.role === 'superadmin' || profile.role === 'super_admin') {
+            window.location.href = 'superadmin.html';
+            return false;
         }
+        return true;
     } catch(e) {
-        console.log('Session check failed');
+        console.warn('Session check failed:', e?.message || e);
         window.location.href = 'login.html';
+        return false;
     }
 }
 
