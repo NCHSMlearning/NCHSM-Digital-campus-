@@ -2058,9 +2058,10 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .transcript-top { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 150px; align-items: start; column-gap: 8px; width: 100%; padding-top: 1px; }
         .transcript-top > .header { grid-column: 1; grid-row: 1; width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
         .transcript-verification-column { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; gap: 6px; min-width: 0; position: relative; z-index: 3; }
-        .transcript-verification-column > .transcript-generation-number { position: relative; display: none; width: 150px; min-width: 150px; margin: 0; padding: 3px 0 5px; border: 0; border-radius: 0; background: #fff; color: #4C1D95; font-family: 'Courier New', monospace; line-height: 1.2; text-align: center; box-shadow: none; }
-        .transcript-verification-column > .transcript-generation-number .number-label { display: block; margin-bottom: 4px; color: #475569; font-family: Arial, sans-serif; font-size: 7px; letter-spacing: .8px; font-weight: 700; white-space: normal; }
-        .transcript-verification-column > .transcript-generation-number #transcriptGenerationNumberValue { display: block; color: #4C1D95; font-family: 'Courier New', monospace; font-size: 9px; line-height: 1.3; letter-spacing: -.25px; font-weight: 700; white-space: nowrap; word-break: keep-all; overflow-wrap: normal; text-shadow: none; }
+        .transcript-verification-column > .transcript-generation-number { position: relative; display: none; width: 150px; min-width: 150px; margin: 0; padding: 3px 0 5px; border: 0; border-radius: 0; background: #fff; color: #493638; font-family: Arial, Helvetica, sans-serif; line-height: 1; text-align: center; box-shadow: none; }
+        .transcript-verification-column > .transcript-generation-number .number-label { display: block; margin-bottom: 5px; color: #475569; font-family: Arial, sans-serif; font-size: 7px; letter-spacing: .8px; font-weight: 700; white-space: normal; }
+        .transcript-number-prefix { display: inline-block; color: #493638; font-family: Arial, Helvetica, sans-serif; font-size: 9px; line-height: 1.2; font-weight: 300; letter-spacing: -.25px; white-space: nowrap; }
+        .transcript-number-sequence { display: inline-block; color: #493638; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1; font-weight: 300; letter-spacing: -.45px; white-space: nowrap; }
         .transcript-verification-column > .verification-qr { position: relative; width: 88px; min-height: 90px; margin: 0; }
         .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 88px; padding: 4px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
         .verification-qr img { display: block; width: 76px; height: 76px; min-width: 76px; min-height: 76px; object-fit: contain; image-rendering: pixelated; }
@@ -2171,7 +2172,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 <div class="date">Generated: ${now}</div>
             </div>
             <div class="transcript-verification-column" aria-label="Transcript identification and verification">
-                <div class="transcript-generation-number" id="transcriptGenerationNumber" aria-label="Transcript generation number" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"></span></div>
+                <div class="transcript-generation-number" id="transcriptGenerationNumber" aria-label="Transcript generation number" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"><span class="transcript-number-prefix"></span><span class="transcript-number-sequence"></span></span></div>
                 <div class="verification-qr" aria-label="Document verification QR code">
                     <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
                     <span>VERIFY</span>
@@ -2312,7 +2313,18 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 const transcriptNumberBox = document.getElementById('transcriptGenerationNumber');
                 const transcriptNumberValue = document.getElementById('transcriptGenerationNumberValue');
                 if (transcriptNumberBox && transcriptNumberValue && registryResult.transcript_number) {
-                    transcriptNumberValue.textContent = registryResult.transcript_number;
+                    const serial = String(registryResult.transcript_number).trim();
+                    const sequenceMatch = serial.match(/(\\d{5})$/);
+                    const prefix = sequenceMatch ? serial.slice(0, -5) : serial;
+                    const sequence = sequenceMatch ? sequenceMatch[1] : '';
+                    const prefixElement = transcriptNumberValue.querySelector('.transcript-number-prefix');
+                    const sequenceElement = transcriptNumberValue.querySelector('.transcript-number-sequence');
+                    if (prefixElement && sequenceElement) {
+                        prefixElement.textContent = prefix;
+                        sequenceElement.textContent = sequence;
+                    } else {
+                        transcriptNumberValue.textContent = serial;
+                    }
                     transcriptNumberBox.style.display = 'block';
                 }
             } catch (registryError) {
