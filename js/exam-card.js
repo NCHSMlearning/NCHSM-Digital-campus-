@@ -1808,7 +1808,7 @@ body{padding:24px;overflow:auto}
 .info-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:3mm 4mm;padding:5mm 7mm;font-size:10px}
 .info-item{min-width:0;overflow-wrap:anywhere;line-height:1.35}
 .info-label{margin-right:4px}
-.units-table{width:100%;font-size:9px;table-layout:fixed;border-collapse:collapse;flex:1 1 auto;min-height:0}
+.units-table{width:100%;font-size:9px;table-layout:fixed;border-collapse:collapse;flex:0 0 auto;min-height:0}
 .units-table th{padding:3mm 2mm;font-size:9px;line-height:1.2}
 .units-table td{padding:2mm;line-height:1.25;vertical-align:middle;overflow-wrap:anywhere}
 .units-table th:nth-child(1),.units-table td:nth-child(1){width:5%}
@@ -1820,12 +1820,12 @@ body{padding:24px;overflow:auto}
 .signature-cell{padding:1mm 2mm!important;text-align:center;vertical-align:middle}
 .signature-cell .signature-line{width:88%!important;margin:2mm auto 1mm!important;border-top:1px solid #111!important;height:1px!important}
 .signature-cell span{font-size:8px!important;line-height:1.1}
-.total-row td{padding:2.5mm!important}
-.signatures-row{padding:7mm 7mm 5mm;gap:8mm;min-height:27mm}
+.total-row{height:auto!important}.total-row td{height:auto!important;min-height:0!important;padding:2.5mm!important;vertical-align:middle!important}
+.signatures-row{padding:5mm 7mm 4mm;gap:8mm;min-height:24mm;margin-top:3mm}
 .signature{font-size:9px}
 .sign-line{width:82%;margin:5mm auto 2mm;padding-top:2mm;border-top:1px solid #111;height:1px}
 .signature div[style*="font-size: 12px"],.signature div[style*="font-size:12px"]{font-size:10px!important}
-.card-footer{padding:5mm 7mm;margin-top:auto;background:#fffdf2;border-top:1px solid #e2e8f0}
+.card-footer{padding:4mm 7mm;margin-top:3mm;background:#fffdf2;border-top:1px solid #e2e8f0}
 .rules-header{font-size:10px;margin-bottom:3mm}
 .rules-list{display:grid;grid-template-columns:1fr 1fr;column-gap:8mm;row-gap:1mm;margin-bottom:3mm}
 .rule-item{font-size:8.5px;line-height:1.3;margin:0}
@@ -1850,10 +1850,10 @@ body{padding:24px;overflow:auto}
  .card-header{background:#1e3a5f!important;color:#fff!important}
  .info-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
  .signatures-row{display:flex!important;flex-direction:row!important}
- .units-table{width:100%!important;border-collapse:collapse!important;table-layout:fixed!important}
+ .units-table{width:100%!important;border-collapse:collapse!important;table-layout:fixed!important;flex:0 0 auto!important}
  .units-table tr,.units-table td,.units-table th{break-inside:avoid!important;page-break-inside:avoid!important}
  .action-buttons,button{display:none!important}
- .card-footer{margin-top:auto!important;break-inside:avoid!important;page-break-inside:avoid!important}
+ .card-footer{margin-top:3mm!important;break-inside:avoid!important;page-break-inside:avoid!important}
  .student-sign-line{flex-wrap:nowrap!important}
  .student-date{width:auto!important;margin-left:auto!important;text-align:right!important}
  .status-badge,.total-row,thead th{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
