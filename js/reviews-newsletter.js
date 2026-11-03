@@ -212,6 +212,16 @@ function getSupabaseClient() {
     return window.supabase || window.sb || window.db?.supabase || null;
 }
 
+async function hasAuthenticatedReviewSession(supabase) {
+    if (!supabase?.auth?.getSession) return false;
+    try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        return !error && !!session?.user?.id;
+    } catch (_) {
+        return false;
+    }
+}
+
 // ============================================
 // ESCAPE HTML
 // ============================================
@@ -606,6 +616,10 @@ async function loadReviews() {
             grid.innerHTML = '<div class="error-state-premium">Database connection error</div>';
             return;
         }
+        if (!await hasAuthenticatedReviewSession(supabase)) {
+            grid.innerHTML = '<div class="error-state-premium">Please sign in to view reviews.</div>';
+            return;
+        }
         
         detectUserProgram();
         
@@ -832,7 +846,7 @@ function renderReviews(reviews) {
 async function loadSiteRating() {
     try {
         const supabase = getSupabaseClient();
-        if (!supabase) return;
+        if (!supabase || !await hasAuthenticatedReviewSession(supabase)) return;
         
         const { data: reviews, error } = await supabase
             .from('student_reviews')
@@ -879,7 +893,7 @@ async function loadSiteRating() {
 async function updateReviewStats() {
     try {
         const supabase = getSupabaseClient();
-        if (!supabase) return;
+        if (!supabase || !await hasAuthenticatedReviewSession(supabase)) return;
         
         const { data: reviews, error } = await supabase
             .from('student_reviews')
