@@ -311,12 +311,13 @@ function setBusy(busy){
  btn.innerHTML=busy?"Authenticating Securely…":'Sign In to Admin Console <span aria-hidden="true">→</span>';
 }
 
-async function fetchProfile(email){
+async function fetchProfile(userId){
+ if(!userId)throw new Error("Authenticated account ID is missing.");
  const {data,error}=await supabase.from("consolidated_user_profiles_table")
  .select("user_id,email,full_name,role,program,department,staff_id,status,two_factor_enabled,two_factor_secret,two_factor_verified")
- .eq("email",email).maybeSingle();
- if(error)throw new Error("Unable to load administrator profile.");
- if(!data)throw new Error("Administrator profile was not found.");
+ .eq("user_id",userId).maybeSingle();
+ if(error)throw new Error("Unable to load administrator profile: "+error.message);
+ if(!data)throw new Error("Administrator profile was not found for this authenticated account.");
  return data;
 }
 
@@ -496,11 +497,11 @@ async function handleLogin(event){
     const {data:authData,error:authError}=await supabase.auth.signInWithPassword({email,password});
     if(authError||!authData?.user)throw new Error("Invalid administrator email or password.");
 
-    const profile=await fetchProfile(email);
-    const role=String(profile.role||"").trim().toLowerCase();
+    const profile=await fetchProfile(authData.user.id);
+    const role=String(profile.role||"").trim().toLowerCase().replace(/[\\s-]+/g,"_");
     const status=String(profile.status||"").trim().toLowerCase();
 
-    if(!["superadmin","admin"].includes(role)){
+    if(!["superadmin","super_admin","admin","administrator"].includes(role)){
       await supabase.auth.signOut();
       throw new Error("This account is not authorized for the Super Admin Portal.");
     }
@@ -595,10 +596,10 @@ function init(){
    const session=data?.session;
    if(!session?.user?.email)return;
    try{
-     const profile=await fetchProfile(session.user.email);
-     const role=String(profile.role||"").toLowerCase();
-     const status=String(profile.status||"").toLowerCase();
-     if(["superadmin","admin"].includes(role)&&["approved","active"].includes(status)){
+     const profile=await fetchProfile(session.user.id);
+     const role=String(profile.role||"").trim().toLowerCase().replace(/[\\s-]+/g,"_");
+     const status=String(profile.status||"").trim().toLowerCase();
+     if(["superadmin","super_admin","admin","administrator"].includes(role)&&["approved","active"].includes(status)){
        showMessage("Active administrator session found. Opening console…","success");
        window.location.replace("superadmin.html");
      }
