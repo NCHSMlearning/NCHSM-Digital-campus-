@@ -852,12 +852,9 @@
                 let role = safeProfile.role?.toLowerCase() || 'staff';
                 if (role === 'lecturer') {
                     window.location.href = 'lecturerexams.html';
-                } else if (role === 'superadmin' || role === 'super_admin') {
-                    window.location.href = 'superadmin.html';
-                } else if (role === 'admin') {
-                    window.location.href = 'adminexams.html';
                 } else {
-                    window.location.href = 'admin.html';
+                    // All non-lecturer accounts using adminlogin go to the Admin Exams portal.
+                    window.location.href = 'adminexams.html';
                 }
             }, 1200);
         }
@@ -1102,12 +1099,9 @@
                         let role = data.role?.toLowerCase() || 'staff';
                         if (role === 'lecturer') {
                             window.location.href = 'lecturerexams.html';
-                        } else if (role === 'superadmin' || role === 'super_admin') {
-                            window.location.href = 'superadmin.html';
-                        } else if (role === 'admin') {
-                            window.location.href = 'adminexams.html';
                         } else {
-                            window.location.href = 'admin.html';
+                            // Keep existing admin sessions on the Admin Exams portal.
+                            window.location.href = 'adminexams.html';
                         }
                     } else {
                         localStorage.removeItem('adminSession');
