@@ -457,7 +457,7 @@ class Database {
 
             if (missingFields.length > 0) {
                 console.warn('Profile is missing required academic fields:', missingFields);
-                this.showIncompleteProfileWarning(profile, missingFields);
+                this.showIncompleteProfileWarning(missingFields);
                 return false;
             }
 
@@ -536,27 +536,42 @@ class Database {
 
             if (!consolidatedError && consolidatedProfile) {
                 console.log('✅ User loaded from consolidated_user_profiles_table');
-                this.currentUserProfile = consolidatedProfile;
 
-                // ✅ CHECK REQUIRED FIELDS
-                const requiredFields = ['program', 'block', 'intake_year'];
-                const missingFields = requiredFields.filter(f => !consolidatedProfile[f]);
+                // The consolidated view can expose the student's course under
+                // program_type (and older records may use department/program_name).
+                // Normalize aliases for the application without writing invented data.
+                const normalizedProfile = {
+                    ...consolidatedProfile,
+                    program: String(
+                        consolidatedProfile.program ||
+                        consolidatedProfile.program_type ||
+                        consolidatedProfile.program_name ||
+                        consolidatedProfile.department ||
+                        ''
+                    ).trim(),
+                    block: consolidatedProfile.block ?? consolidatedProfile.current_block ?? null,
+                    intake_year: consolidatedProfile.intake_year ?? consolidatedProfile.year_of_intake ?? null
+                };
 
-                if (missingFields.length > 0) {
-                    console.warn('⚠️ Profile incomplete. Missing:', missingFields.join(', '));
-                    console.warn('📝 Current values:', {
-                        program: consolidatedProfile.program || 'NULL',
-                        block: consolidatedProfile.block || 'NULL',
-                        intake_year: consolidatedProfile.intake_year || 'NULL',
-                        student_id: consolidatedProfile.student_id || 'NULL'
+                this.currentUserProfile = normalizedProfile;
+                window.currentUserProfile = normalizedProfile;
+
+                const missingFields = ['program', 'block', 'intake_year'].filter(field =>
+                    normalizedProfile[field] === null ||
+                    normalizedProfile[field] === undefined ||
+                    String(normalizedProfile[field]).trim() === ''
+                );
+
+                if (missingFields.length) {
+                    console.warn('Student profile has unresolved academic fields:', missingFields, {
+                        user_id: normalizedProfile.user_id,
+                        student_id: normalizedProfile.student_id
                     });
-
-                    // ✅ SHOW WARNING INSTEAD OF CREATING FAKE DATA
-                    this.showIncompleteProfileWarning(missingFields);
-                    return null;
+                    // Do not discard a valid authenticated profile here. The portal
+                    // remains accessible; academic features can handle absent metadata.
                 }
 
-                return consolidatedProfile;
+                return normalizedProfile;
             }
 
             // Try profiles table
@@ -583,19 +598,21 @@ class Database {
 
                 if (!emailError && emailProfile) {
                     console.log('✅ User loaded by email from consolidated table');
-                    this.currentUserProfile = emailProfile;
-
-                    // ✅ CHECK REQUIRED FIELDS
-                    const requiredFields = ['program', 'block', 'intake_year'];
-                    const missingFields = requiredFields.filter(f => !emailProfile[f]);
-
-                    if (missingFields.length > 0) {
-                        console.warn('⚠️ Profile incomplete. Missing:', missingFields.join(', '));
-                        this.showIncompleteProfileWarning(missingFields);
-                        return null;
-                    }
-
-                    return emailProfile;
+                    const normalizedProfile = {
+                        ...emailProfile,
+                        program: String(
+                            emailProfile.program ||
+                            emailProfile.program_type ||
+                            emailProfile.program_name ||
+                            emailProfile.department ||
+                            ''
+                        ).trim(),
+                        block: emailProfile.block ?? emailProfile.current_block ?? null,
+                        intake_year: emailProfile.intake_year ?? emailProfile.year_of_intake ?? null
+                    };
+                    this.currentUserProfile = normalizedProfile;
+                    window.currentUserProfile = normalizedProfile;
+                    return normalizedProfile;
                 }
             }
 
