@@ -13549,7 +13549,10 @@ async function initializeApp() {
             // Preserve the intended deep link so it can be restored after login.
             console.warn('No Supabase session was restored. Redirecting to sign in.');
             const returnTo = window.location.pathname + window.location.search + window.location.hash;
-            const loginUrl = '/login?redirect=' + encodeURIComponent(returnTo || '/student');
+            const safeReturnTo = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
+                ? returnTo
+                : '/student';
+            const loginUrl = '/login.html?redirect=' + encodeURIComponent(safeReturnTo);
             window.location.replace(loginUrl);
             return;
         }
@@ -13780,13 +13783,23 @@ async function initializeApp() {
         }, 1500);
         
     } catch (error) {
-        console.error('❌ Initialization failed:', error);
+        console.error('❌ Student portal initialization failed:', error);
+
+        // Fail closed: never reveal student content when authentication or
+        // database initialization has not completed successfully.
         const loadingScreen = document.getElementById('loading-screen');
         if (loadingScreen) loadingScreen.style.display = 'none';
         const appContent = document.getElementById('app-content');
-        if (appContent) appContent.style.display = 'block';
-        const welcomeSection = document.getElementById('welcome-section');
-        if (welcomeSection) welcomeSection.innerHTML = '<h2>Application Error</h2><p>' + error.message + '</p><button onclick="location.reload()" class="profile-button">Retry</button>';
+        if (appContent) appContent.style.display = 'none';
+
+        const returnTo = window.location.pathname + window.location.search + window.location.hash;
+        const loginUrl = '/login.html?redirect=' + encodeURIComponent(
+            returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/student'
+        );
+
+        // If the auth client could not be initialized, send the visitor to
+        // sign-in rather than rendering an unauthenticated dashboard.
+        window.location.replace(loginUrl);
     }
 }
 
