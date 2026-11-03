@@ -2055,13 +2055,13 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         .container > * { position: relative; z-index: 1; }
         .container .transcript-top { z-index: 2; }
 
-        .transcript-top { position: relative; display: block; width: 100%; padding-top: 1px; }
-        .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 120px; align-items: start; column-gap: 8px; }
-        .transcript-top > .header { width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
-        .transcript-top > .verification-qr { position: relative; top: auto; right: auto; z-index: 2; grid-column: 2; grid-row: 1; width: 88px; min-height: 90px; justify-self: end; align-self: start; margin-top: 2px; }
-        .transcript-top > .transcript-generation-number { position: relative; top: auto; right: auto; z-index: 3; display: none; grid-column: 2; grid-row: 1; width: 120px; min-width: 120px; margin: 0 0 5px; padding: 6px 3px 7px; border: 1.5px solid #C9A54C; border-radius: 7px; background: linear-gradient(145deg,#fffdf5 0%,#f4ead0 100%); color: #173F70; font-family: Arial, sans-serif; line-height: 1.15; text-align: center; box-shadow: 0 2px 5px rgba(15,42,72,.16), inset 0 0 0 1px rgba(255,255,255,.9); }
-        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 4px; color: #8A6A25; font-size: 6px; letter-spacing: 1.1px; font-weight: 900; white-space: normal; }
-        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; color: #123B68; font-family: 'Georgia',serif; font-size: 7px; line-height: 1.2; letter-spacing: 0; font-weight: 900; white-space: nowrap; word-break: keep-all; overflow-wrap: normal; }
+        .transcript-top { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 150px; align-items: start; column-gap: 8px; width: 100%; padding-top: 1px; }
+        .transcript-top > .header { grid-column: 1; grid-row: 1; width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
+        .transcript-verification-column { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; gap: 6px; min-width: 0; position: relative; z-index: 3; }
+        .transcript-verification-column > .transcript-generation-number { position: relative; display: none; width: 150px; min-width: 150px; margin: 0; padding: 7px 5px 8px; border: 1.5px solid #C9A54C; border-radius: 7px; background: linear-gradient(145deg,#fffdf5 0%,#f4ead0 100%); color: #173F70; font-family: Arial, sans-serif; line-height: 1.15; text-align: center; box-shadow: 0 2px 5px rgba(15,42,72,.16), inset 0 0 0 1px rgba(255,255,255,.9); }
+        .transcript-verification-column > .transcript-generation-number .number-label { display: block; margin-bottom: 4px; color: #8A6A25; font-size: 7px; letter-spacing: 1.1px; font-weight: 900; white-space: normal; }
+        .transcript-verification-column > .transcript-generation-number #transcriptGenerationNumberValue { display: block; color: #123B68; font-family: 'Georgia',serif; font-size: 8px; line-height: 1.2; letter-spacing: 0; font-weight: 900; white-space: nowrap; word-break: keep-all; overflow-wrap: normal; }
+        .transcript-verification-column > .verification-qr { position: relative; width: 88px; min-height: 90px; margin: 0; }
         .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 88px; padding: 4px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
         .verification-qr img { display: block; width: 76px; height: 76px; min-width: 76px; min-height: 76px; object-fit: contain; image-rendering: pixelated; }
         .header { text-align: center; border-bottom: 3px double #1E559B; padding-bottom: 5px; margin-bottom: 6px; }
@@ -2170,10 +2170,12 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                 <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
                 <div class="date">Generated: ${now}</div>
             </div>
-            <div class="transcript-generation-number" id="transcriptGenerationNumber" aria-label="Transcript generation number" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"></span></div>
-            <div class="verification-qr" aria-label="Document verification QR code">
-                <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
-                <span>VERIFY</span>
+            <div class="transcript-verification-column" aria-label="Transcript identification and verification">
+                <div class="transcript-generation-number" id="transcriptGenerationNumber" aria-label="Transcript generation number" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"></span></div>
+                <div class="verification-qr" aria-label="Document verification QR code">
+                    <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
+                    <span>VERIFY</span>
+                </div>
             </div>
         </div>
 
