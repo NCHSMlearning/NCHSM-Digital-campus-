@@ -1883,6 +1883,20 @@ body{padding:24px;overflow:auto}
  tr{break-inside:avoid;page-break-inside:avoid}
 }
 @media screen and (max-width:600px){body{padding:10px}.exam-card-wrapper{min-width:680px}}
+/* High-contrast monochrome print: every label and value is bold black. */
+.exam-card-compact,.exam-card-compact *{color:#000!important;font-weight:700!important;text-shadow:none!important}
+.exam-card-compact{background:#fff!important}
+.exam-card-compact .card-header{background:#f1f1f1!important;color:#000!important}
+.exam-card-compact .card-header *{color:#000!important}
+.exam-card-compact .info-grid,.exam-card-compact .card-footer{background:#fff!important}
+.exam-card-compact .status-badge,.exam-card-compact [style*="background"]{background:#e5e7eb!important;color:#000!important}
+.exam-card-compact .rules-header,.exam-card-compact .rule-item,.exam-card-compact .student-declaration,.exam-card-compact .student-label,.exam-card-compact .student-date,.exam-card-compact .signature-cell span,.exam-card-compact .signature div,.exam-card-compact .info-label{color:#000!important;font-weight:700!important}
+.exam-card-compact .signature-line,.exam-card-compact .sign-line,.exam-card-compact .signature-line-inline{border-color:#000!important}
+@media print{
+ .exam-card-compact,.exam-card-compact *{color:#000!important;font-weight:700!important}
+ .exam-card-compact .card-header{background:#f1f1f1!important}
+ .exam-card-compact .status-badge,.exam-card-compact [style*="background"]{background:#e5e7eb!important}
+}
 </style>
 </head>
 <body>${card.outerHTML}</body>
