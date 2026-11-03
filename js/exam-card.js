@@ -1977,6 +1977,33 @@ body{padding:5mm!important;overflow:visible!important}
  .exam-card-compact .card-title,.exam-card-compact .units-table th{background:#1f5796!important;color:#fff!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
  .exam-card-compact .info-grid,.exam-card-compact .units-table tbody tr:nth-child(even):not(.total-row):not(.compressed-row) td,.exam-card-compact .total-row td,.exam-card-compact .card-footer{ -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
+/* Final print corrections: prevent clipped header/footer and split numeric cells. */
+html,body{width:210mm!important;min-width:210mm!important;margin:0!important;padding:0!important;background:#fff!important}
+body{padding:5mm!important;overflow:visible!important}
+.exam-card-wrapper{width:190mm!important;min-width:190mm!important;max-width:190mm!important;margin:0 auto!important}
+.exam-card-compact{width:190mm!important;min-width:190mm!important;max-width:190mm!important;height:auto!important;min-height:286mm!important;max-height:none!important;overflow:visible!important}
+.exam-card-compact .card-header{min-height:29mm!important;height:auto!important;padding:4mm 6mm!important;align-items:center!important;overflow:visible!important}
+.exam-card-compact .header-text{overflow:visible!important}
+.exam-card-compact .institution{display:block!important;line-height:1.25!important;padding-top:1mm!important;margin-bottom:1mm!important;white-space:normal!important;overflow:visible!important;font-size:8.5pt!important}
+.exam-card-compact .card-title{line-height:1.15!important;font-size:15pt!important;white-space:normal!important}
+.exam-card-compact .units-table{width:100%!important;table-layout:fixed!important}
+.exam-card-compact .units-table th:nth-child(1),.exam-card-compact .units-table td:nth-child(1){width:6%!important;min-width:6%!important;white-space:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important;text-align:center!important}
+.exam-card-compact .units-table th:nth-child(2),.exam-card-compact .units-table td:nth-child(2){width:17%!important}
+.exam-card-compact .units-table th:nth-child(3),.exam-card-compact .units-table td:nth-child(3){width:39%!important}
+.exam-card-compact .units-table th:nth-child(4),.exam-card-compact .units-table td:nth-child(4){width:8%!important;min-width:8%!important;white-space:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important;text-align:center!important}
+.exam-card-compact .units-table th:nth-child(5),.exam-card-compact .units-table td:nth-child(5){width:30%!important}
+.exam-card-compact .total-row td:nth-child(4){white-space:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important}
+.exam-card-compact .card-footer{margin-top:2mm!important;padding:3mm 6mm!important;overflow:visible!important}
+.exam-card-compact .student-section{padding-top:2mm!important;margin-top:1mm!important}
+.exam-card-compact .student-declaration{margin:2mm 0!important;line-height:1.2!important}
+.exam-card-compact .student-sign-line{margin:2mm 0 1mm!important}
+@media print{
+ @page{size:A4 portrait;margin:0}
+ html,body{width:210mm!important;height:auto!important;min-width:210mm!important;overflow:visible!important}
+ body{padding:5mm!important}
+ .exam-card-wrapper,.exam-card-compact{width:190mm!important;min-width:190mm!important;max-width:190mm!important}
+ .exam-card-compact{height:auto!important;min-height:286mm!important;max-height:none!important;overflow:visible!important;break-inside:avoid!important;page-break-inside:avoid!important}
+}
 </style>
 </head>
 <body>${card.outerHTML}</body>
