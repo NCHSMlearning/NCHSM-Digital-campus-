@@ -313,12 +313,39 @@ function setBusy(busy){
 
 async function fetchProfile(userId){
  if(!userId)throw new Error("Authenticated account ID is missing.");
- const {data,error}=await supabase.from("consolidated_user_profiles_table")
- .select("user_id,email,full_name,role,program,department,staff_id,status,two_factor_enabled,two_factor_secret,two_factor_verified")
- .eq("user_id",userId).maybeSingle();
- if(error)throw new Error("Unable to load administrator profile: "+error.message);
- if(!data)throw new Error("Administrator profile was not found for this authenticated account.");
- return data;
+
+ // Read the canonical portal profile first, then the consolidated profile as a
+ // compatibility fallback. Both lookups are bound to the authenticated UUID.
+ const fields="user_id,email,full_name,role,program,department,staff_id,status,two_factor_enabled,two_factor_secret,two_factor_verified";
+ const primary=await supabase.from("consolidated_user_profiles_table")
+   .select(fields).eq("user_id",userId).maybeSingle();
+
+ let candidates=[];
+ if(!primary.error&&primary.data)candidates.push(primary.data);
+
+ const fallback=await supabase.from("consolidated_user_profiles")
+   .select("user_id,email,full_name,role,status")
+   .eq("user_id",userId).maybeSingle();
+ if(!fallback.error&&fallback.data){
+   candidates.push({...fallback.data,program:"",department:"",staff_id:null,
+     two_factor_enabled:false,two_factor_secret:null,two_factor_verified:false});
+ }
+
+ if(!candidates.length){
+   const detail=primary.error?.message||fallback.error?.message;
+   throw new Error(detail
+     ?"Unable to load administrator profile: "+detail
+     :"Administrator profile was not found for this authenticated account.");
+ }
+
+ // Prefer a valid Super Admin record if the two profile stores are out of sync.
+ const normalizeRole=value=>String(value||"").trim().toLowerCase().replace(/[\\s-]+/g,"_");
+ const valid=candidates.find(p=>["superadmin","super_admin"].includes(normalizeRole(p.role)));
+ const profile=valid||candidates[0];
+
+ // Never accept a profile belonging to a different authenticated identity.
+ if(profile.user_id!==userId)throw new Error("Administrator profile identity mismatch.");
+ return profile;
 }
 
 async function loadBrevoApiKey(){
@@ -498,7 +525,7 @@ async function handleLogin(event){
     if(authError||!authData?.user)throw new Error("Invalid administrator email or password.");
 
     const profile=await fetchProfile(authData.user.id);
-    const role=String(profile.role||"").trim().toLowerCase().replace(/[\\s-]+/g,"_");
+    const role=String(profile.role||"").trim().toLowerCase().replace(/[\s-]+/g,"_");
     const status=String(profile.status||"").trim().toLowerCase();
 
     if(!["superadmin","super_admin","admin","administrator"].includes(role)){
@@ -597,7 +624,7 @@ function init(){
    if(!session?.user?.email)return;
    try{
      const profile=await fetchProfile(session.user.id);
-     const role=String(profile.role||"").trim().toLowerCase().replace(/[\\s-]+/g,"_");
+     const role=String(profile.role||"").trim().toLowerCase().replace(/[\s-]+/g,"_");
      const status=String(profile.status||"").trim().toLowerCase();
      if(["superadmin","super_admin","admin","administrator"].includes(role)&&["approved","active"].includes(status)){
        showMessage("Active administrator session found. Opening console…","success");
