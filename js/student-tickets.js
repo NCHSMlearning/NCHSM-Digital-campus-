@@ -94,8 +94,11 @@ class StudentTicketSystem {
     
     async checkForNewReplies() {
         const supabaseClient = this.getSupabaseClient();
-        if (!supabaseClient || !this.userId) return;
-        
+        // Do not run background polling while the tab is hidden or another
+        // notification pass is still querying the database.
+        if (!supabaseClient || !this.userId || document.hidden || this._notificationCheckInProgress) return;
+
+        this._notificationCheckInProgress = true;
         try {
             // Get all student tickets
             const { data: tickets, error } = await supabaseClient
@@ -146,15 +149,20 @@ class StudentTicketSystem {
             }
             
         } catch (err) {
-            console.error('Error checking replies:', err);
+            // Permission/network failures should not trigger a rapid retry loop.
+            console.warn('Ticket reply check skipped:', err?.message || err);
+        } finally {
+            this._notificationCheckInProgress = false;
         }
     }
     
     startNotificationChecking() {
         if (this.notificationCheckInterval) clearInterval(this.notificationCheckInterval);
+        // One lightweight check per minute instead of every 10 seconds.
+        // The in-flight guard above prevents overlapping database requests.
         this.notificationCheckInterval = setInterval(() => {
-            this.checkForNewReplies();
-        }, 10000); // Check every 10 seconds
+            if (!document.hidden) this.checkForNewReplies();
+        }, 60000);
     }
     
     async waitForDatabase() {
@@ -508,6 +516,8 @@ class StudentTicketSystem {
             return;
         }
         
+        if (this._ticketsLoadInProgress) return;
+        this._ticketsLoadInProgress = true;
         this.showLoading(true);
         
         try {
@@ -530,6 +540,7 @@ class StudentTicketSystem {
             console.error("Failed to load tickets:", error);
             this.showToast('Error loading tickets: ' + error.message, 'error');
         } finally {
+            this._ticketsLoadInProgress = false;
             this.showLoading(false);
         }
     }
