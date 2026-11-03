@@ -1827,6 +1827,33 @@ body{padding:24px;overflow:auto}
 .exam-card-compact{width:100%;max-width:none;margin:0 auto;background:#fff;box-shadow:0 4px 24px rgba(15,23,42,.12)}
 .exam-card-compact table{width:100%;border-collapse:collapse;table-layout:fixed}
 .exam-card-compact img{max-width:100%}
+/* Fixed A4 canvas width: prevent mobile viewport from shrinking the document. */
+html,body{width:210mm!important;min-width:210mm!important;margin:0!important;padding:0!important;background:#fff!important}
+body{padding:5mm!important;overflow:visible!important}
+.exam-card-wrapper{display:block!important;width:190mm!important;min-width:190mm!important;max-width:190mm!important;margin:0 auto!important;padding:0!important;flex:none!important}
+.exam-card-compact{display:flex!important;flex-direction:column!important;width:190mm!important;min-width:190mm!important;max-width:190mm!important;height:286mm!important;min-height:286mm!important;max-height:286mm!important;margin:0!important;flex:none!important;overflow:hidden!important;box-sizing:border-box!important}
+.exam-card-compact .card-header{width:100%!important;min-width:0!important;flex:0 0 auto!important;display:flex!important;align-items:center!important;gap:4mm!important;flex-wrap:nowrap!important}
+.exam-card-compact .header-text{min-width:0!important;flex:1 1 auto!important}
+.exam-card-compact .institution{white-space:normal!important;overflow-wrap:normal!important;font-size:9pt!important}
+.exam-card-compact .card-title{white-space:nowrap!important;font-size:16pt!important}
+.exam-card-compact .info-grid{width:100%!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:3mm 4mm!important}
+.exam-card-compact .units-table{width:100%!important;min-width:0!important;table-layout:fixed!important;flex:0 0 auto!important}
+.exam-card-compact .units-table th:nth-child(1),.exam-card-compact .units-table td:nth-child(1){width:7%!important;white-space:nowrap!important;text-align:center!important}
+.exam-card-compact .units-table th:nth-child(2),.exam-card-compact .units-table td:nth-child(2){width:17%!important}
+.exam-card-compact .units-table th:nth-child(3),.exam-card-compact .units-table td:nth-child(3){width:39%!important}
+.exam-card-compact .units-table th:nth-child(4),.exam-card-compact .units-table td:nth-child(4){width:7%!important}
+.exam-card-compact .units-table th:nth-child(5),.exam-card-compact .units-table td:nth-child(5){width:30%!important}
+.exam-card-compact .units-table td:first-child{white-space:nowrap!important;word-break:keep-all!important}
+.exam-card-compact .units-table td:nth-child(2){overflow-wrap:anywhere!important}
+.exam-card-compact .signatures-row{width:100%!important;display:flex!important;flex-direction:row!important;flex:0 0 auto!important}
+.exam-card-compact .card-footer{width:100%!important;flex:0 0 auto!important;margin-top:3mm!important}
+@media print{
+ @page{size:A4 portrait;margin:0}
+ html,body{width:210mm!important;height:297mm!important;min-width:210mm!important;margin:0!important;padding:0!important;overflow:hidden!important}
+ body{padding:5mm!important}
+ .exam-card-wrapper,.exam-card-compact{width:190mm!important;min-width:190mm!important;max-width:190mm!important}
+ .exam-card-compact{height:286mm!important;min-height:286mm!important;max-height:286mm!important;overflow:hidden!important;break-inside:avoid!important;page-break-inside:avoid!important}
+}
 /* Balanced A4 exam-card layout */
 .exam-card-wrapper{width:100%;max-width:794px;margin:0 auto;padding:0!important}
 .exam-card-compact{width:100%;max-width:none;height:286mm;min-height:286mm;margin:0 auto;background:#fff;color:#172033;font-family:Arial,sans-serif;font-size:10px;display:flex;flex-direction:column;overflow:visible;border:1px solid #cbd5e1;border-radius:0;box-shadow:none}
