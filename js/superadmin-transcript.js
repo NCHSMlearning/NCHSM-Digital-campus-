@@ -793,12 +793,17 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
     const explicitSelection = checkedIds.length
         ? checkedIds
         : (window.transcriptData?.selectedStudents || []).map(String);
-    const filteredIds = (window.transcriptData?.students || []).map(s => String(s.student_id || ''));
+    const filteredStudents = Array.isArray(window.transcriptData?.filteredStudents)
+        ? window.transcriptData.filteredStudents
+        : (window.transcriptData?.students || []);
+    const filteredIds = filteredStudents.map(s => String(s.student_id || '').trim()).filter(Boolean);
+    // Entire filtered block uses the active filtered list; ordinary batch generation
+    // only uses explicit checkbox selection and never silently selects everyone.
     const selectedIds = [...new Set(options.allFiltered
         ? filteredIds
-        : (explicitSelection.length ? explicitSelection : filteredIds))];
+        : explicitSelection.filter(id => filteredIds.includes(id)))];
     if (!selectedIds.length) {
-        notify('No eligible students are loaded. Select intake year and block, then click Load Students.', 'warning');
+        notify('Select one or more students, or use Generate Entire Filtered Block.', 'warning');
         return;
     }
     if (selectedIds.length > 50 && !confirm(`Generate ${selectedIds.length} transcripts? This may take a few minutes.`)) return;
@@ -860,12 +865,12 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
                 if (window._transcriptVerificationPromise) await window._transcriptVerificationPromise;
                 const transcriptState = window._transcriptData;
                 const renderedBlocks = [];
-                // The preview normally shows one block at a time. Bulk output must
-                // include every block in the selected scope, not only the first.
+                // Reuse the academic transcript page itself: no extra bulk headings.
                 (transcriptState?.blockNames || []).forEach((blockName, blockIndex) => {
+                    if (blockFilter !== 'all' && normalizeKRCHNBlock(blockName) !== normalizeKRCHNBlock(blockFilter)) return;
                     if (typeof window.renderTranscriptBlock === 'function') window.renderTranscriptBlock(blockIndex);
                     const blockHtml = content.innerHTML;
-                    if (blockHtml.trim()) renderedBlocks.push(`<div class="bulk-block"><h3>${String(blockName).replace(/[<>&"]/g, '')}</h3>${blockHtml}</div>`);
+                    if (blockHtml.trim()) renderedBlocks.push(blockHtml);
                 });
                 const html = renderedBlocks.join('');
                 if (!html.trim()) throw new Error('Transcript content was empty');
@@ -893,13 +898,15 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
         printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8">
           <title>NCHSM ${scopeLabel} Transcripts</title>
           <style>
-            @page{size:A4 portrait;margin:10mm}
-            body{font-family:Arial,sans-serif;color:#172033;margin:0}
-            .bulk-transcript{page-break-after:always;break-after:page;padding:0}
-            .bulk-transcript:last-child{page-break-after:auto;break-after:auto}
-            .bulk-label{font-size:10px;color:#64748b;text-align:right;margin-bottom:5px}
-            button,.no-print{display:none!important}
-            table{page-break-inside:auto} tr{page-break-inside:avoid;page-break-after:auto}
+            ${window._superadminTranscriptStyles || ''}
+            @page { size:A4 portrait; margin:5mm; }
+            html, body { width:100%; min-height:0; height:auto; margin:0!important; padding:0!important; background:#fff!important; overflow:visible!important; }
+            body { font-family:'Times New Roman','Georgia',serif; font-size:10px; color:#1e293b; }
+            .bulk-transcript { display:block; width:100%; margin:0!important; padding:0!important; page-break-after:always; break-after:page; }
+            .bulk-transcript:last-child { page-break-after:auto; break-after:auto; }
+            .bulk-transcript .container { width:100%!important; max-width:none!important; min-height:0!important; height:auto!important; margin:0!important; padding:7px 8px!important; box-shadow:none!important; }
+            .transcript-admin-actions, .no-print, button { display:none!important; }
+            table { page-break-inside:auto; } tr { page-break-inside:avoid; page-break-after:auto; }
           </style></head><body>
           
           
@@ -1767,6 +1774,7 @@ window.renderTranscriptBlock = function(index) {
 .transcript-admin-actions .btn-close { background:#e2e8f0; color:#475569; }
 .verification-qr .qr-placeholder { width:76px;height:76px;display:flex;align-items:center;justify-content:center;text-align:center;background:#f1f6fb;color:#52677a;font-size:7px;border:1px dashed #94a3b8; }
 `;
+    window._superadminTranscriptStyles = transcriptStyles;
     const transcriptHtml = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Provisional Academic Transcript - ${escapeHtml(student.full_name || 'Student')}</title>
