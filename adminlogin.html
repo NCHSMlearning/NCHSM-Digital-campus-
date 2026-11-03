@@ -787,51 +787,20 @@
         // ============================================================
         // LOAD STAFF RECORDS
         // ============================================================
+        // Staff authentication is handled by Supabase Auth. Never expose password_hash
+        // through an anonymous browser query to staff_records.
         async function loadStaffRecords() {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('staff_records')
-                    .select('id, email, first_name, other_names, department, designation, login_enabled, status, password_hash')
-                    .eq('login_enabled', true)
-                    .eq('status', 'active');
-
-                if (!error && data) {
-                    staffRecords = data;
-                    console.log('📋 Loaded staff records:', staffRecords.length);
-                }
-            } catch (e) {
-                console.warn('⚠️ Could not load staff records:', e);
-            }
+            staffRecords = [];
+            console.log('🔐 Staff authentication uses Supabase Auth + verified profile');
         }
 
         // ============================================================
         // STAFF VERIFICATION
         // ============================================================
+        // No client-side password comparison. All staff and administrators must
+        // authenticate against Supabase Auth before their profile role is checked.
         function verifyStaffLogin(identifier, password) {
-            const staff = staffRecords.find(s =>
-                s.email === identifier || s.id === identifier
-            );
-            if (!staff) return null;
-
-            let storedPassword = staff.password_hash;
-            try {
-                const decoded = atob(storedPassword);
-                storedPassword = decoded;
-            } catch (e) { /* keep raw */ }
-
-            if (storedPassword !== password) return null;
-
-            const isLecturer = staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer';
-            return {
-                user_id: staff.id,
-                staff_id: staff.id,
-                email: staff.email,
-                full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
-                role: isLecturer ? 'lecturer' : 'admin',
-                program: staff.department,
-                is_staff: true,
-                _raw: staff
-            };
+            return null;
         }
 
         // ============================================================
@@ -967,20 +936,20 @@
 
                     // Check if user has admin or lecturer role
                     const userRole = String(userProfile.role || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
-                    const allowedRoles = ['super_admin', 'superadmin', 'admin', 'administrator', 'super', 'admin_user', 'lecturer', 'instructor', 'teacher'];
+                    const allowedRoles = ['super_admin', 'superadmin', 'admin', 'administrator', 'super', 'admin_user', 'lecturer', 'instructor', 'teacher', 'staff'];
 
-                    if (!allowedRoles.includes(userRole)) {
+                    if (!allowedRoles.includes(userRole) || (userRole === 'staff' && !userProfile.staff_id)) {
                         await supabaseClient.auth.signOut();
                         throw new Error('Access denied. You do not have admin or lecturer privileges.');
                     }
 
-                    const isLecturer = ['lecturer', 'instructor', 'teacher'].includes(userRole);
+                    const isLecturer = ['lecturer', 'instructor', 'teacher'].includes(userRole);\n                    const isSuperAdmin = ['superadmin', 'super_admin'].includes(userRole);
 
                     profile = {
                         user_id: userProfile.user_id,
                         email: userProfile.email,
                         full_name: userProfile.full_name || (isLecturer ? 'Lecturer' : 'Admin'),
-                        role: isLecturer ? 'lecturer' : 'admin',
+                        role: isSuperAdmin ? 'superadmin' : (isLecturer ? 'lecturer' : 'admin'),
                         program: userProfile.program || userProfile.department,
                         staff_id: userProfile.staff_id || null,
                         is_staff: false,
@@ -1152,7 +1121,7 @@
 
         console.log('%c🔐 Admin & Lecturer Login', 'color: #0A3D62; font-size: 16px; font-weight: bold;');
         console.log('%c✅ Admins → adminexams.html | Lecturers → lecturerexams.html', 'color: #38A169;');
-        console.log('%c🔑 Uses staff_records + consolidated_user_profiles_table', 'color: #F59E0B;');
+        console.log('%c🔑 Uses Supabase Auth + consolidated_user_profiles_table (no public password-hash reads)', 'color: #F59E0B;');
         console.log('%c✅ Session stored in BOTH userProfile AND adminSession', 'color: #8B5CF6;');
     </script>
 </body>
