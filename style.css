@@ -2794,3 +2794,270 @@ a:focus-visible {
  #dashboard-content .nrd-attendance-foot{gap:7px;font-size:8px}
 }
 @media(prefers-reduced-motion:reduce){#dashboard-content .nchsm-reference-dashboard *{transition:none!important;animation:none!important}}
+
+
+/* ============================================================
+   NCHSM SUPER ADMIN SIDEBAR — LAYOUT POLISH
+   Scoped to superadmin.html only; preserves existing navigation
+   handlers, menu IDs, theme buttons and logout action.
+   ============================================================ */
+#sidebar:has(#sidebarSearch) {
+    width: 280px !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    box-sizing: border-box !important;
+    padding: 18px 14px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    overscroll-behavior: contain;
+    background: linear-gradient(160deg, #101b55 0%, #111d63 48%, #0a1748 100%) !important;
+    box-shadow: 8px 0 28px rgba(9, 18, 55, .20) !important;
+    scrollbar-width: none !important;
+}
+#sidebar:has(#sidebarSearch)::-webkit-scrollbar { display: none !important; }
+
+#sidebar:has(#sidebarSearch) > .sidebar-header {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    padding: 14px 8px 20px !important;
+    margin: 0 0 14px !important;
+    border-bottom: 1px solid rgba(255,255,255,.14) !important;
+    gap: 12px !important;
+}
+#sidebar:has(#sidebarSearch) > .sidebar-header img {
+    width: 54px !important;
+    height: 54px !important;
+    flex: 0 0 54px !important;
+    object-fit: contain !important;
+    border-radius: 15px !important;
+    background: #050b25 !important;
+    padding: 5px !important;
+    box-shadow: 0 5px 14px rgba(0,0,0,.18);
+}
+#sidebar:has(#sidebarSearch) > .sidebar-header h2 {
+    font-size: 19px !important;
+    line-height: 1.2 !important;
+    letter-spacing: -.35px !important;
+}
+#sidebar:has(#sidebarSearch) > .sidebar-header span {
+    font-size: 11px !important;
+    padding: 4px 11px !important;
+    background: rgba(148,163,255,.20) !important;
+}
+
+#sidebar:has(#sidebarSearch) > div:has(.color-btn) {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    padding: 7px 8px 12px !important;
+    margin: 0 0 12px !important;
+    gap: 8px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    border-bottom: 1px solid rgba(255,255,255,.12) !important;
+}
+#sidebar:has(#sidebarSearch) .color-btn {
+    width: 27px !important;
+    height: 27px !important;
+    min-width: 27px !important;
+    flex: 0 0 27px !important;
+    border: 2px solid rgba(255,255,255,.35) !important;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 2px 5px rgba(0,0,0,.16);
+    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease !important;
+}
+#sidebar:has(#sidebarSearch) .color-btn:hover,
+#sidebar:has(#sidebarSearch) .color-btn:focus-visible {
+    transform: scale(1.1) !important;
+    border-color: #fff !important;
+    outline: none !important;
+}
+#sidebar:has(#sidebarSearch) > div:has(.color-btn) > button:not(.color-btn) {
+    padding: 3px 10px !important;
+    margin-left: auto !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+}
+
+#sidebar:has(#sidebarSearch) .search-container {
+    flex: 0 0 auto !important;
+    padding: 0 4px 13px !important;
+    margin: 0 0 10px !important;
+    border-bottom: 1px solid rgba(255,255,255,.12) !important;
+}
+#sidebar:has(#sidebarSearch) .search-wrapper {
+    min-height: 46px !important;
+    padding: 0 12px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    border-radius: 13px !important;
+    background: rgba(255,255,255,.09) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+#sidebar:has(#sidebarSearch) #sidebarSearch {
+    min-width: 0 !important;
+    font-size: 13px !important;
+    color: #fff !important;
+}
+#sidebar:has(#sidebarSearch) #sidebarSearch::placeholder { color: rgba(226,232,255,.58) !important; }
+#sidebar:has(#sidebarSearch) .search-wrapper kbd {
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+    color: rgba(255,255,255,.72) !important;
+}
+
+#sidebar:has(#sidebarSearch) > #mainNav {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 4px 0 12px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(190,202,255,.34) transparent !important;
+}
+#sidebar:has(#sidebarSearch) > #mainNav::-webkit-scrollbar { width: 5px !important; }
+#sidebar:has(#sidebarSearch) > #mainNav::-webkit-scrollbar-track { background: transparent !important; }
+#sidebar:has(#sidebarSearch) > #mainNav::-webkit-scrollbar-thumb {
+    background: rgba(190,202,255,.34) !important;
+    border-radius: 20px !important;
+}
+#sidebar:has(#sidebarSearch) > #mainNav > li { margin-bottom: 3px !important; }
+#sidebar:has(#sidebarSearch) > #mainNav > .nav-section {
+    padding: 13px 12px 7px !important;
+    margin-top: 4px !important;
+    color: rgba(219,228,255,.64) !important;
+    letter-spacing: 1.05px !important;
+}
+#sidebar:has(#sidebarSearch) > #mainNav a[data-tab],
+#sidebar:has(#sidebarSearch) > #mainNav .dropdown-toggle {
+    min-height: 42px !important;
+    box-sizing: border-box !important;
+    margin: 2px 3px !important;
+    padding: 10px 12px !important;
+    border-radius: 11px !important;
+    color: rgba(240,244,255,.88) !important;
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+    font-weight: 550 !important;
+    border-left: 3px solid transparent !important;
+    background: transparent !important;
+    transition: background .16s ease, color .16s ease, border-color .16s ease !important;
+}
+#sidebar:has(#sidebarSearch) > #mainNav a[data-tab] i,
+#sidebar:has(#sidebarSearch) > #mainNav .dropdown-toggle > i:first-child {
+    width: 21px !important;
+    flex: 0 0 21px !important;
+    text-align: center !important;
+    font-size: 14px !important;
+}
+#sidebar:has(#sidebarSearch) > #mainNav a[data-tab]:hover,
+#sidebar:has(#sidebarSearch) > #mainNav .dropdown-toggle:hover,
+#sidebar:has(#sidebarSearch) > #mainNav .nav-dropdown.open > .dropdown-toggle {
+    background: rgba(255,255,255,.09) !important;
+    color: #fff !important;
+}
+#sidebar:has(#sidebarSearch) > #mainNav a[data-tab].active {
+    background: linear-gradient(100deg, rgba(47,91,220,.62), rgba(50,75,160,.34)) !important;
+    color: #fff !important;
+    border-left-color: #fff !important;
+    box-shadow: inset 0 0 0 1px rgba(130,160,255,.22), 0 5px 14px rgba(0,0,0,.13) !important;
+    font-weight: 700 !important;
+}
+#sidebar:has(#sidebarSearch) > #mainNav .dropdown-menu {
+    margin: 4px 4px 7px 20px !important;
+    width: calc(100% - 26px) !important;
+    border-radius: 9px !important;
+    background: rgba(4,12,43,.40) !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
+    border-left: 2px solid rgba(125,155,255,.58) !important;
+    padding: 5px 0 !important;
+}
+#sidebar:has(#sidebarSearch) > #mainNav .dropdown-menu li a {
+    min-height: 34px !important;
+    margin: 1px 3px !important;
+    padding: 7px 10px 7px 13px !important;
+    border-radius: 7px !important;
+    font-size: 12px !important;
+    color: rgba(230,236,255,.82) !important;
+}
+#sidebar:has(#sidebarSearch) > #mainNav .dropdown-menu li a:hover {
+    background: rgba(255,255,255,.09) !important;
+    color: #fff !important;
+}
+
+#sidebar:has(#sidebarSearch) > .nav + .nav-section {
+    flex: 0 0 auto !important;
+    padding: 11px 12px 5px !important;
+    margin: 8px 0 0 !important;
+    color: rgba(219,228,255,.60) !important;
+}
+#sidebar:has(#sidebarSearch) > .nav + .nav-section + li {
+    flex: 0 0 auto !important;
+    list-style: none !important;
+    margin: 0 2px 8px !important;
+}
+#sidebar:has(#sidebarSearch) > .nav + .nav-section + li > a {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 44px !important;
+    gap: 11px !important;
+    padding: 9px 12px !important;
+    border-radius: 10px !important;
+    border-left: 3px solid #fbbf24 !important;
+    background: rgba(255,255,255,.055) !important;
+    color: #fff !important;
+    font-size: 13px !important;
+}
+#sidebar:has(#sidebarSearch) > .nav + .nav-section + li > a:hover {
+    background: rgba(255,255,255,.11) !important;
+}
+#sidebar:has(#sidebarSearch) > .logout {
+    position: static !important;
+    inset: auto !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 11px 0 0 !important;
+    border-top: 1px solid rgba(255,255,255,.15) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    z-index: 1 !important;
+}
+#sidebar:has(#sidebarSearch) > .logout > a {
+    min-height: 45px !important;
+    justify-content: flex-start !important;
+    margin: 0 !important;
+    padding: 11px 14px !important;
+    border-radius: 11px !important;
+    background: #ef4444 !important;
+    color: #fff !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 5px 14px rgba(239,68,68,.20) !important;
+}
+#sidebar:has(#sidebarSearch) > .logout > a:hover {
+    background: #dc2626 !important;
+    transform: translateY(-1px);
+}
+#sidebar:has(#sidebarSearch) > .logout > a i { width: 21px !important; text-align: center !important; }
+
+@media (max-width: 768px) {
+    #sidebar:has(#sidebarSearch) {
+        width: min(300px, 88vw) !important;
+        left: calc(-1 * min(300px, 88vw)) !important;
+        padding-top: 60px !important;
+        overflow: hidden !important;
+    }
+    #sidebar:has(#sidebarSearch).active { left: 0 !important; }
+    #sidebar:has(#sidebarSearch) > #mainNav {
+        max-height: none !important;
+        padding-bottom: 8px !important;
+    }
+}
