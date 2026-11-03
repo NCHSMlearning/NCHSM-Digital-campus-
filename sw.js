@@ -17,6 +17,7 @@ const urlsToCache = [
     '/css/main.css',
     '/css/dashboard.css',
     '/js/database.js',
+    '/js/nchsm-mobile-enhancements.js',
     '/js/utils.js',
     '/js/ui.js',
     '/js/dashboard.js',
