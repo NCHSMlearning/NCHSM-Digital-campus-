@@ -221,47 +221,31 @@
       install.hidden = true;
     });
 
-    let installHelpOpen = false;
     const triggerInstall = async function () {
-      if (installHelpOpen) { installHelpOpen = false; closeInvite(); return; }
-      if (installPrompt) {
-        const promptEvent = installPrompt;
-        installPrompt = null;
-        try {
-          await promptEvent.prompt();
-          const choice = await promptEvent.userChoice;
-          if (choice && choice.outcome === 'accepted') {
-            closeInvite();
-            install.hidden = true;
-          }
-        } catch (error) {
-          console.warn('NCHSM install prompt could not be opened:', error);
+      // Only expose this control after the browser has supplied its native
+      // installation event. Calling prompt() must happen from this click.
+      if (!installPrompt) return;
+      const promptEvent = installPrompt;
+      installPrompt = null;
+      try {
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          closeInvite();
+          install.hidden = true;
+        } else {
+          // The user declined; wait for a fresh browser event before showing it again.
+          install.hidden = true;
         }
-        return;
+      } catch (error) {
+        console.warn('NCHSM native install prompt failed:', error);
+        install.hidden = true;
       }
-      // Browsers only expose a native install sheet when they dispatch
-      // beforeinstallprompt. Never pretend we can silently install an app.
-      const isAppleMobile = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const isAndroid = /android/i.test(navigator.userAgent);
-      const title = invite.querySelector('#nchsmInstallTitle');
-      const description = invite.querySelector('.nchsm-install-card p');
-      const benefits = invite.querySelector('.nchsm-install-benefits');
-      const accept = invite.querySelector('.nchsm-install-accept');
-      installHelpOpen = true;
-      if (title) title.textContent = 'Install NCHSM Digital Campus';
-      if (description) description.textContent = isAppleMobile
-        ? 'Your browser has not provided a direct install prompt. Use the Share menu, then choose Add to Home Screen.'
-        : isAndroid
-          ? 'Your browser has not made its one-tap install option available yet. Open the browser menu (⋮) and choose Install app or Add to Home screen.'
-          : 'Your browser has not made its one-tap install option available yet. Use the browser menu and choose Install app.';
-      if (benefits) benefits.innerHTML = isAppleMobile
-        ? '<span>1. Tap Share</span><span>2. Add to Home Screen</span>'
-        : '<span>1. Open browser menu ⋮</span><span>2. Choose Install app</span>';
-      if (accept) accept.textContent = 'Got it';
-      invite.classList.add('open');
     };
     inviteAccept.addEventListener('click', triggerInstall);
     install.addEventListener('click', triggerInstall);
+    // No fallback instructions: if the browser cannot provide a native prompt,
+    // keep the install control and invitation hidden.
 
     let refreshing = false;
     navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).then(function (registration) {
