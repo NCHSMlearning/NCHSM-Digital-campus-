@@ -188,15 +188,55 @@ class MessagesSystem {
     async loadMessages() {
         console.log('📨 Loading messages...');
         
-        const userProfile = this.getUserProfile();
-        const userId = this.getCurrentUserId();
         const supabaseClient = this.getSupabaseClient();
-        
+
         if (!supabaseClient) {
             this.showMessage('Database connection error', 'error');
             return;
         }
-        
+
+        // Never query student_messages with the public/anon role. This table
+        // contains private student communications and is available only to
+        // authenticated users. Wait briefly for Supabase session restoration.
+        let userId = null;
+        try {
+            for (let attempt = 0; attempt < 10; attempt++) {
+                const { data: sessionData, error: sessionError } =
+                    await supabaseClient.auth.getSession();
+
+                if (sessionError) throw sessionError;
+                userId = sessionData?.session?.user?.id || null;
+                if (userId) break;
+
+                if (attempt < 9) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+        } catch (sessionError) {
+            console.error('Unable to restore message session:', sessionError);
+            this.showMessage('Unable to verify your login. Please sign in again.', 'error');
+            return;
+        }
+
+        if (!userId) {
+            // Do not fall back to an anonymous announcements query: even
+            // announcements share this private table and require auth.
+            this.currentMessages = [];
+            this.currentAnnouncements = [];
+            this.renderMessages();
+            this.updateStats();
+            this.updateUnreadCount();
+            this.showMessage('Please sign in to view your messages.', 'warning');
+            return;
+        }
+
+        // Keep legacy dashboard modules in sync with the verified auth UID.
+        window.currentUserId = userId;
+        if (window.db && typeof window.db === 'object') {
+            window.db.currentUserId = userId;
+        }
+
+        const userProfile = this.getUserProfile();
         const program = userProfile?.program || userProfile?.department || 'General';
         
         // Show loading state
@@ -212,13 +252,8 @@ class MessagesSystem {
                 .order('created_at', { ascending: false })
                 .limit(50);
             
-            // If user is logged in, filter by recipient
-            if (userId) {
-                query = query.or(`recipient_id.eq.${userId},recipient_program.eq.${program},recipient_type.eq.Announcement`);
-            } else {
-                // If no user, only show announcements
-                query = query.eq('recipient_type', 'Announcement');
-            }
+            // Authenticated-only query: personal, program-wide and announcement messages.
+            query = query.or(`recipient_id.eq.${userId},recipient_program.eq.${program},recipient_type.eq.Announcement`);
             
             const { data, error } = await query;
             
@@ -295,7 +330,8 @@ class MessagesSystem {
         try {
             const userId = this.getCurrentUserId();
             const supabaseClient = this.getSupabaseClient();
-            if (!supabaseClient) return;
+            // Polling must never issue a query without an authenticated UID.
+            if (!supabaseClient || !userId) return;
             
             // Get latest message timestamp
             const allMessages = [...this.currentMessages, ...this.currentAnnouncements];
