@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Get current page name
     const currentPage = window.location.pathname.split('/').pop();
-    const isLoginPage = currentPage === 'financelogin.html' || currentPage === '' || currentPage === 'finance-login.html';
+    const isLoginPage = currentPage === 'financelogin.html' || currentPage === 'financelogin' || currentPage === '' || currentPage === 'finance-login.html' || currentPage === 'finance-login';
     const isFinancePage = currentPage === 'finance.html';
     
     console.log('📍 Current page:', currentPage);
