@@ -997,24 +997,30 @@ class UIModule {
     // ============================================================
     
     startReviewsBadgeUpdater() {
-        setTimeout(() => this.updateReviewsBadge(), 500);
-        if (this.reviewsBadgeInterval) {
-            clearInterval(this.reviewsBadgeInterval);
-        }
+        if (this.reviewsBadgeInterval) clearInterval(this.reviewsBadgeInterval);
+        // Never poll protected review data as an anonymous visitor.
         this.reviewsBadgeInterval = setInterval(() => {
-            this.updateReviewsBadge();
-        }, 30000);
+            if (!document.hidden) this.updateReviewsBadge();
+        }, 60000);
+        setTimeout(() => {
+            if (!document.hidden) this.updateReviewsBadge();
+        }, 2000);
     }
     
     async updateReviewsBadge() {
+        if (this._reviewsBadgeInProgress || document.hidden) return;
+        this._reviewsBadgeInProgress = true;
         try {
             const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-            
+            if (!supabase?.auth?.getSession) return;
+
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !session?.user?.id) return;
+
             const reviewsTab = document.getElementById('reviews');
             if (!reviewsTab) return;
             
-            // Get pending reviews count
+            // Get pending reviews count only for an authenticated portal user.
             const { count, error } = await supabase
                 .from('student_reviews')
                 .select('*', { count: 'exact', head: true })
@@ -1144,6 +1150,8 @@ class UIModule {
             
         } catch (error) {
             console.warn('Could not update badges:', error);
+        } finally {
+            this._reviewsBadgeInProgress = false;
         }
     }
     
