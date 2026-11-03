@@ -2620,6 +2620,8 @@ executeLogin: async function(identifier, password) {
 
         const roleRedirects = {
             'admin': 'admin.html',
+            'superadmin': 'superadmin.html',
+            'super_admin': 'superadmin.html',
             'student': '/student',
             'lecturer': 'lecturer.html'
         };
@@ -2640,7 +2642,8 @@ executeLogin: async function(identifier, password) {
                 const isRoleDashboard = (
                     (role === 'student' && (path === '/student.html' || path === '/student')) ||
                     (role === 'admin' && (path === '/admin.html' || path === '/admin')) ||
-                    (role === 'lecturer' && (path === '/lecturer.html' || path === '/lecturer'))
+                    (role === 'lecturer' && (path === '/lecturer.html' || path === '/lecturer')) ||
+                    ((role === 'superadmin' || role === 'super_admin') && (path === '/superadmin.html' || path === '/superadmin'))
                 );
                 if (isRoleDashboard || isStudentRoute) redirectFile = target.pathname + target.search + target.hash;
             }
