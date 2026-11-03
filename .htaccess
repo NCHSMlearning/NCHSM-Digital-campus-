@@ -38,13 +38,21 @@ RewriteRule ^login\.html$ - [L]
 RewriteRule ^login$ /login.html [L,QSA]
 RewriteRule ^exam_login\.html$ - [L]
 RewriteRule ^student\.html$ /student [R=301,L]
+
+# Clean, stable entry points for role-specific portals (all map to real files).
+RewriteRule ^adminlogin/?$ adminlogin.html [END,QSA]
+RewriteRule ^financelogin/?$ financelogin.html [END,QSA]
+RewriteRule ^finance-login/?$ financelogin.html [END,QSA]
+RewriteRule ^parents-login/?$ parents.html [END,QSA]
+RewriteRule ^parents-login\.html$ /parents.html [L,QSA]
+RewriteRule ^lecturer/?$ lecturer.html [END,QSA]
 RewriteRule ^admin\.html$ - [L]
 RewriteRule ^superadmin\.html$ - [L]
 RewriteRule ^lecturer\.html$ - [L]
 
 # ------------------------------------------------------------------
 # Clean student deep links (served by the student portal shell)
-RewriteRule ^student/timetable/?$ /student.html [L,QSA]
+RewriteRule ^student/timetable/?$ student.html [END,QSA]
 
 # CUSTOM ROUTES
 # ------------------------------------------------------------------
@@ -52,9 +60,9 @@ RewriteRule ^student/timetable/?$ /student.html [L,QSA]
 RewriteRule ^transcripts\.html$ /transcripts [R=301,L]
 RewriteRule ^transcripts$ /transcripts.html [L,QSA]
 
-RewriteRule ^home$ /student.html [L,QSA]
-RewriteRule ^dashboard$ /student.html [L,QSA]
-RewriteRule ^student$ /student.html [L,QSA]
+RewriteRule ^home$ student.html [END,QSA]
+RewriteRule ^dashboard$ student.html [END,QSA]
+RewriteRule ^student$ student.html [END,QSA]
 RewriteRule ^admin$ /admin.html [L,QSA]
 RewriteRule ^superadmin$ /superadmin.html [L,QSA]
 
