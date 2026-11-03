@@ -237,15 +237,28 @@
         }
         return;
       }
+      // Browsers only expose a native install sheet when they dispatch
+      // beforeinstallprompt. Never pretend we can silently install an app.
       const isAppleMobile = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const message = isAppleMobile
-        ? 'To install, tap Share, then choose Add to Home Screen.'
-        : 'In Chrome or Microsoft Edge, open the browser menu and choose Install NCHSM Digital Campus (or Apps → Install this site as an app).';
-      if (window.Swal && typeof window.Swal.fire === 'function') {
-        window.Swal.fire({ title: 'Install NCHSM Digital Campus', text: message, icon: 'info', confirmButtonColor: '#073b5c' });
-      } else {
-        window.alert(message);
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const title = invite.querySelector('#nchsmInstallTitle');
+      const description = invite.querySelector('.nchsm-install-card p');
+      const benefits = invite.querySelector('.nchsm-install-benefits');
+      const accept = invite.querySelector('.nchsm-install-accept');
+      if (title) title.textContent = 'Install NCHSM Digital Campus';
+      if (description) description.textContent = isAppleMobile
+        ? 'Your browser has not provided a direct install prompt. Use the Share menu, then choose Add to Home Screen.'
+        : isAndroid
+          ? 'Your browser has not made its one-tap install option available yet. Open the browser menu (⋮) and choose Install app or Add to Home screen.'
+          : 'Your browser has not made its one-tap install option available yet. Use the browser menu and choose Install app.';
+      if (benefits) benefits.innerHTML = isAppleMobile
+        ? '<span>1. Tap Share</span><span>2. Add to Home Screen</span>'
+        : '<span>1. Open browser menu ⋮</span><span>2. Choose Install app</span>';
+      if (accept) {
+        accept.textContent = 'Got it';
+        accept.onclick = function () { closeInvite(); };
       }
+      invite.classList.add('open');
     };
     inviteAccept.addEventListener('click', triggerInstall);
     install.addEventListener('click', triggerInstall);
