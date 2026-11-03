@@ -322,7 +322,7 @@ async function loadSessions() {
             <td>${new Date(s.session_date).toLocaleDateString()} @ ${s.session_time}</td>
             <td>${allCourses.find(c => c.id === s.course_id)?.course_name || 'N/A'}</td>
             <td>${s.target_program}/${s.block_term}</td>
-            <td><button class="btn-action" onclick="navigator.clipboard.writeText('${window.location.origin}/attendance?session=${s.id}')">Copy Link</button></td>
+            <td><button class="btn-action" onclick="navigator.clipboard.writeText('${window.location.origin}/student/attendance?session=${encodeURIComponent(s.id)}')">Copy Link</button></td>
             <td><button class="btn-danger" onclick="deleteSession('${s.id}')">Delete</button></td>
         </tr>
     `).join('');
