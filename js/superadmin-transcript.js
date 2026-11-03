@@ -1663,9 +1663,10 @@ window.renderTranscriptBlock = function(index) {
         .transcript-top { display: grid; grid-template-columns: minmax(0, 1fr) 120px; align-items: start; column-gap: 8px; }
         .transcript-top > .header { width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
         .transcript-top > .verification-qr { position: relative; top: auto; right: auto; z-index: 2; grid-column: 2; grid-row: 1; width: 88px; min-height: 90px; justify-self: end; align-self: start; margin-top: 2px; }
-        .transcript-top > .transcript-generation-number { position: relative; top: auto; right: auto; z-index: 3; display: none; grid-column: 2; grid-row: 1; width: 120px; min-width: 120px; margin: 0 0 5px; padding: 6px 3px 7px; border: 1.5px solid #C9A54C; border-radius: 7px; background: linear-gradient(145deg,#fffdf5 0%,#f4ead0 100%); color: #173F70; font-family: Arial, sans-serif; line-height: 1.15; text-align: center; box-shadow: 0 2px 5px rgba(15,42,72,.16), inset 0 0 0 1px rgba(255,255,255,.9); }
-        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 4px; color: #8A6A25; font-size: 6px; letter-spacing: 1.1px; font-weight: 900; white-space: normal; }
-        .transcript-top > .transcript-generation-number #transcriptGenerationNumberValue { display: block; color: #123B68; font-family: 'Georgia',serif; font-size: 7px; line-height: 1.2; letter-spacing: 0; font-weight: 900; white-space: nowrap; word-break: keep-all; overflow-wrap: normal; }
+        .transcript-top > .transcript-generation-number { position: relative; top: auto; right: auto; z-index: 3; display: none; grid-column: 2; grid-row: 1; width: 120px; min-width: 120px; margin: 0 0 5px; padding: 3px 0 5px; border: 0; border-radius: 0; background: #fff; color: #493638; font-family: Arial, Helvetica, sans-serif; line-height: 1; text-align: center; box-shadow: none; }
+        .transcript-top > .transcript-generation-number .number-label { display: block; margin-bottom: 4px; color: #475569; font-family: Arial,sans-serif; font-size: 6px; letter-spacing: .7px; font-weight: 700; white-space: normal; }
+        .transcript-number-prefix { display: inline-block; color: #493638; font-family: Arial,Helvetica,sans-serif; font-size: 7px; line-height: 1.2; font-weight: 300; letter-spacing: -.2px; white-space: nowrap; }
+        .transcript-number-sequence { display: inline-block; color: #493638; font-family: Arial,Helvetica,sans-serif; font-size: 13px; line-height: 1; font-weight: 300; letter-spacing: -.35px; white-space: nowrap; }
         .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 88px; padding: 4px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
         .verification-qr img { display: block; width: 76px; height: 76px; min-width: 76px; min-height: 76px; object-fit: contain; image-rendering: pixelated; }
         .header { text-align: center; border-bottom: 3px double #1E559B; padding-bottom: 5px; margin-bottom: 6px; }
@@ -1755,7 +1756,7 @@ window.renderTranscriptBlock = function(index) {
         @media print {
             @page { size: A4 portrait; margin: 5mm; }
             html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; min-height: 0 !important; height: auto !important; }
-            .transcript-preview-toolbar, .no-print, .btn-print, .btn-close { display: none !important; }
+            .transcript-preview-toolbar, .transcript-admin-actions, .no-print, .btn-print, .btn-close { display: none !important; }
             .container { width: 100% !important; max-width: none !important; min-height: 0 !important; height: auto !important; margin: 0 !important; box-shadow: none !important; }
         }
     
@@ -1782,7 +1783,7 @@ window.renderTranscriptBlock = function(index) {
       <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
       <div class="date">Generated: ${now}</div>
     </div>
-    <div class="transcript-generation-number" id="transcriptGenerationNumber" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"></span></div>
+    <div class="transcript-generation-number" id="transcriptGenerationNumber" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"><span class="transcript-number-prefix"></span><span class="transcript-number-sequence"></span></span></div>
     <div class="verification-qr"><div id="transcriptVerificationQr" class="qr-placeholder">Preparing<br>verification…</div><span>VERIFY</span></div>
   </div>
   <div class="student-info-wrapper">
@@ -1858,7 +1859,18 @@ window.renderTranscriptBlock = function(index) {
             const numberBox = content.querySelector('#transcriptGenerationNumber');
             const numberValue = content.querySelector('#transcriptGenerationNumberValue');
             if (numberBox && numberValue && result.transcript_number) {
-                numberValue.textContent = result.transcript_number;
+                const serial = String(result.transcript_number).trim();
+                const sequenceMatch = serial.match(/(\\d{5})$/);
+                const prefix = sequenceMatch ? serial.slice(0, -5) : serial;
+                const sequence = sequenceMatch ? sequenceMatch[1] : '';
+                const prefixElement = numberValue.querySelector('.transcript-number-prefix');
+                const sequenceElement = numberValue.querySelector('.transcript-number-sequence');
+                if (prefixElement && sequenceElement) {
+                    prefixElement.textContent = prefix;
+                    sequenceElement.textContent = sequence;
+                } else {
+                    numberValue.textContent = serial;
+                }
                 numberBox.style.display = 'block';
             }
             const verifyUrl = new URL('/transcripts', window.location.origin);
