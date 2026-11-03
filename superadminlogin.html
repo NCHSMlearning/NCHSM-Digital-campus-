@@ -339,7 +339,7 @@ async function fetchProfile(userId){
  }
 
  // Prefer a valid Super Admin record if the two profile stores are out of sync.
- const normalizeRole=value=>String(value||"").trim().toLowerCase().replace(/[\\s-]+/g,"_");
+ const normalizeRole=value=>String(value||"").trim().toLowerCase().replace(/[\s-]+/g,"_");
  const valid=candidates.find(p=>["superadmin","super_admin"].includes(normalizeRole(p.role)));
  const profile=valid||candidates[0];
 
