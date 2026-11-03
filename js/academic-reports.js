@@ -34,7 +34,7 @@
             if (this.isTVET(programCode)) {
                 return ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
             }
-            return ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+            return ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'FQE', 'Final'];
         },
         
         getProgramType: function(programCode) {
@@ -49,20 +49,22 @@
         getYearMapping: function(programCode, blockName) {
             const code = String(programCode).toUpperCase().trim();
             
-            // KRCHN Nursing: 3 Years
-            if (code === 'KRCHN' || code === 'NURSING') {
-                const nursingMapping = {
-                    'Introductory': { year: 0, label: 'Year 1' },
-                    'Block 1': { year: 0, label: 'Year 1' },
-                    'Block 2': { year: 1, label: 'Year 2' },
-                    'Block 3': { year: 1, label: 'Year 2' },
-                    'Block 4': { year: 2, label: 'Year 3' },
-                    'Block 5': { year: 2, label: 'Year 3' },
-                    'Block 6': { year: 2, label: 'Year 3' },
-                    'Final': { year: 2, label: 'Year 3' }
-                };
-                return nursingMapping[blockName] || { year: 0, label: 'Year 1' };
-            }
+            // KRCHN annual structure:
+            // Year 1: Introductory + Block 1
+            // Year 2: Block 2 + Block 3
+            // Year 3: Block 4 + Block 5 + FQE (legacy "Final" is treated as FQE).
+            const normalizedBlock = String(blockName || '').trim().toLowerCase();
+            const nursingMapping = {
+                'introductory': { year: 0, label: 'Year 1' },
+                'block 1': { year: 0, label: 'Year 1' },
+                'block 2': { year: 1, label: 'Year 2' },
+                'block 3': { year: 1, label: 'Year 2' },
+                'block 4': { year: 2, label: 'Year 3' },
+                'block 5': { year: 2, label: 'Year 3' },
+                'fqe': { year: 2, label: 'Year 3' },
+                'final': { year: 2, label: 'Year 3' }
+            };
+            return nursingMapping[normalizedBlock] || { year: 0, label: 'Year 1' };
             
             // TVET: Extract year from block name
             const yearMatch = blockName.match(/Year\s+(\d+)/i);
