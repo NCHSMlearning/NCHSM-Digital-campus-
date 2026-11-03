@@ -935,7 +935,7 @@
                     }
 
                     // Check if user has admin or lecturer role
-                    const userRole = String(userProfile.role || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
+                    const userRole = String(userProfile.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
                     const allowedRoles = ['super_admin', 'superadmin', 'admin', 'administrator', 'super', 'admin_user', 'lecturer', 'instructor', 'teacher', 'staff'];
 
                     if (!allowedRoles.includes(userRole) || (userRole === 'staff' && !userProfile.staff_id)) {
