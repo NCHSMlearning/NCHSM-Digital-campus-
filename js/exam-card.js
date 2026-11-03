@@ -1133,6 +1133,26 @@
             }
         }
 
+        getPastUnitOutcome(unit) {
+            const explicit = String(
+                unit?.unit_status || unit?.result_status || unit?.pass_status ||
+                unit?.retake_status || unit?.final_status || unit?.result ||
+                unit?.status || unit?.grade || unit?.published_grade || ''
+            ).trim().toLowerCase();
+
+            if (/^(pass|passed|competent|distinction|credit|satisfactory)$/.test(explicit) ||
+                /\b(pass|passed|competent)\b/.test(explicit)) return 'PASSED';
+            if (/^(fail|failed|not passed|not_passed|incomplete|not competent)$/.test(explicit) ||
+                /\b(fail|failed|not passed|not competent)\b/.test(explicit)) return 'NOT PASSED';
+
+            const scoreValue = unit?.final_score ?? unit?.published_score ?? unit?.overall_score ??
+                unit?.final_total ?? unit?.total_score ?? unit?.total ?? unit?.score ?? unit?.marks;
+            if (scoreValue !== null && scoreValue !== undefined && scoreValue !== '' && Number.isFinite(Number(scoreValue))) {
+                return Number(scoreValue) >= 60 ? 'PASSED' : 'NOT PASSED';
+            }
+            return 'STATUS NOT RECORDED';
+        }
+
         viewPastExam(examId) {
             const record = this.pastExamRecords.find(r => r.id == examId);
             if (!record) {
@@ -1141,14 +1161,25 @@
             }
             
             let unitsList = '';
-            const units = record.units_list || [];
+            const units = Array.isArray(record.units_list) ? record.units_list : [];
             if (units.length > 0) {
-                unitsList = units.map((unit, i) => `
-                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px;">
-                        <span>${i + 1}. ${this.cleanText(unit.unit_code || '')} - ${this.cleanText(unit.unit_name || '')}</span>
-                        <span style="font-weight: 600;">${unit.credits || 0} cr</span>
-                    </div>
-                `).join('');
+                unitsList = units.map((unit, i) => {
+                    const unitName = this.cleanText(unit.unit_name || unit.subject_name || unit.name ||
+                        unit.unit_code || unit.course_code || 'Unit ' + (i + 1));
+                    const outcome = this.getPastUnitOutcome(unit);
+                    const passed = outcome === 'PASSED';
+                    const known = outcome !== 'STATUS NOT RECORDED';
+                    const outcomeStyle = passed
+                        ? 'background:#dcfce7;color:#166534;border:1px solid #86efac;'
+                        : (known
+                            ? 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;'
+                            : 'background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;');
+                    return `
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 2px;border-bottom:1px solid #e2e8f0;font-size:13px;">
+                        <span style="font-weight:700;color:#111827;min-width:0;">${i + 1}. ${unitName}</span>
+                        <span style="flex:0 0 auto;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:800;${outcomeStyle}">${outcome}</span>
+                    </div>`;
+                }).join('');
             }
             
             const modal = document.createElement('div');
@@ -1176,7 +1207,7 @@
                     
                     ${unitsList ? `
                         <div style="margin-bottom: 16px;">
-                            <h4 style="font-size: 13px; color: #1e3a5f; margin: 0 0 8px 0;">📋 Units Registered</h4>
+                            <h4 style="font-size: 13px; color: #1e3a5f; margin: 0 0 8px 0;">📋 Units &amp; Results</h4>
                             <div style="background: #f8fafc; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto;">
                                 ${unitsList}
                             </div>
