@@ -1898,74 +1898,9 @@ body{padding:24px;overflow:auto}
         // ============================================
         
         previewA4() {
-            const cardElement = document.getElementById('exam-card-print-area');
-            if (!cardElement) return;
-            
-            const cloneCard = this.prepareCardForPrint(cardElement);
-            
-            const overlay = document.createElement('div');
-            overlay.className = 'preview-overlay';
-            overlay.setAttribute('role', 'dialog');
-            overlay.setAttribute('aria-label', 'A4 Preview');
-            
-            overlay.innerHTML = `
-                <div class="preview-modal">
-                    <button class="preview-close" aria-label="Close">×</button>
-                    <div style="text-align: center; margin-bottom: 15px;">
-                        <h3 style="color: #1e3a5f; margin: 0;">📄 A4 Preview</h3>
-                        <p style="color: #64748b; font-size: 12px; margin: 5px 0 0 0;">
-                            This is how your exam card will look when printed on A4 paper
-                        </p>
-                    </div>
-                    <div style="border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; background: #f8fafc;">
-                        ${cloneCard.outerHTML}
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center; flex-wrap: wrap;">
-                        <button onclick="this.closest('.preview-overlay').remove()" style="
-                            padding: 8px 24px;
-                            border: 1px solid #e2e8f0;
-                            border-radius: 8px;
-                            background: white;
-                            cursor: pointer;
-                            font-weight: 500;
-                        ">Close</button>
-                        <button onclick="window.examCardModule.downloadExamCardDirect()" style="
-                            padding: 8px 24px;
-                            border: none;
-                            border-radius: 8px;
-                            background: #059669;
-                            color: white;
-                            cursor: pointer;
-                            font-weight: 500;
-                        ">📥 Download PDF</button>
-                        <button onclick="window.examCardModule.printExamCard()" style="
-                            padding: 8px 24px;
-                            border: none;
-                            border-radius: 8px;
-                            background: #1e3a5f;
-                            color: white;
-                            cursor: pointer;
-                            font-weight: 500;
-                        ">🖨️ Print</button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(overlay);
-            
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.remove();
-            });
-            
-            overlay.querySelector('.preview-close').addEventListener('click', () => {
-                overlay.remove();
-            });
-            
-            overlay.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') overlay.remove();
-            });
+            this.openExamCardPrintView();
         }
-        
+
         // ============================================
         // PRINT FUNCTIONALITY
         // ============================================
