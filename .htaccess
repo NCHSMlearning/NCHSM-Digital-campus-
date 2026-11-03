@@ -56,7 +56,7 @@ RewriteRule ^lecturer\.html$ - [L]
 
 # ------------------------------------------------------------------
 # Clean student deep links (served by the student portal shell)
-RewriteRule ^student/timetable/?$ student.html [END,QSA]
+RewriteRule ^student/timetable/?$ /student/calendar [R=302,L,QSA]
 
 # CUSTOM ROUTES
 # ------------------------------------------------------------------
@@ -93,7 +93,7 @@ RewriteRule ^ - [L]
 # ------------------------------------------------------------------
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ student.html [L,QSA]
+RewriteRule ^(.*)$ student.html [END,QSA]
 
 # ------------------------------------------------------------------
 # 🔥 FIXED: SECURITY HEADERS WITH CORRECT CSP
