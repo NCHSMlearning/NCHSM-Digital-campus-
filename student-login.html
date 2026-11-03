@@ -337,27 +337,39 @@
                     return;
                 }
 
-                // Step 5: Check required fields
-                const requiredFields = ['program', 'block', 'intake_year'];
-                const missingFields = requiredFields.filter(f => !profile[f]);
+                // Normalize the programme field: older/consolidated records may
+                // store it as program_type, program_name or department.
+                const resolvedProgram = String(
+                    profile.program ||
+                    profile.program_type ||
+                    profile.program_name ||
+                    profile.department ||
+                    ''
+                ).trim();
+                const resolvedBlock = profile.block ?? profile.current_block ?? null;
+                const resolvedIntakeYear = profile.intake_year ?? profile.year_of_intake ?? null;
 
-                if (missingFields.length > 0) {
-                    console.warn('⚠️ Profile incomplete. Missing:', missingFields.join(', '));
-                    // Still login, but show warning
-                    showSuccess('Login successful! Your profile is incomplete. Please contact support.');
-                } else {
-                    showSuccess('✅ Login successful! Redirecting...');
+                const missingFields = [];
+                if (!resolvedProgram) missingFields.push('program');
+                if (resolvedBlock === null || resolvedBlock === undefined || String(resolvedBlock).trim() === '') missingFields.push('block');
+                if (resolvedIntakeYear === null || resolvedIntakeYear === undefined || String(resolvedIntakeYear).trim() === '') missingFields.push('intake_year');
+
+                if (missingFields.length) {
+                    console.warn('Student profile has unresolved academic fields:', missingFields);
                 }
 
-                // Step 6: Store profile in localStorage
+                showSuccess('✅ Login successful! Redirecting...');
+
+                // Step 6: Store normalized profile in localStorage
                 const safeProfile = {
-                    user_id: profile.user_id,
-                    email: profile.email,
+                    ...profile,
+                    user_id: profile.user_id || authData.user.id,
+                    email: profile.email || authData.user.email,
                     full_name: profile.full_name || 'Student',
                     role: profile.role || 'student',
-                    program: profile.program,
-                    block: profile.block,
-                    intake_year: profile.intake_year,
+                    program: resolvedProgram,
+                    block: resolvedBlock,
+                    intake_year: resolvedIntakeYear,
                     student_id: profile.student_id,
                     is_staff: false
                 };
