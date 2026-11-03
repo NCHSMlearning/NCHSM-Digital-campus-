@@ -1759,6 +1759,10 @@
 
             const styles = document.getElementById('exam-card-compact-styles')?.innerHTML || '';
             const card = this.prepareCardForPrint(sourceCard);
+            const unitRows = card.querySelectorAll('.units-table tbody tr:not(.total-row):not(.compressed-row)').length;
+            const targetUnitTableHeightMm = 155;
+            const unitRowHeightMm = unitRows ? Math.max(8.5, Math.min(13, targetUnitTableHeightMm / unitRows)) : 10;
+            card.style.setProperty('--exam-unit-row-height', unitRowHeightMm.toFixed(2) + 'mm');
             const overlay = document.createElement('div');
             overlay.id = 'exam-card-document-preview';
             overlay.setAttribute('role', 'dialog');
@@ -1792,50 +1796,68 @@ body{padding:24px;overflow:auto}
 .exam-card-compact{width:100%;max-width:none;margin:0 auto;background:#fff;box-shadow:0 4px 24px rgba(15,23,42,.12)}
 .exam-card-compact table{width:100%;border-collapse:collapse;table-layout:fixed}
 .exam-card-compact img{max-width:100%}
-/* A4 document layout: preserve every registered unit and all approval signatures. */
-.exam-card-compact{color:#111827;font-family:Arial,sans-serif;font-size:9px;overflow:visible}
-.card-header{min-height:68px;padding:8px 12px;gap:10px}
-.card-logo{height:42px;padding:3px;border-radius:4px}
-.institution{font-size:9px;letter-spacing:.25px}
-.card-title{font-size:17px;letter-spacing:.4px;gap:6px}
-.card-subtitle{font-size:8px}
-.status-badge{font-size:9px;padding:4px 9px}
-.info-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px 10px;padding:8px 12px;font-size:9px}
-.info-item{min-width:0;overflow-wrap:anywhere}
+/* Balanced A4 exam-card layout */
+.exam-card-wrapper{width:100%;max-width:794px;margin:0 auto;padding:0!important}
+.exam-card-compact{width:100%;max-width:none;min-height:286mm;margin:0 auto;background:#fff;color:#172033;font-family:Arial,sans-serif;font-size:10px;display:flex;flex-direction:column;overflow:visible;border:1px solid #cbd5e1;border-radius:0;box-shadow:none}
+.card-header{min-height:24mm;padding:7mm 7mm;gap:4mm}
+.card-logo{height:15mm;width:auto;padding:2mm;border-radius:2mm}
+.institution{font-size:9px;letter-spacing:.3px}
+.card-title{font-size:19px;letter-spacing:.5px;gap:7px}
+.card-subtitle{font-size:9px}
+.status-badge{font-size:10px;padding:5px 10px}
+.info-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:3mm 4mm;padding:5mm 7mm;font-size:10px}
+.info-item{min-width:0;overflow-wrap:anywhere;line-height:1.35}
 .info-label{margin-right:4px}
-.units-table{font-size:8px;table-layout:fixed}
-.units-table th{padding:5px 4px;font-size:8px;line-height:1.15}
-.units-table td{padding:4px 4px;line-height:1.15;vertical-align:middle;overflow-wrap:anywhere}
+.units-table{width:100%;font-size:9px;table-layout:fixed;border-collapse:collapse;flex:1 0 auto}
+.units-table th{padding:3mm 2mm;font-size:9px;line-height:1.2}
+.units-table td{padding:2mm;line-height:1.25;vertical-align:middle;overflow-wrap:anywhere}
 .units-table th:nth-child(1),.units-table td:nth-child(1){width:5%}
 .units-table th:nth-child(2),.units-table td:nth-child(2){width:18%}
 .units-table th:nth-child(3),.units-table td:nth-child(3){width:40%}
 .units-table th:nth-child(4),.units-table td:nth-child(4){width:7%}
 .units-table th:nth-child(5),.units-table td:nth-child(5){width:30%}
-.signature-cell{padding:2px 3px!important;min-width:0}
-.signature-cell .signature-line{width:88%!important;margin:5px auto 3px!important;border-top:1px solid #111!important;height:1px!important}
-.signature-cell span{font-size:7px!important;line-height:1}
-.total-row td{padding:4px!important}
-.signatures-row{padding:7px 12px;gap:10px}
-.signature{font-size:8px}
-.sign-line{width:82%;margin:6px auto 5px;padding-top:5px;border-top:1px solid #111;height:1px}
-.signature div[style*="font-size: 12px"],.signature div[style*="font-size:12px"]{font-size:9px!important}
-.card-footer{padding:7px 12px}
-.rules-header{font-size:9px;margin-bottom:4px}
-.rules-list{display:grid;grid-template-columns:1fr 1fr;column-gap:12px;margin-bottom:6px}
-.rule-item{font-size:7.5px;line-height:1.2;margin-bottom:2px}
-.student-section{padding-top:5px;margin-top:3px}
-.student-declaration{font-size:8px;line-height:1.2;margin:5px 0}
-.student-sign-line{gap:6px;margin:6px 0 3px}
-.student-label,.student-date{font-size:8px;min-width:auto}
+.units-table tbody tr:not(.total-row):not(.compressed-row){height:var(--exam-unit-row-height,10mm)}
+.signature-cell{padding:1mm 2mm!important;text-align:center;vertical-align:middle}
+.signature-cell .signature-line{width:88%!important;margin:2mm auto 1mm!important;border-top:1px solid #111!important;height:1px!important}
+.signature-cell span{font-size:8px!important;line-height:1.1}
+.total-row td{padding:2.5mm!important}
+.signatures-row{padding:7mm 7mm 5mm;gap:8mm;min-height:27mm}
+.signature{font-size:9px}
+.sign-line{width:82%;margin:5mm auto 2mm;padding-top:2mm;border-top:1px solid #111;height:1px}
+.signature div[style*="font-size: 12px"],.signature div[style*="font-size:12px"]{font-size:10px!important}
+.card-footer{padding:5mm 7mm;margin-top:auto;background:#fffdf2;border-top:1px solid #e2e8f0}
+.rules-header{font-size:10px;margin-bottom:3mm}
+.rules-list{display:grid;grid-template-columns:1fr 1fr;column-gap:8mm;row-gap:1mm;margin-bottom:3mm}
+.rule-item{font-size:8.5px;line-height:1.3;margin:0}
+.student-section{padding-top:3mm;margin-top:2mm}
+.student-declaration{font-size:9px;line-height:1.3;margin:3mm 0;text-align:center}
+.student-sign-line{gap:3mm;margin:4mm 0 1mm}
+.student-label,.student-date{font-size:9px;min-width:auto}
 .signature-line-inline{border-top:1px solid #111;height:1px}
-.exam-card-compact .compressed-row td{padding:4px!important}
+.exam-card-compact .compressed-row td{padding:2mm!important}
 @media screen{
- body{background:#e9eef5}
+ html,body{background:#e9eef5}
+ body{padding:24px}
  .exam-card-wrapper{max-width:794px}
- .exam-card-compact{min-height:0}
+ .exam-card-compact{min-height:1080px}
 }
 @media print{
  @page{size:A4 portrait;margin:5mm}
+ html,body{width:100%!important;height:auto!important;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}
+ body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .exam-card-wrapper{width:100%!important;max-width:none!important;min-width:0!important;margin:0!important;padding:0!important}
+ .exam-card-compact{width:100%!important;min-height:286mm!important;max-width:none!important;margin:0!important;border:1px solid #9ca3af!important;border-radius:0!important;box-shadow:none!important;break-inside:avoid!important;page-break-inside:avoid!important}
+ .card-header{background:#1e3a5f!important;color:#fff!important}
+ .info-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ .signatures-row{display:flex!important;flex-direction:row!important}
+ .units-table{width:100%!important;border-collapse:collapse!important;table-layout:fixed!important}
+ .units-table tr,.units-table td,.units-table th{break-inside:avoid!important;page-break-inside:avoid!important}
+ .action-buttons,button{display:none!important}
+ .card-footer{margin-top:auto!important;break-inside:avoid!important;page-break-inside:avoid!important}
+ .student-sign-line{flex-wrap:nowrap!important}
+ .student-date{width:auto!important;margin-left:auto!important;text-align:right!important}
+ .status-badge,.total-row,thead th{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
  html,body{width:100%!important;height:auto!important;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}
  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
  .exam-card-wrapper{width:100%!important;max-width:none!important;min-width:0!important;margin:0!important;padding:0!important}
