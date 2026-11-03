@@ -109,38 +109,45 @@ class StudentTicketSystem {
             if (error) throw error;
             
             let hasNew = false;
-            
-            for (const ticket of tickets) {
-                // Get latest message in this ticket
-                const { data: latestMessage, error: msgError } = await supabaseClient
+            const ticketIds = (tickets || []).map(ticket => ticket.id).filter(Boolean);
+            let latestByTicket = new Map();
+
+            // Fetch conversation activity for all tickets in one request.
+            // The previous implementation made one extra database request per ticket.
+            if (ticketIds.length) {
+                const { data: messages, error: messagesError } = await supabaseClient
                     .from('ticket_conversations')
-                    .select('id, author_id, created_at, message')
-                    .eq('ticket_id', ticket.id)
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-                
-                if (msgError) continue;
-                
-                if (latestMessage && latestMessage.length > 0) {
-                    const msg = latestMessage[0];
-                    const isFromAdmin = msg.author_id !== this.userId;
-                    const lastSeen = this.lastMessageTimestamps[ticket.id] || ticket.updated_at;
-                    const isNew = new Date(msg.created_at) > new Date(lastSeen);
-                    
-                    // Only notify if message is from admin and new, and not currently viewing
-                    if (isFromAdmin && isNew && this.currentTicketId !== ticket.id) {
-                        this.unreadReplies[ticket.id] = (this.unreadReplies[ticket.id] || 0) + 1;
-                        hasNew = true;
-                        
-                        // Play sound and show toast
-                        this.playNotificationSound();
-                        this.showToast(`🔔 New reply on ticket: ${ticket.ticket_number}`, 'info');
-                        
-                        console.log(`🔔 New reply on ticket ${ticket.ticket_number}`);
+                    .select('id, ticket_id, author_id, created_at, message')
+                    .in('ticket_id', ticketIds)
+                    .order('created_at', { ascending: false });
+
+                if (messagesError) throw messagesError;
+
+                for (const message of (messages || [])) {
+                    if (!latestByTicket.has(message.ticket_id)) {
+                        latestByTicket.set(message.ticket_id, message);
                     }
-                    
-                    this.lastMessageTimestamps[ticket.id] = msg.created_at;
                 }
+            }
+
+            for (const ticket of (tickets || [])) {
+                const msg = latestByTicket.get(ticket.id);
+                if (!msg) continue;
+
+                const isFromAdmin = msg.author_id !== this.userId;
+                const lastSeen = this.lastMessageTimestamps[ticket.id] || ticket.updated_at;
+                const isNew = new Date(msg.created_at) > new Date(lastSeen);
+
+                // Only notify if message is from admin and new, and not currently viewing
+                if (isFromAdmin && isNew && this.currentTicketId !== ticket.id) {
+                    this.unreadReplies[ticket.id] = (this.unreadReplies[ticket.id] || 0) + 1;
+                    hasNew = true;
+                    this.playNotificationSound();
+                    this.showToast(`🔔 New reply on ticket: ${ticket.ticket_number}`, 'info');
+                    console.log(`🔔 New reply on ticket ${ticket.ticket_number}`);
+                }
+
+                this.lastMessageTimestamps[ticket.id] = msg.created_at;
             }
             
             if (hasNew) {
