@@ -1726,7 +1726,10 @@ window.renderTranscriptBlock = function(index) {
         .transcript-top { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 116px; align-items: start; column-gap: 8px; width: 100%; padding-top: 1px; }
         .transcript-top > .header { grid-column: 1; grid-row: 1; width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
         .transcript-verification-column { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; gap: 6px; min-width: 0; position: relative; z-index: 3; }
-        .transcript-verification-column > .transcript-generation-number { position: relative; display: none; width: 116px; min-width: 116px; margin: 0; padding: 3px 0 5px; border: 0; border-radius: 0; background: #fff; color: #493638; font-family: Arial, Helvetica, sans-serif; line-height: 1; text-align: center; box-shadow: none; }
+        .transcript-verification-column > .transcript-generation-number { position: relative; display: none; width: 154px; min-width: 154px; align-self: flex-end; margin: 0 -23px 0 0; padding: 3px 0 5px; border: 0; border-radius: 0; background: #fff; color: #493638; font-family: Arial, Helvetica, sans-serif; line-height: 1; text-align: center; box-shadow: none; white-space: nowrap; }
+        #transcriptGenerationNumberValue { display: flex; flex-wrap: nowrap; align-items: baseline; justify-content: center; gap: 2px; white-space: nowrap; }
+        #transcriptGenerationNumberValue .transcript-number-prefix { font-size: 7px; letter-spacing: -.15px; }
+        #transcriptGenerationNumberValue .transcript-number-sequence { font-size: 12px; letter-spacing: -.2px; }
         .transcript-verification-column > .transcript-generation-number .number-label { display: block; margin-bottom: 5px; color: #475569; font-family: Arial, sans-serif; font-size: 7px; letter-spacing: .8px; font-weight: 700; white-space: normal; }
         .transcript-number-prefix { display: inline-block; color: #493638; font-family: Arial, Helvetica, sans-serif; font-size: 9px; line-height: 1.2; font-weight: 300; letter-spacing: -.25px; white-space: nowrap; }
         .transcript-number-sequence { display: inline-block; color: #493638; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1; font-weight: 300; letter-spacing: -.45px; white-space: nowrap; }
@@ -1912,8 +1915,8 @@ window.renderTranscriptBlock = function(index) {
             .container > .transcript-lower-grid { flex: 0 0 auto !important; margin: 2mm 0 !important; gap: 3mm !important; }
             .container > .transcript-lower-grid > .grading-scale-table,
             .container > .transcript-lower-grid > .academic-summary-panel { height: auto !important; box-sizing: border-box !important; }
-            .container > .signatures { flex: 0 0 auto !important; margin: 2mm 0 !important; min-height: 16mm !important; padding-top: 2mm !important; }
-            .container > .footer { flex: 0 0 auto !important; margin-top: auto !important; padding-top: 1mm !important; }
+            .container > .signatures { flex: 0 0 auto !important; margin: auto 0 2mm !important; min-height: 16mm !important; padding-top: 2mm !important; }
+            .container > .footer { flex: 0 0 auto !important; margin-top: 0 !important; padding-top: 1mm !important; }
             .semester-results-table th { white-space: nowrap !important; }
             .semester-results-table td:nth-child(2) { white-space: nowrap !important; font-size: 9.5px !important; }
             .semester-results-table th { padding-left: 3px !important; padding-right: 3px !important; font-size: 8px !important; line-height: 1.1 !important; white-space: nowrap !important; overflow-wrap: normal !important; }
@@ -1963,10 +1966,10 @@ window.renderTranscriptBlock = function(index) {
     <table class="semester-results-table ${unitTableDensityClass}"><thead><tr>
         <th style="text-align: center; width: 4%; border: 1px solid #1E559B;">#</th>
         <th style="width: 13%; white-space: nowrap; border: 1px solid #1E559B;">Unit Code</th>
-        <th style="width: 40%; border: 1px solid #1E559B;">Unit Name</th>
+        <th style="width: 38%; border: 1px solid #1E559B;">Unit Name</th>
         <th style="text-align: center; width: 8%; white-space: nowrap; border: 1px solid #1E559B;">Grade</th>
-        <th style="text-align: center; width: 14%; white-space: nowrap; border: 1px solid #1E559B;">Credit Points</th>
-        <th style="text-align: center; width: 21%; white-space: nowrap; border: 1px solid #1E559B;">Status</th>
+        <th style="text-align: center; width: 16%; white-space: nowrap; border: 1px solid #1E559B;">Credit Points</th>
+        <th style="text-align: center; width: 19%; white-space: nowrap; border: 1px solid #1E559B;">Status</th>
     </tr></thead><tbody>${tableRows || '<tr><td colspan="6" style="text-align:center;">No approved and published results.</td></tr>'}</tbody></table>
     <div class="transcript-lower-grid">
         <div class="grading-scale-table"><div class="title">Grading Scale (${programType}) — Mark*</div>${gradingScaleHTML}
