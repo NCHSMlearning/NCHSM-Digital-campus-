@@ -1752,9 +1752,26 @@ window.renderTranscriptBlock = function(index) {
         .summary-card .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 800; margin-top: 3px; }
         table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; border: 1px solid #d1d5db; }
         .semester-results-title { margin: 5px 0 0; padding: 6px 10px; background: #1E559B; color: #ffffff; border-radius: 7px 7px 0 0; font-size: 11px; line-height: 1.15; font-weight: 800; letter-spacing: 0.35px; text-transform: uppercase; }
-        table.semester-results-table { margin: 0 0 5px; font-size: 9px; table-layout: fixed; }
-        table.semester-results-table thead th { padding: 5px 4px; font-size: 8px; line-height: 1.1; }
-        table.semester-results-table tbody td { padding: 4px 4px; font-size: 9px; line-height: 1.15; }
+        table.semester-results-table { margin: 0 0 5px; font-size: 10.5px; table-layout: fixed; }
+        table.semester-results-table thead th {
+            padding: 6px 5px;
+            font-size: 9.5px;
+            line-height: 1.2;
+            font-weight: 900;
+            overflow-wrap: anywhere;
+        }
+        table.semester-results-table tbody td {
+            padding: 6px 5px;
+            font-size: 10.5px;
+            line-height: 1.25;
+            vertical-align: middle;
+        }
+        table.semester-results-table tbody td:nth-child(1),
+        table.semester-results-table tbody td:nth-child(4),
+        table.semester-results-table tbody td:nth-child(5),
+        table.semester-results-table tbody td:nth-child(6) {
+            font-size: 10px;
+        }
         /* Unit codes and grade points must always print in bold black, including PDF export. */
         table.semester-results-table tbody td:nth-child(2),
         table.semester-results-table tbody td:nth-child(5),
