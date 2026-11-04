@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="css/admindashboard.css" />
-    <link rel="stylesheet" href="css/lecturer-exams-modern.css?v=3" />
+    <link rel="stylesheet" href="css/lecturer-exams-modern.css?v=4" />
 
     <style>
         /* ---------- Stats Cards ---------- */
@@ -63,15 +63,7 @@
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-brand">
-                <div class="brand-icon">N</div>
-                <div class="brand-text">
-                    <h2>NCHSM <span>Exam</span></h2>
-                    <small>Lecturer Portal</small>
-                </div>
-            </div>
-        </div>
+        <div class="sidebar-header"><div class="sidebar-brand"><div class="brand-crest"><img src="/images/Logo_NCHSM.png" alt="NCHSM crest"></div><div class="brand-text"><h2>NCHSM <span>Exam Portal</span></h2><small>Lecturer Workspace</small></div></div></div>
 
         <div class="sidebar-scroll">
             <div class="menu-section">
@@ -117,41 +109,29 @@
 
     <div class="main-content">
 
-        <div class="top-header">
-            <div class="page-title">
-                <h1 id="pageTitle"><i class="fas fa-th-large"></i> Overview</h1>
-                <p id="pageSubtitle">Welcome to your lecturer dashboard</p>
+        <div class="top-header lecturer-command-topbar">
+            <div class="lecturer-command-brand">
+                <div class="lecturer-command-cap"><i class="fas fa-graduation-cap"></i></div>
+                <div><h1>NCHSM Exam Portal</h1><p>Lecturer workspace · examinations, results and student monitoring</p></div>
             </div>
             <div class="header-actions">
-                <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Open navigation"><i class="fas fa-bars"></i></button>
                 <div class="admin-profile">
                     <div class="admin-avatar" id="adminInitial">L</div>
-                    <div>
-                        <div class="admin-name" id="adminName">Lecturer</div>
-                        <div class="admin-email" id="adminEmail">lecturer@nchsm.ac.ke</div>
-                    </div>
+                    <div><div class="admin-name" id="adminName">Lecturer</div><div class="admin-email" id="adminEmail">lecturer@nchsm.ac.ke</div></div>
                 </div>
                 <div class="notification-bell" id="notificationBell">
-                    <i class="fas fa-bell"></i>
-                    <span class="notification-count" id="notificationCount">0</span>
-                    <div class="notification-panel" id="notificationPanel">
-                        <div class="notification-header"><i class="fas fa-exclamation-triangle"></i> Alerts</div>
-                        <div class="notification-list" id="notificationList">Loading alerts...</div>
-                    </div>
+                    <i class="fas fa-bell"></i><span class="notification-count" id="notificationCount">0</span>
+                    <div class="notification-panel" id="notificationPanel"><div class="notification-header"><i class="fas fa-exclamation-triangle"></i> Alerts</div><div class="notification-list" id="notificationList">Loading alerts...</div></div>
                 </div>
             </div>
         </div>
 
         <section id="dashboard" class="tab-content active">
-            <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-                <div>
-                    <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
-                        <i class="fas fa-th-large" style="color: #FDB913;"></i> Lecturer Dashboard
-                    </h2>
-                    <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-                        <i class="fas fa-chart-line"></i> Overview of exams in your department
-                    </p>
-                </div>
+            <div class="lecturer-dashboard-hero">
+                <div class="lecturer-hero-icon"><i class="fas fa-th-large"></i></div>
+                <div><h2>Lecturer Dashboard</h2><p><i class="fas fa-chart-line"></i> Overview of examinations and student performance in your department</p></div>
+                <div class="lecturer-hero-tag"><i class="fas fa-shield-alt"></i> Lecturer Workspace</div>
             </div>
 
             <div class="stats-grid" id="dashboardStats">
@@ -2264,5 +2244,7 @@ window.viewLecturerStudentProgress = async function(studentId, studentName, exam
 
 <script src="/js/exam-coordinator.js?v=1" defer></script>
 <script src="/js/nchsm-mobile-enhancements.js?v=3" defer></script>
+
+<script>(function(){function updateLecturerClock(){const n=new Date();const e=document.getElementById('lecturerCommandDate');if(e)e.textContent=new Intl.DateTimeFormat('en-KE',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).format(n);}updateLecturerClock();})();</script>
 </body>
 </html>
