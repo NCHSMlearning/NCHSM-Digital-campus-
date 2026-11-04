@@ -542,6 +542,13 @@
 @media(max-width:900px){#clinical-placements .ca-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#clinical-placements .ca-capacity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){#clinical-placements{padding:11px}#clinical-placements .ca-metrics{gap:8px}#clinical-placements .ca-metric{padding:11px}#clinical-placements .ca-metric strong{font-size:22px}#clinical-placements .ca-metric span{font-size:10px}#clinical-placements .ca-form-grid{grid-template-columns:1fr}#clinical-placements .ca-span-2{grid-column:auto}#clinical-placements .ca-capacity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#clinical-placements .ca-hero{padding:18px}#clinical-placements .ca-card-heading h3{font-size:15px}}
 </style>
+<style id="superadmin-marks-result-status">
+#me_marks_table tbody tr[data-result-status="pass"] > td { background-color:#f0fdf4 !important; }
+#me_marks_table tbody tr[data-result-status="fail"] > td { background-color:#fef9c3 !important; }
+#me_marks_table tbody tr[data-result-status="pending"] > td { background-color:#fff !important; }
+#me_marks_table tbody tr[data-result-status="pass"] { border-left:4px solid #16a34a !important; }
+#me_marks_table tbody tr[data-result-status="fail"] { border-left:4px solid #eab308 !important; }
+</style>
 </head>
 <body>
     <div class="container">
@@ -15038,7 +15045,7 @@
 <script src="./js/superadmin-exams.js"></script>
 
 <!-- 4. SUPER ADMIN MARKS ENTRY MODULE -->
-<script src="./js/superadmin-marks-entry.js?v=20261027-approval-publication-separation-1"></script>
+<script src="./js/superadmin-marks-entry.js?v=20261104-row-status-v2"></script>
 <script src="./js/superadmin-marks-approval.js?v=20261027-approval-publication-separation-1"></script>
 
 <!-- 4. PUBLISHED MARKS MODULE - TVET & Nursing Compatible -->
