@@ -83,24 +83,24 @@ const GRADE_CONFIG = {
         grades: {
             'A': { min: 80, max: 100, points: 4.0, label: 'MASTERY', color: '#065f46', bgColor: '#d1fae5' },
             'B': { min: 65, max: 79, points: 3.0, label: 'PROFICIENT', color: '#1e40af', bgColor: '#dbeafe' },
-            'C': { min: 50, max: 64, points: 2.0, label: 'COMPETENT', color: '#92400e', bgColor: '#fef3c7' },
-            'E': { min: 0, max: 49, points: 0.0, label: 'NOT YET COMPETENT', color: '#991b1b', bgColor: '#fee2e2' }
+            'C': { min: 50, max: 64.99, points: 2.0, label: 'COMPETENT', color: '#92400e', bgColor: '#fef3c7' },
+            'E': { min: 0, max: 49.99, points: 0.0, label: 'NOT YET COMPETENT', color: '#991b1b', bgColor: '#fee2e2' }
         },
         passMark: 50,
         label: 'TVET Competency-Based',
-        display: 'A(80-100%)=4, B(65-79%)=3, C(50-64%)=2, E(0-49%)=0'
+        display: 'A(80-100%)=4, B(65-79.99%)=3, C(50-64.99%)=2, E(0-49.99%)=0'
     },
     // Nursing Academic Grading
     nursing: {
         grades: {
             'A': { min: 75, max: 100, points: 4.0, label: 'DISTINCTION', color: '#065f46', bgColor: '#d1fae5' },
             'B': { min: 65, max: 74.99, points: 3.0, label: 'CREDIT', color: '#1e40af', bgColor: '#dbeafe' },
-            'C': { min: 60, max: 64, points: 2.0, label: 'PASS', color: '#92400e', bgColor: '#fef3c7' },
-            'D': { min: 0, max: 59, points: 0.0, label: 'FAIL', color: '#991b1b', bgColor: '#fee2e2' }
+            'C': { min: 60, max: 64.99, points: 2.0, label: 'PASS', color: '#92400e', bgColor: '#fef3c7' },
+            'D': { min: 0, max: 59.99, points: 0.0, label: 'FAIL', color: '#991b1b', bgColor: '#fee2e2' }
         },
         passMark: 60,
         label: 'Nursing Academic',
-        display: 'A(75-100%)=4.0, B(65-74%)=3.0, C(60-64%)=2.0, D(0-59%)=0.0'
+        display: 'A(75-100%)=4.0, B(65-74.99%)=3.0, C(60-64.99%)=2.0, D(0-59.99%)=0.0'
     },
     creditHours: 3
 };
