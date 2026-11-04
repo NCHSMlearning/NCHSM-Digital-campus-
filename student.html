@@ -14609,6 +14609,81 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 <script src="/js/nchsm-mobile-enhancements.js?v=3" defer></script>
+
+<style id="nchsm-assessments-exact-reference-replica">
+/* Assessments & Grades — implementation of approved mobile reference */
+#cats{background:#f3f6fb!important;padding:18px!important;overflow-x:visible!important}
+#cats .assessment-dashboard{width:100%;max-width:1480px!important;margin:0 auto;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important;color:#172b4d}
+#cats .assess-hero{min-height:132px;box-sizing:border-box;background:linear-gradient(115deg,#0b3154 0%,#104d73 58%,#17658b 100%)!important;border:0!important;border-radius:17px!important;padding:23px 25px!important;box-shadow:0 9px 24px rgba(12,48,78,.16)!important;color:#fff!important}
+#cats .assess-hero .hero-copy{display:flex;align-items:center;gap:15px}
+#cats .assess-hero .hero-icon{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.14)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)}
+#cats .assess-hero .hero-copy h2{color:#fff!important;font-size:25px!important;font-weight:850!important;letter-spacing:-.55px!important}
+#cats .assess-hero .hero-copy p{color:rgba(255,255,255,.82)!important;font-size:11px!important;line-height:1.55!important}
+#cats .assess-hero .hero-program{background:rgba(255,255,255,.15)!important;color:#fff!important}
+#cats .hero-policy{background:#fff!important;border:1px solid rgba(255,255,255,.4)!important;border-radius:12px!important}
+#cats .assessment-nav{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin:15px 0!important}
+#cats .assessment-nav button{min-height:45px!important;justify-content:center!important;border:1px solid #dce5ef!important;border-radius:10px!important;background:#fff!important;color:#40536d!important;font-size:11px!important;font-weight:800!important;box-shadow:0 2px 7px rgba(15,35,65,.035)!important}
+#cats .assessment-nav button.active{background:#1473df!important;border-color:#1473df!important;color:#fff!important;box-shadow:0 5px 13px rgba(20,115,223,.2)!important}
+#cats .assessment-nav button:nth-child(n+3){display:none!important}
+#cats .stats-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:11px!important;margin:0 0 16px!important}
+#cats .stat-card{min-width:0;min-height:91px!important;box-sizing:border-box;background:#fff!important;border:1px solid #e0e8f1!important;border-radius:14px!important;padding:14px!important;box-shadow:0 3px 12px rgba(16,40,70,.045)!important;display:flex!important;align-items:center!important;gap:11px!important}
+#cats .stat-icon{width:39px!important;height:39px!important;flex:0 0 39px!important;border-radius:12px!important}
+#cats .stat-label{font-size:10px!important;color:#718096!important;font-weight:750!important}
+#cats .stat-value{font-size:22px!important;line-height:1.1!important;color:#17365d!important;font-weight:850!important}
+#cats .stat-note{font-size:9px!important;color:#9aa7b8!important}
+#cats .main-grid{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
+#cats .section-card{min-width:0!important;overflow:hidden!important;background:#fff!important;border:1px solid #dfe7f0!important;border-radius:15px!important;box-shadow:0 4px 14px rgba(16,40,70,.045)!important;margin:0 0 14px!important}
+#cats .section-head{min-height:68px!important;box-sizing:border-box;padding:14px 16px!important;background:#fff!important;border-bottom:1px solid #eaf0f5!important}
+#cats .section-title{font-size:14px!important;color:#18385d!important;font-weight:850!important}
+#cats .section-sub{font-size:9px!important;color:#8493a7!important}
+#cats .section-icon{width:35px!important;height:35px!important;border-radius:10px!important}
+#cats .section-count{background:#eaf3ff!important;color:#1769b0!important}
+#cats .section-action{border:1px solid #d6e4f1!important;border-radius:8px!important;background:#f8fbff!important;color:#1769b0!important;padding:7px 10px!important}
+#cats .nchsm-exam-table-scroll{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:auto!important;overflow-y:visible!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain!important;touch-action:pan-x pan-y!important;background:#fff!important}
+#cats .nchsm-exam-table{width:900px!important;min-width:900px!important;max-width:none!important;border-collapse:separate!important;border-spacing:0!important;font-size:11px!important}
+#cats .nchsm-exam-table thead th{padding:12px 14px!important;background:#f3f7fb!important;color:#65758a!important;border:0!important;border-bottom:1px solid #dfe7ef!important;font-size:9px!important;font-weight:850!important;letter-spacing:.55px!important;text-transform:uppercase!important;white-space:nowrap!important}
+#cats .nchsm-exam-table tbody td{padding:13px 14px!important;background:#fff!important;color:#475569!important;border:0!important;border-bottom:1px solid #edf1f5!important;font-size:11px!important;line-height:1.45!important;vertical-align:middle!important}
+#cats .nchsm-exam-table tbody tr:hover td{background:#f8fbff!important}
+#cats .nchsm-exam-table .current-name,#cats .nchsm-exam-table .assessment-name-main{color:#173b62!important;font-size:11px!important;font-weight:850!important}
+#cats .nchsm-exam-table .current-meta{color:#7b8ba0!important;font-size:9px!important}
+#cats .nchsm-exam-table .exam-action-btn{border-radius:8px!important;font-weight:800!important}
+#cats .nchsm-exam-table-scroll:after{content:"Swipe left or right to view all columns";display:block;position:sticky;left:0;width:max-content;max-width:calc(100% - 16px);box-sizing:border-box;margin:0 8px 7px;padding:5px 9px;border-radius:6px;background:#f0f5fa;color:#6c8096;font-size:8px;font-weight:750;pointer-events:none}
+#cats .analytics-card{margin-top:1px!important}
+#cats .chart-head{padding:14px 16px 8px!important}
+#cats .chart-body{min-height:210px}
+@media(max-width:760px){
+ #cats{padding:11px!important}
+ #cats .assess-hero{min-height:0;padding:17px!important;border-radius:14px!important;gap:13px!important}
+ #cats .assess-hero .hero-copy{align-items:flex-start!important}
+ #cats .assess-hero .hero-icon{width:43px;height:43px;flex-basis:43px;font-size:19px}
+ #cats .assess-hero .hero-copy h2{font-size:20px!important}
+ #cats .assess-hero .hero-copy p{font-size:9px!important}
+ #cats .hero-policy{width:100%;min-width:0!important;box-sizing:border-box;padding:9px 11px!important}
+ #cats .assessment-nav{gap:7px!important;margin:11px 0!important}
+ #cats .assessment-nav button{min-height:42px!important;padding:8px!important;font-size:9px!important}
+ #cats .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-bottom:12px!important}
+ #cats .stat-card{min-height:78px!important;padding:10px!important;gap:8px!important;border-radius:11px!important}
+ #cats .stat-icon{width:32px!important;height:32px!important;flex-basis:32px!important;font-size:14px!important}
+ #cats .stat-label{font-size:9px!important}
+ #cats .stat-value{font-size:19px!important}
+ #cats .stat-note{font-size:8px!important}
+ #cats .section-card{border-radius:12px!important;margin-bottom:11px!important}
+ #cats .section-head{padding:11px 10px!important;min-height:0!important;gap:7px!important}
+ #cats .section-title{font-size:12px!important}
+ #cats .section-sub{font-size:8px!important}
+ #cats .section-icon{width:30px!important;height:30px!important;flex-basis:30px!important}
+ #cats .section-count{font-size:8px!important;padding:4px 6px!important}
+ #cats .section-action{font-size:8px!important;padding:6px 7px!important}
+ #cats .nchsm-exam-table{width:900px!important;min-width:900px!important}
+ #cats .nchsm-exam-table thead th{padding:11px 10px!important}
+ #cats .nchsm-exam-table tbody td{padding:12px 10px!important}
+}
+@media(max-width:380px){
+ #cats .assess-hero .hero-copy h2{font-size:18px!important}
+ #cats .stat-card{padding:8px!important}
+ #cats .stat-value{font-size:17px!important}
+}
+</style>
 </body>
 <style id="nchsm-final-reference-lock">
 /* FINAL VISUAL LOCK — keeps the desktop dashboard close to the supplied reference image. */
@@ -15150,107 +15225,5 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 
-<style id="nchsm-assessment-premium-visual-refresh">
-/* NCHSM Assessments — refined visual treatment */
-#cats .assessment-dashboard{max-width:1500px!important}
-#cats .assess-hero{
- background:linear-gradient(120deg,#0b3558 0%,#14527a 58%,#1d6b91 100%)!important;
- border:0!important;border-radius:18px!important;padding:22px 24px!important;
- box-shadow:0 10px 28px rgba(10,49,82,.16)!important;color:#fff!important;
-}
-#cats .assess-hero .hero-icon{background:rgba(255,255,255,.14)!important;color:#fff!important;border:1px solid rgba(255,255,255,.16)}
-#cats .assess-hero .hero-copy h2{color:#fff!important;font-size:clamp(21px,2vw,27px)!important}
-#cats .assess-hero .hero-copy p{color:rgba(255,255,255,.78)!important;font-size:12px!important;line-height:1.5}
-#cats .assess-hero .hero-program{background:rgba(255,255,255,.14)!important;color:#fff!important}
-#cats .hero-policy{background:rgba(255,255,255,.96)!important;border:1px solid rgba(255,255,255,.25)!important;box-shadow:0 4px 14px rgba(0,0,0,.08)}
-#cats .assessment-nav{gap:9px!important}
-#cats .assessment-nav button{min-height:44px!important;border-radius:10px!important;border-color:#dce6f0!important;box-shadow:0 2px 6px rgba(15,23,42,.035);font-size:11px!important}
-#cats .assessment-nav button.active{background:#0f6caa!important;border-color:#0f6caa!important}
-#cats .stats-grid{gap:10px!important}
-#cats .stat-card{border-radius:14px!important;border-color:#e1e9f2!important;box-shadow:0 4px 14px rgba(15,35,65,.045)!important;transition:transform .18s ease,box-shadow .18s ease}
-#cats .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,35,65,.08)!important}
-#cats .section-card{border:1px solid #dce6f0!important;border-radius:16px!important;box-shadow:0 5px 18px rgba(15,35,65,.055)!important;background:#fff!important}
-#cats .section-head{padding:16px 18px!important;background:linear-gradient(180deg,#fbfdff,#fff)!important;border-bottom:1px solid #e9eff5!important;min-height:76px}
-#cats .section-icon{width:38px!important;height:38px!important;border-radius:12px!important;background:#eaf3ff!important;color:#1769b0!important}
-#cats .section-icon.green{background:#e8f7f0!important;color:#0b956b!important}
-#cats .section-title{font-size:15px!important;letter-spacing:-.2px}
-#cats .section-sub{font-size:10px!important;line-height:1.45}
-#cats .section-count{background:#eaf3ff!important;color:#175d9b!important;padding:5px 9px!important}
-#cats .section-action{border-color:#cfe0ef!important;background:#f8fbff!important;border-radius:8px!important;padding:8px 11px!important}
-#cats .section-action:hover{background:#eaf4ff!important;border-color:#9fc3e2!important}
-#cats .nchsm-exam-table-scroll{
- position:relative!important;
- background:#fff!important;
- border-top:0!important;
-}
-#cats .nchsm-exam-table-scroll:after{
- content:"Swipe left or right to see all columns  →";
- display:block;
- position:sticky;
- left:0;
- width:max-content;
- max-width:100%;
- box-sizing:border-box;
- padding:5px 10px;
- margin:0 10px 7px;
- border-radius:6px;
- background:#f1f6fb;
- color:#647b91;
- font-size:9px;
- font-weight:700;
- letter-spacing:.1px;
- pointer-events:none;
-}
-#cats .nchsm-exam-table{
- border-collapse:separate!important;border-spacing:0!important;
- font-size:12px!important;
-}
-#cats .nchsm-exam-table thead th{
- position:sticky;top:0;z-index:1;
- padding:13px 15px!important;
- background:#f2f6fb!important;
- color:#52657c!important;
- border-top:0!important;border-left:0!important;
- border-right:1px solid #e3eaf2!important;
- border-bottom:1px solid #dce6f0!important;
- font-size:9px!important;letter-spacing:.65px!important;
-}
-#cats .nchsm-exam-table tbody td{
- padding:15px!important;
- background:#fff;
- color:#475569!important;
- border-left:0!important;border-right:1px solid #edf1f5!important;
- border-bottom:1px solid #edf1f5!important;
- font-size:12px!important;line-height:1.45;
-}
-#cats .nchsm-exam-table tbody tr:last-child td{border-bottom:0!important}
-#cats .nchsm-exam-table tbody tr:hover td{background:#f7fbff!important}
-#cats .nchsm-exam-table .current-name,
-#cats .nchsm-exam-table .assessment-name-main{font-size:12px!important;color:#163b61!important;line-height:1.4}
-#cats .nchsm-exam-table .current-meta{gap:7px 12px!important;font-size:10px!important;color:#718198!important}
-#cats .nchsm-exam-table .current-status{font-weight:700}
-#cats .nchsm-exam-table .exam-action-btn{border-radius:8px!important;font-weight:750!important}
-#cats .nchsm-exam-table .score-main{font-size:13px!important}
-#cats .empty-state{padding:34px 18px!important}
-@media(max-width:760px){
- #cats .assess-hero{padding:17px!important;border-radius:14px!important;gap:14px!important}
- #cats .hero-policy{min-width:0!important}
- #cats .assessment-nav{gap:7px!important}
- #cats .assessment-nav button{justify-content:flex-start!important;min-height:44px!important;padding:9px 10px!important}
- #cats .stats-grid{gap:8px!important}
- #cats .section-card{border-radius:13px!important;margin-bottom:13px!important}
- #cats .section-head{padding:13px 12px!important;gap:8px!important;min-height:0}
- #cats .section-title{font-size:13px!important}
- #cats .section-sub{font-size:9px!important}
- #cats .section-icon{width:32px!important;height:32px!important}
- #cats .section-count{font-size:8px!important;padding:4px 6px!important}
- #cats .section-action{font-size:9px!important;padding:7px 8px!important;white-space:nowrap}
- #cats .nchsm-exam-table-scroll:after{font-size:8px;margin:0 8px 6px;padding:5px 8px}
- #cats .nchsm-exam-table thead th{padding:12px 11px!important}
- #cats .nchsm-exam-table tbody td{padding:13px 11px!important}
-}
-@media(prefers-reduced-motion:reduce){
- #cats .stat-card{transition:none!important}
-}
-</style>
+
 </html>
