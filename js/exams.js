@@ -1342,7 +1342,12 @@ applyDataFilter() {
                     actionHtml = '<span class="exam-action-btn btn-missed">Missed</span>';
                     statusClass = 'missed'; statusText = 'Missed';
                 } else {
-                    actionHtml = '<span class="exam-action-btn btn-upcoming"><i class="fas fa-eye"></i> View</span>';
+                    // Do not present a fake "View" action: upcoming/unscheduled items
+                    // must not look launchable. The real launch link is only rendered
+                    // in the available/retake branches above after URL validation.
+                    actionHtml = '<span class="exam-action-btn btn-upcoming" aria-disabled="true"><i class="fas fa-clock"></i> ' +
+                        (exam.actionState === 'upcoming' ? 'Opens at scheduled time' : (exam.hasValidLink ? 'Not open yet' : 'Link unavailable')) +
+                        '</span>';
                     statusClass = exam.actionState === 'upcoming' ? 'upcoming' : 'scheduled';
                     statusText = exam.actionState === 'upcoming' ? 'Upcoming' : 'Scheduled';
                 }
