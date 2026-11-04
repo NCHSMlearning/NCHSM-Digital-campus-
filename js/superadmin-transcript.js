@@ -1890,7 +1890,13 @@ window.renderTranscriptBlock = function(index) {
                 flex-shrink: 0 !important;
             }
             .container > .semester-results-table { width: 100% !important; }
-            .container > .footer { margin-top: auto !important; }
+            /* Let the page distribute free height between all transcript sections.
+               Do not push the footer down with an auto margin, which creates one
+               oversized blank gap after the signature block on short transcripts. */
+            .container > .footer { margin-top: 0 !important; }
+            .container > .transcript-lower-grid { flex-grow: 1 !important; align-content: stretch !important; }
+            .container > .transcript-lower-grid > .grading-scale-table,
+            .container > .transcript-lower-grid > .academic-summary-panel { height: 100% !important; box-sizing: border-box !important; }
             .container > .transcript-admin-actions { display: none !important; }
         }
 `;
