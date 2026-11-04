@@ -879,22 +879,38 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
                     continue;
                 }
 
+                // Enforce the selected block at the final rendering boundary as well
+                // as at query time. A filtered request must never fall back to, or append,
+                // another block for the same student.
+                if (blockFilter !== 'all') {
+                    marks = marks.filter(mark => transcriptMarkMatchesBlock(mark, blockFilter));
+                    if (!marks.length) throw new Error('No approved and published marks match the selected block ' + blockFilter);
+                }
                 window.showTranscriptPreview(student, marks, scopeLabel);
                 if (window._transcriptVerificationPromise) await window._transcriptVerificationPromise;
                 const transcriptState = window._transcriptData;
                 const renderedBlocks = [];
-                // Reuse the academic transcript page itself: no extra bulk headings.
-                for (let blockIndex = 0; blockIndex < (transcriptState?.blockNames || []).length; blockIndex++) {
-                    const blockName = transcriptState.blockNames[blockIndex];
-                    if (blockFilter !== 'all' && normalizeKRCHNBlock(blockName) !== normalizeKRCHNBlock(blockFilter)) continue;
-                    // showTranscriptPreview already rendered block zero and completed
-                    // its registry/QR request. Keep that exact DOM so its QR and number
-                    // are not discarded by an unnecessary second render.
+                const availableBlocks = transcriptState?.blockNames || [];
+                const targetBlockIndex = blockFilter === 'all'
+                    ? null
+                    : availableBlocks.findIndex(name => normalizeKRCHNBlock(name) === normalizeKRCHNBlock(blockFilter));
+                if (blockFilter !== 'all' && targetBlockIndex < 0) {
+                    throw new Error('The selected block ' + blockFilter + ' was not present in the generated transcript data.');
+                }
+                // A specific block filter produces exactly one transcript page per student.
+                // Cumulative mode retains the normal block navigation/output behaviour.
+                const indexesToRender = blockFilter === 'all'
+                    ? availableBlocks.map((_, i) => i)
+                    : [targetBlockIndex];
+                for (const blockIndex of indexesToRender) {
                     if (blockIndex !== 0 && typeof window.renderTranscriptBlock === 'function') {
                         window.renderTranscriptBlock(blockIndex);
                     }
                     const blockHtml = content.innerHTML;
                     if (blockHtml.trim()) renderedBlocks.push(blockHtml);
+                }
+                if (blockFilter !== 'all' && renderedBlocks.length !== 1) {
+                    throw new Error('Filtered transcript generation did not produce exactly one block page.');
                 }
                 const html = renderedBlocks.join('');
                 if (!html.trim()) throw new Error('Transcript content was empty');
@@ -1665,6 +1681,14 @@ window.renderTranscriptBlock = function(index) {
     const gradingScaleHTML = `<table><thead><tr><th>Grade</th><th>Range</th><th>Points</th><th>Remarks</th></tr></thead><tbody>${gradingScaleHtml}</tbody></table>`;
     const grade = overallGrade;
     const transcriptSchool = 'Nakuru College of Health Sciences & Management';
+    const normalizedProgramCode = String(student.program || program || '').trim().toUpperCase();
+    const isKRCHNStudent = normalizedProgramCode === 'KRCHN' || normalizedProgramCode === 'NURSING';
+    const principalSignatureLabel = isKRCHNStudent
+        ? 'Principal — School of Nursing'
+        : 'Principal — School of TVET';
+    const hodSignatureLabel = isKRCHNStudent
+        ? 'Head of Department (HOD) — School of Nursing'
+        : 'Head of Department (HOD) — ' + String(student.program || program || 'Programme').trim();
     const profilePicture = student.passport_photo || student.profile_picture || student.photo_url || '';
     const profilePictureHTML = profilePicture ? `<div style="text-align:center;margin-right:12px;flex-shrink:0;"><img src="${escapeHtml(profilePicture)}" alt="Student Photo" class="student-photo" onerror="this.style.display='none'"></div>` : '';
     const transcriptStyles = String.raw`* { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1846,8 +1870,8 @@ window.renderTranscriptBlock = function(index) {
         </div></div>
     </div>
     <div class="signatures">
-        <div class="signature-box"><div class="line"></div><div class="label">Principal — ${transcriptSchool}</div><div class="date">Date: _____________</div></div>
-        <div class="signature-box"><div class="line"></div><div class="label">Head of Department (HOD) — School of Nursing</div><div class="date">Date: _____________</div></div>
+        <div class="signature-box"><div class="line"></div><div class="label">${principalSignatureLabel}</div><div class="date">Date: _____________</div></div>
+        <div class="signature-box"><div class="line"></div><div class="label">${hodSignatureLabel}</div><div class="date">Date: _____________</div></div>
     </div>
     <div class="footer"><p>Accredited &amp; Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences &amp; Management</p>
         <p><strong>NCHSM</strong> · Tel: 0790 969 743 / 0722 351 791 · Email: <a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a></p>
