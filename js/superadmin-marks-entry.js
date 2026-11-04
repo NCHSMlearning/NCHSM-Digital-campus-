@@ -1435,203 +1435,150 @@ async function loadMEUnits() {
 async function loadMarksEntry() {
     const program = document.getElementById('me_program_select')?.value;
     const block = document.getElementById('me_block_select')?.value;
-    const unit = document.getElementById('me_subject_select')?.value;
-    const year = document.getElementById('me_year_select')?.value;
     const unitSelect = document.getElementById('me_subject_select');
-    const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+    const unit = unitSelect?.value;
+    const year = document.getElementById('me_year_select')?.value;
+    const selectedOption = unitSelect?.options?.[unitSelect.selectedIndex];
     const assessmentType = selectedOption?.dataset?.assessment || 'full';
     const unitCode = selectedOption?.dataset?.code || '';
-    
     const dynamicContent = document.getElementById('marksEntryDynamicContent');
     const placeholder = document.getElementById('marksEntryPlaceholder');
     const container = document.getElementById('me_marks_container');
-    
-    if (!program || !block || !unit) {
+
+    if (!program || !block || !unit || !year) {
         if (dynamicContent) dynamicContent.style.display = 'none';
         if (placeholder) placeholder.style.display = 'block';
-        if (container) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                    <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
-                    <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
-                </div>
-            `;
-        }
+        if (container) container.innerHTML = '<div style="text-align:center;padding:60px 20px;"><h3>Select Program, Block and Unit</h3><p>Choose from the dropdowns above to load marks.</p></div>';
         return;
     }
-    
+
     if (dynamicContent) dynamicContent.style.display = 'block';
     if (placeholder) placeholder.style.display = 'none';
-    
     me_currentProgram = program;
     me_currentBlock = block;
     me_currentUnit = unit;
     me_currentYear = year;
     me_currentAssessmentType = assessmentType;
-    
-    if (container) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <div class="loading-spinner"></div>
-                <p style="color: #6b7280; margin-top: 10px;">Loading students for ${unitCode || unit}...</p>
-            </div>
-        `;
-    }
-    
+
+    // Ignore stale responses if the administrator changes the selected unit while a request is running.
+    const requestId = (window.__meMarksLoadRequestId || 0) + 1;
+    window.__meMarksLoadRequestId = requestId;
+    const isCurrentRequest = () => window.__meMarksLoadRequestId === requestId;
+
+    if (container) container.innerHTML = `<div style="text-align:center;padding:40px;"><div class="loading-spinner"></div><p style="color:#6b7280;margin-top:10px;">Loading students for ${escapeHtml(unitCode || unit)}...</p></div>`;
+
     try {
-        // Load retake history and the existing marks query at the same time.
-        // These requests are independent, so awaiting them sequentially only adds latency.
-        const [retakeLoadResult, initialMarksResult] = await Promise.all([
+        // Load the current marks and retake history in parallel. Registration reconciliation
+        // is now a small, unit-scoped batch operation rather than a programme-wide scan.
+        const [retakeResult, initialMarksResult] = await Promise.all([
             loadRetakeData(block, unit, year),
-            sb.from('student_marks')
-                .select('*')
-                .eq('block', block)
-                .eq('subject_name', unit)
-                .eq('academic_year', year)
+            sb.from('student_marks').select('*')
+                .eq('program', program).eq('block', block)
+                .eq('subject_name', unit).eq('academic_year', parseInt(year, 10))
         ]);
+        if (!isCurrentRequest()) return;
+        if (initialMarksResult.error) throw initialMarksResult.error;
 
-        // ==========================================
-        // STEP 1: Existing marks loaded
-        // ==========================================
-        let { data: marks, error: marksError } = initialMarksResult;
-
-        if (marksError) throw marksError;
-        
-        console.log(`📊 Found ${marks?.length || 0} marks records for ${unit}`);
-        
-        // ==========================================
-        // STEP 2: Merge approved registrations with existing marks.
-        // This creates blank records only for newly approved students;
-        // existing marks are never overwritten.
-        // ==========================================
         await loadFromApprovedRegistrations(program, block, unit, year, unitCode, true);
-        
-        // Re-fetch after the merge so newly added students appear immediately.
-        const { data: mergedMarks, error: mergedMarksError } = await sb
-            .from('student_marks')
-            .select('*')
-            .eq('block', block)
-            .eq('subject_name', unit)
-            .eq('academic_year', year);
-        if (mergedMarksError) throw mergedMarksError;
-        marks = mergedMarks || [];
-        
-        if (!marks.length) {
-            console.log('No existing marks or approved registrations found for this unit.');
+        if (!isCurrentRequest()) return;
+
+        // Re-read once so any newly reconciled students appear in the same render.
+        const { data: marks, error: marksError } = await sb.from('student_marks').select('*')
+            .eq('program', program).eq('block', block)
+            .eq('subject_name', unit).eq('academic_year', parseInt(year, 10));
+        if (marksError) throw marksError;
+        if (!isCurrentRequest()) return;
+
+        const rows = marks || [];
+        if (!rows.length) {
+            container.innerHTML = '<div style="text-align:center;padding:48px 20px;color:#64748b;">No marks or approved registrations were found for this unit.</div>';
+            me_currentMarks = [];
+            updateMarksEntryStats([], assessmentType);
             return;
         }
-        
-        // ==========================================
-        // STEP 3: Render all existing and newly added marks
-        // ==========================================
-        
-        // ==========================================
-        // FETCH STUDENT NAMES (match by UUID + admission)
-        // ==========================================
-        const admissions = marks.map(m => m.admission_number).filter(Boolean);
-        const studentUuids = marks.map(m => m.student_id).filter(Boolean);
-        
-        let allProfiles = [];
-        
-        // Query by admission_number
-        if (admissions.length > 0) {
-            const { data: byAdmission } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, admission_number, full_name')
-                .or(`student_id.in.(${admissions.join(',')}),admission_number.in.(${admissions.join(',')})`);
-            allProfiles = allProfiles.concat(byAdmission || []);
-        }
-        
-        // Query both UUID identity columns. Older marks may store either the
-        // profile user_id or the profile student_id in student_marks.student_id.
-        if (studentUuids.length > 0) {
-            const { data: byUserId, error: userLookupError } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, admission_number, full_name')
-                .in('user_id', studentUuids);
-            if (userLookupError) console.warn('Student profile lookup by user_id failed:', userLookupError.message);
-            allProfiles = allProfiles.concat(byUserId || []);
 
-            const { data: byStudentId, error: studentLookupError } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, admission_number, full_name')
-                .in('student_id', studentUuids);
-            if (studentLookupError) console.warn('Student profile lookup by student_id failed:', studentLookupError.message);
-            allProfiles = allProfiles.concat(byStudentId || []);
+        const admissions = [...new Set(rows.map(m => m.admission_number).filter(Boolean).map(String))];
+        const studentUuids = [...new Set(rows.map(m => m.student_id).filter(Boolean).map(String))];
+        const profileSelect = 'user_id, student_id, admission_number, full_name';
+        const profileRequests = [];
+
+        // Keep request sizes bounded; large .in() lists can exceed URL limits.
+        for (let i = 0; i < admissions.length; i += 150) {
+            const batch = admissions.slice(i, i + 150);
+            profileRequests.push(sb.from('consolidated_user_profiles_table').select(profileSelect)
+                .or('student_id.in.(' + batch.join(',') + '),admission_number.in.(' + batch.join(',') + ')'));
+        }
+        for (let i = 0; i < studentUuids.length; i += 150) {
+            const batch = studentUuids.slice(i, i + 150);
+            profileRequests.push(sb.from('consolidated_user_profiles_table').select(profileSelect).in('user_id', batch));
+            profileRequests.push(sb.from('consolidated_user_profiles_table').select(profileSelect).in('student_id', batch));
         }
 
-        // Build aliases for admission number, student ID, and auth/profile UUID.
-        // Keep UUIDs as lookup keys too; some legacy marks have no admission number.
-        const studentMap = {};
-        const studentDetailsMap = {};
-        allProfiles.forEach(s => {
-            const name = String(s.full_name || '').trim();
-            const admissionNumber = String(s.admission_number || s.student_id || '').trim();
+        const profileResults = await Promise.all(profileRequests);
+        if (!isCurrentRequest()) return;
+        const profiles = [];
+        profileResults.forEach(result => {
+            if (result.error) console.warn('Student profile lookup warning:', result.error.message);
+            else profiles.push(...(result.data || []));
+        });
+
+        const detailsByKey = {};
+        profiles.forEach(student => {
+            const name = String(student.full_name || '').trim();
             if (!name) return;
-            const details = { name, admission: admissionNumber };
-            [s.admission_number, s.student_id, s.user_id].forEach(key => {
-                if (key !== null && key !== undefined && String(key).trim()) {
-                    studentMap[String(key).trim()] = name;
-                    studentDetailsMap[String(key).trim()] = details;
-                }
+            const admission = String(student.admission_number || student.student_id || '').trim();
+            const details = { name, admission };
+            [student.admission_number, student.student_id, student.user_id].forEach(key => {
+                if (key !== null && key !== undefined && String(key).trim()) detailsByKey[String(key).trim()] = details;
             });
         });
-        
-        const fullMarks = marks.map(m => {
-            const matchedStudent = studentDetailsMap[String(m.student_id || '').trim()]
-                || studentDetailsMap[String(m.admission_number || '').trim()];
-            const admission = String(m.admission_number || matchedStudent?.admission || '').trim();
+
+        const fullMarks = rows.map(mark => {
+            const matched = detailsByKey[String(mark.student_id || '').trim()] ||
+                detailsByKey[String(mark.admission_number || '').trim()];
+            const admission = String(mark.admission_number || matched?.admission || '').trim();
             const retakes = me_retakeData[admission] || [];
-            const hasRetake = retakes.length > 0;
             const lastRetake = retakes[retakes.length - 1];
-            
             return {
-                admission: admission,
-                student_id: m.student_id || '',
-                name: studentMap[admission] || studentMap[m.student_id] || String(m.student_name || '').trim() || 'Student profile not found',
-                program: program,
-                cat1: m.cat1_score || 0,
-                cat2: m.cat2_score || 0,
-                exam: m.exam_score || 0,
-                final: m.final_score || 0,
-                grade: m.grade || '',
-                gradedBy: m.graded_by || '',
-                assessmentType: m.assessment_type || assessmentType,
-                id: m.id || null,
-                approval_status: m.approval_status || 'draft',
-                published: m.published || false,
-                hasRetake: hasRetake,
+                admission,
+                student_id: mark.student_id || '',
+                name: matched?.name || String(mark.student_name || '').trim() || 'Student profile not found',
+                program,
+                cat1: mark.cat1_score || 0,
+                cat2: mark.cat2_score || 0,
+                exam: mark.exam_score || 0,
+                final: mark.final_score || 0,
+                grade: mark.grade || '',
+                gradedBy: mark.graded_by || '',
+                assessmentType: mark.assessment_type || assessmentType,
+                id: mark.id || null,
+                approval_status: mark.approval_status || 'draft',
+                published: mark.published || false,
+                hasRetake: retakes.length > 0,
                 retakeCount: retakes.length,
-                retakeScore: lastRetake?.exam_score || null,
+                retakeScore: lastRetake?.exam_score ?? null,
                 retakeGrade: lastRetake?.grade || null,
                 retakeStatus: lastRetake?.status || null,
                 retakeHistory: retakes
             };
         });
-        
-        console.log(`📊 Displaying ${fullMarks.length} students from marks table`);
-        
+
+        if (!isCurrentRequest()) return;
         me_currentMarks = fullMarks;
         renderMarksEntryTable(fullMarks, unitCode, assessmentType, program);
         updateMarksEntryStats(fullMarks, assessmentType);
         await loadUnitColumnSettings();
-        updateAssessmentTypeDisplay();
-        
+        if (isCurrentRequest()) updateAssessmentTypeDisplay();
     } catch (error) {
+        if (!isCurrentRequest()) return;
         console.error('Error loading marks:', error);
-        if (container) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
-                    <h4 style="color: #991b1b;">Error loading marks</h4>
-                    <p style="color: #64748b;">${error.message}</p>
-                    <button onclick="loadMarksEntry()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sync-alt"></i> Retry
-                    </button>
-                </div>
-            `;
-        }
+        if (container) container.innerHTML = `
+            <div style="text-align:center;padding:40px;">
+                <i class="fas fa-exclamation-triangle" style="font-size:40px;color:#f59e0b;"></i>
+                <h4 style="color:#991b1b;">Unable to load marks</h4>
+                <p style="color:#64748b;">${escapeHtml(error.message || 'Unknown database error')}</p>
+                <button onclick="loadMarksEntry()" class="btn-action" style="margin-top:12px;padding:8px 20px;background:#4C1D95;color:white;border:0;border-radius:6px;cursor:pointer;">Retry</button>
+            </div>`;
     }
 }
 
@@ -1641,165 +1588,112 @@ async function loadMarksEntry() {
 // ============================================================
 async function loadFromApprovedRegistrations(program, block, unit, year, unitCode, mergeOnly = false) {
     const container = document.getElementById('me_marks_container');
-    
+    const numericYear = parseInt(year, 10);
     try {
         const unitSelect = document.getElementById('me_subject_select');
-        const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+        const selectedOption = unitSelect?.options?.[unitSelect.selectedIndex];
         const targetUnitCode = selectedOption?.dataset?.code || unitCode || '';
-        
-        console.log(`🔍 Searching approved registrations:`);
-        console.log(`   program=${program}, block=${block}, year=${year}`);
-        console.log(`   unit="${unit}" (code: ${targetUnitCode})`);
-        
-        // ==========================================
-        // Query approved registrations for this unit
-        // ==========================================
-        const { data: regs, error: regError } = await sb
-            .from('student_unit_registrations')
-            .select('student_id, unit_code, unit_name, block, program, academic_year, reg_type, status')
-            .eq('program', program)
-            .eq('block', block)
-            .eq('status', 'approved')
-            .eq('academic_year', parseInt(year));
-        
-        if (regError) throw regError;
-        
-        // Filter by unit_code OR unit_name client-side (handles both)
-        const matchingRegs = (regs || []).filter(r => 
-            r.unit_code === targetUnitCode || 
-            r.unit_name === unit ||
-            (r.unit_name && unit && r.unit_name.includes(unit)) ||
-            (unit && r.unit_name && unit.includes(r.unit_name))
+        if (!program || !block || !unit || !Number.isFinite(numericYear)) {
+            throw new Error('Select a valid programme, block, unit and academic year.');
+        }
+
+        // Query only this unit. The previous implementation loaded every registration
+        // for the programme/block/year and filtered the entire result in the browser.
+        const registrationColumns = 'student_id, unit_code, unit_name, block, program, academic_year, reg_type, status';
+        const approvedQueries = [];
+        if (targetUnitCode) approvedQueries.push(
+            sb.from('student_unit_registrations').select(registrationColumns)
+                .eq('program', program).eq('block', block).eq('academic_year', numericYear)
+                .eq('status', 'approved').eq('unit_code', targetUnitCode)
         );
-        
-        console.log(`✅ Found ${matchingRegs.length} approved registrations for this unit`);
-        
-        // ==========================================
-        // No approved registrations — check for pending ones
-        // ==========================================
-        if (matchingRegs.length === 0) {
+        approvedQueries.push(
+            sb.from('student_unit_registrations').select(registrationColumns)
+                .eq('program', program).eq('block', block).eq('academic_year', numericYear)
+                .eq('status', 'approved').eq('unit_name', unit)
+        );
+        const approvedResults = await Promise.all(approvedQueries);
+        const failedQuery = approvedResults.find(result => result.error);
+        if (failedQuery) throw failedQuery.error;
+
+        const registrationMap = new Map();
+        approvedResults.forEach(result => (result.data || []).forEach(reg => {
+            if (reg.student_id) registrationMap.set(String(reg.student_id), reg);
+        }));
+        const matchingRegs = [...registrationMap.values()];
+        console.log('Approved registrations for selected unit:', matchingRegs.length);
+
+        if (!matchingRegs.length) {
             if (mergeOnly) return;
-            const { data: allRegs } = await sb
-                .from('student_unit_registrations')
-                .select('student_id, unit_code, unit_name, status')
-                .eq('program', program)
-                .eq('block', block)
-                .eq('academic_year', parseInt(year));
-            
-            const pendingMatches = (allRegs || []).filter(r => 
-                (r.unit_code === targetUnitCode || 
-                 r.unit_name === unit ||
-                 (r.unit_name && unit && r.unit_name.includes(unit)) ||
-                 (unit && r.unit_name && unit.includes(r.unit_name)))
-                && r.status === 'pending'
+            const pendingQueries = [];
+            if (targetUnitCode) pendingQueries.push(
+                sb.from('student_unit_registrations').select('student_id')
+                    .eq('program', program).eq('block', block).eq('academic_year', numericYear)
+                    .eq('status', 'pending').eq('unit_code', targetUnitCode)
             );
-            
-            const pendingCount = pendingMatches.length;
-            
+            pendingQueries.push(
+                sb.from('student_unit_registrations').select('student_id')
+                    .eq('program', program).eq('block', block).eq('academic_year', numericYear)
+                    .eq('status', 'pending').eq('unit_name', unit)
+            );
+            const pendingResults = await Promise.all(pendingQueries);
+            const pendingError = pendingResults.find(result => result.error);
+            if (pendingError) throw pendingError.error;
+            const pendingIds = new Set();
+            pendingResults.forEach(result => (result.data || []).forEach(row => row.student_id && pendingIds.add(row.student_id)));
+            const pendingCount = pendingIds.size;
+
             if (pendingCount > 0) {
                 container.innerHTML = `
-                    <div style="text-align: center; padding: 60px 20px; background: #fffbeb; border-radius: 8px;">
-                        <i class="fas fa-clock" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
-                        <h3 style="color: #92400e; margin: 0 0 8px 0;">Registrations Pending Approval</h3>
-                        <p style="color: #78350f; font-size: 14px;">
-                            <strong>${pendingCount}</strong> student(s) have registered for this unit but their registration is not yet approved.
-                        </p>
-                        <p style="color: #92400e; font-size: 12px; margin-top: 8px;">
-                            Approve them to begin entering marks.
-                        </p>
-                        <button onclick="approveRegistrationsForUnit('${program}', '${block}', '${unit.replace(/'/g, "\\'")}', ${year})" 
-                                style="margin-top: 16px; padding: 12px 24px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">
-                            <i class="fas fa-check-circle"></i> Approve All ${pendingCount} Pending Registrations
-                        </button>
-                        <div style="margin-top: 12px;">
-                            <button onclick="openMarksStudentManager()" 
-                                    style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                                <i class="fas fa-users"></i> Manage Students Manually
-                            </button>
-                        </div>
-                    </div>
-                `;
-                return;
+                    <div style="text-align:center;padding:60px 20px;background:#fffbeb;border-radius:8px;">
+                        <i class="fas fa-clock" style="font-size:48px;color:#f59e0b;margin-bottom:16px;display:block;"></i>
+                        <h3 style="color:#92400e;">Registrations Pending Approval</h3>
+                        <p style="color:#78350f;"><strong>${pendingCount}</strong> student(s) have pending registration for this unit.</p>
+                        <button onclick="approveRegistrationsForUnit('${String(program).replace(/'/g, "\\'")}','${String(block).replace(/'/g, "\\'")}','${String(unit).replace(/'/g, "\\'")}',${numericYear})" style="margin-top:16px;padding:12px 24px;background:#059669;color:white;border:0;border-radius:8px;cursor:pointer;font-weight:600;">Approve Pending Registrations</button>
+                        <div style="margin-top:12px;"><button onclick="openMarksStudentManager()" style="padding:8px 20px;background:#4C1D95;color:white;border:0;border-radius:6px;cursor:pointer;">Manage Students Manually</button></div>
+                    </div>`;
+            } else {
+                container.innerHTML = `<div style="text-align:center;padding:60px 20px;"><i class="fas fa-users-slash" style="font-size:44px;color:#94a3b8;"></i><h3>No students registered for this unit</h3><p>No approved registrations found for ${escapeHtml(year)}.</p><button onclick="openMarksStudentManager()" style="padding:10px 24px;background:#4C1D95;color:white;border:0;border-radius:6px;cursor:pointer;">Manage Students Manually</button></div>`;
             }
-            
-            // No registrations at all
-            container.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <i class="fas fa-users-slash" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                    <h3 style="color: #1e293b; margin: 0 0 8px 0;">No students registered for this unit</h3>
-                    <p style="color: #94a3b8; font-size: 13px;">
-                        No approved registrations found for ${year}.
-                    </p>
-                    <div style="margin-top: 16px;">
-                        <button onclick="openMarksStudentManager()" 
-                                style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                            <i class="fas fa-users"></i> Manage Students Manually
-                        </button>
-                    </div>
-                </div>
-            `;
             return;
         }
-        
-        // ==========================================
-        // FETCH STUDENT DETAILS (resolve UUID → real admission number)
-        // ==========================================
-        const userIds = matchingRegs.map(r => r.student_id);
-        
-        const { data: students, error: studentErr } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, student_id, admission_number, full_name')
-            .in('user_id', userIds);
-        
-        if (studentErr) {
-            console.warn('⚠️ Could not fetch student profiles:', studentErr);
+
+        const userIds = [...new Set(matchingRegs.map(reg => reg.student_id).filter(Boolean).map(String))];
+        const studentResults = [];
+        for (let i = 0; i < userIds.length; i += 150) {
+            studentResults.push(sb.from('consolidated_user_profiles_table')
+                .select('user_id, student_id, admission_number, full_name')
+                .in('user_id', userIds.slice(i, i + 150)));
         }
-        
-        // Build lookup: UUID (user_id) → student details
+        const resolvedResults = await Promise.all(studentResults);
+        const profileError = resolvedResults.find(result => result.error);
+        if (profileError) throw profileError.error;
+
         const studentLookup = {};
-        (students || []).forEach(s => {
-            if (s.user_id) {
-                const rawAdmission = s.admission_number || s.student_id;
-                const isUUID = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
-                
-                studentLookup[s.user_id] = {
-                    full_name: s.full_name || 'Unknown',
-                    admission_number: (!isUUID && rawAdmission) ? rawAdmission : null
-                };
-            }
-        });
-        
-        console.log(`📋 Resolved ${Object.keys(studentLookup).length} students`);
-        console.log('📋 Sample:', Object.entries(studentLookup).slice(0, 3));
-        
-        // ==========================================
-        // Create blank marks records in student_marks
-        // ==========================================
+        resolvedResults.forEach(result => (result.data || []).forEach(student => {
+            if (!student.user_id) return;
+            const rawAdmission = student.admission_number || student.student_id;
+            const isUuid = rawAdmission && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(rawAdmission));
+            studentLookup[String(student.user_id)] = {
+                full_name: student.full_name || 'Unknown',
+                admission_number: rawAdmission && !isUuid ? String(rawAdmission).trim() : null
+            };
+        }));
+
+        const uniqueRecords = new Map();
         const now = new Date().toISOString();
-        
-        const marksToInsert = matchingRegs.map(reg => {
-            const uuid = reg.student_id;
-            const student = studentLookup[uuid];
-            
-            if (!student) {
-                console.warn(`⚠️ No profile found for UUID: ${uuid}`);
-                return null;
+        matchingRegs.forEach(reg => {
+            const student = studentLookup[String(reg.student_id)];
+            if (!student?.admission_number) {
+                console.warn('Skipping registration without a resolvable admission number:', reg.student_id);
+                return;
             }
-            
-            if (!student.admission_number) {
-                console.warn(`⚠️ No valid admission number for ${student.full_name} (${uuid})`);
-                return null;
-            }
-            
-            console.log(`   ✅ ${student.full_name} | ${student.admission_number}`);
-            
-            return {
+            const record = {
                 admission_number: student.admission_number,
-                student_id: uuid,
+                student_id: reg.student_id,
                 student_name: student.full_name,
-                block: block,
+                block,
                 subject_name: unit,
-                academic_year: parseInt(year),
+                academic_year: numericYear,
                 assessment_type: 'full',
                 cat1_score: 0,
                 cat2_score: 0,
@@ -1808,87 +1702,55 @@ async function loadFromApprovedRegistrations(program, block, unit, year, unitCod
                 grade: '',
                 approval_status: 'draft',
                 published: false,
-                program: program,
+                program,
                 created_at: now,
                 updated_at: now
             };
-        }).filter(Boolean);
-        
-        if (marksToInsert.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
-                    <h3 style="color: #1e293b;">Could not resolve student details</h3>
-                    <p style="color: #64748b;">Student profiles don't have valid admission numbers set.</p>
-                    <p style="color: #94a3b8; font-size: 12px;">Check the consolidated_user_profiles_table.</p>
-                </div>
-            `;
+            // Deduplicate registration rows before attempting any inserts.
+            uniqueRecords.set(record.admission_number, record);
+        });
+        const candidates = [...uniqueRecords.values()];
+
+        if (!candidates.length) {
+            if (!mergeOnly && container) container.innerHTML = '<div style="text-align:center;padding:48px 20px;color:#92400e;">Student profiles were found, but none has a valid admission number. Check the student profile records.</div>';
             return;
         }
-        
-        console.log(`📝 Creating ${marksToInsert.length} blank marks records...`);
-        
-        // Upsert each one (safer than bulk for schema variations)
-        let successCount = 0;
-        let skipCount = 0;
-        
-        for (const record of marksToInsert) {
-            try {
-                // Check if already exists
-                const { data: existing } = await sb
-                    .from('student_marks')
-                    .select('id')
-                    .eq('admission_number', record.admission_number)
-                    .eq('subject_name', record.subject_name)
-                    .eq('block', record.block)
-                    .eq('academic_year', record.academic_year)
-                    .maybeSingle();
-                
-                if (existing) {
-                    skipCount++;
-                    continue;
-                }
-                
-                const { error: insertError } = await sb
-                    .from('student_marks')
-                    .insert(record);
-                
-                if (insertError && insertError.code !== '23505') {
-                    console.warn(`⚠️ Failed to create marks for ${record.admission_number}:`, insertError.message);
-                } else {
-                    successCount++;
-                }
-            } catch (err) {
-                console.warn(`⚠️ Error creating marks for ${record.admission_number}:`, err.message);
-            }
+
+        // One set-based lookup replaces one SELECT per student.
+        const existingAdmissions = new Set();
+        const admissions = candidates.map(record => record.admission_number);
+        const existingQueries = [];
+        for (let i = 0; i < admissions.length; i += 150) {
+            existingQueries.push(sb.from('student_marks').select('admission_number')
+                .eq('program', program).eq('block', block).eq('subject_name', unit)
+                .eq('academic_year', numericYear).in('admission_number', admissions.slice(i, i + 150)));
         }
-        
-        console.log(`✅ Created ${successCount} marks records (${skipCount} already existed)`);
-        
-        // When merging into an existing marks table, let the caller continue
-        // with its refreshed query to avoid recursive loading.
-        if (mergeOnly) return;
-        
-        // Reload — now marks records exist, students will appear
-        await loadMarksEntry();
-        
+        const existingResults = await Promise.all(existingQueries);
+        const existingError = existingResults.find(result => result.error);
+        if (existingError) throw existingError.error;
+        existingResults.forEach(result => (result.data || []).forEach(row => existingAdmissions.add(String(row.admission_number))));
+
+        const missingRecords = candidates.filter(record => !existingAdmissions.has(String(record.admission_number)));
+        if (missingRecords.length) {
+            // Bulk insert keeps the request count low. If another admin creates the same
+            // row concurrently, treat the unique-key race as harmless and let the caller
+            // reload the authoritative rows; do not overwrite any existing marks.
+            const { error: insertError } = await sb.from('student_marks').insert(missingRecords);
+            if (insertError && insertError.code !== '23505') throw insertError;
+            if (insertError?.code === '23505') console.info('Concurrent marks creation detected; existing records were preserved.');
+        }
+        console.log(`Marks registration sync complete: ${missingRecords.length} new, ${existingAdmissions.size} already present.`);
+
+        if (!mergeOnly) await loadMarksEntry();
     } catch (error) {
-        console.error('❌ Error loading from registrations:', error);
-        if (container) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
-                    <h4 style="color: #991b1b;">Error loading students</h4>
-                    <p style="color: #64748b;">${error.message}</p>
-                    <button onclick="loadMarksEntry()" class="btn-action" 
-                            style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sync-alt"></i> Retry
-                    </button>
-                </div>
-            `;
+        console.error('Error reconciling approved registrations:', error);
+        if (!mergeOnly && container) {
+            container.innerHTML = `<div style="text-align:center;padding:40px;"><i class="fas fa-exclamation-triangle" style="font-size:40px;color:#dc2626;"></i><h4 style="color:#991b1b;">Unable to load registered students</h4><p style="color:#64748b;">${escapeHtml(error.message || 'Unknown database error')}</p><button onclick="loadMarksEntry()" style="margin-top:12px;padding:8px 20px;background:#4C1D95;color:white;border:0;border-radius:6px;cursor:pointer;">Retry</button></div>`;
         }
+        throw error;
     }
 }
+
 // ============================================================
 // APPROVE ALL PENDING REGISTRATIONS FOR A UNIT
 // ============================================================
