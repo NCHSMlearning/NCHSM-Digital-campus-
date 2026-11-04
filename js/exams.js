@@ -147,32 +147,35 @@
         
         updateAllCountdowns() {
             const kenyaNow = getKenyaNow();
-            
             this.currentExams.forEach(exam => {
-                if (exam.actionState === 'available' && exam.examStartDateTime && exam.examEndDateTime) {
-                    if (kenyaNow >= exam.examStartDateTime && kenyaNow <= exam.examEndDateTime) {
-                        const timeLeftMs = exam.examEndDateTime - kenyaNow;
-                        const hours = Math.floor(timeLeftMs / (1000 * 60 * 60));
-                        const minutes = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
-                        const seconds = Math.floor((timeLeftMs % (1000 * 60)) / 1000);
-                        
-                        const rowElement = document.querySelector(`tr[data-exam-id="${exam.id}"]`);
-                        if (rowElement) {
-                            const timerElement = rowElement.querySelector('.exam-timer');
-                            if (timerElement) {
-                                timerElement.innerHTML = `
-                                    <span class="timer-display">
-                                        <i class="fas fa-hourglass-half"></i>
-                                        ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}
-                                    </span>
-                                `;
-                            }
-                        }
-                    }
+                if (!exam.examStartDateTime || !exam.examEndDateTime) return;
+                const rowElement = document.querySelector('tr[data-exam-id="' + CSS.escape(String(exam.id)) + '"]');
+                if (!rowElement) return;
+                const timerElement = rowElement.querySelector('.exam-timer');
+                if (!timerElement) return;
+                const startsAt = exam.examStartDateTime.getTime();
+                const endsAt = exam.examEndDateTime.getTime();
+                let remaining = 0;
+                let prefix = '';
+                if (kenyaNow.getTime() < startsAt) {
+                    remaining = startsAt - kenyaNow.getTime();
+                    prefix = 'Opens in ';
+                } else if (kenyaNow.getTime() <= endsAt) {
+                    remaining = endsAt - kenyaNow.getTime();
+                    prefix = 'Time left ';
+                } else {
+                    timerElement.textContent = 'Assessment window closed';
+                    timerElement.classList.add('timer-expired');
+                    return;
                 }
+                const totalSeconds = Math.max(0, Math.floor(remaining / 1000));
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                timerElement.textContent = prefix + (hours ? hours + 'h ' : '') + minutes + 'm ' + String(seconds).padStart(2,'0') + 's';
             });
         }
-        
+
         // ============================================
         // 📋 CACHE DOM ELEMENTS
         // ============================================
@@ -1345,9 +1348,10 @@ applyDataFilter() {
                 }
                 const dateText = exam.formattedExamDateTime && exam.formattedExamDateTime !== 'TBA' ? exam.formattedExamDateTime : 'Date/time TBA';
                 const duration = exam.duration_minutes || exam.duration || null;
+                const timerMarkup = exam.examStartDateTime && exam.examEndDateTime ? '<span class="current-detail exam-timer" data-exam-timer="' + this.escapeHtml(String(exam.id)) + '">' + this.escapeHtml(exam.countdownText || 'Calculating time…') + '</span>' : '';
                 const details = '<span class="current-detail"><i class="fas fa-star"></i> ' + totalMarks + ' marks</span>' +
                     (duration ? '<span class="current-detail"><i class="fas fa-hourglass-half"></i> ' + duration + ' min</span>' : '') +
-                    '<span class="current-detail"><i class="fas fa-calendar"></i> ' + this.escapeHtml(dateText) + '</span>';
+                    '<span class="current-detail"><i class="fas fa-calendar"></i> ' + this.escapeHtml(dateText) + '</span>' + timerMarkup;
                 return '<tr data-exam-id="' + this.escapeHtml(String(exam.id)) + '">' +
                     '<td class="current-index">' + (index + 1) + '</td>' +
                     '<td><div class="assessment-name-main">' + this.escapeHtml(displayName) + '</div><div class="assessment-type-inline">' + (isCatExam ? 'CAT' : 'Final Exam') + (isTVET ? ' · TVET' : '') + '</div></td>' +
