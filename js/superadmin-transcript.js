@@ -1916,8 +1916,14 @@ window.renderTranscriptBlock = function(index) {
             .container > .footer { flex: 0 0 auto !important; margin-top: auto !important; padding-top: 1mm !important; }
             .semester-results-table th { white-space: nowrap !important; }
             .semester-results-table td:nth-child(2) { white-space: nowrap !important; font-size: 9.5px !important; }
+            .semester-results-table th { padding-left: 3px !important; padding-right: 3px !important; font-size: 8px !important; line-height: 1.1 !important; white-space: nowrap !important; overflow-wrap: normal !important; }
+            .semester-results-table th:nth-child(5) { font-size: 7.5px !important; letter-spacing: -0.2px !important; }
+            .semester-results-table td { padding-left: 3px !important; padding-right: 3px !important; }
+            .semester-results-table.units-count-few tbody tr { height: 9mm !important; }
             .semester-results-table.units-count-few tbody td { padding-top: 5px !important; padding-bottom: 5px !important; }
+            .semester-results-table.units-count-medium tbody tr { height: 7mm !important; }
             .semester-results-table.units-count-medium tbody td { padding-top: 4px !important; padding-bottom: 4px !important; }
+            .semester-results-table.units-count-many tbody tr { height: auto !important; }
             .semester-results-table.units-count-many tbody td { padding-top: 2px !important; padding-bottom: 2px !important; font-size: 9px !important; line-height: 1.05 !important; }
             .semester-results-table.units-count-many thead th { padding-top: 3px !important; padding-bottom: 3px !important; font-size: 8px !important; }
             .semester-results-table tbody td:nth-child(1),
@@ -1955,12 +1961,12 @@ window.renderTranscriptBlock = function(index) {
     </div></div>
     <div class="semester-results-title">${escapeHtml(transcriptResultsHeading)}</div>
     <table class="semester-results-table ${unitTableDensityClass}"><thead><tr>
-        <th style="text-align: center; width: 25px; border: 1px solid #1E559B;">#</th>
-        <th style="width: 88px; white-space: nowrap; border: 1px solid #1E559B;">Unit Code</th>
-        <th style="min-width: 170px; border: 1px solid #1E559B;">Unit Name</th>
-        <th style="text-align: center; width: 54px; white-space: nowrap; border: 1px solid #1E559B;">Grade</th>
-        <th style="text-align: center; width: 72px; white-space: nowrap; border: 1px solid #1E559B;">Credit Points</th>
-        <th style="text-align: center; width: 82px; white-space: nowrap; border: 1px solid #1E559B;">Status</th>
+        <th style="text-align: center; width: 4%; border: 1px solid #1E559B;">#</th>
+        <th style="width: 13%; white-space: nowrap; border: 1px solid #1E559B;">Unit Code</th>
+        <th style="width: 40%; border: 1px solid #1E559B;">Unit Name</th>
+        <th style="text-align: center; width: 8%; white-space: nowrap; border: 1px solid #1E559B;">Grade</th>
+        <th style="text-align: center; width: 14%; white-space: nowrap; border: 1px solid #1E559B;">Credit Points</th>
+        <th style="text-align: center; width: 21%; white-space: nowrap; border: 1px solid #1E559B;">Status</th>
     </tr></thead><tbody>${tableRows || '<tr><td colspan="6" style="text-align:center;">No approved and published results.</td></tr>'}</tbody></table>
     <div class="transcript-lower-grid">
         <div class="grading-scale-table"><div class="title">Grading Scale (${programType}) — Mark*</div>${gradingScaleHTML}
