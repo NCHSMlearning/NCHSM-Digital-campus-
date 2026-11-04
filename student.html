@@ -14658,6 +14658,50 @@ html,body{max-width:100%!important}
 })();
 </script>
 
+
+<style id="nchsm-completed-assessment-action-buttons">
+/* Restore intentional, touch-friendly action button styling in completed results. */
+#cats #completed-section .row-actions{
+ display:flex!important;align-items:center!important;justify-content:flex-start!important;
+ flex-wrap:wrap!important;gap:8px!important;width:100%!important;min-width:190px!important;
+}
+#cats #completed-section .row-actions button,
+#cats #completed-section .row-actions .result-btn,
+#cats #completed-section .row-actions .review-btn{
+ appearance:none!important;-webkit-appearance:none!important;
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ gap:7px!important;box-sizing:border-box!important;min-height:38px!important;
+ padding:8px 12px!important;margin:0!important;border:1px solid transparent!important;
+ border-radius:8px!important;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important;
+ font-size:11px!important;line-height:1.2!important;font-weight:750!important;
+ letter-spacing:0!important;text-transform:none!important;white-space:nowrap!important;
+ text-decoration:none!important;cursor:pointer!important;box-shadow:0 2px 5px rgba(15,35,65,.08)!important;
+ transition:background .15s ease,border-color .15s ease,transform .15s ease!important;
+}
+#cats #completed-section .row-actions .result-btn{
+ background:#eaf3ff!important;border-color:#c9def5!important;color:#155b9b!important;
+}
+#cats #completed-section .row-actions .review-btn{
+ background:#edf8f3!important;border-color:#c9ead9!important;color:#08764f!important;
+}
+#cats #completed-section .row-actions .result-btn i,
+#cats #completed-section .row-actions .review-btn i{
+ display:inline-block!important;font-size:12px!important;line-height:1!important;color:inherit!important;
+}
+#cats #completed-section .row-actions .result-btn:hover{background:#dcecff!important;border-color:#a9cbed!important}
+#cats #completed-section .row-actions .review-btn:hover{background:#def3e8!important;border-color:#a9ddc2!important}
+#cats #completed-section .row-actions button:active{transform:translateY(1px)!important}
+#cats #completed-section .row-actions button:focus-visible{outline:3px solid rgba(37,99,235,.28)!important;outline-offset:2px!important}
+@media(max-width:760px){
+ #cats #completed-section .row-actions{gap:6px!important;min-width:190px!important}
+ #cats #completed-section .row-actions button,
+ #cats #completed-section .row-actions .result-btn,
+ #cats #completed-section .row-actions .review-btn{
+  min-height:36px!important;padding:8px 10px!important;font-size:10px!important;border-radius:7px!important;
+ }
+}
+</style>
+
 </body>
 <style id="nchsm-final-reference-lock">
 /* FINAL VISUAL LOCK — keeps the desktop dashboard close to the supplied reference image. */
