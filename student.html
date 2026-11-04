@@ -14567,45 +14567,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 }
 </style>
 <script id="nchsm-exams-current-table-adapter">
-(function(){
-  'use strict';
-  function convertCurrent(){
-    var mount=document.getElementById('current-assessments-table');
-    if(!mount) return;
-    var cards=Array.from(mount.querySelectorAll(':scope > .current-assessment-card'));
-    if(!cards.length) return;
-    var table=document.createElement('table');
-    table.className='nchsm-exam-table';
-    table.innerHTML='<thead><tr><th>Assessment</th><th>Status</th><th>Details</th><th>Action</th></tr></thead><tbody></tbody>';
-    var tbody=table.tBodies[0];
-    cards.forEach(function(card){
-      var name=card.querySelector('.current-name');
-      var status=card.querySelector('.current-status');
-      var meta=card.querySelector('.current-meta');
-      var action=card.querySelector('.current-action');
-      var tr=document.createElement('tr');
-      var c1=document.createElement('td'),c2=document.createElement('td'),c3=document.createElement('td'),c4=document.createElement('td');
-      if(name)c1.appendChild(name);
-      card.querySelectorAll('.type-badge,.retake-badge').forEach(function(b){c1.appendChild(document.createTextNode(' '));c1.appendChild(b);});
-      c2.appendChild(status||document.createTextNode('—'));
-      c3.appendChild(meta||document.createTextNode('—'));
-      if(action){Array.from(action.childNodes).forEach(function(n){c4.appendChild(n);});}else c4.textContent='—';
-      tr.append(c1,c2,c3,c4);
-      tbody.appendChild(tr);
-    });
-    mount.replaceChildren(table);
-  }
-  function watch(){
-    var mount=document.getElementById('current-assessments-table');
-    if(!mount)return;
-    var obs=new MutationObserver(function(){
-      if(mount.querySelector(':scope > .current-assessment-card')) convertCurrent();
-    });
-    obs.observe(mount,{childList:true,subtree:true});
-    convertCurrent();
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch,{once:true});else watch();
-})();
+/* Current assessments now remain as responsive assessment cards.
+   This intentionally disables the legacy card-to-wide-table adapter. */
 </script>
 
 <script src="/js/nchsm-mobile-enhancements.js?v=3" defer></script>
@@ -14761,6 +14724,42 @@ html,body{max-width:100%!important}
 #cats .nchsm-exam-table{min-width:850px!important;width:850px!important}
 #cats .row-actions{min-width:175px!important}
 #cats .row-actions button{font-size:10px!important;padding:8px 9px!important}
+}
+</style>
+<style id="nchsm-current-assessments-card-layout">
+#cats #current-section .nchsm-exam-table-scroll{overflow:visible!important;max-width:100%!important;width:100%!important}
+#cats #current-assessments-table{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important;width:100%!important;min-width:0!important;max-width:100%!important;padding:12px!important;box-sizing:border-box!important}
+#cats .current-assessment-card{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:14px!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;padding:16px 18px!important;background:linear-gradient(135deg,#fff 0%,#f8fbff 100%)!important;border:1px solid #dce7f3!important;border-left:4px solid #1674d2!important;border-radius:13px!important;box-shadow:0 3px 12px rgba(19,54,91,.055)!important}
+#cats .current-assessment-card.row-retake{border-left-color:#7546c8!important;background:#fbf9ff!important}
+#cats .current-assessment-card .current-main{display:flex!important;flex-direction:column!important;gap:8px!important;min-width:0!important}
+#cats .current-assessment-card .current-top{display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:7px!important;min-width:0!important}
+#cats .current-assessment-card .current-name{font-size:14px!important;line-height:1.35!important;font-weight:850!important;color:#17365d!important;overflow-wrap:anywhere!important}
+#cats .current-assessment-card .type-badge{display:inline-flex!important;align-items:center!important;border-radius:999px!important;padding:5px 9px!important;background:#e7f1ff!important;color:#075cb4!important;font-size:9px!important;font-weight:850!important}
+#cats .current-assessment-card .type-badge.type-final{background:#f0eaff!important;color:#7040bd!important}
+#cats .current-assessment-card .retake-badge{background:#f0eaff!important;color:#7040bd!important;border-radius:999px!important;padding:5px 8px!important;font-size:9px!important;font-weight:800!important}
+#cats .current-assessment-card .current-status{display:inline-flex!important;align-items:center!important;gap:5px!important;border-radius:999px!important;padding:6px 10px!important;background:#eaf2ff!important;color:#175eae!important;font-size:10px!important;font-weight:850!important;white-space:nowrap!important}
+#cats .current-assessment-card .current-status.available{background:#e5f8ed!important;color:#087b45!important}
+#cats .current-assessment-card .current-status.upcoming{background:#eaf2ff!important;color:#175eae!important}
+#cats .current-assessment-card .current-status.missed{background:#fff0f0!important;color:#b42318!important}
+#cats .current-assessment-card .current-status.retake{background:#f1eaff!important;color:#7040bd!important}
+#cats .current-assessment-card .current-meta{display:flex!important;flex-wrap:wrap!important;gap:7px 13px!important;color:#64758b!important;font-size:10px!important;line-height:1.5!important}
+#cats .current-assessment-card .current-meta span{display:inline-flex!important;align-items:center!important;gap:5px!important}
+#cats .current-assessment-card .current-meta i{color:#7890aa!important}
+#cats .current-assessment-card .current-action{display:flex!important;flex-direction:column!important;align-items:flex-end!important;justify-content:center!important;gap:7px!important;min-width:125px!important}
+#cats .current-assessment-card .exam-action-btn{display:inline-flex!important;justify-content:center!important;align-items:center!important;min-height:39px!important;min-width:125px!important;padding:9px 13px!important;border:0!important;border-radius:9px!important;font-size:11px!important;font-weight:850!important;text-decoration:none!important;white-space:nowrap!important;box-shadow:0 3px 8px rgba(20,60,100,.1)!important}
+#cats .current-assessment-card .btn-start{background:#079653!important;color:#fff!important}
+#cats .current-assessment-card .btn-upcoming{background:#e5efff!important;color:#0757ad!important;box-shadow:none!important}
+#cats .current-assessment-card .btn-retake{background:#7040bd!important;color:#fff!important}
+#cats .current-assessment-card .btn-disabled,#cats .current-assessment-card .btn-missed{background:#eef2f6!important;color:#64748b!important;box-shadow:none!important}
+#cats .current-assessment-card .exam-timer{font-size:9px!important;color:#64758b!important;text-align:right!important;line-height:1.4!important}
+@media(max-width:600px){
+ #cats #current-assessments-table{padding:9px!important;gap:9px!important}
+ #cats .current-assessment-card{grid-template-columns:minmax(0,1fr)!important;gap:12px!important;padding:14px!important;border-radius:12px!important}
+ #cats .current-assessment-card .current-name{font-size:13px!important}
+ #cats .current-assessment-card .current-action{flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;flex-wrap:wrap!important;min-width:0!important;width:100%!important;border-top:1px solid #e8eef5!important;padding-top:10px!important}
+ #cats .current-assessment-card .exam-action-btn{min-width:120px!important;min-height:40px!important}
+ #cats .current-assessment-card .exam-timer{text-align:left!important}
+ #cats .current-assessment-card .current-meta{font-size:9px!important;gap:6px 10px!important}
 }
 </style>
 </body>
