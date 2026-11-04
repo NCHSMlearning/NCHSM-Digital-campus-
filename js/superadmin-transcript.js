@@ -1808,7 +1808,7 @@ window.renderTranscriptBlock = function(index) {
     <div class="transcript-verification-column" aria-label="Transcript identification and verification">
       <div class="transcript-generation-number" id="transcriptGenerationNumber" aria-label="Transcript generation number" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"><span class="transcript-number-prefix"></span><span class="transcript-number-sequence"></span></span></div>
       <div class="verification-qr" aria-label="Document verification QR code">
-        <div id="transcriptVerificationQr" class="qr-placeholder">Preparing<br>verification…</div>
+        <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
         <span>VERIFY</span>
       </div>
     </div>
@@ -1866,7 +1866,7 @@ window.renderTranscriptBlock = function(index) {
         const supabaseUrl = config.SUPABASE_URL;
         const anonKey = config.SUPABASE_ANON_KEY;
         const setQrError = (message) => {
-            if (qrHost) qrHost.textContent = message || 'Verification unavailable';
+            if (qrHost) { qrHost.removeAttribute('src'); qrHost.alt = message || 'Verification unavailable'; qrHost.title = message || 'Verification unavailable'; }
         };
         try {
             if (!qrHost || !supabaseUrl || !anonKey || !client?.auth) {
@@ -1887,7 +1887,7 @@ window.renderTranscriptBlock = function(index) {
             const numberValue = content.querySelector('#transcriptGenerationNumberValue');
             if (numberBox && numberValue && result.transcript_number) {
                 const serial = String(result.transcript_number).trim();
-                const sequenceMatch = serial.match(/(\\d{5})$/);
+                const sequenceMatch = serial.match(/(\d{5})$/);
                 const prefix = sequenceMatch ? serial.slice(0, -5) : serial;
                 const sequence = sequenceMatch ? sequenceMatch[1] : '';
                 const prefixElement = numberValue.querySelector('.transcript-number-prefix');
@@ -1922,10 +1922,28 @@ window.renderTranscriptBlock = function(index) {
                 }
             }
             if (!QR) throw new Error('QR library could not be loaded.');
-            qrHost.innerHTML = '';
-            qrHost.className = '';
-            qrHost.style.cssText = 'width:76px;height:76px;display:flex;align-items:center;justify-content:center;';
-            new QR(qrHost, { text: verifyUrl.href, width: 76, height: 76, correctLevel: QR.CorrectLevel?.M || 0 });
+            const qrStage = document.createElement('div');
+            qrStage.style.cssText = 'position:fixed;left:-10000px;top:0;width:76px;height:76px;';
+            document.body.appendChild(qrStage);
+            try {
+                new QR(qrStage, { text: verifyUrl.href, width: 76, height: 76, correctLevel: QR.CorrectLevel?.H ?? QR.CorrectLevel?.M ?? 0 });
+                const qrCanvas = qrStage.querySelector('canvas');
+                const qrGenerated = qrStage.querySelector('img');
+                let qrData = '';
+                if (qrCanvas && qrCanvas.width) qrData = qrCanvas.toDataURL('image/png');
+                else if (qrGenerated) {
+                    if (!qrGenerated.complete || !qrGenerated.naturalWidth) await new Promise((resolve, reject) => {
+                        qrGenerated.onload = resolve; qrGenerated.onerror = reject;
+                        setTimeout(() => reject(new Error('QR image timed out')), 5000);
+                    });
+                    qrData = qrGenerated.src;
+                }
+                if (!qrData) throw new Error('QR generator returned no image data.');
+                qrHost.src = qrData;
+                qrHost.width = 76;
+                qrHost.height = 76;
+                qrHost.dataset.ready = 'true';
+            } finally { qrStage.remove(); }
         } catch (error) {
             console.error('[Transcript QR] Verification issuance failed:', error);
             setQrError('Verification unavailable');
