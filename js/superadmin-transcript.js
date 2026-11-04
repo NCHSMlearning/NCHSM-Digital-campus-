@@ -1787,10 +1787,50 @@ window.renderTranscriptBlock = function(index) {
         .transcript-lower-grid .summary-card .value { font-size: 17px; line-height: 1.1; }
         .transcript-lower-grid .summary-card .label { font-size: 7px; letter-spacing: .2px; }
         .grading-scale-table { margin: 0; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbdbea; }
-        .semester-results-title { background: #1E559B !important; color: #ffffff !important; }
-        .grading-scale-table .title { font-weight: 800; font-size: 11px; color: #ffffff; background: #1E559B; text-align: center; margin: 0 0 8px; padding: 6px 8px; border-radius: 5px; }
-        .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db; }
-        .grading-scale-table th { background: #1E559B; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #1E559B; }
+        /* Transcript section and grading headings: consistently bold black for clear printing. */
+        .semester-results-title,
+        .grading-scale-table .title,
+        .academic-summary-title {
+            color: #000000 !important;
+            -webkit-text-fill-color: #000000 !important;
+            background: #ffffff !important;
+            font-weight: 900 !important;
+            text-shadow: none !important;
+        }
+        .semester-results-title {
+            border-left: 3px solid #000000 !important;
+            border-bottom: 1px solid #000000 !important;
+            padding: 5px 8px !important;
+        }
+        .grading-scale-table .title {
+            font-size: 11px;
+            text-align: center;
+            margin: 0 0 8px;
+            padding: 6px 8px;
+            border-bottom: 1px solid #000000;
+            border-radius: 0;
+        }
+        .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #000000; }
+        .grading-scale-table th {
+            background: #ffffff !important;
+            color: #000000 !important;
+            -webkit-text-fill-color: #000000 !important;
+            font-weight: 900 !important;
+            padding: 4px 8px;
+            text-align: center;
+            font-size: 7px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid #000000;
+        }
+        .grading-scale-table td { color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
+        .semester-results-table thead th {
+            background: #ffffff !important;
+            color: #000000 !important;
+            -webkit-text-fill-color: #000000 !important;
+            font-weight: 900 !important;
+            border: 1px solid #000000 !important;
+        }
         .grading-scale-table td { padding: 4px 8px; text-align: center; border: 1px solid #d1d5db; font-size: 7px; }
                 .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; min-height: 62px; }
         .signature-box { text-align: center; }
