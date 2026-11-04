@@ -1757,6 +1757,8 @@ window.renderTranscriptBlock = function(index) {
             letter-spacing: 2px;
             font-family: 'Georgia', serif;
             text-shadow: none !important;
+            print-color-adjust: exact !important;
+            -webkit-print-color-adjust: exact !important;
         }
         .header .date { font-size: 8px; color: #94a3b8; margin-top: 2px; }
         .student-info-wrapper { display: flex; align-items: center; gap: 10px; margin: 5px 0 7px; padding: 7px 9px; background: #f1f6fb; border-radius: 8px; border: 1px solid #cbdbea; border-left: 5px solid #1E559B; }
@@ -1961,7 +1963,7 @@ window.renderTranscriptBlock = function(index) {
                 <img src="https://nchsm.co.ke/images/Logo_NCHSM.png" alt="NCHSM Logo" crossorigin="anonymous">
                 <div><div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div><div class="motto">"Excellence in Health Sciences Education"</div></div>
             </div>
-            <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
+            <div class="subtitle" style="color:#1E559B !important;-webkit-text-fill-color:#1E559B !important;background:#FFFFFF !important;font-weight:900 !important;border-bottom:3px solid #1E559B !important;">PROVISIONAL ACADEMIC TRANSCRIPT</div>
             <div class="date">Generated: ${now}</div>
         </div>
         <div class="transcript-verification-column" aria-label="Transcript identification and verification">
