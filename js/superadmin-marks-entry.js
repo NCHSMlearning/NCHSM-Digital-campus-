@@ -1929,15 +1929,13 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         // A current score of 60 or above must never show a retake badge or retake controls.
         const showRetakeHistory = total > 0 && total < 60 && hasRetake;
         
+        // Consistent row status colours: PASS = pale green, FAIL = pale yellow.
+        // Rows without entered marks remain neutral/PENDING.
         let rowStyle = '';
-        if (total > 0 && total < 60 && hasRetake && isRetakePassing) {
-            rowStyle = 'background: linear-gradient(90deg, #f0fdf4, #dcfce7); border-left: 4px solid #059669;';
-        } else if (total > 0 && total < 60 && hasRetake && !isRetakePassing) {
-            rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
-        } else if (needsRetake) {
-            rowStyle = 'background: linear-gradient(90deg, #fffbeb, #fef3c7); border-left: 4px solid #f59e0b;';
-        } else if (maxRetakesReached) {
-            rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
+        if (total > 0 && isPassing) {
+            rowStyle = 'background: #f0fdf4; border-left: 4px solid #16a34a;';
+        } else if (total > 0 && !isPassing) {
+            rowStyle = 'background: #fef9c3; border-left: 4px solid #eab308;';
         }
         
         const approvalBadge = {
