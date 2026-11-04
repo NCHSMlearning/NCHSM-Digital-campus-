@@ -1801,7 +1801,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         // Pass session context for QR generation.
         try {
             const qrParentConfig = window.APP_CONFIG || {};
-            const qrParentClient = window.sb || window.supabaseClient || (window.db && window.db.supabase) || null;
+            const qrParentClient = window.supabaseClient;
             if (qrParentClient && qrParentClient.auth && qrParentConfig.SUPABASE_URL && qrParentConfig.SUPABASE_ANON_KEY) {
                 qrParentClient.auth.getSession().then(({ data, error }) => {
                     if (printWindow && !printWindow.closed && !error && data && data.session && data.session.access_token) {
@@ -2302,7 +2302,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
                         'apikey': portalConfig.SUPABASE_ANON_KEY,
                         'Authorization': 'Bearer ' + accessToken
                     },
-                    body: JSON.stringify({ action: "issue", block: ${JSON.stringify(blockFilter === "all" ? "ALL" : blockFilter)}, admission_number: user.student_id || user.admission_number || user.user_id })
+                    body: JSON.stringify({ action: "issue", block: ${JSON.stringify(blockFilter === "all" ? "ALL" : blockFilter)} })
                 });
                 const registryResult = await registryResponse.json().catch(() => ({}));
                 if (!registryResponse.ok || !registryResult.token) {
