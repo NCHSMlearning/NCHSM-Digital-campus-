@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="css/admindashboard.css" />
+    <link rel="stylesheet" href="css/lecturer-exams-modern.css?v=1" />
 
     <style>
         /* ---------- Stats Cards ---------- */
@@ -449,7 +450,7 @@
                     </div>
                     <div class="results-filter-field">
                         <label for="resultSearch">Search student or exam</label>
-                        <input type="search" id="resultSearch" placeholder="Name, student ID, email, exam…" oninput="applyLecturerResultFilters()" autocomplete="off">
+                        <input type="search" id="resultSearch" name="lecturer-results-search-query" placeholder="Search by student name, admission number or exam…" oninput="applyLecturerResultFilters()" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-form-type="other" readonly onfocus="this.removeAttribute('readonly')">
                     </div>
                     <div class="results-filter-field">
                         <label for="resultSortFilter">Sort results</label>
@@ -2221,6 +2222,31 @@ window.viewLecturerStudentProgress = async function(studentId, studentName, exam
         console.log('✅ Lecturer Dashboard loaded (Program-wide view + Reset)');
     });
     </script>
+
+
+<script>
+/* Prevent browsers/password managers from injecting the signed-in lecturer email
+   into the student/exam search field. It becomes editable after an explicit focus. */
+(function () {
+  function protectLecturerSearch() {
+    const field = document.getElementById('resultSearch');
+    if (!field) return;
+    const looksLikeEmail = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test((field.value || '').trim());
+    if (!field.matches(':focus') && looksLikeEmail) {
+      field.value = '';
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    field.setAttribute('autocomplete', 'new-password');
+    if (!field.matches(':focus')) field.setAttribute('readonly', 'readonly');
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', protectLecturerSearch, { once: true });
+  } else protectLecturerSearch();
+  window.addEventListener('pageshow', protectLecturerSearch);
+  setTimeout(protectLecturerSearch, 350);
+  setTimeout(protectLecturerSearch, 1100);
+})();
+</script>
 
 <script src="/js/exam-coordinator.js?v=1" defer></script>
 <script src="/js/nchsm-mobile-enhancements.js?v=3" defer></script>
