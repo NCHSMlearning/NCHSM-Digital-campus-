@@ -2784,3 +2784,93 @@ main.main {
         font-size: 12px !important;
     }
 }
+
+
+/* =========================================================
+   NCHSM STUDENT CATS/EXAMS — MOBILE TABLE SCROLL FIX
+   Keep the assessment section itself stationary; make each
+   table wrapper the single horizontal scroll container.
+   ========================================================= */
+#cats .assessments-section {
+    overflow: visible !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+}
+
+#cats .assessments-table-container {
+    display: block !important;
+    position: relative;
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+    scrollbar-width: thin;
+    flex: 1 1 auto;
+}
+
+#cats .assessments-table-container > .assessments-table {
+    display: table !important;
+    width: max-content !important;
+    min-width: 1100px !important;
+    max-width: none !important;
+    table-layout: auto !important;
+    flex-shrink: 0 !important;
+}
+
+#cats .assessments-table-container::-webkit-scrollbar {
+    height: 7px;
+}
+#cats .assessments-table-container::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 10px;
+}
+#cats .assessments-table-container::-webkit-scrollbar-track {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+    #cats .assessments-section,
+    #cats .current-section,
+    #cats .completed-section {
+        overflow: visible !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    #cats .assessments-table-container {
+        width: 100% !important;
+        max-width: 100vw !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding: 0 0 8px !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-x pan-y;
+    }
+
+    #cats .assessments-table-container > .assessments-table {
+        min-width: 900px !important;
+        width: 900px !important;
+        max-width: none !important;
+        table-layout: auto !important;
+    }
+
+    #cats .assessments-table-container th,
+    #cats .assessments-table-container td {
+        white-space: nowrap !important;
+    }
+}
+
+@media (max-width: 380px) {
+    #cats .assessments-table-container > .assessments-table {
+        min-width: 900px !important;
+        width: 900px !important;
+    }
+}
