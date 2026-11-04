@@ -16,7 +16,7 @@
 
     <!-- CSS -->
     <link rel="stylesheet" href="css/admindashboard.css" />
-    <link rel="stylesheet" href="css/admin-exams-modern.css?v=4" />
+    <link rel="stylesheet" href="css/admin-exams-modern.css?v=5" />
 
 
 <style>
@@ -173,7 +173,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
             <div class="menu-section">
                 <div class="menu-label">Dashboard</div>
                 <ul class="sidebar-menu">
-                    <li><a class="active" data-tab="students" onclick="switchTab('students')">
+                    <li><a data-tab="students" onclick="switchTab('students')">
                         <i class="fas fa-th-large"></i> Overview
                     </a></li>
                 </ul>
@@ -183,7 +183,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
             <div class="menu-section">
                 <div class="menu-label">Students</div>
                 <ul class="sidebar-menu">
-                    <li><a data-tab="students" onclick="switchTab('students')">
+                    <li><a class="active" data-tab="students" onclick="switchTab('students')">
                         <i class="fas fa-graduation-cap"></i> Students Results
                     </a></li>
                     <li><a data-tab="allStudents" onclick="switchTab('allStudents')">
