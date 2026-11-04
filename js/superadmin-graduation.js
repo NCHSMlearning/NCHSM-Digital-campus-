@@ -84,7 +84,7 @@ function getGradingConfig(programCode) {
         return {
             grades: {
                 'A': { min: 75, max: 100, points: 4.0, label: 'DISTINCTION' },
-                'B': { min: 65, max: 74, points: 3.0, label: 'CREDIT' },
+                'B': { min: 65, max: 74.99, points: 3.0, label: 'CREDIT' },
                 'C': { min: 60, max: 64, points: 2.0, label: 'PASS' },
                 'D': { min: 0, max: 59, points: 0.0, label: 'FAIL' }
             },
