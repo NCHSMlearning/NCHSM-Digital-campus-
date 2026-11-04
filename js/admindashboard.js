@@ -2273,98 +2273,29 @@ async function updateStats() {
         return;
     }
 
-    // ✅ Admin dashboard - render full stats grid
-    statsContainer.innerHTML = `
-        <div style="background: linear-gradient(135deg, #ffffff, #f8fafc); border-left: 4px solid #0A3D62; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
-                <i class="fas fa-users"></i>
-            </div>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #0A3D62; line-height: 1.2;">${totalStudents}</div>
-                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Total Students</div>
-            </div>
-        </div>
+    // Super Admin command-centre metrics — live values, ordered to match the approved design.
+    const totalExamsCount = Array.isArray(allExams) ? allExams.length : 0;
+    const metricCard = (label, value, icon, accent, pale, path) => `
+        <article class="command-stat-card" style="--metric-accent:${accent};--metric-pale:${pale};">
+            <div class="command-stat-icon"><i class="fas ${icon}"></i></div>
+            <div class="command-stat-copy"><strong>${Number(value || 0).toLocaleString()}</strong><span>${label}</span></div>
+            <svg class="command-stat-spark" viewBox="0 0 112 42" aria-hidden="true" focusable="false">
+                <path d="M2 34 ${path} L110 42 L2 42 Z" fill="var(--metric-pale)" opacity=".9"></path>
+                <path d="M2 34 ${path}" fill="none" stroke="var(--metric-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+        </article>`;
+    statsContainer.innerHTML = [
+        metricCard('Total Students', totalStudents, 'fa-users', '#1689e8', '#e4f2ff', 'L18 28 L31 25 L43 29 L56 16 L70 20 L83 11 L96 14 L110 4'),
+        metricCard('Total Exams', totalExamsCount, 'fa-layer-group', '#7650e8', '#eee9ff', 'L18 30 L31 22 L44 27 L57 15 L70 20 L84 11 L97 16 L110 5'),
+        metricCard('Passed', passed, 'fa-check-circle', '#0bb981', '#ddf8ec', 'L18 32 L31 27 L44 29 L57 17 L70 22 L84 10 L97 14 L110 4'),
+        metricCard('Failed', failed, 'fa-times-circle', '#ed3d4b', '#ffe7e9', 'L18 34 L31 30 L44 32 L57 23 L70 27 L84 15 L97 20 L110 8'),
+        metricCard('Pending Release', pending, 'fa-clock', '#f2a51d', '#fff3d5', 'L18 32 L31 27 L44 30 L57 20 L70 23 L84 14 L97 17 L110 6'),
+        metricCard('Currently Online', onlineCount, 'fa-wifi', '#13a8c1', '#e0f7fb', 'L18 31 L31 27 L44 29 L57 18 L70 21 L84 12 L97 15 L110 5'),
+        metricCard('Retake Authorized', retakeAuthorized, 'fa-redo', '#8b5cf6', '#f0eaff', 'L18 33 L31 26 L44 29 L57 17 L70 21 L84 12 L97 15 L110 4'),
+        metricCard('In Progress', inProgress, 'fa-play-circle', '#16a6bd', '#e0f7fa', 'L18 32 L31 27 L44 30 L57 19 L70 22 L84 12 L97 16 L110 5'),
+        metricCard('Face Violations', faceAlerts, 'fa-exclamation-triangle', '#e83e8c', '#ffe7f1', 'L18 34 L31 29 L44 32 L57 21 L70 25 L84 14 L97 18 L110 7')
+    ].join('');
 
-        <div style="background: linear-gradient(135deg, #ffffff, #f0fdf4); border-left: 4px solid #10B981; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #10B981, #059669); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
-                <i class="fas fa-wifi"></i>
-            </div>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #059669; line-height: 1.2;">${onlineCount}</div>
-                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">🟢 Currently Online</div>
-            </div>
-        </div>
-
-        <div style="background: linear-gradient(135deg, #ffffff, #d1fae5); border-left: 4px solid #059669; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #059669, #047857); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
-                <i class="fas fa-check-circle"></i>
-            </div>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #059669; line-height: 1.2;">${passed}</div>
-                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Passed</div>
-            </div>
-        </div>
-
-        <div style="background: linear-gradient(135deg, #ffffff, #fee2e2); border-left: 4px solid #DC2626; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #DC2626, #B91C1C); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
-                <i class="fas fa-times-circle"></i>
-            </div>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #DC2626; line-height: 1.2;">${failed}</div>
-                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Failed</div>
-            </div>
-        </div>
-
-        <div style="background: linear-gradient(135deg, #ffffff, #fef3c7); border-left: 4px solid #F59E0B; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #F59E0B, #D97706); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
-                <i class="fas fa-clock"></i>
-            </div>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #D97706; line-height: 1.2;">${pending}</div>
-                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Pending Release</div>
-            </div>
-        </div>
-
-        <div style="background: linear-gradient(135deg, #ffffff, #dbeafe); border-left: 4px solid #3B82F6; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #3B82F6, #2563EB); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
-                <i class="fas fa-chart-line"></i>
-            </div>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #2563EB; line-height: 1.2;">${avg}%</div>
-                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Avg Score</div>
-            </div>
-        </div>
-
-        <div style="background: linear-gradient(135deg, #ffffff, #ede9fe); border-left: 4px solid #8B5CF6; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #8B5CF6, #6D28D9); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
-                <i class="fas fa-redo"></i>
-            </div>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #6D28D9; line-height: 1.2;">${retakeAuthorized}</div>
-                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Retake Authorized</div>
-            </div>
-        </div>
-
-        <div style="background: linear-gradient(135deg, #ffffff, #ecfdf5); border-left: 4px solid #059669; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #10B981, #047857); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
-                <i class="fas fa-play-circle"></i>
-            </div>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #059669; line-height: 1.2;">${inProgress}</div>
-                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">In Progress</div>
-            </div>
-        </div>
-
-        <div style="background: linear-gradient(135deg, #ffffff, #fce7f3); border-left: 4px solid #EC4899; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #EC4899, #DB2777); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #DB2777; line-height: 1.2;">${faceAlerts}</div>
-                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Face Violations</div>
-            </div>
-        </div>
-    `;
 }
     // ============================================
     // 📄 PAGINATION
