@@ -787,21 +787,19 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
         return;
     }
 
+    const allStudents = Array.isArray(window.transcriptData?.students) ? window.transcriptData.students : [];
+    const filteredStudents = Array.isArray(window.transcriptData?.filteredStudents)
+        ? window.transcriptData.filteredStudents : allStudents;
+    const normalizeStudentId = value => String(value ?? '').trim().toUpperCase();
+    // Read both the visible checkbox state and the maintained selection state.
+    // Do not reject a valid checked student just because the search filter changed.
     const checkedIds = Array.from(document.querySelectorAll('#transcriptStudentList input[type="checkbox"]:checked'))
         .map(box => box.dataset.transcriptStudentId || box.value || '')
-        .map(id => String(id).trim()).filter(Boolean);
-    const explicitSelection = checkedIds.length
-        ? checkedIds
-        : (window.transcriptData?.selectedStudents || []).map(String);
-    const filteredStudents = Array.isArray(window.transcriptData?.filteredStudents)
-        ? window.transcriptData.filteredStudents
-        : (window.transcriptData?.students || []);
-    const filteredIds = filteredStudents.map(s => String(s.student_id || '').trim()).filter(Boolean);
-    // Entire filtered block uses the active filtered list; ordinary batch generation
-    // only uses explicit checkbox selection and never silently selects everyone.
+        .map(normalizeStudentId).filter(Boolean);
+    const stateIds = (window.transcriptData?.selectedStudents || []).map(normalizeStudentId).filter(Boolean);
     const selectedIds = [...new Set(options.allFiltered
-        ? filteredIds
-        : explicitSelection.filter(id => filteredIds.includes(id)))];
+        ? filteredStudents.map(s => normalizeStudentId(s.student_id)).filter(Boolean)
+        : (checkedIds.length ? checkedIds : stateIds))];
     if (!selectedIds.length) {
         notify('Select one or more students, or use Generate Entire Filtered Block.', 'warning');
         return;
@@ -838,14 +836,14 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
         for (let index = 0; index < selectedIds.length; index++) {
             const studentId = selectedIds[index];
             try {
-                let student = (window.transcriptData.students || []).find(s => String(s.student_id) === studentId);
+                let student = allStudents.find(s => normalizeStudentId(s.student_id) === studentId);
                 if (!student) {
                     const sr = await sb.from('consolidated_user_profiles_table').select('*')
                         .eq('student_id', studentId).eq('role', 'student').maybeSingle();
                     if (sr.error) throw sr.error;
                     student = sr.data;
                 }
-                if (!student) throw new Error('Student record not found');
+                if (!student) throw new Error('Student record not found for ' + studentId);
 
                 let marks = await fetchTranscriptMarksForStudents(sb, [studentId]);
                 if (blockFilter !== 'all') {
