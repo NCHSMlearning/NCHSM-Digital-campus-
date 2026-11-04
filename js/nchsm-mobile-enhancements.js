@@ -145,7 +145,7 @@
     install.textContent = 'Install NCHSM';
     install.setAttribute('aria-label', 'Install NCHSM Digital Campus on this device');
     install.hidden = standalone;
-    install.style.cssText = 'position:fixed;z-index:9998;left:max(16px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));padding:11px 16px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 13px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.2);cursor:pointer';
+    install.style.cssText = 'position:fixed;z-index:9998;left:270px;bottom:max(18px,env(safe-area-inset-bottom));padding:11px 16px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 13px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.2);cursor:pointer';
     document.body.appendChild(install);
 
     // A friendly install invitation. The browser's native install prompt is
