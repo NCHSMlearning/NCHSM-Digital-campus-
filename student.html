@@ -6488,7 +6488,32 @@ async function saveResearchCorrection(submit){
     }).reduce(function(mx,x){return Math.max(mx,Number(x.version_number)||1)},Number(r.version_number)||1)+1;
     var fileName=(String(r.title||'research').replace(/[^a-zA-Z0-9_-]+/g,'_')+'_V'+next+'.html');
     var path=id+'/'+(r.research_group_id||r.id)+'/'+Date.now()+'_'+fileName;
-    var blob=new Blob(['<!doctype html><html><head><meta charset="utf-8"><title>'+esc(r.title||'Research Paper')+'</title></head><body>'+html+'</body></html>'],{type:'text/html'});
+    var blob=new Blob(['<!doctype html><html><head><meta charset="utf-8"><title>'+esc(r.title||'Research Paper')+'</title></head><body>'+html+'
+
+<style id="nchsm-cats-mobile-horizontal-scroll-fix">
+/* Keep the page viewport fixed; each CAT/exam table owns its horizontal scroll. */
+#cats,#cats .assessment-dashboard,#cats .main-grid,#cats .main-grid>div,#cats .section-card,#cats .section-head{box-sizing:border-box!important;min-width:0!important;max-width:100%!important}
+#cats .main-grid{grid-template-columns:minmax(0,1fr) minmax(0,.82fr)}
+#cats .section-card{overflow:hidden!important}
+#cats .nchsm-exam-table-scroll{display:block!important;position:relative!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain!important;touch-action:pan-x pan-y!important;scrollbar-width:auto!important;scrollbar-color:#94a3b8 #edf2f7!important;padding-bottom:5px!important}
+#cats .nchsm-exam-table-scroll>table,#cats .nchsm-exam-table-scroll>#current-assessments-table,#cats .nchsm-exam-table-scroll #current-assessments-table>table{width:900px!important;min-width:900px!important;max-width:none!important;table-layout:auto!important}
+#cats .nchsm-exam-table-scroll th,#cats .nchsm-exam-table-scroll td{white-space:nowrap!important}
+#cats #current-assessments-table .current-name,#cats #current-assessments-table .assessment-name-main{white-space:normal!important;min-width:180px}
+#cats .nchsm-exam-table-scroll::-webkit-scrollbar{height:7px}
+#cats .nchsm-exam-table-scroll::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:8px}
+#cats .nchsm-exam-table-scroll::-webkit-scrollbar-track{background:#edf2f7;border-radius:8px}
+@media(max-width:760px){
+ #cats{width:100%!important;padding:12px 10px!important;overflow-x:visible!important}
+ #cats .assessment-dashboard,#cats .main-grid,#cats .main-grid>div,#cats .section-card{width:100%!important;min-width:0!important;max-width:100%!important}
+ #cats .main-grid{display:grid!important;grid-template-columns:minmax(0,1fr)!important}
+ #cats .nchsm-exam-table-scroll{width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important}
+ #cats .nchsm-exam-table-scroll>table,#cats .nchsm-exam-table-scroll>#current-assessments-table,#cats .nchsm-exam-table-scroll #current-assessments-table>table{width:900px!important;min-width:900px!important;max-width:none!important}
+ #cats .section-head{align-items:flex-start!important}
+ #cats .section-title-wrap{min-width:0!important;flex:1 1 auto!important}
+}
+</style>
+
+</body></html>'],{type:'text/html'});
     var up=await sb.storage.from('research-papers').upload(path,blob,{upsert:false,contentType:'text/html'});
     if(up.error)throw up.error;
     var payload={
@@ -7829,7 +7854,7 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
 </section>
 <!-- END HUB LECTURE CARD -->
 <!-- ==================== NCHSM STUDENT PORTAL | ASSESSMENTS & GRADES ==================== -->
-<section class="tab-content" id="cats" style="padding:20px;max-width:100%;overflow-x:hidden;background:#f5f8fc;">
+<section class="tab-content" id="cats" style="padding:20px;max-width:100%;min-width:0;overflow-x:visible;background:#f5f8fc;">
 <style>
 #cats .assessment-dashboard{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172554;max-width:1500px;margin:0 auto}
 #cats .assess-hero{background:linear-gradient(135deg,#eef5ff 0%,#f8fbff 55%,#fff 100%);border:1px solid #dbe7f5;border-radius:20px;padding:22px 24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:18px;box-shadow:0 5px 20px rgba(15,23,42,.05)}
