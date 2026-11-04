@@ -1364,95 +1364,32 @@ applyDataFilter() {
         // ============================================
         displayCompletedTable() {
             if (!this.completedTable) return;
-
             const completedReleased = this.completedExams
                 .filter(exam => exam.isCompleted || exam.isReleased || exam.actionState === 'expired' || exam.actionState === 'pending_release')
-                .sort((a, b) => {
-                    const dateA = a.gradedAt || a.examDate || a.examStartDateTime || a.created_at || new Date(0);
-                    const dateB = b.gradedAt || b.examDate || b.examStartDateTime || b.created_at || new Date(0);
-                    return new Date(dateB) - new Date(dateA);
-                });
-
-            if (completedReleased.length === 0) {
-                this.completedTable.innerHTML = '';
-                return;
-            }
-
-            const html = completedReleased.map(exam => {
-                const isCatExam = !!exam.isCatExam;
-                const isRetake = exam.isResetForRetake && exam.retakeUnlocked;
-                const isPendingRelease = exam.actionState === 'pending_release';
-                const isReleased = exam.isReleased === true;
-                const totalMarks = Number(exam.marks_out_of || exam.total_marks || (isCatExam ? 30 : 70));
-                const displayName = (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name.trim())
-                    ? exam.exam_name : ((typeof exam.title === 'string' && exam.title.trim()) ? exam.title : 'Assessment');
-
-                let marks = Number(exam.marks || exam.displayScore || 0);
-                let percentage = Number(exam.totalPercentage || 0);
-                if (isReleased && !percentage && marks > 0) percentage = Math.round((marks / totalMarks) * 100);
-                if (!isReleased || isPendingRelease) { marks = 0; percentage = 0; }
-
-                let grade = 'Pending';
-                let gradeLetter = '';
-                let gradeClass = 'grade-pending';
-                if (isRetake) {
-                    grade = 'Retake Available';
-                    gradeClass = 'grade-retake';
-                } else if (isPendingRelease) {
-                    grade = 'Pending Release';
-                    gradeClass = 'grade-pending';
-                } else if (exam.actionState === 'expired' && !exam.hasGrade) {
-                    grade = 'Missed';
-                    gradeClass = 'grade-missed';
-                } else if (isReleased) {
-                    const resultGrade = getAssessmentGrade(percentage, !!exam.isTVET);
-                    gradeLetter = resultGrade.grade;
-                    grade = resultGrade.rating;
-                    gradeClass = resultGrade.grade === 'A' ? 'grade-distinction' :
-                                 resultGrade.grade === 'B' ? 'grade-credit' :
-                                 resultGrade.grade === 'C' ? 'grade-pass' : 'grade-fail';
-                }
-
-                let actionHtml = '<span style="color:#94a3b8">—</span>';
-                if (isReleased) {
-                    actionHtml = `<div class="row-actions"><button type="button" class="result-btn" onclick="window.openNurseIQExamReview?.(${exam.id})"><i class="fas fa-chart-column"></i> View Result</button><button type="button" class="review-btn" onclick="window.openNurseIQExamReview?.(${exam.id})"><i class="fas fa-book-open"></i> Review Questions</button></div>`;
-                } else if (isRetake) {
-                    const userId = this.userId || window.db?.currentUserId || '';
-                    const examLink = exam.examLink;
-                    if (examLink && examLink.startsWith('http')) {
-                        const fullUrl = examLink.split('?')[0] + '?' + new URLSearchParams({user_id:userId,exam_id:exam.id,retake:'true'}).toString();
-                        actionHtml = `<a href="${fullUrl}" target="_blank" class="retake-link" onclick="sessionStorage.setItem('returningFromExam','true');"><i class="fas fa-rotate-right"></i> Retake</a>`;
-                    } else actionHtml = '<span class="status-pill status-retake">Retake</span>';
-                } else if (isPendingRelease) {
-                    actionHtml = '<span style="color:#b45309;font-size:8px;font-weight:800">Awaiting marking/release</span>';
-                }
-
-                const scoreText = isReleased && marks !== null && Number.isFinite(marks) ? `${Math.round(marks)}/${totalMarks}` : 'Pending';
-                const pctText = isReleased && percentage !== null && Number.isFinite(percentage) ? `${Math.round(percentage)}%` : 'Pending';
-                const dateText = exam.formattedExamDateTime || exam.examDate || 'Date not available';
-
-                const gradeCell = isReleased
-                    ? `<div class="grade-status-stack">
-                           <span class="grade-pill ${gradeClass}">${this.escapeHtml(gradeLetter)} — ${this.escapeHtml(grade)}</span>
-                           <span class="grade-release-label"><i class="fas fa-circle-check"></i> Released</span>
-                       </div>`
-                    : `<div class="grade-status-stack">
-                           <span class="grade-pill ${gradeClass}">${this.escapeHtml(grade)}</span>
-                           ${isPendingRelease ? '<span class="grade-release-label" style="color:#b45309"><i class="fas fa-clock"></i> Awaiting Release</span>' : ''}
-                       </div>`;
-
-                return `
-                    <tr>
-                        <td><div class="assessment-name-main">${this.escapeHtml(displayName)}</div><div class="assessment-type-inline"><span class="type-badge ${isCatExam ? 'type-cat' : 'type-final'}">${isCatExam ? 'CAT' : 'FINAL EXAM'}</span></div></td>
-                        <td><span class="score-main">${scoreText}</span></td>
-                        <td><span class="${isReleased && percentage >= 60 ? 'percentage-good' : isReleased ? 'percentage-fail' : ''}">${pctText}</span></td>
-                        <td>${gradeCell}</td>
-                        <td>${actionHtml}</td>
-                    </tr>
-                `;
+                .sort((a,b) => new Date(b.gradedAt || b.examDate || b.examStartDateTime || b.created_at || 0) - new Date(a.gradedAt || a.examDate || a.examStartDateTime || a.created_at || 0));
+            if (!completedReleased.length) { this.completedTable.innerHTML=''; return; }
+            const rows = completedReleased.map((exam,index) => {
+                const isCatExam=!!exam.isCatExam, isRetake=exam.isResetForRetake&&exam.retakeUnlocked;
+                const isPendingRelease=exam.actionState==='pending_release', isReleased=exam.isReleased===true;
+                const totalMarks=Number(exam.marks_out_of||exam.total_marks||(isCatExam?30:70));
+                const displayName=(typeof exam.exam_name==='string'&&exam.exam_name!=='[object Object]'&&exam.exam_name.trim())?exam.exam_name:((typeof exam.title==='string'&&exam.title.trim())?exam.title:'Assessment');
+                let marks=Number(exam.marks||exam.displayScore||0), percentage=Number(exam.totalPercentage||0);
+                if(isReleased&&!percentage&&marks>0)percentage=Math.round(marks/totalMarks*100);
+                if(!isReleased||isPendingRelease){marks=0;percentage=0;}
+                let grade='Pending',gradeLetter='',gradeClass='grade-pending',status='Pending';
+                if(isRetake){grade='Retake';gradeClass='grade-retake';status='Retake available';}
+                else if(isPendingRelease){grade='Pending';gradeClass='grade-pending';status='Awaiting release';}
+                else if(exam.actionState==='expired'&&!exam.hasGrade){grade='Missed';gradeClass='grade-missed';status='Missed';}
+                else if(isReleased){const g=getAssessmentGrade(percentage,!!exam.isTVET);gradeLetter=g.grade;grade=g.rating;gradeClass=g.grade==='A'?'grade-distinction':g.grade==='B'?'grade-credit':g.grade==='C'?'grade-pass':'grade-fail';status=percentage>=85?'Distinction':percentage>=75?'Credit':percentage>=60?'Pass':'Fail';}
+                let actionHtml='<span class="no-action">—</span>';
+                if(isReleased)actionHtml='<div class="row-actions"><button type="button" class="result-btn" onclick="window.openNurseIQExamReview?.('+exam.id+')"><i class="fas fa-chart-column"></i> View Result</button><button type="button" class="review-btn" onclick="window.openNurseIQExamReview?.('+exam.id+')"><i class="fas fa-book-open"></i> Review Questions</button></div>';
+                else if(isPendingRelease)actionHtml='<span class="awaiting-release">Awaiting marking/release</span>';
+                const dateValue=exam.gradedAt||exam.examDate||exam.examStartDateTime||exam.created_at;
+                const dateText=dateValue?new Date(dateValue).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Africa/Nairobi'}):'—';
+                const scoreText=isReleased?Math.round(marks)+' / '+totalMarks:'—';
+                return '<tr><td class="current-index">'+(index+1)+'</td><td><div class="assessment-name-main">'+this.escapeHtml(displayName)+'</div><div class="assessment-type-inline">'+(isCatExam?'CAT':'Final Exam')+'</div></td><td><span class="type-badge '+(isCatExam?'type-cat':'type-final')+'">'+(isCatExam?'CAT':'Exam')+'</span></td><td><strong class="score-main">'+scoreText+'</strong></td><td><span class="grade-pill '+gradeClass+'">'+(gradeLetter?this.escapeHtml(gradeLetter):'')+(gradeLetter?' · ':'')+this.escapeHtml(grade)+'</span></td><td><span class="result-status-pill '+(status==='Distinction'?'status-distinction':status==='Credit'?'status-credit':status==='Pass'?'status-pass':status==='Fail'?'status-fail':'status-pending')+'">'+this.escapeHtml(status)+'</span></td><td class="result-date">'+this.escapeHtml(dateText)+'</td><td>'+actionHtml+'</td></tr>';
             }).join('');
-
-            this.completedTable.innerHTML = html;
+            this.completedTable.innerHTML=rows;
         }
 
         // ============================================
