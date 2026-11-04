@@ -1742,7 +1742,22 @@ window.renderTranscriptBlock = function(index) {
         .header-top > div { flex: 1 1 auto; min-width: 0; text-align: center; }
         .header .school { font-size: 16px; line-height: 1.2; font-weight: 800; color: #1E559B; font-family: 'Georgia', serif; white-space: normal; overflow-wrap: break-word; word-break: normal; }
         .header .motto { font-size: 8px; line-height: 1.25; color: #64748b; font-style: italic; }
-        .header .subtitle { display: inline-block; font-size: 17px; color: #ffffff; background: #1E559B; font-weight: 800; margin-top: 10px; padding: 7px 28px; border-radius: 4px; letter-spacing: 2px; font-family: 'Georgia', serif; }
+        /* Main transcript title follows the NCHSM crest blue, not dark grey/black. */
+        .header .subtitle {
+            display: inline-block;
+            font-size: 17px;
+            color: #1E559B !important;
+            -webkit-text-fill-color: #1E559B !important;
+            background: #ffffff !important;
+            font-weight: 900;
+            margin-top: 10px;
+            padding: 7px 28px;
+            border-radius: 0;
+            border-bottom: 3px solid #1E559B;
+            letter-spacing: 2px;
+            font-family: 'Georgia', serif;
+            text-shadow: none !important;
+        }
         .header .date { font-size: 8px; color: #94a3b8; margin-top: 2px; }
         .student-info-wrapper { display: flex; align-items: center; gap: 10px; margin: 5px 0 7px; padding: 7px 9px; background: #f1f6fb; border-radius: 8px; border: 1px solid #cbdbea; border-left: 5px solid #1E559B; }
         .student-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; flex: 1; }
