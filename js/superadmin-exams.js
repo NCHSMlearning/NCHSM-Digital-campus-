@@ -886,32 +886,14 @@ async function handleAddExam(e) {
             (window.createUnitsData || []).find(u => String(u.id) === String(fields.unitId)) ||
             null;
 
-        let legacyCourseId = null;
-        if (selectedUnit?.unit_code) {
-            try {
-                const { data: legacyCourse } = await supabase
-                    .from('courses')
-                    .select('id')
-                    .eq('unit_code', selectedUnit.unit_code)
-                    .eq('target_program', fields.program)
-                    .limit(1)
-                    .maybeSingle();
+        // Match the working Lecturer CATS/Exams implementation:
+        // exams.course_id stores the units_catalog UUID, never a legacy courses.id.
+        const selectedUnitId = String(selectedUnit?.id || '').trim();
+        const unitUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const catalogCourseId = unitUuidPattern.test(selectedUnitId) ? selectedUnitId : null;
 
-                if (!legacyCourse) {
-                    const { data: legacyCourseByCode } = await supabase
-                        .from('courses')
-                        .select('id')
-                        .eq('code', selectedUnit.unit_code)
-                        .eq('target_program', fields.program)
-                        .limit(1)
-                        .maybeSingle();
-                    legacyCourseId = legacyCourseByCode?.id || null;
-                } else {
-                    legacyCourseId = legacyCourse.id;
-                }
-            } catch (mappingError) {
-                console.warn('⚠️ Legacy course mapping skipped:', mappingError);
-            }
+        if (selectedUnit && !catalogCourseId) {
+            throw new Error('The selected unit does not have a valid units_catalog UUID. Please reload the unit list and select it again.');
         }
 
         const examData = {
@@ -930,8 +912,9 @@ async function handleAddExam(e) {
             block_term: fields.block,
             intake_year: fields.intake,
             intake_month: fields.intakeMonth,
-            course_id: legacyCourseId,
+            course_id: catalogCourseId,
             course_code: selectedUnit?.unit_code || null,
+            course_name: selectedUnit?.unit_name || null,
             marks_out_of: fields.outOf,
             total_marks: fields.outOf,
             MARKS: String(fields.outOf),
@@ -1096,6 +1079,18 @@ async function saveEditedExam(event) {
         exam_link: document.getElementById('edit_exam_link')?.value?.trim() || null,
         updated_at: new Date().toISOString()
     };
+
+    const selectedEditUnit = editCoursesData.find(unit =>
+        String(unit.id) === String(data.course_id || '')
+    );
+    if (data.course_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(data.course_id))) {
+        showFeedback('❌ Please select a valid unit from the units list.', 'error');
+        return;
+    }
+    if (selectedEditUnit) {
+        data.course_code = selectedEditUnit.unit_code || null;
+        data.course_name = selectedEditUnit.unit_name || null;
+    }
 
     Object.keys(data).forEach(k => {
         if (data[k] === undefined || data[k] === null || data[k] === '') delete data[k];
