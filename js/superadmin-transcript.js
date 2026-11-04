@@ -914,22 +914,27 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
         }
         printWindow.document.open();
         printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>NCHSM ${scopeLabel} Transcripts</title>
           <style>
             ${window._superadminTranscriptStyles || ''}
-            @page { size:A4 portrait; margin:5mm; }
-            html, body { width:100%; min-height:0; height:auto; margin:0!important; padding:0!important; background:#fff!important; overflow:visible!important; }
-            body { font-family:'Times New Roman','Georgia',serif; font-size:10px; color:#1e293b; }
-            .bulk-transcript { display:block; width:100%; margin:0!important; padding:0!important; page-break-after:always; break-after:page; }
+            /* The only bulk-specific rule: one complete Academic-JS transcript per A4 page. */
+            .bulk-transcript { display:block; page-break-after:always; break-after:page; }
             .bulk-transcript:last-child { page-break-after:auto; break-after:auto; }
-            .bulk-transcript .container { width:100%!important; max-width:none!important; min-height:0!important; height:auto!important; margin:0!important; padding:7px 8px!important; box-shadow:none!important; }
-            .transcript-admin-actions, .no-print, button { display:none!important; }
-            table { page-break-inside:auto; } tr { page-break-inside:avoid; page-break-after:auto; }
+            @media print {
+              .bulk-transcript { page-break-after:always; break-after:page; }
+              .bulk-transcript:last-child { page-break-after:auto; break-after:auto; }
+            }
           </style></head><body>
-          
-          
-          ${pages.map((p,i)=>`<section class="bulk-transcript">${p.html}</section>`).join('')}
-          <script>window.onload=function(){setTimeout(function(){window.print()},700)};<\/script>
+          ${pages.map(p=>`<section class="bulk-transcript">${p.html}</section>`).join('')}
+          <script>
+            window.onload = function () {
+              const images = Array.from(document.images);
+              Promise.all(images.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
+                img.onload = img.onerror = resolve;
+              }))).then(() => setTimeout(() => window.print(), 250));
+            };
+          <\/script>
           </body></html>`);
         printWindow.document.close();
         notify(`Prepared ${pages.length} transcript(s) in one print-ready document.${failures.length ? ' Skipped ' + failures.length + ' student(s); see console for details.' : ''} Choose “Save as PDF” in the print dialog.`, failures.length ? 'warning' : 'success');
