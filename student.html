@@ -14609,6 +14609,53 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 <script src="/js/nchsm-mobile-enhancements.js?v=3" defer></script>
+
+<style id="nchsm-assessment-scroll-viewport-fix">
+html,body{max-width:100%!important}
+#main-content,#main-content.main,#app-content{min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+#cats,#cats.tab-content{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;overflow-x:hidden!important}
+#cats .assessment-dashboard,#cats .main-grid,#cats .main-grid>div,#cats .section-card{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+#cats .nchsm-exam-table-scroll{display:block!important;position:relative!important;width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain!important;touch-action:pan-y!important;scrollbar-width:thin!important;pointer-events:auto!important}
+#cats .nchsm-exam-table-scroll>table,#cats .nchsm-exam-table-scroll .nchsm-exam-table{width:900px!important;min-width:900px!important;max-width:none!important}
+#cats #current-assessments-table{width:900px!important;min-width:900px!important;max-width:none!important}
+#cats .section-card{overflow:hidden!important}
+@media(max-width:760px){
+ #cats{padding:10px 8px!important}
+ #cats .nchsm-exam-table-scroll{margin:0!important;border-radius:0!important;scrollbar-width:thin!important}
+ #cats .nchsm-exam-table-scroll::-webkit-scrollbar{height:7px!important}
+ #cats .nchsm-exam-table-scroll::-webkit-scrollbar-thumb{background:#8298ad!important;border-radius:10px!important}
+}
+</style>
+<script id="nchsm-assessment-native-touch-scroll-fallback">
+(function(){
+ 'use strict';
+ function bind(){
+  var root=document.getElementById('cats');if(!root)return;
+  root.querySelectorAll('.nchsm-exam-table-scroll').forEach(function(el){
+   if(el.dataset.nchsmTouchScrollBound==='1')return;
+   el.dataset.nchsmTouchScrollBound='1';
+   el.style.overflowX='auto';
+   var startX=0,startY=0,startLeft=0,dragging=false,decided=false;
+   el.addEventListener('touchstart',function(e){
+    if(!e.touches||e.touches.length!==1)return;
+    startX=e.touches[0].clientX;startY=e.touches[0].clientY;startLeft=el.scrollLeft;dragging=false;decided=false;
+   },{passive:true});
+   el.addEventListener('touchmove',function(e){
+    if(!e.touches||e.touches.length!==1)return;
+    var dx=e.touches[0].clientX-startX,dy=e.touches[0].clientY-startY;
+    if(!decided && (Math.abs(dx)>7||Math.abs(dy)>7)){decided=true;dragging=Math.abs(dx)>Math.abs(dy)*1.15;}
+    if(dragging){if(e.cancelable)e.preventDefault();el.scrollLeft=startLeft-dx;}
+   },{passive:false});
+   el.addEventListener('wheel',function(e){
+    if(Math.abs(e.deltaY)>Math.abs(e.deltaX)&&el.scrollWidth>el.clientWidth){el.scrollLeft+=e.deltaY;e.preventDefault();}
+   },{passive:false});
+  });
+ }
+ function start(){bind();var root=document.getElementById('cats');if(root){new MutationObserver(bind).observe(root,{childList:true,subtree:true});}}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>
+
 </body>
 <style id="nchsm-final-reference-lock">
 /* FINAL VISUAL LOCK — keeps the desktop dashboard close to the supplied reference image. */
