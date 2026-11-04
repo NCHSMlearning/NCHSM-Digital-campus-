@@ -85,8 +85,8 @@ function getGradingConfig(programCode) {
             grades: {
                 'A': { min: 75, max: 100, points: 4.0, label: 'DISTINCTION' },
                 'B': { min: 65, max: 74.99, points: 3.0, label: 'CREDIT' },
-                'C': { min: 60, max: 64, points: 2.0, label: 'PASS' },
-                'D': { min: 0, max: 59, points: 0.0, label: 'FAIL' }
+                'C': { min: 60, max: 64.99, points: 2.0, label: 'PASS' },
+                'D': { min: 0, max: 59.99, points: 0.0, label: 'FAIL' }
             },
             passMark: 60,
             label: 'Nursing Academic'
@@ -95,9 +95,9 @@ function getGradingConfig(programCode) {
     return {
         grades: {
             'A': { min: 80, max: 100, points: 4.0, label: 'MASTERY' },
-            'B': { min: 65, max: 79, points: 3.0, label: 'PROFICIENT' },
-            'C': { min: 50, max: 64, points: 2.0, label: 'COMPETENT' },
-            'E': { min: 0, max: 49, points: 0.0, label: 'NOT YET COMPETENT' }
+            'B': { min: 65, max: 79.99, points: 3.0, label: 'PROFICIENT' },
+            'C': { min: 50, max: 64.99, points: 2.0, label: 'COMPETENT' },
+            'E': { min: 0, max: 49.99, points: 0.0, label: 'NOT YET COMPETENT' }
         },
         passMark: 50,
         label: 'TVET Competency-Based'
