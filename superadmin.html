@@ -15005,19 +15005,63 @@
     // ============================================================
     // MOBILE NAVIGATION
     // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
-        const mobileToggle = document.getElementById('mobileNavToggle');
-        if (mobileToggle) {
-            mobileToggle.addEventListener('click', function() {
-                document.getElementById('sidebar')?.classList.toggle('active');
-            });
+    // Accessible mobile sidebar: one source of truth for open/closed state.
+    (function initSuperAdminMobileNavigation() {
+        const sidebar = document.getElementById('sidebar');
+        const toggle = document.getElementById('mobileNavToggle');
+        if (!sidebar || !toggle || toggle.dataset.mobileNavBound === 'true') return;
+        toggle.dataset.mobileNavBound = 'true';
+
+        let backdrop = document.getElementById('superadminSidebarBackdrop');
+        if (!backdrop) {
+            backdrop = document.createElement('button');
+            backdrop.type = 'button';
+            backdrop.id = 'superadminSidebarBackdrop';
+            backdrop.setAttribute('aria-label', 'Close navigation menu');
+            backdrop.style.cssText = 'display:none;position:fixed;inset:0;border:0;background:rgba(8,15,40,.52);backdrop-filter:blur(2px);z-index:10030;touch-action:manipulation;';
+            document.body.appendChild(backdrop);
         }
-        document.querySelectorAll('.nav a').forEach(link => {
-            link.addEventListener('click', function() {
-                document.getElementById('sidebar')?.classList.remove('active');
-            });
+
+        const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+        const closeMenu = () => {
+            sidebar.classList.remove('active', 'mobile-open');
+            document.body.classList.remove('mobile-sidebar-open');
+            toggle.classList.remove('active');
+            toggle.setAttribute('aria-expanded', 'false');
+            backdrop.style.display = 'none';
+        };
+        const openMenu = () => {
+            sidebar.classList.add('active', 'mobile-open');
+            document.body.classList.add('mobile-sidebar-open');
+            toggle.classList.add('active');
+            toggle.setAttribute('aria-expanded', 'true');
+            backdrop.style.display = 'block';
+        };
+        const toggleMenu = () => {
+            const opened = sidebar.classList.contains('active') || sidebar.classList.contains('mobile-open');
+            if (opened) closeMenu(); else openMenu();
+        };
+
+        toggle.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleMenu();
         });
-    });
+        backdrop.addEventListener('click', closeMenu);
+
+        // Close after a real module selection; do not close when expanding a category.
+        sidebar.addEventListener('click', function(event) {
+            const moduleLink = event.target.closest('#mainNav a[data-tab]');
+            if (moduleLink && isMobile()) closeMenu();
+        }, true);
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && isMobile()) closeMenu();
+        });
+        window.addEventListener('resize', function() {
+            if (!isMobile()) closeMenu();
+        });
+    })();
 
     console.log('✅ All scripts loaded successfully');
 </script>
