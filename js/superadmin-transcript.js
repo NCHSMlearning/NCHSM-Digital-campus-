@@ -1658,7 +1658,18 @@ window.renderTranscriptBlock = function(index) {
             <td style="text-align:center;font-weight:800;">${status}</td>
         </tr>`;
     }).join('');
-    const transcriptStyles = String.raw`        * { margin: 0; padding: 0; box-sizing: border-box; }
+    const transcriptProgramName = student.program || program;
+    const academicYear = academicYearLabel;
+    const transcriptIntakeYear = student.intake_year || intakeYear;
+    const transcriptCurrentBlock = blockName;
+    const transcriptResultsHeading = `End of ${blockName} Results`;
+    const tableRows = marksTableRows;
+    const gradingScaleHTML = `<table><thead><tr><th>Grade</th><th>Range</th><th>Points</th><th>Remarks</th></tr></thead><tbody>${gradingScaleHtml}</tbody></table>`;
+    const grade = overallGrade;
+    const transcriptSchool = 'Nakuru College of Health Sciences & Management';
+    const profilePicture = student.passport_photo || student.profile_picture || student.photo_url || '';
+    const profilePictureHTML = profilePicture ? `<div style="text-align:center;margin-right:12px;flex-shrink:0;"><img src="${escapeHtml(profilePicture)}" alt="Student Photo" class="student-photo" onerror="this.style.display='none'"></div>` : '';
+    const transcriptStyles = String.raw`* { margin: 0; padding: 0; box-sizing: border-box; }
         @page { size: A4 portrait; margin: 6mm; }
         body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
         .container { box-sizing: border-box; max-width: none; width: 100%; margin: 0 auto; padding: 7px 8px; background: #ffffff; border: 2px solid #1E559B; border-radius: 6px; box-shadow: none; }
@@ -1791,75 +1802,61 @@ window.renderTranscriptBlock = function(index) {
         }
 `;
     window._superadminTranscriptStyles = transcriptStyles;
-    const transcriptHtml = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Provisional Academic Transcript - ${escapeHtml(student.full_name || 'Student')}</title>
-<style>${transcriptStyles}</style></head><body>
+    const transcriptHtml = `
+<style>${transcriptStyles}</style>
 <div class="container">
-  <div class="transcript-top">
-    <div class="header">
-      <div class="header-top">
-        <img src="https://nchsm.co.ke/images/Logo_NCHSM.png" alt="NCHSM Logo" crossorigin="anonymous">
-        <div><div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div><div class="motto">"Excellence in Health Sciences Education"</div></div>
-      </div>
-      <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
-      <div class="date">Generated: ${now}</div>
+    <div class="transcript-top">
+        <div class="header">
+            <div class="header-top">
+                <img src="https://nchsm.co.ke/images/Logo_NCHSM.png" alt="NCHSM Logo" crossorigin="anonymous">
+                <div><div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div><div class="motto">"Excellence in Health Sciences Education"</div></div>
+            </div>
+            <div class="subtitle">PROVISIONAL ACADEMIC TRANSCRIPT</div>
+            <div class="date">Generated: ${now}</div>
+        </div>
+        <div class="transcript-verification-column" aria-label="Transcript identification and verification">
+            <div class="transcript-generation-number" id="transcriptGenerationNumber" aria-label="Transcript generation number" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"><span class="transcript-number-prefix"></span><span class="transcript-number-sequence"></span></span></div>
+            <div class="verification-qr" aria-label="Document verification QR code"><img id="transcriptVerificationQr" alt="Scan to verify this transcript" /><span>VERIFY</span></div>
+        </div>
     </div>
-    <div class="transcript-verification-column" aria-label="Transcript identification and verification">
-      <div class="transcript-generation-number" id="transcriptGenerationNumber" aria-label="Transcript generation number" style="display:none"><span class="number-label">TRANSCRIPT NO.</span><span id="transcriptGenerationNumberValue"><span class="transcript-number-prefix"></span><span class="transcript-number-sequence"></span></span></div>
-      <div class="verification-qr" aria-label="Document verification QR code">
-        <img id="transcriptVerificationQr" alt="Scan to verify this transcript" />
-        <span>VERIFY</span>
-      </div>
+    <div class="student-info-wrapper">${profilePictureHTML}<div class="student-info">
+        <div class="field"><span class="label">Student Name</span><span class="value">${escapeHtml(student.full_name || 'Student')}</span></div>
+        <div class="field"><span class="label">Admission Number</span><span class="value">${escapeHtml(transcriptAdmission)}</span></div>
+        <div class="field"><span class="label">Program</span><span class="value">${escapeHtml(transcriptProgramName || 'N/A')}</span></div>
+        <div class="field"><span class="label">Academic Year</span><span class="value">${escapeHtml(academicYear)}</span></div>
+        <div class="field"><span class="label">Intake Year</span><span class="value">${escapeHtml(transcriptIntakeYear || 'N/A')}</span></div>
+        <div class="field"><span class="label">${isTVET ? 'Current Term' : 'Current Block'}</span><span class="value">${escapeHtml(transcriptCurrentBlock || 'N/A')}</span></div>
+    </div></div>
+    <div class="semester-results-title">${escapeHtml(transcriptResultsHeading)}</div>
+    <table class="semester-results-table"><thead><tr>
+        <th style="text-align: center; width: 25px; border: 1px solid #1E559B;">#</th>
+        <th style="width: 76px; border: 1px solid #1E559B;">Unit Code</th>
+        <th style="min-width: 170px; border: 1px solid #1E559B;">Unit Name</th>
+        <th style="text-align: center; width: 50px; border: 1px solid #1E559B;">Grade</th>
+        <th style="text-align: center; width: 70px; border: 1px solid #1E559B;">Grade Points</th>
+        <th style="text-align: center; width: 82px; border: 1px solid #1E559B;">Status</th>
+    </tr></thead><tbody>${tableRows || '<tr><td colspan="6" style="text-align:center;">No approved and published results.</td></tr>'}</tbody></table>
+    <div class="transcript-lower-grid">
+        <div class="grading-scale-table"><div class="title">Grading Scale (${programType}) — Mark*</div>${gradingScaleHTML}
+            <div class="grading-scale-footnote" style="font-size: 7px; line-height: 1.2; margin-top: 3px; color: #475569;">* Indicates a grade/status obtained following a retake assessment.</div>
+        </div>
+        <div class="academic-summary-panel"><div class="academic-summary-title">Academic Summary</div><div class="summary-grid">
+            <div class="summary-card"><div class="value" style="color: #1E559B;">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
+            <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${escapeHtml(grade)}</div><div class="label">Overall Grade</div></div>
+            <div class="summary-card"><div class="value" style="color: #1E559B;">${blockTotal}</div><div class="label">Units Reported</div></div>
+            <div class="summary-card"><div class="value" style="color: #1E559B;">${passRate}%</div><div class="label">Pass Rate</div></div>
+        </div></div>
     </div>
-  </div>
-  <div class="student-info-wrapper">
-    <div class="student-info">
-      <div class="field"><span class="label">Student Name</span><span class="value">${escapeHtml(student.full_name || 'Student')}</span></div>
-      <div class="field"><span class="label">Admission Number</span><span class="value">${escapeHtml(transcriptAdmission)}</span></div>
-      <div class="field"><span class="label">Program</span><span class="value">${escapeHtml(program)}</span></div>
-      <div class="field"><span class="label">Academic Year</span><span class="value">${escapeHtml(academicYearLabel)}</span></div>
-      <div class="field"><span class="label">Intake Year</span><span class="value">${escapeHtml(student.intake_year || intakeYear)}</span></div>
-      <div class="field"><span class="label">${isTVET ? 'Current Term' : 'Current Block'}</span><span class="value">${escapeHtml(blockName)}</span></div>
+    <div class="signatures">
+        <div class="signature-box"><div class="line"></div><div class="label">Principal — ${transcriptSchool}</div><div class="date">Date: _____________</div></div>
+        <div class="signature-box"><div class="line"></div><div class="label">Head of Department (HOD) — School of Nursing</div><div class="date">Date: _____________</div></div>
     </div>
-  </div>
-  <div class="semester-results-title">End of ${escapeHtml(blockName)} Results</div>
-  <table class="semester-results-table">
-    <thead><tr>
-      <th style="text-align: center; width: 25px; border: 1px solid #1E559B;">#</th>
-      <th style="width: 76px; border: 1px solid #1E559B;">Unit Code</th>
-      <th style="min-width: 170px; border: 1px solid #1E559B;">Unit Name</th>
-      <th style="text-align: center; width: 50px; border: 1px solid #1E559B;">Grade</th>
-      <th style="text-align: center; width: 70px; border: 1px solid #1E559B;">Grade Points</th>
-      <th style="text-align: center; width: 82px; border: 1px solid #1E559B;">Status</th>
-    </tr></thead>
-    <tbody>${marksTableRows || '<tr><td colspan="6" style="text-align:center;">No approved and published results.</td></tr>'}</tbody>
-  </table>
-  <div class="transcript-lower-grid">
-    <div class="grading-scale-table"><div class="title">Grading Scale (${programType}) — Mark*</div>
-      <table><thead><tr><th>Grade</th><th>Range</th><th>Points</th><th>Remarks</th></tr></thead><tbody>${gradingScaleHtml}</tbody></table>
-      <div class="grading-scale-footnote" style="font-size:7px;line-height:1.2;margin-top:3px;color:#475569;">* Indicates a grade/status obtained following a retake assessment.</div>
+    <div class="footer"><p>Accredited &amp; Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences &amp; Management</p>
+        <p><strong>NCHSM</strong> · Tel: 0790 969 743 / 0722 351 791 · Email: <a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a></p>
     </div>
-    <div class="academic-summary-panel"><div class="academic-summary-title">Academic Summary</div>
-      <div class="summary-grid">
-        <div class="summary-card"><div class="value" style="color: #1E559B;">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
-        <div class="summary-card"><div class="value" style="color: ${overallGrade === 'A' ? '#10b981' : overallGrade === 'B' ? '#3b82f6' : overallGrade === 'C' ? '#f59e0b' : '#ef4444'};">${escapeHtml(overallGrade)}</div><div class="label">Overall Grade</div></div>
-        <div class="summary-card"><div class="value" style="color: #1E559B;">${blockTotal}</div><div class="label">Units Reported</div></div>
-        <div class="summary-card"><div class="value" style="color: #1E559B;">${passRate}%</div><div class="label">Pass Rate</div></div>
-      </div>
-    </div>
-  </div>
-  <div class="signatures">
-    <div class="signature-box"><div class="line"></div><div class="label">Principal — Nakuru College of Health Sciences &amp; Management</div><div class="date">Date: _____________</div></div>
-    <div class="signature-box"><div class="line"></div><div class="label">Head of Department — School of Nursing</div><div class="date">Date: _____________</div></div>
-  </div>
-  <div class="footer"><p>Accredited &amp; Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences &amp; Management</p>
-    <p><strong>NCHSM</strong> · Tel: 0790 969 743 / 0722 351 791 · Email: <a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a></p></div>
-  <div class="transcript-admin-actions no-print">
-    <button class="btn-print" onclick="window.print()">Print / Save PDF</button>
-    <button class="btn-close" onclick="window.closeTranscriptPreview()">Close Preview</button>
-  </div>
-</div></body></html>`;
+    <div class="transcript-admin-actions no-print"><button class="btn-print" onclick="window.print()">Print / Save PDF</button><button class="btn-close" onclick="window.closeTranscriptPreview()">Close Preview</button></div>
+</div>`;
+
     content.innerHTML = transcriptHtml;
 
     // Issue a real, authenticated provisional-transcript verification token.
