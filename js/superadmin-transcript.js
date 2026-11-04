@@ -1656,9 +1656,9 @@ window.renderTranscriptBlock = function(index) {
     const marksTableRows = blockMarks.map((m, rowIndex) => {
         const score = getEffectiveMarkScore(m);
         const gradeInfo = calculateOfficialGrade(score === null ? 0 : score, program);
-        const creditsRaw = Number(m.credits || m.credit_hours || m.creditHours);
-        const credits = Number.isFinite(creditsRaw) && creditsRaw > 0 ? creditsRaw : GRADE_CONFIG.creditHours;
-        const points = score === null ? '—' : (gradeInfo.points * credits).toFixed(1);
+        // Display the unit's grade-point value (A = 4.0) without multiplying by credit hours.
+        // Credit weighting remains part of the GPA calculation, not this per-unit display column.
+        const points = score === null ? '—' : Number(gradeInfo.points || 0).toFixed(1);
         const unitCode = getUnitCode(m.subject_name || m.unit_name);
         const unitName = m.subject_name || m.unit_name || 'N/A';
         const status = score === null ? 'PENDING' : (score >= passMark ? (score >= 75 ? 'DISTINCTION' : score >= 65 ? 'CREDIT' : 'PASS') : 'FAIL');
@@ -1926,7 +1926,7 @@ window.renderTranscriptBlock = function(index) {
         <th style="width: 76px; border: 1px solid #1E559B;">Unit Code</th>
         <th style="min-width: 170px; border: 1px solid #1E559B;">Unit Name</th>
         <th style="text-align: center; width: 50px; border: 1px solid #1E559B;">Grade</th>
-        <th style="text-align: center; width: 70px; border: 1px solid #1E559B;">Grade Points</th>
+        <th style="text-align: center; width: 70px; border: 1px solid #1E559B;">Credit Points</th>
         <th style="text-align: center; width: 82px; border: 1px solid #1E559B;">Status</th>
     </tr></thead><tbody>${tableRows || '<tr><td colspan="6" style="text-align:center;">No approved and published results.</td></tr>'}</tbody></table>
     <div class="transcript-lower-grid">
