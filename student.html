@@ -7921,9 +7921,9 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
         <div class="nchsm-exam-table-scroll" style="width:100%;overflow-x:auto;">
 <table class="nchsm-exam-table">
 <thead><tr>
-<th>Assessment</th><th>Score</th><th>Percentage</th><th>Grade / Release</th><th>Actions</th>
+<th>#</th><th>Assessment</th><th>Type</th><th>Score</th><th>Grade</th><th>Status</th><th>Date</th><th>Actions</th>
 </tr></thead>
-<tbody id="completed-assessments-table"><tr><td colspan="5" style="padding:35px;text-align:center;color:#94a3b8">Loading completed assessments...</td></tr></tbody>
+<tbody id="completed-assessments-table"><tr><td colspan="8" style="padding:35px;text-align:center;color:#94a3b8">Loading completed assessments...</td></tr></tbody>
 </table>
 </div>
         <div class="empty-state" id="completed-empty" style="display:none"><i class="fas fa-graduation-cap"></i><h3>No Completed Assessments</h3><p>Your assessment results will appear here once submitted or graded.</p><button type="button" onclick="window.examsModule?.applyFilter('current')">View Current Assessments</button></div>
@@ -14760,6 +14760,92 @@ html,body{max-width:100%!important}
  #cats .current-assessment-card .exam-action-btn{min-width:120px!important;min-height:40px!important}
  #cats .current-assessment-card .exam-timer{text-align:left!important}
  #cats .current-assessment-card .current-meta{font-size:9px!important;gap:6px 10px!important}
+}
+</style>
+<style id="nchsm-assessments-exact-reference-finish">
+#cats{background:#f2f6fc!important;padding:14px!important}
+#cats .assessment-dashboard{max-width:1500px!important;width:100%!important}
+#cats .assess-hero{min-height:132px!important;position:relative!important;overflow:hidden!important;padding:23px 26px!important;border:0!important;border-radius:16px!important;background:linear-gradient(110deg,#064b96 0%,#075bb0 58%,#1595df 100%)!important;box-shadow:0 7px 18px rgba(9,70,135,.17)!important}
+#cats .assess-hero:after{content:"🎓";position:absolute;right:32px;bottom:-10px;font-size:86px;line-height:1;opacity:.95;filter:drop-shadow(0 5px 5px rgba(0,0,0,.18));pointer-events:none}
+#cats .hero-copy{position:relative;z-index:1;gap:16px!important}
+#cats .hero-copy .hero-icon{width:66px!important;height:66px!important;border-radius:50%!important;background:rgba(255,255,255,.18)!important;color:#fff!important;font-size:27px!important}
+#cats .hero-copy h2{font-size:clamp(23px,3vw,34px)!important;color:#fff!important;font-weight:850!important}
+#cats .hero-copy p{font-size:clamp(13px,1.5vw,17px)!important;color:#e5f2ff!important;margin-top:5px!important}
+#cats .hero-policy{display:none!important}
+#cats .assessment-nav{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin:14px 0 17px!important}
+#cats .assessment-nav button{min-height:52px!important;border:1px solid #cfdaea!important;border-radius:10px!important;background:#fff!important;color:#132a52!important;font-size:14px!important;font-weight:800!important}
+#cats .assessment-nav button.active{background:#0865c4!important;color:#fff!important;border-color:#0865c4!important}
+#cats .assessment-nav button:nth-child(n+3){display:none!important}
+#cats .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:11px!important}
+#cats .stat-card{min-height:92px!important;padding:12px 14px!important;border-radius:14px!important;box-shadow:0 3px 12px rgba(18,50,85,.05)!important}
+#cats .stat-card.current{background:#f2f8ff!important;border-color:#c8def8!important}
+#cats .stat-card.completed{background:#f1fbf5!important;border-color:#ccebd8!important}
+#cats .stat-card.released{background:#f7f3ff!important;border-color:#ded1ff!important}
+#cats .stat-card.average{background:#fff9ed!important;border-color:#f6e2b9!important}
+#cats .stat-value{font-size:25px!important;color:#102653!important}
+#cats .main-grid{grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
+#cats .section-card{border:1px solid #d4e0ef!important;border-radius:15px!important;box-shadow:0 5px 15px rgba(18,45,77,.06)!important}
+#cats .section-head{min-height:78px!important;padding:13px 17px!important;background:#fff!important}
+#cats .section-title{font-size:19px!important;color:#102b55!important;font-weight:850!important}
+#cats .section-sub{font-size:12px!important;color:#526783!important}
+#cats .section-icon{width:47px!important;height:47px!important;border-radius:13px!important;background:#e3efff!important;color:#0870d5!important;font-size:19px!important}
+#cats .section-icon.green{background:#e0f7e9!important;color:#07894e!important}
+#cats .section-count{font-size:11px!important;padding:7px 13px!important;background:#e2efff!important;color:#0755a5!important}
+#cats .nchsm-exam-table-scroll{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain!important;touch-action:pan-x pan-y!important}
+#cats .nchsm-exam-table{width:100%!important;min-width:850px!important;border-collapse:separate!important;border-spacing:0!important}
+#cats .nchsm-exam-table th{background:#eaf1f9!important;color:#203d62!important;font-size:11px!important;font-weight:850!important;padding:12px 13px!important;border:0!important;border-bottom:1px solid #d6e1ef!important;white-space:nowrap!important}
+#cats .nchsm-exam-table td{font-size:12px!important;padding:12px 13px!important;border:0!important;border-bottom:1px solid #e1e9f2!important;color:#23364f!important;vertical-align:middle!important}
+#cats .assessment-name-main{font-size:12px!important;font-weight:850!important;color:#102b55!important}
+#cats .assessment-type-inline{font-size:10px!important;color:#425a78!important;margin-top:2px!important}
+#cats .type-badge{display:inline-flex!important;align-items:center!important;justify-content:center!important;border-radius:999px!important;padding:6px 12px!important;background:#dcecff!important;color:#0758b7!important;font-size:10px!important;font-weight:850!important}
+#cats .type-final{background:#f0e8ff!important;color:#6335b5!important}
+#cats .current-status,#cats .result-status-pill{display:inline-flex!important;align-items:center!important;gap:5px!important;border-radius:999px!important;padding:7px 11px!important;font-size:10px!important;font-weight:850!important;white-space:nowrap!important}
+#cats .current-status.available,#cats .status-pass{background:#d9f7e4!important;color:#08783d!important}
+#cats .current-status.upcoming,#cats .status-pending{background:#e8e9ff!important;color:#3730a3!important}
+#cats .current-status.scheduled{background:#fff0d8!important;color:#a64b00!important}
+#cats .current-status.retake{background:#f0e7ff!important;color:#6d28d9!important}
+#cats .current-status.missed,#cats .status-fail{background:#fee2e2!important;color:#b91c1c!important}
+#cats .status-distinction{background:#d9f7e4!important;color:#08783d!important}
+#cats .status-credit{background:#dcecff!important;color:#0758b7!important}
+#cats .current-details{display:flex!important;flex-direction:column!important;gap:4px!important;min-width:115px!important}
+#cats .current-detail{display:block!important;white-space:nowrap!important;font-size:11px!important;color:#334b6b!important}
+#cats .current-detail i{width:15px!important;color:#48627f!important}
+#cats .current-action-cell{min-width:135px!important}
+#cats .exam-action-btn{display:inline-flex!important;justify-content:center!important;align-items:center!important;min-height:35px!important;padding:8px 13px!important;border:0!important;border-radius:8px!important;font-size:11px!important;font-weight:850!important;white-space:nowrap!important;text-decoration:none!important}
+#cats .btn-start{background:#079447!important;color:#fff!important}
+#cats .btn-upcoming{background:#0873df!important;color:#fff!important}
+#cats .btn-retake{background:#6d3cc8!important;color:#fff!important}
+#cats .btn-missed{background:#f1f5f9!important;color:#64748b!important}
+#cats .row-actions{display:flex!important;flex-wrap:wrap!important;gap:6px!important;align-items:center!important;min-width:205px!important}
+#cats .row-actions button{min-height:32px!important;padding:7px 9px!important;border:0!important;border-radius:7px!important;font-size:10px!important;font-weight:800!important;white-space:nowrap!important}
+#cats .result-btn{background:#0873df!important;color:#fff!important}
+#cats .review-btn{background:#079653!important;color:#fff!important}
+#cats .grade-pill{display:inline-flex!important;align-items:center!important;border-radius:999px!important;padding:6px 10px!important;font-size:10px!important;font-weight:850!important;white-space:nowrap!important}
+#cats .grade-distinction{background:#d9f7e4!important;color:#08783d!important}
+#cats .grade-credit{background:#dcecff!important;color:#0758b7!important}
+#cats .grade-pass{background:#fff0d8!important;color:#a64b00!important}
+#cats .grade-fail,#cats .grade-missed{background:#fee2e2!important;color:#b91c1c!important}
+#cats .grade-pending{background:#f1f5f9!important;color:#64748b!important}
+#cats .awaiting-release{font-size:10px!important;font-weight:800!important;color:#a65a19!important;white-space:nowrap!important}
+#cats .result-date{white-space:nowrap!important;font-size:11px!important}
+@media(max-width:760px){
+#cats{padding:9px!important}
+#cats .assess-hero{min-height:115px!important;padding:18px 15px!important}
+#cats .assess-hero:after{right:8px!important;font-size:60px!important;opacity:.65!important}
+#cats .hero-copy .hero-icon{width:48px!important;height:48px!important;font-size:20px!important}
+#cats .hero-copy h2{font-size:22px!important}
+#cats .hero-copy p{font-size:12px!important}
+#cats .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+#cats .stat-card{min-height:78px!important;padding:9px!important;gap:8px!important}
+#cats .stat-value{font-size:21px!important}
+#cats .assessment-nav button{min-height:46px!important;font-size:11px!important;padding:8px!important}
+#cats .section-head{padding:11px!important;gap:7px!important}
+#cats .section-title{font-size:14px!important}
+#cats .section-sub{font-size:9px!important;line-height:1.4!important}
+#cats .section-icon{width:36px!important;height:36px!important}
+#cats .section-count{font-size:9px!important;padding:6px 8px!important}
+#cats .nchsm-exam-table{width:900px!important;min-width:900px!important}
+#cats .row-actions{min-width:205px!important}
 }
 </style>
 </body>
