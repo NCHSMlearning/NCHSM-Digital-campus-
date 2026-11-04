@@ -14622,7 +14622,7 @@ html,body{max-width:100%!important}
  width:100%!important;min-width:0!important;max-width:100%!important;
  box-sizing:border-box!important;overflow-x:auto!important;overflow-y:hidden!important;
  -webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain!important;
- touch-action:pan-y!important;scrollbar-width:thin!important;pointer-events:auto!important;
+ touch-action:pan-x pan-y!important;scrollbar-width:thin!important;pointer-events:auto!important;
 }
 #cats .nchsm-exam-table-scroll>table,#cats .nchsm-exam-table-scroll .nchsm-exam-table{width:900px!important;min-width:900px!important;max-width:none!important}
 #cats #current-assessments-table{width:900px!important;min-width:900px!important;max-width:none!important}
@@ -14640,26 +14640,20 @@ html,body{max-width:100%!important}
  function bind(){
   var root=document.getElementById('cats');if(!root)return;
   root.querySelectorAll('#current-section .nchsm-exam-table-scroll, #completed-section .nchsm-exam-table-scroll').forEach(function(el){
-   if(el.dataset.nchsmTouchScrollBound==='1')return;
-   el.dataset.nchsmTouchScrollBound='1';
-   el.style.overflowX='auto';
-   var startX=0,startY=0,startLeft=0,dragging=false,decided=false;
-   el.addEventListener('touchstart',function(e){
-    if(!e.touches||e.touches.length!==1)return;
-    startX=e.touches[0].clientX;startY=e.touches[0].clientY;startLeft=el.scrollLeft;dragging=false;decided=false;
-   },{passive:true});
-   el.addEventListener('touchmove',function(e){
-    if(!e.touches||e.touches.length!==1)return;
-    var dx=e.touches[0].clientX-startX,dy=e.touches[0].clientY-startY;
-    if(!decided && (Math.abs(dx)>7||Math.abs(dy)>7)){decided=true;dragging=Math.abs(dx)>Math.abs(dy)*1.15;}
-    if(dragging){if(e.cancelable)e.preventDefault();el.scrollLeft=startLeft-dx;}
-   },{passive:false});
-   el.addEventListener('wheel',function(e){
-    if(Math.abs(e.deltaY)>Math.abs(e.deltaX)&&el.scrollWidth>el.clientWidth){el.scrollLeft+=e.deltaY;e.preventDefault();}
-   },{passive:false});
+   el.style.setProperty('overflow-x','scroll','important');
+   el.style.setProperty('overflow-y','hidden','important');
+   el.style.setProperty('-webkit-overflow-scrolling','touch','important');
+   el.style.setProperty('touch-action','pan-x pan-y','important');
+   el.style.setProperty('overscroll-behavior-x','contain','important');
+   el.setAttribute('tabindex','0');
+   el.setAttribute('aria-label','Swipe horizontally to view all assessment table columns');
   });
  }
- function start(){bind();var root=document.getElementById('cats');if(root){new MutationObserver(bind).observe(root,{childList:true,subtree:true});}}
+ function start(){
+  bind();
+  var root=document.getElementById('cats');
+  if(root)new MutationObserver(bind).observe(root,{childList:true,subtree:true});
+ }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 </script>
