@@ -1644,6 +1644,7 @@ applyDataFilter() {
             const currentCount = this.currentExams.length;
             const completedCount = this.completedExams.length;
             const releasedCount = this.completedExams.filter(exam => exam.isReleased && exam.totalPercentage !== null).length;
+            const passedCount = this.completedExams.filter(exam => exam.isReleased && Number(exam.totalPercentage) >= 60).length;
             
             if (this.currentCount) {
                 this.currentCount.textContent = `${currentCount} pending`;
@@ -1660,7 +1661,7 @@ applyDataFilter() {
             const releasedEl = document.getElementById('released-assessments-count');
             const navCurrent = document.getElementById('nav-current-count');
             const navCompleted = document.getElementById('nav-completed-count');
-            if (releasedEl) releasedEl.textContent = releasedCount;
+            if (releasedEl) releasedEl.textContent = passedCount;
             if (navCurrent) navCurrent.textContent = currentCount;
             if (navCompleted) navCompleted.textContent = completedCount;
             
