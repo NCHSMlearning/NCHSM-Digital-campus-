@@ -7883,7 +7883,7 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
       <div class="hero-icon"><i class="fas fa-graduation-cap"></i></div>
       <div>
         <h2>Assessments &amp; Grades</h2>
-        <p>View and manage your CATs and Final Exams. Track your performance and review released assessments in NurseIQ.</p>
+        <p>My CATs, Exams and Results</p>
         <span class="hero-program" id="program-indicator"></span>
       </div>
     </div>
@@ -7902,10 +7902,10 @@ window.deleteSubmissionDocument=deleteSubmissionDocument;
   </div>
 
   <div class="stats-grid">
-    <div class="stat-card current"><div class="stat-icon"><i class="fas fa-play"></i></div><div><p class="stat-label">Available Assessments</p><p class="stat-value" id="current-assessments-count">0</p><p class="stat-note">Ready to start or continue</p></div></div>
+    <div class="stat-card current"><div class="stat-icon"><i class="fas fa-play"></i></div><div><p class="stat-label">Current Assessments</p><p class="stat-value" id="current-assessments-count">0</p><p class="stat-note">Ready to start or continue</p></div></div>
     <div class="stat-card completed"><div class="stat-icon"><i class="fas fa-check"></i></div><div><p class="stat-label">Completed</p><p class="stat-value" id="completed-assessments-count">0</p><p class="stat-note">Submitted assessments</p></div></div>
-    <div class="stat-card released"><div class="stat-icon"><i class="fas fa-award"></i></div><div><p class="stat-label">Results Released</p><p class="stat-value" id="released-assessments-count">0</p><p class="stat-note">Grades available</p></div></div>
-    <div class="stat-card average"><div class="stat-icon"><i class="fas fa-star"></i></div><div><p class="stat-label">Overall Average</p><p class="stat-value" id="overall-average">--</p><p class="stat-note">Released assessments</p></div></div>
+    <div class="stat-card released"><div class="stat-icon"><i class="fas fa-award"></i></div><div><p class="stat-label">Passed</p><p class="stat-value" id="released-assessments-count">0</p><p class="stat-note">Grades available</p></div></div>
+    <div class="stat-card average"><div class="stat-icon"><i class="fas fa-star"></i></div><div><p class="stat-label">Average Score</p><p class="stat-value" id="overall-average">--</p><p class="stat-note">Released assessments</p></div></div>
   </div>
 
   <div class="main-grid">
@@ -14702,6 +14702,67 @@ html,body{max-width:100%!important}
 }
 </style>
 
+<style id="nchsm-assessments-reference-layout-v2">
+#cats{background:#f1f5fb!important;padding:14px!important}
+#cats .assessment-dashboard{max-width:1500px!important;width:100%!important}
+#cats .assess-hero{position:relative;overflow:hidden;min-height:132px!important;padding:24px 28px!important;border:0!important;border-radius:16px!important;background:linear-gradient(115deg,#07509b 0%,#0759a8 55%,#1689d2 100%)!important;box-shadow:0 8px 20px rgba(15,73,130,.17)!important}
+#cats .assess-hero:after{content:"";position:absolute;right:-30px;top:-95px;width:390px;height:300px;transform:rotate(-32deg);background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.09) 30%,rgba(255,255,255,.09) 62%,transparent 62%);pointer-events:none}
+#cats .hero-copy{position:relative;z-index:1;gap:17px!important}
+#cats .hero-copy .hero-icon{width:68px!important;height:68px!important;border-radius:50%!important;background:rgba(255,255,255,.18)!important;color:#fff!important;font-size:27px!important}
+#cats .hero-copy h2{font-size:clamp(23px,3vw,34px)!important;color:#fff!important;font-weight:850!important}
+#cats .hero-copy p{font-size:clamp(13px,1.5vw,17px)!important;color:#e5f2ff!important;margin-top:6px!important}
+#cats .hero-policy{display:none!important}
+#cats .assessment-nav{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:14px 0 18px!important}
+#cats .assessment-nav button{min-height:54px!important;border:1px solid #d7e1ee!important;border-radius:11px!important;background:#fff!important;color:#142b52!important;font-size:14px!important;font-weight:800!important}
+#cats .assessment-nav button.active{background:#0866c4!important;color:#fff!important;border-color:#0866c4!important}
+#cats .assessment-nav button:nth-child(n+3){display:none!important}
+#cats .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important}
+#cats .stat-card{min-height:94px!important;padding:13px 16px!important;border-radius:14px!important;box-shadow:0 4px 14px rgba(20,48,80,.05)!important}
+#cats .stat-card.current{background:#f5faff!important;border-color:#cfe2f7!important}
+#cats .stat-card.completed{background:#f5fcf8!important;border-color:#d7eee2!important}
+#cats .stat-card.released{background:#faf8ff!important;border-color:#e2dafa!important}
+#cats .stat-card.average{background:#fffbf3!important;border-color:#f5e7c9!important}
+#cats .stat-value{font-size:25px!important;color:#10264f!important}
+#cats .main-grid{grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
+#cats .section-card{border-radius:15px!important;border:1px solid #dce5ef!important;box-shadow:0 5px 16px rgba(18,45,77,.06)!important}
+#cats .section-head{min-height:78px!important;padding:13px 18px!important;background:linear-gradient(180deg,#fff,#fbfdff)!important}
+#cats .section-title{font-size:19px!important;color:#102b55!important;font-weight:850!important}
+#cats .section-sub{font-size:12px!important;color:#526783!important}
+#cats .section-icon{width:48px!important;height:48px!important;border-radius:13px!important;background:#e4f0ff!important;color:#0870d5!important;font-size:19px!important}
+#cats .section-icon.green{background:#e1f7eb!important;color:#07894e!important}
+#cats .section-count{font-size:12px!important;padding:8px 14px!important;background:#e3efff!important;color:#0755a5!important}
+#cats .section-action{font-size:11px!important;padding:9px 12px!important}
+#cats .nchsm-exam-table-scroll{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important}
+#cats .nchsm-exam-table{width:100%!important;min-width:850px!important;border-collapse:separate!important;border-spacing:0!important}
+#cats .nchsm-exam-table th{background:#edf3fa!important;color:#27405f!important;font-size:11px!important;font-weight:850!important;padding:12px 14px!important;border:0!important;border-bottom:1px solid #dce5ef!important}
+#cats .nchsm-exam-table td{font-size:12px!important;padding:13px 14px!important;border:0!important;border-bottom:1px solid #e7edf4!important;color:#23364f!important}
+#cats .row-actions{display:flex!important;flex-wrap:wrap!important;gap:7px!important;align-items:center!important}
+#cats .row-actions button{min-height:36px!important;padding:8px 12px!important;border:0!important;border-radius:8px!important;font-size:11px!important;font-weight:800!important;white-space:nowrap!important}
+#cats .result-btn{background:#0873df!important;color:#fff!important}
+#cats .review-btn{background:#079653!important;color:#fff!important}
+#cats .result-btn i,#cats .review-btn i{margin-right:5px!important}
+#cats .exam-action-btn{border:0!important;border-radius:8px!important;padding:8px 13px!important;font-size:11px!important;font-weight:800!important}
+#cats .btn-start{background:#079653!important;color:#fff!important}
+#cats .btn-upcoming{background:#e5efff!important;color:#0757ad!important}
+#cats .btn-retake{background:#6d3cc8!important;color:#fff!important}
+@media(max-width:760px){
+#cats{padding:10px!important}
+#cats .assess-hero{padding:20px 18px!important;min-height:120px!important}
+#cats .hero-copy .hero-icon{width:52px!important;height:52px!important;font-size:22px!important}
+#cats .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+#cats .stat-card{min-height:82px!important;padding:10px!important;gap:9px!important}
+#cats .stat-value{font-size:22px!important}
+#cats .assessment-nav button{min-height:48px!important;font-size:12px!important;padding:9px!important}
+#cats .section-head{padding:12px!important;gap:8px!important}
+#cats .section-title{font-size:15px!important}
+#cats .section-sub{font-size:10px!important}
+#cats .section-icon{width:37px!important;height:37px!important}
+#cats .section-count{font-size:9px!important;padding:6px 8px!important}
+#cats .nchsm-exam-table{min-width:850px!important;width:850px!important}
+#cats .row-actions{min-width:175px!important}
+#cats .row-actions button{font-size:10px!important;padding:8px 9px!important}
+}
+</style>
 </body>
 <style id="nchsm-final-reference-lock">
 /* FINAL VISUAL LOCK — keeps the desktop dashboard close to the supplied reference image. */
