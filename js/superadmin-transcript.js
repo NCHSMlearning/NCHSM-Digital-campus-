@@ -1852,7 +1852,7 @@ window.renderTranscriptBlock = function(index) {
     <div class="footer"><p>Accredited &amp; Registered Institution | Committed to Academic Excellence | © 2026 Nakuru College of Health Sciences &amp; Management</p>
         <p><strong>NCHSM</strong> · Tel: 0790 969 743 / 0722 351 791 · Email: <a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a></p>
     </div>
-    <div class="transcript-admin-actions no-print"><button class="btn-print" onclick="window.print()">Print / Save PDF</button><button class="btn-close" onclick="window.closeTranscriptPreview()">Close Preview</button></div>
+    <div class="transcript-admin-actions no-print"><button class="btn-print" onclick="window.printTranscriptDocument()">Print / Save PDF</button><button class="btn-close" onclick="window.closeTranscriptPreview()">Close Preview</button></div>
 </div>`;
 
     content.innerHTML = transcriptHtml;
