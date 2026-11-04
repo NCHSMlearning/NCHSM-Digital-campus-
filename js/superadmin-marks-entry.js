@@ -1473,8 +1473,7 @@ async function loadMarksEntry() {
         const [retakeResult, initialMarksResult] = await Promise.all([
             loadRetakeData(block, unit, year),
             sb.from('student_marks').select('*')
-                .eq('program', program).eq('block', block)
-                .eq('subject_name', unit).eq('academic_year', parseInt(year, 10))
+                .eq('block', block).eq('subject_name', unit).eq('academic_year', parseInt(year, 10))
         ]);
         if (!isCurrentRequest()) return;
         if (initialMarksResult.error) throw initialMarksResult.error;
@@ -1722,7 +1721,7 @@ async function loadFromApprovedRegistrations(program, block, unit, year, unitCod
         const existingQueries = [];
         for (let i = 0; i < admissions.length; i += 150) {
             existingQueries.push(sb.from('student_marks').select('admission_number')
-                .eq('program', program).eq('block', block).eq('subject_name', unit)
+                .eq('block', block).eq('subject_name', unit)
                 .eq('academic_year', numericYear).in('admission_number', admissions.slice(i, i + 150)));
         }
         const existingResults = await Promise.all(existingQueries);
