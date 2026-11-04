@@ -1826,8 +1826,12 @@ window.renderTranscriptBlock = function(index) {
   <div class="semester-results-title">End of ${escapeHtml(blockName)} Results</div>
   <table class="semester-results-table">
     <thead><tr>
-      <th style="text-align:center;width:25px;">#</th><th style="width:76px;">Unit Code</th><th>Unit Name</th>
-      <th style="text-align:center;width:50px;">Grade</th><th style="text-align:center;width:70px;">Grade Points</th><th style="text-align:center;width:82px;">Status</th>
+      <th style="text-align: center; width: 25px; border: 1px solid #1E559B;">#</th>
+      <th style="width: 76px; border: 1px solid #1E559B;">Unit Code</th>
+      <th style="min-width: 170px; border: 1px solid #1E559B;">Unit Name</th>
+      <th style="text-align: center; width: 50px; border: 1px solid #1E559B;">Grade</th>
+      <th style="text-align: center; width: 70px; border: 1px solid #1E559B;">Grade Points</th>
+      <th style="text-align: center; width: 82px; border: 1px solid #1E559B;">Status</th>
     </tr></thead>
     <tbody>${marksTableRows || '<tr><td colspan="6" style="text-align:center;">No approved and published results.</td></tr>'}</tbody>
   </table>
@@ -1838,10 +1842,10 @@ window.renderTranscriptBlock = function(index) {
     </div>
     <div class="academic-summary-panel"><div class="academic-summary-title">Academic Summary</div>
       <div class="summary-grid">
-        <div class="summary-card"><div class="value">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
-        <div class="summary-card"><div class="value">${escapeHtml(overallGrade)}</div><div class="label">Overall Grade</div></div>
-        <div class="summary-card"><div class="value">${blockTotal}</div><div class="label">Units Reported</div></div>
-        <div class="summary-card"><div class="value">${passRate}%</div><div class="label">Pass Rate</div></div>
+        <div class="summary-card"><div class="value" style="color: #1E559B;">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
+        <div class="summary-card"><div class="value" style="color: ${overallGrade === 'A' ? '#10b981' : overallGrade === 'B' ? '#3b82f6' : overallGrade === 'C' ? '#f59e0b' : '#ef4444'};">${escapeHtml(overallGrade)}</div><div class="label">Overall Grade</div></div>
+        <div class="summary-card"><div class="value" style="color: #1E559B;">${blockTotal}</div><div class="label">Units Reported</div></div>
+        <div class="summary-card"><div class="value" style="color: #1E559B;">${passRate}%</div><div class="label">Pass Rate</div></div>
       </div>
     </div>
   </div>
