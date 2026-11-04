@@ -1723,16 +1723,16 @@ window.renderTranscriptBlock = function(index) {
         .container > * { position: relative; z-index: 1; }
         .container .transcript-top { z-index: 2; }
 
-        .transcript-top { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 170px; align-items: start; column-gap: 8px; width: 100%; padding-top: 1px; }
+        .transcript-top { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 116px; align-items: start; column-gap: 8px; width: 100%; padding-top: 1px; }
         .transcript-top > .header { grid-column: 1; grid-row: 1; width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
         .transcript-verification-column { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; gap: 6px; min-width: 0; position: relative; z-index: 3; }
-        .transcript-verification-column > .transcript-generation-number { position: relative; display: none; width: 170px; min-width: 170px; margin: 0; padding: 3px 0 5px; border: 0; border-radius: 0; background: #fff; color: #493638; font-family: Arial, Helvetica, sans-serif; line-height: 1; text-align: center; box-shadow: none; }
+        .transcript-verification-column > .transcript-generation-number { position: relative; display: none; width: 116px; min-width: 116px; margin: 0; padding: 3px 0 5px; border: 0; border-radius: 0; background: #fff; color: #493638; font-family: Arial, Helvetica, sans-serif; line-height: 1; text-align: center; box-shadow: none; }
         .transcript-verification-column > .transcript-generation-number .number-label { display: block; margin-bottom: 5px; color: #475569; font-family: Arial, sans-serif; font-size: 7px; letter-spacing: .8px; font-weight: 700; white-space: normal; }
         .transcript-number-prefix { display: inline-block; color: #493638; font-family: Arial, Helvetica, sans-serif; font-size: 9px; line-height: 1.2; font-weight: 300; letter-spacing: -.25px; white-space: nowrap; }
         .transcript-number-sequence { display: inline-block; color: #493638; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1; font-weight: 300; letter-spacing: -.45px; white-space: nowrap; }
-        .transcript-verification-column > .verification-qr { position: relative; width: 156px; min-height: 160px; margin: 0; }
-        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 156px; padding: 8px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
-        .verification-qr img { display: block; width: 140px; height: 140px; min-width: 140px; min-height: 140px; object-fit: contain; image-rendering: pixelated; }
+        .transcript-verification-column > .verification-qr { position: relative; width: 108px; min-height: 112px; margin: 0; }
+        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 108px; padding: 5px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
+        .verification-qr img { display: block; width: 96px; height: 96px; min-width: 96px; min-height: 96px; object-fit: contain; image-rendering: pixelated; }
         .header { text-align: center; border-bottom: 3px double #1E559B; padding-bottom: 5px; margin-bottom: 6px; }
         .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-width: 0; overflow: hidden; }
         .header-top img { display: block; flex: 0 0 62px; width: 62px; height: 62px; max-height: 62px; max-width: 62px; object-fit: contain; object-position: center; }
@@ -1879,17 +1879,22 @@ window.renderTranscriptBlock = function(index) {
             html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; min-height: 0 !important; height: auto !important; }
             .transcript-preview-toolbar, .no-print, .btn-print, .btn-close { display: none !important; }
             .container {
+                box-sizing: border-box !important;
                 width: 100% !important;
                 max-width: none !important;
-                /* Fill the printable A4 height even when a block has only a few units. */
+                height: 285mm !important;
                 min-height: 285mm !important;
-                height: auto !important;
+                max-height: 285mm !important;
                 margin: 0 !important;
+                padding: 5mm 6mm 4mm !important;
                 box-shadow: none !important;
                 display: flex !important;
                 flex-direction: column !important;
-                justify-content: space-between !important;
-                gap: 5mm !important;
+                justify-content: flex-start !important;
+                gap: 2.2mm !important;
+                overflow: hidden !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
             }
             .container > .transcript-top,
             .container > .student-info-wrapper,
@@ -1900,14 +1905,25 @@ window.renderTranscriptBlock = function(index) {
             .container > .footer {
                 flex-shrink: 0 !important;
             }
-            .container > .semester-results-table { width: 100% !important; }
-            /* Let the page distribute free height between all transcript sections.
-               Do not push the footer down with an auto margin, which creates one
-               oversized blank gap after the signature block on short transcripts. */
-            .container > .footer { margin-top: 0 !important; }
-            .container > .transcript-lower-grid { flex-grow: 1 !important; align-content: stretch !important; }
+            .container > .transcript-top { flex: 0 0 auto !important; }
+            .container > .student-info-wrapper { flex: 0 0 auto !important; margin: 2mm 0 !important; }
+            .container > .semester-results-title { flex: 0 0 auto !important; margin-top: 1mm !important; }
+            .container > .semester-results-table { width: 100% !important; flex: 0 0 auto !important; margin: 0 !important; }
+            .container > .transcript-lower-grid { flex: 0 0 auto !important; margin: 2mm 0 !important; gap: 3mm !important; }
             .container > .transcript-lower-grid > .grading-scale-table,
-            .container > .transcript-lower-grid > .academic-summary-panel { height: 100% !important; box-sizing: border-box !important; }
+            .container > .transcript-lower-grid > .academic-summary-panel { height: auto !important; box-sizing: border-box !important; }
+            .container > .signatures { flex: 0 0 auto !important; margin: 2mm 0 !important; min-height: 16mm !important; padding-top: 2mm !important; }
+            .container > .footer { flex: 0 0 auto !important; margin-top: auto !important; padding-top: 1mm !important; }
+            .semester-results-table th { white-space: nowrap !important; }
+            .semester-results-table td:nth-child(2) { white-space: nowrap !important; font-size: 9.5px !important; }
+            .semester-results-table.units-count-few tbody td { padding-top: 5px !important; padding-bottom: 5px !important; }
+            .semester-results-table.units-count-medium tbody td { padding-top: 4px !important; padding-bottom: 4px !important; }
+            .semester-results-table.units-count-many tbody td { padding-top: 2px !important; padding-bottom: 2px !important; font-size: 9px !important; line-height: 1.05 !important; }
+            .semester-results-table.units-count-many thead th { padding-top: 3px !important; padding-bottom: 3px !important; font-size: 8px !important; }
+            .semester-results-table tbody td:nth-child(1),
+            .semester-results-table tbody td:nth-child(4),
+            .semester-results-table tbody td:nth-child(5),
+            .semester-results-table tbody td:nth-child(6) { font-size: 9px !important; }
             .container > .transcript-admin-actions { display: none !important; }
         }
 `;
@@ -1940,11 +1956,11 @@ window.renderTranscriptBlock = function(index) {
     <div class="semester-results-title">${escapeHtml(transcriptResultsHeading)}</div>
     <table class="semester-results-table ${unitTableDensityClass}"><thead><tr>
         <th style="text-align: center; width: 25px; border: 1px solid #1E559B;">#</th>
-        <th style="width: 76px; border: 1px solid #1E559B;">Unit Code</th>
+        <th style="width: 88px; white-space: nowrap; border: 1px solid #1E559B;">Unit Code</th>
         <th style="min-width: 170px; border: 1px solid #1E559B;">Unit Name</th>
-        <th style="text-align: center; width: 50px; border: 1px solid #1E559B;">Grade</th>
-        <th style="text-align: center; width: 70px; border: 1px solid #1E559B;">Credit Points</th>
-        <th style="text-align: center; width: 82px; border: 1px solid #1E559B;">Status</th>
+        <th style="text-align: center; width: 54px; white-space: nowrap; border: 1px solid #1E559B;">Grade</th>
+        <th style="text-align: center; width: 72px; white-space: nowrap; border: 1px solid #1E559B;">Credit Points</th>
+        <th style="text-align: center; width: 82px; white-space: nowrap; border: 1px solid #1E559B;">Status</th>
     </tr></thead><tbody>${tableRows || '<tr><td colspan="6" style="text-align:center;">No approved and published results.</td></tr>'}</tbody></table>
     <div class="transcript-lower-grid">
         <div class="grading-scale-table"><div class="title">Grading Scale (${programType}) — Mark*</div>${gradingScaleHTML}
