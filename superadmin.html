@@ -15344,46 +15344,67 @@
 <!-- ============================================================ -->
 <script>
 /**
- * Change sidebar background color
- * @param {string} color - CSS gradient or color value
+ * Sidebar theme picker: apply to the actual Super Admin sidebar and override
+ * legacy CSS declarations. Persist the selection across page reloads.
  */
-function changeSidebarColor(color) {
-    console.log('🎨 Changing sidebar color to:', color);
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-        sidebar.style.background = color;
-        try {
-            localStorage.setItem('sidebarColor', color);
-        } catch(e) {}
-    }
-}
+(function() {
+    const DEFAULT_SIDEBAR_THEME = 'linear-gradient(135deg, #0c1445, #1a237e)';
+    const STORAGE_KEY = 'nchsm_superadmin_sidebar_color';
 
-/**
- * Reset sidebar color to default
- */
-function resetSidebarColor() {
-    console.log('🔄 Resetting sidebar color to default...');
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-        sidebar.style.background = 'linear-gradient(135deg, #0c1445, #1a237e)';
-        try {
-            localStorage.removeItem('sidebarColor');
-        } catch(e) {}
-    }
-}
+    function applySidebarTheme(color) {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar || !color) return false;
 
-// Load saved color preference on page load
-(function loadSavedSidebarColor() {
-    try {
-        const savedColor = localStorage.getItem('sidebarColor');
-        if (savedColor) {
-            const sidebar = document.querySelector('.sidebar');
-            if (sidebar) {
-                sidebar.style.background = savedColor;
-                console.log('✅ Loaded saved sidebar color');
-            }
+        // Legacy responsive CSS competes with normal inline styles.
+        sidebar.style.setProperty('background', color, 'important');
+        sidebar.style.setProperty('background-image', color, 'important');
+
+        document.querySelectorAll('#sidebar .color-btn').forEach(function(button) {
+            const selected = button.getAttribute('onclick') &&
+                button.getAttribute('onclick').includes(color);
+            button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            button.style.outline = selected ? '2px solid #fff' : 'none';
+            button.style.outlineOffset = selected ? '3px' : '0';
+        });
+        return true;
+    }
+
+    window.changeSidebarColor = function(color) {
+        if (!applySidebarTheme(color)) {
+            console.warn('Sidebar theme could not be applied: sidebar element not found.');
+            return;
         }
-    } catch(e) {}
+        try {
+            localStorage.setItem(STORAGE_KEY, color);
+            localStorage.setItem('sidebarColor', color); // legacy compatibility
+        } catch (error) {
+            console.warn('Theme applied for this session; browser storage is unavailable.', error);
+        }
+    };
+
+    window.resetSidebarColor = function() {
+        applySidebarTheme(DEFAULT_SIDEBAR_THEME);
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem('sidebarColor');
+        } catch (error) {
+            console.warn('Theme reset for this session; browser storage is unavailable.', error);
+        }
+    };
+
+    function restoreSidebarTheme() {
+        let savedColor = null;
+        try {
+            savedColor = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sidebarColor');
+        } catch (error) {}
+        applySidebarTheme(savedColor || DEFAULT_SIDEBAR_THEME);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', restoreSidebarTheme, { once: true });
+    } else {
+        restoreSidebarTheme();
+    }
 })();
 
 console.log('✅ Sidebar color functions loaded');
