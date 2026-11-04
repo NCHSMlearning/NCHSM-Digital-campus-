@@ -1820,7 +1820,31 @@ window.renderTranscriptBlock = function(index) {
             @page { size: A4 portrait; margin: 5mm; }
             html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; min-height: 0 !important; height: auto !important; }
             .transcript-preview-toolbar, .no-print, .btn-print, .btn-close { display: none !important; }
-            .container { width: 100% !important; max-width: none !important; min-height: 0 !important; height: auto !important; margin: 0 !important; box-shadow: none !important; }
+            .container {
+                width: 100% !important;
+                max-width: none !important;
+                /* Fill the printable A4 height even when a block has only a few units. */
+                min-height: 285mm !important;
+                height: auto !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                gap: 5mm !important;
+            }
+            .container > .transcript-top,
+            .container > .student-info-wrapper,
+            .container > .semester-results-title,
+            .container > .semester-results-table,
+            .container > .transcript-lower-grid,
+            .container > .signatures,
+            .container > .footer {
+                flex-shrink: 0 !important;
+            }
+            .container > .semester-results-table { width: 100% !important; }
+            .container > .footer { margin-top: auto !important; }
+            .container > .transcript-admin-actions { display: none !important; }
         }
 `;
     window._superadminTranscriptStyles = transcriptStyles;
