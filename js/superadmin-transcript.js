@@ -1791,16 +1791,23 @@ window.renderTranscriptBlock = function(index) {
         .semester-results-title,
         .grading-scale-table .title,
         .academic-summary-title {
-            color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important;
             background: #ffffff !important;
             font-weight: 900 !important;
             text-shadow: none !important;
         }
+        /* Results section heading uses the NCHSM logo blue for brand consistency. */
         .semester-results-title {
-            border-left: 3px solid #000000 !important;
-            border-bottom: 1px solid #000000 !important;
+            color: #1E559B !important;
+            -webkit-text-fill-color: #1E559B !important;
+            border-left: 3px solid #1E559B !important;
+            border-bottom: 1px solid #1E559B !important;
             padding: 5px 8px !important;
+        }
+        /* Grading scale and academic summary headings remain bold black. */
+        .grading-scale-table .title,
+        .academic-summary-title {
+            color: #000000 !important;
+            -webkit-text-fill-color: #000000 !important;
         }
         .grading-scale-table .title {
             font-size: 11px;
@@ -1826,10 +1833,10 @@ window.renderTranscriptBlock = function(index) {
         .grading-scale-table td { color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
         .semester-results-table thead th {
             background: #ffffff !important;
-            color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important;
+            color: #1E559B !important;
+            -webkit-text-fill-color: #1E559B !important;
             font-weight: 900 !important;
-            border: 1px solid #000000 !important;
+            border: 1px solid #1E559B !important;
         }
         .grading-scale-table td { padding: 4px 8px; text-align: center; border: 1px solid #d1d5db; font-size: 7px; }
                 .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; min-height: 62px; }
