@@ -16,7 +16,7 @@
 
     <!-- CSS -->
     <link rel="stylesheet" href="css/admindashboard.css" />
-    <link rel="stylesheet" href="css/admin-exams-modern.css?v=2" />
+    <link rel="stylesheet" href="css/admin-exams-modern.css?v=3" />
 
 
 <style>
@@ -166,15 +166,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
 
     <!-- ========== SIDEBAR ========== -->
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-brand">
-                <div class="brand-icon">N</div>
-                <div class="brand-text">
-                    <h2>NCHSM <span>Exam</span></h2>
-                    <small>Proctoring Center</small>
-                </div>
-            </div>
-        </div>
+        <div class="sidebar-header"><div class="sidebar-brand"><div class="brand-crest"><img src="/images/Logo_NCHSM.png" alt="NCHSM crest"></div><div class="brand-text"><h2>NCHSM <span>E-Learning</span></h2><small>Nakuru College of Health Sciences &amp; Management</small></div></div></div>
 
         <div class="sidebar-scroll">
             <!-- Dashboard -->
@@ -285,56 +277,20 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
     <!-- ========== MAIN CONTENT ========== -->
     <div class="main-content">
         <!-- Top Header -->
-        <div class="top-header">
-            <div class="page-title">
-                <h1 id="pageTitle"><i class="fas fa-graduation-cap"></i> Students Results</h1>
-                <p id="pageSubtitle">View and manage student exam results</p>
-            </div>
-            <div class="header-actions">
-                <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-                <div class="admin-profile">
-                    <div class="admin-avatar" id="adminInitial">A</div>
-                    <div>
-                        <div class="admin-name" id="adminName">Admin</div>
-                        <div class="admin-email" id="adminEmail">admin@nchsm.ac.ke</div>
-                    </div>
-                </div>
-                <div class="notification-bell" id="notificationBell">
-                    <i class="fas fa-bell"></i>
-                    <span class="notification-count" id="notificationCount">0</span>
-                    <div class="notification-panel" id="notificationPanel">
-                        <div class="notification-header"><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</div>
-                        <div class="notification-list" id="notificationList">Loading alerts...</div>
-                    </div>
-                </div>
+        <div class="top-header command-topbar">
+            <div class="command-brand"><div class="command-cap"><i class="fas fa-graduation-cap"></i></div><div class="command-brand-copy"><h1>Exam Command Centre</h1><p>Manage examinations, results, retakes and approvals across all programmes</p></div></div>
+            <div class="header-actions"><button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Open navigation"><i class="fas fa-bars"></i></button>
+                <div class="admin-profile"><div class="admin-avatar" id="adminInitial">A</div><div><div class="admin-name" id="adminName">Super Administrator</div><div class="admin-email" id="adminEmail">admin@nchsm.ac.ke</div></div></div>
+                <div class="notification-bell" id="notificationBell" aria-label="Notifications"><i class="fas fa-bell"></i><span class="notification-count" id="notificationCount">0</span><div class="notification-panel" id="notificationPanel"><div class="notification-header"><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</div><div class="notification-list" id="notificationList">Loading alerts...</div></div></div>
             </div>
         </div>
+        <section class="command-welcome" aria-label="Administrator welcome"><div class="welcome-symbol"><i class="fas fa-user-graduate"></i></div><div class="welcome-copy"><h2>Welcome, Super Administrator <span>👋</span></h2><p>You have full access to manage examinations, results and academic assessments.</p></div><div class="welcome-date"><i class="far fa-calendar-alt"></i><div><strong id="commandDate">Wed, 04 Nov 2026</strong><span id="commandTime">6:24 PM (EAT)</span></div></div></section>
 
         <!-- ============================================================ -->
         <!-- TAB: STUDENTS RESULTS                                         -->
         <!-- ============================================================ -->
         <section id="students" class="tab-content">
-            <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-                <div>
-                    <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
-                        <i class="fas fa-chart-line" style="color: #FDB913;"></i> Students Results
-                    </h2>
-                    <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-                        <i class="fas fa-database"></i> View and manage student exam results
-                    </p>
-                </div>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button onclick="exportMarksOnly()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-file-csv"></i> Export Marks
-                    </button>
-                    <button onclick="openResetByEmailModal()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-user-check"></i> Authorize Single Retake
-                    </button>
-                    <button onclick="openReleaseModal()" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
-                        <i class="fas fa-share-alt"></i> Release Results
-                    </button>
-                </div>
-            </div>
+            <div class="results-command-banner"><div class="results-banner-title"><div class="results-trophy"><i class="fas fa-trophy"></i></div><div><h2 id="pageTitle"><i class="fas fa-chart-line"></i> Students Results</h2><p id="pageSubtitle">View, approve and release examination results</p></div></div><div class="results-banner-actions"><button type="button" onclick="exportMarksOnly()"><i class="fas fa-file-excel"></i> Export Marks</button><button type="button" onclick="openResetByEmailModal()"><i class="fas fa-user-check"></i> Authorize Retake</button><button type="button" class="release-action" onclick="openReleaseModal()"><i class="fas fa-paper-plane"></i> Release Results</button></div></div>
 
             <div id="statsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin-bottom: 14px;"></div>
 
@@ -342,6 +298,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
                 <span><i class="fas fa-database" style="color:#0A3D62;"></i> Showing latest attempt per student/exam</span>
                 <span id="studentsLastUpdated"><i class="fas fa-clock"></i> Last synced: --</span>
             </div>
+            <nav class="results-workspace-tabs" aria-label="Exam command sections"><button type="button" class="active" onclick="switchTab('students')"><i class="fas fa-chart-bar"></i> Results</button><button type="button" onclick="switchTab('exams')"><i class="fas fa-graduation-cap"></i> Examinations</button><button type="button" onclick="openResetByEmailModal()"><i class="fas fa-sync-alt"></i> Retakes</button><button type="button" onclick="switchTab('assessmentApprovals')"><i class="fas fa-check"></i> Approvals</button><button type="button" onclick="switchTab('proctoring')"><i class="fas fa-chart-pie"></i> Monitoring</button></nav>
 
             <form id="studentResultsFilterForm" autocomplete="off" onsubmit="return false;" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                 <div id="filtersContainer" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;"></div>
@@ -2140,5 +2097,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
     <script src="js/admindashboard.js"></script>
 
 <script src="/js/nchsm-mobile-enhancements.js?v=3" defer></script>
+
+<script>(function(){function updateCommandClock(){const now=new Date();const d=document.getElementById('commandDate');const t=document.getElementById('commandTime');if(d)d.textContent=new Intl.DateTimeFormat('en-KE',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).format(now);if(t)t.textContent=new Intl.DateTimeFormat('en-KE',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Africa/Nairobi'}).format(now)+' (EAT)';}updateCommandClock();window.setInterval(updateCommandClock,60000);})();</script>
 </body>
 </html>
