@@ -1,0 +1,71 @@
+/* NCHSM Lecturer Portal — modern responsive visual layer */
+:root{--lx-ink:#10243a;--lx-muted:#64748b;--lx-line:#e4ebf2;--lx-surface:#fff;--lx-canvas:#f3f7fb;--lx-navy:#0b2942;--lx-blue:#155b83;--lx-teal:#0d9488;--lx-gold:#f4bd4f;--lx-shadow:0 12px 34px rgba(15,39,64,.07)}
+html{scroll-behavior:smooth}
+body{background:var(--lx-canvas)!important;color:var(--lx-ink);font-family:Inter,system-ui,sans-serif!important}
+.sidebar{background:linear-gradient(180deg,#09253d 0%,#0b3552 58%,#0b2942 100%)!important;box-shadow:10px 0 35px rgba(7,28,48,.12);border-right:1px solid rgba(255,255,255,.07)}
+.sidebar-header{padding:25px 20px!important;border-bottom:1px solid rgba(255,255,255,.1)!important}
+.brand-icon{border-radius:14px!important;background:linear-gradient(145deg,#f4bd4f,#e99a32)!important;color:#102b43!important;box-shadow:0 8px 20px rgba(244,189,79,.22)}
+.brand-text h2{letter-spacing:.3px}
+.menu-label{color:#89a9bf!important;letter-spacing:1.3px!important;font-size:10px!important;font-weight:800!important}
+.sidebar-menu a{margin:4px 10px!important;border-radius:11px!important;color:#d5e3ee!important;transition:background .2s,transform .2s}
+.sidebar-menu a:hover{background:rgba(255,255,255,.09)!important;transform:translateX(2px)}
+.sidebar-menu a.active{background:linear-gradient(100deg,rgba(31,145,173,.3),rgba(255,255,255,.08))!important;color:#fff!important;box-shadow:inset 3px 0 #f4bd4f}
+.sidebar-footer{border-top:1px solid rgba(255,255,255,.1)!important}
+.user-card{background:rgba(255,255,255,.07)!important;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:11px!important}
+.user-card .avatar{background:linear-gradient(145deg,#f4bd4f,#f6d68e)!important;color:#17334b!important;font-weight:800}
+.logout-btn-sidebar{border-radius:10px!important}
+.main-content{background:var(--lx-canvas)!important;padding:24px 28px!important}
+.top-header{background:rgba(255,255,255,.9)!important;border:1px solid var(--lx-line)!important;border-radius:18px!important;padding:15px 20px!important;margin-bottom:24px!important;box-shadow:0 5px 20px rgba(15,39,64,.035)!important;backdrop-filter:blur(12px)}
+.page-title h1{font-size:20px!important;font-weight:800!important;letter-spacing:-.45px;color:var(--lx-ink)!important}
+.page-title p{color:var(--lx-muted)!important;font-size:12px!important}
+.admin-profile{padding:5px 10px;border-radius:12px;background:#f7fafc}
+.admin-avatar{background:linear-gradient(145deg,#0d9488,#155b83)!important;box-shadow:0 5px 14px rgba(13,148,136,.2)}
+.admin-name{font-weight:750!important;color:var(--lx-ink)!important}
+.admin-email{color:#8292a3!important}
+.notification-bell{border-radius:12px!important;background:#f1f6fa!important}
+.tab-content{animation:lxRise .28s ease both}
+@keyframes lxRise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.tab-content>div[style*="linear-gradient"]{border-radius:20px!important;padding:24px 27px!important;box-shadow:0 12px 28px rgba(10,45,72,.16)!important;position:relative;overflow:hidden}
+.tab-content>div[style*="linear-gradient"] h2{letter-spacing:-.4px}
+.tab-content>div[style*="linear-gradient"] p{line-height:1.55}
+.stats-grid{gap:15px!important;margin-bottom:22px!important}
+.stat-card{border:1px solid var(--lx-line)!important;border-radius:18px!important;padding:19px!important;box-shadow:var(--lx-shadow)!important;min-height:88px;position:relative;overflow:hidden}
+.stat-card:after{content:"";position:absolute;width:74px;height:74px;border-radius:50%;right:-28px;top:-30px;background:rgba(21,91,131,.045)}
+.stat-card:hover{transform:translateY(-4px)!important;box-shadow:0 16px 35px rgba(15,39,64,.1)!important}
+.stat-card .number{font-size:25px!important;font-weight:800!important;letter-spacing:-.8px;color:var(--lx-ink)!important}
+.stat-card .label{font-size:10px!important;letter-spacing:.8px!important;font-weight:750!important;color:#8292a3!important}
+.stat-card .icon{width:46px!important;height:46px!important;border-radius:14px!important}
+.quick-action-btn{background:#fff!important;border:1px solid var(--lx-line)!important;border-radius:15px!important;padding:18px!important;box-shadow:0 4px 14px rgba(15,39,64,.035);font-size:13px}
+.quick-action-btn i{color:var(--lx-teal);font-size:19px!important}
+.quick-action-btn:hover{background:var(--lx-navy)!important;border-color:var(--lx-navy)!important}
+.quick-action-btn:hover i{color:var(--lx-gold)}
+.exam-filter-panel,.results-filter-panel,#nchsmCoordinatorWorkspace,.tab-content>div[style*="background: white"],.tab-content>div[style*="background: white;"]{border-radius:18px!important;border-color:var(--lx-line)!important;box-shadow:var(--lx-shadow)!important}
+.exam-filter-panel,.results-filter-panel{padding:20px!important}
+.exam-filter-stat{border-radius:10px!important;background:#f4f8fb!important;border-color:#e5edf3!important}
+.exam-filter-field label,.results-filter-field label{font-size:10px!important;letter-spacing:.55px;text-transform:uppercase;color:#60758a!important;font-weight:800!important}
+.exam-filter-field input,.exam-filter-field select,.results-filter-field input,.results-filter-field select{min-height:44px!important;border:1px solid #dbe5ed!important;border-radius:11px!important;padding:10px 13px!important;background:#fbfdff!important;font-size:13px!important;transition:border .2s,box-shadow .2s}
+.exam-filter-field input:focus,.exam-filter-field select:focus,.results-filter-field input:focus,.results-filter-field select:focus{border-color:#159b9b!important;box-shadow:0 0 0 4px rgba(13,148,136,.1)!important;outline:none}
+.exam-filter-reset,.results-filter-reset{border-radius:10px!important;padding:9px 14px!important;font-weight:750!important}
+#examsTable,#resultsTable{border-collapse:separate!important;border-spacing:0!important}
+#examsTable thead th,#resultsTable thead th{background:#f3f7fa!important;color:#52677b!important;font-size:10px!important;text-transform:uppercase;letter-spacing:.65px;padding:14px!important;white-space:nowrap}
+#examsTable tbody td,#resultsTable tbody td{padding:13px 14px!important;border-bottom:1px solid #edf2f6!important;color:#334b60}
+#examsTable tbody tr:hover,#resultsTable tbody tr:hover{background:#f6fbfd!important}
+#examsTable tbody tr:last-child td,#resultsTable tbody tr:last-child td{border-bottom:0!important}
+button,.btn{transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+button:not(:disabled):hover,.btn:not(:disabled):hover{filter:brightness(1.02)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid rgba(13,148,136,.22)!important;outline-offset:2px}
+.status-badge{padding:5px 10px!important;font-size:10px!important;letter-spacing:.25px}
+#nchsmCoordinatorWorkspace{border-radius:18px!important}
+#nchsmCoordinatorWorkspace .ch{background:linear-gradient(115deg,#0b2942,#11617a)!important;padding:21px 23px!important}
+#nchsmCoordinatorWorkspace .cb{padding:19px!important}
+#nchsmCoordinatorWorkspace .ctable{border-radius:12px!important;border-color:#e5edf3!important}
+#nchsmCoordinatorWorkspace th{background:#f3f7fa!important;letter-spacing:.6px}
+#nchsmCoordinatorWorkspace td{padding:13px!important}
+#nchsmCoordinatorWorkspace input,#nchsmCoordinatorWorkspace select{min-height:43px!important;border-radius:10px!important}
+#nchsmCoordinatorModal .dialog{border-radius:20px!important;box-shadow:0 25px 80px rgba(0,0,0,.25)}
+#nchsmCoordinatorModal .mh{padding:18px 21px!important}
+#nchsmCoordinatorModal .mb{padding:21px!important}
+#nchsmCoordinatorModal input,#nchsmCoordinatorModal select{min-height:43px!important;border-radius:10px!important}
+.pagination .page-btn{border-radius:9px!important}
+@media(max-width:900px){.main-content{padding:18px!important}.top-header{padding:13px 15px!important}}
+@media(max-width:600px){.main-content{padding:12px!important}.top-header{border-radius:14px!important;margin-bottom:16px!important}.page-title h1{font-size:17px!important}.admin-profile{display:none}.tab-content>div[style*="linear-gradient"]{padding:19px!important;border-radius:16px!important}.stats-grid{gap:9px!important}.stat-card{padding:13px!important;border-radius:14px!important;gap:10px!important}.stat-card .icon{width:38px!important;height:38px!important}.stat-card .number{font-size:20px!important}.exam-filter-panel,.results-filter-panel{padding:14px!important;border-radius:14px!important}.quick-actions{gap:8px!important}.quick-action-btn{padding:14px 9px!important}}
