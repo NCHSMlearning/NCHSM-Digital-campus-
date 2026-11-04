@@ -2,7 +2,7 @@
 // ✅ FILE VERSION TRACKING
 // ============================================================
 console.log('📄 superadmin-marks-entry.js loaded');
-console.log('   📅 Version: 2026-11-04-row-status-v2');
+console.log('   📅 Version: 2026-11-04-loading-optimization-v1');
 console.log('   🔧 isTVETProgram should have NO parameters');
 console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
 
@@ -1470,13 +1470,10 @@ async function loadMarksEntry() {
     try {
         // Load the current marks and retake history in parallel. Registration reconciliation
         // is now a small, unit-scoped batch operation rather than a programme-wide scan.
-        const [retakeResult, initialMarksResult] = await Promise.all([
-            loadRetakeData(block, unit, year),
-            sb.from('student_marks').select('*')
-                .eq('block', block).eq('subject_name', unit).eq('academic_year', parseInt(year, 10))
-        ]);
+        // Avoid an unused preliminary marks query. The actual marks are fetched
+        // once, after registration reconciliation, so this removes a full round trip.
+        await loadRetakeData(block, unit, year);
         if (!isCurrentRequest()) return;
-        if (initialMarksResult.error) throw initialMarksResult.error;
 
         await loadFromApprovedRegistrations(program, block, unit, year, unitCode, true);
         if (!isCurrentRequest()) return;
