@@ -649,8 +649,8 @@ function getNursingGrade(score) {
             grade: 'C', 
             rating: 'Pass', 
             points: 2.0, 
-            color: '#92400e', 
-            bgColor: '#fef3c7' 
+            color: '#065f46', 
+            bgColor: '#d1fae5' 
         };
     } else {
         return { 
@@ -697,10 +697,10 @@ function getTVETGrade(score) {
     } else if (score >= 50 && score <= 64) {
         return { 
             grade: 'C', 
-            rating: 'COMPETENT',  // ✅ TVET rating - NOT "Pass"!
+            rating: 'COMPETENT',  // ✅ TVET rating - successful competency result
             points: 2.0,
-            color: '#92400e', 
-            bgColor: '#fef3c7' 
+            color: '#065f46', 
+            bgColor: '#d1fae5' 
         };
     } else if (score >= 0 && score <= 49) {
         return { 
@@ -747,8 +747,8 @@ function getNursingGrade(score) {
             grade: 'C', 
             rating: 'Pass', 
             points: 2.0, 
-            color: '#92400e', 
-            bgColor: '#fef3c7' 
+            color: '#065f46', 
+            bgColor: '#d1fae5' 
         };
     } else {
         return { 
