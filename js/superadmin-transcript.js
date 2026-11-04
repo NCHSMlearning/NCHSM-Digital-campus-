@@ -311,7 +311,22 @@ function ensureTranscriptBatchActions() {
         <button type="button" id="transcriptGenerateBlockAction" style="background:#047857;color:#fff;border:0;border-radius:7px;padding:10px 14px;font-weight:700;cursor:pointer;"><i class="fas fa-users"></i> Generate Entire Filtered Block</button>
       </div>`;
     list.parentNode.insertBefore(toolbar, list);
-    toolbar.querySelector('#transcriptGenerateSingleAction').addEventListener('click', () => window.generateSelectedTranscript());
+    toolbar.querySelector('#transcriptGenerateSingleAction').addEventListener('click', () => {
+        const checkedIds = Array.from(document.querySelectorAll('#transcriptStudentList input[type="checkbox"]:checked'))
+            .map(box => box.dataset.transcriptStudentId || box.value || '')
+            .map(id => String(id).trim()).filter(Boolean);
+        const stateIds = (window.transcriptData?.selectedStudents || []).map(id => String(id).trim()).filter(Boolean);
+        const ids = [...new Set(checkedIds.length ? checkedIds : stateIds)];
+        if (ids.length !== 1) {
+            const message = ids.length === 0
+                ? 'Select exactly one student using the checkbox below.'
+                : 'Select only one student to generate a single transcript.';
+            if (typeof window.showNotification === 'function') window.showNotification(message, 'warning');
+            else alert(message);
+            return;
+        }
+        window.generateSelectedTranscriptBatch({ studentIds: ids });
+    });
     toolbar.querySelector('#transcriptGenerateBlockAction').addEventListener('click', () => {
         window.transcriptData.selectedStudents = [];
         window.generateSelectedTranscriptBatch({ allFiltered: true });
@@ -797,9 +812,14 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
         .map(box => box.dataset.transcriptStudentId || box.value || '')
         .map(normalizeStudentId).filter(Boolean);
     const stateIds = (window.transcriptData?.selectedStudents || []).map(normalizeStudentId).filter(Boolean);
-    const selectedIds = [...new Set(options.allFiltered
-        ? filteredStudents.map(s => normalizeStudentId(s.student_id)).filter(Boolean)
-        : (checkedIds.length ? checkedIds : stateIds))];
+    const requestedIds = Array.isArray(options.studentIds)
+        ? options.studentIds.map(normalizeStudentId).filter(Boolean)
+        : null;
+    const selectedIds = [...new Set(requestedIds
+        ? requestedIds
+        : options.allFiltered
+            ? filteredStudents.map(s => normalizeStudentId(s.student_id)).filter(Boolean)
+            : (checkedIds.length ? checkedIds : stateIds))];
     if (!selectedIds.length) {
         notify('Select one or more students, or use Generate Entire Filtered Block.', 'warning');
         return;
