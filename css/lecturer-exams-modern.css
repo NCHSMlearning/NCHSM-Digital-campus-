@@ -98,3 +98,34 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 @media(max-width:900px){.sidebar{width:258px}.main-content{margin-left:0}.top-header{min-height:66px}}
 @media(max-width:600px){.header-actions{gap:7px}.main-content{width:100%;overflow-x:hidden}.tab-content table{min-width:620px}.sidebar{z-index:1200}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-profile{display:none!important}}
 @media(max-width:380px){.stats-grid{grid-template-columns:1fr 1fr}.stat-card{gap:8px!important}.stat-card .number{font-size:18px!important}}
+
+
+/* Match the approved dashboard mockup proportions and composition */
+.sidebar{width:250px!important}
+.main-content{margin-left:250px!important;width:calc(100% - 250px)!important;max-width:calc(100% - 250px)!important}
+.sidebar-header{min-height:102px!important;display:flex;align-items:center}
+.sidebar-brand{width:100%;padding:20px 18px!important}
+.sidebar-scroll{padding-top:12px}
+.menu-section{margin-bottom:12px!important}
+.sidebar-menu a{min-height:40px!important;padding:9px 12px!important}
+.sidebar-footer{padding:12px 14px!important}
+.user-card{min-height:58px;display:flex;align-items:center;gap:10px}
+.main-content{padding:24px 28px 32px!important}
+.top-header{min-height:76px!important;margin-bottom:24px!important}
+#dashboard>div:first-child{min-height:102px;display:flex;align-items:center}
+#dashboard .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px!important}
+#dashboard .stat-card{min-height:88px!important}
+#dashboard .quick-actions{grid-template-columns:repeat(4,minmax(0,1fr))}
+#dashboard>div:nth-of-type(3),#dashboard>div:nth-of-type(4){border-radius:18px!important}
+.nchsm-pwa-install{left:270px!important;bottom:18px!important}
+@media(max-width:900px){
+  .sidebar{width:250px!important;transform:translateX(-250px)}
+  .sidebar.open{transform:translateX(0)}
+  .main-content{margin-left:0!important;width:100%!important;max-width:100%!important}
+  #dashboard .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .main-content{padding:12px!important}
+  #dashboard .stats-grid,#dashboard .quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .nchsm-pwa-install{left:auto!important;right:76px!important;bottom:18px!important}
+}
