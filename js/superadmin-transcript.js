@@ -1099,10 +1099,20 @@ window.showTranscriptPreview = function(student, marks, year) {
 // PRINT TRANSCRIPT DOCUMENT - A4 CLEAN
 // ============================================================
 
-window.printTranscriptDocument = function() {
+window.printTranscriptDocument = async function() {
     const content = document.getElementById('transcriptPreviewContent');
     if (!content) return;
-    
+
+    // Wait for the authenticated registry request and QR image before taking
+    // the HTML snapshot; otherwise the print window captures an empty QR slot.
+    if (window._transcriptVerificationPromise) {
+        try { await window._transcriptVerificationPromise; }
+        catch (verificationError) { console.error('[Transcript Print] Verification was not ready:', verificationError); }
+    }
+    const qrImage = content.querySelector('#transcriptVerificationQr');
+    if (qrImage && qrImage.dataset.ready !== 'true') {
+        console.warn('[Transcript Print] QR is unavailable:', qrImage.title || qrImage.alt);
+    }
     const transcriptHtml = content.innerHTML;
     const data = window._transcriptData;
     const studentName = data?.student?.full_name || 'Student';
@@ -1851,9 +1861,11 @@ window.renderTranscriptBlock = function(index) {
     window._transcriptVerificationPromise = (async function issueAdminTranscriptVerification() {
         const qrHost = content.querySelector('#transcriptVerificationQr');
         const config = window.APP_CONFIG || {};
-        const client = window.sb || window.supabaseClient || window.supabase;
-        const supabaseUrl = config.SUPABASE_URL;
-        const anonKey = config.SUPABASE_ANON_KEY;
+        const client = window.sb || window.supabaseClient || window.supabase || (window.db && window.db.supabase);
+        // script.js creates the Supabase client directly and does not expose APP_CONFIG.
+        // Supabase-js v2 retains the URL and anon key on the client instance.
+        const supabaseUrl = config.SUPABASE_URL || client?.supabaseUrl || window.SUPABASE_URL;
+        const anonKey = config.SUPABASE_ANON_KEY || client?.supabaseKey || window.SUPABASE_ANON_KEY;
         const setQrError = (message) => {
             if (qrHost) { qrHost.removeAttribute('src'); qrHost.alt = message || 'Verification unavailable'; qrHost.title = message || 'Verification unavailable'; }
         };
