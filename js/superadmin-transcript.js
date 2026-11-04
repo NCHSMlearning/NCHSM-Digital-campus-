@@ -1928,12 +1928,24 @@ window.renderTranscriptBlock = function(index) {
             .container > .transcript-top { flex: 0 0 auto !important; }
             .container > .student-info-wrapper { flex: 0 0 auto !important; margin: 2mm 0 !important; }
             .container > .semester-results-title { flex: 0 0 auto !important; margin-top: 1mm !important; }
-            .container > .semester-results-table { width: 100% !important; flex: 0 0 auto !important; margin: 0 !important; }
+            /* The results table absorbs spare vertical space: fewer units get taller,
+               more readable rows instead of leaving a large blank area below the summary. */
+            .container > .semester-results-table {
+                width: 100% !important;
+                flex: 1 1 0 !important;
+                height: 100% !important;
+                min-height: 0 !important;
+                margin: 0 !important;
+                align-self: stretch !important;
+            }
+            .container > .semester-results-table tbody tr { height: auto !important; }
+            .container > .semester-results-table.units-count-few tbody td { padding-top: 9px !important; padding-bottom: 9px !important; }
+            .container > .semester-results-table.units-count-medium tbody td { padding-top: 6px !important; padding-bottom: 6px !important; }
             .container > .transcript-lower-grid { flex: 0 0 auto !important; margin: 2mm 0 !important; gap: 3mm !important; }
             .container > .transcript-lower-grid > .grading-scale-table,
             .container > .transcript-lower-grid > .academic-summary-panel { height: auto !important; box-sizing: border-box !important; }
-            .container > .signatures { flex: 0 0 auto !important; margin: auto 0 2mm !important; min-height: 16mm !important; padding-top: 2mm !important; }
-            .container > .footer { flex: 0 0 auto !important; margin-top: 0 !important; padding-top: 1mm !important; }
+            .container > .signatures { flex: 0 0 auto !important; margin: 2mm 0 !important; min-height: 16mm !important; padding-top: 2mm !important; }
+            .container > .footer { flex: 0 0 auto !important; margin-top: auto !important; padding-top: 1mm !important; }
             .semester-results-table th { white-space: nowrap !important; }
             .semester-results-table td:nth-child(2) { white-space: nowrap !important; font-size: 9.5px !important; }
             .semester-results-table th { padding-left: 3px !important; padding-right: 3px !important; font-size: 8px !important; line-height: 1.1 !important; white-space: nowrap !important; overflow-wrap: normal !important; }
