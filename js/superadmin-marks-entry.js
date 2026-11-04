@@ -1479,7 +1479,7 @@ async function loadMarksEntry() {
         if (!isCurrentRequest()) return;
 
         // Re-read once so any newly reconciled students appear in the same render.
-        const { data: marks, error: marksError } = await sb.from('student_marks').select('*')
+        const { data: marks, error: marksError } = await sb.from('student_marks').select('id, student_id, admission_number, student_name, program, block, subject_name, academic_year, cat1_score, cat2_score, exam_score, final_score, grade, graded_by, assessment_type, approval_status, published')
             .eq('program', program).eq('block', block)
             .eq('subject_name', unit).eq('academic_year', parseInt(year, 10));
         if (marksError) throw marksError;
