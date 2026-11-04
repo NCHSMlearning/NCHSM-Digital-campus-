@@ -2,7 +2,7 @@
 // ✅ FILE VERSION TRACKING
 // ============================================================
 console.log('📄 superadmin-marks-entry.js loaded');
-console.log('   📅 Version: 2025-08-21');
+console.log('   📅 Version: 2026-11-04-row-status-v2');
 console.log('   🔧 isTVETProgram should have NO parameters');
 console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
 
@@ -1287,7 +1287,7 @@ function recalculateAllTotals() {
         const ratingEl = document.getElementById(`me_rating_${index}`);
         if (ratingEl) {
             if (total > 0) {
-                ratingEl.innerHTML = `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
+                ratingEl.innerHTML = `<span style="background: ${isPassing ? '#d1fae5' : '#fef08a'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#854d0e'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
             } else {
                 ratingEl.innerHTML = '<span style="color: #94a3b8;">PENDING</span>';
             }
@@ -1844,7 +1844,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     
     const isTVET = currentProgram !== 'KRCHN' && currentProgram !== 'nursing' && currentProgram !== 'Nursing';
     const examMaxDisplay = isTVET ? 100 : 70;
-    const passingThreshold = 60; // Admin marks-entry retake rule: 60+ passes for every program
+    const passingThreshold = isTVET ? 50 : 60; // Match the official programme grading threshold
     const programLabel = isTVET ? '📘 TVET' : '📕 NURSING';
     const isAdmin = isUserAdmin();
     
@@ -1852,6 +1852,21 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
     const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
     
+    // Inject locally scoped styles so theme/global table CSS cannot hide result row colours.
+    const resultStyleId = 'me-result-row-status-styles';
+    if (!document.getElementById(resultStyleId)) {
+        const resultStyles = document.createElement('style');
+        resultStyles.id = resultStyleId;
+        resultStyles.textContent = `
+            #me_marks_table tbody tr[data-result-status="pass"] > td { background-color: #f0fdf4 !important; }
+            #me_marks_table tbody tr[data-result-status="fail"] > td { background-color: #fef9c3 !important; }
+            #me_marks_table tbody tr[data-result-status="pending"] > td { background-color: #ffffff !important; }
+            #me_marks_table tbody tr[data-result-status="pass"] { border-left: 4px solid #16a34a !important; }
+            #me_marks_table tbody tr[data-result-status="fail"] { border-left: 4px solid #eab308 !important; }
+        `;
+        document.head.appendChild(resultStyles);
+    }
+
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
             <div>
@@ -1929,14 +1944,14 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         // A current score of 60 or above must never show a retake badge or retake controls.
         const showRetakeHistory = total > 0 && total < 60 && hasRetake;
         
-        // Consistent row status colours: PASS = pale green, FAIL = pale yellow.
-        // Rows without entered marks remain neutral/PENDING.
-        let rowStyle = '';
-        if (total > 0 && isPassing) {
-            rowStyle = 'background: #f0fdf4; border-left: 4px solid #16a34a;';
-        } else if (total > 0 && !isPassing) {
-            rowStyle = 'background: #fef9c3; border-left: 4px solid #eab308;';
-        }
+        // Consistent result status colours: PASS = pale green, FAIL = light yellow.
+        // Determine pass/fail using the programme's official threshold (Nursing 60, TVET 50).
+        const resultStatus = total <= 0 ? 'pending' : (isPassing ? 'pass' : 'fail');
+        const resultBackground = resultStatus === 'pass' ? '#f0fdf4' : (resultStatus === 'fail' ? '#fef9c3' : '');
+        const resultBorder = resultStatus === 'pass' ? '#16a34a' : (resultStatus === 'fail' ? '#eab308' : '#e2e8f0');
+        let rowStyle = resultBackground
+            ? `background-color: ${resultBackground} !important; border-left: 4px solid ${resultBorder};`
+            : '';
         
         const approvalBadge = {
             'pending': '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:10px;">⏳ Pending</span>',
@@ -1994,7 +2009,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         }
 
         // ✅ Build the row - total is DEFINED here
-        html += `<tr style="${rowStyle}">
+        html += `<tr data-result-status="${resultStatus}" style="${rowStyle}">
             <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
             <td style="padding: 8px 8px;">
@@ -2029,7 +2044,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
             <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color};">${displayGrade}</td>
             <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color};">${displayPoints}</td>
             <td id="me_rating_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">
-                ${total > 0 ? `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
+                ${total > 0 ? `<span style="background: ${isPassing ? '#d1fae5' : '#fef08a'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#854d0e'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
             </td>
             <td id="me_retake_actions_${i}" style="padding: 8px 6px; text-align: center;">
                 ${retakeActionsHtml}
@@ -2088,7 +2103,7 @@ function updateMarksEntryRow(index) {
     const cat2 = parseFloat(document.getElementById(`me_cat2_${index}`)?.value) || 0;
     const exam = parseFloat(document.getElementById(`me_exam_${index}`)?.value) || 0;
     const assessmentType = me_currentAssessmentType;
-    const passingThreshold = 60; // Keep the admin table's retake/pass rule consistent: 60+ passes
+    const passingThreshold = isTVETProgram() ? 50 : 60; // Match the official programme grading threshold
     
     const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
     const gradeInfo = getMarksEntryGrade(total);
