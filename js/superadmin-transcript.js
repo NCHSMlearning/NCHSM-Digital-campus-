@@ -1678,6 +1678,7 @@ window.renderTranscriptBlock = function(index) {
     const transcriptCurrentBlock = blockName;
     const transcriptResultsHeading = `End of ${blockName} Results`;
     const tableRows = marksTableRows;
+    const unitTableDensityClass = blockTotal <= 7 ? 'units-count-few' : blockTotal <= 10 ? 'units-count-medium' : 'units-count-many';
     const gradingScaleHTML = `<table><thead><tr><th>Grade</th><th>Range</th><th>Points</th><th>Remarks</th></tr></thead><tbody>${gradingScaleHtml}</tbody></table>`;
     const grade = overallGrade;
     const transcriptSchool = 'Nakuru College of Health Sciences & Management';
@@ -1752,26 +1753,19 @@ window.renderTranscriptBlock = function(index) {
         .summary-card .label { font-size: 9px; color: #52677a; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 800; margin-top: 3px; }
         table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; border: 1px solid #d1d5db; }
         .semester-results-title { margin: 5px 0 0; padding: 6px 10px; background: #1E559B; color: #ffffff; border-radius: 7px 7px 0 0; font-size: 11px; line-height: 1.15; font-weight: 800; letter-spacing: 0.35px; text-transform: uppercase; }
-        table.semester-results-table { margin: 0 0 5px; font-size: 10.5px; table-layout: fixed; }
-        table.semester-results-table thead th {
-            padding: 6px 5px;
-            font-size: 9.5px;
-            line-height: 1.2;
-            font-weight: 900;
-            overflow-wrap: anywhere;
-        }
-        table.semester-results-table tbody td {
-            padding: 6px 5px;
-            font-size: 10.5px;
-            line-height: 1.25;
-            vertical-align: middle;
-        }
+        table.semester-results-table { margin: 0 0 5px; table-layout: fixed; }
+        table.semester-results-table thead th { padding: 7px 5px; font-size: 10px; line-height: 1.2; font-weight: 900; overflow-wrap: anywhere; }
+        table.semester-results-table tbody td { padding: 7px 5px; font-size: 11px; line-height: 1.25; vertical-align: middle; }
+        /* Adapt ONLY the unit-results table to the number of units. */
+        table.semester-results-table.units-count-few tbody td { padding-top: 10px; padding-bottom: 10px; font-size: 11.5px; line-height: 1.35; }
+        table.semester-results-table.units-count-few thead th { padding-top: 8px; padding-bottom: 8px; font-size: 10px; }
+        table.semester-results-table.units-count-medium tbody td { padding-top: 7px; padding-bottom: 7px; font-size: 11px; }
+        table.semester-results-table.units-count-many tbody td { padding-top: 4px; padding-bottom: 4px; font-size: 10px; line-height: 1.15; }
+        table.semester-results-table.units-count-many thead th { padding-top: 5px; padding-bottom: 5px; font-size: 9px; }
         table.semester-results-table tbody td:nth-child(1),
         table.semester-results-table tbody td:nth-child(4),
         table.semester-results-table tbody td:nth-child(5),
-        table.semester-results-table tbody td:nth-child(6) {
-            font-size: 10px;
-        }
+        table.semester-results-table tbody td:nth-child(6) { font-size: inherit; }
         /* Unit codes and grade points must always print in bold black, including PDF export. */
         table.semester-results-table tbody td:nth-child(2),
         table.semester-results-table tbody td:nth-child(5),
@@ -1944,7 +1938,7 @@ window.renderTranscriptBlock = function(index) {
         <div class="field"><span class="label">${isTVET ? 'Current Term' : 'Current Block'}</span><span class="value">${escapeHtml(transcriptCurrentBlock || 'N/A')}</span></div>
     </div></div>
     <div class="semester-results-title">${escapeHtml(transcriptResultsHeading)}</div>
-    <table class="semester-results-table"><thead><tr>
+    <table class="semester-results-table ${unitTableDensityClass}"><thead><tr>
         <th style="text-align: center; width: 25px; border: 1px solid #1E559B;">#</th>
         <th style="width: 76px; border: 1px solid #1E559B;">Unit Code</th>
         <th style="min-width: 170px; border: 1px solid #1E559B;">Unit Name</th>
