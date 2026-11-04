@@ -1307,95 +1307,56 @@ applyDataFilter() {
         // ============================================
         displayCurrentTable() {
             if (!this.currentTable) return;
-
             const activeExams = this.currentExams.filter(exam =>
-                !exam.isCompleted &&
-                exam.actionState !== 'expired' &&
-                exam.actionState !== 'pending_release'
+                !exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release'
             );
-
             if (activeExams.length === 0) {
                 this.currentTable.innerHTML = '';
                 return;
             }
-
             const userId = this.userId || window.db?.currentUserId || '';
             const kenyaNow = getKenyaNow();
-
-            const html = activeExams.map(exam => {
-                const isCatExam = exam.isCatExam;
+            const rows = activeExams.map((exam, index) => {
+                const isCatExam = !!exam.isCatExam;
                 const isTVET = exam.isTVET || this.isTVETStudent;
                 const isRetake = exam.isResetForRetake && exam.retakeUnlocked;
                 const totalMarks = Number(exam.marks_out_of || exam.total_marks || (isCatExam ? 30 : 70));
                 const displayName = (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name.trim())
                     ? exam.exam_name : ((typeof exam.title === 'string' && exam.title.trim()) ? exam.title : 'Assessment');
                 const isActuallyExpired = !!(exam.examEndDateTime && kenyaNow > exam.examEndDateTime);
-
                 let actionHtml = '';
-                let timerHtml = '';
-                let statusClass = '';
-                let statusText = exam.gradeText || 'Available';
-
+                let statusClass = 'upcoming';
+                let statusText = exam.gradeText || 'Upcoming';
                 if (isRetake && exam.canTakeExam && exam.hasValidLink) {
-                    const baseUrl = exam.examLink.split('?')[0];
-                    const params = new URLSearchParams({user_id: userId, exam_id: exam.id, retake: 'true'});
-                    const fullUrl = `${baseUrl}?${params.toString()}`;
-                    actionHtml = `<a href="${fullUrl}" target="_blank" class="exam-action-btn btn-retake" onclick="sessionStorage.setItem('returningFromExam','true');sessionStorage.setItem('examUserId','${userId}');"><i class="fas fa-play"></i> Continue Exam</a>`;
-                    statusClass = 'retake';
-                    statusText = 'Retake Available';
+                    const fullUrl = exam.examLink.split('?')[0] + '?' + new URLSearchParams({user_id:userId,exam_id:exam.id,retake:'true'}).toString();
+                    actionHtml = '<a href="' + fullUrl + '" target="_blank" class="exam-action-btn btn-retake" onclick="sessionStorage.setItem(\'returningFromExam\',\'true\');sessionStorage.setItem(\'examUserId\',\'' + this.escapeHtml(userId) + '\');"><i class="fas fa-rotate-right"></i> Continue</a>';
+                    statusClass = 'retake'; statusText = 'Retake Available';
                 } else if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
-                    const baseUrl = exam.examLink.split('?')[0];
-                    const params = new URLSearchParams({user_id: userId, exam_id: exam.id});
-                    const fullUrl = `${baseUrl}?${params.toString()}`;
-                    actionHtml = `<a href="${fullUrl}" target="_blank" class="exam-action-btn btn-start" onclick="sessionStorage.setItem('returningFromExam','true');sessionStorage.setItem('examUserId','${userId}');"><i class="fas fa-play"></i> Start Assessment</a>`;
-                    statusClass = 'available';
-                    statusText = 'Available';
+                    const fullUrl = exam.examLink.split('?')[0] + '?' + new URLSearchParams({user_id:userId,exam_id:exam.id}).toString();
+                    actionHtml = '<a href="' + fullUrl + '" target="_blank" class="exam-action-btn btn-start" onclick="sessionStorage.setItem(\'returningFromExam\',\'true\');sessionStorage.setItem(\'examUserId\',\'' + this.escapeHtml(userId) + '\');"><i class="fas fa-play"></i> Start Assessment</a>';
+                    statusClass = 'available'; statusText = 'Open';
                 } else if (isActuallyExpired) {
-                    actionHtml = `<span class="exam-action-btn btn-missed"><i class="fas fa-times-circle"></i> Missed</span>`;
-                    statusClass = 'missed';
-                    statusText = 'Missed';
-                } else if (exam.actionState === 'upcoming') {
-                    const timeToStart = Math.max(0, exam.examStartDateTime - kenyaNow);
-                    const hours = Math.floor(timeToStart / 3600000);
-                    const minutes = Math.floor((timeToStart % 3600000) / 60000);
-                    const seconds = Math.floor((timeToStart % 60000) / 1000);
-                    const countdown = `${hours > 0 ? hours + 'h ' : ''}${minutes}m ${seconds}s`;
-                    actionHtml = `<span class="exam-action-btn btn-upcoming"><i class="fas fa-clock"></i> ${countdown}</span>`;
-                    timerHtml = `<span class="exam-timer timer-upcoming">Opens ${exam.formattedExamDateTime || 'soon'}</span>`;
-                    statusClass = 'upcoming';
-                    statusText = 'Upcoming';
+                    actionHtml = '<span class="exam-action-btn btn-missed">Missed</span>';
+                    statusClass = 'missed'; statusText = 'Missed';
                 } else {
-                    actionHtml = `<span class="exam-action-btn btn-disabled"><i class="fas fa-lock"></i> ${this.escapeHtml(exam.buttonText || 'Not Available')}</span>`;
-                    statusClass = 'upcoming';
+                    actionHtml = '<span class="exam-action-btn btn-upcoming"><i class="fas fa-eye"></i> View</span>';
+                    statusClass = exam.actionState === 'upcoming' ? 'upcoming' : 'scheduled';
+                    statusText = exam.actionState === 'upcoming' ? 'Upcoming' : 'Scheduled';
                 }
-
                 const dateText = exam.formattedExamDateTime && exam.formattedExamDateTime !== 'TBA' ? exam.formattedExamDateTime : 'Date/time TBA';
                 const duration = exam.duration_minutes || exam.duration || null;
-                const meta = [
-                    `<span><i class="fas fa-star"></i> ${totalMarks} marks</span>`,
-                    `<span><i class="fas fa-calendar"></i> ${this.escapeHtml(dateText)}</span>`,
-                    duration ? `<span><i class="fas fa-hourglass-half"></i> ${duration} min</span>` : ''
-                ].filter(Boolean).join('');
-
-                return `
-                    <div class="current-assessment-card ${isRetake ? 'row-retake' : ''}" data-exam-id="${exam.id}">
-                        <div class="current-main">
-                            <div class="current-top">
-                                <span class="current-name">${this.escapeHtml(displayName)}</span>
-                                <span class="type-badge ${isCatExam ? 'type-cat' : 'type-final'}">${isCatExam ? 'CAT' : 'FINAL EXAM'}</span>
-                                ${isTVET ? '<span class="type-badge type-tvet">TVET</span>' : ''}
-                                ${isRetake ? '<span class="retake-badge">↻ Retake</span>' : ''}
-                                <span class="current-status ${statusClass}"><i class="fas ${statusClass === 'upcoming' ? 'fa-clock' : statusClass === 'retake' ? 'fa-rotate-right' : statusClass === 'missed' ? 'fa-circle-xmark' : 'fa-circle-check'}"></i> ${statusText}</span>
-                            </div>
-                            <div class="current-meta">${meta}</div>
-                            ${isRetake ? '<div style="margin-top:6px;color:#6d28d9;font-size:9px;font-weight:750"><i class="fas fa-rotate-right"></i> Your assessment has been reset and is ready for continuation.</div>' : ''}
-                        </div>
-                        <div class="current-action">${actionHtml}${timerHtml}</div>
-                    </div>
-                `;
+                const details = '<span class="current-detail"><i class="fas fa-star"></i> ' + totalMarks + ' marks</span>' +
+                    (duration ? '<span class="current-detail"><i class="fas fa-hourglass-half"></i> ' + duration + ' min</span>' : '') +
+                    '<span class="current-detail"><i class="fas fa-calendar"></i> ' + this.escapeHtml(dateText) + '</span>';
+                return '<tr data-exam-id="' + this.escapeHtml(String(exam.id)) + '">' +
+                    '<td class="current-index">' + (index + 1) + '</td>' +
+                    '<td><div class="assessment-name-main">' + this.escapeHtml(displayName) + '</div><div class="assessment-type-inline">' + (isCatExam ? 'CAT' : 'Final Exam') + (isTVET ? ' · TVET' : '') + '</div></td>' +
+                    '<td><span class="type-badge ' + (isCatExam ? 'type-cat' : 'type-final') + '">' + (isCatExam ? 'CAT' : 'Exam') + '</span></td>' +
+                    '<td><span class="current-status ' + statusClass + '"><i class="fas ' + (statusClass === 'available' ? 'fa-circle' : statusClass === 'upcoming' ? 'fa-clock' : statusClass === 'retake' ? 'fa-rotate-right' : 'fa-calendar') + '"></i> ' + this.escapeHtml(statusText) + '</span></td>' +
+                    '<td><div class="current-details">' + details + '</div></td>' +
+                    '<td class="current-action-cell">' + actionHtml + '</td></tr>';
             }).join('');
-
-            this.currentTable.innerHTML = html;
+            this.currentTable.innerHTML = '<table class="nchsm-exam-table current-assessments-grid"><thead><tr><th>#</th><th>Assessment</th><th>Type</th><th>Status</th><th>Details</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table>';
         }
 
         // ============================================
