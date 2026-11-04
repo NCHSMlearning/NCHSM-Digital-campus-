@@ -3164,3 +3164,95 @@ a:focus-visible {
     overflow-y: auto !important;
     z-index: 10020 !important;
 }
+
+
+/* ============================================================
+   SUPER ADMIN MOBILE NAVIGATION — LABEL VISIBILITY + DRAWER FIX
+   ============================================================ */
+@media (max-width: 768px) {
+    #sidebar:has(#sidebarSearch) {
+        width: min(300px, 86vw) !important;
+        max-width: 300px !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        left: 0 !important;
+        top: 0 !important;
+        padding: max(58px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom)) !important;
+        transform: translateX(-105%) !important;
+        transition: transform .25s ease !important;
+        overflow: hidden !important;
+        z-index: 10040 !important;
+    }
+    #sidebar:has(#sidebarSearch).active,
+    #sidebar:has(#sidebarSearch).mobile-open {
+        left: 0 !important;
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+    #sidebar:has(#sidebarSearch) > .sidebar-header h2 {
+        display: block !important;
+        visibility: visible !important;
+    }
+    #sidebar:has(#sidebarSearch) #mainNav,
+    #sidebar:has(#sidebarSearch) #mainNav li,
+    #sidebar:has(#sidebarSearch) #mainNav a {
+        visibility: visible !important;
+    }
+    /* The generic mobile rule hid every navigation span, including module names. */
+    #sidebar:has(#sidebarSearch) #mainNav a[data-tab] > span,
+    #sidebar:has(#sidebarSearch) #mainNav .dropdown-toggle > span,
+    #sidebar:has(#sidebarSearch) #mainNav .nav-section > span {
+        display: inline !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        font-size: inherit !important;
+    }
+    #sidebar:has(#sidebarSearch) #mainNav a[data-tab],
+    #sidebar:has(#sidebarSearch) #mainNav .dropdown-toggle {
+        display: flex !important;
+        align-items: center !important;
+        width: calc(100% - 6px) !important;
+        min-width: 0 !important;
+        white-space: normal !important;
+        overflow: visible !important;
+    }
+    #sidebar:has(#sidebarSearch) #mainNav a[data-tab] > span:first-of-type,
+    #sidebar:has(#sidebarSearch) #mainNav .dropdown-toggle > span {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        line-height: 1.35 !important;
+    }
+    #sidebar:has(#sidebarSearch) #mainNav .nav-section > span {
+        display: inline-block !important;
+        font-size: 10px !important;
+    }
+    #sidebar:has(#sidebarSearch) > #mainNav {
+        min-height: 0 !important;
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    #mobileNavToggle.mobile-nav-toggle {
+        display: flex !important;
+        position: fixed !important;
+        top: max(10px, env(safe-area-inset-top)) !important;
+        left: 12px !important;
+        z-index: 10050 !important;
+        padding: 10px !important;
+        border-radius: 10px !important;
+        background: rgba(255,255,255,.94) !important;
+        box-shadow: 0 3px 12px rgba(15,23,42,.18) !important;
+        touch-action: manipulation !important;
+    }
+    #mobileNavToggle.mobile-nav-toggle span {
+        background: #4C1D95 !important;
+    }
+    body.mobile-sidebar-open {
+        overflow: hidden !important;
+        touch-action: none !important;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    #sidebar:has(#sidebarSearch) { transition: none !important; }
+}
