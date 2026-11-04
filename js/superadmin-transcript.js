@@ -1723,16 +1723,16 @@ window.renderTranscriptBlock = function(index) {
         .container > * { position: relative; z-index: 1; }
         .container .transcript-top { z-index: 2; }
 
-        .transcript-top { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 150px; align-items: start; column-gap: 8px; width: 100%; padding-top: 1px; }
+        .transcript-top { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 170px; align-items: start; column-gap: 8px; width: 100%; padding-top: 1px; }
         .transcript-top > .header { grid-column: 1; grid-row: 1; width: 100%; min-width: 0; box-sizing: border-box; padding-right: 0; }
         .transcript-verification-column { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; gap: 6px; min-width: 0; position: relative; z-index: 3; }
-        .transcript-verification-column > .transcript-generation-number { position: relative; display: none; width: 150px; min-width: 150px; margin: 0; padding: 3px 0 5px; border: 0; border-radius: 0; background: #fff; color: #493638; font-family: Arial, Helvetica, sans-serif; line-height: 1; text-align: center; box-shadow: none; }
+        .transcript-verification-column > .transcript-generation-number { position: relative; display: none; width: 170px; min-width: 170px; margin: 0; padding: 3px 0 5px; border: 0; border-radius: 0; background: #fff; color: #493638; font-family: Arial, Helvetica, sans-serif; line-height: 1; text-align: center; box-shadow: none; }
         .transcript-verification-column > .transcript-generation-number .number-label { display: block; margin-bottom: 5px; color: #475569; font-family: Arial, sans-serif; font-size: 7px; letter-spacing: .8px; font-weight: 700; white-space: normal; }
         .transcript-number-prefix { display: inline-block; color: #493638; font-family: Arial, Helvetica, sans-serif; font-size: 9px; line-height: 1.2; font-weight: 300; letter-spacing: -.25px; white-space: nowrap; }
         .transcript-number-sequence { display: inline-block; color: #493638; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1; font-weight: 300; letter-spacing: -.45px; white-space: nowrap; }
-        .transcript-verification-column > .verification-qr { position: relative; width: 88px; min-height: 90px; margin: 0; }
-        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 88px; padding: 4px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
-        .verification-qr img { display: block; width: 76px; height: 76px; min-width: 76px; min-height: 76px; object-fit: contain; image-rendering: pixelated; }
+        .transcript-verification-column > .verification-qr { position: relative; width: 156px; min-height: 160px; margin: 0; }
+        .verification-qr { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 156px; padding: 8px; border: 1px solid #1E559B; border-radius: 3px; background: #fff; font-size: 7px; font-weight: 800; color: #1E559B; }
+        .verification-qr img { display: block; width: 140px; height: 140px; min-width: 140px; min-height: 140px; object-fit: contain; image-rendering: pixelated; }
         .header { text-align: center; border-bottom: 3px double #1E559B; padding-bottom: 5px; margin-bottom: 6px; }
         .header-top { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-width: 0; overflow: hidden; }
         .header-top img { display: block; flex: 0 0 62px; width: 62px; height: 62px; max-height: 62px; max-width: 62px; object-fit: contain; object-position: center; }
@@ -2035,11 +2035,12 @@ window.renderTranscriptBlock = function(index) {
                 }
             }
             if (!QR) throw new Error('QR library could not be loaded.');
+            const qrSize = 140;
             const qrStage = document.createElement('div');
-            qrStage.style.cssText = 'position:fixed;left:-10000px;top:0;width:76px;height:76px;';
+            qrStage.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + qrSize + 'px;height:' + qrSize + 'px;background:#fff;padding:8px;box-sizing:content-box;';
             document.body.appendChild(qrStage);
             try {
-                new QR(qrStage, { text: verifyUrl.href, width: 76, height: 76, correctLevel: QR.CorrectLevel?.H ?? QR.CorrectLevel?.M ?? 0 });
+                new QR(qrStage, { text: verifyUrl.href, width: qrSize, height: qrSize, correctLevel: QR.CorrectLevel?.M ?? 0 });
                 const qrCanvas = qrStage.querySelector('canvas');
                 const qrGenerated = qrStage.querySelector('img');
                 let qrData = '';
@@ -2053,8 +2054,8 @@ window.renderTranscriptBlock = function(index) {
                 }
                 if (!qrData) throw new Error('QR generator returned no image data.');
                 qrHost.src = qrData;
-                qrHost.width = 76;
-                qrHost.height = 76;
+                qrHost.width = qrSize;
+                qrHost.height = qrSize;
                 qrHost.dataset.ready = 'true';
             } finally { qrStage.remove(); }
         } catch (error) {
