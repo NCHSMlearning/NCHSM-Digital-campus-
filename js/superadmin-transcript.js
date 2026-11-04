@@ -884,12 +884,18 @@ window.generateSelectedTranscriptBatch = async function(options = {}) {
                 const transcriptState = window._transcriptData;
                 const renderedBlocks = [];
                 // Reuse the academic transcript page itself: no extra bulk headings.
-                (transcriptState?.blockNames || []).forEach((blockName, blockIndex) => {
-                    if (blockFilter !== 'all' && normalizeKRCHNBlock(blockName) !== normalizeKRCHNBlock(blockFilter)) return;
-                    if (typeof window.renderTranscriptBlock === 'function') window.renderTranscriptBlock(blockIndex);
+                for (let blockIndex = 0; blockIndex < (transcriptState?.blockNames || []).length; blockIndex++) {
+                    const blockName = transcriptState.blockNames[blockIndex];
+                    if (blockFilter !== 'all' && normalizeKRCHNBlock(blockName) !== normalizeKRCHNBlock(blockFilter)) continue;
+                    // showTranscriptPreview already rendered block zero and completed
+                    // its registry/QR request. Keep that exact DOM so its QR and number
+                    // are not discarded by an unnecessary second render.
+                    if (blockIndex !== 0 && typeof window.renderTranscriptBlock === 'function') {
+                        window.renderTranscriptBlock(blockIndex);
+                    }
                     const blockHtml = content.innerHTML;
                     if (blockHtml.trim()) renderedBlocks.push(blockHtml);
-                });
+                }
                 const html = renderedBlocks.join('');
                 if (!html.trim()) throw new Error('Transcript content was empty');
                 const safeName = String(student.full_name || student.student_id || studentId).replace(/[<>&"]/g, '');
@@ -1109,57 +1115,39 @@ window.printTranscriptDocument = function() {
         return;
     }
     
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Academic Transcript</title>
-            <style>
-                @page {
-                    size: A4 portrait;
-                    margin: 10mm 12mm;
-                }
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: 'Times New Roman', Times, serif;
-                    background: white;
-                    padding: 0;
-                    margin: 0;
-                }
-                #transcriptContent {
-                    max-width: 850px;
-                    margin: 0 auto;
-                    padding: 20px;
-                }
-                #transcriptContent table {
-                    page-break-inside: avoid;
-                }
-                #transcriptContent tr {
-                    page-break-inside: avoid;
-                }
-                @media print {
-                    body { padding: 0; margin: 0; }
-                    #transcriptContent { padding: 10px; }
-                    .no-print { display: none !important; }
-                }
-            </style>
-        </head>
-        <body>
-            <div id="transcriptContent">
-                ${transcriptHtml}
-            </div>
-            <script>
-                window.onload = function() {
-                    setTimeout(function() {
-                        window.print();
-                    }, 500);
-                };
-            <\/script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Provisional Academic Transcript - ${escapeHtml(studentName)}</title>
+<style>${window._superadminTranscriptStyles || ''}
+@media print {
+  @page { size: A4 portrait; margin: 5mm; }
+  html, body { background:#fff!important; margin:0!important; padding:0!important; }
+  .no-print, .transcript-admin-actions { display:none!important; }
+}
+</style>
+</head>
+<body>${transcriptHtml}
+<script>
+window.onload = async function () {
+  const qr = document.getElementById('transcriptVerificationQr');
+  const deadline = Date.now() + 20000;
+  while (qr && qr.dataset.ready !== 'true' && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  const imgs = Array.from(document.images);
+  await Promise.all(imgs.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
+    img.onload = img.onerror = resolve; setTimeout(resolve, 2500);
+  })));
+  if (document.fonts?.ready) await document.fonts.ready;
+  window.print();
+};
+<\/script>
+</body></html>`);
+
 };
 // ============================================================
 // NAVIGATE BLOCKS
