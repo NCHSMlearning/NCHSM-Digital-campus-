@@ -110,3 +110,49 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .command-stat-copy span{color:#74879a!important}
 .command-stat-spark{position:absolute;right:10px;bottom:9px;width:82px;height:34px;opacity:.92;pointer-events:none}
 @media(max-width:720px){.command-stat-spark{width:55px;height:25px;right:5px;bottom:5px;opacity:.5}}
+
+
+/* Admin Exams: reliable mobile table scrolling and readable student directory */
+.all-students-table-scroll{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#9fb5c9 #edf3f8;
+}
+.all-students-table-scroll::-webkit-scrollbar{height:7px}
+.all-students-table-scroll::-webkit-scrollbar-track{background:#edf3f8;border-radius:10px}
+.all-students-table-scroll::-webkit-scrollbar-thumb{background:#9fb5c9;border-radius:10px}
+#allStudentsTable{
+  width:100%!important;
+  min-width:900px!important;
+  table-layout:auto!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+#allStudentsTable thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  white-space:nowrap;
+  background:#f3f7fb!important;
+  color:#425a72!important;
+}
+#allStudentsTable tbody td{white-space:normal;vertical-align:middle}
+#allStudentsTable tbody tr{min-height:54px}
+#allStudentsTable tbody tr:hover{background:#f5f9fd}
+#allStudentsTable .student-id-badge{white-space:nowrap}
+@media(max-width:720px){
+  #allStudentsTable{min-width:880px!important;font-size:12px!important}
+  #allStudentsTable thead th,#allStudentsTable tbody td{padding:10px 11px!important}
+  .all-students-table-scroll{border-radius:0 0 11px 11px}
+  #allStudentsPagination{justify-content:center;flex-wrap:wrap}
+  #allStudentsPagination .page-btn{min-width:34px;min-height:34px}
+  #studentsTable{min-width:850px!important}
+  #studentsTable thead th,#studentsTable tbody td{white-space:nowrap}
+  #studentsResultsMeta{align-items:flex-start!important;flex-direction:column!important;gap:5px!important}
+}
