@@ -156,3 +156,51 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   #studentsTable thead th,#studentsTable tbody td{white-space:nowrap}
   #studentsResultsMeta{align-items:flex-start!important;flex-direction:column!important;gap:5px!important}
 }
+
+
+/* ============================================================
+   STUDENT RESULTS: FORCE ROWS VISIBLE
+   admindashboard.css applies opacity:0 to every table row while
+   relying on a legacy slideUp animation. On some mobile/reduced-
+   motion/browser combinations the animation never restores opacity,
+   leaving the result count and table header visible but all rows blank.
+   This table uses a stable, non-animated renderer instead.
+   ============================================================ */
+#studentsTable{
+  display:table;
+  width:100%;
+  min-width:1120px!important;
+  table-layout:auto;
+  border-collapse:separate!important;
+  border-spacing:0 3px!important;
+}
+#studentsTable tbody{
+  display:table-row-group!important;
+  visibility:visible!important;
+}
+#studentsTable tbody tr{
+  display:table-row!important;
+  visibility:visible!important;
+  opacity:1!important;
+  animation:none!important;
+  transform:none!important;
+  height:auto!important;
+  background:#fff!important;
+}
+#studentsTable tbody td{
+  display:table-cell!important;
+  visibility:visible!important;
+  opacity:1!important;
+  color:#233d58!important;
+  background:#fff!important;
+  padding:12px 13px!important;
+  border-bottom:1px solid #e8eef4!important;
+}
+#studentsTable tbody tr:hover td{background:#f4f9fd!important}
+#studentsTable tbody tr td:first-child{border-radius:0!important}
+#studentsTable tbody tr td:last-child{border-radius:0!important}
+@media(max-width:720px){
+  #studentsTable{min-width:1080px!important;font-size:11px!important}
+  #studentsTable tbody tr{opacity:1!important;animation:none!important}
+  #studentsTable tbody td{padding:10px 9px!important;white-space:normal}
+}
