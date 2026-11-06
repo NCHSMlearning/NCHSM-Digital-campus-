@@ -5723,7 +5723,7 @@ function renderLiveFeedCards(grid, pageData) {
         if (imageUrl) {
             cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
         } else {
-            cameraBadge = `<span class="overlay-badge camera-off">📷 No Camera</span>`;
+            cameraBadge = `<span class="overlay-badge camera-off" style="z-index:4;">📷 No Camera</span>`;
         }
         
         // Progress
@@ -5741,7 +5741,7 @@ function renderLiveFeedCards(grid, pageData) {
             `;
         } else {
             cameraContent = `
-                <div class="no-camera nchsm-card-camera-placeholder" style="position:absolute;inset:0;z-index:0;">
+                <div class="no-camera nchsm-card-camera-placeholder" style="position:absolute;inset:0;z-index:3;">
                     <i class="fas fa-user-slash"></i>
                     <p>${item.isPast ? 'No snapshot available' : 'Connecting to camera…'}</p>
                 </div>
@@ -10699,17 +10699,42 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                     if (timeout) clearTimeout(timeout);
                     previewTimers.delete(key);
                     const targetPlaceholder = targetCard.querySelector('.nchsm-card-camera-placeholder');
-                    if (targetPlaceholder) targetPlaceholder.style.display = 'none';
-                    const badge = targetCard.querySelector('.overlay-badge.camera-off');
-                    if (badge) { badge.className = 'overlay-badge camera-on'; badge.textContent = '🟢 Live'; }
+                    if (targetPlaceholder) {
+                        targetPlaceholder.style.display = 'flex';
+                        const message = targetPlaceholder.querySelector('p');
+                        if (message) message.textContent = 'Receiving camera video…';
+                    }
+                    const badge = targetCard.querySelector('.overlay-badge');
+                    if (badge) {
+                        badge.className = 'overlay-badge camera-off';
+                        badge.textContent = '🟡 Connecting';
+                    }
+
+                    // Only report the camera as LIVE after the browser actually
+                    // starts rendering decoded video frames (not merely ontrack).
+                    targetVideo.onplaying = () => {
+                        if (!targetCard.isConnected || targetVideo.srcObject !== stream) return;
+                        if (targetPlaceholder) targetPlaceholder.style.display = 'none';
+                        const liveBadge = targetCard.querySelector('.overlay-badge');
+                        if (liveBadge) {
+                            liveBadge.className = 'overlay-badge camera-on';
+                            liveBadge.textContent = '🟢 Live';
+                        }
+                        const statusBadge = targetCard.querySelector('.card-header .status-badge');
+                        if (statusBadge && /no camera|camera/i.test(statusBadge.textContent || '')) {
+                            statusBadge.className = 'status-badge status-active';
+                            statusBadge.textContent = '📷 Camera Connected';
+                        }
+                        console.info('📹 Admin preview rendering frames:', key,
+                            targetVideo.videoWidth + 'x' + targetVideo.videoHeight);
+                    };
+
                     // Keep only one play request pending per video element.
                     if (targetVideo.paused && targetVideo.dataset.nchsmPlayPending !== 'true') {
                         targetVideo.dataset.nchsmPlayPending = 'true';
                         try {
                             await targetVideo.play();
                         } catch (error) {
-                            // AbortError is expected if the browser tears down media
-                            // during navigation; report only actionable playback errors.
                             if (error?.name !== 'AbortError') {
                                 console.warn('Card preview playback failed:', error);
                             }
