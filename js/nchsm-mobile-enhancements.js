@@ -27,12 +27,12 @@
     }
     @keyframes nchsmRefreshSpin { to { transform: rotate(360deg); } }
     .nchsm-refresh-button {
-      position: fixed; z-index: 10000; right: max(18px, env(safe-area-inset-right));
-      bottom: max(18px, env(safe-area-inset-bottom)); width: 44px; height: 44px;
+      position: fixed !important; z-index: 2147483646 !important; right: max(16px, env(safe-area-inset-right)) !important;
+      bottom: calc(max(16px, env(safe-area-inset-bottom)) + 88px) !important; width: 48px; height: 48px;
       display: grid; place-items: center; border: 1px solid rgba(7,59,92,.12);
-      border-radius: 50%; background: #fff; color: #073b5c;
-      box-shadow: 0 5px 20px rgba(7,35,55,.15); cursor: pointer;
-      font: 700 21px system-ui,sans-serif; transition: transform .15s ease, box-shadow .15s ease;
+      border-radius: 50%; background: #073b5c; color: #fff;
+      box-shadow: 0 6px 22px rgba(7,35,55,.28); cursor: pointer;
+      font: 700 25px system-ui,sans-serif; transition: transform .15s ease, box-shadow .15s ease;
     }
     .nchsm-refresh-button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(7,35,55,.2); }
     .nchsm-refresh-button:active { transform: scale(.94); }
@@ -56,6 +56,7 @@
   refreshButton.className = 'nchsm-refresh-button';
   refreshButton.type = 'button';
   refreshButton.title = 'Refresh this page';
+  refreshButton.setAttribute('data-nchsm-control', 'refresh');
   refreshButton.setAttribute('aria-label', 'Refresh this page');
   refreshButton.innerHTML = '&#8635;';
   refreshButton.addEventListener('click', function () {
