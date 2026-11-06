@@ -130,7 +130,7 @@
 
     const manifest = document.createElement('link');
     manifest.rel = 'manifest';
-    manifest.href = '/manifest.json?v=4';
+    manifest.href = '/manifest.json?v=5';
     document.head.appendChild(manifest);
 
     const theme = document.createElement('meta');
