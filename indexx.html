@@ -235,7 +235,7 @@ I understand. You want to keep the original student portal exactly as it is, and
         <div class="status-steps" id="status-steps"></div>
         <div class="fun-fact" id="fun-fact">
             <i class="fas fa-lightbulb"></i>
-            <span>Did you know? You can access your learning materials offline!</span>
+            <span>Did you know? You can access your course materials offline!</span>
         </div>
         <div class="loading-animation">
             <div class="loading-dots">
@@ -439,7 +439,7 @@ I understand. You want to keep the original student portal exactly as it is, and
                     <div class="welcome-header">
                         <h2 id="welcome-header">Welcome back, <span id="welcome-student-name">Student</span>!</h2>
                         <p id="student-welcome-message" class="welcome-subtitle">
-                            Access My Units, your schedule, and attendance status.
+                            Access your courses, schedule, and check your attendance status.
                         </p>
                     </div>
                     <div class="welcome-time">
@@ -493,17 +493,17 @@ I understand. You want to keep the original student portal exactly as it is, and
                         </div>
                     </div>
 
-                    <!-- My Units Card -->
+                    <!-- Active Courses Card -->
                     <div class="stat-card" data-tab="learning-hub" role="button" tabindex="0">
                         <div class="card-header">
-                            <div class="card-icon units">
+                            <div class="card-icon courses">
                                 <i class="fas fa-book-open"></i>
                             </div>
-                            <h3>My Units</h3>
+                            <h3>Active Courses</h3>
                         </div>
                         <div class="card-body">
-                            <p class="stat-value" id="dashboard-my-units">0</p>
-                            <p class="stat-subtitle">Your approved units</p>
+                            <p class="stat-value" id="dashboard-active-courses">0</p>
+                            <p class="stat-subtitle">Currently enrolled</p>
                         </div>
                     </div>
 
@@ -600,7 +600,7 @@ I understand. You want to keep the original student portal exactly as it is, and
                     <div class="card action-card warning" role="region">
                         <div class="action-header">
                             <i class="fas fa-book-medical"></i>
-                            <h3>Review New Learning Material</h3>
+                            <h3>Review New Course Material</h3>
                         </div>
                         <div class="action-body">
                             <p>New study materials have been posted for this block.</p>
@@ -964,18 +964,18 @@ I understand. You want to keep the original student portal exactly as it is, and
 
             <!-- ==================== UNIFIED LEARNING HUB TAB ==================== -->
             <section id="learning-hub" class="tab-content" hidden>
-                <!-- SECTION 1: MY UNITS -->
+                <!-- SECTION 1: MY COURSES -->
                 <div class="courses-header" style="margin-bottom: 2rem;">
                     <div class="header-content">
-                        <h2><i class="fas fa-book-open"></i> My Units</h2>
-                        <p class="subtitle">View your approved and completed units</p>
+                        <h2><i class="fas fa-book-open"></i> My Courses</h2>
+                        <p class="subtitle">View your current and completed courses</p>
                     </div>
                     <div class="header-stats">
                         <div class="stat-card">
                             <i class="fas fa-spinner stat-icon active"></i>
                             <div class="stat-info">
                                 <span class="stat-value" id="active-courses-count">0</span>
-                                <span class="stat-label">Approved Units</span>
+                                <span class="stat-label">Active Courses</span>
                             </div>
                         </div>
                         <div class="stat-card">
@@ -997,24 +997,24 @@ I understand. You want to keep the original student portal exactly as it is, and
 
                 <div class="quick-actions">
                     <button id="view-all-courses" class="action-btn active">
-                        <i class="fas fa-list"></i> View All Units
+                        <i class="fas fa-list"></i> View All Courses
                     </button>
                     <button id="view-active-only" class="action-btn">
-                        <i class="fas fa-spinner"></i> Approved Only
+                        <i class="fas fa-spinner"></i> Active Only
                     </button>
                     <button id="view-completed-only" class="action-btn">
                         <i class="fas fa-check-circle"></i> Completed Only
                     </button>
                     <button id="refresh-courses-btn" class="action-btn refresh">
-                        <i class="fas fa-sync-alt"></i> Refresh Units
+                        <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                 </div>
 
                 <div id="active-courses-section" class="courses-section">
                     <div class="section-header">
-                        <h3><i class="fas fa-spinner"></i> Approved Units</h3>
+                        <h3><i class="fas fa-spinner"></i> Active Courses</h3>
                         <div class="section-info">
-                            <span class="course-count" id="active-count">0 units</span>
+                            <span class="course-count" id="active-count">0 courses</span>
                             <span class="term-info" id="current-term">Current Term</span>
                         </div>
                     </div>
@@ -1023,7 +1023,7 @@ I understand. You want to keep the original student portal exactly as it is, and
                         <div class="course-card loading">
                             <div class="loading-content">
                                 <div class="loading-spinner"></div>
-                                <p>Loading approved units...</p>
+                                <p>Loading active courses...</p>
                             </div>
                         </div>
                     </div>
@@ -1032,16 +1032,16 @@ I understand. You want to keep the original student portal exactly as it is, and
                         <div class="empty-icon">
                             <i class="fas fa-calendar-plus"></i>
                         </div>
-                        <h3>No Approved Units</h3>
-                        <p id="active-empty-message">You don't have any approved units at the moment.</p>
+                        <h3>No Active Courses</h3>
+                        <p id="active-empty-message">You don't have any active courses at the moment.</p>
                     </div>
                 </div>
 
                 <div id="completed-courses-section" class="courses-section completed-section">
                     <div class="section-header">
-                        <h3><i class="fas fa-check-circle"></i> Completed Units</h3>
+                        <h3><i class="fas fa-check-circle"></i> Completed Courses</h3>
                         <div class="section-info">
-                            <span class="course-count" id="completed-total-count">0 units</span>
+                            <span class="course-count" id="completed-total-count">0 courses</span>
                             <span class="credits-earned" id="completed-credits-total">0 credits earned</span>
                         </div>
                     </div>
@@ -1050,7 +1050,7 @@ I understand. You want to keep the original student portal exactly as it is, and
                         <table class="courses-table">
                             <thead>
                                 <tr>
-                                    <th>Unit Name</th>
+                                    <th>Course Name</th>
                                     <th>Unit Code</th>
                                     <th>Credits</th>
                                     <th>Term</th>
@@ -1063,7 +1063,7 @@ I understand. You want to keep the original student portal exactly as it is, and
                                     <td colspan="6">
                                         <div class="loading-content">
                                             <div class="loading-spinner"></div>
-                                            <p>Loading completed units...</p>
+                                            <p>Loading completed courses...</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -1100,11 +1100,11 @@ I understand. You want to keep the original student portal exactly as it is, and
                             </div>
                             <div class="card-body">
                                 <div class="timeline-item">
-                                    <span class="label">First Unit</span>
+                                    <span class="label">First Course</span>
                                     <span class="value" id="first-course-date">--</span>
                                 </div>
                                 <div class="timeline-item">
-                                    <span class="label">Latest Unit</span>
+                                    <span class="label">Latest Course</span>
                                     <span class="value" id="latest-course-date">--</span>
                                 </div>
                                 <div class="timeline-item">
@@ -1119,10 +1119,10 @@ I understand. You want to keep the original student portal exactly as it is, and
                         <div class="empty-icon">
                             <i class="fas fa-graduation-cap"></i>
                         </div>
-                        <h3>No Completed Units</h3>
-                        <p id="completed-empty-message">Complete your approved units to see them listed here!</p>
+                        <h3>No Completed Courses</h3>
+                        <p id="completed-empty-message">Complete your active courses to see them listed here!</p>
                         <button onclick="switchToActiveCourses()" class="btn btn-primary" id="completed-empty-button">
-                            <i class="fas fa-eye"></i> View Approved Units
+                            <i class="fas fa-eye"></i> View Active Courses
                         </button>
                     </div>
                 </div>
