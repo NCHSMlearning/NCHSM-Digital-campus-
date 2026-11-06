@@ -50,7 +50,7 @@ class DashboardModule {
             resources: 0,
             examCard: { approved: 0, eligible: false },
             nurseiq: { progress: 0, accuracy: 0, questions: 0, points: 0, score: 0 },
-            courses: 0,
+            units: 0,
             exams: 'No upcoming exams',
             xp: { current: 0, max: 100, level: 1, percent: 0, total: 0 },
             nextExam: null,
@@ -188,7 +188,7 @@ class DashboardModule {
             totalCount: document.getElementById('dashboard-total-count'),
             pendingCount: document.getElementById('dashboard-pending-count'),
             attendancePoints: document.getElementById('attendance-points-value'),
-            activeCourses: document.getElementById('dashboard-active-courses'),
+            myUnits: document.getElementById('dashboard-my-units'),
             examStatus: document.getElementById('dashboard-exam-status'),
             approvedUnits: document.getElementById('dashboard-approved-units'),
             resources: document.getElementById('dashboard-new-resources'),
@@ -246,9 +246,9 @@ class DashboardModule {
             progressExamsRing: document.getElementById('nd-ring-pending'),
             progressOverallRing: document.getElementById('nd-ring-current-block'),
             dashboardEvents: document.querySelector('.nchsm-events'),
-            dashboardCourses: document.querySelector('.nchsm-courses'),
+            dashboardUnits: document.querySelector('.nchsm-units'),
             dashboardLeaderboard: document.querySelector('.nchsm-leaderboard'),
-            snapshotActiveCourses: document.getElementById('snapshot-active-courses'),
+            snapshotMyUnits: document.getElementById('snapshot-active-courses'),
             snapshotApprovedUnits: document.getElementById('snapshot-approved-units'),
             snapshotResources: document.getElementById('snapshot-new-resources'),
             snapshotCGPA: document.getElementById('snapshot-cgpa'),
@@ -1425,7 +1425,7 @@ class DashboardModule {
 
             // Courses count comes from the authoritative dashboard RPC.
             // The visible My Courses card separately reads the student's actual registrations.
-            this.metrics.courses = Number(data?.courses ?? 0);
+            // Unit count is populated only from the student's approved unit registrations.
             
             console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
             console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
@@ -1468,7 +1468,7 @@ class DashboardModule {
                 this.updateExamsMetric(),
                 this.loadLeaderboardData('all'),
                 this.loadQuickNextClass(),
-                this.loadDashboardCourses(),
+                this.loadDashboardUnits(),
                 this.loadDashboardEvents(),
                 this.syncAcademicReportsSnapshot()
             ]);
@@ -1532,7 +1532,7 @@ class DashboardModule {
             this.loadAnnouncement(),
             this.loadReviewsSnapshot(),
             this.loadNewsletterSnapshot(),
-            this.loadDashboardCourses(),
+            this.loadDashboardUnits(),
             this.loadDashboardEvents(),
             this.syncAcademicReportsSnapshot()
         ]);
@@ -2226,8 +2226,8 @@ class DashboardModule {
     // 📚 REDESIGNED DASHBOARD COURSES
     // ============================================================
 
-    async loadDashboardCourses() {
-        const container = this.elements?.dashboardCourses || document.querySelector('.nchsm-courses');
+    async loadDashboardUnits() {
+        const container = this.elements?.dashboardUnits || document.querySelector('.nchsm-units');
         if (!container || !this.sb || !this.userId) return;
 
         try {
@@ -2255,11 +2255,11 @@ class DashboardModule {
             });
             const normalized = Array.from(byUnit.values());
 
-            this.metrics.courses = normalized.length;
-            document.querySelectorAll('#dashboard-active-courses').forEach(el => {
+            this.metrics.units = normalized.length;
+            document.querySelectorAll('#dashboard-my-units').forEach(el => {
                 el.textContent = String(normalized.length);
             });
-            if (this.elements?.snapshotActiveCourses) this.elements.snapshotActiveCourses.textContent = String(normalized.length);
+            if (this.elements?.snapshotMyUnits) this.elements.snapshotMyUnits.textContent = String(normalized.length);
 
             container.style.overflow = 'visible';
             container.style.height = 'auto';
@@ -2290,14 +2290,14 @@ class DashboardModule {
                 icon.setAttribute('aria-hidden', 'true');
                 icon.style.cssText = 'position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:13px;';
                 row.append(code, name, icon);
-                row.addEventListener('click', () => this.navigateTo('hub-courses'));
+                row.addEventListener('click', () => this.navigateTo('learning-hub'));
                 container.appendChild(row);
             });
         } catch (error) {
-            console.error('Dashboard courses error:', error);
-            this.metrics.courses = 0;
-            document.querySelectorAll('#dashboard-active-courses').forEach(el => { el.textContent = '—'; });
-            if (this.elements?.snapshotActiveCourses) this.elements.snapshotActiveCourses.textContent = '—';
+            console.error('Dashboard My Units error:', error);
+            this.metrics.units = 0;
+            document.querySelectorAll('#dashboard-my-units').forEach(el => { el.textContent = '—'; });
+            if (this.elements?.snapshotMyUnits) this.elements.snapshotMyUnits.textContent = '—';
             container.innerHTML = '<div class="course-row"><span class="course-code code-blue">!</span><strong>Unable to load registered units. Refresh or check your access.</strong></div>';
         }
     }
@@ -2674,15 +2674,15 @@ class DashboardModule {
         setText(this.elements.totalCount, attendance.total ?? 0);
         setText(this.elements.pendingCount, attendance.pending ?? 0);
         const activeCourseCount = Number(m.courses) || 0;
-        document.querySelectorAll('#dashboard-active-courses').forEach(el => {
+        document.querySelectorAll('#dashboard-my-units').forEach(el => {
             el.textContent = String(activeCourseCount);
         });
-        setText(this.elements.activeCourses, activeCourseCount);
+        setText(this.elements.myUnits, activeCourseCount);
         setText(this.elements.approvedUnits, Number(m.examCard?.approved) || 0);
         setText(this.elements.resources, m.resources ?? 0);
         setText(this.elements.upcomingExam, m.exams || 'No upcoming exams');
 
-        setText(this.elements.snapshotActiveCourses, activeCourseCount);
+        setText(this.elements.snapshotMyUnits, activeCourseCount);
         setText(this.elements.snapshotApprovedUnits, Number(m.examCard?.approved) || 0);
         setText(this.elements.snapshotResources, Number(m.resources) || 0);
 
