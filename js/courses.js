@@ -45,6 +45,8 @@
         cacheElements() {
             this.activeCoursesGrid = document.getElementById('active-courses-grid');
             this.completedTable = document.getElementById('completed-courses-table');
+            this.activeCoursesSection = document.getElementById('active-courses-section');
+            this.completedCoursesSection = document.getElementById('completed-courses-section');
             this.programIndicator = document.getElementById('courses-program-indicator');
             this.refreshBtn = document.getElementById('refresh-courses-btn');
             this.viewAllBtn = document.getElementById('view-all-courses');
@@ -213,6 +215,14 @@
                 this.viewCompletedBtn.addEventListener('click', () => {
                     this.currentFilter = 'completed';
                     this.applyFilterAndDisplay();
+                });
+            }
+
+            const secondaryRefresh = document.getElementById('refresh-courses-btn-secondary');
+            if (secondaryRefresh) {
+                secondaryRefresh.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.refresh();
                 });
             }
         }
@@ -474,8 +484,9 @@
             }
             
             if (this.totalCredits) {
-                this.totalCredits.innerText = totalCredits + completedCredits;
-                console.log(`   Updated total credits to: ${totalCredits + completedCredits}`);
+                // Credits are earned only after successful completion.
+                this.totalCredits.innerText = completedCredits;
+                console.log(`   Updated completed credits to: ${completedCredits}`);
             }
             
             if (this.activeCountText) {
@@ -527,16 +538,21 @@
         
         showAllCourses() {
             this.currentFilter = 'all';
+            if (this.activeCoursesSection) this.activeCoursesSection.hidden = false;
+            if (this.completedCoursesSection) this.completedCoursesSection.hidden = false;
             this.displayActiveCourses();
+            this.renderCompletedCoursesTable();
             this.updateFilterButtons();
         }
-        
+
         showActiveCourses() {
             this.currentFilter = 'active';
+            if (this.activeCoursesSection) this.activeCoursesSection.hidden = false;
+            if (this.completedCoursesSection) this.completedCoursesSection.hidden = true;
             this.displayActiveCourses();
             this.updateFilterButtons();
         }
-        
+
         // ============================================
         // 📊 DISPLAY ACTIVE COURSES
         // ============================================
@@ -631,93 +647,45 @@
         
         showCompletedCourses() {
             this.currentFilter = 'completed';
-            
-            if (this.completedUnits.length === 0) {
-                if (this.activeCoursesGrid) {
-                    this.activeCoursesGrid.innerHTML = `
-                        <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: #94a3b8;">
-                            <i class="fas fa-check-circle" style="font-size: 48px; display: block; margin-bottom: 10px; color: #d1d5db;"></i>
-                            <h4 style="color: #1e293b; margin: 0;">No Completed Units Yet</h4>
-                            <p style="margin: 4px 0 0 0;">Complete your active units to see them here.</p>
-                            <button onclick="window.coursesModule.showActiveCourses()" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                                View Active Units
-                            </button>
-                        </div>
-                    `;
-                }
-                this.updateFilterButtons();
-                return;
-            }
-            
-            // Display completed units in a table
-            let html = `
-                <div style="grid-column: 1 / -1; background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                    <div style="overflow-x: auto; padding: 0;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                            <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                                <tr>
-                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Code</th>
-                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Name</th>
-                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Credits</th>
-                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Grade</th>
-                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
-                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Completion Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-            `;
-            
-            for (const unit of this.completedUnits) {
-                const isSupplementary = unit.reg_type === 'Supplementary' || unit.reg_type === 'Retake';
-                const regBadge = isSupplementary ? 
-                    `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 600;">${unit.reg_type}</span>` : '';
-                
-                const gradeColor = this.getGradeColor(unit.grade);
-                const isPassing = unit.grade && !['FAIL', 'F', 'D', 'E', ''].includes(unit.grade);
-                const completedDate = unit.completed_at ? new Date(unit.completed_at).toLocaleDateString() : 'N/A';
-                const statusBadge = isPassing ? 
-                    '<span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">🟢 Passed</span>' :
-                    '<span style="background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">🔴 Failed</span>';
-                
-                html += `
-                    <tr style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" 
-                        onmouseover="this.style.background='#f8fafc'" 
-                        onmouseout="this.style.background='transparent'">
-                        <td style="padding: 12px 16px; text-align: left; font-weight: 600; color: #0A3D62;">
-                            ${this.escapeHtml(unit.unit_code)}
-                            ${regBadge}
-                        </td>
-                        <td style="padding: 12px 16px; text-align: left;">${this.escapeHtml(unit.unit_name)}</td>
-                        <td style="padding: 12px 16px; text-align: center;">${unit.credits || 3}</td>
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
-                                ${unit.grade || '-'}
-                            </span>
-                        </td>
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; color: ${isPassing ? '#065f46' : '#991b1b'}; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
-                                ${isPassing ? '✅ Passed' : '❌ Failed'}
-                            </span>
-                        </td>
-                        <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">
-                            <i class="fas fa-check-circle" style="color: #10b981;"></i>
-                            ${completedDate}
-                        </td>
-                    </tr>
-                `;
-            }
-            
-            html += `
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-            
-            this.activeCoursesGrid.innerHTML = html;
+            if (this.activeCoursesSection) this.activeCoursesSection.hidden = true;
+            if (this.completedCoursesSection) this.completedCoursesSection.hidden = false;
+            this.renderCompletedCoursesTable();
             this.updateFilterButtons();
         }
-        
+
+        renderCompletedCoursesTable() {
+            if (!this.completedTable) return;
+
+            if (!this.completedUnits.length) {
+                this.completedTable.innerHTML = `
+                    <tr><td colspan="5" style="text-align:center;padding:42px 16px;color:#64748b;">
+                        <i class="fas fa-inbox" style="display:block;font-size:28px;color:#cbd5e1;margin-bottom:9px;"></i>
+                        <strong>No completed units yet</strong>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Completed units and grades will appear here.</div>
+                    </td></tr>`;
+                return;
+            }
+
+            this.completedTable.innerHTML = this.completedUnits.map(unit => {
+                const code = this.escapeHtml(unit.unit_code || unit.course_code || '—');
+                const name = this.escapeHtml(unit.unit_name || unit.course_name || unit.title || '—');
+                const credits = this.escapeHtml(String(unit.credits || 3));
+                const grade = this.escapeHtml(unit.grade || '—');
+                const gradeColor = this.getGradeColor(unit.grade);
+                const dateValue = unit.completed_at || unit.completion_date || unit.updated_at;
+                const date = dateValue ? new Date(dateValue).toLocaleDateString('en-KE') : '—';
+                return `<tr style="border-bottom:1px solid #e5e7eb;">
+                    <td style="padding:12px 16px;font-weight:700;color:#0A3D62;">${code}</td>
+                    <td style="padding:12px 16px;">${name}</td>
+                    <td style="padding:12px 16px;text-align:center;">${credits}</td>
+                    <td style="padding:12px 16px;text-align:center;">
+                        <span style="display:inline-block;background:${gradeColor};color:#fff;padding:3px 10px;border-radius:12px;font-weight:700;">${grade}</span>
+                    </td>
+                    <td style="padding:12px 16px;text-align:center;color:#64748b;">${this.escapeHtml(date)}</td>
+                </tr>`;
+            }).join('');
+        }
+
         updateFilterButtons() {
             if (this.viewAllBtn) {
                 this.viewAllBtn.classList.toggle('active', this.currentFilter === 'all');
