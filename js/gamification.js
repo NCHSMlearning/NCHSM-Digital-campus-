@@ -24,7 +24,7 @@
             this.xpToNextLevel = 100;
             this.badges = [];
             this.lastCheckIn = null;
-            this.currentRankFilter = 'weekly';
+            this.currentRankFilter = 'alltime';
             this.nurseiqPoints = 0;
             this.nurseiqAttempts = [];
             this.totalPoints = 0;
@@ -866,146 +866,85 @@
         async loadLeaderboard() {
             const leaderboardList = document.getElementById('leaderboard-list');
             if (!leaderboardList) return;
-            
-            leaderboardList.innerHTML = `
-                <div style="text-align: center; padding: 20px; color: #94a3b8;">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p style="margin: 8px 0 0 0;">Loading students...</p>
-                </div>
-            `;
-            
-            if (!window.db?.supabase) return;
-            
+            const period = String(this.currentRankFilter || 'alltime').toLowerCase();
+            if (!['alltime', 'all', 'lifetime'].includes(period)) {
+                const label = period.includes('week') ? 'Weekly' : 'Monthly';
+                leaderboardList.innerHTML = '<div style="padding:18px;text-align:center;color:#64748b;font-size:12px;line-height:1.5;">' +
+                    label + ' rankings require dated point transactions. Available profile totals are lifetime totals, so they cannot be used for this period.</div>';
+                return;
+            }
+
+            leaderboardList.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i><p>Loading all-time rankings...</p></div>';
+            const sb = window.db?.supabase;
+            if (!sb || !this.userId) {
+                leaderboardList.innerHTML = '<div style="padding:18px;text-align:center;color:#64748b;">Your leaderboard session is not ready. Refresh this section.</div>';
+                return;
+            }
+
             try {
-                const { data, error } = await window.db.supabase
+                const { data, error } = await sb
                     .from('consolidated_user_profiles_table')
-                    .select(`
-                        user_id, 
-                        full_name, 
-                        gamification_points, 
-                        attendance_streak, 
-                        gamification_level,
-                        nurseiq_points,
-                        total_nurseiq_attempts,
-                        total_points,
-                        role,
-                        program,
-                        block
-                    `)
+                    .select('user_id, full_name, gamification_points, attendance_streak, gamification_level, nurseiq_points, total_nurseiq_attempts, total_points, role, program, block')
                     .eq('role', 'student')
                     .order('total_points', { ascending: false })
+                    .order('user_id', { ascending: true })
                     .limit(10);
-                
                 if (error) throw error;
-                
-                if (!data || data.length === 0) {
-                    leaderboardList.innerHTML = `
-                        <div style="text-align: center; padding: 30px; color: #94a3b8;">
-                            <i class="fas fa-chart-line" style="font-size: 40px; display: block; margin-bottom: 12px; color: #d1d5db;"></i>
-                            <p style="font-weight: 600; margin: 0;">No students on leaderboard yet</p>
-                            <p style="font-size: 13px; margin: 4px 0 0 0;">Start using the system to see your name here!</p>
-                        </div>
-                    `;
+
+                const { data: own, error: ownError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, full_name, total_points')
+                    .eq('user_id', this.userId)
+                    .eq('role', 'student')
+                    .maybeSingle();
+                let ownRank = null;
+                if (!ownError && own) {
+                    const { count, error: rankError } = await sb
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id', { count: 'exact', head: true })
+                        .eq('role', 'student')
+                        .gt('total_points', Number(own.total_points) || 0);
+                    if (!rankError) ownRank = Number(count || 0) + 1;
+                }
+
+                if (!data?.length) {
+                    leaderboardList.innerHTML = '<div style="text-align:center;padding:25px;color:#94a3b8;">No students found on the leaderboard.</div>';
                     return;
                 }
-                
+
+                const escape = value => this.escapeHtml(String(value ?? ''));
+                const renderItem = (item, rank, current) => {
+                    const name = item.full_name || 'Student';
+                    const parts = name.trim().split(/\s+/).filter(Boolean);
+                    const avatar = parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
+                    const total = Number(item.total_points) || 0;
+                    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f1f5f9;' +
+                        (current ? 'background:#ede9fe;border-left:3px solid #4C1D95;' : '') + '">' +
+                        '<div style="font-weight:700;font-size:15px;min-width:32px;text-align:center;">' + (rank || '—') + '</div>' +
+                        '<div style="width:32px;height:32px;border-radius:50%;background:#4C1D95;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;flex-shrink:0;">' + escape(avatar) + '</div>' +
+                        '<div style="flex:1;min-width:0;"><div style="font-weight:600;color:#1e293b;font-size:13px;">' + escape(name) +
+                        (current ? ' <span style="font-size:9px;background:#4C1D95;color:white;padding:1px 7px;border-radius:10px;">You</span>' : '') +
+                        (item.program ? ' <span style="font-size:9px;color:#64748b;">' + escape(String(item.program).slice(0, 3)) + '</span>' : '') +
+                        '</div><div style="font-size:10px;color:#94a3b8;">🔥 ' + (Number(item.attendance_streak) || 0) + ' day streak · 🏆 Level ' + (Number(item.gamification_level) || 1) + '</div></div>' +
+                        '<div style="text-align:right;flex-shrink:0;"><div style="font-weight:700;color:#4C1D95;font-size:15px;">' + total.toLocaleString() + '</div><div style="font-size:9px;color:#94a3b8;">points</div></div></div>';
+                };
+
                 let html = '';
                 data.forEach((item, index) => {
-                    let rankIcon = '';
-                    let rankClass = '';
-                    if (index === 0) { rankIcon = '👑'; rankClass = 'gold'; }
-                    else if (index === 1) { rankIcon = '🥈'; rankClass = 'silver'; }
-                    else if (index === 2) { rankIcon = '🥉'; rankClass = 'bronze'; }
-                    else { rankIcon = `${index + 1}`; rankClass = ''; }
-                    
-                    const name = item.full_name || 'Student';
-                    const nameParts = name.split(' ');
-                    let avatar = '';
-                    if (nameParts.length >= 2) {
-                        avatar = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
-                    } else {
-                        avatar = name.substring(0, 2).toUpperCase();
-                    }
-                    
-                    const totalPoints = item.total_points || (item.gamification_points || 0) + (item.nurseiq_points || 0);
-                    
-                    html += `
-                        <div style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 10px 14px;
-                            border-bottom: 1px solid #f1f5f9;
-                            ${item.user_id === this.userId ? 'background: #ede9fe; border-left: 3px solid #4C1D95;' : ''}
-                        ">
-                            <div style="
-                                font-weight: 700;
-                                font-size: 16px;
-                                min-width: 32px;
-                                text-align: center;
-                                ${rankClass === 'gold' ? 'color: #f59e0b;' : ''}
-                                ${rankClass === 'silver' ? 'color: #9ca3af;' : ''}
-                                ${rankClass === 'bronze' ? 'color: #d97706;' : ''}
-                            ">${rankIcon}</div>
-                            
-                            <div style="
-                                width: 32px;
-                                height: 32px;
-                                border-radius: 50%;
-                                background: #4C1D95;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                color: white;
-                                font-weight: 700;
-                                font-size: 12px;
-                                flex-shrink: 0;
-                            ">${avatar}</div>
-                            
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="font-weight: 500; color: #1e293b; font-size: 14px; display: flex; align-items: center; gap: 6px;">
-                                    ${this.escapeHtml(name)}
-                                    ${item.user_id === this.userId ? '<span style="font-size: 9px; background: #4C1D95; color: white; padding: 1px 8px; border-radius: 10px;">You</span>' : ''}
-                                    ${item.program ? `<span style="font-size: 9px; background: #f1f5f9; color: #64748b; padding: 1px 8px; border-radius: 10px;">${item.program.substring(0, 3)}</span>` : ''}
-                                </div>
-                                <div style="font-size: 10px; color: #94a3b8; display: flex; gap: 8px; flex-wrap: wrap;">
-                                    <span>🔥 ${item.attendance_streak || 0} day streak</span>
-                                    <span>🏆 Level ${item.gamification_level || 1}</span>
-                                    ${item.total_nurseiq_attempts > 0 ? `<span>🩺 ${item.total_nurseiq_attempts} tests</span>` : ''}
-                                </div>
-                            </div>
-                            
-                            <div style="text-align: right; flex-shrink: 0;">
-                                <div style="font-weight: 700; color: #4C1D95; font-size: 16px;">${totalPoints}</div>
-                                <div style="font-size: 8px; color: #94a3b8;">
-                                    🎓 ${item.gamification_points || 0} + 🩺 ${item.nurseiq_points || 0}
-                                </div>
-                            </div>
-                            
-                            ${index === 0 ? '<span style="font-size: 11px; color: #f59e0b; background: #fef3c7; padding: 2px 10px; border-radius: 12px; font-weight: 600;">🏆 Top</span>' : ''}
-                        </div>
-                    `;
+                    const current = String(item.user_id) === String(this.userId);
+                    const points = Number(item.total_points) || 0;
+                    const rank = index > 0 && points === (Number(data[index - 1].total_points) || 0) ? index : index + 1;
+                    html += renderItem(item, rank, current);
                 });
-                
-                // Add footer with info
-                html += `
-                    <div style="padding: 8px 14px; background: #f8fafc; border-top: 1px solid #e5e7eb; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
-                        <span>💡 Points = Attendance + NurseIQ + Login Bonus + Badges</span>
-                        <span>🏆 Showing top ${data.length} students</span>
-                    </div>
-                `;
-                
+                if (own && !data.some(item => String(item.user_id) === String(this.userId))) {
+                    html += '<div style="padding:8px 14px;text-align:center;color:#64748b;font-size:10px;border-top:1px solid #e5e7eb;">YOUR POSITION</div>';
+                    html += renderItem(own, ownRank, true);
+                }
+                html += '<div style="padding:8px 14px;background:#f8fafc;border-top:1px solid #e5e7eb;font-size:10px;color:#94a3b8;display:flex;justify-content:space-between;gap:4px;flex-wrap:wrap;"><span>All-time student points</span><span>Top ' + data.length + '</span></div>';
                 leaderboardList.innerHTML = html;
-                
             } catch (error) {
                 console.error('Error loading leaderboard:', error);
-                leaderboardList.innerHTML = `
-                    <div style="text-align: center; padding: 30px; color: #94a3b8;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 30px; display: block; margin-bottom: 8px;"></i>
-                        <p style="margin: 0;">Error loading leaderboard</p>
-                        <p style="font-size: 12px; margin: 4px 0 0 0;">Please refresh the page</p>
-                    </div>
-                `;
+                leaderboardList.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;">Leaderboard could not be loaded. Please refresh and try again.</div>';
             }
         }
 
