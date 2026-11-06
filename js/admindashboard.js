@@ -10767,10 +10767,17 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                     }).catch(() => {});
                 };
                 pc.onconnectionstatechange = () => {
+                    if (pc.connectionState === 'connected') {
+                        const retryTimer = timers.get(key);
+                        if (retryTimer) clearTimeout(retryTimer);
+                        timers.delete(key);
+                    }
                     if (pc.connectionState === 'failed') {
                         const placeholder = card.querySelector('.nchsm-card-camera-placeholder');
-                        if (placeholder) { placeholder.style.display = 'flex'; const p = placeholder.querySelector('p'); if (p) p.textContent = 'Live preview unavailable'; }
+                        if (placeholder) { placeholder.style.display = 'flex'; const p = placeholder.querySelector('p'); if (p) p.textContent = 'Connection failed — check camera/network'; }
                     }
+                    console.info('📡 Admin camera peer state:', key, pc.connectionState,
+                        'ICE:', pc.iceConnectionState, 'signaling:', pc.signalingState);
                 };
                 await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
                 for (const candidate of pendingIce.get(key) || []) {
@@ -10799,10 +10806,23 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
             } catch (error) { console.warn('Card ICE candidate error:', error); }
         }).subscribe(status => {
             if (status !== 'SUBSCRIBED') return;
-            // Send one request per viewer peer. Repeated requests made the
-            // student page replace its RTCPeerConnection while this viewer
-            // still held the previous peer, leaving the preview black.
-            request();
+            // The student's Realtime channel may still be joining when the
+            // first request is sent. Retry a few times so a missed first
+            // broadcast cannot leave the preview permanently black.
+            let attempt = 0;
+            const retryRequest = () => {
+                if (channels.get(key) !== channel || peers.get(key)?.connectionState === 'connected' || attempt >= 5) {
+                    const pending = timers.get(key);
+                    if (pending) clearTimeout(pending);
+                    timers.delete(key);
+                    return;
+                }
+                request();
+                attempt++;
+                const timer = setTimeout(retryRequest, 3000);
+                timers.set(key, timer);
+            };
+            retryRequest();
         });
     }
 
