@@ -316,3 +316,92 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   }
   #studentsTable tbody td:first-child{white-space:normal!important}
 }
+
+
+/* Student Results actions: keep primary controls visible and group secondary
+   actions in a compact, keyboard-accessible native disclosure menu. */
+#studentsTable thead th:nth-child(8),
+#studentsTable tbody td:nth-child(8){
+  width:190px!important;
+  min-width:190px!important;
+  max-width:190px!important;
+}
+#studentsTable .student-result-actions-cell{overflow:visible!important}
+#studentsTable .student-result-actions{
+  position:relative;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  width:100%;
+  min-width:0;
+}
+#studentsTable .student-action-icon{
+  box-sizing:border-box;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 42px;
+  width:42px!important;
+  min-width:42px!important;
+  height:40px!important;
+  padding:0!important;
+  margin:0!important;
+  border:1px solid #d4e0ee!important;
+  border-radius:9px!important;
+  font-size:16px!important;
+  line-height:1!important;
+  cursor:pointer;
+  text-decoration:none!important;
+}
+#studentsTable button.student-action-view{background:#0875e8!important;color:#fff!important;border-color:#0875e8!important}
+#studentsTable button.student-action-edit{background:#4f46e5!important;color:#fff!important;border-color:#4f46e5!important}
+#studentsTable .student-action-more{background:#eff5fc!important;color:#12385d!important}
+#studentsTable .student-actions-menu{position:relative;display:inline-block;flex:0 0 42px;z-index:2}
+#studentsTable .student-actions-menu[open]{z-index:30}
+#studentsTable .student-actions-menu summary{list-style:none}
+#studentsTable .student-actions-menu summary::-webkit-details-marker{display:none}
+#studentsTable .student-actions-dropdown{
+  position:absolute;
+  top:calc(100% + 7px);
+  right:0;
+  z-index:1000;
+  width:238px;
+  max-width:min(238px, calc(100vw - 36px));
+  padding:6px;
+  background:#fff;
+  border:1px solid #dce6f0;
+  border-radius:12px;
+  box-shadow:0 12px 30px rgba(15,42,70,.22);
+  text-align:left;
+}
+#studentsTable .student-actions-dropdown button{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  width:100%!important;
+  min-height:42px!important;
+  padding:9px 10px!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  color:#243b53!important;
+  font-size:12px!important;
+  font-weight:650!important;
+  text-align:left!important;
+  white-space:normal!important;
+  cursor:pointer;
+}
+#studentsTable .student-actions-dropdown button:hover{background:#eef5fc!important}
+#studentsTable .student-actions-dropdown button i{width:17px;text-align:center;color:#2563a6}
+#studentsTable .student-actions-dropdown button.student-actions-retake{color:#08734b!important}
+#studentsTable .student-actions-dropdown button.student-actions-clear{color:#b42318!important}
+#studentsTable .student-actions-dropdown .student-actions-status{padding:5px 8px 8px;border-bottom:1px solid #e8eef5;margin-bottom:4px}
+#studentsTable .student-actions-menu[open] .student-action-more{outline:2px solid #8bb8e8}
+@media(max-width:720px){
+  #studentsTable thead th:nth-child(8),
+  #studentsTable tbody td:nth-child(8){width:190px!important;min-width:190px!important;max-width:190px!important}
+  #studentsTable .student-action-icon{flex-basis:40px;width:40px!important;min-width:40px!important;height:39px!important}
+  #studentsTable .student-actions-dropdown{position:fixed;top:auto;right:16px;bottom:90px;width:238px;max-width:calc(100vw - 32px)}
+}
