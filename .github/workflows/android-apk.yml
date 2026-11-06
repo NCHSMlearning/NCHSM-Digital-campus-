@@ -101,16 +101,27 @@ jobs:
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           if not manifest.is_file():
               raise SystemExit(f"Android manifest not found: {manifest}")
+
+          # Preserve the Android namespace prefix used by AndroidManifest.xml.
+          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
           tree = ET.parse(manifest)
           root = tree.getroot()
           app = root.find("application")
           if app is None:
               raise SystemExit("Android manifest has no application element")
-          ns = "{http://schemas.android.com/apk/res/android}"
-          app.set(ns + "icon", "@mipmap/ic_launcher")
-          app.set(ns + "roundIcon", "@mipmap/ic_launcher_round")
+
+          android_ns = "{http://schemas.android.com/apk/res/android}"
+          app.set(android_ns + "icon", "@mipmap/ic_launcher")
+          app.set(android_ns + "roundIcon", "@mipmap/ic_launcher_round")
           tree.write(manifest, encoding="utf-8", xml_declaration=True)
-          print("Android manifest now references the NCHSM launcher icons.")
+
+          # Validate that the serialized manifest remains well-formed and declares
+          # the Android namespace prefix required by Android's manifest merger.
+          serialized = manifest.read_text(encoding="utf-8")
+          if 'xmlns:android="http://schemas.android.com/apk/res/android"' not in serialized:
+              raise SystemExit("Android namespace declaration missing after manifest update")
+          ET.parse(manifest)
+          print("NCHSM launcher icons set; Android manifest namespace verified.")
           PY
 
       - name: Set build version
