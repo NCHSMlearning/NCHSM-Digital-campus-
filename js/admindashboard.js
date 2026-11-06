@@ -1087,18 +1087,18 @@ window.loadStudentsWithResults = async function(options = {}) {
         const clearResetHandler = escapeAdminHtml(`resetSingleStudentAnswers(${JSON.stringify(studentUserId)}, ${examId}, ${JSON.stringify(studentNameRaw)}, ${JSON.stringify(examNameRaw)})`);
         
         return `<tr>
-            <td style="padding:10px 14px; vertical-align:middle;">
-                <div style="display:flex; flex-direction:column; gap:4px; min-width:260px;">
-                    <div style="font-weight:800; color:#0f172a; line-height:1.2;">${studentName}</div>
-                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; font-size:11px;">
-                        <span style="font-weight:700; color:#0A3D62;">
+            <td class="student-identity-cell" style="padding:10px 12px; vertical-align:middle; width:330px; min-width:330px; max-width:330px;">
+                <div class="student-identity-content" style="display:flex; flex-direction:column; gap:5px; width:100%; min-width:0;">
+                    <div class="student-identity-name" style="font-weight:800; color:#0f172a; line-height:1.25; white-space:normal; overflow-wrap:anywhere;">${studentName}</div>
+                    <div class="student-identity-meta" style="display:flex; flex-wrap:wrap; align-items:center; gap:5px 10px; min-width:0; font-size:11px; line-height:1.35;">
+                        <span class="student-identity-id" style="font-weight:700; color:#0A3D62; min-width:0; overflow-wrap:anywhere;">
                             <i class="fas fa-id-card" style="width:13px;"></i> ${studentId}
                         </span>
-                        <span style="color:#475569;">
+                        <span class="student-identity-program" style="color:#475569; min-width:0; overflow-wrap:anywhere;">
                             <i class="fas fa-graduation-cap" style="width:13px;"></i> ${studentProgram}
                         </span>
                     </div>
-                    <div style="font-size:11px; color:#64748b; max-width:290px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${studentEmail}">
+                    <div class="student-identity-email" style="font-size:11px; color:#64748b; max-width:100%; min-width:0; overflow-wrap:anywhere; white-space:normal; line-height:1.35;" title="${studentEmail}">
                         <i class="fas fa-envelope" style="width:13px;"></i> ${studentEmail}
                     </div>
                 </div>
