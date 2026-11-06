@@ -256,3 +256,63 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   #studentsTable tbody td:first-child{min-width:240px!important;max-width:240px!important}
   #studentsTable tbody td:first-child{white-space:normal!important}
 }
+
+
+/* Fix the over-expanding Student column seen on narrow phone screens.
+   Use deterministic column widths so the first identity cell cannot push
+   the Exam column underneath/away from the visible table viewport. */
+#studentsTable{
+  table-layout:fixed!important;
+  width:1315px!important;
+  min-width:1315px!important;
+}
+#studentsTable thead th:nth-child(1),
+#studentsTable tbody td:nth-child(1){
+  width:330px!important;
+  min-width:330px!important;
+  max-width:330px!important;
+}
+#studentsTable thead th:nth-child(2),
+#studentsTable tbody td:nth-child(2){width:230px!important;min-width:230px!important;max-width:230px!important}
+#studentsTable thead th:nth-child(3),
+#studentsTable tbody td:nth-child(3){width:90px!important;min-width:90px!important;max-width:90px!important}
+#studentsTable thead th:nth-child(4),
+#studentsTable tbody td:nth-child(4){width:105px!important;min-width:105px!important;max-width:105px!important}
+#studentsTable thead th:nth-child(5),
+#studentsTable tbody td:nth-child(5){width:75px!important;min-width:75px!important;max-width:75px!important}
+#studentsTable thead th:nth-child(6),
+#studentsTable tbody td:nth-child(6){width:115px!important;min-width:115px!important;max-width:115px!important}
+#studentsTable thead th:nth-child(7),
+#studentsTable tbody td:nth-child(7){width:130px!important;min-width:130px!important;max-width:130px!important}
+#studentsTable thead th:nth-child(8),
+#studentsTable tbody td:nth-child(8){width:240px!important;min-width:240px!important;max-width:240px!important}
+#studentsTable thead th:first-child,
+#studentsTable tbody td:first-child{
+  left:0!important;
+  box-sizing:border-box!important;
+  overflow-wrap:anywhere!important;
+}
+#studentsTable tbody td:first-child .student-identity-content{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+#studentsTable tbody td:first-child .student-identity-name,
+#studentsTable tbody td:first-child .student-identity-id,
+#studentsTable tbody td:first-child .student-identity-program,
+#studentsTable tbody td:first-child .student-identity-email{
+  max-width:100%!important;
+  overflow-wrap:anywhere!important;
+  word-break:normal!important;
+}
+#studentsTable tbody td:first-child .student-identity-meta{width:100%!important}
+@media(max-width:720px){
+  #studentsTable{width:1315px!important;min-width:1315px!important}
+  #studentsTable thead th:first-child,
+  #studentsTable tbody td:first-child{
+    width:330px!important;
+    min-width:330px!important;
+    max-width:330px!important;
+  }
+  #studentsTable tbody td:first-child{white-space:normal!important}
+}
