@@ -138,51 +138,69 @@
     theme.content = '#073b5c';
     document.head.appendChild(theme);
 
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isStandalone = function () {
+      return window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        window.navigator.standalone === true;
+    };
+    const isMobileInstallBrowser = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     const install = document.createElement('button');
     install.type = 'button';
     install.className = 'nchsm-pwa-install';
     install.textContent = 'Install NCHSM';
     install.setAttribute('aria-label', 'Install NCHSM Digital Campus');
-    install.hidden = standalone || !/android/i.test(navigator.userAgent);
+    install.hidden = isStandalone() || !isMobileInstallBrowser;
     install.style.cssText = 'position:fixed;z-index:2147483645;left:max(16px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));padding:12px 18px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 14px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.25);cursor:pointer';
     document.body.appendChild(install);
 
-    // Use the browser's native PWA installation prompt. Do not send students
-    // to an APK download or show a second, competing installation button.
     let deferredInstallPrompt = null;
+    function syncInstallVisibility() {
+      // Installed users should never see the website install control again.
+      install.hidden = isStandalone() || !isMobileInstallBrowser;
+      if (!install.hidden) install.textContent = 'Install NCHSM';
+    }
     window.addEventListener('beforeinstallprompt', function (event) {
       event.preventDefault();
       deferredInstallPrompt = event;
-      if (!standalone && /android/i.test(navigator.userAgent)) install.hidden = false;
+      syncInstallVisibility();
     });
 
     window.addEventListener('appinstalled', function () {
       deferredInstallPrompt = null;
       install.hidden = true;
-      install.textContent = 'NCHSM Installed';
+    });
+    window.addEventListener('pageshow', syncInstallVisibility);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) syncInstallVisibility();
     });
 
     install.addEventListener('click', async function () {
-      if (!deferredInstallPrompt) {
-        // Chrome may not dispatch beforeinstallprompt on every supported
-        // device/version. Keep the install action discoverable and explain
-        // the browser-native fallback rather than hiding the PWA completely.
-        window.alert('To install NCHSM Digital Campus, open the Chrome menu (⋮) and choose “Install app” or “Add to Home screen”. If that option is missing, first open https://nchsm.co.ke/login.html in Chrome and allow the page a few seconds to finish loading.');
+      if (isStandalone()) {
+        install.hidden = true;
         return;
       }
+      if (!deferredInstallPrompt) {
+        window.alert('To install NCHSM Digital Campus, open the browser menu (⋮) and choose “Install app” or “Add to Home screen”.');
+        return;
+      }
+      const promptEvent = deferredInstallPrompt;
+      deferredInstallPrompt = null;
       install.disabled = true;
       install.textContent = 'Opening installer…';
       try {
-        await deferredInstallPrompt.prompt();
-        await deferredInstallPrompt.userChoice;
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice && choice.outcome === 'accepted') install.hidden = true;
+        else {
+          install.hidden = false;
+          install.textContent = 'Install NCHSM';
+        }
       } catch (error) {
         console.warn('NCHSM PWA installation prompt failed:', error);
-      } finally {
-        deferredInstallPrompt = null;
-        install.disabled = false;
-        install.hidden = true;
+        install.hidden = false;
         install.textContent = 'Install NCHSM';
+      } finally {
+        install.disabled = false;
       }
     });
 
