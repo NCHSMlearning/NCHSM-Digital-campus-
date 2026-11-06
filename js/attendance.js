@@ -2022,7 +2022,7 @@
 
             const { data: profile, error: fetchError } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select('gamification_points, attendance_points, total_points, login_count')
+                .select('gamification_points, attendance_points, nurseiq_points, total_points, login_count')
                 .eq('user_id', studentId)
                 .single();
 
@@ -2036,7 +2036,8 @@
             const loginCount = profile?.login_count || 0;
             const newPoints = currentPoints + points;
             const newAttendancePoints = currentAttendancePoints + points;
-            const newTotal = newPoints + (loginCount * 10);
+            const nurseIQPoints = Number(profile?.nurseiq_points) || 0;
+            const newTotal = newPoints + nurseIQPoints + (loginCount * 10);
 
             const { error: updateError } = await supabase
                 .from('consolidated_user_profiles_table')
