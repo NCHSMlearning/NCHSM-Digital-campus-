@@ -235,7 +235,7 @@
             console.log('📥 Loading approved and completed units...');
             
             if (!this.userProfile) {
-                this.showError('Please log in to view courses');
+                this.showError('Please log in to view your units');
                 return;
             }
             
