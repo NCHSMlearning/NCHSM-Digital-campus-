@@ -144,7 +144,7 @@
     install.className = 'nchsm-pwa-install';
     install.textContent = 'Install NCHSM';
     install.setAttribute('aria-label', 'Install NCHSM Digital Campus');
-    install.hidden = true;
+    install.hidden = standalone || !/android/i.test(navigator.userAgent);
     install.style.cssText = 'position:fixed;z-index:2147483645;left:max(16px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));padding:12px 18px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 14px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.25);cursor:pointer';
     document.body.appendChild(install);
 
@@ -154,7 +154,7 @@
     window.addEventListener('beforeinstallprompt', function (event) {
       event.preventDefault();
       deferredInstallPrompt = event;
-      if (!standalone) install.hidden = false;
+      if (!standalone && /android/i.test(navigator.userAgent)) install.hidden = false;
     });
 
     window.addEventListener('appinstalled', function () {
@@ -164,7 +164,13 @@
     });
 
     install.addEventListener('click', async function () {
-      if (!deferredInstallPrompt) return;
+      if (!deferredInstallPrompt) {
+        // Chrome may not dispatch beforeinstallprompt on every supported
+        // device/version. Keep the install action discoverable and explain
+        // the browser-native fallback rather than hiding the PWA completely.
+        window.alert('To install NCHSM Digital Campus, open the Chrome menu (⋮) and choose “Install app” or “Add to Home screen”. If that option is missing, first open https://nchsm.co.ke/login.html in Chrome and allow the page a few seconds to finish loading.');
+        return;
+      }
       install.disabled = true;
       install.textContent = 'Opening installer…';
       try {
