@@ -142,29 +142,42 @@
     const install = document.createElement('button');
     install.type = 'button';
     install.className = 'nchsm-pwa-install';
-    install.textContent = 'Download Android App';
-    install.setAttribute('aria-label', 'Download the NCHSM Digital Campus Android APK');
-    install.hidden = standalone || !/android/i.test(navigator.userAgent);
-    install.style.cssText = 'position:fixed;z-index:9998;left:max(16px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));padding:11px 16px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 13px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.2);cursor:pointer';
+    install.textContent = 'Install NCHSM';
+    install.setAttribute('aria-label', 'Install NCHSM Digital Campus');
+    install.hidden = true;
+    install.style.cssText = 'position:fixed;z-index:2147483645;left:max(16px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));padding:12px 18px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 14px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.25);cursor:pointer';
     document.body.appendChild(install);
 
-    // Download the signed Android APK from the official GitHub release.
-    // Android's package installer handles the final user-confirmed installation.
-    install.addEventListener('click', function () {
-      if (!/android/i.test(navigator.userAgent)) return;
+    // Use the browser's native PWA installation prompt. Do not send students
+    // to an APK download or show a second, competing installation button.
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (event) {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      if (!standalone) install.hidden = false;
+    });
+
+    window.addEventListener('appinstalled', function () {
+      deferredInstallPrompt = null;
+      install.hidden = true;
+      install.textContent = 'NCHSM Installed';
+    });
+
+    install.addEventListener('click', async function () {
+      if (!deferredInstallPrompt) return;
       install.disabled = true;
-      install.textContent = 'Preparing download…';
-      const link = document.createElement('a');
-      link.href = 'https://github.com/NCHSMlearning/NCHSM-Digital-campus-/releases/latest/download/app-release.apk';
-      link.download = 'NCHSM-Digital-Campus.apk';
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(function () {
+      install.textContent = 'Opening installer…';
+      try {
+        await deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+      } catch (error) {
+        console.warn('NCHSM PWA installation prompt failed:', error);
+      } finally {
+        deferredInstallPrompt = null;
         install.disabled = false;
-        install.textContent = 'Download Android App';
-      }, 5000);
+        install.hidden = true;
+        install.textContent = 'Install NCHSM';
+      }
     });
 
     let refreshing = false;
