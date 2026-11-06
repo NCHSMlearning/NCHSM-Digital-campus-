@@ -5709,7 +5709,7 @@ function renderLiveFeedCards(grid, pageData) {
             statusLabel = '⚠️ Warning';
         } else if (!hasCamera) {
             statusClass = 'status-pending';
-            statusLabel = '📷 Awaiting video';
+            statusLabel = '📷 Awaiting camera video';
         }
         
         // Card class
