@@ -2193,7 +2193,9 @@ class DashboardModule {
                     nameEl.appendChild(you);
                 }
                 const pointsEl = document.createElement('b');
-                pointsEl.textContent = (Number(user.total_points) || 0).toLocaleString();
+                pointsEl.textContent = (Number(user.total_points) || 0).toLocaleString() + ' pts';
+                pointsEl.title = 'All-time accumulated student points';
+                pointsEl.setAttribute('aria-label', (Number(user.total_points) || 0).toLocaleString() + ' all-time points');
                 row.append(rankEl, nameEl, pointsEl);
                 container.appendChild(row);
             };
