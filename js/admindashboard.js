@@ -5669,7 +5669,7 @@ function displayFilteredLiveFeed() {
 
 // ========== RENDER LIVE FEED CARDS ==========
 function renderLiveFeedCards(grid, pageData) {
-    grid.innerHTML = pageData.map(item => {
+    const renderedHtml = pageData.map(item => {
         const log = item.log || {};
         const hasCamera = item.hasCamera;
         
@@ -5825,6 +5825,47 @@ function renderLiveFeedCards(grid, pageData) {
             </div>
         `;
     }).join('');
+
+    // Reconcile cards by student/exam key instead of replacing the entire grid.
+    // Keeping each active card's .card-body in place preserves its <video>
+    // element and attached MediaStream across the 10-second data refresh.
+    const template = document.createElement('template');
+    template.innerHTML = renderedHtml;
+    const existingCards = new Map();
+    grid.querySelectorAll('.live-feed-card[data-nchsm-live-card="true"]').forEach(card => {
+        const key = String(card.dataset.examId || '') + ':' + String(card.dataset.studentId || '');
+        if (key !== ':') existingCards.set(key, card);
+    });
+
+    const nextKeys = new Set();
+    Array.from(template.content.querySelectorAll('.live-feed-card')).forEach(newCard => {
+        const key = String(newCard.dataset.examId || '') + ':' + String(newCard.dataset.studentId || '');
+        nextKeys.add(key);
+        const oldCard = existingCards.get(key);
+        if (!oldCard) {
+            grid.appendChild(newCard);
+            return;
+        }
+
+        // Update non-media regions only. Never replace the active camera body.
+        oldCard.className = newCard.className;
+        oldCard.dataset.nchsmLiveCard = newCard.dataset.nchsmLiveCard;
+        oldCard.dataset.studentId = newCard.dataset.studentId;
+        oldCard.dataset.examId = newCard.dataset.examId;
+
+        ['.card-header', '.progress-bar-container', '.card-footer'].forEach(selector => {
+            const fresh = newCard.querySelector(selector);
+            const current = oldCard.querySelector(selector);
+            if (fresh && current) current.replaceWith(fresh);
+            else if (fresh && !current) oldCard.appendChild(fresh);
+        });
+    });
+
+    // Remove only sessions that are no longer in the current page.
+    grid.querySelectorAll('.live-feed-card').forEach(card => {
+        const key = String(card.dataset.examId || '') + ':' + String(card.dataset.studentId || '');
+        if (!nextKeys.has(key)) card.remove();
+    });
     
     renderLiveFeedPagination();
 }
