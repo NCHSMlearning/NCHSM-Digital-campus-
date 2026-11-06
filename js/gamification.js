@@ -158,25 +158,18 @@
         // ============================================================
         
         calculateTotalPoints() {
-            const attendancePoints = Number(this.realAttendancePoints) || 0;
             const nurseIQPoints = Number(this.nurseiqPoints) || 0;
             const loginPoints = Number(this.loginPoints) || 0;
             const gamificationPoints = Number(this.attendancePoints) || 0;
 
-            // ONE authoritative formula for the student's overall points:
-            // Attendance + NurseIQ + Login + Gamification/Activity.
-            this.totalPoints =
-                attendancePoints +
-                nurseIQPoints +
-                loginPoints +
-                gamificationPoints;
+            // Canonical all-time total: gamification/activity + NurseIQ + login.
+            // Check-in awards are already included in gamification_points; adding
+            // a second attendance counter would count the same awards twice.
+            this.totalPoints = gamificationPoints + nurseIQPoints + loginPoints;
 
             console.log(
                 `💰 TOTAL = ${this.totalPoints} ` +
-                `(Attendance ${attendancePoints} + ` +
-                `NurseIQ ${nurseIQPoints} + ` +
-                `Login ${loginPoints} + ` +
-                `Gamification ${gamificationPoints})`
+                `(Gamification ${gamificationPoints} + NurseIQ ${nurseIQPoints} + Login ${loginPoints})`
             );
 
             return this.totalPoints;
