@@ -405,3 +405,30 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   #studentsTable .student-action-icon{flex-basis:40px;width:40px!important;min-width:40px!important;height:39px!important}
   #studentsTable .student-actions-dropdown{position:fixed;top:auto;right:16px;bottom:90px;width:238px;max-width:calc(100vw - 32px)}
 }
+
+
+/* UX correction: Student column must scroll with the rest of the table.
+   The earlier sticky-first-column treatment caused the identity details to
+   appear stuck while other columns moved on narrow touch screens. */
+#studentsTable thead th:first-child,
+#studentsTable tbody td:first-child{
+  position:static!important;
+  left:auto!important;
+  right:auto!important;
+  z-index:auto!important;
+  box-shadow:none!important;
+}
+#studentsTable thead th:first-child{
+  background:inherit!important;
+}
+#studentsTable tbody td:first-child{
+  background:#fff!important;
+}
+.student-results-table-scroll{
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-x pan-y!important;
+  overscroll-behavior-x:contain!important;
+  scroll-behavior:smooth;
+}
