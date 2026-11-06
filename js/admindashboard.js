@@ -10799,19 +10799,10 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
             } catch (error) { console.warn('Card ICE candidate error:', error); }
         }).subscribe(status => {
             if (status !== 'SUBSCRIBED') return;
+            // Send one request per viewer peer. Repeated requests made the
+            // student page replace its RTCPeerConnection while this viewer
+            // still held the previous peer, leaving the preview black.
             request();
-            let attempt = 0;
-            const retry = () => {
-                if (channels.get(key) !== channel || peers.get(key)?.connectionState === 'connected' || attempt >= 5) return;
-                attempt++;
-                const timer = setTimeout(() => {
-                    if (channels.get(key) !== channel) return;
-                    request();
-                    retry();
-                }, 2500);
-                timers.set(key, timer);
-            };
-            retry();
         });
     }
 
