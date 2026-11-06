@@ -96,23 +96,21 @@ jobs:
           echo "Official NCHSM logo generated."
           python3 - <<'PY'
           from pathlib import Path
-          import re
+          import xml.etree.ElementTree as ET
+
           manifest = Path("android/app/src/main/AndroidManifest.xml")
-          xml = manifest.read_text()
-          match = re.search(r"<application\\b[^>]*>", xml, re.S)
-          if not match:
+          if not manifest.is_file():
+              raise SystemExit(f"Android manifest not found: {manifest}")
+          tree = ET.parse(manifest)
+          root = tree.getroot()
+          app = root.find("application")
+          if app is None:
               raise SystemExit("Android manifest has no application element")
-          tag = match.group(0)
-          for attr, value in (
-              ("android:icon", "@mipmap/ic_launcher"),
-              ("android:roundIcon", "@mipmap/ic_launcher_round"),
-          ):
-              pattern = rf'{attr}="[^"]*"'
-              replacement = f'{attr}="{value}"'
-              tag = re.sub(pattern, replacement, tag) if re.search(pattern, tag) else tag[:-1] + f' {replacement}>'
-          xml = xml[:match.start()] + tag + xml[match.end():]
-          manifest.write_text(xml)
-          print("Android manifest explicitly points to NCHSM launcher icons.")
+          ns = "{http://schemas.android.com/apk/res/android}"
+          app.set(ns + "icon", "@mipmap/ic_launcher")
+          app.set(ns + "roundIcon", "@mipmap/ic_launcher_round")
+          tree.write(manifest, encoding="utf-8", xml_declaration=True)
+          print("Android manifest now references the NCHSM launcher icons.")
           PY
 
       - name: Set build version
