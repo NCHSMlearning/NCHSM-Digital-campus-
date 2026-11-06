@@ -926,7 +926,7 @@
                         (current ? ' <span style="font-size:9px;background:#4C1D95;color:white;padding:1px 7px;border-radius:10px;">You</span>' : '') +
                         (item.program ? ' <span style="font-size:9px;color:#64748b;">' + escape(String(item.program).slice(0, 3)) + '</span>' : '') +
                         '</div><div style="font-size:10px;color:#94a3b8;">🔥 ' + (Number(item.attendance_streak) || 0) + ' day streak · 🏆 Level ' + (Number(item.gamification_level) || 1) + '</div></div>' +
-                        '<div style="text-align:right;flex-shrink:0;"><div style="font-weight:700;color:#4C1D95;font-size:15px;">' + total.toLocaleString() + '</div><div style="font-size:9px;color:#94a3b8;">points</div></div></div>';
+                        '<div style="text-align:right;flex-shrink:0;"><div title="All-time accumulated student points" aria-label="' + total.toLocaleString() + ' all-time points" style="font-weight:700;color:#4C1D95;font-size:15px;">' + total.toLocaleString() + ' pts</div><div style="font-size:9px;color:#94a3b8;">all-time points</div></div></div>';
                 };
 
                 let html = '';
