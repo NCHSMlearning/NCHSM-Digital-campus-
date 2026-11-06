@@ -5498,24 +5498,23 @@ async function createNchsmWebRTCOffer(viewerId) {
         }
     };
 
-    try {
-        const offer = await pc.createOffer({
+    const offer = await pc.createOffer({
             offerToReceiveAudio: false,
             offerToReceiveVideo: false
-        });
-        await pc.setLocalDescription(offer);
+    });
+    await pc.setLocalDescription(offer);
 
-        await nchsmWebRTCChannel.send({
-            type: 'broadcast',
-            event: 'offer',
-            payload: {
-                studentId: String(AppState.studentId),
-                examId: String(AppState.examId),
-                viewerId,
-                offer: pc.localDescription
-            }
-        });
-        console.log('🎥 WebRTC offer sent to admin:', viewerId);
+    await nchsmWebRTCChannel.send({
+        type: 'broadcast',
+        event: 'offer',
+        payload: {
+            studentId: String(AppState.studentId),
+            examId: String(AppState.examId),
+            viewerId,
+            offer: pc.localDescription
+        }
+    });
+    console.log('🎥 WebRTC offer sent to admin:', viewerId);
     } catch (e) {
         console.error('🎥 WebRTC offer creation failed:', e);
         try { pc?.close(); } catch (err) {}
