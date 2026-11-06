@@ -238,3 +238,54 @@ body #dashboard #dashboardStats .stat-card{min-height:86px!important;border:1px 
 body #dashboard>div:has(>.quick-actions),body #dashboard>div:has(>#recentExamsList){margin:0 0 14px!important;padding:17px 18px!important;border:1px solid #e0eaf2!important;border-radius:15px!important;background:#fff!important;box-shadow:0 4px 13px rgba(17,65,105,.055)!important}
 @media(max-width:900px){body #sidebar.sidebar{width:260px!important;max-width:260px!important;min-width:260px!important;transform:translateX(-260px)!important}body #sidebar.sidebar.open{transform:translateX(0)!important}body .main-content{margin-left:0!important;width:100%!important;max-width:100%!important;padding:0 16px 28px!important}}
 @media(max-width:640px){body #sidebar .sidebar-header{height:96px!important;min-height:96px!important}body #sidebar .brand-crest,body #sidebar .brand-crest img{height:64px!important;max-height:64px!important}body .main-content{padding:0 11px 24px!important}body .main-content>.top-header.lecturer-command-topbar{height:70px!important;min-height:70px!important;margin:0 -11px 10px!important;padding:0 12px!important}body #dashboard .lecturer-dashboard-hero{min-height:80px!important;padding:13px!important}body #dashboard .lecturer-dashboard-hero h2{font-size:18px!important}body #dashboard .lecturer-dashboard-hero .lecturer-hero-tag{display:none!important}}
+
+
+/* Lecturer tables: never hide rows behind entrance animations; keep every table usable on phones. */
+body .main-content .tab-content table,
+body .main-content .tab-content table thead,
+body .main-content .tab-content table tbody{visibility:visible!important;opacity:1!important}
+body .main-content .tab-content table tbody{display:table-row-group!important}
+body .main-content .tab-content table tbody tr{
+  display:table-row!important;
+  visibility:visible!important;
+  opacity:1!important;
+  animation:none!important;
+  transform:none!important;
+}
+body .main-content .tab-content table tbody td{
+  display:table-cell!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+body .main-content .tab-content table thead tr{display:table-row!important;visibility:visible!important;opacity:1!important}
+body .main-content .tab-content table thead th{display:table-cell!important;visibility:visible!important;opacity:1!important}
+body .main-content .tab-content [style*="overflow-x"]{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-x:contain;
+}
+body .main-content .tab-content #examsTable,
+body .main-content .tab-content #resultsTable,
+body .main-content .tab-content #attendanceTable,
+body .main-content .tab-content #liveStudentsTable{
+  width:max-content!important;
+  min-width:100%!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+@media(max-width:640px){
+  body .main-content .tab-content #examsTable{min-width:900px!important}
+  body .main-content .tab-content #resultsTable{min-width:1050px!important}
+  body .main-content .tab-content #attendanceTable{min-width:900px!important}
+  body .main-content .tab-content #liveStudentsTable{min-width:900px!important}
+  body .main-content .tab-content table tbody tr:hover{transform:none!important}
+  body .main-content .tab-content table th,
+  body .main-content .tab-content table td{white-space:nowrap}
+}
+@media(prefers-reduced-motion:reduce){
+  body .main-content .tab-content table tbody tr{animation:none!important;opacity:1!important;visibility:visible!important}
+}
