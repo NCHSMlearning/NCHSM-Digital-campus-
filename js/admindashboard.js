@@ -1123,27 +1123,27 @@ window.loadStudentsWithResults = async function(options = {}) {
             </td>
             <td style="text-align:center;"><span class="${statusClass}">${displayStatus}</span></td>
             <td style="text-align:center;">${releasedDisplay}</td>
-            <td style="text-align:center;">
-                <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
-                    ${retakeBadge}
-                    <button class="action-btn btn-view" onclick="viewExamResult(${safeStudentArgument},${examId})" title="View Details">
-                        <i class="fas fa-eye"></i> View
+            <td class="student-result-actions-cell" style="text-align:center;vertical-align:middle;">
+                <div class="student-result-actions">
+                    <button type="button" class="student-action-icon student-action-view" onclick="viewExamResult(${safeStudentArgument},${examId})" title="View student result" aria-label="View student result">
+                        <i class="fas fa-eye"></i>
                     </button>
-                    <button class="action-btn btn-info" onclick="${viewProgressHandler}" title="View Progress">
-                        <i class="fas fa-chart-line"></i> Progress
+                    <button type="button" class="student-action-icon student-action-edit" onclick="${editMarksHandler}" title="Edit marks" aria-label="Edit marks">
+                        <i class="fas fa-pen"></i>
                     </button>
-                    <button class="action-btn btn-warning" onclick="${timerHandler}" title="Manage Timer">
-                        <i class="fas fa-clock"></i> Timer
-                    </button>
-                    <button class="action-btn btn-info exam-attempt-history-btn" onclick="viewAttemptHistory(${safeStudentArgument}, ${examId})" title="View current final result">
-                        <i class="fas fa-history"></i> Current
-                    </button>
-                    <button class="action-btn btn-reset-student" onclick="${resetHandler}" title="Authorize continuation; preserve saved answers and progress">
-                        <i class="fas fa-play-circle"></i> Retake / Continue
-                    </button>
-                    <button class="action-btn btn-danger" onclick="${clearResetHandler}" title="Clear saved answers and score, then authorize a clean restart">
-                        <i class="fas fa-eraser"></i> Reset / Clear
-                    </button>
+                    <details class="student-actions-menu">
+                        <summary class="student-action-icon student-action-more" title="More actions" aria-label="More actions">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </summary>
+                        <div class="student-actions-dropdown">
+                            ${retakeBadge ? `<div class="student-actions-status">${retakeBadge}</div>` : ''}
+                            <button type="button" onclick="${viewProgressHandler}"><i class="fas fa-chart-line"></i><span>View progress</span></button>
+                            <button type="button" onclick="${timerHandler}"><i class="fas fa-clock"></i><span>Manage timer</span></button>
+                            <button type="button" onclick="viewAttemptHistory(${safeStudentArgument}, ${examId})"><i class="fas fa-history"></i><span>Attempt history / Current result</span></button>
+                            <button type="button" class="student-actions-retake" onclick="${resetHandler}"><i class="fas fa-play-circle"></i><span>Retake / Continue</span></button>
+                            <button type="button" class="student-actions-clear" onclick="${clearResetHandler}"><i class="fas fa-eraser"></i><span>Reset / Clear answers</span></button>
+                        </div>
+                    </details>
                 </div>
             </td>
         </tr>`;
