@@ -10266,6 +10266,7 @@ let nchsmAdminViewerRetryTimers = [];
 let nchsmAdminOfferInProgress = false;
 let nchsmAdminNoOfferTimer = null;
 let nchsmAdminTrackReceived = false;
+let nchsmAdminOfferReceived = false;
 
 function nchsmAdminChannelName(studentId, examId) {
     return `${NCHSM_ADMIN_WEBRTC_CONFIG.channelPrefix}:${examId}:${studentId}`;
@@ -10310,6 +10311,7 @@ function nchsmCloseAdminWebRTC(notifyStudent = true) {
     if (nchsmAdminNoOfferTimer) clearTimeout(nchsmAdminNoOfferTimer);
     nchsmAdminNoOfferTimer = null;
     nchsmAdminTrackReceived = false;
+    nchsmAdminOfferReceived = false;
     if (notifyStudent && nchsmAdminWebRTCChannel) {
         try {
             nchsmAdminWebRTCChannel.send({
@@ -10435,13 +10437,17 @@ async function startNchsmAdminWebRTC(studentId, examId) {
                 const waiting = document.getElementById('cameraLoading');
                 if (waiting) {
                     waiting.style.display = 'flex';
-                    waiting.innerHTML = '<div style="text-align:center;"><i class="fas fa-video-slash fa-2x"></i><p style="margin-top:12px;">No video offer received from this student. Check that the exam is still open and camera permission is enabled, then select Refresh.</p></div>';
+                    const message = nchsmAdminOfferReceived
+                    ? 'The student offer arrived, but no video track was received. Check the student camera permission and camera device, then select Refresh.'
+                    : 'No video offer received from this student. Check that the exam is still open and camera permission is enabled, then select Refresh.';
+                waiting.innerHTML = '<div style="text-align:center;"><i class="fas fa-video-slash fa-2x"></i><p style="margin-top:12px;">' + message + '</p></div>';
                 }
             }, 18000);
         });
 }
 async function nchsmHandleStudentOffer(payload) {
     if (!nchsmAdminWebRTCChannel || nchsmAdminOfferInProgress) return;
+    nchsmAdminOfferReceived = true;
 
     // Ignore duplicate broadcasts for an offer already being negotiated.
     const currentPeer = nchsmAdminWebRTCPeer;
