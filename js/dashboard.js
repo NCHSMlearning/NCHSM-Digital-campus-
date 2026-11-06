@@ -2144,39 +2144,36 @@ class DashboardModule {
         }
 
         try {
-            const { data: users, error } = await this.sb
+            const { data: profiles, error } = await this.sb
                 .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, total_points, role')
+                .select('user_id, full_name, gamification_points, nurseiq_points, login_count, role')
                 .eq('role', 'student')
-                .order('total_points', { ascending: false })
-                .order('user_id', { ascending: true })
-                .limit(10);
+                .order('user_id', { ascending: true });
             if (error) throw error;
 
-            if (!users?.length) {
+            // Calculate points from their source components instead of trusting
+            // total_points, which legacy clients may overwrite with partial totals.
+            const rankedUsers = (profiles || []).map(profile => ({
+                ...profile,
+                total_points:
+                    (Number(profile.gamification_points) || 0) +
+                    (Number(profile.nurseiq_points) || 0) +
+                    ((Number(profile.login_count) || 0) * 10)
+            })).sort((a, b) =>
+                b.total_points - a.total_points ||
+                String(a.user_id).localeCompare(String(b.user_id))
+            );
+            const users = rankedUsers.slice(0, 10);
+
+            if (!rankedUsers.length) {
                 container.insertAdjacentHTML('beforeend', '<div class="leader-row"><span>—</span><strong>No students found</strong><b>—</b></div>');
                 return;
             }
 
-            let currentUser = null;
-            let currentRank = null;
-            if (this.userId) {
-                const { data: ownProfile, error: ownError } = await this.sb
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id, full_name, total_points')
-                    .eq('user_id', this.userId)
-                    .eq('role', 'student')
-                    .maybeSingle();
-                if (!ownError && ownProfile) {
-                    currentUser = ownProfile;
-                    const { count, error: rankError } = await this.sb
-                        .from('consolidated_user_profiles_table')
-                        .select('user_id', { count: 'exact', head: true })
-                        .eq('role', 'student')
-                        .gt('total_points', Number(ownProfile.total_points) || 0);
-                    if (!rankError) currentRank = Number(count || 0) + 1;
-                }
-            }
+            const currentUser = rankedUsers.find(user => String(user.user_id) === String(this.userId)) || null;
+            const currentRank = currentUser
+                ? rankedUsers.filter(user => user.total_points > currentUser.total_points).length + 1
+                : null;
 
             const renderRow = (user, rank, isCurrent = false) => {
                 const row = document.createElement('div');
