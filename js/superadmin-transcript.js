@@ -261,7 +261,10 @@ function calculateGPA(marks, programCode) {
  let points = 0, creditsTotal = 0;
  rows.forEach(m => {
   const score = getEffectiveMarkScore(m);
-  const gradeLabel = String(m.published_grade ?? m.final_grade ?? m.final_grade_letter ?? m.letter_grade ?? m.grade_letter ?? m.result_grade ?? m.computed_grade ?? m.grade ?? '').trim().toUpperCase();
+  const passedRetake = ['pass','passed','competent'].includes(String(m.retake_status || '').trim().toLowerCase()) &&
+   m.retake_grade !== null && m.retake_grade !== undefined && String(m.retake_grade).trim() !== '';
+  // Use a successful retake grade ahead of the original failed attempt in transcript GPA.
+  const gradeLabel = String(passedRetake ? m.retake_grade : (m.published_grade ?? m.final_grade ?? m.final_grade_letter ?? m.letter_grade ?? m.grade_letter ?? m.result_grade ?? m.computed_grade ?? m.grade ?? '')).trim().toUpperCase();
   const storedPointsRaw = m.points ?? m.grade_points ?? m.grade_point ?? m.gpa_points;
   const storedPoints = storedPointsRaw !== null && storedPointsRaw !== undefined && storedPointsRaw !== '' && Number.isFinite(Number(storedPointsRaw)) ? Number(storedPointsRaw) : null;
   const gradePointMap = { A:4, DISTINCTION:4, EXCELLENT:4, B:3, CREDIT:3, GOOD:3, C:2, PASS:2, SATISFACTORY:2, D:0, F:0, FAIL:0, E:0, 'NOT YET COMPETENT':0 };
