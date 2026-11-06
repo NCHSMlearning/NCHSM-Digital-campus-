@@ -129,7 +129,7 @@
 
     const manifest = document.createElement('link');
     manifest.rel = 'manifest';
-    manifest.href = '/manifest.json?v=3';
+    manifest.href = '/manifest.json?v=4';
     document.head.appendChild(manifest);
 
     const theme = document.createElement('meta');
@@ -141,8 +141,8 @@
     const install = document.createElement('button');
     install.type = 'button';
     install.className = 'nchsm-pwa-install';
-    install.textContent = 'Install NCHSM';
-    install.setAttribute('aria-label', 'Download and install NCHSM Digital Campus for Android');
+    install.textContent = 'Download Android App';
+    install.setAttribute('aria-label', 'Download the NCHSM Digital Campus Android APK');
     install.hidden = standalone || !/android/i.test(navigator.userAgent);
     install.style.cssText = 'position:fixed;z-index:9998;left:max(16px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));padding:11px 16px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 13px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.2);cursor:pointer';
     document.body.appendChild(install);
@@ -152,7 +152,7 @@
     install.addEventListener('click', function () {
       if (!/android/i.test(navigator.userAgent)) return;
       install.disabled = true;
-      install.textContent = 'Downloading…';
+      install.textContent = 'Preparing download…';
       const link = document.createElement('a');
       link.href = 'https://github.com/NCHSMlearning/NCHSM-Digital-campus-/releases/latest/download/app-release.apk';
       link.download = 'NCHSM-Digital-Campus.apk';
@@ -162,7 +162,7 @@
       link.remove();
       window.setTimeout(function () {
         install.disabled = false;
-        install.textContent = 'Install NCHSM';
+        install.textContent = 'Download Android App';
       }, 5000);
     });
 
