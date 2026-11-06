@@ -2240,7 +2240,7 @@ class DashboardModule {
                 .order('created_at', { ascending: false });
             if (regError) throw regError;
 
-            const activeStatuses = new Set(['approved', 'active', 'registered']);
+            const activeStatuses = new Set(['approved']);
             const byUnit = new Map();
             (Array.isArray(registrations) ? registrations : []).forEach(reg => {
                 const status = String(reg.status || '').trim().toLowerCase();
