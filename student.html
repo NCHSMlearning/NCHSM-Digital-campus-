@@ -2459,14 +2459,14 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 <!-- MY COURSES -->
 <section class="nchsm-courses-full-grid">
 <article class="nchsm-card courses-card">
-<div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-layer-group"></i><div><h2>My Courses</h2><small>Currently enrolled units</small></div></div><button class="nchsm-view-btn" data-tab="hub-courses" type="button">View All <span>→</span></button></div>
+<div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-layer-group"></i><div><h2>My Units</h2><small>Currently enrolled units</small></div></div><button class="nchsm-view-btn" data-tab="hub-courses" type="button">View All <span>→</span></button></div>
 <div class="nchsm-courses"></div>
 <div class="nchsm-course-hooks" hidden=""><span id="dashboard-active-courses">--</span><span id="dashboard-approved-units">--</span><span id="dashboard-new-resources">--</span></div>
 </article>
 </section>
 <!-- LEADERBOARD LAST -->
 <article class="nchsm-card leaderboard-card" id="leaderboard-card">
-<div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-trophy"></i><div><h2>Leaderboard</h2><small>Top performing students this term</small></div></div><button class="nchsm-view-btn" data-tab="dashboard" type="button">View Full Leaderboard <span>→</span></button></div>
+<div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-trophy"></i><div><h2>Leaderboard</h2><small>Ranked by accumulated points</small></div></div><button class="nchsm-view-btn" data-tab="dashboard" type="button">View Full Leaderboard <span>→</span></button></div>
 <div class="nchsm-leaderboard" id="leaderboard-container"><div class="leader-row leader-head"><span>#</span><span>Student Name</span><span>Points</span></div></div>
 </article>
 <!-- BRAND STRIP -->
@@ -4306,7 +4306,7 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
 
             <button
                 class="action-btn"
-                id="courses-view-completed-only"
+                id="view-completed-only"
                 type="button"
                 style="
                     padding:8px 16px;
@@ -4560,7 +4560,7 @@ body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background
                     </div>
 
                     <span
-                        id="courses-completed-count"
+                        id="completed-count"
                         style="
                             background:#059669;
                             color:#fff;
@@ -15490,6 +15490,25 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 }
 @media(prefers-reduced-motion:reduce){
  #cats .stat-card{transition:none!important}
+}
+</style>
+
+<style id="nchsm-student-dashboard-units-final-fix">
+/* The dashboard leaderboard loads ten rows; keep every row reachable on touch screens. */
+#dashboard #leaderboard-card .nchsm-leaderboard{
+  display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;
+  max-width:100%!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:thin!important;
+}
+#dashboard #leaderboard-card .nchsm-leaderboard .leader-head{display:none!important}
+#dashboard #leaderboard-card .nchsm-leaderboard .leader-row:not(.leader-head){
+  display:grid!important;flex:0 0 190px!important;min-width:190px!important;height:66px!important;min-height:66px!important;
+}
+#dashboard #leaderboard-card .nchsm-leaderboard .leader-row:nth-child(n+7){display:grid!important}
+#hub-courses .courses-section[hidden]{display:none!important}
+@media(max-width:640px){
+  #hub-courses{padding:12px!important}
+  #hub-courses .courses-section>div{border-radius:12px!important}
+  #hub-courses table{min-width:600px}
 }
 </style>
 </html>
