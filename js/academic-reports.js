@@ -522,15 +522,21 @@
         // do not turn assessment components into a newly calculated student result.
         const score = getPublishedScore(mark);
         const assessments = getAssessmentValues(mark);
+        const hasPassedInlineRetake = /^(pass|passed|competent)$/i.test(String(mark.retake_status || '').trim()) &&
+            String(mark.retake_grade || '').trim() !== '';
+        const effectiveGrade = hasPassedInlineRetake
+            ? String(mark.retake_grade).trim().toUpperCase()
+            : (mark.final_grade ?? mark.grade ?? mark.published_grade ?? '');
+        const effectivePoints = pointsFromPublishedGrade(effectiveGrade);
         return {
             ...mark,
             unit_code: mark.unit_code || mark.course_code || getUnitCode(mark.subject_name || mark.course_name),
             subject_name: mark.subject_name || mark.course_name || mark.unit_name || 'N/A',
             credits: Number(mark.credits) > 0 ? Number(mark.credits) : 3,
-            final_score: score,
-            grade: mark.grade ?? mark.published_grade ?? mark.final_grade ?? '',
-            points: mark.points,
-            status: mark.status ?? mark.published_status ?? mark.result_status ?? '',
+            final_score: hasPassedInlineRetake ? numericMark(mark, ['retake_score']) ?? score : score,
+            grade: effectiveGrade,
+            points: effectivePoints !== null ? effectivePoints : mark.points,
+            status: hasPassedInlineRetake ? 'PASS' : (mark.final_status ?? mark.status ?? mark.published_status ?? mark.result_status ?? ''),
             cat1: assessments.cat1,
             cat2: assessments.cat2,
             final_exam: assessments.finalExam,
@@ -663,17 +669,22 @@
                     // Keep published scores and grades authoritative; fill only missing display metadata.
                     marks = rows.map(mark => {
                         const retakes = studentRetakeMap[mark.subject_name] || [];
-                        const grade = mark.grade ?? mark.final_grade ?? '';
+                        const hasPassedInlineRetake = /^(pass|passed|competent)$/i.test(String(mark.retake_status || '').trim()) &&
+                            String(mark.retake_grade || '').trim() !== '';
+                        // Successful retakes replace the original attempt in student-facing results.
+                        const grade = hasPassedInlineRetake
+                            ? String(mark.retake_grade).trim().toUpperCase()
+                            : (mark.final_grade ?? mark.grade ?? mark.published_grade ?? '');
+                        const gradePoints = pointsFromPublishedGrade(grade);
                         const rawPoints = mark.points;
-                        const points = rawPoints !== null && rawPoints !== undefined && rawPoints !== ''
-                            ? Number(rawPoints)
-                            : pointsFromPublishedGrade(grade || mark.final_status || mark.status);
+                        const points = gradePoints !== null ? gradePoints
+                            : (rawPoints !== null && rawPoints !== undefined && rawPoints !== '' ? Number(rawPoints) : null);
                         return {
                             ...mark,
                             unit_code: mark.unit_code || getUnitCode(mark.subject_name),
                             grade,
                             points: Number.isFinite(points) ? points : null,
-                            status: mark.final_status ?? mark.status ?? '',
+                            status: hasPassedInlineRetake ? 'PASS' : (mark.final_status ?? mark.status ?? ''),
                             final_score: mark.final_score,
                             hasRetake: retakes.length > 0,
                             retakeCount: retakes.length,
