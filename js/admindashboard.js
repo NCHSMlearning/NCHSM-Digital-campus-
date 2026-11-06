@@ -10624,16 +10624,33 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
         const existingChannel = channels.get(key);
         if (card.dataset.nchsmPreviewStarted === 'true') return;
         if (existingStream && existingPeer && !['failed', 'closed'].includes(existingPeer.connectionState)) {
-            video.srcObject = existingStream;
+            if (video.srcObject !== existingStream) video.srcObject = existingStream;
             video.style.display = 'block';
-            if (placeholder) placeholder.style.display = 'none';
-            const cameraBadge = card.querySelector('.overlay-badge.camera-off');
-            if (cameraBadge) { cameraBadge.className = 'overlay-badge camera-on'; cameraBadge.textContent = '🟢 Live'; }
+            if (placeholder) {
+                placeholder.style.display = 'flex';
+                const label = placeholder.querySelector('p');
+                if (label) label.textContent = 'Reconnecting video preview…';
+            }
+            const cameraBadge = card.querySelector('.overlay-badge');
+            if (cameraBadge) { cameraBadge.className = 'overlay-badge camera-off'; cameraBadge.textContent = '🟡 Connecting'; }
+            video.onplaying = () => {
+                if (!card.isConnected || video.srcObject !== existingStream) return;
+                if (placeholder) placeholder.style.display = 'none';
+                const liveBadge = card.querySelector('.overlay-badge');
+                if (liveBadge) { liveBadge.className = 'overlay-badge camera-on'; liveBadge.textContent = '🟢 Live'; }
+                const statusBadge = card.querySelector('.card-header .status-badge');
+                if (statusBadge && /no camera|camera/i.test(statusBadge.textContent || '')) {
+                    statusBadge.className = 'status-badge status-active';
+                    statusBadge.textContent = '📷 Camera Connected';
+                }
+            };
             card.dataset.nchsmPreviewStarted = 'true';
             const oldTimer = previewTimers.get(key);
             if (oldTimer) clearTimeout(oldTimer);
             previewTimers.delete(key);
-            try { video.play().catch(() => {}); } catch (_) {}
+            if (video.paused) {
+                try { video.play().catch(error => { if (error?.name !== 'AbortError') console.warn('Card preview resume failed:', error); }); } catch (_) {}
+            }
             return;
         }
         if (existingPeer && existingChannel && !['failed', 'closed'].includes(existingPeer.connectionState)) {
