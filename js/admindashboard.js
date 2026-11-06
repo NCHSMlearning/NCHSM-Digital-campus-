@@ -8618,10 +8618,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(e) {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
-        if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('open')) {
+        if (window.innerWidth <= 1000 && sidebar && sidebar.classList.contains('open')) {
             if (!sidebar.contains(e.target) && !e.target.closest('.mobile-toggle')) {
                 sidebar.classList.remove('open');
-                if (overlay) overlay.classList.remove('show');
+                if (overlay) overlay.classList.remove('active');
             }
         }
     });
