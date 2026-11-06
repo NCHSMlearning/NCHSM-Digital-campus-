@@ -37,10 +37,6 @@ jobs:
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
 
-      # Do not run "npx tsc" here: without TypeScript installed locally,
-      # npm may fetch the unrelated deprecated "tsc" package from the registry.
-      # Capacitor CLI handles loading capacitor.config.ts during cap sync.
-
       - name: Stage web assets outside the Android project
         run: |
           rm -rf /tmp/nchsm-web
@@ -107,13 +103,21 @@ jobs:
           sed -i -E "s/versionName \"[^\"]+\"/versionName \"${VERSION_NAME}\"/" android/app/build.gradle
           echo "Building version ${VERSION_NAME} (${VERSION_CODE})"
 
-      - name: Decode permanent signing keystore
+      - name: Decode keystore and detect its real key alias
         if: github.ref == 'refs/heads/main' && env.HAS_ANDROID_SIGNING_KEY == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/nchsm-release.jks
           test -s android/app/nchsm-release.jks
+          KEY_ALIAS="$(keytool -list -v -keystore android/app/nchsm-release.jks -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>/dev/null | awk -F': ' '/Alias name:/{alias=$2} /Entry type: PrivateKeyEntry/{print alias; exit}')"
+          if [ -z "$KEY_ALIAS" ]; then
+            echo "::error::No private-key alias found. Check the keystore file and ANDROID_KEYSTORE_PASSWORD secret."
+            exit 1
+          fi
+          echo "Detected Android signing key alias: $KEY_ALIAS"
+          echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
 
       - name: Configure permanent release signing
         if: github.ref == 'refs/heads/main' && env.HAS_ANDROID_SIGNING_KEY == 'true'
@@ -141,7 +145,6 @@ jobs:
       - name: Build signed release APK
         if: github.ref == 'refs/heads/main' && env.HAS_ANDROID_SIGNING_KEY == 'true'
         env:
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
