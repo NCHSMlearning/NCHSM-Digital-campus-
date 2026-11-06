@@ -875,30 +875,30 @@
             }
 
             try {
-                const { data, error } = await sb
+                const { data: profiles, error } = await sb
                     .from('consolidated_user_profiles_table')
-                    .select('user_id, full_name, gamification_points, attendance_streak, gamification_level, nurseiq_points, total_nurseiq_attempts, total_points, role, program, block')
+                    .select('user_id, full_name, gamification_points, nurseiq_points, login_count, attendance_streak, gamification_level, role, program, block')
                     .eq('role', 'student')
-                    .order('total_points', { ascending: false })
-                    .order('user_id', { ascending: true })
-                    .limit(10);
+                    .order('user_id', { ascending: true });
                 if (error) throw error;
 
-                const { data: own, error: ownError } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id, full_name, total_points')
-                    .eq('user_id', this.userId)
-                    .eq('role', 'student')
-                    .maybeSingle();
-                let ownRank = null;
-                if (!ownError && own) {
-                    const { count, error: rankError } = await sb
-                        .from('consolidated_user_profiles_table')
-                        .select('user_id', { count: 'exact', head: true })
-                        .eq('role', 'student')
-                        .gt('total_points', Number(own.total_points) || 0);
-                    if (!rankError) ownRank = Number(count || 0) + 1;
-                }
+                // Rank from authoritative point components, not the potentially
+                // stale total_points cache column.
+                const rankedStudents = (profiles || []).map(profile => ({
+                    ...profile,
+                    total_points:
+                        (Number(profile.gamification_points) || 0) +
+                        (Number(profile.nurseiq_points) || 0) +
+                        ((Number(profile.login_count) || 0) * 10)
+                })).sort((a, b) =>
+                    b.total_points - a.total_points ||
+                    String(a.user_id).localeCompare(String(b.user_id))
+                );
+                const data = rankedStudents.slice(0, 10);
+                const own = rankedStudents.find(item => String(item.user_id) === String(this.userId)) || null;
+                const ownRank = own
+                    ? rankedStudents.filter(item => item.total_points > own.total_points).length + 1
+                    : null;
 
                 if (!data?.length) {
                     leaderboardList.innerHTML = '<div style="text-align:center;padding:25px;color:#94a3b8;">No students found on the leaderboard.</div>';
