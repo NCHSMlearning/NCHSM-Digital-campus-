@@ -10439,7 +10439,7 @@ async function nchsmHandleStudentOffer(payload) {
         if (currentPeer) {
             try { currentPeer.close(); } catch (_) {}
         }
-        nchsmAdminPendingIceCandidates = [];
+        // Preserve ICE candidates that arrived before the student offer.
         pc = new RTCPeerConnection({ iceServers: NCHSM_ADMIN_WEBRTC_CONFIG.stunServers });
         nchsmAdminWebRTCPeer = pc;
 
