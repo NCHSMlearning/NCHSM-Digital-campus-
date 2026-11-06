@@ -5709,7 +5709,7 @@ function renderLiveFeedCards(grid, pageData) {
             statusLabel = '⚠️ Warning';
         } else if (!hasCamera) {
             statusClass = 'status-pending';
-            statusLabel = '📷 No Camera';
+            statusLabel = '📷 Awaiting video';
         }
         
         // Card class
@@ -5723,7 +5723,7 @@ function renderLiveFeedCards(grid, pageData) {
         if (imageUrl) {
             cameraBadge = `<span class="overlay-badge camera-on">🟢 Live</span>`;
         } else {
-            cameraBadge = `<span class="overlay-badge camera-off" style="z-index:4;">📷 No Camera</span>`;
+            cameraBadge = `<span class="overlay-badge camera-off" style="z-index:4;">📷 Waiting for video</span>`;
         }
         
         // Progress
