@@ -5358,6 +5358,8 @@ const NCHSM_WEBRTC_CONFIG = {
 let nchsmWebRTCChannel = null;
 let nchsmWebRTCPeers = new Map();
 let nchsmPendingIceCandidates = new Map();
+// Prevent overlapping offers when the administrator retries a viewer request.
+let nchsmWebRTCOffersInProgress = new Set();
 
 function getNchsmWebRTCChannelName() {
     if (!AppState.studentId || !AppState.examId) return null;
@@ -5445,12 +5447,24 @@ nchsmWebRTCChannel = sb.channel(channelName, {
 async function createNchsmWebRTCOffer(viewerId) {
     if (!nchsmWebRTCChannel || !AppState.cameraStream) return;
 
-    const oldPc = nchsmWebRTCPeers.get(viewerId);
-    if (oldPc) {
-        try { oldPc.close(); } catch (e) {}
+    // Admin preview clients retry viewer-request while negotiating. Reusing
+    // the existing peer is essential: closing it here invalidates the offer
+    // and media tracks the admin is already trying to receive.
+    const existingPc = nchsmWebRTCPeers.get(viewerId);
+    if (existingPc && !['failed', 'closed'].includes(existingPc.connectionState)) {
+        return;
     }
+    if (nchsmWebRTCOffersInProgress.has(viewerId)) return;
 
-    const pc = new RTCPeerConnection({ iceServers: NCHSM_WEBRTC_CONFIG.stunServers });
+    nchsmWebRTCOffersInProgress.add(viewerId);
+    let pc = null;
+    try {
+        if (existingPc) {
+            try { existingPc.close(); } catch (e) {}
+            nchsmWebRTCPeers.delete(viewerId);
+        }
+
+        pc = new RTCPeerConnection({ iceServers: NCHSM_WEBRTC_CONFIG.stunServers });
     nchsmWebRTCPeers.set(viewerId, pc);
 
     AppState.cameraStream.getTracks().forEach(track => {
@@ -5504,8 +5518,10 @@ async function createNchsmWebRTCOffer(viewerId) {
         console.log('🎥 WebRTC offer sent to admin:', viewerId);
     } catch (e) {
         console.error('🎥 WebRTC offer creation failed:', e);
-        try { pc.close(); } catch (err) {}
-        nchsmWebRTCPeers.delete(viewerId);
+        try { pc?.close(); } catch (err) {}
+        if (nchsmWebRTCPeers.get(viewerId) === pc) nchsmWebRTCPeers.delete(viewerId);
+    } finally {
+        nchsmWebRTCOffersInProgress.delete(viewerId);
     }
 }
 
