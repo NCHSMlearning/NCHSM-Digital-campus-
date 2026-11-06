@@ -93,6 +93,13 @@ jobs:
           </resources>
           EOF
           test -s "$RES/drawable/ic_launcher_foreground.png"
+          # Also create a high-resolution, density-independent legacy bitmap icon.
+          # This is the most compatible path for OEM package installers such as HONOR.
+          mkdir -p "$RES/drawable-nodpi"
+          convert -size 512x512 xc:'#0A3D62' \
+            \( images/Logo_NCHSM.png -resize 360x360 \) \
+            -gravity center -composite "$RES/drawable-nodpi/ic_launcher.png"
+          test -s "$RES/drawable-nodpi/ic_launcher.png"
           echo "Official NCHSM logo generated."
           python3 - <<'PY'
           from pathlib import Path
@@ -111,8 +118,8 @@ jobs:
               raise SystemExit("Android manifest has no application element")
 
           android_ns = "{http://schemas.android.com/apk/res/android}"
-          app.set(android_ns + "icon", "@mipmap/ic_launcher")
-          app.set(android_ns + "roundIcon", "@mipmap/ic_launcher_round")
+          app.set(android_ns + "icon", "@drawable-nodpi/ic_launcher")
+          app.set(android_ns + "roundIcon", "@drawable-nodpi/ic_launcher")
           tree.write(manifest, encoding="utf-8", xml_declaration=True)
 
           # Validate that the serialized manifest remains well-formed and declares
@@ -121,7 +128,7 @@ jobs:
           if 'xmlns:android="http://schemas.android.com/apk/res/android"' not in serialized:
               raise SystemExit("Android namespace declaration missing after manifest update")
           ET.parse(manifest)
-          print("NCHSM launcher icons set; Android manifest namespace verified.")
+          print("NCHSM high-resolution launcher icon set; Android manifest namespace verified.")
           PY
 
       - name: Set build version
