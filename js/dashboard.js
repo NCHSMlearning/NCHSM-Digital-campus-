@@ -2120,78 +2120,109 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 🏆 LEADERBOARD - FIXED
-    // ============================================================
-    
+    // 🏆 LEADERBOARD — accurate all-time ranking
+    // Weekly/monthly views need a dated points ledger; never derive them from lifetime totals.
     async loadLeaderboardData(period = 'all') {
         const container = this.elements?.dashboardLeaderboard || document.querySelector('.nchsm-leaderboard');
-        if (!container || !this.sb) return;
+        if (!container) return;
+        const normalizedPeriod = String(period || 'all').toLowerCase().replace(/[^a-z]/g, '');
+        const isAllTime = ['all', 'alltime', 'lifetime'].includes(normalizedPeriod);
+        container.querySelectorAll('.leader-row:not(.leader-head), .leaderboard-message').forEach(row => row.remove());
 
-        container.querySelectorAll('.leader-row:not(.leader-head)').forEach(row => row.remove());
+        if (!this.sb) {
+            container.insertAdjacentHTML('beforeend', '<div class="leader-row"><span>—</span><strong>Leaderboard connection unavailable</strong><b>—</b></div>');
+            return;
+        }
+        if (!isAllTime) {
+            const label = normalizedPeriod.includes('week') ? 'Weekly' : (normalizedPeriod.includes('month') ? 'Monthly' : 'Selected-period');
+            const message = document.createElement('div');
+            message.className = 'leaderboard-message';
+            message.style.cssText = 'padding:14px;text-align:center;color:#64748b;font-size:12px;line-height:1.5;';
+            message.textContent = label + ' rankings require dated point history. The current profile source stores lifetime totals only, so no misleading period ranking is shown.';
+            container.appendChild(message);
+            return;
+        }
 
         try {
             const { data: users, error } = await this.sb
                 .from('consolidated_user_profiles_table')
-                .select('id, full_name, login_count, gamification_points, total_points, earned_badges')
+                .select('user_id, full_name, total_points, role')
                 .eq('role', 'student')
                 .order('total_points', { ascending: false })
+                .order('user_id', { ascending: true })
                 .limit(10);
-
             if (error) throw error;
 
-            if (!users || users.length === 0) {
-                container.insertAdjacentHTML(
-                    'beforeend',
-                    '<div class="leader-row"><span>—</span><strong>No students found</strong><b>—</b></div>'
-                );
+            if (!users?.length) {
+                container.insertAdjacentHTML('beforeend', '<div class="leader-row"><span>—</span><strong>No students found</strong><b>—</b></div>');
                 return;
             }
 
-            users.forEach((user, index) => {
-                const rank = index + 1;
-                const points = Number(user.total_points ?? 0);
-                const current = String(user.id) === String(this.userId) || String(user.user_id ?? '') === String(this.userId);
+            let currentUser = null;
+            let currentRank = null;
+            if (this.userId) {
+                const { data: ownProfile, error: ownError } = await this.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id, full_name, total_points')
+                    .eq('user_id', this.userId)
+                    .eq('role', 'student')
+                    .maybeSingle();
+                if (!ownError && ownProfile) {
+                    currentUser = ownProfile;
+                    const { count, error: rankError } = await this.sb
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id', { count: 'exact', head: true })
+                        .eq('role', 'student')
+                        .gt('total_points', Number(ownProfile.total_points) || 0);
+                    if (!rankError) currentRank = Number(count || 0) + 1;
+                }
+            }
 
+            const renderRow = (user, rank, isCurrent = false) => {
                 const row = document.createElement('div');
-                row.className = `leader-row${current ? ' leader-current' : ''}`;
-
+                row.className = 'leader-row' + (isCurrent ? ' leader-current' : '');
                 const rankEl = document.createElement('b');
-                rankEl.className = `rank rank-${rank}`;
-                rankEl.textContent = rank;
-
+                rankEl.className = 'rank rank-' + Math.min(Number(rank) || 0, 3);
+                rankEl.textContent = String(rank || '—');
                 const nameEl = document.createElement('strong');
                 nameEl.textContent = user.full_name || 'Student';
-
-                if (current) {
+                if (isCurrent) {
                     const you = document.createElement('span');
                     you.className = 'leader-you';
                     you.textContent = ' You';
                     nameEl.appendChild(you);
                 }
-
                 const pointsEl = document.createElement('b');
-                pointsEl.textContent = Number.isFinite(points) ? points.toLocaleString() : '0';
-
+                pointsEl.textContent = (Number(user.total_points) || 0).toLocaleString();
                 row.append(rankEl, nameEl, pointsEl);
                 container.appendChild(row);
+            };
+
+            let previousPoints = null;
+            let previousRank = 0;
+            users.forEach((user, index) => {
+                const points = Number(user.total_points) || 0;
+                const rank = index > 0 && points === previousPoints ? previousRank : index + 1;
+                previousPoints = points;
+                previousRank = rank;
+                renderRow(user, rank, String(user.user_id) === String(this.userId));
+                this.metrics.leaderboard = this.metrics.leaderboard || [];
+                this.metrics.leaderboard[index] = { rank, userId: user.user_id, name: user.full_name || 'Student', points };
             });
 
-            this.metrics.leaderboard = users.map((u, i) => ({
-                rank: i + 1,
-                userId: u.id,
-                name: u.full_name || 'Student',
-                points: Number(u.total_points ?? 0)
-            }));
+            if (currentUser && !users.some(user => String(user.user_id) === String(this.userId))) {
+                const divider = document.createElement('div');
+                divider.style.cssText = 'padding:8px 12px;color:#64748b;font-size:11px;text-align:center;border-top:1px solid #e5e7eb;';
+                divider.textContent = 'Your position';
+                container.appendChild(divider);
+                renderRow(currentUser, currentRank, true);
+            }
         } catch (error) {
             console.error('Leaderboard error:', error);
-            container.insertAdjacentHTML(
-                'beforeend',
-                '<div class="leader-row"><span>—</span><strong>Unable to load leaderboard</strong><b>—</b></div>'
-            );
+            container.insertAdjacentHTML('beforeend', '<div class="leader-row"><span>—</span><strong>Unable to load leaderboard</strong><b>—</b></div>');
         }
     }
 
-    // ============================================================
     // 📚 REDESIGNED DASHBOARD COURSES
     // ============================================================
 
@@ -2200,154 +2231,77 @@ class DashboardModule {
         if (!container || !this.sb || !this.userId) return;
 
         try {
-            let courses = [];
-
-            // The dashboard card is "Currently enrolled units", so read the student's
-            // actual registrations first. No demo/static course names are inserted.
+            // Only the student's approved, currently active registrations belong in this card.
+            // Do not substitute the global catalogue if registration access fails.
             const { data: registrations, error: regError } = await this.sb
                 .from('student_unit_registrations')
-                .select('unit_code, unit_name, status, block, created_at, submitted_date')
+                .select('unit_code, unit_name, status, completion_status, block, created_at')
                 .eq('student_id', this.userId)
                 .order('created_at', { ascending: false });
+            if (regError) throw regError;
 
-            if (!regError && Array.isArray(registrations)) {
-                courses = registrations
-                    .filter(r => !r.status || ['approved','active','registered','pending'].includes(String(r.status).toLowerCase()))
-                    .map(r => ({
-                        code: r.unit_code || '',
-                        name: r.unit_name || ''
-                    }))
-                    .filter(c => c.code || c.name);
-            }
-
-            // Fall back to the existing database module if registrations are unavailable.
-            if (!courses.length && window.db && typeof window.db.getCourses === 'function') {
-                const result = await window.db.getCourses();
-                if (Array.isArray(result)) {
-                    courses = result.map(course => ({
-                        code: course.unit_code || course.course_code || course.code || '',
-                        name: course.unit_name || course.course_name || course.name || course.title || ''
-                    })).filter(c => c.code || c.name);
-                }
-            }
-
-            const uniqueCourses = courses.filter((course, index, list) => {
-                const key = `${String(course.code || '').trim().toLowerCase()}|${String(course.name || '').trim().toLowerCase()}`;
-                return list.findIndex(item =>
-                    `${String(item.code || '').trim().toLowerCase()}|${String(item.name || '').trim().toLowerCase()}` === key
-                ) === index;
+            const activeStatuses = new Set(['approved', 'active', 'registered']);
+            const byUnit = new Map();
+            (Array.isArray(registrations) ? registrations : []).forEach(reg => {
+                const status = String(reg.status || '').trim().toLowerCase();
+                const completion = String(reg.completion_status || '').trim().toLowerCase();
+                if (!activeStatuses.has(status) || completion === 'completed') return;
+                const code = String(reg.unit_code || '').trim();
+                const name = String(reg.unit_name || '').trim();
+                if (!code && !name) return;
+                const key = (code || name).toLowerCase();
+                if (!byUnit.has(key)) byUnit.set(key, { code, name });
+                else if (!byUnit.get(key).name && name) byUnit.get(key).name = name;
             });
+            const normalized = Array.from(byUnit.values());
 
-            // Keep the dashboard course metric tied to actual enrolled registrations when available.
-            // Keep every dashboard Active Courses hook synchronized. The HTML currently
-            // contains two compatibility hooks with the same legacy ID, so update both.
-            this.metrics.courses = uniqueCourses.length;
+            this.metrics.courses = normalized.length;
             document.querySelectorAll('#dashboard-active-courses').forEach(el => {
-                el.textContent = String(uniqueCourses.length);
+                el.textContent = String(normalized.length);
             });
-            if (this.elements?.snapshotActiveCourses) {
-                this.elements.snapshotActiveCourses.textContent = String(uniqueCourses.length);
-            }
+            if (this.elements?.snapshotActiveCourses) this.elements.snapshotActiveCourses.textContent = String(normalized.length);
 
-            const normalized = uniqueCourses;
-
-            // Prevent legacy course-container rules from forcing truncation.
             container.style.overflow = 'visible';
             container.style.height = 'auto';
             container.style.minHeight = '0';
-
             container.innerHTML = '';
-
             if (!normalized.length) {
-                container.innerHTML = '<div class="course-row"><span class="course-code code-blue">—</span><strong>No enrolled units</strong><i class="fas fa-chevron-right" aria-hidden="true"></i></div>';
+                container.innerHTML = '<div class="course-row"><span class="course-code code-blue">—</span><strong>No approved active units</strong></div>';
                 return;
             }
 
             const codeClasses = ['code-blue', 'code-green', 'code-purple', 'code-orange'];
-
-            // Render each enrolled unit as a proper two-level course card:
-            // unit code = badge, full unit name = primary text.
-            // Inline layout rules override legacy truncation CSS.
             normalized.forEach((course, index) => {
                 const row = document.createElement('div');
                 row.className = 'course-row';
-                row.style.cssText = [
-                    'position:relative',
-                    'display:flex',
-                    'flex-direction:column',
-                    'align-items:flex-start',
-                    'justify-content:flex-start',
-                    'gap:10px',
-                    'min-height:86px',
-                    'height:auto',
-                    'padding:14px 42px 14px 14px',
-                    'box-sizing:border-box',
-                    'overflow:visible',
-                    'cursor:pointer'
-                ].join(';');
-
+                row.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-height:86px;height:auto;padding:14px 42px 14px 14px;box-sizing:border-box;overflow:visible;cursor:pointer;';
                 const code = document.createElement('span');
-                code.className = `course-code ${codeClasses[index % codeClasses.length]}`;
+                code.className = 'course-code ' + codeClasses[index % codeClasses.length];
                 code.textContent = course.code || 'UNIT';
-                code.style.cssText = [
-                    'display:inline-flex',
-                    'align-items:center',
-                    'width:max-content',
-                    'max-width:100%',
-                    'white-space:nowrap',
-                    'overflow:visible',
-                    'text-overflow:clip',
-                    'flex:none'
-                ].join(';');
-
+                code.style.cssText = 'display:inline-flex;align-items:center;width:max-content;max-width:100%;white-space:nowrap;overflow:visible;flex:none;';
                 const name = document.createElement('strong');
-                const fullName = String(course.name || course.code || 'Unit').trim();
+                const fullName = course.name || course.code || 'Unit';
                 name.textContent = fullName;
                 name.title = fullName;
                 name.setAttribute('aria-label', fullName);
-                name.style.cssText = [
-                    'display:block',
-                    'width:100%',
-                    'max-width:100%',
-                    'min-width:0',
-                    'height:auto',
-                    'max-height:none',
-                    'margin:0',
-                    'padding:0',
-                    'box-sizing:border-box',
-                    'font-size:14px',
-                    'font-weight:700',
-                    'line-height:1.35',
-                    'white-space:normal',
-                    'word-break:normal',
-                    'overflow-wrap:anywhere',
-                    'overflow:visible',
-                    'text-overflow:clip',
-                    'flex:none'
-                ].join(';');
-
+                name.style.cssText = 'display:block;width:100%;max-width:100%;min-width:0;height:auto;margin:0;padding:0;box-sizing:border-box;font-size:14px;font-weight:700;line-height:1.35;white-space:normal;overflow-wrap:anywhere;overflow:visible;flex:none;';
                 const icon = document.createElement('i');
                 icon.className = 'fas fa-chevron-right';
                 icon.setAttribute('aria-hidden', 'true');
-                icon.style.cssText = [
-                    'position:absolute',
-                    'right:16px',
-                    'top:50%',
-                    'transform:translateY(-50%)',
-                    'font-size:13px'
-                ].join(';');
-
+                icon.style.cssText = 'position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:13px;';
                 row.append(code, name, icon);
                 row.addEventListener('click', () => this.navigateTo('hub-courses'));
                 container.appendChild(row);
             });
         } catch (error) {
             console.error('Dashboard courses error:', error);
-            container.innerHTML = '<div class="course-row"><span class="course-code code-blue">—</span><strong>Unable to load units</strong><i class="fas fa-exclamation-circle" aria-hidden="true"></i></div>';
+            this.metrics.courses = 0;
+            document.querySelectorAll('#dashboard-active-courses').forEach(el => { el.textContent = '—'; });
+            if (this.elements?.snapshotActiveCourses) this.elements.snapshotActiveCourses.textContent = '—';
+            container.innerHTML = '<div class="course-row"><span class="course-code code-blue">!</span><strong>Unable to load registered units. Refresh or check your access.</strong></div>';
         }
     }
 
-    // ============================================================
     // 📅 REDESIGNED DASHBOARD EVENTS
     // ============================================================
 
