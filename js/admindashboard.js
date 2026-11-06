@@ -8434,7 +8434,7 @@ window.publishApprovedAssessment = async function(examId) {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
         sidebar.classList.toggle('open');
-        overlay.classList.toggle('show');
+        overlay.classList.toggle('active');
     };
 
  window.switchTab = function(tab) {
@@ -8539,11 +8539,11 @@ window.publishApprovedAssessment = async function(examId) {
     renderFilters();
 
     // Close sidebar on mobile
-    if (window.innerWidth <= 768) {
+    if (window.innerWidth <= 1000) {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
         if (sidebar) sidebar.classList.remove('open');
-        if (overlay) overlay.classList.remove('show');
+        if (overlay) overlay.classList.remove('active');
     }
 };
     // ============================================
