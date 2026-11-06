@@ -10569,6 +10569,7 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
 (function initNchsmCardLivePreviews() {
     const peers = new Map(), channels = new Map(), pendingIce = new Map(), timers = new Map(), previewTimers = new Map();
     const streams = new Map(), activeCards = new Map();
+    const offersInProgress = new Set();
     const prefix = 'nchsm-proctor-live';
     const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -10663,6 +10664,14 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
 
         channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
             if (!payload || String(payload.studentId) !== String(studentId) || String(payload.examId) !== String(examId) || payload.viewerId !== viewerId || !payload.offer) return;
+            // A student may answer repeated viewer-request retries with the same
+            // offer. Never replace a healthy/in-progress peer for a duplicate offer.
+            if (offersInProgress.has(key)) return;
+            const currentPeer = peers.get(key);
+            if (currentPeer && currentPeer.remoteDescription &&
+                !['failed', 'closed'].includes(currentPeer.connectionState)) return;
+
+            offersInProgress.add(key);
             try {
                 const old = peers.get(key);
                 if (old) { try { old.close(); } catch (_) {} }
@@ -10681,7 +10690,10 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                     const targetCard = activeCards.get(key) || card;
                     const targetVideo = targetCard?.querySelector('.nchsm-card-live-video');
                     if (!targetCard?.isConnected || !targetVideo) return;
-                    targetVideo.srcObject = stream;
+                    // ontrack can fire more than once (for example, audio and
+                    // video tracks). Reassigning the same MediaStream restarts
+                    // media loading and interrupts Chrome's pending play() call.
+                    if (targetVideo.srcObject !== stream) targetVideo.srcObject = stream;
                     targetVideo.style.display = 'block';
                     const timeout = previewTimers.get(key);
                     if (timeout) clearTimeout(timeout);
@@ -10690,7 +10702,21 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                     if (targetPlaceholder) targetPlaceholder.style.display = 'none';
                     const badge = targetCard.querySelector('.overlay-badge.camera-off');
                     if (badge) { badge.className = 'overlay-badge camera-on'; badge.textContent = '🟢 Live'; }
-                    try { await targetVideo.play(); } catch (error) { console.warn('Card preview autoplay blocked:', error); }
+                    // Keep only one play request pending per video element.
+                    if (targetVideo.paused && targetVideo.dataset.nchsmPlayPending !== 'true') {
+                        targetVideo.dataset.nchsmPlayPending = 'true';
+                        try {
+                            await targetVideo.play();
+                        } catch (error) {
+                            // AbortError is expected if the browser tears down media
+                            // during navigation; report only actionable playback errors.
+                            if (error?.name !== 'AbortError') {
+                                console.warn('Card preview playback failed:', error);
+                            }
+                        } finally {
+                            delete targetVideo.dataset.nchsmPlayPending;
+                        }
+                    }
                 };
                 pc.onicecandidate = event => {
                     if (!event.candidate || channels.get(key) !== channel) return;
@@ -10714,7 +10740,11 @@ window.addEventListener('beforeunload', () => nchsmCloseAdminWebRTC(false));
                 await channel.send({ type: 'broadcast', event: 'answer',
                     payload: { studentId: String(studentId), examId: String(examId), viewerId: viewerId, answer: pc.localDescription }
                 });
-            } catch (error) { console.warn('Card live preview handshake failed:', error); }
+            } catch (error) {
+                console.warn('Card live preview handshake failed:', error);
+            } finally {
+                offersInProgress.delete(key);
+            }
         }).on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
             if (!payload || payload.viewerId !== viewerId || !payload.candidate) return;
             const pc = peers.get(key);
