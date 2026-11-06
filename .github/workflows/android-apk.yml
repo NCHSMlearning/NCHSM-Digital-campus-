@@ -93,7 +93,27 @@ jobs:
           </resources>
           EOF
           test -s "$RES/drawable/ic_launcher_foreground.png"
-          echo "Official NCHSM logo applied."
+          echo "Official NCHSM logo generated."
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          xml = manifest.read_text()
+          match = re.search(r"<application\\b[^>]*>", xml, re.S)
+          if not match:
+              raise SystemExit("Android manifest has no application element")
+          tag = match.group(0)
+          for attr, value in (
+              ("android:icon", "@mipmap/ic_launcher"),
+              ("android:roundIcon", "@mipmap/ic_launcher_round"),
+          ):
+              pattern = rf'{attr}="[^"]*"'
+              replacement = f'{attr}="{value}"'
+              tag = re.sub(pattern, replacement, tag) if re.search(pattern, tag) else tag[:-1] + f' {replacement}>'
+          xml = xml[:match.start()] + tag + xml[match.end():]
+          manifest.write_text(xml)
+          print("Android manifest explicitly points to NCHSM launcher icons.")
+          PY
 
       - name: Set build version
         run: |
