@@ -1695,10 +1695,12 @@ body {
     background: white;
     border-radius: 14px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: box-shadow 0.2s ease, background-color 0.2s ease;
     cursor: default;
-    animation: slideUp 0.4s ease forwards;
-    opacity: 0;
+    /* Rows must never depend on an animation to become visible. */
+    animation: none;
+    opacity: 1;
+    visibility: visible;
 }
 
 .main-content table tbody tr:hover {
@@ -2007,9 +2009,11 @@ body {
     background: white !important;
     border-radius: 16px !important;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04) !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    animation: slideUp 0.4s ease forwards;
-    opacity: 0;
+    transition: box-shadow 0.2s ease, background-color 0.2s ease !important;
+    /* Do not hide rows while waiting for slideUp animation. */
+    animation: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
     border-bottom: none !important;
 }
 
@@ -2265,4 +2269,45 @@ body {
         padding: 3px 10px !important;
         font-size: 0.55rem !important;
     }
+}
+
+
+/* ============================================================
+   GLOBAL MOBILE TABLE SAFETY
+   All admin modules share this stylesheet. Keep table content
+   visible and let wide tables scroll inside their own containers.
+   ============================================================ */
+.main-content table tbody,
+.main-content table tbody tr,
+.main-content table tbody td{
+  visibility:visible!important;
+}
+.main-content table tbody tr{
+  opacity:1!important;
+  animation:none!important;
+  transform:none;
+}
+.main-content .table-wrap,
+.main-content .attendance-table-wrap,
+.main-content .table-container,
+.main-content [style*="overflow-x: auto"],
+.main-content [style*="overflow-x:auto"]{
+  max-width:100%;
+  -webkit-overflow-scrolling:touch;
+}
+@media(max-width:768px){
+  .main-content table{
+    max-width:none;
+  }
+  .main-content table tbody tr:hover{
+    transform:none!important;
+  }
+  .main-content .table-wrap,
+  .main-content .attendance-table-wrap,
+  .main-content .table-container,
+  .main-content [style*="overflow-x: auto"],
+  .main-content [style*="overflow-x:auto"]{
+    overflow-x:auto!important;
+    overflow-y:visible;
+  }
 }
