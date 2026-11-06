@@ -1,12 +1,12 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.nchsm.secureexam',
-  appName: 'NCHSM Secure Exam',
-  // The Android workflow stages the site's complete web files into ./www.
-  // Capacitor requires webDir to point to an existing web asset directory.
+  appId: 'ke.ac.nchsm.digitalcampus',
+  appName: 'NCHSM Digital Campus',
+  // Keep a valid local web directory for Capacitor sync; launch the live login page.
   webDir: 'www',
   server: {
+    url: 'https://nchsm.co.ke/login.html',
     androidScheme: 'https',
     cleartext: true,
     allowNavigation: ['*'],
