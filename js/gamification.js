@@ -930,10 +930,14 @@
                 };
 
                 let html = '';
+                let previousPoints = null;
+                let previousRank = 0;
                 data.forEach((item, index) => {
                     const current = String(item.user_id) === String(this.userId);
                     const points = Number(item.total_points) || 0;
-                    const rank = index > 0 && points === (Number(data[index - 1].total_points) || 0) ? index : index + 1;
+                    const rank = index > 0 && points === previousPoints ? previousRank : index + 1;
+                    previousPoints = points;
+                    previousRank = rank;
                     html += renderItem(item, rank, current);
                 });
                 if (own && !data.some(item => String(item.user_id) === String(this.userId))) {
