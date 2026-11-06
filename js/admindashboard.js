@@ -10264,6 +10264,8 @@ let nchsmAdminWebRTCExam = null;
 let nchsmAdminViewerId = `admin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 let nchsmAdminViewerRetryTimers = [];
 let nchsmAdminOfferInProgress = false;
+let nchsmAdminNoOfferTimer = null;
+let nchsmAdminTrackReceived = false;
 
 function nchsmAdminChannelName(studentId, examId) {
     return `${NCHSM_ADMIN_WEBRTC_CONFIG.channelPrefix}:${examId}:${studentId}`;
@@ -10305,6 +10307,9 @@ function nchsmSetLiveStatus(text, cls) {
 function nchsmCloseAdminWebRTC(notifyStudent = true) {
     nchsmAdminViewerRetryTimers.forEach(timer => clearTimeout(timer));
     nchsmAdminViewerRetryTimers = [];
+    if (nchsmAdminNoOfferTimer) clearTimeout(nchsmAdminNoOfferTimer);
+    nchsmAdminNoOfferTimer = null;
+    nchsmAdminTrackReceived = false;
     if (notifyStudent && nchsmAdminWebRTCChannel) {
         try {
             nchsmAdminWebRTCChannel.send({
@@ -10423,6 +10428,16 @@ async function startNchsmAdminWebRTC(studentId, examId) {
                 }
             };
             retry();
+            nchsmAdminNoOfferTimer = setTimeout(() => {
+                if (nchsmAdminTrackReceived || nchsmAdminWebRTCStudent !== studentId ||
+                    nchsmAdminWebRTCExam !== examId) return;
+                nchsmSetLiveStatus('🟠 No camera response', 'status-pending');
+                const waiting = document.getElementById('cameraLoading');
+                if (waiting) {
+                    waiting.style.display = 'flex';
+                    waiting.innerHTML = '<div style="text-align:center;"><i class="fas fa-video-slash fa-2x"></i><p style="margin-top:12px;">No video offer received from this student. Check that the exam is still open and camera permission is enabled, then select Refresh.</p></div>';
+                }
+            }, 18000);
         });
 }
 async function nchsmHandleStudentOffer(payload) {
@@ -10459,6 +10474,9 @@ async function nchsmHandleStudentOffer(payload) {
                 }
             }
             if (nchsmAdminWebRTCPeer !== pc) return;
+            nchsmAdminTrackReceived = true;
+            if (nchsmAdminNoOfferTimer) clearTimeout(nchsmAdminNoOfferTimer);
+            nchsmAdminNoOfferTimer = null;
 
             if (liveVideo.srcObject !== stream) liveVideo.srcObject = stream;
             liveVideo.muted = true;
