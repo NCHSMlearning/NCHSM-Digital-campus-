@@ -118,8 +118,8 @@ jobs:
               raise SystemExit("Android manifest has no application element")
 
           android_ns = "{http://schemas.android.com/apk/res/android}"
-          app.set(android_ns + "icon", "@drawable-nodpi/ic_launcher")
-          app.set(android_ns + "roundIcon", "@drawable-nodpi/ic_launcher")
+          app.set(android_ns + "icon", "@drawable/ic_launcher")
+          app.set(android_ns + "roundIcon", "@drawable/ic_launcher")
           tree.write(manifest, encoding="utf-8", xml_declaration=True)
 
           # Validate that the serialized manifest remains well-formed and declares
@@ -129,6 +129,50 @@ jobs:
               raise SystemExit("Android namespace declaration missing after manifest update")
           ET.parse(manifest)
           print("NCHSM high-resolution launcher icon set; Android manifest namespace verified.")
+          PY
+
+      - name: Apply NCHSM branded Android launch screen
+        run: |
+          RES="android/app/src/main/res"
+          # Android 12+ displays this drawable during the native launch animation.
+          mkdir -p "$RES/drawable-nodpi"
+          convert -size 432x432 xc:none \
+            \( images/Logo_NCHSM.png -resize 300x300 \) \
+            -gravity center -composite "$RES/drawable-nodpi/nchsm_splash.png"
+          test -s "$RES/drawable-nodpi/nchsm_splash.png"
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          res = Path("android/app/src/main/res")
+          styles = list((res / "values").glob("styles.xml")) + list((res / "values").glob("themes.xml"))
+          ns = "http://schemas.android.com/apk/res/android"
+          ET.register_namespace("android", ns)
+          changed = False
+          for path in styles:
+              tree = ET.parse(path)
+              root = tree.getroot()
+              for style in root.findall("style"):
+                  name = style.get("name", "")
+                  if "Launch" not in name and "Splash" not in name:
+                      continue
+                  attrs = {
+                      "windowSplashScreenBackground": "#0A3D62",
+                      "windowSplashScreenAnimatedIcon": "@drawable/nchsm_splash",
+                      "windowSplashScreenIconBackgroundColor": "#0A3D62",
+                  }
+                  for attr, value in attrs.items():
+                      item = style.find(f"item[@name='{attr}']")
+                      if item is None:
+                          item = ET.SubElement(style, "item", {"name": attr})
+                      item.text = value
+                  changed = True
+              if changed:
+                  tree.write(path, encoding="utf-8", xml_declaration=True)
+          if not changed:
+              # Keep a clear diagnostic rather than silently shipping the default robot.
+              raise SystemExit("Could not find Capacitor launch/splash style to brand")
+          print("NCHSM splash artwork applied to Android launch theme.")
           PY
 
       - name: Set build version
