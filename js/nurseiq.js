@@ -846,15 +846,14 @@ async saveProgressToDatabase() {
         try {
             const { data: profile } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select('login_count, gamification_points, attendance_points')
+                .select('login_count, gamification_points')
                 .eq('user_id', this.userId)
                 .single();
             
             if (profile) {
                 const totalNurseIQPoints = practicePoints + examReviewPoints;
-                const totalPoints = (profile.login_count || 0) * 10 + 
-                                   (profile.gamification_points || 0) + 
-                                   (profile.attendance_points || 0) + 
+                const totalPoints = (profile.login_count || 0) * 10 +
+                                   (profile.gamification_points || 0) +
                                    totalNurseIQPoints;
 
                 const { error: profileError } = await supabase
