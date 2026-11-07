@@ -139,7 +139,7 @@
       }).select().single();
       if(error)throw error;
       const safeName=file.name.replace(/[^\w.\-]+/g,'_').slice(-150);
-      const path=state.staffId+'/'+now.getFullYear()+'/'+row.id+'/'+Date.now()+'_'+safeName;
+      const path=identity.authUser+'/'+now.getFullYear()+'/'+row.id+'/'+Date.now()+'_'+safeName;
       const upload=await client.storage.from(BUCKET).upload(path,file,{upsert:false,contentType:file.type||'application/octet-stream'});
       if(upload.error){await client.from(TABLE).delete().eq('id',row.id).eq('lecturer_user_id',identity.authUser);throw upload.error;}
       const meta=await client.from(ATTACHMENTS).insert({submission_id:row.id,uploaded_by:identity.authUser,file_name:file.name,storage_path:path,mime_type:file.type||null,file_size:file.size});
@@ -176,11 +176,13 @@
       if(!path){
         const row=await identity.client.from(TABLE).select('created_at,submitted_at').eq('id',id).eq('lecturer_user_id',identity.authUser).maybeSingle();
         const year=new Date(row.data?.created_at||row.data?.submitted_at||Date.now()).getFullYear();
-        const prefix=state.staffId+'/'+year+'/'+id;
-        const listed=await identity.client.storage.from(BUCKET).list(prefix,{limit:30,sortBy:{column:'name',order:'desc'}});
-        if(listed.error)throw listed.error;
-        const item=(listed.data||[]).find(file=>file.name);
-        if(item)path=prefix+'/'+item.name;
+        const prefixes=[identity.authUser+'/'+year+'/'+id,state.staffId+'/'+year+'/'+id].filter(Boolean);
+        for(const prefix of prefixes){
+          const listed=await identity.client.storage.from(BUCKET).list(prefix,{limit:30,sortBy:{column:'name',order:'desc'}});
+          if(listed.error)throw listed.error;
+          const item=(listed.data||[]).find(file=>file.name);
+          if(item){path=prefix+'/'+item.name;break;}
+        }
       }
       if(!path)throw new Error('No uploaded file was found for this submission.');
       const signed=await identity.client.storage.from(BUCKET).createSignedUrl(path,900);
