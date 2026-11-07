@@ -9690,12 +9690,27 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
     }
 
     document.addEventListener('click',function(e){
-        const link = e.target.closest('a[data-tab]');
+        const link = e.target.closest('#sidebar a[data-tab]');
         if(!link) return;
         const tabId = link.getAttribute('data-tab');
         if(!TAB_IDS.includes(tabId)) return;
         e.preventDefault();
         e.stopPropagation();
+
+        // This document-level capture handler stops propagation before the
+        // sidebar's own listener can run. Close the mobile drawer HERE.
+        const sidebar = document.getElementById('sidebar');
+        const toggle = document.getElementById('mobileNavToggle');
+        if (sidebar && window.matchMedia('(max-width: 900px)').matches) {
+            sidebar.classList.remove('mobile-open','active','open');
+            if (toggle) {
+                toggle.classList.remove('active');
+                toggle.setAttribute('aria-expanded','false');
+            }
+            document.body.classList.remove('mobile-sidebar-open');
+            document.body.style.overflow = '';
+        }
+
         showTabClean(tabId);
     }, true);
 
