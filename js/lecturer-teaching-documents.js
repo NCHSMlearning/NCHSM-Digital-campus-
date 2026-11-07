@@ -42,14 +42,23 @@
     const name=String(p.full_name||p.name||state.user?.user_metadata?.full_name||'').trim();
     if(!name) throw new Error('Your lecturer profile name is unavailable.');
     const staffCandidate=String(p.staff_id||p.staffId||'').trim();
-    let assignmentQuery=client.from('lecturer_subject_assignments')
-      .select('id,subject_name,subject_code,block,program,academic_year,lecturer_id,lecturer_name');
-    assignmentQuery=staffCandidate
-      ? assignmentQuery.eq('lecturer_id',staffCandidate)
-      : assignmentQuery.ilike('lecturer_name',name);
-    const {data,error}=await assignmentQuery;
-    if(error) throw error;
-    state.units=(data||[]).filter(row=>row.subject_name||row.subject_code);
+    const assignmentFields='id,subject_name,subject_code,block,program,academic_year,lecturer_id,lecturer_name';
+    let assignmentData=[];
+    if(staffCandidate){
+      const byId=await client.from('lecturer_subject_assignments').select(assignmentFields).eq('lecturer_id',staffCandidate);
+      if(byId.error)throw byId.error;
+      assignmentData=byId.data||[];
+    }
+    if(!assignmentData.length){
+      // Match straight and curly apostrophes consistently, then verify the normalized full name.
+      const namePattern=name.replace(/[’‘']/g,'_');
+      const byName=await client.from('lecturer_subject_assignments').select(assignmentFields).ilike('lecturer_name',namePattern);
+      if(byName.error)throw byName.error;
+      const normalize=value=>String(value||'').normalize('NFKD').toLowerCase().replace(/[’‘']/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+      const target=normalize(name);
+      assignmentData=(byName.data||[]).filter(row=>normalize(row.lecturer_name)===target);
+    }
+    state.units=assignmentData.filter(row=>row.subject_name||row.subject_code);
     const staffIds=[...new Set(state.units.map(row=>String(row.lecturer_id||'').trim()).filter(Boolean))];
     state.staffId=String(staffCandidate||staffIds[0]||'').trim();
     if(!state.units.length) throw new Error('No units are currently assigned to your lecturer profile. Contact the HOD if this is incorrect.');
