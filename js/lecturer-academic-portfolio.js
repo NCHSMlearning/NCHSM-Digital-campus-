@@ -368,20 +368,29 @@ const AcademicPortfolio = {
     },
     
     bindSubTabs() {
-        document.querySelectorAll('.ap-tab-btn').forEach(btn => {
-            btn.removeEventListener('click', this._handleSubTabClick);
-            btn.addEventListener('click', this._handleSubTabClick.bind(this));
-        });
-    },
-    
-    _handleSubTabClick(e) {
-        const btn = e.currentTarget;
-        const tab = btn.dataset.apTab;
-        if (tab) {
+        const container = document.getElementById('ap-content');
+        if (!container || this._apDelegatedClickBound) return;
+
+        // Use one delegated listener on the persistent mount. This covers the
+        // modern navigation, quick-action cards and buttons rendered later.
+        container.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-ap-tab]');
+            if (!button || !container.contains(button)) return;
+            const tab = button.dataset.apTab;
+            if (!tab) return;
+            event.preventDefault();
+            event.stopPropagation();
             this.switchTab(tab);
-        }
+        });
+
+        this._apDelegatedClickBound = true;
     },
-    
+
+    _handleSubTabClick(e) {
+        const tab = e.currentTarget?.dataset?.apTab;
+        if (tab) this.switchTab(tab);
+    },
+
     async getPortfolioStats(supabase, assignments) {
         const stats = {
             totalCourses: assignments?.length || 0,
