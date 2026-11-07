@@ -103,3 +103,47 @@
  #profile-content .lp-doc-badges{align-items:flex-end}
  #profile-content .lp-doc-actions{gap:10px}
 }
+
+
+/* Better profile navigation, search and inline secure viewer */
+#profile-content .lp-profile-tools{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:15px 0 2px}
+#profile-content .lp-profile-trust{display:flex;align-items:center;gap:10px;min-width:220px}
+#profile-content .lp-profile-trust>i{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:#eaf8f0;color:#168451}
+#profile-content .lp-profile-trust strong,#profile-content .lp-profile-trust small{display:block}
+#profile-content .lp-profile-trust strong{font-size:11px;color:#29344b}
+#profile-content .lp-profile-trust small{font-size:10px;color:#7d8798;margin-top:3px}
+#profile-content .lp-doc-search-wrap{display:flex;align-items:center;gap:8px;min-width:min(100%,300px);padding:0 11px;border:1px solid #e1e5ee;border-radius:11px;background:#fff}
+#profile-content .lp-doc-search-wrap>i{color:#8a91a3;font-size:12px}
+#profile-content .lp-doc-search-wrap input{flex:1;min-width:0;border:0!important;outline:0!important;box-shadow:none!important;padding:10px 0!important;background:transparent!important;font-size:11px!important}
+#profile-content .lp-doc-search-wrap>span{white-space:nowrap;font-size:9px;color:#7c8496}
+#profile-content [data-doc-card][hidden]{display:none!important}
+#profile-content .lp-preview-modal{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:20px}
+#profile-content .lp-preview-modal.is-open{display:flex}
+#profile-content .lp-preview-backdrop{position:absolute;inset:0;background:rgba(12,16,30,.76);backdrop-filter:blur(5px)}
+#profile-content .lp-preview-panel{position:relative;z-index:1;width:min(1100px,96vw);height:min(850px,92vh);display:flex;flex-direction:column;overflow:hidden;border-radius:18px;background:#fff;box-shadow:0 25px 90px #0005}
+#profile-content .lp-preview-panel>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e8eaf0;background:#fff}
+#profile-content .lp-preview-panel>header span{font-size:9px;font-weight:850;letter-spacing:.14em;color:#725da8}
+#profile-content .lp-preview-panel>header h3{font-size:14px;color:#242a3e;margin:4px 0 0;overflow-wrap:anywhere}
+#profile-content .lp-preview-actions{display:flex;align-items:center;gap:10px;flex:none}
+#profile-content .lp-preview-close{width:38px;height:38px;border:0;border-radius:10px;background:#f0f1f5;color:#4b5367;cursor:pointer}
+#profile-content .lp-preview-body{flex:1;min-height:0;background:#eef0f5;display:flex;align-items:center;justify-content:center}
+#profile-content .lp-preview-frame{width:100%;height:100%;border:0;background:#fff}
+#profile-content .lp-preview-image-wrap{width:100%;height:100%;overflow:auto;display:flex;align-items:center;justify-content:center;padding:22px}
+#profile-content .lp-preview-image-wrap img{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 8px 30px #1112}
+#profile-content .lp-preview-unavailable{text-align:center;max-width:420px;padding:30px}
+#profile-content .lp-preview-unavailable>i{font-size:42px;color:#725da8}
+#profile-content .lp-preview-unavailable h4{font-size:16px;color:#252b40;margin:14px 0 7px}
+#profile-content .lp-preview-unavailable p{font-size:12px;line-height:1.6;color:#737d91;margin:0 0 18px}
+#profile-content .lp-preview-loading{font-size:12px;color:#667085}
+body.lp-preview-open{overflow:hidden}
+@media(max-width:640px){
+ #profile-content .lp-profile-tools{align-items:stretch}
+ #profile-content .lp-profile-trust{min-width:0}
+ #profile-content .lp-doc-search-wrap{min-width:0;width:100%}
+ #profile-content .lp-preview-modal{padding:0}
+ #profile-content .lp-preview-panel{width:100%;height:100%;max-height:100%;border-radius:0}
+ #profile-content .lp-preview-panel>header{padding:11px}
+ #profile-content .lp-preview-panel>header h3{max-width:48vw;font-size:11px}
+ #profile-content .lp-preview-actions .lp-btn{min-height:34px;padding:7px 9px;font-size:10px}
+ #profile-content .lp-preview-close{width:34px;height:34px}
+}
