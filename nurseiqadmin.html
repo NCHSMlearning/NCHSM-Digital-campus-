@@ -338,7 +338,7 @@ if (window.location.pathname.endsWith('.html')) {
     function updateTVETIQCounts() {
         const tvetStudents = allStudents.filter(s => getStudentProgram(s) === 'tvet');
         const tvetQuestions = allQuestions.filter(q => {
-            const course = allCourses.find(c => c.id === q.course_id);
+            const course = allCourses.find(c => c.id === q.unit_catalog_id);
             return course && course.course_name && 
                    (course.course_name.toLowerCase().includes('tvet') || 
                     course.course_name.toLowerCase().includes('cdacc') ||
@@ -378,7 +378,7 @@ if (window.location.pathname.endsWith('.html')) {
     async function renderTVETIQDashboard() {
         const tvetStudents = allStudents.filter(s => getStudentProgram(s) === 'tvet');
         const tvetQuestions = allQuestions.filter(q => {
-            const course = allCourses.find(c => c.id === q.course_id);
+            const course = allCourses.find(c => c.id === q.unit_catalog_id);
             return course && course.course_name && 
                    (course.course_name.toLowerCase().includes('tvet') || 
                     course.course_name.toLowerCase().includes('cdacc') ||
@@ -492,7 +492,7 @@ if (window.location.pathname.endsWith('.html')) {
     // ============================================
     async function renderTVETIQQuestions() {
         const tvetQuestions = allQuestions.filter(q => {
-            const course = allCourses.find(c => c.id === q.course_id);
+            const course = allCourses.find(c => c.id === q.unit_catalog_id);
             return course && course.course_name && 
                    (course.course_name.toLowerCase().includes('tvet') || 
                     course.course_name.toLowerCase().includes('cdacc') ||
@@ -531,13 +531,33 @@ if (window.location.pathname.endsWith('.html')) {
     // LOAD ALL DATA
     // ============================================
     async function loadAllData() {
-        const { data: q } = await sb.from('medical_assessments').select('*, courses(course_name)'); 
-        allQuestions = q || [];
-        const { data: s } = await sb.from('consolidated_user_profiles_table').select('*'); 
+        const { data: q, error: questionsError } = await sb.from('medical_assessments')
+            .select('*, unit:units_catalog!medical_assessments_unit_catalog_id_fkey(id, unit_code, unit_name, program, block, status)');
+        if (questionsError) throw questionsError;
+        allQuestions = (q || []).map(question => ({
+            ...question,
+            // Keep the existing presentation layer stable while the source is units_catalog.
+            courses: question.unit ? {
+                id: question.unit.id,
+                course_name: question.unit.unit_name,
+                unit_code: question.unit.unit_code,
+                target_program: question.unit.program,
+                block: question.unit.block
+            } : null
+        }));
+        const { data: s, error: studentsError } = await sb.from('consolidated_user_profiles_table').select('*');
+        if (studentsError) throw studentsError;
         allStudents = s || [];
-        const { data: c } = await sb.from('courses').select('*'); 
-        allCourses = c || [];
-        const { data: prog } = await sb.from('user_progress').select('*'); 
+        const { data: units, error: unitsError } = await sb.from('units_catalog')
+            .select('id, unit_code, unit_name, program, block, status').order('program').order('block').order('unit_name');
+        if (unitsError) throw unitsError;
+        allCourses = (units || []).map(unit => ({
+            ...unit,
+            course_name: unit.unit_name,
+            target_program: unit.program
+        }));
+        const { data: prog, error: progressError } = await sb.from('user_progress').select('*');
+        if (progressError) throw progressError;
         userProgress = {};
         if (prog) prog.forEach(p => { userProgress[p.user_id] = p.progress_data; });
         document.getElementById('stat-questions').innerText = allQuestions.length;
@@ -779,7 +799,7 @@ if (window.location.pathname.endsWith('.html')) {
         const status = document.getElementById('filter-status')?.value;
         const search = document.getElementById('search-questions')?.value.toLowerCase() || '';
         let filtered = [...allQuestions];
-        if (courseId) filtered = filtered.filter(q => q.course_id === courseId);
+        if (courseId) filtered = filtered.filter(q => q.unit_catalog_id === courseId);
         if (status) filtered = filtered.filter(q => q.status === status);
         if (search) filtered = filtered.filter(q => q.question_text?.toLowerCase().includes(search));
         const isAdmin = currentAdmin.role === 'admin' || currentAdmin.role === 'superadmin';
@@ -799,11 +819,11 @@ if (window.location.pathname.endsWith('.html')) {
     window.openEditModal = async (questionId) => {
         const q = allQuestions.find(q => q.id === questionId);
         const modal = document.createElement('div'); modal.className = 'modal';
-        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct Answer</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
+        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.unit_catalog_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct Answer</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
         document.body.appendChild(modal);
         document.getElementById('edit-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const updates = { course_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString() };
+            const updates = { unit_catalog_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString() };
             const { error } = await sb.from('medical_assessments').update(updates).eq('id', questionId);
             if (error) alert('Error: ' + error.message);
             else { alert('Updated!'); modal.remove(); await loadAllData(); filterQuestions(); showToast('Question updated!', 'success'); }
@@ -819,7 +839,7 @@ if (window.location.pathname.endsWith('.html')) {
         document.getElementById('add-question-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const isAdmin = currentAdmin.role === 'admin' || currentAdmin.role === 'superadmin';
-            const payload = { question_text: document.getElementById('q-text').value, option_a: document.getElementById('q-opt-a').value, option_b: document.getElementById('q-opt-b').value, option_c: document.getElementById('q-opt-c').value, option_d: document.getElementById('q-opt-d').value, correct_answer: document.getElementById('q-correct').value, explanation: document.getElementById('q-explanation').value, course_id: document.getElementById('q-course').value, difficulty: document.getElementById('q-difficulty').value, question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString(), status: isAdmin ? 'approved' : 'pending', created_by: currentAdmin.id };
+            const payload = { question_text: document.getElementById('q-text').value, option_a: document.getElementById('q-opt-a').value, option_b: document.getElementById('q-opt-b').value, option_c: document.getElementById('q-opt-c').value, option_d: document.getElementById('q-opt-d').value, correct_answer: document.getElementById('q-correct').value, explanation: document.getElementById('q-explanation').value, unit_catalog_id: document.getElementById('q-course').value, unit_name: allCourses.find(u => String(u.id) === String(document.getElementById('q-course').value))?.unit_name || null, unit_code: allCourses.find(u => String(u.id) === String(document.getElementById('q-course').value))?.unit_code || null, difficulty: document.getElementById('q-difficulty').value, question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString(), status: isAdmin ? 'approved' : 'pending', created_by: currentAdmin.id };
             const { error } = await sb.from('medical_assessments').insert([payload]);
             const resultDiv = document.getElementById('add-result');
             if (error) resultDiv.innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
@@ -879,13 +899,13 @@ Answer is A: Explanation text here</pre>
                         </h5>
                         <p style="color: #64748b; font-size: 13px; margin-bottom: 8px;">Paste SQL INSERT statements:</p>
                         <pre style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 12px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 150px; overflow-y: auto;">
-INSERT INTO medical_assessments (id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, course_id, difficulty, question_type, curriculum, is_active, is_published, created_at, status)
+INSERT INTO medical_assessments (id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, unit_catalog_id, difficulty, question_type, curriculum, is_active, is_published, created_at, status)
 VALUES 
 (gen_random_uuid(), 'Question text?', 'Option A', 'Option B', 'Option C', 'Option D', 'Option B', 'Explanation here', 'course-uuid', 'medium', 'multiple_choice', 'KRCHN', true, true, NOW(), 'approved');</pre>
                         <ul style="font-size: 12px; color: #64748b; margin-top: 8px; list-style: none; padding-left: 0;">
                             <li>✅ Use <strong>gen_random_uuid()</strong> for IDs</li>
                             <li>✅ Separate INSERT statements with semicolons</li>
-                            <li>✅ Ensure <strong>course_id</strong> matches selected course</li>
+                            <li>✅ Ensure <strong>unit_catalog_id</strong> matches selected course</li>
                         </ul>
                     </div>
                 </div>
@@ -1213,7 +1233,7 @@ window.confirmBulkImport = async () => {
                 option_d: q.options.D || '', 
                 correct_answer: q.correctText || '', 
                 explanation: (q.explanation || '').substring(0, 1000), 
-                course_id: courseId, 
+                unit_catalog_id: courseId, unit_name: allCourses.find(u => String(u.id) === String(courseId))?.unit_name || null, unit_code: allCourses.find(u => String(u.id) === String(courseId))?.unit_code || null, 
                 difficulty: 'medium', 
                 question_type: 'multiple_choice', 
                 curriculum: 'KRCHN', 
@@ -1297,14 +1317,10 @@ window.confirmBulkImport = async () => {
     // ============================================
     async function renderCourses() {
         await loadAllData();
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Course Manager</h2><button onclick="addNewCourse()" class="btn btn-success btn-sm">+ Add Course</button></div><div id="courses-list" class="courses-list"></div></div>`;
+        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Official Unit Catalogue</h2><span class="badge badge-success">Read only</span></div><p style="color:#64748b;margin:0 0 16px;">NurseIQ reads unit names, codes, programmes and blocks directly from units_catalog. Manage catalogue records in the institution's Unit Management module.</p><div id="courses-list" class="courses-list"></div></div>`;
         const container = document.getElementById('courses-list');
-        if(container) container.innerHTML = allCourses.map(c => `<div class="course-item"><div class="course-info"><h3>${c.course_name}</h3><div class="badge ${c.status === 'Active' ? 'badge-success' : 'badge-danger'}">${c.status || 'Active'}</div><div class="course-unit">Unit: ${c.unit_code || 'N/A'}</div></div><div class="course-actions"><button onclick="editCourse('${c.id}', '${c.course_name}', '${c.unit_code || ''}')" class="btn btn-warning btn-sm">Edit</button> <button onclick="toggleCourseStatus('${c.id}', '${c.status || 'Active'}')" class="btn btn-info btn-sm">Toggle</button></div></div>`).join('');
+        if(container) container.innerHTML = allCourses.map(unit => `<div class="course-item"><div class="course-info"><h3>${escapeHtml(unit.unit_name || unit.course_name)}</h3><div class="badge ${String(unit.status).toLowerCase() === 'active' ? 'badge-success' : 'badge-danger'}">${escapeHtml(unit.status || 'active')}</div><div class="course-unit">${escapeHtml(unit.unit_code || 'No code')} · ${escapeHtml(unit.program || '')} · ${escapeHtml(unit.block || '')}</div></div></div>`).join('');
     }
-
-    window.addNewCourse = async () => { const name = prompt('Course name:'); if(name) { const unitCode = prompt('Unit code:'); await sb.from('courses').insert([{ course_name: name, unit_code: unitCode || '', status: 'Active', created_at: new Date().toISOString() }]); await loadAllData(); renderCourses(); showToast('Course added', 'success'); } };
-    window.editCourse = async (id, name, unit) => { const newName = prompt('New name:', name); if(newName) { const newUnit = prompt('Unit code:', unit); await sb.from('courses').update({ course_name: newName, unit_code: newUnit || '' }).eq('id', id); await loadAllData(); renderCourses(); showToast('Updated', 'success'); } };
-    window.toggleCourseStatus = async (id, status) => { const newStatus = status === 'Active' ? 'Inactive' : 'Active'; await sb.from('courses').update({ status: newStatus }).eq('id', id); await loadAllData(); renderCourses(); showToast(`${newStatus}`, 'success'); };
 
     // ============================================
     // STUDENTS
@@ -1557,11 +1573,11 @@ window.confirmBulkImport = async () => {
             return;
         }
         const modal = document.createElement('div'); modal.className = 'modal';
-        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct Answer</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save Changes</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
+        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.unit_catalog_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct Answer</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save Changes</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
         document.body.appendChild(modal);
         document.getElementById('edit-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const updates = { course_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString(), status: 'pending' };
+            const updates = { unit_catalog_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString(), status: 'pending' };
             const { error } = await sb.from('medical_assessments').update(updates).eq('id', questionId);
             if (error) alert('Error: ' + error.message);
             else { alert('Question updated and sent for approval!'); modal.remove(); await loadAllData(); renderLecturerDashboard(); showToast('Question updated! Pending approval.', 'success'); }
