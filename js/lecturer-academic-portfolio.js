@@ -287,6 +287,9 @@ const AcademicPortfolio = {
             case 'reports':
                 this.loadReports();
                 break;
+            case 'records-submissions':
+                if (window.LecturerAcademicRecords?.open) window.LecturerAcademicRecords.open();
+                break;
             default:
                 this.loadDashboard();
         }
