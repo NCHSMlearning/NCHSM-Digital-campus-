@@ -117,7 +117,7 @@ async function sendEmailWithBrevo(to, subject, htmlContent) {
                     to: to,
                     subject: subject,
                     html: htmlContent,
-                    from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>'
+                    from: 'NCHSM Exam Office <noreply@nchsm.co.ke>'
                 })
             }
         );
@@ -159,7 +159,7 @@ async function sendEmailWithEdgeFunctionFallback(to, subject, htmlContent) {
                     to: to,
                     subject: subject,
                     html: htmlContent,
-                    from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>'
+                    from: 'NCHSM Exam Office <noreply@nchsm.co.ke>'
                 })
             }
         );
