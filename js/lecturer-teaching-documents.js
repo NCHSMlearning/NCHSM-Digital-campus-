@@ -220,7 +220,7 @@
     ['Course outlines','course_outline'],['Schemes of work','scheme_of_work'],
     ['Records of work','record_of_work'],['Examination papers','examination_question_paper'],
     ['Marking schemes','marking_scheme'],['Marks sheets and examination results','marks_analysis_report'],
-    ['CAT 1','cat_1'],['CAT 2','cat_2']
+    ['CAT','cat_1']
   ];
   const TVET_DOCUMENTS = [
     ...NURSING_DOCUMENTS,
