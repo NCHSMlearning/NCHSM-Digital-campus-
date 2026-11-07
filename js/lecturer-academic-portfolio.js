@@ -462,112 +462,101 @@ const AcademicPortfolio = {
     renderDashboardHTML(stats) {
         const completionPercent = this.calculateCompletion(stats);
         const academicYear = this.getCurrentAcademicYear();
-        
+        const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        const lecturerName = esc(window.currentLecturerProfile?.full_name || window.currentLecturerProfile?.name || window.currentUser?.full_name || 'Lecturer');
+        const recordsTotal = Number(stats.schemesCompleted || 0) + Number(stats.lessonPlans || 0) + Number(stats.teachingLogs || 0) + Number(stats.materials || 0);
+        const pending = Number(stats.pendingHOD || 0);
+        const approved = Number(stats.approved || 0);
+        const tab = (id, label, icon) => `<button type="button" class="ap-modern-tab" data-ap-tab="${id}"><i class="fas ${icon}"></i><span>${label}</span></button>`;
         return `
-            <div class="ap-dashboard">
-                <!-- Welcome Banner -->
-                <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 24px 30px; margin-bottom: 24px; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                    <div>
-                        <h3 style="margin: 0; font-size: 22px; font-weight: 700;">
-                            <i class="fas fa-folder-open"></i> Academic Portfolio Dashboard
-                        </h3>
-                        <p style="margin: 6px 0 0 0; opacity: 0.9; font-size: 14px;">
-                            Manage your teaching documentation for ${academicYear}
-                        </p>
-                    </div>
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 28px; font-weight: 800;">${completionPercent}%</div>
-                            <div style="font-size: 12px; opacity: 0.8;">Complete</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 28px; font-weight: 800;">${stats.pendingHOD}</div>
-                            <div style="font-size: 12px; opacity: 0.8;">Pending HOD</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Stats Grid -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                    <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #10b981;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="background: #d1fae5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-book" style="color: #10b981; font-size: 18px;"></i>
-                            </div>
-                            <div>
-                                <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.totalCourses}</div>
-                                <div style="font-size: 12px; color: #6b7280;">Courses</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #3b82f6;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="background: #dbeafe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-file-alt" style="color: #3b82f6; font-size: 18px;"></i>
-                            </div>
-                            <div>
-                                <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.schemesCompleted}</div>
-                                <div style="font-size: 12px; color: #6b7280;">Schemes</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #8b5cf6;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="background: #ede9fe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-chalkboard-teacher" style="color: #8b5cf6; font-size: 18px;"></i>
-                            </div>
-                            <div>
-                                <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.lessonPlans}</div>
-                                <div style="font-size: 12px; color: #6b7280;">Lesson Plans</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #f59e0b;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="background: #fef3c7; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-clock" style="color: #f59e0b; font-size: 18px;"></i>
-                            </div>
-                            <div>
-                                <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.pendingHOD}</div>
-                                <div style="font-size: 12px; color: #6b7280;">Pending HOD</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Quick Actions -->
-                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; margin-bottom: 24px;">
-                    <h4 style="margin: 0 0 16px 0; color: #0A3D62; font-size: 15px;">
-                        <i class="fas fa-bolt" style="color: #10b981;"></i> Quick Actions
-                    </h4>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                        <button onclick="AcademicPortfolio.switchTab('scheme-of-work')" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-plus"></i> New Scheme
-                        </button>
-                        <button onclick="AcademicPortfolio.switchTab('lesson-plans')" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-plus"></i> New Lesson Plan
-                        </button>
-                        <button onclick="AcademicPortfolio.switchTab('teaching-log')" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-pen"></i> Log Teaching
-                        </button>
-                        <button onclick="AcademicPortfolio.switchTab('materials')" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-upload"></i> Upload Material
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Recent Activity -->
-                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
-                    <h4 style="margin: 0 0 16px 0; color: #0A3D62; font-size: 15px;">
-                        <i class="fas fa-clock" style="color: #10b981;"></i> Recent Activity
-                    </h4>
-                    <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
-                        <i class="fas fa-info-circle" style="display: block; font-size: 24px; margin-bottom: 10px;"></i>
-                        No recent activity yet. Start building your Academic Portfolio!
-                    </div>
-                </div>
-            </div>
-        `;
+        <style id="ap-modern-dashboard-style">
+          #ap-content{color:#101b3b}
+          .ap-modern{max-width:1500px;margin:0 auto;padding:2px 0 28px;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+          .ap-modern-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:4px 0 22px}
+          .ap-modern-title{display:flex;align-items:center;gap:14px;min-width:0}
+          .ap-modern-folder{width:58px;height:58px;display:grid;place-items:center;border-radius:16px;background:#eef2ff;color:#273c91;font-size:28px;flex:0 0 auto}
+          .ap-modern-head h2{font-size:clamp(21px,2.3vw,30px);line-height:1.15;margin:0;color:#101b3b;font-weight:800;letter-spacing:-.6px}
+          .ap-modern-head p{margin:6px 0 0;color:#64748b;font-size:13px}
+          .ap-modern-context{display:flex;gap:9px;flex-wrap:wrap}
+          .ap-modern-chip{border:1px solid #dbe3f2;border-radius:11px;background:#fff;padding:10px 13px;color:#172554;font-size:12px;font-weight:700}
+          .ap-modern-tabs{display:flex;align-items:center;overflow-x:auto;gap:3px;padding:5px;margin-bottom:20px;background:#fff;border:1px solid #dce3f0;border-radius:13px;scrollbar-width:thin}
+          .ap-modern-tab{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:10px 14px;border:0;border-radius:9px;background:transparent;color:#17213e;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap}
+          .ap-modern-tab:hover{background:#f1f5ff;color:#4338ca}
+          .ap-modern-tab[data-ap-tab="dashboard"]{background:#4f25ad;color:#fff}
+          .ap-modern-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:18px}
+          .ap-modern-stat{display:flex;align-items:center;gap:13px;min-width:0;padding:18px;border:1px solid #e0e7f3;border-radius:14px;background:#fff;box-shadow:0 3px 14px rgba(15,23,42,.045)}
+          .ap-modern-stat-icon{width:54px;height:54px;flex:0 0 54px;border-radius:50%;display:grid;place-items:center;font-size:22px}
+          .ap-modern-stat strong{display:block;font-size:27px;line-height:1.05;color:#101b3b}
+          .ap-modern-stat span{display:block;margin-top:5px;color:#475569;font-size:12px}
+          .ap-modern-lower{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+          .ap-modern-card{min-width:0;background:#fff;border:1px solid #dfe6f2;border-radius:15px;padding:19px;box-shadow:0 3px 14px rgba(15,23,42,.04)}
+          .ap-modern-card h3{display:flex;align-items:center;gap:10px;margin:0 0 17px;color:#101b3b;font-size:17px;font-weight:800}
+          .ap-modern-card h3 i{color:#6d35d5}
+          .ap-modern-progress{height:13px;background:#e5e9f1;border-radius:30px;overflow:hidden;margin:18px 0 12px}
+          .ap-modern-progress span{display:block;height:100%;width:${completionPercent}%;background:linear-gradient(90deg,#16b85d,#0b9b52);border-radius:30px}
+          .ap-modern-progress-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#475569;font-size:12px}
+          .ap-modern-link{border:1px solid #d8d2fb;background:#f7f5ff;color:#4321a0;border-radius:10px;padding:9px 14px;font-weight:800;cursor:pointer}
+          .ap-modern-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+          .ap-modern-action{min-height:105px;border:1px solid #e4ddfb;border-radius:13px;background:#f7f3ff;color:#4c1d95;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px 7px;text-align:center;font-size:12px;font-weight:800;cursor:pointer}
+          .ap-modern-action i{font-size:23px}
+          .ap-modern-action:nth-child(2){background:#eff6ff;border-color:#cfe0ff;color:#2563eb}
+          .ap-modern-action:nth-child(3){background:#effbf5;border-color:#d2f2e0;color:#059669}
+          .ap-modern-action:nth-child(4){background:#fff2f7;border-color:#f8d8e7;color:#db2777}
+          .ap-modern-lists{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+          .ap-modern-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #e8edf5}
+          .ap-modern-row:last-child{border-bottom:0}
+          .ap-modern-row-icon{width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#eef2ff;color:#4f46e5;display:grid;place-items:center}
+          .ap-modern-row strong{display:block;color:#17213e;font-size:12px}
+          .ap-modern-row small{display:block;margin-top:4px;color:#64748b;font-size:11px}
+          .ap-modern-empty{padding:24px 10px;text-align:center;color:#94a3b8;font-size:12px}
+          .ap-modern-empty i{display:block;font-size:23px;margin-bottom:8px}
+          @media(max-width:900px){.ap-modern-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ap-modern-lower,.ap-modern-lists{grid-template-columns:1fr}}
+          @media(max-width:560px){.ap-modern{padding-bottom:20px}.ap-modern-head{align-items:flex-start}.ap-modern-folder{width:46px;height:46px;font-size:22px}.ap-modern-context{width:100%}.ap-modern-chip{flex:1}.ap-modern-grid{gap:9px}.ap-modern-stat{padding:13px;gap:9px}.ap-modern-stat-icon{width:42px;height:42px;flex-basis:42px;font-size:18px}.ap-modern-stat strong{font-size:22px}.ap-modern-stat span{font-size:11px}.ap-modern-card{padding:15px}.ap-modern-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.ap-modern-action{min-height:88px}}
+        </style>
+        <div class="ap-modern">
+          <header class="ap-modern-head">
+            <div class="ap-modern-title"><div class="ap-modern-folder"><i class="fas fa-folder-open"></i></div><div><h2>Academic Portfolio</h2><p>Manage your teaching documentation, records and academic reports in one workspace.</p></div></div>
+            <div class="ap-modern-context"><div class="ap-modern-chip"><i class="fas fa-layer-group"></i> Academic Year: ${esc(academicYear)}</div><div class="ap-modern-chip"><i class="fas fa-user-tie"></i> ${lecturerName}</div></div>
+          </header>
+          <nav class="ap-modern-tabs" aria-label="Academic Portfolio sections">
+            <button type="button" class="ap-modern-tab" data-ap-tab="dashboard"><i class="fas fa-th-large"></i><span>Overview</span></button>
+            ${tab('scheme-of-work','Teaching Plan','fa-book-open')}
+            ${tab('lesson-plans','Lesson Plans','fa-file-alt')}
+            ${tab('records-submissions','Records','fa-layer-group')}
+            ${tab('assessments','Assessments','fa-clipboard-check')}
+            ${tab('reports','Reports','fa-chart-column')}
+          </nav>
+          <div class="ap-modern-grid">
+            <div class="ap-modern-stat"><div class="ap-modern-stat-icon" style="background:#e7f0ff;color:#2563eb"><i class="fas fa-book-open"></i></div><div><strong>${Number(stats.totalCourses||0)}</strong><span>Units Assigned</span></div></div>
+            <div class="ap-modern-stat"><div class="ap-modern-stat-icon" style="background:#e3f8ef;color:#059669"><i class="fas fa-file-alt"></i></div><div><strong>${recordsTotal}</strong><span>Portfolio Items</span></div></div>
+            <div class="ap-modern-stat"><div class="ap-modern-stat-icon" style="background:#fff3df;color:#d97706"><i class="fas fa-clock"></i></div><div><strong>${pending}</strong><span>Pending HOD Review</span></div></div>
+            <div class="ap-modern-stat"><div class="ap-modern-stat-icon" style="background:#f0eaff;color:#6d28d9"><i class="fas fa-check-circle"></i></div><div><strong>${approved}</strong><span>Approved Schemes</span></div></div>
+          </div>
+          <div class="ap-modern-lower">
+            <section class="ap-modern-card">
+              <h3><i class="fas fa-bullseye"></i> Portfolio Completion <span style="margin-left:auto;font-size:24px">${completionPercent}%</span></h3>
+              <div class="ap-modern-progress" role="progressbar" aria-valuenow="${completionPercent}" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+              <div class="ap-modern-progress-meta"><span>${approved} approved scheme records out of ${Number(stats.totalCourses||0)+Number(stats.schemesCompleted||0)+Number(stats.lessonPlans||0)} tracked items</span><button class="ap-modern-link" type="button" data-ap-tab="records-submissions">View Records</button></div>
+            </section>
+            <section class="ap-modern-card">
+              <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+              <div class="ap-modern-actions">
+                <button class="ap-modern-action" type="button" data-ap-tab="records-submissions"><i class="fas fa-cloud-upload-alt"></i><span>Upload Record</span></button>
+                <button class="ap-modern-action" type="button" data-ap-tab="reports"><i class="fas fa-chart-line"></i><span>Generate Report</span></button>
+                <button class="ap-modern-action" type="button" data-ap-tab="lesson-plans"><i class="fas fa-file-circle-plus"></i><span>New Lesson Plan</span></button>
+                <button class="ap-modern-action" type="button" data-ap-tab="teaching-log"><i class="fas fa-calendar-check"></i><span>Log Teaching</span></button>
+              </div>
+            </section>
+          </div>
+          <div class="ap-modern-lists">
+            <section class="ap-modern-card"><h3><i class="fas fa-history"></i> Recent Activity</h3><div class="ap-modern-empty"><i class="fas fa-info-circle"></i>Activity entries will appear here as your portfolio records are submitted and updated.</div></section>
+            <section class="ap-modern-card"><h3><i class="fas fa-calendar-alt"></i> Portfolio Tasks</h3>
+              <div class="ap-modern-row"><div class="ap-modern-row-icon"><i class="fas fa-file-upload"></i></div><div><strong>Review your pending submissions</strong><small>${pending} item(s) awaiting HOD review</small></div></div>
+              <div class="ap-modern-row"><div class="ap-modern-row-icon"><i class="fas fa-book-open"></i></div><div><strong>Keep teaching plans up to date</strong><small>${Number(stats.schemesCompleted||0)} scheme(s) currently recorded</small></div></div>
+              <div class="ap-modern-row"><div class="ap-modern-row-icon"><i class="fas fa-chalkboard-teacher"></i></div><div><strong>Maintain lesson documentation</strong><small>${Number(stats.lessonPlans||0)} lesson plan(s) currently recorded</small></div></div>
+            </section>
+          </div>
+        </div>`;
     },
     
     // ============================================================
