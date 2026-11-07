@@ -373,6 +373,7 @@
     if (!p || !p.user_id || !c || !root) return;
     try {
       await Promise.all([loadPrivateDetails(), loadDocuments()]);
+      window.LecturerProfile.profile = p;
       ready = render(p);
       if (ready) console.log('[Lecturer Profile] Secure staff profile vault initialised.');
     } catch (err) {
