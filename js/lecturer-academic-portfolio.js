@@ -395,8 +395,35 @@ const AcademicPortfolio = {
         section.style.display = 'block';
         section.style.animation = 'none';
         host.appendChild(section);
-        // Keep the original IDs and event listeners intact by moving, not cloning, the module.
-        this.wrapModuleWorkspace(title === 'Marks Entry & Submission' ? 'marks-entry' : 'exams');
+
+        // Build the shell with DOM nodes so the original module, IDs and listeners survive.
+        const workspace = document.createElement('div');
+        workspace.className = 'ap-module-workspace';
+        workspace.style.cssText = 'max-width:1500px;margin:0 auto;color:#17213e;';
+        const heading = document.createElement('header');
+        heading.className = 'ap-module-heading';
+        heading.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;margin-bottom:14px;background:linear-gradient(120deg,#f6f4ff,#fff 65%);border:1px solid #e3def6;border-radius:14px;';
+        const copy = document.createElement('div');
+        const h = document.createElement('h2');
+        h.textContent = title;
+        h.style.cssText = 'margin:0;font-size:20px;color:#17213e;font-weight:800;';
+        const sub = document.createElement('p');
+        sub.textContent = 'Academic Portfolio · ' + this.getCurrentAcademicYear();
+        sub.style.cssText = 'margin:5px 0 0;color:#64748b;font-size:12px;';
+        copy.append(h, sub);
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'ap-module-back';
+        back.dataset.apTab = 'assessments';
+        back.innerHTML = '<i class="fas fa-arrow-left"></i> Back to workspace';
+        back.style.cssText = 'border:1px solid #d9d2f5;background:#fff;color:#4f25ad;border-radius:9px;padding:9px 13px;font-weight:800;cursor:pointer;';
+        heading.append(copy, back);
+        const body = document.createElement('section');
+        body.className = 'ap-module-body';
+        body.style.cssText = 'min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:15px;padding:clamp(12px,2vw,22px);box-shadow:0 3px 14px rgba(15,23,42,.035);overflow-x:auto;';
+        body.appendChild(host);
+        workspace.append(heading, body);
+        container.replaceChildren(workspace);
     },
 
     restoreMountedSection() {
