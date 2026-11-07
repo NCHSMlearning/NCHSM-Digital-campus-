@@ -131,7 +131,7 @@
     $('lpSaveLicences').addEventListener('click', saveProfile);
     $('lpReload').addEventListener('click', reload);
     $('lpPasswordForm').addEventListener('submit', changePassword);
-    root.addEventListener('click', handleDocumentAction);
+    root.onclick = handleDocumentAction;
     root.querySelectorAll('[data-file-input]').forEach(input => input.addEventListener('change', uploadDocument));
     saved = {
       full_name: name, phone: p.phone || p.phone_number || '',
@@ -302,12 +302,22 @@
   async function openDocument(type, download) {
     const doc = docFor(type);
     if (!doc) { status('This document has not been uploaded.', 'error'); return; }
+    const popup = window.open('about:blank', '_blank');
+    if (!popup) { status('Your browser blocked the document window. Allow pop-ups for this site and try again.', 'error'); return; }
     try {
+      const audit = await db().rpc('staff_profile_log_document_access', {
+        p_document_id: doc.id,
+        p_action: download ? 'download' : 'view'
+      });
+      if (audit.error) throw audit.error;
       const url = await getSignedUrl(doc.storage_path, download);
       if (!url) throw new Error('A secure document link could not be created.');
-      const opened = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!opened) status('Your browser blocked the document window. Allow pop-ups for this site and try again.', 'error');
-    } catch (err) { status('Could not open this document: ' + err.message, 'error'); }
+      popup.opener = null;
+      popup.location.replace(url);
+    } catch (err) {
+      try { popup.close(); } catch (_) {}
+      status('Could not open this document: ' + err.message, 'error');
+    }
   }
   async function removeDocument(type) {
     const doc = docFor(type);
