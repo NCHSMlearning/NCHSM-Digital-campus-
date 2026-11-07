@@ -251,6 +251,7 @@ const AcademicPortfolio = {
             'course-allocation': () => this.loadCourseAllocation(),
             'scheme-of-work': () => this.loadSchemeOfWork(),
             'lesson-plans': () => this.loadLessonPlans(),
+            'teaching-documents': () => window.TeachingDocumentsSubmission?.open?.(),
             'teaching-log': () => this.loadTeachingLog(),
             'materials': () => this.loadMaterials(),
             'assessments': () => this.loadAssessments(),
@@ -547,6 +548,7 @@ const AcademicPortfolio = {
             <button type="button" class="ap-modern-tab" data-ap-tab="dashboard"><i class="fas fa-th-large"></i><span>Overview</span></button>
             ${tab('scheme-of-work','Teaching Plan','fa-book-open')}
             ${tab('lesson-plans','Lesson Plans','fa-file-alt')}
+            ${tab('teaching-documents','Submit Documents','fa-file-upload')}
             ${tab('records-submissions','Records','fa-layer-group')}
             ${tab('assessments','Assessments','fa-clipboard-check')}
             ${tab('reports','Reports','fa-chart-column')}
