@@ -919,23 +919,32 @@ const AcademicPortfolio = {
     async loadReports() {
         const container = document.getElementById('ap-content');
         if (!container) return;
-        
         container.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                <i class="fas fa-file-pdf" style="font-size: 40px; color: #dc2626;"></i>
-                <h3 style="color: #1e293b; margin-top: 15px;">Portfolio Reports</h3>
-                <p style="color: #94a3b8;">Generate and export comprehensive portfolio reports.</p>
-                <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px dashed #e2e8f0;">
-                    <p style="color: #64748b; font-size: 14px;">📌 Phase 4: Portfolio reports coming soon.</p>
-                    <button onclick="AcademicPortfolio.switchTab('dashboard')" style="margin-top: 10px; background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
-                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+            <div style="max-width:1050px;margin:0 auto;padding:8px 2px 24px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
+                    <div><div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Academic Portfolio</div>
+                    <h3 style="margin:5px 0;color:#172033;font-size:21px;">Reports &amp; Records</h3>
+                    <p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">One workspace for academic document submissions and a separate workspace for generating and exporting performance reports.</p></div>
+                    <button onclick="AcademicPortfolio.switchTab('dashboard')" style="border:1px solid #dbe3ed;background:#fff;color:#334155;padding:9px 13px;border-radius:9px;font-weight:700;cursor:pointer;"><i class="fas fa-arrow-left"></i> Portfolio</button>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px;">
+                    <button type="button" onclick="AcademicPortfolio.switchTab('records-submissions')" style="text-align:left;border:1px solid #dbeafe;background:linear-gradient(135deg,#f8fbff,#fff);padding:19px;border-radius:14px;cursor:pointer;color:#172033;">
+                        <span style="display:flex;width:38px;height:38px;align-items:center;justify-content:center;border-radius:10px;background:#dbeafe;color:#1d4ed8;"><i class="fas fa-folder-open"></i></span>
+                        <strong style="display:block;margin:13px 0 5px;font-size:15px;">Academic Records</strong>
+                        <span style="display:block;color:#64748b;font-size:12px;line-height:1.55;">Upload schemes, lesson plans, assessment records, examination documents and clinical records. Submit once and track review decisions.</span>
+                        <span style="display:block;margin-top:13px;color:#1d4ed8;font-size:12px;font-weight:800;">Open Records <i class="fas fa-arrow-right"></i></span>
+                    </button>
+                    <button type="button" onclick="document.querySelector('[data-tab=reports]')?.click()" style="text-align:left;border:1px solid #d1fae5;background:linear-gradient(135deg,#f3fcf8,#fff);padding:19px;border-radius:14px;cursor:pointer;color:#172033;">
+                        <span style="display:flex;width:38px;height:38px;align-items:center;justify-content:center;border-radius:10px;background:#d1fae5;color:#047857;"><i class="fas fa-chart-column"></i></span>
+                        <strong style="display:block;margin:13px 0 5px;font-size:15px;">Report Generator</strong>
+                        <span style="display:block;color:#64748b;font-size:12px;line-height:1.55;">Generate, analyse, preview, print and export grade books, unit performance, attendance, at-risk student and clinical reports.</span>
+                        <span style="display:block;margin-top:13px;color:#047857;font-size:12px;font-weight:800;">Open Report Generator <i class="fas fa-arrow-right"></i></span>
                     </button>
                 </div>
-            </div>
-        `;
+                <div style="margin-top:15px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;color:#64748b;font-size:12px;line-height:1.55;"><i class="fas fa-circle-info"></i> Document approval and submission tracking are handled in Academic Records. The Report Generator remains focused on analytics and exports, preventing duplicate submission workflows.</div>
+            </div>`;
     },
-    
-    // ============================================================
+        // ============================================================
     // HELPER METHODS
     // ============================================================
     createNewScheme() {
