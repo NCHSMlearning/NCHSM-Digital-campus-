@@ -2899,51 +2899,7 @@
         </div>
     </div>
 
-    <!-- Academic Portfolio Sub-Tabs -->
-    <div style="display: flex; gap: 6px; flex-wrap: wrap; background: white; border-radius: 12px; padding: 8px 12px; border: 1px solid #e5e7eb; margin-bottom: 20px; overflow-x: auto;">
-        <button onclick="AcademicPortfolio.switchTab('dashboard')" class="ap-tab-btn active" data-ap-tab="dashboard" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: #10b981; color: white; white-space: nowrap;">
-            <i class="fas fa-tachometer-alt"></i> Dashboard
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('course-allocation')" class="ap-tab-btn" data-ap-tab="course-allocation" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-book"></i> Course Allocation
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('scheme-of-work')" class="ap-tab-btn" data-ap-tab="scheme-of-work" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-list-check"></i> Scheme of Work
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('lesson-plans')" class="ap-tab-btn" data-ap-tab="lesson-plans" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-chalkboard"></i> Lesson Plans
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('teaching-log')" class="ap-tab-btn" data-ap-tab="teaching-log" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-pen"></i> Teaching Log
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('materials')" class="ap-tab-btn" data-ap-tab="materials" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-file-upload"></i> Materials
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('assessments')" class="ap-tab-btn" data-ap-tab="assessments" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-check-double"></i> Assessments
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('exams')" class="ap-tab-btn" data-ap-tab="exams" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-file-signature"></i> Exams
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('analysis')" class="ap-tab-btn" data-ap-tab="analysis" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-chart-bar"></i> Analysis
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('clinical')" class="ap-tab-btn" data-ap-tab="clinical" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-stethoscope"></i> Clinical
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('evaluations')" class="ap-tab-btn" data-ap-tab="evaluations" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-star"></i> Evaluations
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('reflections')" class="ap-tab-btn" data-ap-tab="reflections" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-comment"></i> Reflections
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('records-submissions')" class="ap-tab-btn" data-ap-tab="records-submissions" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-folder-check"></i> Records
-        </button>
-        <button onclick="AcademicPortfolio.switchTab('reports')" class="ap-tab-btn" data-ap-tab="reports" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-            <i class="fas fa-file-pdf"></i> Reports
-        </button>
-    </div>
+    <!-- Legacy Academic Portfolio sub-navigation removed: use centralized document submission actions. -->
 
     <!-- Academic Portfolio Sub-Tab Content -->
     <div id="ap-content">
