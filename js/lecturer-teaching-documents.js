@@ -166,6 +166,8 @@
     if(select){select.innerHTML='<option value="">-- Select an assigned unit --</option>'+unitOptions;select.addEventListener('change',()=>refreshDocumentTypes());}
     $('tdsForm')?.addEventListener('submit',submit);
     $('tdsRefresh')?.addEventListener('click',loadRows);
+    ['tdsUnitSearch','tdsUnitProgramFilter','tdsUnitBlockFilter','tdsUnitStatusFilter'].forEach(id=>$(id)?.addEventListener(id==='tdsUnitSearch'?'input':'change',()=>renderUnitCompliance(state.documentRows)));
+    $('tdsClearFilters')?.addEventListener('click',()=>{['tdsUnitSearch','tdsUnitProgramFilter','tdsUnitBlockFilter'].forEach(id=>{if($(id))$(id).value='';});if($('tdsUnitStatusFilter'))$('tdsUnitStatusFilter').value='all';renderUnitCompliance(state.documentRows);});
     $('tdsFile')?.addEventListener('change',()=>{const f=$('tdsFile').files?.[0];if(f)$('tdsMessage').textContent=f.name+' · '+(f.size/1048576).toFixed(2)+' MB';});
     loadRows();
   }
@@ -254,39 +256,19 @@
     setTimeout(()=>$('tdsFile')?.focus(),80);
   }
   function renderUnitCompliance(rows){
-    const host=$('tdsUnitCompliance');if(!host)return;
-    const units=state.units||[];
-    $('tdsComplianceCount').textContent=units.length+' assigned unit(s)';
-    if(!units.length){host.innerHTML='<div class="tds-card tds-muted">No assigned units were found.</div>';return;}
-    const latest=(unit,type)=>rows.filter(r=>(r.subject_code||'')===(unit.subject_code||'')&&(r.unit_name||'')===(unit.subject_name||unit.subject_code||'')&&r.document_type===type).sort((a,b)=>new Date(b.submitted_at||b.created_at)-new Date(a.submitted_at||a.created_at))[0];
-    host.innerHTML=units.map((unit,index)=>{
-      const items=(isNursingUnit(unit)?NURSING_DOCUMENTS:TVET_DOCUMENTS).map(([label,type])=>({label,type,row:latest(unit,type)}));
-      const approved=items.filter(x=>x.row?.status==='approved').length;
-      const pct=Math.round(approved/items.length*100);
-      const term=[unit.program,unit.block,unit.academic_year].filter(Boolean).join(' · ');
-      return '<article class="tds-unit-card"><div class="tds-unit-top"><div><h4>'+esc(unit.subject_code||'UNIT')+' '+esc(unit.subject_name||'')+'</h4><div class="tds-unit-meta"><span>'+esc(unit.program||'Programme')+'</span><span>'+esc(unit.block||'Academic block/term')+'</span></div></div><div class="tds-unit-percent">'+pct+'%</div></div><div class="tds-progress"><span style="width:'+pct+'%"></span></div><div class="tds-muted">'+approved+' of '+items.length+' approved · '+(items.length-approved)+' outstanding</div>'+
-      items.map(item=>{
-        const row=item.row,status=row?.status||'not_submitted';
-        const label=status==='approved'?'Approved':(['submitted','under_review','resubmitted'].includes(status)?'Pending':(['returned','rejected'].includes(status)?'Revision required':'Not submitted'));
-        const cls=status==='approved'?'approved':(['submitted','under_review','resubmitted'].includes(status)?'pending':'');
-        return '<div class="tds-check-row"><span style="font-size:18px;color:'+(status==='approved'?'#078744':'#c3ccd8')+'">'+(status==='approved'?'●':'○')+'</span><div><div class="tds-check-name">'+esc(item.label)+'</div><div class="tds-muted">'+(row?.submitted_at?'Submitted '+esc(new Date(row.submitted_at).toLocaleDateString()):'No submission yet')+'</div></div><span class="tds-check-status '+cls+'">'+label+'</span><button type="button" class="tds-check-action '+(!row?'add':'')+'" data-unit="'+index+'" data-type="'+item.type+'" data-submission="'+(row?.id||'')+'">'+(row?'Open':'Add')+'</button></div>';
-      }).join('')+'<button type="button" class="tds-folder-btn" data-folder-unit="'+index+'">▰ Open '+(isNursingUnit(unit)?'Intake folder':'Course folder')+' <span style="float:right">→</span></button></article>';
-    }).join('');
-    host.querySelectorAll('[data-folder-unit]').forEach(button=>button.addEventListener('click',()=>{
-      const unit=state.units[Number(button.dataset.folderUnit)];
-      const docs=rows.filter(r=>(r.subject_code||'')===(unit.subject_code||'')&&(r.unit_name||'')===(unit.subject_name||unit.subject_code||''));
-      openUnitFolder(unit,docs,isNursingUnit(unit)?'Intake folder':'Course folder');
-    }));
-    host.querySelectorAll('[data-unit][data-type]').forEach(button=>button.addEventListener('click',()=>{
-      const unitIndex=Number(button.dataset.unit),unit=state.units[unitIndex];
-      if(button.dataset.submission){openFile(button.dataset.submission);return;}
-      $('tdsUnit').value=String(unitIndex);$('tdsType').value=button.dataset.type;
-      const meta=DOCUMENT_META[button.dataset.type];if(meta){$('tdsCategory').value=meta.categoryKey;$('tdsType').value=button.dataset.type;}
-      $('tdsTitle').value=(meta?.label||'Academic document')+' — '+(unit.subject_code||unit.subject_name);
-      openUploadModal(unit,meta?.label||'Academic document');
-    }));
-  }
-  function openUnitFolder(unit,docs,folderLabel){
+    state.documentRows=rows||[];const host=$('tdsUnitCompliance'),completedHost=$('tdsCompletedUnits');if(!host)return;const units=state.units||[];
+    const latest=(unit,type)=>state.documentRows.filter(r=>(r.subject_code||'')===(unit.subject_code||'')&&(r.unit_name||'')===(unit.subject_name||unit.subject_code||'')&&r.document_type===type).sort((a,b)=>new Date(b.submitted_at||b.created_at)-new Date(a.submitted_at||a.created_at))[0];
+    const prepared=units.map((unit,index)=>{const items=(isNursingUnit(unit)?NURSING_DOCUMENTS:TVET_DOCUMENTS).map(([label,type])=>({label,type,row:latest(unit,type)}));const approved=items.filter(x=>x.row?.status==='approved').length;return {unit,index,items,approved,pct:Math.round(approved/items.length*100),complete:approved===items.length};});
+    const complete=prepared.filter(x=>x.complete),incomplete=prepared.filter(x=>!x.complete);$('tdsComplianceCount').textContent=units.length+' assigned · '+complete.length+' completed';
+    const unique=values=>[...new Set(values.filter(Boolean).map(String))].sort((a,b)=>a.localeCompare(b));const fill=(id,values,label)=>{const el=$(id);if(!el)return;const prev=el.value;el.innerHTML='<option value="">'+label+'</option>'+values.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');if(values.includes(prev))el.value=prev;};
+    fill('tdsUnitProgramFilter',unique(units.map(u=>u.program)),'All programmes');fill('tdsUnitBlockFilter',unique(units.map(u=>u.block)),'All blocks / terms');
+    const search=String($('tdsUnitSearch')?.value||'').trim().toLowerCase(),program=$('tdsUnitProgramFilter')?.value||'',block=$('tdsUnitBlockFilter')?.value||'',status=$('tdsUnitStatusFilter')?.value||'all';const matches=x=>(!search||[x.unit.subject_code,x.unit.subject_name].some(v=>String(v||'').toLowerCase().includes(search)))&&(!program||String(x.unit.program||'')===program)&&(!block||String(x.unit.block||'')===block);
+    const card=x=>{const unit=x.unit;return '<article class="tds-unit-card"><div class="tds-unit-top"><div><h4>'+esc(unit.subject_code||'UNIT')+' '+esc(unit.subject_name||'')+'</h4><div class="tds-unit-meta"><span>'+esc(unit.program||'Programme')+'</span><span>'+esc(unit.block||'Academic block/term')+'</span></div></div><div class="tds-unit-percent" style="'+(x.complete?'color:#047857':'')+'">'+x.pct+'%</div></div><div class="tds-progress"><span style="width:'+x.pct+'%;background:'+(x.complete?'#078744':'')+'"></span></div><div class="tds-muted">'+x.approved+' of '+x.items.length+' approved · '+(x.items.length-x.approved)+' outstanding</div>'+x.items.map(item=>{const row=item.row,st=row?.status||'not_submitted',label=st==='approved'?'Approved':(['submitted','under_review','resubmitted'].includes(st)?'Pending':(['returned','rejected'].includes(st)?'Revision required':'Not submitted')),cls=st==='approved'?'approved':(['submitted','under_review','resubmitted'].includes(st)?'pending':'');return '<div class="tds-check-row"><span style="font-size:18px;color:'+(st==='approved'?'#078744':'#c3ccd8')+'">'+(st==='approved'?'●':'○')+'</span><div><div class="tds-check-name">'+esc(item.label)+'</div><div class="tds-muted">'+(row?.submitted_at?'Submitted '+esc(new Date(row.submitted_at).toLocaleDateString()):'No submission yet')+'</div></div><span class="tds-check-status '+cls+'">'+label+'</span><button type="button" class="tds-check-action '+(!row?'add':'')+'" data-unit="'+x.index+'" data-type="'+item.type+'" data-submission="'+(row?.id||'')+'">'+(row?'Open':'Add')+'</button></div>';}).join('')+'<button type="button" class="tds-folder-btn" data-folder-unit="'+x.index+'">Open '+(isNursingUnit(unit)?'Intake folder':'Course folder')+' →</button></article>';};
+    const active=status==='complete'?[]:incomplete.filter(matches);host.innerHTML=active.length?active.map(card).join(''):'<div class="tds-card tds-muted" style="grid-column:1/-1">No in-progress units match these filters.</div>';
+    $('tdsCompletedFolder').hidden=complete.length===0;$('tdsCompletedCount').textContent=complete.length+' unit(s)';const finished=status==='incomplete'?[]:complete.filter(matches);completedHost.innerHTML=finished.length?finished.map(card).join(''):'<div class="tds-card tds-muted" style="grid-column:1/-1">No completed units match these filters.</div>';
+    const toggle=$('tdsCompletedToggle');if(toggle&&!toggle.dataset.bound){toggle.dataset.bound='1';toggle.addEventListener('click',()=>{const box=$('tdsCompletedUnits');box.hidden=!box.hidden;$('tdsCompletedChevron').textContent=box.hidden?'+':'−';});}
+    [host,completedHost].forEach(container=>{container.querySelectorAll('[data-folder-unit]').forEach(button=>button.addEventListener('click',()=>{const unit=state.units[Number(button.dataset.folderUnit)],docs=state.documentRows.filter(r=>(r.subject_code||'')===(unit.subject_code||'')&&(r.unit_name||'')===(unit.subject_name||unit.subject_code||''));openUnitFolder(unit,docs,isNursingUnit(unit)?'Intake folder':'Course folder');}));container.querySelectorAll('[data-unit][data-type]').forEach(button=>button.addEventListener('click',()=>{const index=Number(button.dataset.unit),unit=state.units[index];if(button.dataset.submission){openFile(button.dataset.submission);return;}$('tdsUnit').value=String(index);const meta=DOCUMENT_META[button.dataset.type];if(meta){$('tdsCategory').value=meta.categoryKey;$('tdsType').value=button.dataset.type;}$('tdsTitle').value=(meta?.label||'Academic document')+' — '+(unit.subject_code||unit.subject_name);openUploadModal(unit,meta?.label||'Academic document');}));});
+  }  function openUnitFolder(unit,docs,folderLabel){
     const old=$('tdsUnitFolderModal');if(old)old.remove();
     const modal=document.createElement('div');modal.id='tdsUnitFolderModal';
     modal.style.cssText='position:fixed;inset:0;z-index:100400;background:#0f172a99;display:flex;align-items:center;justify-content:center;padding:14px';
