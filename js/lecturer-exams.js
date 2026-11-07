@@ -8,12 +8,7 @@
     const EDGE_FUNCTION_URL =
         'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email';
 
-    const FALLBACK_ANON_KEY =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
-        'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.' +
-        '7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-
-    const FROM_ADDRESS =
+const FROM_ADDRESS =
         'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>';
 
     const STATIC_BLOCKS = [
@@ -2438,12 +2433,13 @@
 
             } catch (_) {}
 
-            return FALLBACK_ANON_KEY;
+            return null;
         },
 
         async sendEmail(to, subject, html) {
             try {
                 const token = await this.getToken();
+                if (!token) return { success: false, error: 'An authenticated session is required to send email.' };
 
                 const response = await fetch(
                     EDGE_FUNCTION_URL,
