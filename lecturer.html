@@ -2935,6 +2935,9 @@
         <button onclick="AcademicPortfolio.switchTab('reflections')" class="ap-tab-btn" data-ap-tab="reflections" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
             <i class="fas fa-comment"></i> Reflections
         </button>
+        <button onclick="AcademicPortfolio.switchTab('records-submissions')" class="ap-tab-btn" data-ap-tab="records-submissions" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-folder-check"></i> Records
+        </button>
         <button onclick="AcademicPortfolio.switchTab('reports')" class="ap-tab-btn" data-ap-tab="reports" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
             <i class="fas fa-file-pdf"></i> Reports
         </button>
@@ -9836,5 +9839,9 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 
 
 <script src="/js/nchsm-mobile-enhancements.js?v=4" defer></script>
+
+<!-- Integrated DRMS academic records engine inside Academic Portfolio -->
+<script src="drms-workflow.js"></script>
+<script src="js/lecturer-academic-records-integration.js"></script>
 </body>
 </html>
