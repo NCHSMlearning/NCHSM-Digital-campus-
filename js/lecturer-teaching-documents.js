@@ -185,7 +185,13 @@
       }).select().single();
       if(error)throw error;
       const safeName=file.name.replace(/[^\w.\-]+/g,'_').slice(-150);
-      const path=identity.authUser+'/'+now.getFullYear()+'/'+row.id+'/'+Date.now()+'_'+safeName;
+      const safeSegment=value=>String(value||'general').trim().replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,70)||'general';
+      const programFolder=safeSegment(unit.program||identity.p.program||'general');
+      const unitFolder=safeSegment(unit.subject_code||unit.subject_name||'unit');
+      const yearFolder=safeSegment(academicYear);
+      const blockFolder=safeSegment(unit.block||'unassigned_block');
+      const typeFolder=safeSegment(type);
+      const path=[identity.authUser,programFolder,unitFolder,yearFolder,blockFolder,typeFolder,row.id+'_'+Date.now()+'_'+safeName].join('/');
       const upload=await client.storage.from(BUCKET).upload(path,file,{upsert:false,contentType:file.type||'application/octet-stream'});
       if(upload.error){await client.from(TABLE).delete().eq('id',row.id).eq('lecturer_user_id',identity.authUser);throw upload.error;}
       const meta=await client.from(ATTACHMENTS).insert({submission_id:row.id,uploaded_by:identity.authUser,file_name:file.name,storage_path:path,mime_type:file.type||null,file_size:file.size});
@@ -220,7 +226,7 @@
     modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Add academic document');
     const panel=document.createElement('section');panel.className='tds-modal-panel';
     const head=document.createElement('header');head.className='tds-modal-head';
-    const heading=document.createElement('div');heading.innerHTML='<h3>Add academic document</h3><p>'+esc(unit.subject_code||'')+' · '+esc(unit.subject_name||'')+'</p>';
+    const heading=document.createElement('div');heading.innerHTML='<h3>Add '+esc(documentLabel||'academic document')+'</h3><p>'+esc(unit.subject_code||'')+' · '+esc(unit.subject_name||'')+' · '+esc(unit.program||'')+'</p>';
     const close=document.createElement('button');close.type='button';close.className='tds-modal-close';close.setAttribute('aria-label','Close');close.textContent='×';close.onclick=closeUploadModal;
     head.append(heading,close);
     const body=document.createElement('div');body.className='tds-modal-body';
