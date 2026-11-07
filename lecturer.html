@@ -9873,5 +9873,60 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 <!-- Integrated DRMS academic records engine inside Academic Portfolio -->
 <script src="drms-workflow.js"></script>
 <script src="js/lecturer-academic-records-integration.js"></script>
+
+<style id="nchsm-lecturer-mobile-scroll-fix-v1">
+/* Restore native document scrolling on phones. Keep the drawer independently scrollable. */
+@media (max-width: 900px) {
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    position: static !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  body.mobile-sidebar-open { overflow: hidden !important; }
+  .container, .main, #mainContent, #main-content,
+  .tab-content.active {
+    height: auto !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    position: relative !important;
+    touch-action: pan-y !important;
+  }
+  #mainContent.main {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    padding: 14px 12px 40px !important;
+  }
+  #sidebar.sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+  #sidebar.sidebar #mainNav {
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+}
+</style>
+
 </body>
 </html>
