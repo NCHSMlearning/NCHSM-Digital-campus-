@@ -1567,32 +1567,55 @@ async saveProgressToDatabase() {
                 .order('created_at', { ascending: false });
             
             if (error) throw error;
-            
-            if (!questions || questions.length === 0) {
-                this.showNotification('No questions available for this course yet.', 'warning');
+
+            // Re-check block eligibility when a test is opened, not only when cards are listed.
+            const studentProgram = String(this.programCode || '').trim();
+            const studentBlock = String(this.userBlock || '').trim();
+            if (!studentProgram || !studentBlock) {
+                throw new Error('Your programme or current block is missing from your student profile.');
+            }
+
+            const { data: catalogUnits, error: catalogError } = await supabase
+                .from('units_catalog')
+                .select('unit_code')
+                .ilike('program', studentProgram)
+                .ilike('block', studentBlock)
+                .ilike('status', 'active');
+            if (catalogError) throw catalogError;
+
+            const allowedUnitCodes = new Set(
+                (catalogUnits || []).map(unit => String(unit.unit_code || '').trim().toUpperCase()).filter(Boolean)
+            );
+            const eligibleQuestions = (questions || []).filter(question => {
+                const unitCode = String(question.courses?.unit_code || question.unit_code || '').trim().toUpperCase();
+                return unitCode && allowedUnitCodes.has(unitCode);
+            });
+
+            if (!eligibleQuestions.length) {
+                this.showNotification('This unit is not assigned to your current block, or no published questions are available.', 'warning');
                 this.loadQuestionBankCards();
                 return;
             }
-            
+
             this.currentCourseForTest = { id: courseId, name: courseName };
-            this.currentCourseQuestions = questions;
+            this.currentCourseQuestions = eligibleQuestions;
             
             let actualStartIndex = 0;
             if (startIndex === -1) {
-                for (let i = 0; i < questions.length; i++) {
-                    const question = questions[i];
+                for (let i = 0; i < eligibleQuestions.length; i++) {
+                    const question = eligibleQuestions[i];
                     const hasAnswered = this.userTestAnswers[question.id]?.answered;
                     if (!hasAnswered) {
                         actualStartIndex = i;
                         break;
                     }
                 }
-            } else if (startIndex >= 0 && startIndex < questions.length) {
+            } else if (startIndex >= 0 && startIndex < eligibleQuestions.length) {
                 actualStartIndex = startIndex;
             }
             
             this.currentQuestionIndex = actualStartIndex;
-            this.displayInteractiveQuestions(courseName, questions);
+            this.displayInteractiveQuestions(courseName, eligibleQuestions);
             
         } catch (error) {
             console.error('Error starting test:', error);
