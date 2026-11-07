@@ -1633,32 +1633,32 @@ class Database {
     // NURSEIQ FUNCTIONS
     // ============================================================
 
-    async getNurseIQQuestions(courseId = null) {
+    async getNurseIQQuestions(unitCatalogId = null) {
         try {
             let query = this.supabase
                 .from('medical_assessments')
                 .select(`
                     *,
-                    courses (
+                    unit:units_catalog!medical_assessments_unit_catalog_id_fkey (
                         id,
-                        course_name,
                         unit_code,
+                        unit_name,
                         color,
-                        description
+                        description,
+                        program,
+                        block
                     )
                 `)
                 .eq('is_active', true)
                 .eq('is_published', true);
 
-            if (courseId) {
-                query = query.eq('course_id', courseId);
+            if (unitCatalogId) {
+                query = query.eq('unit_catalog_id', unitCatalogId);
             }
 
             const { data: questions, error } = await query;
-
             if (error) throw error;
             return questions || [];
-
         } catch (error) {
             console.error('Error loading NurseIQ questions:', error);
             return [];
@@ -1668,20 +1668,20 @@ class Database {
     async getNurseIQCourses() {
         try {
             const questions = await this.getNurseIQQuestions();
+            const unitsMap = {};
 
-            const coursesMap = {};
             questions.forEach(question => {
-                const courseId = question.course_id || 'general';
-                const courseName = question.courses?.course_name || 'General Nursing';
-                const unitCode = question.courses?.unit_code || 'KRCHN';
+                const unitId = question.unit_catalog_id;
+                const unit = question.unit || {};
+                if (!unitId || !unit.unit_code) return;
 
-                if (!coursesMap[courseId]) {
-                    coursesMap[courseId] = {
-                        id: courseId,
-                        name: courseName,
-                        unit_code: unitCode,
-                        color: question.courses?.color || '#4f46e5',
-                        description: question.courses?.description || '',
+                if (!unitsMap[unitId]) {
+                    unitsMap[unitId] = {
+                        id: unitId,
+                        name: unit.unit_name || question.unit_name || 'Unit',
+                        unit_code: unit.unit_code,
+                        color: unit.color || '#4f46e5',
+                        description: unit.description || '',
                         questions: [],
                         stats: {
                             total: 0,
@@ -1694,31 +1694,29 @@ class Database {
                     };
                 }
 
-                coursesMap[courseId].questions.push(question);
-                coursesMap[courseId].stats.total++;
-                coursesMap[courseId].stats.active++;
+                unitsMap[unitId].questions.push(question);
+                unitsMap[unitId].stats.total++;
+                unitsMap[unitId].stats.active++;
 
-                if (question.difficulty === 'hard') coursesMap[courseId].stats.hard++;
-                else if (question.difficulty === 'medium') coursesMap[courseId].stats.medium++;
-                else if (question.difficulty === 'easy') coursesMap[courseId].stats.easy++;
+                if (question.difficulty === 'hard') unitsMap[unitId].stats.hard++;
+                else if (question.difficulty === 'medium') unitsMap[unitId].stats.medium++;
+                else if (question.difficulty === 'easy') unitsMap[unitId].stats.easy++;
 
                 if (question.updated_at) {
                     const updatedDate = new Date(question.updated_at);
-                    if (!coursesMap[courseId].stats.lastUpdated || updatedDate > coursesMap[courseId].stats.lastUpdated) {
-                        coursesMap[courseId].stats.lastUpdated = updatedDate;
+                    if (!unitsMap[unitId].stats.lastUpdated || updatedDate > unitsMap[unitId].stats.lastUpdated) {
+                        unitsMap[unitId].stats.lastUpdated = updatedDate;
                     }
                 }
             });
 
-            return Object.values(coursesMap);
-
+            return Object.values(unitsMap);
         } catch (error) {
-            console.error('Error loading NurseIQ courses:', error);
+            console.error('Error loading NurseIQ units:', error);
             return [];
         }
     }
 
-    // ============================================================
     // UTILITY FUNCTIONS
     // ============================================================
 
