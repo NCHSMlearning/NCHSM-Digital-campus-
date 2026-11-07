@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#062b46">
 <meta name="description" content="NCHSM Super Administrator secure login">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://api.brevo.com https://api.ipify.org https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://api.ipify.org https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; base-uri 'self'; form-action 'self';">
 <title>NCHSM | Super Administrator Login</title>
 <link rel="icon" type="image/png" href="images/Logo_NCHSM.png">
 
@@ -349,20 +349,6 @@ async function fetchProfile(userId){
  // Never accept a profile belonging to a different authenticated identity.
  if(profile.user_id!==userId)throw new Error("Administrator profile identity mismatch.");
  return profile;
-}
-
-async function loadBrevoApiKey(){
- try{
-   const cached=sessionStorage.getItem("brevo_api_key");
-   if(cached)return cached;
-   const {data,error}=await supabase.functions.invoke("get-secret",{body:{secret_name:"BREVO_API_KEY"}});
-   if(error||!data?.secret)return null;
-   sessionStorage.setItem("brevo_api_key",data.secret);
-   return data.secret;
- }catch(e){
-   console.warn("Brevo secret unavailable.");
-   return null;
- }
 }
 
 function parseUserAgent(ua){
