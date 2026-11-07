@@ -1279,7 +1279,7 @@ window.confirmBulkImport = async () => {
     }
 
     window.approveQuestion = async (id) => {
-        const { error } = await sb.from('medical_assessments').update({ status: 'approved', reviewed_by: currentAdmin.id, reviewed_at: new Date().toISOString() }).eq('id', id);
+        const { error } = await sb.from('medical_assessments').update({ status: 'approved', is_active: true, is_published: true, reviewed_by: currentAdmin.id, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', id);
         if (error) showToast('Error: ' + error.message, 'error');
         else { await loadAllData(); renderPendingApproval(); showToast('Question approved!', 'success'); }
     };
