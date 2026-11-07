@@ -447,12 +447,23 @@ const AcademicPortfolio = {
             
             // Render dashboard
             container.innerHTML = this.renderDashboardHTML(stats);
+
+            // Keep the portfolio navigation canonical: remove any legacy or
+            // duplicate navigation that may have been left by older page markup.
+            const portfolioRoot = document.getElementById('academic-portfolio-content');
+            if (portfolioRoot) {
+                portfolioRoot.querySelectorAll('.ap-tab-btn, .ap-legacy-tab, [data-ap-legacy-tab]')
+                    .forEach(node => node.remove());
+                const portfolioNavs = portfolioRoot.querySelectorAll('.ap-modern-tabs');
+                portfolioNavs.forEach((nav, index) => { if (index > 0) nav.remove(); });
+            }
             const legacyNav = document.querySelector('#academic-portfolio-content .ap-tab-btn')?.parentElement;
             const legacyStats = document.getElementById('apTotalSchemes')?.closest('div[style*="display: grid"]');
-            if (legacyNav) legacyNav.style.display = 'none';
+            if (legacyNav) legacyNav.remove();
             if (legacyStats) legacyStats.style.display = 'none';
-            
-            // Re-bind sub-tab events
+
+            // One delegated listener on the persistent mount handles all six tabs,
+            // quick actions, workspace cards and back buttons after every render.
             this.bindSubTabs();
             
         } catch (error) {
