@@ -230,75 +230,83 @@ const AcademicPortfolio = {
     // ============================================================
     // TAB SWITCHING
     // ============================================================
-    switchTab(tab) {
+    async switchTab(tab) {
         console.log('🔄 Switching to Academic Portfolio tab:', tab);
         this.currentTab = tab;
         const legacyNav = document.querySelector('#academic-portfolio-content .ap-tab-btn')?.parentElement;
         const legacyStats = document.getElementById('apTotalSchemes')?.closest('div[style*="display: grid"]');
         if (legacyNav) legacyNav.style.display = tab === 'dashboard' ? 'none' : 'flex';
         if (legacyStats) legacyStats.style.display = tab === 'dashboard' ? 'none' : 'grid';
-        
-        // Update tab button styles
+
         document.querySelectorAll('.ap-tab-btn, .ap-modern-tab, [data-ap-tab]').forEach(btn => {
-            btn.classList.remove('active');
-            btn.style.background = 'transparent';
-            btn.style.color = '#475569';
-            if (btn.dataset.apTab === tab) {
-                btn.classList.add('active');
-                btn.style.background = '#10b981';
-                btn.style.color = 'white';
+            btn.classList.toggle('active', btn.dataset.apTab === tab);
+            if (btn.classList.contains('ap-modern-tab')) {
+                btn.style.background = btn.dataset.apTab === tab ? '#4f25ad' : 'transparent';
+                btn.style.color = btn.dataset.apTab === tab ? '#fff' : '#17213e';
             }
         });
-        
-        // Load appropriate content
-        switch(tab) {
-            case 'dashboard':
-                this.loadDashboard();
-                break;
-            case 'course-allocation':
-                this.loadCourseAllocation();
-                break;
-            case 'scheme-of-work':
-                this.loadSchemeOfWork();
-                break;
-            case 'lesson-plans':
-                this.loadLessonPlans();
-                break;
-            case 'teaching-log':
-                this.loadTeachingLog();
-                break;
-            case 'materials':
-                this.loadMaterials();
-                break;
-            case 'assessments':
-                this.loadAssessments();
-                break;
-            case 'exams':
-                this.loadExams();
-                break;
-            case 'analysis':
-                this.loadAnalysis();
-                break;
-            case 'clinical':
-                this.loadClinical();
-                break;
-            case 'evaluations':
-                this.loadEvaluations();
-                break;
-            case 'reflections':
-                this.loadReflections();
-                break;
-            case 'reports':
-                this.loadReports();
-                break;
-            case 'records-submissions':
-                if (window.LecturerAcademicRecords?.open) window.LecturerAcademicRecords.open();
-                break;
-            default:
-                this.loadDashboard();
+
+        const loaders = {
+            'dashboard': () => this.loadDashboard(),
+            'course-allocation': () => this.loadCourseAllocation(),
+            'scheme-of-work': () => this.loadSchemeOfWork(),
+            'lesson-plans': () => this.loadLessonPlans(),
+            'teaching-log': () => this.loadTeachingLog(),
+            'materials': () => this.loadMaterials(),
+            'assessments': () => this.loadAssessments(),
+            'exams': () => this.loadExams(),
+            'analysis': () => this.loadAnalysis(),
+            'clinical': () => this.loadClinical(),
+            'evaluations': () => this.loadEvaluations(),
+            'reflections': () => this.loadReflections(),
+            'reports': () => this.loadReports(),
+            'records-submissions': () => window.LecturerAcademicRecords?.open?.()
+        };
+        const loader = loaders[tab] || loaders.dashboard;
+        const container = document.getElementById('ap-content');
+        if (!container) return;
+        if (tab !== 'dashboard') {
+            container.innerHTML = '<div class="ap-module-loading"><i class="fas fa-spinner fa-spin"></i><span>Opening workspace…</span></div>';
+        }
+        try {
+            await loader();
+            if (tab !== 'dashboard' && container.innerHTML.trim()) this.wrapModuleWorkspace(tab);
+        } catch (error) {
+            console.error('Academic Portfolio module failed:', tab, error);
+            container.innerHTML = `<div class="ap-module-error"><i class="fas fa-triangle-exclamation"></i><h3>Could not open this section</h3><p>${String(error.message || error)}</p><button type="button" onclick="AcademicPortfolio.switchTab('${tab}')">Try again</button></div>`;
         }
     },
-    
+
+    wrapModuleWorkspace(tab) {
+        const container = document.getElementById('ap-content');
+        if (!container || container.querySelector('.ap-module-workspace')) return;
+        const labels = {
+            'course-allocation':'Unit Allocation','scheme-of-work':'Teaching Plan','lesson-plans':'Lesson Plans',
+            'teaching-log':'Teaching Log','materials':'Teaching Materials','assessments':'Assessments',
+            'exams':'Examinations','analysis':'Performance Analysis','clinical':'Clinical Supervision',
+            'evaluations':'Student Evaluations','reflections':'Teaching Reflections',
+            'reports':'Reports & Records','records-submissions':'Academic Records'
+        };
+        const title = labels[tab] || 'Academic Workspace';
+        const existing = container.innerHTML;
+        container.innerHTML = `
+          <style id="ap-module-workspace-style">
+            .ap-module-loading,.ap-module-error{padding:38px 18px;text-align:center;color:#64748b;background:#fff;border:1px solid #e2e8f0;border-radius:16px}
+            .ap-module-loading i,.ap-module-error>i{font-size:24px;color:#6335bd;margin-right:9px}
+            .ap-module-error h3{color:#17213e}.ap-module-error button{background:#4f25ad;color:white;border:0;border-radius:9px;padding:10px 16px;font-weight:700}
+            .ap-module-workspace{max-width:1500px;margin:0 auto;color:#17213e}
+            .ap-module-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;margin-bottom:14px;background:linear-gradient(120deg,#f6f4ff,#fff 65%);border:1px solid #e3def6;border-radius:14px}
+            .ap-module-heading h2{margin:0;font-size:20px;color:#17213e;font-weight:800}.ap-module-heading p{margin:5px 0 0;color:#64748b;font-size:12px}
+            .ap-module-back{border:1px solid #d9d2f5;background:#fff;color:#4f25ad;border-radius:9px;padding:9px 13px;font-weight:800;cursor:pointer}
+            .ap-module-body{min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:15px;padding:clamp(12px,2vw,22px);box-shadow:0 3px 14px rgba(15,23,42,.035);overflow-x:auto}
+            @media(max-width:600px){.ap-module-heading{padding:13px}.ap-module-heading h2{font-size:18px}.ap-module-body{padding:10px}}
+          </style>
+          <div class="ap-module-workspace">
+            <header class="ap-module-heading"><div><h2>${title}</h2><p>Academic Portfolio · ${this.getCurrentAcademicYear()}</p></div><button class="ap-module-back" type="button" data-ap-tab="dashboard"><i class="fas fa-arrow-left"></i> Overview</button></header>
+            <section class="ap-module-body">${existing}</section>
+          </div>`;
+    },
+
     // ============================================================
     // REFRESH
     // ============================================================
