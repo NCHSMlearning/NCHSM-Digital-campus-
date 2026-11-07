@@ -11,7 +11,7 @@
   const db = () => window.lecturerDB?.supabase || window.supabaseClient || window.supabase || null;
   const profile = () => window.lecturerDB?.getCurrentUserProfile?.() || window.currentLecturerProfile || {};
   let state = { user:null, staffId:'', units:[], loading:false };
-  const DOCUMENT_GROUPS = [["Teaching Preparation","teaching_preparation",[["Scheme of Work","scheme_of_work"],["Lesson Plan","lesson_plan"],["Course Outline","course_outline"],["Record of Work Covered","record_of_work"],["Teaching Timetable","teaching_timetable"],["Lesson Notes / Teaching Notes","lesson_notes"],["Instructional Materials / Teaching Aids","instructional_materials"],["Course Delivery Plan","course_delivery_plan"]]],["Teaching Delivery","teaching_delivery",[["Class Attendance Register","class_attendance_register"],["Clinical Teaching Attendance Register","clinical_attendance_register"],["Clinical Supervision Report","clinical_supervision_report"],["Clinical Rotation Plan","clinical_rotation_plan"],["Clinical Logbook Verification Report","clinical_logbook_verification"],["Teaching Practice / Skills Demonstration Report","skills_demonstration_report"],["Student Participation Record","student_participation_record"]]],["Assessment & Examinations","assessment_examinations",[["Assessment Plan","assessment_plan"],["Continuous Assessment Test (CAT)","cat"],["Examination Question Paper","examination_question_paper"],["Examination Marking Scheme","marking_scheme"],["Examination Moderation Report","examination_moderation_report"],["Marked Scripts / Assessment Evidence","marked_scripts_evidence"],["Marks Analysis Report","marks_analysis_report"],["Remedial Teaching Report","remedial_teaching_report"],["Student Academic Progress Report","student_academic_progress_report"]]],["Student Support","student_support",[["Student Academic Advising Report","academic_advising_report"],["Mentorship Record","mentorship_record"],["Remedial and Follow-up Register","remedial_followup_register"],["Student Consultation Record","student_consultation_record"],["Academic Intervention Report","academic_intervention_report"]]],["Quality Assurance","quality_assurance",[["Course Evaluation Report","course_evaluation_report"],["Student Feedback Report","student_feedback_report"],["Peer Teaching Observation Report","peer_teaching_observation"],["Lecturer Self-Evaluation Report","lecturer_self_evaluation"],["Curriculum Review Recommendation","curriculum_review_recommendation"]]],["Professional Development","professional_development",[["CPD Certificate","cpd_certificate"],["Professional Development Plan","professional_development_plan"],["Research and Publication Evidence","research_publication_evidence"]]]];
+  const DOCUMENT_GROUPS = [["Teaching Preparation","teaching_preparation",[["Scheme of Work","scheme_of_work"],["Lesson Plan","lesson_plan"],["Course Outline","course_outline"],["Record of Work Covered","record_of_work"],["Teaching Timetable","teaching_timetable"],["Lesson Notes / Teaching Notes","lesson_notes"],["Instructional Materials / Teaching Aids","instructional_materials"],["Course Delivery Plan","course_delivery_plan"]]],["Teaching Delivery","teaching_delivery",[["Class Attendance Register","class_attendance_register"],["Clinical Teaching Attendance Register","clinical_attendance_register"],["Clinical Supervision Report","clinical_supervision_report"],["Clinical Rotation Plan","clinical_rotation_plan"],["Clinical Logbook Verification Report","clinical_logbook_verification"],["Teaching Practice / Skills Demonstration Report","skills_demonstration_report"],["Student Participation Record","student_participation_record"]]],["Assessment & Examinations","assessment_examinations",[["Assessment Plan","assessment_plan"],["CAT 1","cat_1"],["CAT 2","cat_2"],["Practical Exam 1","practical_exam_1"],["Practical Exam 2","practical_exam_2"],["Practical Exam 3","practical_exam_3"],["Examination Question Paper","examination_question_paper"],["Examination Marking Scheme","marking_scheme"],["Examination Moderation Report","examination_moderation_report"],["Marked Scripts / Assessment Evidence","marked_scripts_evidence"],["Marks Analysis Report","marks_analysis_report"],["Remedial Teaching Report","remedial_teaching_report"],["Student Academic Progress Report","student_academic_progress_report"]]],["Student Support","student_support",[["Student Academic Advising Report","academic_advising_report"],["Mentorship Record","mentorship_record"],["Remedial and Follow-up Register","remedial_followup_register"],["Student Consultation Record","student_consultation_record"],["Academic Intervention Report","academic_intervention_report"]]],["Quality Assurance","quality_assurance",[["Course Evaluation Report","course_evaluation_report"],["Student Feedback Report","student_feedback_report"],["Peer Teaching Observation Report","peer_teaching_observation"],["Lecturer Self-Evaluation Report","lecturer_self_evaluation"],["Curriculum Review Recommendation","curriculum_review_recommendation"]]],["Professional Development","professional_development",[["CPD Certificate","cpd_certificate"],["Professional Development Plan","professional_development_plan"],["Research and Publication Evidence","research_publication_evidence"]]]];
   const DOCUMENT_META = Object.fromEntries(DOCUMENT_GROUPS.flatMap(([category,key,items]) => items.map(([label,type]) => [type,{label,category,categoryKey:key}])));
   const GROUP_BY_KEY = Object.fromEntries(DOCUMENT_GROUPS.map(([category,key])=>[key,category]));
 
@@ -118,7 +118,14 @@
     const initialCategory=selectedMeta?.categoryKey || (GROUP_BY_KEY[selectedType] ? selectedType : 'teaching_preparation');
     categorySelect.innerHTML=DOCUMENT_GROUPS.map(([label,key])=>'<option value="'+key+'">'+esc(label)+'</option>').join('');
     categorySelect.value=initialCategory;
-    function refreshDocumentTypes(preferred){const group=DOCUMENT_GROUPS.find(([,key])=>key===categorySelect.value);typeSelect.innerHTML=(group?.[2]||[]).map(([label,type])=>'<option value="'+type+'">'+esc(label)+'</option>').join('');if(preferred&&DOCUMENT_META[preferred]?.categoryKey===categorySelect.value)typeSelect.value=preferred;}
+    function refreshDocumentTypes(preferred){
+      const group=DOCUMENT_GROUPS.find(([,key])=>key===categorySelect.value);
+      const isNursing=state.units.some(u=>String(u.program||'').toUpperCase()==='KRCHN');
+      const tvetOnly=new Set(['cat_1','cat_2','practical_exam_1','practical_exam_2','practical_exam_3']);
+      const items=(group?.[2]||[]).filter(([,type])=>!isNursing||!tvetOnly.has(type));
+      typeSelect.innerHTML=items.map(([label,type])=>'<option value="'+type+'">'+esc(label)+'</option>').join('');
+      if(preferred&&items.some(([,type])=>type===preferred))typeSelect.value=preferred;
+    }
     refreshDocumentTypes(selectedType);
     categorySelect.addEventListener('change',()=>refreshDocumentTypes());
     const select=$('tdsUnit');
@@ -170,15 +177,16 @@
     }catch(error){console.error('[TeachingDocuments] submission failed',error);message(error.message||'Submission failed. Please try again.',true);}
     finally{state.loading=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Submit to HOD';}
   }
-  const REQUIRED_UNIT_DOCUMENTS = [
-    ['Course outlines','course_outline'],
-    ['Schemes of work','scheme_of_work'],
-    ['Records of work','record_of_work'],
-    ['Examination papers','examination_question_paper'],
-    ['Marking schemes','marking_scheme'],
-    ['Marks sheets and examination results','marks_analysis_report'],
-    ['CAT 1','cat']
+  const NURSING_DOCUMENTS = [
+    ['Course outlines','course_outline'],['Schemes of work','scheme_of_work'],
+    ['Records of work','record_of_work'],['Examination papers','examination_question_paper'],
+    ['Marking schemes','marking_scheme'],['Marks sheets and examination results','marks_analysis_report']
   ];
+  const TVET_DOCUMENTS = [
+    ...NURSING_DOCUMENTS,['CAT 1','cat_1'],['CAT 2','cat_2'],
+    ['Practical exam 1','practical_exam_1'],['Practical exam 2','practical_exam_2'],['Practical exam 3','practical_exam_3']
+  ];
+  function isNursingUnit(unit){return String(unit?.program||'').trim().toUpperCase()==='KRCHN';}
   function renderUnitCompliance(rows){
     const host=$('tdsUnitCompliance');if(!host)return;
     const units=state.units||[];
@@ -186,18 +194,23 @@
     if(!units.length){host.innerHTML='<div class="tds-card tds-muted">No assigned units were found.</div>';return;}
     const latest=(unit,type)=>rows.filter(r=>(r.subject_code||'')===(unit.subject_code||'')&&(r.unit_name||'')===(unit.subject_name||unit.subject_code||'')&&r.document_type===type).sort((a,b)=>new Date(b.submitted_at||b.created_at)-new Date(a.submitted_at||a.created_at))[0];
     host.innerHTML=units.map((unit,index)=>{
-      const items=REQUIRED_UNIT_DOCUMENTS.map(([label,type])=>({label,type,row:latest(unit,type)}));
+      const items=(isNursingUnit(unit)?NURSING_DOCUMENTS:TVET_DOCUMENTS).map(([label,type])=>({label,type,row:latest(unit,type)}));
       const approved=items.filter(x=>x.row?.status==='approved').length;
       const pct=Math.round(approved/items.length*100);
       const term=[unit.program,unit.block,unit.academic_year].filter(Boolean).join(' · ');
-      return '<article class="tds-unit-card"><div class="tds-unit-top"><div><h4>'+esc(unit.subject_code||'UNIT')+' '+esc(unit.subject_name||'')+'</h4><div class="tds-muted" style="margin-top:5px">'+esc(term||'Assigned unit')+'</div></div><div class="tds-unit-percent">'+pct+'%</div></div><div class="tds-progress"><span style="width:'+pct+'%"></span></div><div class="tds-muted">'+approved+' of '+items.length+' approved</div>'+
+      return '<article class="tds-unit-card"><div class="tds-unit-top"><div><h4>'+esc(unit.subject_code||'UNIT')+' '+esc(unit.subject_name||'')+'</h4><div class="tds-muted" style="margin-top:5px">'+esc(unit.program||'')+' · '+esc(term||'Assigned unit')+'</div></div><div class="tds-unit-percent">'+pct+'%</div></div><div class="tds-progress"><span style="width:'+pct+'%"></span></div><div class="tds-muted">'+approved+' of '+items.length+' approved</div>'+
       items.map(item=>{
         const row=item.row,status=row?.status||'not_submitted';
         const label=status==='approved'?'Approved':(['submitted','under_review','resubmitted'].includes(status)?'Pending':(['returned','rejected'].includes(status)?'Revision required':'Not submitted'));
         const cls=status==='approved'?'approved':(['submitted','under_review','resubmitted'].includes(status)?'pending':'');
         return '<div class="tds-check-row"><span style="font-size:18px;color:'+(status==='approved'?'#078744':'#c3ccd8')+'">'+(status==='approved'?'●':'○')+'</span><div><div class="tds-check-name">'+esc(item.label)+'</div><div class="tds-muted">'+(row?.submitted_at?'Submitted '+esc(new Date(row.submitted_at).toLocaleDateString()):'No submission yet')+'</div></div><span class="tds-check-status '+cls+'">'+label+'</span><button type="button" class="tds-check-action '+(!row?'add':'')+'" data-unit="'+index+'" data-type="'+item.type+'" data-submission="'+(row?.id||'')+'">'+(row?'Open':'Add')+'</button></div>';
-      }).join('')+'</article>';
+      }).join('')+'<div style="border-top:1px solid #e2e8f0;margin-top:12px;padding-top:12px;display:flex;justify-content:flex-end"><button type="button" class="tds-check-action" data-folder-unit="'+index+'">'+(isNursingUnit(unit)?'▱ Intake folder':'▱ Course folder')+'</button></div></article>';
     }).join('');
+    host.querySelectorAll('[data-folder-unit]').forEach(button=>button.addEventListener('click',()=>{
+      const unit=state.units[Number(button.dataset.folderUnit)];
+      const docs=rows.filter(r=>(r.subject_code||'')===(unit.subject_code||'')&&(r.unit_name||'')===(unit.subject_name||unit.subject_code||''));
+      openUnitFolder(unit,docs,isNursingUnit(unit)?'Intake folder':'Course folder');
+    }));
     host.querySelectorAll('[data-unit][data-type]').forEach(button=>button.addEventListener('click',()=>{
       const unitIndex=Number(button.dataset.unit),unit=state.units[unitIndex];
       if(button.dataset.submission){openFile(button.dataset.submission);return;}
@@ -206,6 +219,23 @@
       $('tdsTitle').value=(meta?.label||'Academic document')+' — '+(unit.subject_code||unit.subject_name);
       $('tdsForm').scrollIntoView({behavior:'smooth',block:'center'});$('tdsFile').focus();
     }));
+  }
+  function openUnitFolder(unit,docs,folderLabel){
+    const old=$('tdsUnitFolderModal');if(old)old.remove();
+    const modal=document.createElement('div');modal.id='tdsUnitFolderModal';
+    modal.style.cssText='position:fixed;inset:0;z-index:100400;background:#0f172a99;display:flex;align-items:center;justify-content:center;padding:14px';
+    const panel=document.createElement('section');panel.style.cssText='width:min(760px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 20px 60px #0004';
+    const head=document.createElement('div');head.style.cssText='display:flex;justify-content:space-between;gap:12px;align-items:center';
+    const title=document.createElement('h3');title.textContent=folderLabel+' · '+(unit.subject_code||unit.subject_name);title.style.cssText='margin:0;font-size:18px';
+    const close=document.createElement('button');close.type='button';close.textContent='Close';close.className='tds-check-action';close.onclick=()=>modal.remove();head.append(title,close);
+    const intro=document.createElement('p');intro.className='tds-muted';intro.textContent=(unit.program||'')+' · '+(unit.block||'')+' · '+(unit.academic_year||'')+' · '+docs.length+' document(s)';
+    panel.append(head,intro);
+    if(!docs.length){const empty=document.createElement('p');empty.className='tds-muted';empty.textContent='This folder is empty. Use Add beside a requirement to upload the first document.';panel.append(empty);}
+    docs.forEach(doc=>{const row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #e2e8f0';
+      const info=document.createElement('div');const name=document.createElement('strong');name.textContent=doc.title||doc.document_title||DOCUMENT_META[doc.document_type]?.label||'Teaching document';const meta=document.createElement('div');meta.className='tds-muted';meta.textContent=statusLabel(doc.status)+' · '+(doc.submitted_at?new Date(doc.submitted_at).toLocaleDateString():'Not dated');info.append(name,meta);
+      const open=document.createElement('button');open.type='button';open.className='tds-check-action';open.textContent='Open';open.onclick=()=>{modal.remove();openFile(doc.id);};row.append(info,open);panel.append(row);
+    });
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});modal.append(panel);document.body.append(modal);
   }
   async function loadRows(){
     const tbody=$('tdsRows');if(!tbody)return;
