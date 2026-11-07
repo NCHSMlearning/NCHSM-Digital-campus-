@@ -132,6 +132,12 @@
       esc(unit.subject_code || 'No code') + ' — ' + esc(unit.subject_name) + ' · ' + esc(unit.program) + ' · ' + esc(unit.block) +
       (unit.catalogUnit ? '' : ' (unit catalogue mapping required)') + '</option>'
     ).join('');
+    const bulkSelect = $('niqLecBulkUnit');
+    if (bulkSelect) bulkSelect.innerHTML = '<option value="">Choose one of your assigned units</option>' + state.units.map((unit, index) =>
+      '<option value="' + index + '"' + (!unit.catalogUnit ? ' disabled' : '') + '>' +
+      esc(unit.subject_code || 'No code') + ' — ' + esc(unit.subject_name) + ' · ' + esc(unit.program) + ' · ' + esc(unit.block) +
+      (unit.catalogUnit ? '' : ' (unit catalogue mapping required)') + '</option>'
+    ).join('');
     const note = $('niqLecUnitNote');
     if (note) {
       const unavailable = state.units.filter(unit => !unit.catalogUnit).length;
