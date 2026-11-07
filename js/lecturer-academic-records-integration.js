@@ -4,6 +4,7 @@
   const database=()=>window.lecturerDB?.supabase||window.supabaseClient||window.supabase||null;
   function syncContext(){
     const p=profile(), db=database();
+    if(typeof window.showToast!=='function') window.showToast=(message,isError=false)=>{const n=document.createElement('div');n.textContent=message;n.style.cssText='position:fixed;right:18px;bottom:18px;z-index:10050;padding:12px 16px;border-radius:10px;background:'+(isError?'#b91c1c':'#166534')+';color:#fff;box-shadow:0 8px 24px #0002;font-size:13px';document.body.appendChild(n);setTimeout(()=>n.remove(),3200);};
     if(!p||!db) return false;
     // DRMS workflow uses the authenticated institutional profile and the existing Supabase session.
     window.currentUser={...p,user_id:p.user_id||p.id,full_name:p.full_name||p.name||p.email,email:p.email,role:String(p.role||'lecturer').toLowerCase(),program:p.program||p.department||'KRCHN'};
