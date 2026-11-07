@@ -99,6 +99,25 @@
         #ap-content .tds-folder-btn{width:100%;margin-top:14px;padding:11px 13px;border:1px solid #d9e2ef;border-radius:10px;background:#f8fafc;color:#164e63;font-weight:800;cursor:pointer;text-align:left}
         #ap-content .tds-folder-btn:hover{background:#eff6ff;border-color:#93c5fd}
 
+
+        .tds-drive-shell{border:1px solid #dbe4ef}
+        .tds-drive-brand-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#dbeafe;color:#1d4ed8;font-size:21px}
+        .tds-drive-nav{cursor:pointer;transition:background .15s}
+        .tds-drive-nav:hover{background:#bfdbfe}
+        .tds-drive-side-note{background:#fff;border:1px solid #e2e8f0;border-radius:10px}
+        .tds-drive-topbar{position:sticky;top:0;z-index:2}
+        .tds-drive-search:focus,.tds-drive-chooser-select:focus{outline:3px solid #bfdbfe;border-color:#3b82f6}
+        .tds-drive-folder-card:focus-visible,.tds-drive-open:focus-visible,.tds-drive-upload:focus-visible,.tds-drive-close:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+        .tds-drive-folder-card{min-height:82px}
+        .tds-drive-folder-info small{line-height:1.45}
+        .tds-drive-chooser{position:absolute;inset:0;z-index:5;background:#0f172a88;display:grid;place-items:center;padding:18px}
+        .tds-drive-chooser-card{width:min(440px,100%);background:#fff;border-radius:16px;padding:23px;box-shadow:0 25px 80px #02061755}
+        .tds-drive-chooser-card h3{margin:0 0 7px;font-size:19px;color:#0f172a}
+        .tds-drive-chooser-card p{font-size:13px;color:#64748b;margin:0 0 18px}
+        .tds-drive-chooser-select{width:100%;height:46px;border:1px solid #cbd5e1;border-radius:9px;padding:0 12px;background:#fff;color:#172033}
+        .tds-drive-chooser-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+        .tds-drive-cancel{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer}
+        @media(max-width:520px){.tds-drive-topbar{gap:9px}.tds-drive-breadcrumb{font-size:11px;flex:1}.tds-drive-top-actions{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 36px 36px 36px}.tds-drive-search{width:100%;min-width:0}.tds-drive-heading h2{font-size:20px}.tds-drive-stats{gap:7px}.tds-drive-stats div{padding:10px;min-width:0}.tds-drive-stats strong{font-size:18px}.tds-drive-folder-grid{grid-template-columns:1fr}}
         .tds-drive-overlay{position:fixed;inset:0;z-index:100400;background:rgba(9,22,40,.72);display:flex;align-items:stretch;justify-content:center;padding:clamp(0px,1.5vw,20px);backdrop-filter:blur(5px)}
         .tds-drive-shell{width:100%;max-width:1500px;height:100%;background:#f8fafc;border-radius:16px;overflow:hidden;display:grid;grid-template-columns:235px minmax(0,1fr);box-shadow:0 28px 90px #02061766;color:#172033}
         .tds-drive-sidebar{background:#f1f5f9;border-right:1px solid #e2e8f0;padding:22px 14px;display:flex;flex-direction:column;gap:10px}
@@ -303,9 +322,9 @@
     actions.append(search,gridBtn,listBtn,close);top.append(crumb,actions);
     const content=document.createElement('div');content.className='tds-drive-content';
     main.append(top,content);shell.append(sidebar,main);modal.append(shell);
-    const closeDrive=()=>{modal.remove();document.body.style.overflow='';};
+    const closeDrive=()=>{modal.remove();document.body.style.overflow='';document.removeEventListener('keydown',key);};
     close.addEventListener('click',closeDrive);modal.addEventListener('click',e=>{if(e.target===modal)closeDrive();});
-    const key=e=>{if(e.key==='Escape'){closeDrive();document.removeEventListener('keydown',key);}};document.addEventListener('keydown',key);
+    const key=e=>{if(e.key==='Escape'){closeDrive();}};document.addEventListener('keydown',key);
     const folderIcon='<span class="tds-drive-folder-icon">📁</span>';
     const statusPill=doc=>'<span class="tds-drive-status '+(doc.status==='approved'?'approved':(['returned','rejected'].includes(doc.status)?'returned':'pending'))+'">'+esc(statusLabel(doc.status))+'</span>';
     function renderDrive(){
@@ -324,7 +343,20 @@
         content.querySelector('[data-drive-add]')?.addEventListener('click',()=>launchUpload(folder));
         content.querySelectorAll('[data-drive-open]').forEach(btn=>btn.addEventListener('click',()=>openFile(btn.dataset.driveOpen)));
       }
-      content.querySelector('[data-drive-upload]')?.addEventListener('click',()=>{activeFolder=null;renderDrive();const first=folders.find(f=>true);if(first)launchUpload(first);});
+      content.querySelector('[data-drive-upload]')?.addEventListener('click',openUploadChooser);
+    }
+    function openUploadChooser(){
+      const layer=document.createElement('div');layer.className='tds-drive-chooser';
+      const box=document.createElement('section');box.className='tds-drive-chooser-card';
+      const title=document.createElement('h3');title.textContent='Choose a document folder';
+      const hint=document.createElement('p');hint.textContent='Select the academic document you want to upload to this unit.';
+      const select=document.createElement('select');select.className='tds-drive-chooser-select';
+      select.innerHTML=folders.map((f,i)=>'<option value="'+i+'">'+esc(f.label)+'</option>').join('');
+      const buttons=document.createElement('div');buttons.className='tds-drive-chooser-actions';
+      const cancel=document.createElement('button');cancel.type='button';cancel.className='tds-drive-cancel';cancel.textContent='Cancel';
+      const go=document.createElement('button');go.type='button';go.className='tds-drive-upload';go.textContent='Continue to upload';
+      cancel.onclick=()=>layer.remove();go.onclick=()=>{const folder=folders[Number(select.value)];layer.remove();if(folder)launchUpload(folder);};
+      buttons.append(cancel,go);box.append(title,hint,select,buttons);layer.append(box);layer.addEventListener('click',e=>{if(e.target===layer)layer.remove();});modal.append(layer);select.focus();
     }
     function launchUpload(folder){
       closeDrive();
