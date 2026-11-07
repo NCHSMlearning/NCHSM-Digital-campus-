@@ -26,34 +26,109 @@
   async function resolveAssignments() {
     const profile = state.profile;
     const authId = profile?.user_id || profile?.id;
-    if (!authId) throw new Error('Your lecturer login profile could not be identified. Please sign out and sign in again.');
-    let { data, error } = await state.sb.from('lecturer_subject_assignments').select('id, lecturer_id, lecturer_name, program, block, subject_name, subject_code, academic_year').eq('lecturer_id', String(authId));
-    if (error) throw error;
-    if (!data?.length && profile?.full_name) {
-      const name = String(profile.full_name).trim().replace(/[%_,]/g, ' ');
-      const result = await state.sb.from('lecturer_subject_assignments').select('id, lecturer_id, lecturer_name, program, block, subject_name, subject_code, academic_year').ilike('lecturer_name', '%' + name + '%');
-      if (result.error) throw result.error;
-      data = result.data || [];
+    const fullName = String(profile?.full_name || profile?.name || '').trim();
+    if (!authId && !fullName) throw new Error('Your lecturer login profile could not be identified. Please sign out and sign in again.');
+
+    const columns = 'id, lecturer_id, lecturer_name, program, block, subject_name, subject_code, academic_year';
+    let assignments = [];
+
+    // Match the lecturer name first, as the existing Lecturer Courses module does.
+    // Assignment lecturer_id is not always the same as the Supabase Auth UID.
+    if (fullName) {
+      const safeName = fullName.replace(/[%_,]/g, ' ').replace(/\s+/g, ' ').trim();
+      const byName = await state.sb.from('lecturer_subject_assignments')
+        .select(columns).ilike('lecturer_name', '%' + safeName + '%');
+      if (byName.error) throw byName.error;
+      assignments = byName.data || [];
+      const exactName = assignments.filter(a => String(a.lecturer_name || '').trim().toLowerCase() === fullName.toLowerCase());
+      if (exactName.length) assignments = exactName;
+      const nonStaff = assignments.filter(a => !String(a.lecturer_id || '').toUpperCase().startsWith('STAFF'));
+      if (nonStaff.length) assignments = nonStaff;
     }
-    if (!data?.length) throw new Error('No assigned units were found for this lecturer account.');
-    state.assignments = data;
-    state.lecturerId = data[0].lecturer_id;
+
+    // Include UID-linked rows as a fallback/merge, without discarding name-linked assignments.
+    if (authId) {
+      const byId = await state.sb.from('lecturer_subject_assignments')
+        .select(columns).eq('lecturer_id', String(authId));
+      if (byId.error) throw byId.error;
+      assignments = assignments.concat(byId.data || []);
+    }
+    assignments = [...new Map(assignments.map(a => [a.id, a])).values()];
+    if (!assignments.length) throw new Error('No assigned units were found for this lecturer account.');
+
+    state.assignments = assignments;
+    state.lecturerId = assignments[0].lecturer_id;
   }
+
   async function loadUnits() {
-    const { data: courses, error } = await state.sb.from('courses').select('id, course_name, name, unit_code, code, target_program, block');
-    if (error) throw error;
-    const courseRows = courses || [];
-    state.units = state.assignments.map(assignment => {
-      const code = String(assignment.subject_code || '').trim().toUpperCase();
+    // Resolve missing assignment codes from the official units catalogue by
+    // programme + block, then match catalogue entries to the assigned unit name.
+    const groups = [...new Map(state.assignments.map(a => [
+      String(a.program || '').trim() + '|' + String(a.block || '').trim(),
+      { program: a.program, block: a.block }
+    ])).values()];
+
+    const catalogueResults = await Promise.all(groups.map(group => {
+      let query = state.sb.from('units_catalog').select('unit_code, unit_name, program, block');
+      if (group.program) query = query.ilike('program', String(group.program).trim());
+      if (group.block) query = query.ilike('block', String(group.block).trim());
+      return query;
+    }));
+    const catalogue = [];
+    catalogueResults.forEach(result => {
+      if (result.error) console.warn('NurseIQ units catalogue lookup:', result.error.message);
+      else catalogue.push(...(result.data || []));
+    });
+
+    const normalized = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const enriched = state.assignments.map(assignment => {
+      const assignedName = normalized(assignment.subject_name);
+      const catalogueMatches = catalogue.filter(unit =>
+        normalized(unit.program) === normalized(assignment.program) &&
+        normalized(unit.block) === normalized(assignment.block) &&
+        normalized(unit.unit_name) === assignedName &&
+        unit.unit_code
+      );
+      const codes = [...new Set([
+        assignment.subject_code,
+        ...catalogueMatches.map(unit => unit.unit_code)
+      ].map(value => String(value || '').trim()).filter(Boolean))];
+      return { ...assignment, resolvedCode: codes[0] || '', candidateCodes: codes };
+    });
+
+    // Fetch only relevant course rows rather than downloading the entire courses table.
+    const allCodes = [...new Set(enriched.flatMap(unit => unit.candidateCodes))];
+    const courseResults = allCodes.length
+      ? await Promise.all([
+          state.sb.from('courses').select('id, course_name, name, unit_code, code, target_program, block').in('unit_code', allCodes),
+          state.sb.from('courses').select('id, course_name, name, unit_code, code, target_program, block').in('code', allCodes)
+        ])
+      : [];
+    const courseRows = [...new Map(courseResults.flatMap(result => {
+      if (result.error) { console.warn('NurseIQ course lookup:', result.error.message); return []; }
+      return result.data || [];
+    }).map(course => [course.id, course])).values()];
+
+    state.units = enriched.map(assignment => {
       const program = String(assignment.program || '').trim().toLowerCase();
+      const codes = assignment.candidateCodes.map(code => code.toUpperCase());
+      const assignedName = normalized(assignment.subject_name);
       const matches = courseRows.filter(course => {
         const courseCode = String(course.unit_code || course.code || '').trim().toUpperCase();
-        if (!code || courseCode !== code) return false;
+        const codeMatch = codes.includes(courseCode);
+        const nameMatch = assignedName && normalized(course.course_name || course.name) === assignedName;
+        if (!codeMatch && !nameMatch) return false;
         const targetProgram = String(course.target_program || '').trim().toLowerCase();
         return !targetProgram || !program || targetProgram === program;
       });
       const unique = [...new Map(matches.map(course => [course.id, course])).values()];
-      return { ...assignment, course: unique.length === 1 ? unique[0] : null, matchCount: unique.length };
+      const course = unique.length === 1 ? unique[0] : null;
+      return {
+        ...assignment,
+        subject_code: assignment.resolvedCode || course?.unit_code || course?.code || assignment.subject_code || '',
+        course,
+        matchCount: unique.length
+      };
     });
   }
   async function loadQuestions() {
@@ -121,9 +196,9 @@
       await resolveAssignments();
       await loadUnits();
       renderUnitOptions();
-      await loadQuestions();
       const message = $('niqLecMessage');
-      if (message) { message.className = 'niq-lec-message success'; message.textContent = 'Ready. You can create NurseIQ practice questions for your assigned units.'; }
+      if (message) { message.className = 'niq-lec-message success'; message.textContent = 'Assigned units loaded. Your submissions are loading…'; }
+      loadQuestions().catch(error => { console.error('NurseIQ submissions load:', error); });
     } catch (error) {
       console.error('NurseIQ lecturer module:', error);
       renderError(error.message || 'Could not load NurseIQ lecturer workspace.');
@@ -143,7 +218,7 @@
     const payload = {
       course_id: unit.course.id,
       unit_name: unit.subject_name,
-      unit_code: unit.subject_code,
+      unit_code: unit.subject_code || unit.course.unit_code || unit.course.code || null,
       topic: $('niqLecTopic')?.value.trim() || null,
       question_text: question,
       question_type: 'mcq',
