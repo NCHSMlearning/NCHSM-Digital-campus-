@@ -72,7 +72,18 @@
       ? '<div class="lp-doc-meta"><i class="fas fa-file-alt"></i> Uploaded ' + esc(dateLabel(d.uploaded_at)) + ' · ' + esc((d.mime_type || '').split('/').pop().toUpperCase()) + ' · ' + esc(bytes(d.file_size)) + '</div>' +
         '<div class="lp-doc-actions"><button type="button" class="lp-link-btn" data-view="' + esc(def.type) + '"><i class="fas fa-eye"></i> View</button><button type="button" class="lp-link-btn" data-download="' + esc(def.type) + '"><i class="fas fa-download"></i> Download</button><button type="button" class="lp-link-btn" data-upload="' + esc(def.type) + '"><i class="fas fa-sync-alt"></i> Replace</button><button type="button" class="lp-link-btn lp-danger" data-remove="' + esc(def.type) + '"><i class="fas fa-trash-alt"></i> Remove</button></div>'
       : '<div class="lp-doc-empty"><i class="fas fa-cloud-upload-alt"></i><span>Not uploaded yet</span><button type="button" class="lp-btn lp-btn-upload" data-upload="' + esc(def.type) + '"><i class="fas fa-upload"></i> Upload</button></div>';
-    const state = d ? '<span class="lp-doc-state lp-state-done"><i class="fas fa-check-circle"></i> Uploaded</span>' : (def.required ? '<span class="lp-doc-state lp-state-missing">Missing</span>' : '<span class="lp-doc-state lp-state-optional">Not supplied</span>');
+    let uploadedState = 'Uploaded', uploadedClass = 'lp-state-done';
+    if (d && def.type === 'tvet_license' && privateDetails.tvet_license_expires) {
+      const expiry = new Date(privateDetails.tvet_license_expires + 'T23:59:59');
+      uploadedState = expiry >= new Date() ? 'Valid' : 'Expired';
+      uploadedClass = expiry >= new Date() ? 'lp-state-done' : 'lp-state-missing';
+    }
+    if (d && def.type === 'nursing_license' && privateDetails.nursing_license_expires) {
+      const expiry = new Date(privateDetails.nursing_license_expires + 'T23:59:59');
+      uploadedState = expiry >= new Date() ? 'Valid' : 'Expired';
+      uploadedClass = expiry >= new Date() ? 'lp-state-done' : 'lp-state-missing';
+    }
+    const state = d ? '<span class="lp-doc-state ' + uploadedClass + '"><i class="fas fa-check-circle"></i> ' + uploadedState + '</span>' : (def.required ? '<span class="lp-doc-state lp-state-missing">Missing</span>' : '<span class="lp-doc-state lp-state-optional">Not supplied</span>');
     return '<article class="lp-doc-card ' + (d ? 'has-file' : 'is-empty') + '" data-doc-card="' + esc(def.type) + '">' +
       '<div class="lp-doc-card-top"><div class="lp-doc-icon"><i class="fas ' + (def.type === 'profile_photo' ? 'fa-image' : def.type === 'cv' ? 'fa-file-word' : 'fa-file-shield') + '"></i></div><div class="lp-doc-title"><strong>' + esc(def.label) + '</strong><small>' + esc(def.hint) + '</small></div><div class="lp-doc-badges">' + required + state + '</div></div>' +
       (d ? uploaded : '') +
