@@ -2008,7 +2008,7 @@ async saveProgressToDatabase() {
                 selectedOptionIndex: index,
                 answered: false,
                 timestamp: new Date().toISOString(),
-                courseId: question.course_id,
+                courseId: question.unit_catalog_id,
                 courseName: this.currentCourseForTest?.name,
                 questionText: question.question_text,
                 difficulty: question.difficulty
@@ -2080,7 +2080,7 @@ async saveProgressToDatabase() {
             correct: isCorrect,
             correctAnswer: correctAnswer,
             timestamp: new Date().toISOString(),
-            courseId: question.course_id,
+            courseId: question.unit_catalog_id,
             courseName: this.currentCourseForTest?.name,
             questionText: question.question_text,
             difficulty: question.difficulty
@@ -2381,7 +2381,7 @@ async saveProgressToDatabase() {
                 }
 
                 const q = allQuestions[Math.floor(Math.random() * allQuestions.length)];
-                const course = courses.find(c => String(c.id) === String(q.course_id));
+                const course = courses.find(c => String(c.id) === String(q.unit_catalog_id));
 
                 if (course) {
                     const questionIndex = course.questions.findIndex(x => String(x.id) === String(q.id));
