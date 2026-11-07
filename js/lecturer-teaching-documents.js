@@ -41,13 +41,17 @@
     if(!authUser) throw new Error('Your lecturer login could not be verified. Please sign in again.');
     const name=String(p.full_name||p.name||state.user?.user_metadata?.full_name||'').trim();
     if(!name) throw new Error('Your lecturer profile name is unavailable.');
-    const {data,error}=await client.from('lecturer_subject_assignments')
-      .select('id,subject_name,subject_code,block,program,academic_year,lecturer_id,lecturer_name')
-      .ilike('lecturer_name',name);
+    const staffCandidate=String(p.staff_id||p.staffId||'').trim();
+    let assignmentQuery=client.from('lecturer_subject_assignments')
+      .select('id,subject_name,subject_code,block,program,academic_year,lecturer_id,lecturer_name');
+    assignmentQuery=staffCandidate
+      ? assignmentQuery.eq('lecturer_id',staffCandidate)
+      : assignmentQuery.ilike('lecturer_name',name);
+    const {data,error}=await assignmentQuery;
     if(error) throw error;
     state.units=(data||[]).filter(row=>row.subject_name||row.subject_code);
     const staffIds=[...new Set(state.units.map(row=>String(row.lecturer_id||'').trim()).filter(Boolean))];
-    state.staffId=String(p.staff_id||p.staffId||window.LecturerSessions?.lecturerAssignmentId||staffIds[0]||'').trim();
+    state.staffId=String(staffCandidate||staffIds[0]||'').trim();
     if(!state.units.length) throw new Error('No units are currently assigned to your lecturer profile. Contact the HOD if this is incorrect.');
     if(!state.staffId) throw new Error('Your staff ID could not be matched to the assigned units.');
     return {client,authUser,name,p};
