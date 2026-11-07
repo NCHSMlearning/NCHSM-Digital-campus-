@@ -231,23 +231,120 @@ const AcademicPortfolio = {
     // TAB SWITCHING
     // ============================================================
     async switchTab(tab) {
-        console.log('🔄 Switching to Academic Portfolio tab:', tab);
-        this.currentTab = tab;
-        const legacyNav = document.querySelector('#academic-portfolio-content .ap-tab-btn')?.parentElement;
-        const legacyStats = document.getElementById('apTotalSchemes')?.closest('div[style*="display: grid"]');
-        if (legacyNav) legacyNav.style.display = tab === 'dashboard' ? 'none' : 'flex';
-        if (legacyStats) legacyStats.style.display = tab === 'dashboard' ? 'none' : 'grid';
+        const legacyGroups = {
+            'course-allocation':'teaching','scheme-of-work':'teaching','lesson-plans':'teaching',
+            'teaching-documents':'teaching','teaching-log':'teaching','materials':'teaching',
+            'clinical':'teaching','reflections':'teaching',
+            'assessments':'assessments','exams':'assessments','evaluations':'assessments'
+        };
+        if (legacyGroups[tab]) return this.openModule(tab);
 
-        document.querySelectorAll('.ap-tab-btn, .ap-modern-tab, [data-ap-tab]').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.apTab === tab);
-            if (btn.classList.contains('ap-modern-tab')) {
-                btn.style.background = btn.dataset.apTab === tab ? '#4f25ad' : 'transparent';
-                btn.style.color = btn.dataset.apTab === tab ? '#fff' : '#17213e';
-            }
+        const allowed = ['dashboard','teaching','assessments','records-submissions','analysis','reports'];
+        if (!allowed.includes(tab)) tab = 'dashboard';
+        console.log('🔄 Switching to Academic Portfolio section:', tab);
+        this.currentTab = tab;
+
+        document.querySelectorAll('#ap-content .ap-modern-tab').forEach(btn => {
+            const active = btn.dataset.apTab === tab;
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-current', active ? 'page' : 'false');
         });
 
+        const container = document.getElementById('ap-content');
+        if (!container) return;
         const loaders = {
             'dashboard': () => this.loadDashboard(),
+            'teaching': () => this.renderGroupLanding('teaching'),
+            'assessments': () => this.renderGroupLanding('assessments'),
+            'records-submissions': () => window.LecturerAcademicRecords?.open?.(),
+            'analysis': () => this.loadAnalysis(),
+            'reports': () => this.loadReports()
+        };
+        if (tab !== 'dashboard') {
+            container.innerHTML = '<div class="ap-module-loading"><i class="fas fa-spinner fa-spin"></i><span>Opening workspace…</span></div>';
+        }
+        try {
+            await loaders[tab]();
+            if ((tab === 'records-submissions') && !container.innerHTML.trim()) {
+                container.innerHTML = '<div class="ap-module-error">Records workspace could not be opened. Please refresh and try again.</div>';
+            }
+        } catch (error) {
+            console.error('Academic Portfolio section failed:', tab, error);
+            container.innerHTML = '<div class="ap-module-error"><i class="fas fa-triangle-exclamation"></i><h3>Could not open this section</h3><p>' +
+                String(error.message || error).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])) +
+                '</p><button type="button" onclick="AcademicPortfolio.switchTab(\'' + tab + '\')">Try again</button></div>';
+        }
+    },
+
+    renderGroupLanding(group) {
+        const container = document.getElementById('ap-content');
+        if (!container) return;
+        const groups = {
+            teaching: {
+                title: 'Teaching workspace',
+                description: 'Plan, deliver and document teaching activities for your assigned units.',
+                items: [
+                    ['course-allocation','Unit Allocation','fa-book-open','View assigned units and teaching allocations'],
+                    ['scheme-of-work','Schemes of Work','fa-calendar-check','Prepare and maintain schemes of work'],
+                    ['lesson-plans','Lesson Plans','fa-file-lines','Create and manage lesson plans'],
+                    ['teaching-documents','Teaching Documents','fa-cloud-arrow-up','Submit teaching preparation and delivery evidence'],
+                    ['teaching-log','Teaching Log','fa-clipboard-list','Record teaching activities and reflections'],
+                    ['materials','Teaching Materials','fa-photo-film','Manage learning and teaching materials'],
+                    ['clinical','Clinical Supervision','fa-stethoscope','Document clinical teaching and supervision'],
+                    ['reflections','Teaching Reflections','fa-lightbulb','Maintain reflective teaching records']
+                ]
+            },
+            assessments: {
+                title: 'Assessment workspace',
+                description: 'Manage continuous assessments, examinations and learner evaluation records.',
+                items: [
+                    ['assessments','Assessments','fa-list-check','Manage assessment activities and records'],
+                    ['exams','Examinations','fa-file-pen','Manage examination activities'],
+                    ['evaluations','Student Evaluations','fa-user-check','Review student evaluation records']
+                ]
+            }
+        };
+        const config = groups[group];
+        if (!config) return;
+        container.innerHTML = `
+          <section class="ap-group-workspace">
+            <header class="ap-group-heading"><div><h2>${config.title}</h2><p>${config.description}</p></div></header>
+            <div class="ap-group-grid">
+              ${config.items.map(item => `
+                <button type="button" class="ap-group-card" data-ap-module="${item[0]}">
+                  <span class="ap-group-icon"><i class="fas ${item[2]}"></i></span>
+                  <span class="ap-group-copy"><strong>${item[1]}</strong><small>${item[3]}</small></span>
+                  <i class="fas fa-arrow-right ap-group-arrow"></i>
+                </button>`).join('')}
+            </div>
+          </section>
+          <style>
+            .ap-group-heading{margin:2px 0 18px}.ap-group-heading h2{margin:0;color:#14213d;font-size:22px;font-weight:850}.ap-group-heading p{margin:6px 0 0;color:#64748b;font-size:13px}
+            .ap-group-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+            .ap-group-card{display:flex;align-items:center;gap:13px;min-width:0;text-align:left;padding:17px;border:1px solid #e1e7f0;border-radius:14px;background:#fff;cursor:pointer;box-shadow:0 3px 12px rgba(15,23,42,.035);transition:transform .16s,border-color .16s,box-shadow .16s}
+            .ap-group-card:hover{transform:translateY(-2px);border-color:#b9a9ed;box-shadow:0 9px 22px rgba(51,35,105,.08)}
+            .ap-group-icon{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;border-radius:12px;background:#f0ebff;color:#5b35b1;font-size:18px}
+            .ap-group-copy{display:flex;flex-direction:column;gap:4px;min-width:0}.ap-group-copy strong{color:#17213e;font-size:13px}.ap-group-copy small{color:#64748b;font-size:11px;line-height:1.45}
+            .ap-group-arrow{margin-left:auto;color:#94a3b8;font-size:12px}
+            @media(max-width:620px){.ap-group-grid{grid-template-columns:1fr}.ap-group-card{padding:14px}}
+          </style>`;
+    },
+
+    async openModule(tab) {
+        const groups = {
+            'course-allocation':'teaching','scheme-of-work':'teaching','lesson-plans':'teaching',
+            'teaching-documents':'teaching','teaching-log':'teaching','materials':'teaching',
+            'clinical':'teaching','reflections':'teaching',
+            'assessments':'assessments','exams':'assessments','evaluations':'assessments'
+        };
+        const group = groups[tab] || 'teaching';
+        this.currentTab = group;
+        document.querySelectorAll('#ap-content .ap-modern-tab').forEach(btn => {
+            const active = btn.dataset.apTab === group;
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-current', active ? 'page' : 'false');
+        });
+        const loaders = {
             'course-allocation': () => this.loadCourseAllocation(),
             'scheme-of-work': () => this.loadSchemeOfWork(),
             'lesson-plans': () => this.loadLessonPlans(),
@@ -256,25 +353,21 @@ const AcademicPortfolio = {
             'materials': () => this.loadMaterials(),
             'assessments': () => this.loadAssessments(),
             'exams': () => this.loadExams(),
-            'analysis': () => this.loadAnalysis(),
             'clinical': () => this.loadClinical(),
             'evaluations': () => this.loadEvaluations(),
-            'reflections': () => this.loadReflections(),
-            'reports': () => this.loadReports(),
-            'records-submissions': () => window.LecturerAcademicRecords?.open?.()
+            'reflections': () => this.loadReflections()
         };
-        const loader = loaders[tab] || loaders.dashboard;
         const container = document.getElementById('ap-content');
-        if (!container) return;
-        if (tab !== 'dashboard') {
-            container.innerHTML = '<div class="ap-module-loading"><i class="fas fa-spinner fa-spin"></i><span>Opening workspace…</span></div>';
-        }
+        if (!container || !loaders[tab]) return;
+        container.innerHTML = '<div class="ap-module-loading"><i class="fas fa-spinner fa-spin"></i><span>Opening ' + tab.replace(/-/g,' ') + '…</span></div>';
         try {
-            await loader();
-            if (tab !== 'dashboard' && container.innerHTML.trim()) this.wrapModuleWorkspace(tab);
+            await loaders[tab]();
+            if (container.innerHTML.trim()) this.wrapModuleWorkspace(tab);
         } catch (error) {
             console.error('Academic Portfolio module failed:', tab, error);
-            container.innerHTML = `<div class="ap-module-error"><i class="fas fa-triangle-exclamation"></i><h3>Could not open this section</h3><p>${String(error.message || error)}</p><button type="button" onclick="AcademicPortfolio.switchTab('${tab}')">Try again</button></div>`;
+            container.innerHTML = '<div class="ap-module-error"><h3>Could not open this section</h3><p>' +
+                String(error.message || error).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])) +
+                '</p><button type="button" onclick="AcademicPortfolio.openModule(\'' + tab + '\')">Try again</button></div>';
         }
     },
 
@@ -303,7 +396,7 @@ const AcademicPortfolio = {
             @media(max-width:600px){.ap-module-heading{padding:13px}.ap-module-heading h2{font-size:18px}.ap-module-body{padding:10px}}
           </style>
           <div class="ap-module-workspace">
-            <header class="ap-module-heading"><div><h2>${title}</h2><p>Academic Portfolio · ${this.getCurrentAcademicYear()}</p></div><button class="ap-module-back" type="button" data-ap-tab="dashboard"><i class="fas fa-arrow-left"></i> Overview</button></header>
+            <header class="ap-module-heading"><div><h2>${title}</h2><p>Academic Portfolio · ${this.getCurrentAcademicYear()}</p></div><button class="ap-module-back" type="button" data-ap-tab="${(['assessments','exams','evaluations'].includes(tab) ? 'assessments' : 'teaching')}"><i class="fas fa-arrow-left"></i> Back to workspace</button></header>
             <section class="ap-module-body">${existing}</section>
           </div>`;
     },
@@ -379,10 +472,14 @@ const AcademicPortfolio = {
     bindSubTabs() {
         const container = document.getElementById('ap-content');
         if (!container || this._apDelegatedClickBound) return;
-
-        // Use one delegated listener on the persistent mount. This covers the
-        // modern navigation, quick-action cards and buttons rendered later.
         container.addEventListener('click', (event) => {
+            const moduleButton = event.target.closest('[data-ap-module]');
+            if (moduleButton && container.contains(moduleButton)) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.openModule(moduleButton.dataset.apModule);
+                return;
+            }
             const button = event.target.closest('[data-ap-tab]');
             if (!button || !container.contains(button)) return;
             const tab = button.dataset.apTab;
@@ -391,7 +488,6 @@ const AcademicPortfolio = {
             event.stopPropagation();
             this.switchTab(tab);
         });
-
         this._apDelegatedClickBound = true;
     },
 
@@ -545,12 +641,12 @@ const AcademicPortfolio = {
             <div class="ap-modern-context"><div class="ap-modern-chip"><i class="fas fa-layer-group"></i> Academic Year: ${esc(academicYear)}</div><div class="ap-modern-chip"><i class="fas fa-user-tie"></i> ${lecturerName}</div></div>
           </header>
           <nav class="ap-modern-tabs" aria-label="Academic Portfolio sections">
-            <button type="button" class="ap-modern-tab" data-ap-tab="dashboard"><i class="fas fa-th-large"></i><span>Overview</span></button>
-            ${tab('course-allocation','Course Allocation','fa-book-open')}
-            ${tab('teaching-documents','Submit Documents','fa-file-upload')}
-            ${tab('clinical','Clinical','fa-stethoscope')}
-            ${tab('exams','Exams','fa-file-pen')}
-            ${tab('reports','Reports','fa-chart-column')}
+            <button type="button" class="ap-modern-tab" data-ap-tab="dashboard"><i class="fas fa-house"></i><span>Overview</span></button>
+            ${tab('teaching','Teaching','fa-chalkboard-user')}
+            ${tab('assessments','Assessments','fa-file-circle-check')}
+            ${tab('records-submissions','Records &amp; Submissions','fa-folder-open')}
+            ${tab('analysis','Analysis','fa-chart-line')}
+            ${tab('reports','Reports','fa-file-chart-column')}
           </nav>
           <div class="ap-modern-grid">
             <div class="ap-modern-stat"><div class="ap-modern-stat-icon" style="background:#e7f0ff;color:#2563eb"><i class="fas fa-book-open"></i></div><div><strong>${Number(stats.totalCourses||0)}</strong><span>Units Assigned</span></div></div>
