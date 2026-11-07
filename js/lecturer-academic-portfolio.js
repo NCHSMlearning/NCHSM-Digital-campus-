@@ -235,7 +235,7 @@ const AcademicPortfolio = {
             'course-allocation':'teaching','scheme-of-work':'teaching','lesson-plans':'teaching',
             'teaching-documents':'teaching','teaching-log':'teaching','materials':'teaching',
             'clinical':'teaching','reflections':'teaching',
-            'exams':'assessments','evaluations':'assessments','marks-entry':'assessments'
+            'exams':'assessments','evaluations':'assessments','marks-entry':'assessments','report-generator':'reports'
         };
         if (legacyGroups[tab]) return this.openModule(tab);
 
@@ -336,7 +336,7 @@ const AcademicPortfolio = {
             'course-allocation':'teaching','scheme-of-work':'teaching','lesson-plans':'teaching',
             'teaching-documents':'teaching','teaching-log':'teaching','materials':'teaching',
             'clinical':'teaching','reflections':'teaching',
-            'assessments':'assessments','exams':'assessments','evaluations':'assessments','marks-entry':'assessments'
+            'assessments':'assessments','exams':'assessments','evaluations':'assessments','marks-entry':'assessments','report-generator':'reports'
         };
         const group = groups[tab] || 'teaching';
         this.currentTab = group;
@@ -355,6 +355,7 @@ const AcademicPortfolio = {
             'assessments': () => this.mountExistingSection('cats-content', 'Assessment & Examination Management'),
             'exams': () => this.mountExistingSection('cats-content', 'Assessment & Examination Management'),
             'marks-entry': () => this.mountExistingSection('marks-management-content', 'Marks Entry & Submission'),
+            'report-generator': () => this.mountExistingSection('reports-content', 'Academic Report Generator'),
             'clinical': () => this.loadClinical(),
             'evaluations': () => this.loadEvaluations(),
             'reflections': () => this.loadReflections()
@@ -414,7 +415,7 @@ const AcademicPortfolio = {
         const back = document.createElement('button');
         back.type = 'button';
         back.className = 'ap-module-back';
-        back.dataset.apTab = 'assessments';
+        back.dataset.apTab = title === 'Academic Report Generator' ? 'reports' : 'assessments';
         back.innerHTML = '<i class="fas fa-arrow-left"></i> Back to workspace';
         back.style.cssText = 'border:1px solid #d9d2f5;background:#fff;color:#4f25ad;border-radius:9px;padding:9px 13px;font-weight:800;cursor:pointer;';
         heading.append(copy, back);
@@ -1069,7 +1070,7 @@ const AcademicPortfolio = {
                         <span class="ap-analysis-icon"><i class="fas fa-chart-column"></i></span>
                         <h4>Student &amp; Unit Performance</h4>
                         <p>Open the report generator to review grade books, unit performance and student result summaries.</p>
-                        <button class="ap-analysis-action" type="button" onclick="AcademicPortfolio.switchTab('reports')">Open Report Generator <i class="fas fa-arrow-right"></i></button>
+                        <button class="ap-analysis-action" type="button" onclick="AcademicPortfolio.openModule('report-generator')">Open Report Generator <i class="fas fa-arrow-right"></i></button>
                     </article>
                     <article class="ap-analysis-card">
                         <span class="ap-analysis-icon" style="background:#e8f8f0;color:#059669;"><i class="fas fa-folder-open"></i></span>
@@ -1158,7 +1159,7 @@ const AcademicPortfolio = {
                         <span style="display:block;color:#64748b;font-size:12px;line-height:1.55;">Upload schemes, lesson plans, assessment records, examination documents and clinical records. Submit once and track review decisions.</span>
                         <span style="display:block;margin-top:13px;color:#1d4ed8;font-size:12px;font-weight:800;">Open Records <i class="fas fa-arrow-right"></i></span>
                     </button>
-                    <button type="button" onclick="document.querySelector('[data-tab=reports]')?.click()" style="text-align:left;border:1px solid #d1fae5;background:linear-gradient(135deg,#f3fcf8,#fff);padding:19px;border-radius:14px;cursor:pointer;color:#172033;">
+                    <button type="button" onclick="AcademicPortfolio.openModule('report-generator')" style="text-align:left;border:1px solid #d1fae5;background:linear-gradient(135deg,#f3fcf8,#fff);padding:19px;border-radius:14px;cursor:pointer;color:#172033;">
                         <span style="display:flex;width:38px;height:38px;align-items:center;justify-content:center;border-radius:10px;background:#d1fae5;color:#047857;"><i class="fas fa-chart-column"></i></span>
                         <strong style="display:block;margin:13px 0 5px;font-size:15px;">Report Generator</strong>
                         <span style="display:block;color:#64748b;font-size:12px;line-height:1.55;">Generate, analyse, preview, print and export grade books, unit performance, attendance, at-risk student and clinical reports.</span>
