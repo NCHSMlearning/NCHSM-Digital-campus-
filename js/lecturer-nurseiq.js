@@ -254,7 +254,7 @@
   async function readBulkFile(file) {
     const name = file.name.toLowerCase();
     if (name.endsWith('.csv')) return parseCSV(await file.text());
-    if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    if (name.endsWith('.xlsx')) {
       if (!window.ExcelJS) throw new Error('Excel reader is unavailable. Please upload a CSV file instead.');
       const workbook = new window.ExcelJS.Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
@@ -279,7 +279,7 @@
       const normalized = {};
       Object.entries(row || {}).forEach(([key, value]) => { normalized[normalizeHeader(key)] = String(value ?? '').trim(); });
       const missing = required.filter(key => !normalized[key]);
-      let correct = normalized.correct_answer.toUpperCase();
+      let correct = String(normalized.correct_answer || '').toUpperCase();
       const options = ['A','B','C','D'].map(letter => normalized['option_' + letter.toLowerCase()]);
       if (!missing.includes('correct_answer') && !['A','B','C','D'].includes(correct)) {
         const match = options.findIndex(option => option.toLowerCase() === normalized.correct_answer.toLowerCase());
@@ -351,10 +351,13 @@
     if (button) { button.disabled = true; button.textContent = 'Submitting ' + payload.length + ' questions…'; }
     let inserted = 0;
     try {
-      for (let i = 0; i < payload.length; i += 50) {
-        const { error } = await state.sb.from('medical_assessments').insert(payload.slice(i, i + 50));
-        if (error) throw new Error('Imported ' + inserted + ' of ' + payload.length + ' questions before the database rejected the next batch: ' + error.message);
-        inserted += Math.min(50, payload.length - i);
+      while (inserted < payload.length) {
+        const batch = payload.slice(inserted, inserted + 50);
+        const { error } = await state.sb.from('medical_assessments').insert(batch);
+        if (error) throw new Error('Imported ' + inserted + ' of ' + payload.length + ' questions. The remaining rows are retained for retry. Database message: ' + error.message);
+        inserted += batch.length;
+        state.bulkRows = state.bulkRows.slice(batch.length);
+        renderBulkPreview();
       }
       state.bulkRows = [];
       if ($('niqLecBulkFile')) $('niqLecBulkFile').value = '';
