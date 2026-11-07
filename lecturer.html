@@ -9830,10 +9830,13 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
       setOpen(!sidebar.classList.contains('active'));
     });
 
-    sidebar.querySelectorAll('a[data-tab]').forEach(link=>{
-      link.addEventListener('click',()=>{
-        if(isMobile()) setOpen(false);
-      });
+    // Delegate menu selection so dynamically rendered and nested sidebar links
+    // also close the drawer. The global tab controller handles displaying the
+    // selected section during the capture phase before this bubble handler runs.
+    sidebar.addEventListener('click',(event)=>{
+      const link=event.target.closest('a[data-tab]');
+      if(!link || !sidebar.contains(link) || !isMobile()) return;
+      setOpen(false);
     });
 
     document.addEventListener('keydown',(event)=>{
