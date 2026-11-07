@@ -560,12 +560,14 @@ const AcademicPortfolio = {
           </div>
           <section class="ap-modern-card" style="margin-bottom:18px">
             <h3><i class="fas fa-cloud-arrow-up"></i> Submit Academic Documents</h3>
-            <p style="margin:-7px 0 15px;color:#64748b;font-size:13px">Choose a document type to upload it for HOD review. All submissions are managed here.</p>
+            <p style="margin:-7px 0 15px;color:#64748b;font-size:13px">Choose a category. The same secure form handles all 37 document types and sends submissions to the HOD for review.</p>
             <div class="ap-modern-actions ap-document-submit-actions">
-              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.open('scheme_of_work')"><i class="fas fa-list-check"></i><span>Scheme of Work</span></button>
-              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.open('lesson_plan')"><i class="fas fa-chalkboard-teacher"></i><span>Lesson Plan</span></button>
-              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.open('record_of_work')"><i class="fas fa-clipboard-list"></i><span>Record of Work</span></button>
-              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.open('course_outline')"><i class="fas fa-book"></i><span>Course Outline</span></button>
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.openCategory('teaching_preparation')"><i class="fas fa-calendar-check"></i><span>Teaching Preparation</span></button>
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.openCategory('teaching_delivery')"><i class="fas fa-chalkboard-user"></i><span>Teaching Delivery</span></button>
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.openCategory('assessment_examinations')"><i class="fas fa-file-circle-check"></i><span>Assessment &amp; Examinations</span></button>
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.openCategory('student_support')"><i class="fas fa-user-graduate"></i><span>Student Support</span></button>
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.openCategory('quality_assurance')"><i class="fas fa-shield-halved"></i><span>Quality Assurance</span></button>
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.openCategory('professional_development')"><i class="fas fa-award"></i><span>Professional Development</span></button>
             </div>
           </section>
           <div class="ap-modern-lower">
