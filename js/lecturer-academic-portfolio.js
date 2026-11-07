@@ -641,7 +641,7 @@ const AcademicPortfolio = {
             <div class="ap-modern-context"><div class="ap-modern-chip"><i class="fas fa-layer-group"></i> Academic Year: ${esc(academicYear)}</div><div class="ap-modern-chip"><i class="fas fa-user-tie"></i> ${lecturerName}</div></div>
           </header>
           <nav class="ap-modern-tabs" aria-label="Academic Portfolio sections">
-            <button type="button" class="ap-modern-tab" data-ap-tab="dashboard"><i class="fas fa-house"></i><span>Overview</span></button>
+            <button type="button" class="ap-modern-tab active" data-ap-tab="dashboard" aria-current="page"><i class="fas fa-house"></i><span>Overview</span></button>
             ${tab('teaching','Teaching','fa-chalkboard-user')}
             ${tab('assessments','Assessments','fa-file-circle-check')}
             ${tab('records-submissions','Records &amp; Submissions','fa-folder-open')}
