@@ -235,7 +235,7 @@ const AcademicPortfolio = {
             'course-allocation':'teaching','scheme-of-work':'teaching','lesson-plans':'teaching',
             'teaching-documents':'teaching','teaching-log':'teaching','materials':'teaching',
             'clinical':'teaching','reflections':'teaching',
-            'assessments':'assessments','exams':'assessments','evaluations':'assessments'
+            'exams':'assessments','evaluations':'assessments'
         };
         if (legacyGroups[tab]) return this.openModule(tab);
 
@@ -604,7 +604,7 @@ const AcademicPortfolio = {
           .ap-modern-tabs{display:flex;align-items:center;overflow-x:auto;gap:3px;padding:5px;margin-bottom:20px;background:#fff;border:1px solid #dce3f0;border-radius:13px;scrollbar-width:thin}
           .ap-modern-tab{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:10px 14px;border:0;border-radius:9px;background:transparent;color:#17213e;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap}
           .ap-modern-tab:hover{background:#f1f5ff;color:#4338ca}
-          .ap-modern-tab[data-ap-tab="dashboard"]{background:#4f25ad;color:#fff}
+          .ap-modern-tab.active{background:#4f25ad;color:#fff}.ap-modern-tab[aria-current="page"]{background:#4f25ad;color:#fff}
           .ap-modern-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:18px}
           .ap-modern-stat{display:flex;align-items:center;gap:13px;min-width:0;padding:18px;border:1px solid #e0e7f3;border-radius:14px;background:#fff;box-shadow:0 3px 14px rgba(15,23,42,.045)}
           .ap-modern-stat-icon{width:54px;height:54px;flex:0 0 54px;border-radius:50%;display:grid;place-items:center;font-size:22px}
