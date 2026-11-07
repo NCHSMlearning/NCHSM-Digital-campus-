@@ -120,7 +120,8 @@
     categorySelect.value=initialCategory;
     function refreshDocumentTypes(preferred){
       const group=DOCUMENT_GROUPS.find(([,key])=>key===categorySelect.value);
-      const isNursing=state.units.some(u=>String(u.program||'').toUpperCase()==='KRCHN');
+      const selectedUnit=state.units[Number($('tdsUnit')?.value)];
+      const isNursing=selectedUnit ? isNursingUnit(selectedUnit) : false;
       const tvetOnly=new Set(['cat_1','cat_2','practical_exam_1','practical_exam_2','practical_exam_3']);
       const items=(group?.[2]||[]).filter(([,type])=>!isNursing||!tvetOnly.has(type));
       typeSelect.innerHTML=items.map(([label,type])=>'<option value="'+type+'">'+esc(label)+'</option>').join('');
@@ -129,7 +130,7 @@
     refreshDocumentTypes(selectedType);
     categorySelect.addEventListener('change',()=>refreshDocumentTypes());
     const select=$('tdsUnit');
-    if(select) select.innerHTML='<option value="">-- Select an assigned unit --</option>'+unitOptions;
+    if(select){select.innerHTML='<option value="">-- Select an assigned unit --</option>'+unitOptions;select.addEventListener('change',()=>refreshDocumentTypes());}
     $('tdsForm')?.addEventListener('submit',submit);
     $('tdsRefresh')?.addEventListener('click',loadRows);
     $('tdsFile')?.addEventListener('change',()=>{const f=$('tdsFile').files?.[0];if(f)$('tdsMessage').textContent=f.name+' · '+(f.size/1048576).toFixed(2)+' MB';});
