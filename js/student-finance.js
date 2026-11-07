@@ -482,7 +482,7 @@ async function sendPaymentReceiptEmail(paymentData) {
             minute: '2-digit'
         });
         
-        emailPayload.html = generateEmailHTML(paymentData, receiptNumber, studentName, date, time);
+        emailPayload.html = generateEmailHTML(paymentData, receiptNumber, studentName, date, time, Boolean(pdfDataUrl));
         
         // ✅ Add PDF attachment if generated successfully
         if (pdfDataUrl) {
@@ -527,7 +527,7 @@ async function sendPaymentReceiptEmail(paymentData) {
                 const adminPayload = {
                     to: 'finance@nchsm.co.ke',
                     subject: `📋 Payment Receipt - ${receiptNumber} (Admin Copy)`,
-                    html: generateEmailHTML(paymentData, receiptNumber, studentName, date, time),
+                    html: generateEmailHTML(paymentData, receiptNumber, studentName, date, time, Boolean(pdfDataUrl)),
                     from: 'NCHSM Finance <finance@nchsm.co.ke>'
                 };
                 
@@ -542,7 +542,7 @@ async function sendPaymentReceiptEmail(paymentData) {
                     ];
                 }
                 
-                await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+                const adminResponse = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
                     method: 'POST',
                     headers: {
                         'Authorization': 'Bearer ' + accessToken,
@@ -550,7 +550,12 @@ async function sendPaymentReceiptEmail(paymentData) {
                     },
                     body: JSON.stringify(adminPayload)
                 });
-                console.log('📧 Admin copy sent');
+                const adminResult = await adminResponse.json().catch(() => ({}));
+                if (!adminResponse.ok || !adminResult.success) {
+                    console.warn('⚠️ Admin receipt copy failed:', adminResult.error || adminResponse.status);
+                } else {
+                    console.log('📧 Admin copy sent');
+                }
             }
             
             return true;
@@ -569,7 +574,7 @@ async function sendPaymentReceiptEmail(paymentData) {
 // 📧 GENERATE EMAIL HTML (with PDF attachment notice)
 // ============================================================
 
-function generateEmailHTML(payment, receiptNumber, studentName, date, time) {
+function generateEmailHTML(payment, receiptNumber, studentName, date, time, pdfAttached = false) {
     const amount = parseFloat(payment.amount).toFixed(2);
     const period = payment.period || 'N/A';
     const method = payment.payment_method || 'M-Pesa';
@@ -634,9 +639,7 @@ function generateEmailHTML(payment, receiptNumber, studentName, date, time) {
             </table>
         </div>
         
-        <div class="pdf-notice">
-            <p>📎 <strong>PDF Receipt Attached:</strong> Please find your official receipt attached to this email. You can download and print it for your records.</p>
-        </div>
+        ${pdfAttached ? '<div class="pdf-notice"><p>📎 <strong>PDF Receipt Attached:</strong> Please find your official receipt attached to this email. You can download and print it for your records.</p></div>' : '<p>Your PDF receipt could not be generated for this email. You can download or print your receipt from the Finance dashboard.</p>'}
         
         <div style="text-align: center;">
             <a href="https://nchsm.co.ke/finance" class="btn">📊 View Finance Dashboard</a>
