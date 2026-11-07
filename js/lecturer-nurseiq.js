@@ -30,30 +30,35 @@
     if (!authId && !fullName) throw new Error('Your lecturer login profile could not be identified. Please sign out and sign in again.');
 
     const columns = 'id, lecturer_id, lecturer_name, program, block, subject_name, subject_code, academic_year';
-    let assignments = [];
-
-    // Match the lecturer name first, as the existing Lecturer Courses module does.
-    // Assignment lecturer_id is not always the same as the Supabase Auth UID.
+    const lookups = [];
     if (fullName) {
-      const safeName = fullName.replace(/[%_,]/g, ' ').replace(/\s+/g, ' ').trim();
-      const byName = await state.sb.from('lecturer_subject_assignments')
+      // Exact indexed match first; avoid a leading-wildcard scan on every page visit.
+      lookups.push(state.sb.from('lecturer_subject_assignments').select(columns).eq('lecturer_name', fullName));
+    } else lookups.push(Promise.resolve({ data: [], error: null }));
+    if (authId) {
+      lookups.push(state.sb.from('lecturer_subject_assignments').select(columns).eq('lecturer_id', String(authId)));
+    } else lookups.push(Promise.resolve({ data: [], error: null }));
+
+    const [byNameResult, byIdResult] = await Promise.all(lookups);
+    if (byNameResult.error) throw byNameResult.error;
+    if (byIdResult.error) throw byIdResult.error;
+
+    let byName = byNameResult.data || [];
+    // Legacy assignments sometimes contain inconsistent spacing/capitalization.
+    // Use the slower partial match only if the exact indexed lookup found nothing.
+    if (!byName.length && fullName) {
+      const safeName = fullName.replace(/[%_,]/g, ' ').replace(/\\s+/g, ' ').trim();
+      const fallback = await state.sb.from('lecturer_subject_assignments')
         .select(columns).ilike('lecturer_name', '%' + safeName + '%');
-      if (byName.error) throw byName.error;
-      assignments = byName.data || [];
-      const exactName = assignments.filter(a => String(a.lecturer_name || '').trim().toLowerCase() === fullName.toLowerCase());
-      if (exactName.length) assignments = exactName;
-      const nonStaff = assignments.filter(a => !String(a.lecturer_id || '').toUpperCase().startsWith('STAFF'));
-      if (nonStaff.length) assignments = nonStaff;
+      if (fallback.error) throw fallback.error;
+      byName = fallback.data || [];
+      const exactName = byName.filter(a => String(a.lecturer_name || '').trim().toLowerCase() === fullName.toLowerCase());
+      if (exactName.length) byName = exactName;
+      const nonStaff = byName.filter(a => !String(a.lecturer_id || '').toUpperCase().startsWith('STAFF'));
+      if (nonStaff.length) byName = nonStaff;
     }
 
-    // Include UID-linked rows as a fallback/merge, without discarding name-linked assignments.
-    if (authId) {
-      const byId = await state.sb.from('lecturer_subject_assignments')
-        .select(columns).eq('lecturer_id', String(authId));
-      if (byId.error) throw byId.error;
-      assignments = assignments.concat(byId.data || []);
-    }
-    assignments = [...new Map(assignments.map(a => [a.id, a])).values()];
+    const assignments = [...new Map([...byName, ...(byIdResult.data || [])].map(a => [a.id, a])).values()];
     if (!assignments.length) throw new Error('No assigned units were found for this lecturer account.');
 
     state.assignments = assignments;
@@ -61,19 +66,18 @@
   }
 
   async function loadUnits() {
-    // units_catalog is the sole source of truth for unit IDs, names and codes.
+    // Fetch the active catalogue once, rather than once per programme.
     const programs = [...new Set(state.assignments.map(a => String(a.program || '').trim()).filter(Boolean))];
-    const catalogueResults = await Promise.all(programs.map(program =>
-      state.sb.from('units_catalog')
-        .select('id, unit_code, unit_name, program, block, status')
-        .ilike('program', program)
-        .ilike('status', 'active')
-    ));
-    const catalogue = [];
-    catalogueResults.forEach(result => {
-      if (result.error) throw result.error;
-      catalogue.push(...(result.data || []));
-    });
+    if (!programs.length) {
+      state.units = state.assignments.map(assignment => ({ ...assignment, catalogUnit: null, matchCount: 0 }));
+      return;
+    }
+    const { data, error } = await state.sb.from('units_catalog')
+      .select('id, unit_code, unit_name, program, block, status')
+      .in('program', programs)
+      .ilike('status', 'active');
+    if (error) throw error;
+    const catalogue = data || [];
 
     const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     state.units = state.assignments.map(assignment => {
@@ -88,8 +92,6 @@
       if (!matches.length && assignedName) {
         matches = inProgram.filter(unit => normalize(unit.unit_name) === assignedName);
       }
-      // Assignment block labels are not always formatted like catalogue blocks
-      // (for example "A" versus "Introductory"). Use block only to disambiguate.
       if (matches.length > 1 && assignedBlock) {
         const blockMatches = matches.filter(unit => normalize(unit.block) === assignedBlock);
         if (blockMatches.length) matches = blockMatches;
