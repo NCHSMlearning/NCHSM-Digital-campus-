@@ -1214,6 +1214,7 @@
         <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
     </a>
 </li>
+<li><a href="#" data-tab="nurseiq-questions" style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;color:rgba(255,255,255,.88);text-decoration:none;font-size:13px;transition:all .2s;"><i class="fas fa-brain" style="width:18px;text-align:center;font-size:13px;color:#38bdf8;"></i><span>NurseIQ Question Bank</span><span style="margin-left:auto;background:#0e7490;padding:2px 8px;border-radius:20px;font-size:9px;color:white;font-weight:700;">NEW</span></a></li>
         <!-- ========================================== -->
 <!-- NURSING SYSTEM - ONLY FOR KRCHN DEPARTMENT -->
 <!-- ========================================== -->
@@ -6017,6 +6018,30 @@
 })();
 </script>
 
+<!-- ========================================================= -->
+<!-- NURSEIQ QUESTION AUTHORING — ASSIGNED UNITS ONLY           -->
+<!-- ========================================================= -->
+<section id="nurseiq-questions-content" class="tab-content" style="display:none;">
+<style>
+.niq-lec-wrap{display:grid;gap:20px;color:#172033}.niq-lec-hero{padding:25px 28px;border-radius:20px;background:linear-gradient(115deg,#102b46,#155e75 65%,#0e7490);color:#fff;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;box-shadow:0 15px 34px rgba(15,50,83,.14)}.niq-lec-hero h2{margin:0 0 7px;font-size:24px}.niq-lec-hero p{margin:0;color:#d6edf5;font-size:13px;line-height:1.6}.niq-lec-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}.niq-lec-stat,.niq-lec-card{background:#fff;border:1px solid #e7edf4;border-radius:17px;padding:18px;box-shadow:0 5px 18px rgba(15,23,42,.035);min-width:0}.niq-lec-stat small{display:block;color:#7b8798;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px}.niq-lec-stat strong{display:block;font-size:27px;margin-top:8px;color:#172033}.niq-lec-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:18px;align-items:start}.niq-lec-card h3{margin:0 0 16px;font-size:16px}.niq-lec-field{display:grid;gap:6px;margin-bottom:13px}.niq-lec-field label{font-size:12px;font-weight:700;color:#475569}.niq-lec-field input,.niq-lec-field select,.niq-lec-field textarea{width:100%;border:1px solid #dbe3ed;border-radius:10px;padding:11px 12px;font:inherit;font-size:13px;background:#fff;color:#172033;min-width:0}.niq-lec-field textarea{min-height:88px;resize:vertical}.niq-lec-field input:focus,.niq-lec-field select:focus,.niq-lec-field textarea:focus{outline:0;border-color:#0e7490;box-shadow:0 0 0 3px rgba(14,116,144,.1)}.niq-lec-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.niq-lec-submit{width:100%;border:0;border-radius:11px;padding:13px 16px;background:linear-gradient(110deg,#0f3b5c,#0e7490);color:#fff;font-weight:800;cursor:pointer}.niq-lec-submit:disabled{opacity:.6;cursor:wait}.niq-lec-message{padding:11px 13px;border-radius:10px;font-size:12px;margin-bottom:14px;background:#eff6ff;color:#1d4ed8}.niq-lec-message.success{background:#ecfdf5;color:#047857}.niq-lec-message.error{background:#fef2f2;color:#b91c1c}.niq-lec-question{border:1px solid #e8edf4;border-radius:13px;padding:14px;margin-bottom:10px}.niq-lec-qtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.niq-lec-unit{font-size:10px;font-weight:800;color:#0e7490;background:#ecfeff;border-radius:20px;padding:5px 9px}.niq-lec-status{font-size:10px;font-weight:800;text-transform:capitalize;border-radius:20px;padding:5px 9px;background:#fef3c7;color:#92400e}.niq-lec-status.published{background:#dcfce7;color:#166534}.niq-lec-status.rejected{background:#fee2e2;color:#991b1b}.niq-lec-question h4{font-size:13px;line-height:1.5;margin:11px 0;color:#26364a}.niq-lec-qmeta{display:flex;gap:12px;flex-wrap:wrap;color:#8a97a9;font-size:10px}.niq-lec-empty{text-align:center;padding:28px 12px;color:#8290a4;font-size:12px}.niq-lec-empty i{display:block;font-size:25px;margin-bottom:10px;color:#94a3b8}.niq-lec-empty strong{display:block;color:#475569;margin-bottom:5px}@media(max-width:900px){.niq-lec-grid{grid-template-columns:1fr}.niq-lec-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.niq-lec-hero{padding:20px}.niq-lec-hero h2{font-size:20px}.niq-lec-stats{gap:9px}.niq-lec-stat{padding:13px}.niq-lec-stat strong{font-size:23px}.niq-lec-options{grid-template-columns:1fr}}
+</style>
+<div class="niq-lec-wrap">
+<header class="niq-lec-hero"><div><div style="font-size:10px;font-weight:800;letter-spacing:1.5px;color:#bae6fd;margin-bottom:8px;">NCHSM · NURSEIQ</div><h2><i class="fas fa-brain"></i> NurseIQ Question Bank</h2><p>Create practice questions for the units assigned to you. Submissions go through admin review before students can access them.</p></div><button type="button" onclick="LecturerNurseIQ.refresh()" class="btn" style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;"><i class="fas fa-sync-alt"></i> Refresh</button></header>
+<div id="niqLecMessage" class="niq-lec-message">Loading your assigned units…</div>
+<div class="niq-lec-stats"><div class="niq-lec-stat"><small>My submissions</small><strong id="niqLecTotal">0</strong></div><div class="niq-lec-stat"><small>Pending review</small><strong id="niqLecPending">0</strong></div><div class="niq-lec-stat"><small>Published</small><strong id="niqLecApproved">0</strong></div><div class="niq-lec-stat"><small>Rejected</small><strong id="niqLecRejected">0</strong></div></div>
+<div class="niq-lec-grid"><section class="niq-lec-card"><h3><i class="fas fa-circle-plus" style="color:#0e7490;margin-right:7px;"></i>Create a practice question</h3>
+<form id="niqLecForm">
+<div class="niq-lec-field"><label for="niqLecUnit">Assigned unit *</label><select id="niqLecUnit" required><option value="">Loading assigned units…</option></select><small id="niqLecUnitNote" style="color:#8290a4;font-size:11px;"></small></div>
+<div class="niq-lec-field"><label for="niqLecTopic">Topic (optional)</label><input id="niqLecTopic" maxlength="160" placeholder="e.g. Infection prevention"></div>
+<div class="niq-lec-field"><label for="niqLecQuestionText">Question *</label><textarea id="niqLecQuestionText" required maxlength="5000" placeholder="Enter a clear clinical or theory question…"></textarea></div>
+<div class="niq-lec-options"><div class="niq-lec-field"><label for="niqLecOptionA">Option A *</label><input id="niqLecOptionA" required maxlength="1000"></div><div class="niq-lec-field"><label for="niqLecOptionB">Option B *</label><input id="niqLecOptionB" required maxlength="1000></div><div class="niq-lec-field"><label for="niqLecOptionC">Option C *</label><input id="niqLecOptionC" required maxlength="1000"></div><div class="niq-lec-field"><label for="niqLecOptionD">Option D *</label><input id="niqLecOptionD" required maxlength="1000"></div></div>
+<div class="niq-lec-grid" style="grid-template-columns:1fr 1fr;gap:12px;"><div class="niq-lec-field"><label for="niqLecCorrect">Correct option *</label><select id="niqLecCorrect" required><option value="">Choose answer</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div><div class="niq-lec-field"><label for="niqLecDifficulty">Difficulty</label><select id="niqLecDifficulty"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div></div>
+<div class="niq-lec-field"><label for="niqLecExplanation">Explanation / rationale</label><textarea id="niqLecExplanation" maxlength="3000" placeholder="Explain why the correct option is best…"></textarea></div>
+<button type="submit" id="niqLecSubmit" class="niq-lec-submit"><i class="fas fa-paper-plane"></i> Submit for approval</button><small style="display:block;color:#8290a4;font-size:10px;line-height:1.5;margin-top:9px;">Your answer key is stored with the question and is not displayed to students before they answer.</small>
+</form></section>
+<section class="niq-lec-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px;"><h3 style="margin:0;">My NurseIQ submissions</h3><span style="font-size:10px;color:#8290a4;">Latest first</span></div><div id="niqLecQuestionList"><div class="niq-lec-empty"><i class="fas fa-spinner fa-spin"></i>Loading submissions…</div></div></section></div>
+</div></section>
+
 <!-- ========================================== -->
 <!-- 📝 QUESTION BANK - LECTURER WITH ADMIN APPROVAL -->
 <!-- ========================================== -->
@@ -8894,6 +8919,8 @@ function showTab(tabId) {
         if (window.lecturerNCKLoadData) setTimeout(window.lecturerNCKLoadData, 300);
     } else if (tabId === 'online-learning') {
         // Online Learning initializes after its dedicated JS module is loaded.
+    } else if (tabId === 'nurseiq-questions') {
+        if (window.LecturerNurseIQ?.init) setTimeout(window.LecturerNurseIQ.init, 150);
     } else if (tabId === 'lecturer-questions') {
         if (window.LecturerQuestions?.init) {
             setTimeout(window.LecturerQuestions.init, 300);
@@ -9184,6 +9211,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 
 <!-- ===== ✅ LECTURER QUESTIONS MODULE ===== -->
 <script src="js/lecturer-questions.js"></script>
+<script src="js/lecturer-nurseiq.js?v=20261107"></script>
 
 <!-- ===== ACADEMIC PORTFOLIO MODULE ===== -->
 <script src="js/lecturer-academic-portfolio.js"></script>
@@ -9552,7 +9580,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 (function(){
     'use strict';
 
-    const TAB_IDS = ['dashboard', 'profile', 'my-courses', 'my-students', 'online-learning', 'sessions', 'attendance', 'academic-portfolio', 'cats', 'marks-management', 'lecturer-questions', 'nursing-system', 'resources', 'reports', 'messages', 'calendar', 'settings'];
+    const TAB_IDS = ['dashboard', 'profile', 'my-courses', 'my-students', 'online-learning', 'sessions', 'attendance', 'academic-portfolio', 'cats', 'marks-management', 'lecturer-questions', 'nurseiq-questions', 'nursing-system', 'resources', 'reports', 'messages', 'calendar', 'settings'];
 
     function getSection(tabId){
         return document.getElementById(tabId + '-content') || document.getElementById(tabId);
