@@ -977,19 +977,40 @@ const AcademicPortfolio = {
     async loadAnalysis() {
         const container = document.getElementById('ap-content');
         if (!container) return;
-        
+
+        // The legacy Results Analysis placeholder is retired. Route lecturers to
+        // the existing report generator for real performance analysis and exports.
         container.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                <i class="fas fa-chart-bar" style="font-size: 40px; color: #3b82f6;"></i>
-                <h3 style="color: #1e293b; margin-top: 15px;">Results Analysis</h3>
-                <p style="color: #94a3b8;">Analyze student performance and results.</p>
-                <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px dashed #e2e8f0;">
-                    <p style="color: #64748b; font-size: 14px;">📌 Phase 3: Results analysis coming soon.</p>
-                    <button onclick="AcademicPortfolio.switchTab('dashboard')" style="margin-top: 10px; background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
-                        <i class="fas fa-arrow-left"></i> Back to Dashboard
-                    </button>
+            <section class="ap-analysis-hub" style="max-width:1050px;margin:0 auto;padding:10px 2px 28px;">
+                <style>
+                    .ap-analysis-hub .ap-analysis-card{display:flex;flex-direction:column;gap:10px;min-height:190px;padding:22px;border:1px solid #dbe5f2;border-radius:18px;background:linear-gradient(145deg,#fff,#f7faff);box-shadow:0 5px 18px rgba(15,23,42,.045)}
+                    .ap-analysis-hub .ap-analysis-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:13px;background:#e8f1ff;color:#2563eb;font-size:20px}
+                    .ap-analysis-hub .ap-analysis-card h4{margin:3px 0 0;color:#17213e;font-size:17px}
+                    .ap-analysis-hub .ap-analysis-card p{margin:0;color:#64748b;font-size:13px;line-height:1.6}
+                    .ap-analysis-hub .ap-analysis-action{align-self:flex-start;margin-top:auto;border:0;border-radius:10px;background:#1769d2;color:#fff;padding:10px 15px;font-weight:700;cursor:pointer}
+                    @media(max-width:620px){.ap-analysis-hub .ap-analysis-grid{grid-template-columns:1fr!important}.ap-analysis-hub .ap-analysis-card{min-height:0}}
+                </style>
+                <header style="margin-bottom:20px;">
+                    <div style="font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#64748b;">Academic Portfolio</div>
+                    <h2 style="margin:6px 0;color:#17213e;font-size:clamp(22px,3vw,29px);">Performance Analysis</h2>
+                    <p style="margin:0;max-width:680px;color:#64748b;font-size:14px;line-height:1.65;">Review student and unit performance using the lecturer report generator. Generate, preview, print and export the available academic reports.</p>
+                </header>
+                <div class="ap-analysis-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;">
+                    <article class="ap-analysis-card">
+                        <span class="ap-analysis-icon"><i class="fas fa-chart-column"></i></span>
+                        <h4>Student &amp; Unit Performance</h4>
+                        <p>Open the report generator to review grade books, unit performance and student result summaries.</p>
+                        <button class="ap-analysis-action" type="button" onclick="AcademicPortfolio.switchTab('reports')">Open Report Generator <i class="fas fa-arrow-right"></i></button>
+                    </article>
+                    <article class="ap-analysis-card">
+                        <span class="ap-analysis-icon" style="background:#e8f8f0;color:#059669;"><i class="fas fa-folder-open"></i></span>
+                        <h4>Academic Records</h4>
+                        <p>Review submitted academic evidence and follow document submission and approval workflows.</p>
+                        <button class="ap-analysis-action" type="button" style="background:#059669;" onclick="AcademicPortfolio.switchTab('records-submissions')">Open Records <i class="fas fa-arrow-right"></i></button>
+                    </article>
                 </div>
-            </div>
+                <p style="margin:16px 2px 0;padding:12px 14px;border:1px solid #dbeafe;border-radius:12px;background:#f5f9ff;color:#52647d;font-size:12px;line-height:1.6;"><i class="fas fa-circle-info" style="color:#2563eb;"></i> Analysis and export tools are accessed through the Report Generator. This replaces the retired “Phase 3: Results analysis coming soon” screen.</p>
+            </section>
         `;
     },
     
