@@ -523,6 +523,10 @@ if (window.location.pathname.endsWith('.html')) {
     // SHOW PAGE FUNCTION - UPDATED WITH TVETIQ
     // ============================================
     window.showPage = (page) => {
+        if (['settings', 'user-management'].includes(page) && currentAdmin?.role !== 'superadmin') {
+            showToast('Access denied. Superadmin privileges are required.', 'error');
+            return;
+        }
         if(page === 'dashboard') renderDashboard();
         else if(page === 'question-bank') renderQuestionBank();
         else if(page === 'add-question') renderAddQuestion();
@@ -587,7 +591,14 @@ if (window.location.pathname.endsWith('.html')) {
     
     function showToast(msg, type) { const toast = document.createElement('div'); toast.className = 'toast'; toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i> ${msg}`; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
 
-    function logout() { localStorage.removeItem('nurseiq_admin_session'); location.reload(); }
+    async function logout() {
+        currentAdmin = null;
+        if (sb) await sb.auth.signOut();
+        document.getElementById('admin-section').classList.add('hidden');
+        document.getElementById('login-section').classList.remove('hidden');
+        document.getElementById('login-form').reset();
+        location.reload();
+    }
 
     function updateSidebarByRole() {
         const role = currentAdmin?.role;
@@ -1415,12 +1426,14 @@ window.confirmBulkImport = async () => {
     // USER MANAGEMENT
     // ============================================
     window.updateUserRole = async (userId, newRole) => {
+        if (currentAdmin?.role !== 'superadmin') { showToast('Access denied. Superadmin only.', 'error'); return; }
         const { error } = await sb.from('consolidated_user_profiles_table').update({ role: newRole }).eq('id', userId);
         if (error) showToast('Error: ' + error.message, 'error');
         else { showToast('Role updated!', 'success'); await loadAllData(); renderSuperAdminDashboard(); }
     };
 
     window.deleteUser = async (userId) => {
+        if (currentAdmin?.role !== 'superadmin') { showToast('Access denied. Superadmin only.', 'error'); return; }
         if (confirm('Delete this user?')) {
             const { error } = await sb.from('consolidated_user_profiles_table').delete().eq('id', userId);
             if (error) showToast('Error: ' + error.message, 'error');
@@ -1429,6 +1442,7 @@ window.confirmBulkImport = async () => {
     };
 
     window.addNewUser = async () => {
+        if (currentAdmin?.role !== 'superadmin') { showToast('Access denied. Superadmin only.', 'error'); return; }
         const email = prompt('Email:');
         const name = prompt('Full name:');
         const role = prompt('Role (student, lecturer, admin, superadmin):');
@@ -1464,34 +1478,60 @@ window.confirmBulkImport = async () => {
     // ============================================
     // LOGIN
     // ============================================
+    // Authenticate with Supabase Auth first, then load the trusted profile and role.
+    async function loadAuthenticatedAdmin(authUser) {
+        if (!authUser?.id || !authUser?.email) throw new Error('Unable to verify your account. Please sign in again.');
+
+        const { data: userData, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('id, email, full_name, role, program, program_type')
+            .eq('id', authUser.id)
+            .maybeSingle();
+
+        if (error) throw new Error('Could not verify your admin role: ' + error.message);
+        if (!userData || String(userData.email || '').toLowerCase() !== authUser.email.toLowerCase()) {
+            throw new Error('Your authenticated account does not have a matching college profile.');
+        }
+
+        const userRole = String(userData.role || '').toLowerCase().trim();
+        if (!['superadmin', 'admin', 'lecturer'].includes(userRole)) {
+            await sb.auth.signOut();
+            throw new Error('Access denied. NurseIQ Admin is only available to authorised superadmins, admins and lecturers.');
+        }
+
+        currentAdmin = { ...userData, id: authUser.id, email: authUser.email, role: userRole };
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('admin-section').classList.remove('hidden');
+        await loadAllData();
+        updateSidebarByRole();
+        document.getElementById('user-name').innerHTML = `<i class="fas ${userRole === 'superadmin' ? 'fa-crown' : userRole === 'admin' ? 'fa-user-shield' : 'fa-chalkboard-teacher'}"></i> ${escapeHtml(userData.full_name || 'User')}`;
+        document.getElementById('user-role-badge').innerHTML = `<span class="badge badge-primary">${userRole.toUpperCase()}</span> Portal`;
+        if (userRole === 'superadmin') renderSuperAdminDashboard();
+        else if (userRole === 'admin') renderDashboard();
+        else renderLecturerDashboard();
+    }
+
     document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault(); 
-        const email = document.getElementById('login-email').value.trim(); 
+        e.preventDefault();
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
         const btn = document.getElementById('login-btn');
-        btn.disabled = true; 
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+        const errorDiv = document.getElementById('login-error');
+        errorDiv.classList.add('hidden');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying account...';
         try {
-            const { data, error } = await sb.from('consolidated_user_profiles_table').select('*').eq('email', email).limit(1);
-            if (error || !data?.length) throw new Error('User not found');
-            const userData = data[0];
-            const userRole = userData.role || 'student';
-            if (!['superadmin', 'admin', 'lecturer'].includes(userRole)) throw new Error('Access denied');
-            localStorage.setItem('nurseiq_admin_session', JSON.stringify({ id: userData.id, email, name: userData.full_name, role: userRole }));
-            currentAdmin = userData;
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('admin-section').classList.remove('hidden');
-            await loadAllData();
-            updateSidebarByRole();
-            document.getElementById('user-name').innerHTML = `<i class="fas ${userRole === 'superadmin' ? 'fa-crown' : userRole === 'admin' ? 'fa-user-shield' : 'fa-chalkboard-teacher'}"></i> ${userData.full_name || 'User'}`;
-            document.getElementById('user-role-badge').innerHTML = `<span class="badge badge-primary">${userRole.toUpperCase()}</span> Portal`;
-            if (userRole === 'superadmin') renderSuperAdminDashboard();
-            else if (userRole === 'admin') renderDashboard();
-            else renderLecturerDashboard();
-        } catch (err) { 
-            const errorDiv = document.getElementById('login-error');
+            if (!sb) throw new Error('Authentication is not ready. Refresh the page and try again.');
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) throw new Error(error.message);
+            if (!data?.user) throw new Error('Supabase did not return an authenticated user.');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking administrator role...';
+            await loadAuthenticatedAdmin(data.user);
+        } catch (err) {
+            await sb?.auth?.signOut();
             errorDiv.classList.remove('hidden');
-            errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + err.message; 
-            btn.disabled = false; 
+            errorDiv.textContent = err.message || 'Login failed. Please check your credentials.';
+            btn.disabled = false;
             btn.innerHTML = 'Login to Dashboard';
         }
     });
@@ -1500,19 +1540,24 @@ window.confirmBulkImport = async () => {
     // DOM READY
     // ============================================
     document.addEventListener('DOMContentLoaded', async () => {
-        sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
-        const session = localStorage.getItem('nurseiq_admin_session');
-        if (session) { 
-            currentAdmin = JSON.parse(session); 
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('admin-section').classList.remove('hidden');
-            await loadAllData(); 
-            updateSidebarByRole();
-            document.getElementById('user-name').innerHTML = `<i class="fas ${currentAdmin.role === 'superadmin' ? 'fa-crown' : currentAdmin.role === 'admin' ? 'fa-user-shield' : 'fa-chalkboard-teacher'}"></i> ${currentAdmin.full_name || 'User'}`;
-            document.getElementById('user-role-badge').innerHTML = `<span class="badge badge-primary">${currentAdmin.role.toUpperCase()}</span> Portal`;
-            if (currentAdmin.role === 'superadmin') renderSuperAdminDashboard();
-            else if (currentAdmin.role === 'admin') renderDashboard();
-            else renderLecturerDashboard();
+        sb = window.supabase.createClient(SB_URL, SB_KEY, {
+            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+        });
+        try {
+            const { data: { session }, error } = await sb.auth.getSession();
+            if (error) throw error;
+            if (session?.user) {
+                await loadAuthenticatedAdmin(session.user);
+            }
+        } catch (err) {
+            console.warn('NurseIQ session verification failed:', err);
+            await sb.auth.signOut();
+            currentAdmin = null;
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('admin-section').classList.add('hidden');
+            const errorDiv = document.getElementById('login-error');
+            errorDiv.textContent = err.message || 'Your session could not be verified. Please log in again.';
+            errorDiv.classList.remove('hidden');
         }
     });
 
