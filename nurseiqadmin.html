@@ -211,7 +211,7 @@
                     </div>
                     <div class="nav-section">
                         <div class="nav-section-title"><i class="fas fa-graduation-cap"></i> ACADEMICS</div>
-                        <button onclick="showPage('courses')" class="sidebar-nav-item" id="nav-courses"><i class="fas fa-book"></i> Course Manager</button>
+                        <button onclick="showPage('courses')" class="sidebar-nav-item" id="nav-courses"><i class="fas fa-book"></i> Unit Catalogue</button>
                         <button onclick="showPage('students')" class="sidebar-nav-item" id="nav-students"><i class="fas fa-users"></i> Student Manager</button>
                     </div>
                     <div class="nav-section">
@@ -1529,7 +1529,7 @@ window.confirmBulkImport = async () => {
     // ============================================
     // EXPORT FUNCTIONS
     // ============================================
-    window.exportAllData = () => { const data = { questions: allQuestions, courses: allCourses, students: allStudents, progress: userProgress }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_${Date.now()}.json`; a.click(); showToast('Exported', 'success'); };
+    window.exportAllData = () => { const data = { questions: allQuestions, units_catalog: allCourses, students: allStudents, progress: userProgress }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_${Date.now()}.json`; a.click(); showToast('Exported', 'success'); };
     window.exportAllQuestions = () => { const csv = ['Question,Correct Answer,Course,Difficulty,Status', ...allQuestions.map(q => `"${(q.question_text || '').replace(/"/g, '""')}","${(q.correct_answer || '').replace(/"/g, '""')}","${q.courses?.course_name || ''}","${q.difficulty || ''}","${q.status || ''}"`)].join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `questions_${Date.now()}.csv`; a.click(); showToast('Exported', 'success'); };
     window.exportStudentProgressCSV = () => { const rows = [['Student', 'Email', 'Answered', 'Correct', 'Accuracy', 'Marked']]; for (const student of allStudents) { const prog = getStudentProgress(student.id); rows.push([student.full_name || 'Unknown', student.email || '', prog.totalAnswered, prog.correctCount, prog.accuracy, prog.markedQuestions.length]); } const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `progress_${Date.now()}.csv`; a.click(); showToast('Exported', 'success'); };
     window.clearAllStudentProgress = async () => { if(confirm('Delete ALL student progress?')) { await sb.from('user_progress').delete().neq('user_id', ''); await loadAllData(); showToast('All progress cleared', 'success'); } };
@@ -1580,7 +1580,8 @@ window.confirmBulkImport = async () => {
         document.body.appendChild(modal);
         document.getElementById('edit-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const updates = { unit_catalog_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString(), status: 'pending' };
+            const selectedUnit = allCourses.find(unit => String(unit.id) === String(document.getElementById('edit-course').value));
+            const updates = { unit_catalog_id: document.getElementById('edit-course').value, unit_name: selectedUnit?.unit_name || null, unit_code: selectedUnit?.unit_code || null, curriculum: selectedUnit?.program || 'KRCHN', question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString(), status: 'pending' };
             const { error } = await sb.from('medical_assessments').update(updates).eq('id', questionId);
             if (error) alert('Error: ' + error.message);
             else { alert('Question updated and sent for approval!'); modal.remove(); await loadAllData(); renderLecturerDashboard(); showToast('Question updated! Pending approval.', 'success'); }
