@@ -2867,10 +2867,11 @@ async function sendMarksPublishedEmail(studentEmail, studentName, program, block
         // Standalone fallback for pages where the exams module isn't loaded.
         var sessionResult = await window.sb?.auth?.getSession?.();
         var accessToken = sessionResult?.data?.session?.access_token;
+        if (!accessToken) return { success: false, error: 'An authenticated session is required to send email.' };
         var response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer ' + (accessToken || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk'),
+                'Authorization': 'Bearer ' + (accessToken || ''),
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
