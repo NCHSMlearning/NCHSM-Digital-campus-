@@ -210,10 +210,11 @@
   const NURSING_DOCUMENTS = [
     ['Course outlines','course_outline'],['Schemes of work','scheme_of_work'],
     ['Records of work','record_of_work'],['Examination papers','examination_question_paper'],
-    ['Marking schemes','marking_scheme'],['Marks sheets and examination results','marks_analysis_report']
+    ['Marking schemes','marking_scheme'],['Marks sheets and examination results','marks_analysis_report'],
+    ['CAT 1','cat_1'],['CAT 2','cat_2']
   ];
   const TVET_DOCUMENTS = [
-    ...NURSING_DOCUMENTS,['CAT 1','cat_1'],['CAT 2','cat_2'],
+    ...NURSING_DOCUMENTS,
     ['Practical exam 1','practical_exam_1'],['Practical exam 2','practical_exam_2'],['Practical exam 3','practical_exam_3']
   ];
   function isNursingUnit(unit){return String(unit?.program||'').trim().toUpperCase()==='KRCHN';}
