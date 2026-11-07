@@ -62,20 +62,13 @@
 
   async function loadUnits() {
     // units_catalog is the sole source of truth for unit IDs, names and codes.
-    const groups = [...new Map(state.assignments.map(a => [
-      String(a.program || '').trim() + '|' + String(a.block || '').trim(),
-      { program: a.program, block: a.block }
-    ])).values()];
-
-    const catalogueResults = await Promise.all(groups.map(group => {
-      let query = state.sb.from('units_catalog')
+    const programs = [...new Set(state.assignments.map(a => String(a.program || '').trim()).filter(Boolean))];
+    const catalogueResults = await Promise.all(programs.map(program =>
+      state.sb.from('units_catalog')
         .select('id, unit_code, unit_name, program, block, status')
-        .ilike('status', 'active');
-      if (group.program) query = query.ilike('program', String(group.program).trim());
-      if (group.block) query = query.ilike('block', String(group.block).trim());
-      return query;
-    }));
-
+        .ilike('program', program)
+        .ilike('status', 'active')
+    ));
     const catalogue = [];
     catalogueResults.forEach(result => {
       if (result.error) throw result.error;
@@ -85,18 +78,21 @@
     const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     state.units = state.assignments.map(assignment => {
       const program = normalize(assignment.program);
-      const block = normalize(assignment.block);
+      const assignedBlock = normalize(assignment.block);
       const assignedCode = normalize(assignment.subject_code);
       const assignedName = normalize(assignment.subject_name);
-      const inScope = catalogue.filter(unit =>
-        normalize(unit.program) === program &&
-        (!block || normalize(unit.block) === block)
-      );
+      const inProgram = catalogue.filter(unit => normalize(unit.program) === program);
       let matches = assignedCode
-        ? inScope.filter(unit => normalize(unit.unit_code) === assignedCode)
+        ? inProgram.filter(unit => normalize(unit.unit_code) === assignedCode)
         : [];
       if (!matches.length && assignedName) {
-        matches = inScope.filter(unit => normalize(unit.unit_name) === assignedName);
+        matches = inProgram.filter(unit => normalize(unit.unit_name) === assignedName);
+      }
+      // Assignment block labels are not always formatted like catalogue blocks
+      // (for example "A" versus "Introductory"). Use block only to disambiguate.
+      if (matches.length > 1 && assignedBlock) {
+        const blockMatches = matches.filter(unit => normalize(unit.block) === assignedBlock);
+        if (blockMatches.length) matches = blockMatches;
       }
       const unique = [...new Map(matches.map(unit => [String(unit.id), unit])).values()];
       const catalogUnit = unique.length === 1 ? unique[0] : null;
