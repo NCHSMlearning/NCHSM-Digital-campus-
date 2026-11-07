@@ -119,7 +119,7 @@ class NurseIQModule {
         this.programDisplayName = getProgramDisplayName(program);
         this.isTVETStudent = isTVETProgram(program);
         this.intakeYear = this.user?.intake_year || this.user?.intake || '2026';
-        this.userBlock = this.user?.block || this.user?.current_block || 'Introductory';
+        this.userBlock = this.user?.current_block || this.user?.block || 'Introductory';
         
         this.currentProgram = this.isTVETStudent ? 'tvet' : 'nursing';
         
@@ -1138,16 +1138,48 @@ async saveProgressToDatabase() {
             const supabase = this.getSupabaseClient();
             if (!supabase) throw new Error('No database connection');
             
-            const { data: questions, error } = await supabase
+            // Use units_catalog as the academic source of truth for NurseIQ block access.
+            // The legacy courses table and its records/relationships are not modified.
+            const studentProgram = String(this.programCode || '').trim();
+            const studentBlock = String(this.userBlock || '').trim();
+            if (!studentProgram || !studentBlock) {
+                throw new Error('Your programme or current block is missing from your student profile. Please contact the School of Nursing.');
+            }
+
+            const { data: catalogUnits, error: catalogError } = await supabase
+                .from('units_catalog')
+                .select('unit_code, unit_name, program, block')
+                .ilike('program', studentProgram)
+                .ilike('block', studentBlock)
+                .ilike('status', 'active');
+            if (catalogError) throw catalogError;
+
+            const allowedUnitCodes = new Set(
+                (catalogUnits || []).map(unit => String(unit.unit_code || '').trim().toUpperCase()).filter(Boolean)
+            );
+
+            if (!allowedUnitCodes.size) {
+                this.questionBankCourses = [];
+                this.displayQuestionBankCards([]);
+                console.warn('⚠️ No active catalogue units mapped to:', studentProgram, studentBlock);
+                return;
+            }
+
+            const { data: allQuestions, error } = await supabase
                 .from('medical_assessments')
                 .select(`*, courses (id, course_name, unit_code, color, description)`)
                 .eq('is_active', true)
                 .eq('is_published', true)
                 .order('updated_at', { ascending: false });
-            
             if (error) throw error;
-            console.log(`✅ Fetched ${questions?.length || 0} questions`);
-            
+
+            const questions = (allQuestions || []).filter(question => {
+                const unitCode = String(question.courses?.unit_code || question.unit_code || '').trim().toUpperCase();
+                return unitCode && allowedUnitCodes.has(unitCode);
+            });
+
+            console.log(`✅ Loaded ${questions.length} NurseIQ questions for ${studentProgram} / ${studentBlock}`);
+
             const coursesMap = {};
             const courseUpdatedDates = {};
             
@@ -3137,7 +3169,7 @@ async saveProgressToDatabase() {
             this.programDisplayName = getProgramDisplayName(program);
             this.isTVETStudent = isTVETProgram(program);
             this.intakeYear = this.user?.intake_year || this.user?.intake || '2026';
-            this.userBlock = this.user?.block || this.user?.current_block || 'Introductory';
+            this.userBlock = this.user?.current_block || this.user?.block || 'Introductory';
             this.currentProgram = this.isTVETStudent ? 'tvet' : 'nursing';
 
             console.log('✅ NurseIQ authenticated user resolved:', this.userId);
