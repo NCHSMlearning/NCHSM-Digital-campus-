@@ -233,9 +233,13 @@ const AcademicPortfolio = {
     switchTab(tab) {
         console.log('🔄 Switching to Academic Portfolio tab:', tab);
         this.currentTab = tab;
+        const legacyNav = document.querySelector('#academic-portfolio-content .ap-tab-btn')?.parentElement;
+        const legacyStats = document.getElementById('apTotalSchemes')?.closest('div[style*="display: grid"]');
+        if (legacyNav) legacyNav.style.display = tab === 'dashboard' ? 'none' : 'flex';
+        if (legacyStats) legacyStats.style.display = tab === 'dashboard' ? 'none' : 'grid';
         
         // Update tab button styles
-        document.querySelectorAll('.ap-tab-btn').forEach(btn => {
+        document.querySelectorAll('.ap-tab-btn, .ap-modern-tab, [data-ap-tab]').forEach(btn => {
             btn.classList.remove('active');
             btn.style.background = 'transparent';
             btn.style.color = '#475569';
@@ -341,6 +345,10 @@ const AcademicPortfolio = {
             
             // Render dashboard
             container.innerHTML = this.renderDashboardHTML(stats);
+            const legacyNav = document.querySelector('#academic-portfolio-content .ap-tab-btn')?.parentElement;
+            const legacyStats = document.getElementById('apTotalSchemes')?.closest('div[style*="display: grid"]');
+            if (legacyNav) legacyNav.style.display = 'none';
+            if (legacyStats) legacyStats.style.display = 'none';
             
             // Re-bind sub-tab events
             this.bindSubTabs();
