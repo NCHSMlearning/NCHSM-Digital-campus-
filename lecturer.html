@@ -9816,9 +9816,9 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
     const isMobile=()=>window.matchMedia('(max-width: 768px)').matches;
     const setOpen=(open)=>{
       sidebar.classList.toggle('mobile-open',open);
-      // Keep legacy CSS selectors in sync: the stylesheet positions the drawer
-      // with .sidebar.active, while the previous handler only toggled mobile-open.
+      // Synchronize every class used by the legacy and current drawer styles.
       sidebar.classList.toggle('active',open);
+      sidebar.classList.toggle('open',open);
       toggle.classList.toggle('active',open);
       toggle.setAttribute('aria-expanded',String(open));
       document.body.classList.toggle('mobile-sidebar-open',open && isMobile());
@@ -9830,14 +9830,21 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
       setOpen(!sidebar.classList.contains('active'));
     });
 
-    // Delegate menu selection so dynamically rendered and nested sidebar links
-    // also close the drawer. The global tab controller handles displaying the
-    // selected section during the capture phase before this bubble handler runs.
+    // Capture before legacy link handlers call stopPropagation(). This guarantees
+    // every primary or nested module link closes the mobile drawer after selection.
     sidebar.addEventListener('click',(event)=>{
       const link=event.target.closest('a[data-tab]');
       if(!link || !sidebar.contains(link) || !isMobile()) return;
       setOpen(false);
-    });
+      // Ensure the selected module is presented in the viewport, not beneath
+      // the closed drawer or at a stale scroll position.
+      requestAnimationFrame(()=>{
+        const main=document.getElementById('mainContent') ||
+                   document.getElementById('main-content');
+        if(main) main.scrollIntoView({block:'start',behavior:'auto'});
+        else window.scrollTo({top:0,behavior:'auto'});
+      });
+    }, true);
 
     document.addEventListener('keydown',(event)=>{
       if(event.key==='Escape' && sidebar.classList.contains('active')) setOpen(false);
