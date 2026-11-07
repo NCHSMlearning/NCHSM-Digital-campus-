@@ -235,13 +235,14 @@ const AcademicPortfolio = {
             'course-allocation':'teaching','scheme-of-work':'teaching','lesson-plans':'teaching',
             'teaching-documents':'teaching','teaching-log':'teaching','materials':'teaching',
             'clinical':'teaching','reflections':'teaching',
-            'exams':'assessments','evaluations':'assessments'
+            'exams':'assessments','evaluations':'assessments','marks-entry':'assessments'
         };
         if (legacyGroups[tab]) return this.openModule(tab);
 
         const allowed = ['dashboard','teaching','assessments','records-submissions','analysis','reports'];
         if (!allowed.includes(tab)) tab = 'dashboard';
         console.log('🔄 Switching to Academic Portfolio section:', tab);
+        this.restoreMountedSection();
         this.currentTab = tab;
 
         document.querySelectorAll('#ap-content .ap-modern-tab').forEach(btn => {
@@ -298,8 +299,8 @@ const AcademicPortfolio = {
                 title: 'Assessment workspace',
                 description: 'Manage continuous assessments, examinations and learner evaluation records.',
                 items: [
-                    ['assessments','Assessments','fa-list-check','Manage assessment activities and records'],
-                    ['exams','Examinations','fa-file-pen','Manage examination activities'],
+                    ['assessments','Assessments & Examinations','fa-list-check','Create and manage examinations, CATs and assessment schedules'],
+                    ['marks-entry','Marks Entry','fa-pen-to-square','Enter, review and submit marks for assigned units'],
                     ['evaluations','Student Evaluations','fa-user-check','Review student evaluation records']
                 ]
             }
@@ -335,7 +336,7 @@ const AcademicPortfolio = {
             'course-allocation':'teaching','scheme-of-work':'teaching','lesson-plans':'teaching',
             'teaching-documents':'teaching','teaching-log':'teaching','materials':'teaching',
             'clinical':'teaching','reflections':'teaching',
-            'assessments':'assessments','exams':'assessments','evaluations':'assessments'
+            'assessments':'assessments','exams':'assessments','evaluations':'assessments','marks-entry':'assessments'
         };
         const group = groups[tab] || 'teaching';
         this.currentTab = group;
@@ -351,8 +352,9 @@ const AcademicPortfolio = {
             'teaching-documents': () => window.TeachingDocumentsSubmission?.open?.(),
             'teaching-log': () => this.loadTeachingLog(),
             'materials': () => this.loadMaterials(),
-            'assessments': () => this.loadAssessments(),
-            'exams': () => this.loadExams(),
+            'assessments': () => this.mountExistingSection('cats-content', 'Assessment & Examination Management'),
+            'exams': () => this.mountExistingSection('cats-content', 'Assessment & Examination Management'),
+            'marks-entry': () => this.mountExistingSection('marks-management-content', 'Marks Entry & Submission'),
             'clinical': () => this.loadClinical(),
             'evaluations': () => this.loadEvaluations(),
             'reflections': () => this.loadReflections()
@@ -371,11 +373,51 @@ const AcademicPortfolio = {
         }
     },
 
+    mountExistingSection(sectionId, title) {
+        const container = document.getElementById('ap-content');
+        const section = document.getElementById(sectionId);
+        if (!container || !section) {
+            throw new Error('The existing ' + title + ' module could not be found on this page.');
+        }
+        this.restoreMountedSection();
+        this._mountedPortfolioSection = {
+            section,
+            parent: section.parentNode,
+            nextSibling: section.nextSibling,
+            originalDisplay: section.style.display
+        };
+        const host = document.createElement('div');
+        host.className = 'ap-existing-module-host';
+        host.style.cssText = 'width:100%;min-width:0;';
+        container.innerHTML = '';
+        container.appendChild(host);
+        section.classList.remove('tab-content');
+        section.style.display = 'block';
+        section.style.animation = 'none';
+        host.appendChild(section);
+        // Keep the original IDs and event listeners intact by moving, not cloning, the module.
+        this.wrapModuleWorkspace(title === 'Marks Entry & Submission' ? 'marks-entry' : 'exams');
+    },
+
+    restoreMountedSection() {
+        const mounted = this._mountedPortfolioSection;
+        if (!mounted) return;
+        const {section, parent, nextSibling, originalDisplay} = mounted;
+        if (parent) {
+            if (nextSibling && nextSibling.parentNode === parent) parent.insertBefore(section, nextSibling);
+            else parent.appendChild(section);
+        }
+        section.classList.add('tab-content');
+        section.style.display = originalDisplay || 'none';
+        section.style.animation = '';
+        this._mountedPortfolioSection = null;
+    },
+
     wrapModuleWorkspace(tab) {
         const container = document.getElementById('ap-content');
         if (!container || container.querySelector('.ap-module-workspace')) return;
         const labels = {
-            'course-allocation':'Unit Allocation','scheme-of-work':'Teaching Plan','lesson-plans':'Lesson Plans',
+            'course-allocation':'Unit Allocation','scheme-of-work':'Teaching Plan','lesson-plans':'Lesson Plans','marks-entry':'Marks Entry & Submission',
             'teaching-log':'Teaching Log','materials':'Teaching Materials','assessments':'Assessments',
             'exams':'Examinations','analysis':'Performance Analysis','clinical':'Clinical Supervision',
             'evaluations':'Student Evaluations','reflections':'Teaching Reflections',
@@ -396,7 +438,7 @@ const AcademicPortfolio = {
             @media(max-width:600px){.ap-module-heading{padding:13px}.ap-module-heading h2{font-size:18px}.ap-module-body{padding:10px}}
           </style>
           <div class="ap-module-workspace">
-            <header class="ap-module-heading"><div><h2>${title}</h2><p>Academic Portfolio · ${this.getCurrentAcademicYear()}</p></div><button class="ap-module-back" type="button" data-ap-tab="${(['assessments','exams','evaluations'].includes(tab) ? 'assessments' : 'teaching')}"><i class="fas fa-arrow-left"></i> Back to workspace</button></header>
+            <header class="ap-module-heading"><div><h2>${title}</h2><p>Academic Portfolio · ${this.getCurrentAcademicYear()}</p></div><button class="ap-module-back" type="button" data-ap-tab="${(['assessments','exams','evaluations','marks-entry'].includes(tab) ? 'assessments' : 'teaching')}"><i class="fas fa-arrow-left"></i> Back to workspace</button></header>
             <section class="ap-module-body">${existing}</section>
           </div>`;
     },
