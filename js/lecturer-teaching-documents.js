@@ -177,8 +177,7 @@
     ['Examination papers','examination_question_paper'],
     ['Marking schemes','marking_scheme'],
     ['Marks sheets and examination results','marks_analysis_report'],
-    ['CAT 1','cat'],
-    ['CAT 2','cat']
+    ['CAT 1','cat']
   ];
   function renderUnitCompliance(rows){
     const host=$('tdsUnitCompliance');if(!host)return;
