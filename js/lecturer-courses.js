@@ -185,98 +185,85 @@ const LecturerCourses = {
             let units = [];
             const program = this.currentProgram || profile.program || 'KRCHN';
             
-            // ✅ Get assignments from lecturer_subject_assignments
-            const { data: assignments, error } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('*')
-                .eq('lecturer_id', String(lecturerId));
-            
-            if (error) {
-                console.error('Error loading assignments:', error);
-                this.courses = [];
-                this.filteredCourses = [];
-                this.renderTable();
-                this.updateStats();
-                return;
-            }
-            
-            console.log('📊 Found assignments:', assignments?.length || 0);
-            
-            if (assignments && assignments.length > 0) {
-                console.log('📋 Assignment details:', assignments);
-                
-                units = assignments.map((a, index) => {
-                    const blockDisplay = this.getBlockDisplay(a.block);
-                    const blockShort = this.getBlockShortName(a.block);
-                    const programType = this.getProgramTypeLabel();
-                    
-                    return {
-                        id: a.id || `unit_${index}`,
-                        unit_id: a.id || `unit_${index}`,
-                        unit_code: a.subject_code || 'N/A',
-                        course_name: a.subject_name || 'Unnamed Unit',
-                        target_program: a.program || program,
-                        block: a.block || 'N/A',
-                        block_display: blockDisplay,
-                        block_short: blockShort,
-                        intake_year: a.academic_year || new Date().getFullYear().toString(),
-                        status: this.determineStatus(a),
-                        credits: 0,
-                        student_count: 0,
-                        source: 'assignments',
-                        program_type: programType,
-                        is_tvet: this.isTVET,
-                        raw: a
-                    };
-                });
-                
-                console.log('✅ Processed units from assignments:', units.length);
-            }
-            
-            // ✅ If no units, try units_catalog by program (fallback)
-            if (units.length === 0) {
-                console.log('🔄 No assignments found, trying units_catalog for program:', program);
-                
-                try {
-                    const { data, error } = await supabase
-                        .from('units_catalog')
-                        .select('*')
-                        .eq('program', program)
-                        .eq('status', 'active')
-                        .order('unit_code', { ascending: true });
-                    
-                    if (!error && data && data.length > 0) {
-                        console.log('📚 Found units in units_catalog:', data.length);
-                        units = data.map((u, index) => {
-                            const blockDisplay = this.getBlockDisplay(u.block);
-                            const blockShort = this.getBlockShortName(u.block);
-                            
-                            return {
-                                id: u.id || `catalog_${index}`,
-                                unit_id: u.id || `catalog_${index}`,
-                                unit_code: u.unit_code || 'N/A',
-                                course_name: u.unit_name || 'Unnamed Unit',
-                                target_program: u.program || program,
-                                block: u.block || 'N/A',
-                                block_display: blockDisplay,
-                                block_short: blockShort,
-                                intake_year: u.year ? String(u.year) : new Date().getFullYear().toString(),
-                                status: 'active',
-                                credits: u.credits || 0,
-                                unit_type: u.unit_type || 'Core',
-                                student_count: 0,
-                                source: 'catalog',
-                                program_type: this.getProgramTypeLabel(),
-                                is_tvet: this.isTVET,
-                                raw: u
-                            };
-                        });
-                    }
-                } catch (e) {
-                    console.warn('Error getting units from units_catalog:', e.message);
+            // Assignment lecturer_id is not consistently the Supabase Auth UID.
+            // Resolve by exact lecturer name as well as ID, then merge without duplicates.
+            const fullName = String(profile.full_name || profile.name || '').trim();
+            const queries = [];
+            if (fullName) queries.push(
+                supabase.from('lecturer_subject_assignments').select('*')
+                    .ilike('lecturer_name', `%${fullName.replace(/[%_,]/g, ' ')}%`)
+            );
+            if (lecturerId) queries.push(
+                supabase.from('lecturer_subject_assignments').select('*')
+                    .eq('lecturer_id', String(lecturerId))
+            );
+            const results = await Promise.all(queries);
+            const queryError = results.find(r => r.error)?.error;
+            if (queryError) throw queryError;
+            const rows = results.flatMap(r => r.data || []);
+            const exactNameRows = fullName ? rows.filter(x =>
+                String(x.lecturer_name || '').trim().toLowerCase() === fullName.toLowerCase()
+            ) : [];
+            const assignments = exactNameRows.length ? exactNameRows : rows;
+            const uniqueAssignments = [...new Map(assignments.map(x => [
+                String(x.id || [x.lecturer_id, x.subject_name, x.subject_code, x.program, x.block, x.academic_year].join('|')), x
+            ])).values()];
+
+            console.log('📊 Found lecturer assignments:', uniqueAssignments.length);
+
+            // The official units_catalog is the source of canonical unit codes.
+            // Match assignment rows by code first, then exact unit name.
+            const normalize = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+            const programs = [...new Set(uniqueAssignments.map(x => String(x.program || program).trim()).filter(Boolean))];
+            const catalogResults = await Promise.all(programs.map(p =>
+                supabase.from('units_catalog')
+                    .select('id, unit_code, unit_name, program, block, status')
+                    .ilike('program', p)
+            ));
+            const catalogError = catalogResults.find(r => r.error)?.error;
+            if (catalogError) console.warn('Unable to load unit catalogue for code resolution:', catalogError.message);
+            const catalog = catalogResults.flatMap(r => r.error ? [] : (r.data || []));
+
+            units = uniqueAssignments.map((assignment, index) => {
+                const assignmentProgram = assignment.program || program;
+                const programUnits = catalog.filter(u => normalize(u.program) === normalize(assignmentProgram));
+                const code = normalize(assignment.subject_code);
+                const name = normalize(assignment.subject_name);
+                let matches = code ? programUnits.filter(u => normalize(u.unit_code) === code) : [];
+                if (!matches.length && name) matches = programUnits.filter(u => normalize(u.unit_name) === name);
+                if (matches.length > 1 && assignment.block) {
+                    const blockMatches = matches.filter(u => normalize(u.block) === normalize(assignment.block));
+                    if (blockMatches.length) matches = blockMatches;
                 }
-            }
-            
+                const catalogUnit = matches.length === 1 ? matches[0] : null;
+                const unitCode = catalogUnit?.unit_code || assignment.subject_code || '';
+                const unitName = catalogUnit?.unit_name || assignment.subject_name || 'Unnamed Unit';
+                const block = assignment.block || catalogUnit?.block || 'N/A';
+                return {
+                    id: assignment.id || catalogUnit?.id || `unit_${index}`,
+                    unit_id: catalogUnit?.id || assignment.unit_id || assignment.id || `unit_${index}`,
+                    unit_code: unitCode || 'Code unavailable',
+                    course_name: unitName,
+                    target_program: assignmentProgram,
+                    block,
+                    block_display: this.getBlockDisplay(block),
+                    block_short: this.getBlockShortName(block),
+                    intake_year: assignment.academic_year || new Date().getFullYear().toString(),
+                    status: this.determineStatus(assignment),
+                    credits: catalogUnit?.credits || 0,
+                    student_count: 0,
+                    source: 'assignments',
+                    program_type: this.getProgramTypeLabel(),
+                    is_tvet: this.isTVET,
+                    raw: { ...assignment, subject_code: unitCode, subject_name: unitName, catalog_unit_id: catalogUnit?.id || null }
+                };
+            });
+
+            console.log('✅ Assigned units enriched from units_catalog:', units.length);
+
+            // Do not list every active catalogue unit when this lecturer has no
+            // assignment rows; only display units actually assigned to this lecturer.
+
             // ✅ Set courses
             this.courses = units;
             this.filteredCourses = [...this.courses];
