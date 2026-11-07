@@ -574,55 +574,47 @@ const LecturerUI = {
     
     // Setup mobile navigation
     setupMobileNav() {
-        const toggle = document.getElementById('mobileNavToggle');
-        const sidebar = document.getElementById('sidebar');
-        
-        if (toggle && sidebar) {
-            // Remove any existing listeners
-            const newToggle = toggle.cloneNode(true);
-            toggle.parentNode.replaceChild(newToggle, toggle);
-            
-            newToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleSidebar();
-            });
-        }
-        
-        // Close sidebar on outside click
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768) {
-                const sidebar = document.getElementById('sidebar');
-                const toggle = document.getElementById('mobileNavToggle');
-                if (sidebar && !sidebar.contains(e.target) && !toggle?.contains(e.target)) {
-                    this.toggleSidebar(false);
-                }
+        // The page-level mobile navigation controller owns the hamburger click
+        // and delegated module selection. Do not clone the button here: doing so
+        // detaches the controller's listener and creates competing toggle states.
+        // Keep only the outside-click close behavior in this legacy module.
+        if (this._mobileOutsideClickBound) return;
+        this._mobileOutsideClickBound = true;
+
+        document.addEventListener('click', (event) => {
+            if (window.innerWidth > 768) return;
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('mobileNavToggle');
+            if (sidebar && sidebar.classList.contains('mobile-open') &&
+                !sidebar.contains(event.target) && !toggle?.contains(event.target)) {
+                this.toggleSidebar(false);
             }
         });
     },
-    
-    // Toggle sidebar
+
+    // Keep every legacy and current drawer state synchronized.
     toggleSidebar(forceState) {
         const sidebar = document.getElementById('sidebar');
         const toggle = document.getElementById('mobileNavToggle');
-        
         if (!sidebar) return;
-        
-        if (forceState !== undefined) {
-            this.sidebarOpen = forceState;
-        } else {
-            this.sidebarOpen = !this.sidebarOpen;
-        }
-        
+
+        const currentlyOpen = sidebar.classList.contains('mobile-open') ||
+                              sidebar.classList.contains('active') ||
+                              sidebar.classList.contains('open');
+        this.sidebarOpen = forceState !== undefined ? !!forceState : !currentlyOpen;
+
+        sidebar.classList.toggle('mobile-open', this.sidebarOpen);
         sidebar.classList.toggle('active', this.sidebarOpen);
         sidebar.classList.toggle('open', this.sidebarOpen);
-        
+
         if (toggle) {
-            toggle.setAttribute('aria-expanded', this.sidebarOpen);
+            toggle.classList.toggle('active', this.sidebarOpen);
+            toggle.setAttribute('aria-expanded', String(this.sidebarOpen));
         }
-        
-        document.body.style.overflow = this.sidebarOpen ? 'hidden' : '';
+        document.body.classList.toggle('mobile-sidebar-open',
+            this.sidebarOpen && window.matchMedia('(max-width: 768px)').matches);
     },
-    
+
     // ============================================
     // DROPDOWN MANAGEMENT
     // ============================================
