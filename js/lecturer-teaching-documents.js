@@ -11,6 +11,9 @@
   const db = () => window.lecturerDB?.supabase || window.supabaseClient || window.supabase || null;
   const profile = () => window.lecturerDB?.getCurrentUserProfile?.() || window.currentLecturerProfile || {};
   let state = { user:null, staffId:'', units:[], loading:false };
+  const DOCUMENT_GROUPS = [["Teaching Preparation","teaching_preparation",[["Scheme of Work","scheme_of_work"],["Lesson Plan","lesson_plan"],["Course Outline","course_outline"],["Record of Work Covered","record_of_work"],["Teaching Timetable","teaching_timetable"],["Lesson Notes / Teaching Notes","lesson_notes"],["Instructional Materials / Teaching Aids","instructional_materials"],["Course Delivery Plan","course_delivery_plan"]]],["Teaching Delivery","teaching_delivery",[["Class Attendance Register","class_attendance_register"],["Clinical Teaching Attendance Register","clinical_attendance_register"],["Clinical Supervision Report","clinical_supervision_report"],["Clinical Rotation Plan","clinical_rotation_plan"],["Clinical Logbook Verification Report","clinical_logbook_verification"],["Teaching Practice / Skills Demonstration Report","skills_demonstration_report"],["Student Participation Record","student_participation_record"]]],["Assessment & Examinations","assessment_examinations",[["Assessment Plan","assessment_plan"],["Continuous Assessment Test (CAT)","cat"],["Examination Question Paper","examination_question_paper"],["Examination Marking Scheme","marking_scheme"],["Examination Moderation Report","examination_moderation_report"],["Marked Scripts / Assessment Evidence","marked_scripts_evidence"],["Marks Analysis Report","marks_analysis_report"],["Remedial Teaching Report","remedial_teaching_report"],["Student Academic Progress Report","student_academic_progress_report"]]],["Student Support","student_support",[["Student Academic Advising Report","academic_advising_report"],["Mentorship Record","mentorship_record"],["Remedial and Follow-up Register","remedial_followup_register"],["Student Consultation Record","student_consultation_record"],["Academic Intervention Report","academic_intervention_report"]]],["Quality Assurance","quality_assurance",[["Course Evaluation Report","course_evaluation_report"],["Student Feedback Report","student_feedback_report"],["Peer Teaching Observation Report","peer_teaching_observation"],["Lecturer Self-Evaluation Report","lecturer_self_evaluation"],["Curriculum Review Recommendation","curriculum_review_recommendation"]]],["Professional Development","professional_development",[["CPD Certificate","cpd_certificate"],["Professional Development Plan","professional_development_plan"],["Research and Publication Evidence","research_publication_evidence"]]]];
+  const DOCUMENT_META = Object.fromEntries(DOCUMENT_GROUPS.flatMap(([category,key,items]) => items.map(([label,type]) => [type,{label,category,categoryKey:key}])));
+  const GROUP_BY_KEY = Object.fromEntries(DOCUMENT_GROUPS.map(([category,key])=>[key,category]));
 
   function toast(message, error=false) {
     if (typeof window.showToast === 'function') return window.showToast(message, error);
@@ -73,11 +76,11 @@
         @media(max-width:650px){#ap-content .tds-grid{grid-template-columns:1fr}#ap-content .tds-hero{padding:19px}#ap-content .tds-card{padding:14px}}
       </style>
       <div class="tds-wrap">
-        <div class="tds-hero"><h2><i class="fas fa-file-arrow-up"></i> Submit Teaching Documents</h2><p>Upload your Scheme of Work or Lesson Plan for HOD review. Only your assigned units are available.</p></div>
+        <div class="tds-hero"><h2><i class="fas fa-file-arrow-up"></i> Submit Teaching Documents</h2><p>Submit teaching, assessment, student-support, quality-assurance and professional-development evidence for HOD review. Only your assigned units are available.</p></div>
         <div class="tds-card">
           <form id="tdsForm">
             <div class="tds-grid">
-              <div class="tds-field"><label for="tdsType">Document type</label><select id="tdsType" required><option value="scheme_of_work">Scheme of Work</option><option value="lesson_plan">Lesson Plan</option><option value="record_of_work">Record of Work</option><option value="course_outline">Course Outline</option></select></div>
+              <div class="tds-field"><label for="tdsCategory">Document category</label><select id="tdsCategory" required></select></div><div class="tds-field"><label for="tdsType">Document type</label><select id="tdsType" required></select></div>
               <div class="tds-field"><label for="tdsUnit">Assigned unit</label><select id="tdsUnit" required><option value="">Loading assigned units…</option>${unitOptions}</select></div>
               <div class="tds-field"><label for="tdsYear">Academic year</label><input id="tdsYear" value="${yearNow()}" placeholder="2026/2027" required></div>
               <div class="tds-field"><label for="tdsTitle">Document title</label><input id="tdsTitle" placeholder="e.g. Scheme of Work — Block 2" required></div>
@@ -91,7 +94,14 @@
           <div class="tds-table-wrap"><table class="tds-table"><thead><tr><th>Document</th><th>Unit</th><th>Academic year</th><th>Submitted</th><th>Status</th><th>HOD comments</th><th>File</th></tr></thead><tbody id="tdsRows"><tr><td colspan="7" class="tds-muted">Loading submissions…</td></tr></tbody></table></div>
         </div>
       </div>`;
-    const typeSelect=$('tdsType');if(typeSelect&&['scheme_of_work','lesson_plan','record_of_work','course_outline'].includes(selectedType))typeSelect.value=selectedType;
+    const categorySelect=$('tdsCategory'), typeSelect=$('tdsType');
+    const selectedMeta=DOCUMENT_META[selectedType];
+    const initialCategory=selectedMeta?.categoryKey || (GROUP_BY_KEY[selectedType] ? selectedType : 'teaching_preparation');
+    categorySelect.innerHTML=DOCUMENT_GROUPS.map(([label,key])=>'<option value="'+key+'">'+esc(label)+'</option>').join('');
+    categorySelect.value=initialCategory;
+    function refreshDocumentTypes(preferred){const group=DOCUMENT_GROUPS.find(([,key])=>key===categorySelect.value);typeSelect.innerHTML=(group?.[2]||[]).map(([label,type])=>'<option value="'+type+'">'+esc(label)+'</option>').join('');if(preferred&&DOCUMENT_META[preferred]?.categoryKey===categorySelect.value)typeSelect.value=preferred;}
+    refreshDocumentTypes(selectedType);
+    categorySelect.addEventListener('change',()=>refreshDocumentTypes());
     const select=$('tdsUnit');
     if(select) select.innerHTML='<option value="">-- Select an assigned unit --</option>'+unitOptions;
     $('tdsForm')?.addEventListener('submit',submit);
@@ -119,7 +129,7 @@
       const type=$('tdsType').value;
       const {data:row,error}=await client.from(TABLE).insert({
         lecturer_user_id:identity.authUser,lecturer_id:state.staffId,lecturer_email:identity.p.email||identity.user?.email||'',
-        lecturer_name:identity.name,report_type:'TeachingLearningReport',report_category:'Teaching & Learning',
+        lecturer_name:identity.name,report_type:'TeachingLearningReport',report_category:DOCUMENT_META[type]?.category||'Teaching Preparation',
         document_type:type,title,document_title:title,summary:'Teaching document submitted for HOD review.',
         unit_name:unit.subject_name||unit.subject_code,subject_code:unit.subject_code||null,
         program:unit.program||identity.p.program||identity.p.department||'',
@@ -150,7 +160,7 @@
       const rows=data||[];$('tdsCount').textContent=rows.length+' submission(s)';
       if(!rows.length){tbody.innerHTML='<tr><td colspan="7" class="tds-muted">You have not submitted a teaching document yet.</td></tr>';return;}
       tbody.innerHTML=rows.map(row=>{
-        const labels={scheme_of_work:'Scheme of Work',lesson_plan:'Lesson Plan',record_of_work:'Record of Work',course_outline:'Course Outline'};const label=labels[row.document_type]||row.document_type||'Teaching document';
+        const label=DOCUMENT_META[row.document_type]?.label||row.document_type||'Teaching document';
         const color=statusColor(row.status);
         return '<tr><td><strong>'+esc(row.title||row.document_title||label)+'</strong><div class="tds-muted">'+esc(label)+'</div></td><td>'+esc(row.unit_name||'—')+'</td><td>'+esc(row.academic_year||'—')+'</td><td>'+esc(row.submitted_at?new Date(row.submitted_at).toLocaleDateString():'—')+'</td><td><span class="tds-status" style="background:'+color+'18;color:'+color+'">'+esc(statusLabel(row.status))+'</span></td><td>'+esc(row.reviewer_comments||'—')+'</td><td>'+(Number(row.attachment_count)>0?'<button class="tds-btn tds-secondary" style="padding:6px 9px" type="button" data-file="'+esc(row.id)+'">Open</button>':'—')+'</td></tr>';
       }).join('');
@@ -177,5 +187,13 @@
       if(signed.error)throw signed.error;window.open(signed.data.signedUrl,'_blank','noopener');
     }catch(error){toast(error.message||'Could not open document.',true);}
   }
-  window.TeachingDocumentsSubmission={open:async function(type){const mount=$('ap-content');if(!mount)return;mount.innerHTML='<div style="padding:35px;text-align:center;color:#64748b"><i class="fas fa-spinner fa-spin"></i> Loading your teaching documents…</div>';try{await resolveIdentity();render(type);}catch(error){mount.innerHTML='<div style="padding:30px;background:#fff;border:1px solid #fecaca;border-radius:14px;color:#991b1b"><strong>Teaching Documents unavailable</strong><p>'+esc(error.message||error)+'</p><button type="button" onclick="TeachingDocumentsSubmission.open()">Retry</button></div>';}}};
+  window.TeachingDocumentsSubmission={
+    open:async function(type){
+      const mount=$('ap-content');if(!mount)return;
+      mount.innerHTML='<div style="padding:35px;text-align:center;color:#64748b"><i class="fas fa-spinner fa-spin"></i> Loading your teaching documents…</div>';
+      try{await resolveIdentity();render(type);}
+      catch(error){mount.innerHTML='<div style="padding:30px;background:#fff;border:1px solid #fecaca;border-radius:14px;color:#991b1b"><strong>Teaching Documents unavailable</strong><p>'+esc(error.message||error)+'</p><button type="button" onclick="TeachingDocumentsSubmission.open()">Retry</button></div>';}
+    },
+    openCategory:function(categoryKey){return this.open(categoryKey);}
+  };
 })();
