@@ -47,7 +47,7 @@
     // Legacy assignments sometimes contain inconsistent spacing/capitalization.
     // Use the slower partial match only if the exact indexed lookup found nothing.
     if (!byName.length && fullName) {
-      const safeName = fullName.replace(/[%_,]/g, ' ').replace(/\\s+/g, ' ').trim();
+      const safeName = fullName.replace(/[%_,]/g, ' ').replace(/\s+/g, ' ').trim();
       const fallback = await state.sb.from('lecturer_subject_assignments')
         .select(columns).ilike('lecturer_name', '%' + safeName + '%');
       if (fallback.error) throw fallback.error;
