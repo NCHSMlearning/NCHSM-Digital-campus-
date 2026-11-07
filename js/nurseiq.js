@@ -1167,14 +1167,14 @@ async saveProgressToDatabase() {
 
             const { data: allQuestions, error } = await supabase
                 .from('medical_assessments')
-                .select(`*, courses (id, course_name, unit_code, color, description)`)
+                .select(`*, unit:units_catalog!medical_assessments_unit_catalog_id_fkey(id, unit_code, unit_name, color, description, program, block)`)
                 .eq('is_active', true)
                 .eq('is_published', true)
                 .order('updated_at', { ascending: false });
             if (error) throw error;
 
             const questions = (allQuestions || []).filter(question => {
-                const unitCode = String(question.courses?.unit_code || question.unit_code || '').trim().toUpperCase();
+                const unitCode = String(question.unit?.unit_code || question.unit_code || '').trim().toUpperCase();
                 return unitCode && allowedUnitCodes.has(unitCode);
             });
 
@@ -1184,10 +1184,10 @@ async saveProgressToDatabase() {
             const courseUpdatedDates = {};
             
             questions.forEach(question => {
-                const courseId = question.course_id || 'general';
-                const courseName = question.courses?.course_name || 'General Nursing';
-                const unitCode = question.courses?.unit_code || this.programCode;
-                const courseColor = question.courses?.color || '#4f46e5';
+                const courseId = question.unit_catalog_id || 'general';
+                const courseName = question.unit?.unit_name || question.unit_name || 'Unassigned Unit';
+                const unitCode = question.unit?.unit_code || question.unit_code || this.programCode;
+                const courseColor = question.unit?.color || '#4f46e5';
                 
                 if (!coursesMap[courseId]) {
                     coursesMap[courseId] = {
@@ -1195,7 +1195,7 @@ async saveProgressToDatabase() {
                         name: courseName,
                         unit_code: unitCode,
                         color: courseColor,
-                        description: question.courses?.description || '',
+                        description: question.unit?.description || '',
                         questions: [],
                         stats: { total: 0, active: 0, hard: 0, medium: 0, easy: 0, lastUpdated: null },
                         userStats: null
@@ -1560,8 +1560,8 @@ async saveProgressToDatabase() {
             
             const { data: questions, error } = await supabase
                 .from('medical_assessments')
-                .select(`*, courses (id, course_name, unit_code, color)`)
-                .eq('course_id', courseId)
+                .select(`*, unit:units_catalog!medical_assessments_unit_catalog_id_fkey(id, unit_code, unit_name, color, description, program, block)`)
+                .eq('unit_catalog_id', courseId)
                 .eq('is_active', true)
                 .eq('is_published', true)
                 .order('created_at', { ascending: false });
@@ -1587,7 +1587,7 @@ async saveProgressToDatabase() {
                 (catalogUnits || []).map(unit => String(unit.unit_code || '').trim().toUpperCase()).filter(Boolean)
             );
             const eligibleQuestions = (questions || []).filter(question => {
-                const unitCode = String(question.courses?.unit_code || question.unit_code || '').trim().toUpperCase();
+                const unitCode = String(question.unit?.unit_code || question.unit_code || '').trim().toUpperCase();
                 return unitCode && allowedUnitCodes.has(unitCode);
             });
 
@@ -1633,8 +1633,8 @@ async saveProgressToDatabase() {
         const safeCourseName = this.escapeReviewHtml
             ? this.escapeReviewHtml(courseName)
             : String(courseName || '').replace(/[&<>\'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-        const course = questions[0]?.courses || {};
-        const unitCode = this.escapeReviewHtml(course.unit_code || 'MEDICAL CATALOG');
+        const course = questions[0]?.unit || {};
+        const unitCode = this.escapeReviewHtml(course.unit_code || 'UNIT CATALOG');
         const questionCount = questions.length;
         const userStats = this.getCourseUserStats(this.currentCourseForTest.id, questions);
 
