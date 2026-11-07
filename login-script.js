@@ -238,14 +238,6 @@ window.NCHSMLogin = {
         this.initThemeToggle();
         this.initGoogleLogin();
         
-        this.loadBrevoApiKey().then(success => {
-            if (success) {
-                console.log('✅ Brevo integration ready');
-            } else {
-                console.warn('⚠️ Brevo integration not available');
-            }
-        });
-        
         setTimeout(() => {
             this.update2FAButtonStatus();
         }, 1000);
@@ -340,43 +332,6 @@ window.NCHSMLogin = {
         }
         
         if (typeof feather !== 'undefined') feather.replace();
-    },
-
-    // ============================================
-    // LOAD BREVO API KEY
-    // ============================================
-    loadBrevoApiKey: async function() {
-        try {
-            if (!this.supabase) return false;
-            
-            const cached = sessionStorage.getItem('brevo_api_key');
-            if (cached) {
-                this.brevo.apiKey = cached;
-                this.brevo._initialized = true;
-                return true;
-            }
-            
-            const { data, error } = await this.supabase.functions.invoke('get-secret', {
-                body: { secret_name: 'BREVO_API_KEY' }
-            });
-            
-            if (error) {
-                console.error('❌ Error fetching secret:', error);
-                return false;
-            }
-            
-            if (data && data.secret) {
-                this.brevo.apiKey = data.secret;
-                this.brevo._initialized = true;
-                sessionStorage.setItem('brevo_api_key', data.secret);
-                return true;
-            }
-            
-            return false;
-        } catch (error) {
-            console.error('❌ Failed to load Brevo API key:', error);
-            return false;
-        }
     },
 
     // ============================================
@@ -838,11 +793,6 @@ sendLoginNotification: async function(userData, isStaff = false) {
     if (!this.brevo.enabled) return;
 
     try {
-        if (!this.brevo._initialized) {
-            const loaded = await this.loadBrevoApiKey();
-            if (!loaded) return;
-        }
-        if (!this.brevo.apiKey) return;
 
         // ---------- Gather context ----------
         let ip = 'Unknown';
@@ -1141,34 +1091,18 @@ sendLoginNotification: async function(userData, isStaff = false) {
 </html>`;
 
         // ---------- Send ----------
-        const response = await fetch(this.brevo.apiUrl, {
-            method: 'POST',
-            headers: {
-                'api-key': this.brevo.apiKey,
-                'Content-Type': 'application/json',
-                'accept': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: {
-                    email: this.brevo.sender.email,
-                    name: this.brevo.sender.name
-                },
-                to: [{
-                    email: userData.email,
-                    name: userData.full_name || userData.email
-                }],
+        const { data, error } = await this.supabase.functions.invoke('send-email', {
+            body: {
+                to: userData.email,
                 subject: `🔐 New ${theme.label} Login — NCHSM Portal`,
-                htmlContent: htmlContent,
-                tags: ['login-alert', roleRaw]
-            })
+                html: htmlContent,
+                from: 'NCHSM ICT Support <noreply@nchsm.co.ke>'
+            }
         });
-
-        if (response.ok) {
-            const result = await response.json();
-            console.log(`✅ Login alert sent → ${userData.email} (${theme.label}) [msgId: ${result.messageId}]`);
+        if (error || !data?.success) {
+            console.error('❌ Login alert could not be sent:', error || data?.error);
         } else {
-            const errText = await response.text();
-            console.error(`❌ Brevo error (${response.status}):`, errText);
+            console.log(`✅ Login alert accepted by Brevo for ${userData.email}`);
         }
 
     } catch (error) {
