@@ -73,10 +73,29 @@
         #ap-content .tds-table th{background:#f8fafc;color:#64748b;text-transform:uppercase;font-size:10px;letter-spacing:.05em}
         #ap-content .tds-status{display:inline-block;padding:5px 9px;border-radius:20px;font-weight:800;font-size:10px}
         #ap-content .tds-muted{color:#64748b;font-size:12px}#ap-content .tds-message{display:none;padding:11px 13px;border-radius:9px;margin-top:13px;font-size:12px}
-        @media(max-width:650px){#ap-content .tds-grid{grid-template-columns:1fr}#ap-content .tds-hero{padding:19px}#ap-content .tds-card{padding:14px}}
+        #ap-content .tds-compliance-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 12px}
+        #ap-content .tds-unit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:18px}
+        #ap-content .tds-unit-card{background:#fff;border:1px solid #dce3ed;border-radius:15px;padding:18px;box-shadow:0 5px 20px #0f172a08;min-width:0}
+        #ap-content .tds-unit-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+        #ap-content .tds-unit-top h4{font-size:15px;margin:0;color:#172033}
+        #ap-content .tds-unit-percent{font-size:25px;font-weight:900;color:#b91c1c;white-space:nowrap}
+        #ap-content .tds-progress{height:8px;background:#e9edf3;border-radius:99px;overflow:hidden;margin:13px 0 6px}
+        #ap-content .tds-progress span{display:block;height:100%;background:#078744;border-radius:99px}
+        #ap-content .tds-check-row{display:grid;grid-template-columns:22px minmax(0,1fr) auto auto;gap:9px;align-items:center;padding:11px 0;border-top:1px solid #e2e8f0}
+        #ap-content .tds-check-row:first-of-type{margin-top:10px}
+        #ap-content .tds-check-name{font-size:13px;font-weight:700;color:#172033}
+        #ap-content .tds-check-status{font-size:11px;border-radius:20px;padding:5px 9px;background:#fff4df;color:#9a5b00;white-space:nowrap}
+        #ap-content .tds-check-status.approved{background:#e1f5eb;color:#047857}
+        #ap-content .tds-check-status.pending{background:#eaf1ff;color:#1d4ed8}
+        #ap-content .tds-check-action{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:7px 10px;color:#172554;font-weight:800;cursor:pointer}
+        #ap-content .tds-check-action.add{background:#21105c;color:#fff;border-color:#21105c}
+        @media(max-width:850px){#ap-content .tds-unit-grid{grid-template-columns:1fr}}
+        @media(max-width:650px){#ap-content .tds-grid{grid-template-columns:1fr}#ap-content .tds-hero{padding:19px}#ap-content .tds-card{padding:14px}#ap-content .tds-check-row{grid-template-columns:20px minmax(0,1fr) auto}#ap-content .tds-check-row .tds-check-action{grid-column:2/4;justify-self:end}}
       </style>
       <div class="tds-wrap">
         <div class="tds-hero"><h2><i class="fas fa-file-arrow-up"></i> Submit Teaching Documents</h2><p>Submit teaching, assessment, student-support, quality-assurance and professional-development evidence for HOD review. Only your assigned units are available.</p></div>
+        <div class="tds-compliance-head"><div><h3 style="margin:0;font-size:17px">Unit document compliance</h3><p class="tds-muted" style="margin:4px 0 0">Track required academic documents for every unit assigned to you.</p></div><span id="tdsComplianceCount" class="tds-muted">Loading unit checklist…</span></div>
+        <div id="tdsUnitCompliance" class="tds-unit-grid"><div class="tds-card tds-muted">Preparing your assigned unit checklists…</div></div>
         <div class="tds-card">
           <form id="tdsForm">
             <div class="tds-grid">
@@ -151,13 +170,51 @@
     }catch(error){console.error('[TeachingDocuments] submission failed',error);message(error.message||'Submission failed. Please try again.',true);}
     finally{state.loading=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Submit to HOD';}
   }
+  const REQUIRED_UNIT_DOCUMENTS = [
+    ['Course outlines','course_outline'],
+    ['Schemes of work','scheme_of_work'],
+    ['Records of work','record_of_work'],
+    ['Examination papers','examination_question_paper'],
+    ['Marking schemes','marking_scheme'],
+    ['Marks sheets and examination results','marks_analysis_report'],
+    ['CAT 1','cat'],
+    ['CAT 2','cat']
+  ];
+  function renderUnitCompliance(rows){
+    const host=$('tdsUnitCompliance');if(!host)return;
+    const units=state.units||[];
+    $('tdsComplianceCount').textContent=units.length+' assigned unit(s)';
+    if(!units.length){host.innerHTML='<div class="tds-card tds-muted">No assigned units were found.</div>';return;}
+    const latest=(unit,type)=>rows.filter(r=>(r.subject_code||'')===(unit.subject_code||'')&&(r.unit_name||'')===(unit.subject_name||unit.subject_code||'')&&r.document_type===type).sort((a,b)=>new Date(b.submitted_at||b.created_at)-new Date(a.submitted_at||a.created_at))[0];
+    host.innerHTML=units.map((unit,index)=>{
+      const items=REQUIRED_UNIT_DOCUMENTS.map(([label,type])=>({label,type,row:latest(unit,type)}));
+      const approved=items.filter(x=>x.row?.status==='approved').length;
+      const pct=Math.round(approved/items.length*100);
+      const term=[unit.program,unit.block,unit.academic_year].filter(Boolean).join(' · ');
+      return '<article class="tds-unit-card"><div class="tds-unit-top"><div><h4>'+esc(unit.subject_code||'UNIT')+' '+esc(unit.subject_name||'')+'</h4><div class="tds-muted" style="margin-top:5px">'+esc(term||'Assigned unit')+'</div></div><div class="tds-unit-percent">'+pct+'%</div></div><div class="tds-progress"><span style="width:'+pct+'%"></span></div><div class="tds-muted">'+approved+' of '+items.length+' approved</div>'+
+      items.map(item=>{
+        const row=item.row,status=row?.status||'not_submitted';
+        const label=status==='approved'?'Approved':(['submitted','under_review','resubmitted'].includes(status)?'Pending':(['returned','rejected'].includes(status)?'Revision required':'Not submitted'));
+        const cls=status==='approved'?'approved':(['submitted','under_review','resubmitted'].includes(status)?'pending':'');
+        return '<div class="tds-check-row"><span style="font-size:18px;color:'+(status==='approved'?'#078744':'#c3ccd8')+'">'+(status==='approved'?'●':'○')+'</span><div><div class="tds-check-name">'+esc(item.label)+'</div><div class="tds-muted">'+(row?.submitted_at?'Submitted '+esc(new Date(row.submitted_at).toLocaleDateString()):'No submission yet')+'</div></div><span class="tds-check-status '+cls+'">'+label+'</span><button type="button" class="tds-check-action '+(!row?'add':'')+'" data-unit="'+index+'" data-type="'+item.type+'" data-submission="'+(row?.id||'')+'">'+(row?'Open':'Add')+'</button></div>';
+      }).join('')+'</article>';
+    }).join('');
+    host.querySelectorAll('[data-unit][data-type]').forEach(button=>button.addEventListener('click',()=>{
+      const unitIndex=Number(button.dataset.unit),unit=state.units[unitIndex];
+      if(button.dataset.submission){openFile(button.dataset.submission);return;}
+      $('tdsUnit').value=String(unitIndex);$('tdsType').value=button.dataset.type;
+      const meta=DOCUMENT_META[button.dataset.type];if(meta){$('tdsCategory').value=meta.categoryKey;$('tdsType').value=button.dataset.type;}
+      $('tdsTitle').value=(meta?.label||'Academic document')+' — '+(unit.subject_code||unit.subject_name);
+      $('tdsForm').scrollIntoView({behavior:'smooth',block:'center'});$('tdsFile').focus();
+    }));
+  }
   async function loadRows(){
     const tbody=$('tdsRows');if(!tbody)return;
     try{
       const identity=await resolveIdentity();
-      const {data,error}=await identity.client.from(TABLE).select('id,title,document_title,document_type,unit_name,academic_year,status,reviewer_comments,submitted_at,created_at,attachment_count').eq('lecturer_user_id',identity.authUser).order('created_at',{ascending:false}).limit(100);
+      const {data,error}=await identity.client.from(TABLE).select('id,title,document_title,document_type,unit_name,subject_code,program,block,academic_year,status,reviewer_comments,submitted_at,created_at,attachment_count').eq('lecturer_user_id',identity.authUser).order('created_at',{ascending:false}).limit(100);
       if(error)throw error;
-      const rows=data||[];$('tdsCount').textContent=rows.length+' submission(s)';
+      const rows=data||[];$('tdsCount').textContent=rows.length+' submission(s)';renderUnitCompliance(rows);
       if(!rows.length){tbody.innerHTML='<tr><td colspan="7" class="tds-muted">You have not submitted a teaching document yet.</td></tr>';return;}
       tbody.innerHTML=rows.map(row=>{
         const label=DOCUMENT_META[row.document_type]?.label||row.document_type||'Teaching document';
