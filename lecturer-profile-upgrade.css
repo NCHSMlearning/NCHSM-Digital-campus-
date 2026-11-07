@@ -147,3 +147,8 @@ body.lp-preview-open{overflow:hidden}
  #profile-content .lp-preview-actions .lp-btn{min-height:34px;padding:7px 9px;font-size:10px}
  #profile-content .lp-preview-close{width:34px;height:34px}
 }
+
+/* Prominent upload action visible on empty cards, including mobile */
+#profile-content .lp-top-upload{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;margin-top:7px;min-height:34px;padding:7px 11px;border:1px solid #d9cff5;border-radius:9px;background:#eee9fb;color:#4c328f;font:inherit;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;position:relative;z-index:2}
+#profile-content .lp-top-upload:active{transform:scale(.97)}
+@media(max-width:640px){#profile-content .lp-doc-badges{min-width:78px}#profile-content .lp-top-upload{font-size:11px;padding:8px 10px}}
