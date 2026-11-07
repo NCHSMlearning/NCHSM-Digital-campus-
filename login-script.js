@@ -157,7 +157,6 @@ window.NCHSMLogin = {
     // ============================================
     brevo: {
         apiKey: null,
-        apiUrl: 'https://api.brevo.com/v3/smtp/email',
         enabled: true,
         sender: {
             email: 'noreply@nchsm.co.ke',
