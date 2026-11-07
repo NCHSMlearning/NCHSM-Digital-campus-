@@ -2229,6 +2229,90 @@ body.nchsm-applicant-dashboard-open .top-nav.nchsm-public-nav{display:none!impor
  #admissionApp>#admissionForm{grid-column:1!important;grid-row:7!important}
  #admissionApp .dashboard-activity-card,#admissionApp .dashboard-next-card{grid-column:1/-1!important}
 }
+</style><style id="nchsm-public-admissions-landing-final-layout">
+/* Public-facing admissions landing page only; logged-in applicant dashboard is unaffected. */
+@media(min-width:901px){
+.nchsm-home-v4 .hero-v4{min-height:0!important;padding:100px clamp(28px,5vw,76px) 0!important;display:flex!important;flex-direction:column!important}
+.nchsm-home-v4 .hero-v4-content{min-height:0!important;display:flex!important;align-items:center!important;gap:30px!important}
+.nchsm-home-v4 .hero-v4-copy{flex:1 1 65%!important;max-width:760px!important;padding:20px 0 26px!important}
+.nchsm-home-v4 .hero-student-badge{flex:0 1 32%!important;min-width:0!important}
+.nchsm-home-v4 .hero-mini-stats{position:relative!important;inset:auto!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;width:100%!important;max-width:none!important;margin:14px 0 20px!important;gap:14px!important}
+.nchsm-home-v4 .hero-mini-stats>div{min-width:0!important;padding:0 12px!important;border-right:1px solid rgba(255,255,255,.25)!important}
+.nchsm-home-v4 .hero-mini-stats>div:last-child{border-right:0!important}
+.nchsm-home-v4 .feature-row-v4{position:relative!important;inset:auto!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;width:100%!important;margin:0!important;padding:0!important;gap:12px!important}
+.nchsm-home-v4 .feature-v4{height:auto!important;min-height:112px!important;min-width:0!important;padding:18px!important;border-radius:14px 14px 0 0!important}
+.nchsm-home-v4 .value-strip-v4{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(180px,1.2fr)!important;gap:14px!important}
+.nchsm-home-v4 .value-strip-v4>*{min-width:0!important}
+.nchsm-home-v4 .home-content-v4{display:grid!important;grid-template-columns:minmax(0,2fr) minmax(240px,1fr)!important;gap:18px!important}
+.nchsm-home-v4 .programs-preview-v4{grid-column:1/-1!important;min-width:0!important}
+.nchsm-home-v4 .program-grid-v4{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important}
+.nchsm-home-v4 .program-v4{min-width:0!important;width:auto!important}
+.nchsm-home-v4 .program-body h3,.nchsm-home-v4 .program-body span{overflow-wrap:anywhere!important}
+.nchsm-home-v4 .how-apply-v4,.nchsm-home-v4 .why-v4{min-width:0!important}
+}
+@media(min-width:601px) and (max-width:900px){
+.nchsm-home-v4 .hero-v4{min-height:0!important;padding:65px 24px 0!important}
+.nchsm-home-v4 .hero-v4-content{min-height:0!important}
+.nchsm-home-v4 .hero-student-badge,.nchsm-home-v4 .hero-side-values{display:none!important}
+.nchsm-home-v4 .hero-mini-stats{position:relative!important;inset:auto!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;max-width:none!important;margin:18px 0!important;gap:12px!important}
+.nchsm-home-v4 .feature-row-v4{position:relative!important;inset:auto!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;margin:0!important;padding:12px!important;gap:10px!important}
+.nchsm-home-v4 .feature-v4{min-width:0!important;height:auto!important;min-height:100px!important;padding:14px!important}
+.nchsm-home-v4 .value-strip-v4{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+.nchsm-home-v4 .value-strip-v4 em{grid-column:1/-1!important}
+.nchsm-home-v4 .program-grid-v4{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important}
+.nchsm-home-v4 .program-v4{min-width:0!important}
+.nchsm-home-v4 .home-content-v4{display:grid!important;grid-template-columns:1fr 1fr!important;gap:14px!important}
+.nchsm-home-v4 .programs-preview-v4{grid-column:1/-1!important}
+}
+@media(max-width:600px){
+.nchsm-home-v4{width:100%!important;max-width:100%!important;overflow:hidden!important}
+.nchsm-home-v4 .hero-v4{min-height:0!important;height:auto!important;padding:38px 18px 0!important;display:flex!important;flex-direction:column!important;background-position:center!important;overflow:hidden!important}
+.nchsm-home-v4 .hero-v4-overlay{background:linear-gradient(180deg,rgba(2,37,67,.94),rgba(3,49,83,.83) 72%,rgba(3,53,88,.76))!important}
+.nchsm-home-v4 .hero-v4-content{display:block!important;min-height:0!important;margin:0!important}
+.nchsm-home-v4 .hero-v4-copy{width:100%!important;max-width:none!important;padding:0!important}
+.nchsm-home-v4 .hero-kicker{font-size:.62rem!important;letter-spacing:.16em!important;line-height:1.5!important}
+.nchsm-home-v4 .hero-v4-copy h1{font-size:clamp(2.15rem,10vw,3.1rem)!important;line-height:1!important;letter-spacing:-.035em!important}
+.nchsm-home-v4 .hero-v4-copy h2{font-size:1.12rem!important;line-height:1.35!important;margin:14px 0 8px!important}
+.nchsm-home-v4 .hero-v4-copy p{font-size:.92rem!important;line-height:1.5!important;margin:0!important;max-width:100%!important}
+.nchsm-home-v4 .hero-actions-v4{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;margin:18px 0 20px!important;width:100%!important}
+.nchsm-home-v4 .hero-actions-v4 button{display:flex!important;width:100%!important;min-height:48px!important;justify-content:center!important;align-items:center!important;margin:0!important}
+.nchsm-home-v4 .hero-student-badge,.nchsm-home-v4 .hero-side-values,.nchsm-home-v4 .hero-mini-stats{display:none!important}
+.nchsm-home-v4 .feature-row-v4{position:relative!important;inset:auto!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin:0 -18px!important;padding:14px!important;width:auto!important;background:rgba(2,47,78,.9)!important}
+.nchsm-home-v4 .feature-v4{display:flex!important;align-items:flex-start!important;gap:8px!important;min-width:0!important;width:auto!important;height:auto!important;min-height:105px!important;padding:11px!important;border-radius:11px!important}
+.nchsm-home-v4 .feature-v4>i{flex:0 0 22px!important;width:22px!important;font-size:1.1rem!important;margin-top:2px!important}
+.nchsm-home-v4 .feature-v4>div{min-width:0!important}
+.nchsm-home-v4 .feature-v4 strong{display:block!important;font-size:.73rem!important;line-height:1.3!important;overflow-wrap:anywhere!important}
+.nchsm-home-v4 .feature-v4 span{display:block!important;font-size:.64rem!important;line-height:1.35!important;overflow-wrap:anywhere!important}
+.nchsm-home-v4 .value-strip-v4{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px 10px!important;padding:20px 15px!important}
+.nchsm-home-v4 .value-strip-v4>div{display:flex!important;align-items:center!important;gap:8px!important;min-width:0!important;padding:4px 0!important}
+.nchsm-home-v4 .value-strip-v4>div i{flex:0 0 28px!important;font-size:1.35rem!important}
+.nchsm-home-v4 .value-strip-v4>div span{font-size:.76rem!important;line-height:1.35!important}
+.nchsm-home-v4 .value-strip-v4>div small{font-size:.66rem!important}
+.nchsm-home-v4 .value-strip-v4 em{grid-column:1/-1!important;font-size:.86rem!important;padding:10px 0 0!important}
+.nchsm-home-v4 .home-content-v4{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;padding:20px 14px!important}
+.nchsm-home-v4 .programs-preview-v4,.nchsm-home-v4 .how-apply-v4,.nchsm-home-v4 .why-v4{grid-column:1!important;width:100%!important;min-width:0!important}
+.nchsm-home-v4 .section-title-v4{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important}
+.nchsm-home-v4 .section-title-v4 h2{font-size:1.08rem!important}
+.nchsm-home-v4 .section-title-v4 button{font-size:.68rem!important;white-space:nowrap!important}
+.nchsm-home-v4 .program-grid-v4{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;width:100%!important}
+.nchsm-home-v4 .program-v4{display:flex!important;flex-direction:column!important;width:100%!important;min-width:0!important;max-width:100%!important}
+.nchsm-home-v4 .program-img{height:100px!important;min-height:100px!important}
+.nchsm-home-v4 .program-body{position:relative!important;min-width:0!important;padding:10px 9px 38px!important}
+.nchsm-home-v4 .program-body h3{font-size:.72rem!important;line-height:1.3!important;overflow-wrap:anywhere!important}
+.nchsm-home-v4 .program-body span{font-size:.63rem!important;line-height:1.35!important;overflow-wrap:anywhere!important}
+.nchsm-home-v4 .program-body button{position:absolute!important;right:8px!important;bottom:8px!important}
+.nchsm-home-v4 .contact-strip-v4{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important;padding:16px!important}
+.nchsm-home-v4 .contact-strip-v4>*{min-width:0!important;overflow-wrap:anywhere!important}
+.nchsm-home-v4 .contact-strip-v4 button{grid-column:1/-1!important;width:100%!important}
+.nchsm-home-v4 .home-footer-v4{padding:20px 14px!important}
+.nchsm-home-v4 .footer-links-v4{display:flex!important;flex-wrap:wrap!important;gap:8px!important;justify-content:center!important}
+}
+@media(max-width:360px){
+.nchsm-home-v4 .hero-v4{padding-left:14px!important;padding-right:14px!important}
+.nchsm-home-v4 .feature-row-v4{margin-left:-14px!important;margin-right:-14px!important;padding:10px!important}
+.nchsm-home-v4 .program-grid-v4{gap:8px!important}
+.nchsm-home-v4 .program-body h3{font-size:.67rem!important}
+}
 </style></head>
 <body>
 
