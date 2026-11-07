@@ -226,7 +226,8 @@
     ['CAT','cat_1']
   ];
   const TVET_DOCUMENTS = [
-    ...NURSING_DOCUMENTS,
+    ...NURSING_DOCUMENTS.filter(([,type])=>type!=='cat_1'),
+    ['CAT 1','cat_1'],['CAT 2','cat_2'],
     ['Practical exam 1','practical_exam_1'],['Practical exam 2','practical_exam_2'],['Practical exam 3','practical_exam_3']
   ];
   function isNursingUnit(unit){return String(unit?.program||'').trim().toUpperCase()==='KRCHN';}
