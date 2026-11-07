@@ -1839,7 +1839,6 @@ window.selectEditCourse = selectEditCourse;
 window.setEditCourseValue = setEditCourseValue;
 
 window.sendEmailWithBrevo = sendEmailWithBrevo;
-window.sendEmailWithEdgeFunctionFallback = sendEmailWithEdgeFunctionFallback;
 window.sendExamNotificationEmail = sendExamNotificationEmail;
 window.loadStudentsForNotification = loadStudentsForNotification;
 window.searchStudentsForNotification = searchStudentsForNotification;
