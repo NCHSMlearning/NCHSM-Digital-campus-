@@ -380,8 +380,6 @@ function parseUserAgent(ua){
 
 async function sendLoginNotification(profile){
  try{
-   const apiKey=await loadBrevoApiKey();
-   if(!apiKey)return;
 
    let ip="Unavailable";
    try{
@@ -427,17 +425,15 @@ async function sendLoginNotification(profile){
      </div>
    </div></body></html>`;
 
-   await fetch("https://api.brevo.com/v3/smtp/email",{
-     method:"POST",
-     headers:{"Content-Type":"application/json","api-key":apiKey},
-     body:JSON.stringify({
-       sender:{email:"noreply@nchsm.co.ke",name:"NCHSM ICT Support"},
-       to:[{email:profile.email,name:profile.full_name||"Administrator"}],
+   const {data,error}=await supabase.functions.invoke("send-email",{
+     body:{
+       to:profile.email,
        subject:"🔐 New "+theme.label+" Login — NCHSM Portal",
-       htmlContent:html,
-       tags:["login-alert",role]
-     })
+       html,
+       from:"NCHSM ICT Support <noreply@nchsm.co.ke>"
+     }
    });
+   if(error||!data?.success)console.warn("Login notification could not be sent.");
  }catch(e){console.warn("Login notification could not be sent.");}
 }
 
