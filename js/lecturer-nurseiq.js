@@ -1,6 +1,6 @@
 /* NurseIQ question authoring for lecturer-assigned units.
  * Writes to medical_assessments (the student NurseIQ source), not exam_questions.
- * courses is read-only here and only supplies the required course_id/unit_code mapping.
+ * units_catalog supplies the canonical unit_catalog_id, unit name and unit code.
  */
 (function () {
   'use strict';
@@ -61,72 +61,49 @@
   }
 
   async function loadUnits() {
-    // Resolve missing assignment codes from the official units catalogue by
-    // programme + block, then match catalogue entries to the assigned unit name.
+    // units_catalog is the sole source of truth for unit IDs, names and codes.
     const groups = [...new Map(state.assignments.map(a => [
       String(a.program || '').trim() + '|' + String(a.block || '').trim(),
       { program: a.program, block: a.block }
     ])).values()];
 
     const catalogueResults = await Promise.all(groups.map(group => {
-      let query = state.sb.from('units_catalog').select('unit_code, unit_name, program, block');
+      let query = state.sb.from('units_catalog')
+        .select('id, unit_code, unit_name, program, block, status')
+        .ilike('status', 'active');
       if (group.program) query = query.ilike('program', String(group.program).trim());
       if (group.block) query = query.ilike('block', String(group.block).trim());
       return query;
     }));
+
     const catalogue = [];
     catalogueResults.forEach(result => {
-      if (result.error) console.warn('NurseIQ units catalogue lookup:', result.error.message);
-      else catalogue.push(...(result.data || []));
+      if (result.error) throw result.error;
+      catalogue.push(...(result.data || []));
     });
 
-    const normalized = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const enriched = state.assignments.map(assignment => {
-      const assignedName = normalized(assignment.subject_name);
-      const catalogueMatches = catalogue.filter(unit =>
-        normalized(unit.program) === normalized(assignment.program) &&
-        normalized(unit.block) === normalized(assignment.block) &&
-        normalized(unit.unit_name) === assignedName &&
-        unit.unit_code
+    const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    state.units = state.assignments.map(assignment => {
+      const program = normalize(assignment.program);
+      const block = normalize(assignment.block);
+      const assignedCode = normalize(assignment.subject_code);
+      const assignedName = normalize(assignment.subject_name);
+      const inScope = catalogue.filter(unit =>
+        normalize(unit.program) === program &&
+        (!block || normalize(unit.block) === block)
       );
-      const codes = [...new Set([
-        assignment.subject_code,
-        ...catalogueMatches.map(unit => unit.unit_code)
-      ].map(value => String(value || '').trim()).filter(Boolean))];
-      return { ...assignment, resolvedCode: codes[0] || '', candidateCodes: codes };
-    });
-
-    // Fetch only relevant course rows rather than downloading the entire courses table.
-    const allCodes = [...new Set(enriched.flatMap(unit => unit.candidateCodes))];
-    const courseResults = allCodes.length
-      ? await Promise.all([
-          state.sb.from('courses').select('id, course_name, name, unit_code, code, target_program, block').in('unit_code', allCodes),
-          state.sb.from('courses').select('id, course_name, name, unit_code, code, target_program, block').in('code', allCodes)
-        ])
-      : [];
-    const courseRows = [...new Map(courseResults.flatMap(result => {
-      if (result.error) { console.warn('NurseIQ course lookup:', result.error.message); return []; }
-      return result.data || [];
-    }).map(course => [course.id, course])).values()];
-
-    state.units = enriched.map(assignment => {
-      const program = String(assignment.program || '').trim().toLowerCase();
-      const codes = assignment.candidateCodes.map(code => code.toUpperCase());
-      const assignedName = normalized(assignment.subject_name);
-      const matches = courseRows.filter(course => {
-        const courseCode = String(course.unit_code || course.code || '').trim().toUpperCase();
-        const codeMatch = codes.includes(courseCode);
-        const nameMatch = assignedName && normalized(course.course_name || course.name) === assignedName;
-        if (!codeMatch && !nameMatch) return false;
-        const targetProgram = String(course.target_program || '').trim().toLowerCase();
-        return !targetProgram || !program || targetProgram === program;
-      });
-      const unique = [...new Map(matches.map(course => [course.id, course])).values()];
-      const course = unique.length === 1 ? unique[0] : null;
+      let matches = assignedCode
+        ? inScope.filter(unit => normalize(unit.unit_code) === assignedCode)
+        : [];
+      if (!matches.length && assignedName) {
+        matches = inScope.filter(unit => normalize(unit.unit_name) === assignedName);
+      }
+      const unique = [...new Map(matches.map(unit => [String(unit.id), unit])).values()];
+      const catalogUnit = unique.length === 1 ? unique[0] : null;
       return {
         ...assignment,
-        subject_code: assignment.resolvedCode || course?.unit_code || course?.code || assignment.subject_code || '',
-        course,
+        subject_code: catalogUnit?.unit_code || assignment.subject_code || '',
+        catalogUnit,
         matchCount: unique.length
       };
     });
@@ -134,7 +111,7 @@
   async function loadQuestions() {
     const authId = state.profile?.user_id || state.profile?.id;
     const { data, error } = await state.sb.from('medical_assessments')
-      .select('id, course_id, unit_name, unit_code, question_text, question_type, difficulty, status, is_published, created_at')
+      .select('id, unit_catalog_id, unit_name, unit_code, question_text, question_type, difficulty, status, is_published, created_at')
       .eq('created_by', authId).order('created_at', { ascending: false });
     if (error) throw error;
     state.questions = data || [];
@@ -155,14 +132,14 @@
     const select = $('niqLecUnit');
     if (!select) return;
     select.innerHTML = '<option value="">Choose one of your assigned units</option>' + state.units.map((unit, index) =>
-      '<option value="' + index + '"' + (!unit.course ? ' disabled' : '') + '>' +
+      '<option value="' + index + '"' + (!unit.catalogUnit ? ' disabled' : '') + '>' +
       esc(unit.subject_code || 'No code') + ' — ' + esc(unit.subject_name) + ' · ' + esc(unit.program) + ' · ' + esc(unit.block) +
-      (unit.course ? '' : ' (course mapping required)') + '</option>'
+      (unit.catalogUnit ? '' : ' (unit catalogue mapping required)') + '</option>'
     ).join('');
     const note = $('niqLecUnitNote');
     if (note) {
-      const unavailable = state.units.filter(unit => !unit.course).length;
-      note.textContent = unavailable ? unavailable + ' assigned unit(s) do not yet have a matching NurseIQ course mapping. Contact the administrator; this page will not create or change course records.' : 'Only units assigned to your lecturer account are available.';
+      const unavailable = state.units.filter(unit => !unit.catalogUnit).length;
+      note.textContent = unavailable ? unavailable + ' assigned unit(s) do not yet match an active unit in the official catalogue. Contact the administrator to correct the assignment or catalogue.' : 'Only units assigned to your lecturer account are available.';
     }
   }
   function renderQuestionList() {
@@ -209,16 +186,16 @@
     const button = $('niqLecSubmit');
     const unitIndex = $('niqLecUnit')?.value;
     const unit = unitIndex === '' || unitIndex == null ? null : state.units[Number(unitIndex)];
-    if (!unit || !unit.course) return notify('Select an assigned unit with a valid NurseIQ course mapping.', 'warning');
+    if (!unit || !unit.catalogUnit) return notify('Select an assigned unit that matches the active units catalogue.', 'warning');
     const question = $('niqLecQuestionText')?.value.trim();
     const options = ['A','B','C','D'].map(letter => $('niqLecOption' + letter)?.value.trim() || '');
     const correct = $('niqLecCorrect')?.value;
     if (!question || options.some(value => !value) || !correct) return notify('Complete the question, all four options and the correct answer.', 'warning');
     const authId = state.profile?.user_id || state.profile?.id;
     const payload = {
-      course_id: unit.course.id,
-      unit_name: unit.subject_name,
-      unit_code: unit.subject_code || unit.course.unit_code || unit.course.code || null,
+      unit_catalog_id: unit.catalogUnit.id,
+      unit_name: unit.catalogUnit.unit_name,
+      unit_code: unit.catalogUnit.unit_code,
       topic: $('niqLecTopic')?.value.trim() || null,
       question_text: question,
       question_type: 'mcq',
@@ -227,7 +204,7 @@
       explanation: $('niqLecExplanation')?.value.trim() || '',
       marks: 1,
       difficulty: $('niqLecDifficulty')?.value || 'medium',
-      curriculum: unit.program,
+      curriculum: unit.catalogUnit.program,
       is_active: true,
       is_published: false,
       status: 'pending',
