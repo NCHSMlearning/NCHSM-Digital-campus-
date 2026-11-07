@@ -499,11 +499,15 @@ async function sendPaymentReceiptEmail(paymentData) {
             console.warn('⚠️ PDF generation failed, sending HTML only');
         }
         
-        // ✅ Send email
+        // Send only through the authenticated Supabase session.
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+        if (sessionError || !accessToken) throw new Error('Please sign in again before sending the receipt email.');
+
         const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                'Authorization': 'Bearer ' + accessToken,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(emailPayload)
@@ -541,7 +545,7 @@ async function sendPaymentReceiptEmail(paymentData) {
                 await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
                     method: 'POST',
                     headers: {
-                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                        'Authorization': 'Bearer ' + accessToken,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(adminPayload)
