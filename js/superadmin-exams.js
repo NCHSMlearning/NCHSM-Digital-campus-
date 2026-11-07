@@ -102,33 +102,16 @@ async function sendEmailWithBrevo(to, subject, htmlContent) {
         const supabase = window.sb || window.supabase;
         if (!supabase) return { success: false, error: 'Supabase not available' };
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
+        if (sessionError || !session) return { success: false, error: 'An authenticated session is required to send email.' };
         const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to, subject, html: htmlContent, from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>' })
+            body: JSON.stringify({ to, subject, html: htmlContent, from: 'NCHSM Exam Office <noreply@nchsm.co.ke>' })
         });
         const data = await response.json();
         return response.ok && data.success ? { success: true, data } : { success: false, error: data.error || 'Unknown error' };
     } catch (error) {
-        return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
-    }
-}
-
-async function sendEmailWithEdgeFunctionFallback(to, subject, htmlContent) {
-    try {
-        const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ to, subject, html: htmlContent, from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>' })
-        });
-        const data = await response.json();
-        return response.ok && data.success ? { success: true, data } : { success: false, error: data.error || 'Unknown error' };
-    } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error.message || 'Email request failed' };
     }
 }
 
