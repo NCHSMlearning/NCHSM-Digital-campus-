@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const state = { sb: null, profile: null, lecturerId: null, assignments: [], units: [], questions: [], loading: false };
+  const state = { sb: null, profile: null, lecturerId: null, assignments: [], units: [], questions: [], bulkRows: [], loading: false };
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const notify = (message, type='info') => {
@@ -223,9 +223,164 @@
       if (button) { button.disabled = false; button.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for approval'; }
     }
   }
+
+  function normalizeHeader(value) {
+    return String(value || '').trim().toLowerCase().replace(/[\\s-]+/g, '_').replace(/[^a-z0-9_]/g, '');
+  }
+  function parseCSV(text) {
+    const rows = []; let row = []; let cell = ''; let quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i], next = text[i + 1];
+      if (ch === '"' && quoted && next === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = !quoted;
+      else if (ch === ',' && !quoted) { row.push(cell); cell = ''; }
+      else if ((ch === '\\n' || ch === '\\r') && !quoted) {
+        if (ch === '\\r' && next === '\\n') i++;
+        row.push(cell); if (row.some(v => String(v).trim())) rows.push(row);
+        row = []; cell = '';
+      } else cell += ch;
+    }
+    row.push(cell); if (row.some(v => String(v).trim())) rows.push(row);
+    if (!rows.length) return [];
+    const headers = rows.shift().map(normalizeHeader);
+    return rows.map(values => Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ''])));
+  }
+  async function readBulkFile(file) {
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.csv')) return parseCSV(await file.text());
+    if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+      if (!window.ExcelJS) throw new Error('Excel reader is unavailable. Please upload a CSV file instead.');
+      const workbook = new window.ExcelJS.Workbook();
+      await workbook.xlsx.load(await file.arrayBuffer());
+      const sheet = workbook.worksheets[0];
+      if (!sheet) throw new Error('The workbook has no worksheet.');
+      const headers = [];
+      sheet.getRow(1).eachCell((cell, col) => { headers[col - 1] = normalizeHeader(cell.text || cell.value); });
+      const rows = [];
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const record = {};
+        headers.forEach((header, index) => { if (header) record[header] = row.getCell(index + 1).text || ''; });
+        if (Object.values(record).some(value => String(value).trim())) rows.push(record);
+      });
+      return rows;
+    }
+    throw new Error('Unsupported file. Upload .csv or .xlsx.');
+  }
+  function validateBulkRows(rows) {
+    const required = ['question_text','option_a','option_b','option_c','option_d','correct_answer'];
+    return rows.map((row, index) => {
+      const normalized = {};
+      Object.entries(row || {}).forEach(([key, value]) => { normalized[normalizeHeader(key)] = String(value ?? '').trim(); });
+      const missing = required.filter(key => !normalized[key]);
+      let correct = normalized.correct_answer.toUpperCase();
+      const options = ['A','B','C','D'].map(letter => normalized['option_' + letter.toLowerCase()]);
+      if (!missing.includes('correct_answer') && !['A','B','C','D'].includes(correct)) {
+        const match = options.findIndex(option => option.toLowerCase() === normalized.correct_answer.toLowerCase());
+        if (match >= 0) correct = ['A','B','C','D'][match];
+        else missing.push('correct_answer (use A/B/C/D or exact option text)');
+      }
+      const difficulty = (normalized.difficulty || 'medium').toLowerCase();
+      if (!['easy','medium','hard'].includes(difficulty)) missing.push('difficulty (easy/medium/hard)');
+      return { rowNumber: index + 2, data: normalized, correct, difficulty, errors: missing };
+    });
+  }
+  function renderBulkPreview() {
+    const preview = $('niqLecBulkPreview');
+    const summary = $('niqLecBulkSummary');
+    const valid = state.bulkRows.filter(row => !row.errors.length);
+    const invalid = state.bulkRows.filter(row => row.errors.length);
+    if (summary) summary.textContent = state.bulkRows.length
+      ? valid.length + ' valid · ' + invalid.length + ' need correction'
+      : 'Choose a CSV or Excel file to preview questions before submission.';
+    if (preview) preview.innerHTML = state.bulkRows.length ? state.bulkRows.slice(0, 12).map(row =>
+      '<div class="niq-lec-bulk-row"><div><strong>Row ' + row.rowNumber + ':</strong> ' + esc(row.data.question_text || '(question text missing)') +
+      '</div><span class="' + (row.errors.length ? 'niq-lec-bulk-error' : 'niq-lec-bulk-valid') + '">' +
+      (row.errors.length ? esc(row.errors.join(', ')) : 'Answer: ' + esc(row.correct)) + '</span></div>'
+    ).join('') + (state.bulkRows.length > 12 ? '<small>Showing first 12 of ' + state.bulkRows.length + ' rows.</small>' : '') : '';
+    const submit = $('niqLecBulkSubmit');
+    if (submit) submit.disabled = !valid.length || valid.length !== state.bulkRows.length;
+  }
+  async function handleBulkFile() {
+    const file = $('niqLecBulkFile')?.files?.[0];
+    state.bulkRows = [];
+    if (!file) { renderBulkPreview(); return; }
+    try {
+      const rows = await readBulkFile(file);
+      if (!rows.length) throw new Error('No question rows found. Check that the first row contains column headings.');
+      state.bulkRows = validateBulkRows(rows);
+      renderBulkPreview();
+    } catch (error) {
+      renderBulkPreview();
+      notify(error.message || 'Could not read the selected file.', 'error');
+    }
+  }
+  function buildBulkPayload(row, unit, authId) {
+    const d = row.data, options = ['a','b','c','d'].map(key => d['option_' + key]);
+    return {
+      unit_catalog_id: unit.catalogUnit.id,
+      unit_name: unit.catalogUnit.unit_name,
+      unit_code: unit.catalogUnit.unit_code,
+      topic: d.topic || null,
+      question_text: d.question_text,
+      question_type: 'mcq',
+      option_a: options[0], option_b: options[1], option_c: options[2], option_d: options[3],
+      correct_answer: options[['A','B','C','D'].indexOf(row.correct)],
+      explanation: d.explanation || '',
+      marks: Number(d.marks) > 0 ? Number(d.marks) : 1,
+      difficulty: row.difficulty,
+      curriculum: unit.catalogUnit.program,
+      is_active: true, is_published: false, status: 'pending',
+      created_by: authId, created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+    };
+  }
+  async function submitBulkQuestions() {
+    const unitIndex = $('niqLecBulkUnit')?.value;
+    const unit = unitIndex === '' || unitIndex == null ? null : state.units[Number(unitIndex)];
+    if (!unit?.catalogUnit) return notify('Choose one of your assigned units before importing.', 'warning');
+    if (!state.bulkRows.length || state.bulkRows.some(row => row.errors.length)) return notify('Correct all invalid rows before submitting the import.', 'warning');
+    const button = $('niqLecBulkSubmit');
+    const validRows = state.bulkRows.filter(row => !row.errors.length);
+    const payload = validRows.map(row => buildBulkPayload(row, unit, state.profile?.user_id || state.profile?.id));
+    if (button) { button.disabled = true; button.textContent = 'Submitting ' + payload.length + ' questions…'; }
+    let inserted = 0;
+    try {
+      for (let i = 0; i < payload.length; i += 50) {
+        const { error } = await state.sb.from('medical_assessments').insert(payload.slice(i, i + 50));
+        if (error) throw new Error('Imported ' + inserted + ' of ' + payload.length + ' questions before the database rejected the next batch: ' + error.message);
+        inserted += Math.min(50, payload.length - i);
+      }
+      state.bulkRows = [];
+      if ($('niqLecBulkFile')) $('niqLecBulkFile').value = '';
+      renderBulkPreview();
+      const message = $('niqLecMessage');
+      if (message) { message.className = 'niq-lec-message success'; message.textContent = inserted + ' questions submitted for administrator review. They remain unpublished until approved and published.'; }
+      await loadQuestions();
+      notify(inserted + ' questions submitted for admin review.', 'success');
+    } catch (error) {
+      console.error('NurseIQ bulk import:', error);
+      notify(error.message || 'Bulk import failed.', 'error');
+    } finally {
+      if (button) { button.disabled = !state.bulkRows.length || state.bulkRows.some(row => row.errors.length); button.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Submit all for approval'; }
+    }
+  }
+  function downloadBulkTemplate() {
+    const csv = 'question_text,option_a,option_b,option_c,option_d,correct_answer,topic,explanation,difficulty,marks\\n"Which action is the priority?","Assess the patient","Document later","Call family","Wait","A","Patient assessment","Assessment identifies immediate needs","medium",1\\n';
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'NurseIQ_Bulk_Question_Template.csv'; anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   function bind() {
     const form = $('niqLecForm');
     if (form && !form.dataset.bound) { form.addEventListener('submit', submitQuestion); form.dataset.bound = '1'; }
+    const file = $('niqLecBulkFile');
+    if (file && !file.dataset.bound) { file.addEventListener('change', handleBulkFile); file.dataset.bound = '1'; }
+    const bulkSubmit = $('niqLecBulkSubmit');
+    if (bulkSubmit && !bulkSubmit.dataset.bound) { bulkSubmit.addEventListener('click', submitBulkQuestions); bulkSubmit.dataset.bound = '1'; }
+    const template = $('niqLecBulkTemplate');
+    if (template && !template.dataset.bound) { template.addEventListener('click', downloadBulkTemplate); template.dataset.bound = '1'; }
   }
   window.LecturerNurseIQ = { init, refresh: init };
   document.addEventListener('DOMContentLoaded', bind);
