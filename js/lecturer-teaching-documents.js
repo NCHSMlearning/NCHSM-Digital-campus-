@@ -98,6 +98,18 @@
         #ap-content .tds-unit-meta span{font-size:10px;font-weight:700;padding:5px 9px;border-radius:30px;background:#eef2ff;color:#3730a3;border:1px solid #dbe3ff}
         #ap-content .tds-folder-btn{width:100%;margin-top:14px;padding:11px 13px;border:1px solid #d9e2ef;border-radius:10px;background:#f8fafc;color:#164e63;font-weight:800;cursor:pointer;text-align:left}
         #ap-content .tds-folder-btn:hover{background:#eff6ff;border-color:#93c5fd}
+
+        .tds-drive-overlay{position:fixed;inset:0;z-index:100400;background:rgba(9,22,40,.72);display:flex;align-items:stretch;justify-content:center;padding:clamp(0px,1.5vw,20px);backdrop-filter:blur(5px)}
+        .tds-drive-shell{width:100%;max-width:1500px;height:100%;background:#f8fafc;border-radius:16px;overflow:hidden;display:grid;grid-template-columns:235px minmax(0,1fr);box-shadow:0 28px 90px #02061766;color:#172033}
+        .tds-drive-sidebar{background:#f1f5f9;border-right:1px solid #e2e8f0;padding:22px 14px;display:flex;flex-direction:column;gap:10px}
+        .tds-drive-brand{display:flex;align-items:center;gap:10px;padding:5px 9px 25px}.tds-drive-brand-icon{font-size:26px;color:#2563eb}.tds-drive-brand strong{display:block;font-size:15px}.tds-drive-brand small{display:block;color:#64748b;font-size:11px;margin-top:3px}
+        .tds-drive-side-label{font-size:10px;font-weight:900;letter-spacing:.12em;color:#94a3b8;padding:8px 10px 2px}.tds-drive-nav{display:flex;align-items:center;gap:10px;border:0;border-radius:9px;padding:11px 12px;background:#dbeafe;color:#1d4ed8;text-align:left;font-weight:800}.tds-drive-side-note{font-size:12px;color:#64748b;line-height:1.6;padding:8px 10px}.tds-drive-side-footer{margin-top:auto;border-top:1px solid #dbe3ec;padding:14px 8px 0;color:#64748b;font-size:11px}
+        .tds-drive-main{min-width:0;display:flex;flex-direction:column}.tds-drive-topbar{min-height:68px;padding:12px 22px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:16px}.tds-drive-breadcrumb{display:flex;align-items:center;gap:9px;min-width:0;flex-wrap:wrap;font-size:13px;color:#64748b}.tds-drive-crumb{border:0;background:transparent;color:#2563eb;font-weight:800;cursor:pointer}.tds-drive-top-actions{display:flex;align-items:center;gap:8px}.tds-drive-search{width:min(300px,30vw);height:38px;border:1px solid #dbe3ec;border-radius:20px;padding:0 14px;font-size:12px}.tds-drive-view,.tds-drive-close{width:36px;height:36px;border:1px solid #dbe3ec;background:#fff;border-radius:9px;cursor:pointer;color:#475569}.tds-drive-view.active{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}.tds-drive-close{font-size:17px;color:#991b1b}
+        .tds-drive-content{padding:26px 30px;overflow:auto}.tds-drive-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:22px}.tds-drive-heading h2{font-size:24px;margin:5px 0;color:#0f172a}.tds-drive-heading p{margin:0;color:#64748b;font-size:13px}.tds-drive-eyebrow{font-size:11px;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.tds-drive-upload{border:0;background:#2563eb;color:#fff;border-radius:9px;padding:11px 15px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+        .tds-drive-stats{display:flex;gap:12px;margin-bottom:28px}.tds-drive-stats div{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:13px 17px;min-width:130px}.tds-drive-stats strong{display:block;font-size:21px;color:#0f172a}.tds-drive-stats span{font-size:11px;color:#64748b}.tds-drive-section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.tds-drive-section-head h3{margin:0;font-size:15px}.tds-drive-section-head span{font-size:11px;color:#64748b}
+        .tds-drive-folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.tds-drive-folder-grid.list{grid-template-columns:1fr}.tds-drive-folder-card{display:flex;align-items:center;gap:12px;min-width:0;padding:15px;border:1px solid #dbe3ec;background:#fff;border-radius:12px;text-align:left;cursor:pointer;transition:box-shadow .15s,border-color .15s}.tds-drive-folder-card:hover{border-color:#93c5fd;box-shadow:0 6px 18px #1e3a8a12}.tds-drive-folder-icon{font-size:25px}.tds-drive-folder-info{min-width:0;flex:1}.tds-drive-folder-info strong,.tds-drive-folder-info small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tds-drive-folder-info strong{font-size:12px;color:#1e293b}.tds-drive-folder-info small{font-size:10px;color:#64748b;margin-top:5px}.tds-drive-folder-arrow{font-size:20px;color:#94a3b8}
+        .tds-drive-file-head,.tds-drive-file-row{display:grid;grid-template-columns:minmax(180px,2fr) minmax(95px,.8fr) minmax(100px,.8fr) 70px;align-items:center;gap:12px}.tds-drive-file-head{padding:10px 14px;background:#f1f5f9;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.06em;border-radius:9px 9px 0 0}.tds-drive-file-row{padding:13px 14px;background:#fff;border-bottom:1px solid #e2e8f0}.tds-drive-file-name{display:flex;align-items:center;gap:10px;min-width:0}.tds-drive-file-icon{width:34px;height:38px;border-radius:7px;background:#eff6ff;color:#2563eb;display:grid;place-items:center;font-size:18px}.tds-drive-file-name strong,.tds-drive-file-name small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tds-drive-file-name strong{font-size:12px}.tds-drive-file-name small{font-size:10px;color:#64748b;margin-top:4px}.tds-drive-status{font-size:10px;padding:5px 8px;border-radius:20px;background:#e0f2fe;color:#0369a1;white-space:nowrap;width:max-content}.tds-drive-status.approved{background:#dcfce7;color:#166534}.tds-drive-status.returned{background:#fef3c7;color:#92400e}.tds-drive-date{font-size:11px;color:#64748b}.tds-drive-open{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:7px 10px;color:#1d4ed8;font-weight:800;cursor:pointer}.tds-drive-empty{background:#fff;border:1px dashed #cbd5e1;border-radius:12px;padding:50px 20px;text-align:center;color:#64748b;grid-column:1/-1}.tds-drive-empty span{display:block;font-size:28px;margin-bottom:10px}.tds-drive-empty strong{display:block;color:#334155}.tds-drive-empty p{font-size:12px;margin:7px 0}
+        @media(max-width:760px){.tds-drive-overlay{padding:0}.tds-drive-shell{border-radius:0;grid-template-columns:1fr}.tds-drive-sidebar{display:none}.tds-drive-topbar{padding:10px 12px;flex-wrap:wrap}.tds-drive-search{width:min(190px,42vw)}.tds-drive-content{padding:18px 13px}.tds-drive-heading{align-items:flex-start;flex-direction:column}.tds-drive-stats{flex-wrap:wrap}.tds-drive-stats div{flex:1;min-width:90px}.tds-drive-file-head{display:none}.tds-drive-file-row{grid-template-columns:minmax(0,1fr) auto;gap:8px}.tds-drive-file-row .tds-drive-status{grid-column:2;grid-row:1}.tds-drive-file-row .tds-drive-date{grid-column:1}.tds-drive-file-row .tds-drive-open{grid-column:2;grid-row:2}}
         .tds-modal-overlay{position:fixed;inset:0;z-index:100300;background:rgba(8,18,38,.68);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px}
         .tds-modal-panel{width:min(720px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 28px 90px #02061755}
         .tds-modal-head{padding:20px 22px;background:linear-gradient(120deg,#102f50,#1d5a7a);color:#fff;display:flex;justify-content:space-between;gap:14px;align-items:center}
@@ -269,22 +281,69 @@
     $('tdsCompletedFolder').hidden=complete.length===0;$('tdsCompletedCount').textContent=complete.length+' unit(s)';const finished=status==='incomplete'?[]:complete.filter(matches);completedHost.innerHTML=finished.length?finished.map(card).join(''):'<div class="tds-card tds-muted" style="grid-column:1/-1">No completed units match these filters.</div>';
     const toggle=$('tdsCompletedToggle');if(toggle&&!toggle.dataset.bound){toggle.dataset.bound='1';toggle.addEventListener('click',()=>{const box=$('tdsCompletedUnits');box.hidden=!box.hidden;$('tdsCompletedChevron').textContent=box.hidden?'+':'−';});}
     [host,completedHost].forEach(container=>{container.querySelectorAll('[data-folder-unit]').forEach(button=>button.addEventListener('click',()=>{const unit=state.units[Number(button.dataset.folderUnit)],docs=state.documentRows.filter(r=>(r.subject_code||'')===(unit.subject_code||'')&&(r.unit_name||'')===(unit.subject_name||unit.subject_code||''));openUnitFolder(unit,docs,isNursingUnit(unit)?'Intake folder':'Course folder');}));container.querySelectorAll('[data-unit][data-type]').forEach(button=>button.addEventListener('click',()=>{const index=Number(button.dataset.unit),unit=state.units[index];if(button.dataset.submission){openFile(button.dataset.submission);return;}$('tdsUnit').value=String(index);const meta=DOCUMENT_META[button.dataset.type];if(meta){$('tdsCategory').value=meta.categoryKey;$('tdsType').value=button.dataset.type;}$('tdsTitle').value=(meta?.label||'Academic document')+' — '+(unit.subject_code||unit.subject_name);openUploadModal(unit,meta?.label||'Academic document');}));});
-  }  function openUnitFolder(unit,docs,folderLabel){
-    const old=$('tdsUnitFolderModal');if(old)old.remove();
-    const modal=document.createElement('div');modal.id='tdsUnitFolderModal';
-    modal.style.cssText='position:fixed;inset:0;z-index:100400;background:#0f172a99;display:flex;align-items:center;justify-content:center;padding:14px';
-    const panel=document.createElement('section');panel.style.cssText='width:min(760px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 20px 60px #0004';
-    const head=document.createElement('div');head.style.cssText='display:flex;justify-content:space-between;gap:12px;align-items:center';
-    const title=document.createElement('h3');title.textContent=folderLabel+' · '+(unit.subject_code||unit.subject_name);title.style.cssText='margin:0;font-size:18px';
-    const close=document.createElement('button');close.type='button';close.textContent='Close';close.className='tds-check-action';close.onclick=()=>modal.remove();head.append(title,close);
-    const intro=document.createElement('p');intro.className='tds-muted';intro.textContent=(unit.program||'')+' · '+(unit.block||'')+' · '+(unit.academic_year||'')+' · '+docs.length+' document(s)';
-    panel.append(head,intro);
-    if(!docs.length){const empty=document.createElement('p');empty.className='tds-muted';empty.textContent='This folder is empty. Use Add beside a requirement to upload the first document.';panel.append(empty);}
-    docs.forEach(doc=>{const row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #e2e8f0';
-      const info=document.createElement('div');const name=document.createElement('strong');name.textContent=doc.title||doc.document_title||DOCUMENT_META[doc.document_type]?.label||'Teaching document';const meta=document.createElement('div');meta.className='tds-muted';meta.textContent=statusLabel(doc.status)+' · '+(doc.submitted_at?new Date(doc.submitted_at).toLocaleDateString():'Not dated');info.append(name,meta);
-      const open=document.createElement('button');open.type='button';open.className='tds-check-action';open.textContent='Open';open.onclick=()=>{modal.remove();openFile(doc.id);};row.append(info,open);panel.append(row);
-    });
-    modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});modal.append(panel);document.body.append(modal);
+  }
+  function openUnitFolder(unit,docs,folderLabel){
+    const existing=$('tdsUnitFolderModal');if(existing)existing.remove();
+    const required=isNursingUnit(unit)?NURSING_DOCUMENTS:TVET_DOCUMENTS;
+    const folders=required.map(([label,type])=>({label,type,files:docs.filter(doc=>doc.document_type===type)}));
+    let activeFolder=null,viewMode='grid',searchTerm='';
+    const modal=document.createElement('div');modal.id='tdsUnitFolderModal';modal.className='tds-drive-overlay';
+    modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Academic Drive folder');
+    const shell=document.createElement('section');shell.className='tds-drive-shell';
+    const sidebar=document.createElement('aside');sidebar.className='tds-drive-sidebar';
+    sidebar.innerHTML='<div class="tds-drive-brand"><span class="tds-drive-brand-icon">▰</span><div><strong>NCHSM Drive</strong><small>Academic workspace</small></div></div><div class="tds-drive-side-label">UNIT FOLDER</div><button type="button" class="tds-drive-nav active" data-drive-home>▦ <span>Overview</span></button><div class="tds-drive-side-label">QUICK ACCESS</div><div class="tds-drive-side-note">Documents are grouped by the academic requirements for this unit.</div><div class="tds-drive-side-footer">Private lecturer workspace</div>';
+    const main=document.createElement('main');main.className='tds-drive-main';
+    const top=document.createElement('header');top.className='tds-drive-topbar';
+    const crumb=document.createElement('div');crumb.className='tds-drive-breadcrumb';
+    const actions=document.createElement('div');actions.className='tds-drive-top-actions';
+    const search=document.createElement('input');search.type='search';search.placeholder='Search folders and documents';search.className='tds-drive-search';search.setAttribute('aria-label','Search folders and documents');
+    const gridBtn=document.createElement('button');gridBtn.type='button';gridBtn.className='tds-drive-view active';gridBtn.textContent='▦';gridBtn.title='Grid view';
+    const listBtn=document.createElement('button');listBtn.type='button';listBtn.className='tds-drive-view';listBtn.textContent='☷';listBtn.title='List view';
+    const close=document.createElement('button');close.type='button';close.className='tds-drive-close';close.textContent='✕';close.setAttribute('aria-label','Close folder');
+    actions.append(search,gridBtn,listBtn,close);top.append(crumb,actions);
+    const content=document.createElement('div');content.className='tds-drive-content';
+    main.append(top,content);shell.append(sidebar,main);modal.append(shell);
+    const closeDrive=()=>{modal.remove();document.body.style.overflow='';};
+    close.addEventListener('click',closeDrive);modal.addEventListener('click',e=>{if(e.target===modal)closeDrive();});
+    const key=e=>{if(e.key==='Escape'){closeDrive();document.removeEventListener('keydown',key);}};document.addEventListener('keydown',key);
+    const folderIcon='<span class="tds-drive-folder-icon">📁</span>';
+    const statusPill=doc=>'<span class="tds-drive-status '+(doc.status==='approved'?'approved':(['returned','rejected'].includes(doc.status)?'returned':'pending'))+'">'+esc(statusLabel(doc.status))+'</span>';
+    function renderDrive(){
+      const query=searchTerm.trim().toLowerCase();
+      const filteredFolders=folders.filter(folder=>!query||folder.label.toLowerCase().includes(query)||folder.files.some(doc=>String(doc.title||doc.document_title||doc.file_name||'').toLowerCase().includes(query)));
+      const files=activeFolder?activeFolder.files.filter(doc=>!query||String(doc.title||doc.document_title||doc.file_name||'').toLowerCase().includes(query)):null;
+      crumb.innerHTML='<button type="button" data-drive-home class="tds-drive-crumb">My Drive</button><span>›</span><span>'+esc(unit.subject_code||'Unit')+' '+esc(unit.subject_name||'')+'</span>'+(activeFolder?'<span>›</span><strong>'+esc(activeFolder.label)+'</strong>':'');
+      sidebar.querySelectorAll('[data-drive-home]').forEach(btn=>btn.onclick=()=>{activeFolder=null;renderDrive();});
+      if(!activeFolder){
+        const total=folders.reduce((n,f)=>n+f.files.length,0),approved=folders.reduce((n,f)=>n+f.files.filter(d=>d.status==='approved').length,0);
+        content.innerHTML='<div class="tds-drive-heading"><div><div class="tds-drive-eyebrow">'+esc(folderLabel)+' · '+esc(unit.program||'')+' · '+esc(unit.block||'')+'</div><h2>'+esc(unit.subject_code||'UNIT')+' '+esc(unit.subject_name||'')+'</h2><p>Organise, upload and preview your academic documents.</p></div><button type="button" class="tds-drive-upload" data-drive-upload>＋ Upload document</button></div><div class="tds-drive-stats"><div><strong>'+folders.length+'</strong><span>Required folders</span></div><div><strong>'+total+'</strong><span>Uploaded files</span></div><div><strong>'+approved+'</strong><span>Approved files</span></div></div><div class="tds-drive-section-head"><h3>Folders</h3><span>'+filteredFolders.length+' folders</span></div><div class="tds-drive-folder-grid '+(viewMode==='list'?'list':'')+'">'+(filteredFolders.length?filteredFolders.map(folder=>'<button type="button" class="tds-drive-folder-card" data-drive-folder="'+esc(folder.type)+'">'+folderIcon+'<span class="tds-drive-folder-info"><strong>'+esc(folder.label)+'</strong><small>'+folder.files.length+' file(s) · '+(folder.files.some(d=>d.status==='approved')?'Approved document available':'Document folder')+'</small></span><span class="tds-drive-folder-arrow">›</span></button>').join(''):'<div class="tds-drive-empty">No folders match your search.</div>')+'</div>';
+        content.querySelectorAll('[data-drive-folder]').forEach(btn=>btn.onclick=()=>{activeFolder=folders.find(f=>f.type===btn.dataset.driveFolder);renderDrive();});
+      }else{
+        const folder=activeFolder;
+        content.innerHTML='<div class="tds-drive-heading"><div><div class="tds-drive-eyebrow">'+esc(unit.subject_code||'Unit')+' / '+esc(folderLabel)+'</div><h2>'+esc(folder.label)+'</h2><p>'+files.length+' document(s) in this folder</p></div><button type="button" class="tds-drive-upload" data-drive-add>＋ Add document</button></div><div class="tds-drive-file-head"><span>Name</span><span>Status</span><span>Submitted</span><span>Action</span></div><div class="tds-drive-file-list">'+(files.length?files.map(doc=>'<div class="tds-drive-file-row"><span class="tds-drive-file-name"><span class="tds-drive-file-icon">'+(String(doc.file_name||doc.title||'').toLowerCase().endsWith('.pdf')?'▤':'▧')+'</span><span><strong>'+esc(doc.title||doc.document_title||folder.label)+'</strong><small>'+esc(doc.file_name||'Academic document')+'</small></span></span>'+statusPill(doc)+'<span class="tds-drive-date">'+esc(doc.submitted_at?new Date(doc.submitted_at).toLocaleDateString():'—')+'</span><button type="button" class="tds-drive-open" data-drive-open="'+esc(doc.id)+'">Open</button></div>').join(''):'<div class="tds-drive-empty"><span>📂</span><strong>This folder is empty</strong><p>Add the required document here. It will be sent to the HOD for review.</p></div>')+'</div>';
+        content.querySelector('[data-drive-add]')?.addEventListener('click',()=>launchUpload(folder));
+        content.querySelectorAll('[data-drive-open]').forEach(btn=>btn.addEventListener('click',()=>openFile(btn.dataset.driveOpen)));
+      }
+      content.querySelector('[data-drive-upload]')?.addEventListener('click',()=>{activeFolder=null;renderDrive();const first=folders.find(f=>true);if(first)launchUpload(first);});
+    }
+    function launchUpload(folder){
+      closeDrive();
+      const index=state.units.findIndex(u=>String(u.id)===String(unit.id));
+      $('tdsUnit').value=String(index>=0?index:0);
+      const meta=DOCUMENT_META[folder.type];if(meta){$('tdsCategory').value=meta.categoryKey;refreshDocumentTypesForDrive(folder.type);}
+      $('tdsTitle').value=(meta?.label||folder.label)+' — '+(unit.subject_code||unit.subject_name);
+      openUploadModal(unit,meta?.label||folder.label);
+    }
+    function refreshDocumentTypesForDrive(type){
+      const meta=DOCUMENT_META[type];if(!meta)return;
+      $('tdsCategory').value=meta.categoryKey;
+      $('tdsCategory').dispatchEvent(new Event('change',{bubbles:true}));
+      $('tdsType').value=type;
+    }
+    search.addEventListener('input',()=>{searchTerm=search.value;renderDrive();const input=modal.querySelector('.tds-drive-search');if(input){input.focus();input.setSelectionRange(searchTerm.length,searchTerm.length);}});
+    gridBtn.onclick=()=>{viewMode='grid';gridBtn.classList.add('active');listBtn.classList.remove('active');renderDrive();};
+    listBtn.onclick=()=>{viewMode='list';listBtn.classList.add('active');gridBtn.classList.remove('active');renderDrive();};
+    document.body.append(modal);document.body.style.overflow='hidden';renderDrive();
   }
   async function loadRows(){
     const tbody=$('tdsRows');if(!tbody)return;
