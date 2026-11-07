@@ -144,14 +144,14 @@
     const tbody=$('tdsRows');if(!tbody)return;
     try{
       const identity=await resolveIdentity();
-      const {data,error}=await identity.client.from(TABLE).select('id,title,document_title,document_type,unit_name,academic_year,status,reviewer_comments,review_comments,submitted_at,created_at,attachment_count').eq('lecturer_user_id',identity.authUser).order('created_at',{ascending:false}).limit(100);
+      const {data,error}=await identity.client.from(TABLE).select('id,title,document_title,document_type,unit_name,academic_year,status,reviewer_comments,submitted_at,created_at,attachment_count').eq('lecturer_user_id',identity.authUser).order('created_at',{ascending:false}).limit(100);
       if(error)throw error;
       const rows=data||[];$('tdsCount').textContent=rows.length+' submission(s)';
       if(!rows.length){tbody.innerHTML='<tr><td colspan="7" class="tds-muted">You have not submitted a teaching document yet.</td></tr>';return;}
       tbody.innerHTML=rows.map(row=>{
         const label=row.document_type==='scheme_of_work'?'Scheme of Work':row.document_type==='lesson_plan'?'Lesson Plan':row.document_type||'Teaching document';
         const color=statusColor(row.status);
-        return '<tr><td><strong>'+esc(row.title||row.document_title||label)+'</strong><div class="tds-muted">'+esc(label)+'</div></td><td>'+esc(row.unit_name||'—')+'</td><td>'+esc(row.academic_year||'—')+'</td><td>'+esc(row.submitted_at?new Date(row.submitted_at).toLocaleDateString():'—')+'</td><td><span class="tds-status" style="background:'+color+'18;color:'+color+'">'+esc(statusLabel(row.status))+'</span></td><td>'+esc(row.reviewer_comments||row.review_comments||'—')+'</td><td>'+(Number(row.attachment_count)>0?'<button class="tds-btn tds-secondary" style="padding:6px 9px" type="button" data-file="'+esc(row.id)+'">Open</button>':'—')+'</td></tr>';
+        return '<tr><td><strong>'+esc(row.title||row.document_title||label)+'</strong><div class="tds-muted">'+esc(label)+'</div></td><td>'+esc(row.unit_name||'—')+'</td><td>'+esc(row.academic_year||'—')+'</td><td>'+esc(row.submitted_at?new Date(row.submitted_at).toLocaleDateString():'—')+'</td><td><span class="tds-status" style="background:'+color+'18;color:'+color+'">'+esc(statusLabel(row.status))+'</span></td><td>'+esc(row.reviewer_comments||'—')+'</td><td>'+(Number(row.attachment_count)>0?'<button class="tds-btn tds-secondary" style="padding:6px 9px" type="button" data-file="'+esc(row.id)+'">Open</button>':'—')+'</td></tr>';
       }).join('');
       tbody.querySelectorAll('[data-file]').forEach(button=>button.addEventListener('click',()=>openFile(button.dataset.file)));
     }catch(error){console.error('[TeachingDocuments] load submissions failed',error);tbody.innerHTML='<tr><td colspan="7" style="color:#991b1b">Could not load submissions: '+esc(error.message||error)+'</td></tr>';$('tdsCount').textContent='Unavailable';}
