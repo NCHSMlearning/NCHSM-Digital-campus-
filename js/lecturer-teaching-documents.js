@@ -160,8 +160,19 @@
     try{
       const identity=await resolveIdentity();
       const {data,error}=await identity.client.from(ATTACHMENTS).select('storage_path,file_name').eq('submission_id',id).order('created_at',{ascending:false}).limit(1).maybeSingle();
-      if(error)throw error;if(!data?.storage_path)throw new Error('No attachment record was found.');
-      const signed=await identity.client.storage.from(BUCKET).createSignedUrl(data.storage_path,900);
+      if(error)throw error;
+      let path=data?.storage_path||'';
+      if(!path){
+        const row=await identity.client.from(TABLE).select('created_at,submitted_at').eq('id',id).eq('lecturer_user_id',identity.authUser).maybeSingle();
+        const year=new Date(row.data?.created_at||row.data?.submitted_at||Date.now()).getFullYear();
+        const prefix=state.staffId+'/'+year+'/'+id;
+        const listed=await identity.client.storage.from(BUCKET).list(prefix,{limit:30,sortBy:{column:'name',order:'desc'}});
+        if(listed.error)throw listed.error;
+        const item=(listed.data||[]).find(file=>file.name);
+        if(item)path=prefix+'/'+item.name;
+      }
+      if(!path)throw new Error('No uploaded file was found for this submission.');
+      const signed=await identity.client.storage.from(BUCKET).createSignedUrl(path,900);
       if(signed.error)throw signed.error;window.open(signed.data.signedUrl,'_blank','noopener');
     }catch(error){toast(error.message||'Could not open document.',true);}
   }
