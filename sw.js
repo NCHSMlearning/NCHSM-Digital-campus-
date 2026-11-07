@@ -1,9 +1,9 @@
 // ============================================================
-// NCHSM Service Worker — v2.2.7 (NCHSM branded install)
+// NCHSM Service Worker — v2.2.8 (NCHSM branded install)
 // Caches static assets ONLY. Never caches Supabase API.
 // ============================================================
 
-const APP_VERSION  = '2.2.7';
+const APP_VERSION  = '2.2.8';
 const CACHE_NAME   = `nchsm-dashboard-v${APP_VERSION.replace(/\./g, '-')}`;
 const STATIC_CACHE = 'nchsm-static-v1';
 
