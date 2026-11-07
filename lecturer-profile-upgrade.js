@@ -85,7 +85,7 @@
     }
     const state = d ? '<span class="lp-doc-state ' + uploadedClass + '"><i class="fas fa-check-circle"></i> ' + uploadedState + '</span>' : (def.required ? '<span class="lp-doc-state lp-state-missing">Missing</span>' : '<span class="lp-doc-state lp-state-optional">Not supplied</span>');
     return '<article class="lp-doc-card ' + (d ? 'has-file' : 'is-empty') + '" data-doc-card="' + esc(def.type) + '">' +
-      '<div class="lp-doc-card-top"><div class="lp-doc-icon"><i class="fas ' + (def.type === 'profile_photo' ? 'fa-image' : def.type === 'cv' ? 'fa-file-word' : 'fa-file-shield') + '"></i></div><div class="lp-doc-title"><strong>' + esc(def.label) + '</strong><small>' + esc(def.hint) + '</small></div><div class="lp-doc-badges">' + required + state + '</div></div>' +
+      '<div class="lp-doc-card-top"><div class="lp-doc-icon"><i class="fas ' + (def.type === 'profile_photo' ? 'fa-image' : def.type === 'cv' ? 'fa-file-word' : 'fa-file-shield') + '"></i></div><div class="lp-doc-title"><strong>' + esc(def.label) + '</strong><small>' + esc(def.hint) + '</small></div><div class="lp-doc-badges">' + required + state + (d ? '' : '<button type="button" class="lp-top-upload" data-upload="' + esc(def.type) + '"><i class="fas fa-upload"></i> Upload</button>') + '</div></div>' +
       (d ? uploaded : '') +
       '<input class="lp-hidden-file" type="file" data-file-input="' + esc(def.type) + '" accept="' + esc(def.accept) + '" hidden>' +
       '</article>';
