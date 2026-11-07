@@ -821,6 +821,7 @@
   #dashboard-content .nrd-class-exam-row .next-class-details{grid-column:auto!important;grid-template-columns:1fr!important}
 }
 </style>
+<style id="lecturer-reports-records-consolidation">#lecturerReportSubmissionSection{display:none!important}</style>
 </head>
 <body>
     <!-- Mobile Navigation Toggle -->
@@ -7306,7 +7307,8 @@ Marks: 5" style="width:100%; min-height:520px; box-sizing:border-box; resize:ver
              Lecturer creates/saves/submits reports for administrator review.
              HTML-first: stable IDs are provided for LecturerReports JS.
              ========================================================= -->
-        <div class="lr-card lr-section" id="lecturerReportSubmissionSection">
+        <div id="lecturerReportSubmissionMoved" class="lr-card" style="margin:16px 0;border:1px solid #bfdbfe;background:#f8fbff;padding:16px;border-radius:12px;"><strong style="color:#1e3a8a;">Academic document submissions are now in Academic Portfolio → Records</strong><p style="margin:6px 0 12px;color:#475569;font-size:12px;">Use the Records workspace for drafts, document uploads, submissions and approval tracking. The Reports section remains dedicated to report generation, analysis and exports.</p><button type="button" onclick="document.querySelector('[data-tab=academic-portfolio]')?.click();setTimeout(()=>window.AcademicPortfolio?.switchTab('records-submissions'),180)" style="background:#1d4ed8;color:#fff;border:0;padding:9px 13px;border-radius:8px;font-weight:700;">Open Academic Records</button></div>
+<div class="lr-card lr-section" id="lecturerReportSubmissionSection">
             <div class="lr-section-head">
                 <div class="lr-section-title">
                     <i class="fas fa-paper-plane"></i>
