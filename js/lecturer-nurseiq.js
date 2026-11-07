@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const state = { sb: null, profile: null, lecturerId: null, assignments: [], units: [], questions: [], bulkRows: [], loading: false };
+  const state = { sb: null, profile: null, lecturerId: null, assignments: [], units: [], questions: [], bulkRows: [], loading: false, initialized: false };
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const notify = (message, type='info') => {
@@ -167,8 +167,8 @@
     const list = $('niqLecQuestionList');
     if (list && !state.questions.length) list.innerHTML = '<div class="niq-lec-empty"><i class="fas fa-triangle-exclamation"></i><strong>Unable to load NurseIQ</strong><span>' + esc(message) + '</span></div>';
   }
-  async function init() {
-    if (state.loading) return;
+  async function init(force = false) {
+    if (state.loading || (state.initialized && !force)) return;
     state.loading = true;
     state.sb = getClient();
     state.profile = getProfile();
@@ -177,11 +177,13 @@
       await resolveAssignments();
       await loadUnits();
       renderUnitOptions();
+      state.initialized = true;
       const message = $('niqLecMessage');
       if (message) { message.className = 'niq-lec-message success'; message.textContent = 'Assigned units loaded. Your submissions are loading…'; }
       loadQuestions().catch(error => { console.error('NurseIQ submissions load:', error); });
     } catch (error) {
       console.error('NurseIQ lecturer module:', error);
+      state.initialized = false;
       renderError(error.message || 'Could not load NurseIQ lecturer workspace.');
     } finally { state.loading = false; }
   }
@@ -393,7 +395,7 @@
     const template = $('niqLecBulkTemplate');
     if (template && !template.dataset.bound) { template.addEventListener('click', downloadBulkTemplate); template.dataset.bound = '1'; }
   }
-  window.LecturerNurseIQ = { init, refresh: init };
+  window.LecturerNurseIQ = { init: () => init(false), refresh: () => init(true) };
   document.addEventListener('DOMContentLoaded', bind);
   document.addEventListener('click', event => {
     const link = event.target.closest('a[data-tab="nurseiq-questions"]');
