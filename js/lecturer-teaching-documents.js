@@ -75,7 +75,26 @@
         #ap-content .tds-muted{color:#64748b;font-size:12px}#ap-content .tds-message{display:none;padding:11px 13px;border-radius:9px;margin-top:13px;font-size:12px}
         #ap-content .tds-compliance-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 12px}
         #ap-content .tds-unit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:18px}
-        #ap-content .tds-unit-card{background:#fff;border:1px solid #dce3ed;border-radius:15px;padding:18px;box-shadow:0 5px 20px #0f172a08;min-width:0}
+
+        #ap-content .tds-unit-card{background:linear-gradient(180deg,#fff,#fbfdff);border:1px solid #dbe4ef;border-radius:18px;padding:20px;box-shadow:0 8px 28px #1725540b;min-width:0;transition:transform .18s ease,box-shadow .18s ease}
+        #ap-content .tds-unit-card:hover{transform:translateY(-2px);box-shadow:0 14px 34px #17255415}
+        #ap-content .tds-unit-top h4{font-size:16px;line-height:1.35}
+        #ap-content .tds-unit-percent{font-size:27px;letter-spacing:-1px}
+        #ap-content .tds-unit-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+        #ap-content .tds-unit-meta span{font-size:10px;font-weight:700;padding:5px 9px;border-radius:30px;background:#eef2ff;color:#3730a3;border:1px solid #dbe3ff}
+        #ap-content .tds-folder-btn{width:100%;margin-top:14px;padding:11px 13px;border:1px solid #d9e2ef;border-radius:10px;background:#f8fafc;color:#164e63;font-weight:800;cursor:pointer;text-align:left}
+        #ap-content .tds-folder-btn:hover{background:#eff6ff;border-color:#93c5fd}
+        #ap-content .tds-modal-overlay{position:fixed;inset:0;z-index:100300;background:rgba(8,18,38,.68);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px}
+        #ap-content .tds-modal-panel{width:min(720px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 28px 90px #02061755}
+        #ap-content .tds-modal-head{padding:20px 22px;background:linear-gradient(120deg,#102f50,#1d5a7a);color:#fff;display:flex;justify-content:space-between;gap:14px;align-items:center}
+        #ap-content .tds-modal-head h3{margin:0;font-size:18px}
+        #ap-content .tds-modal-head p{margin:5px 0 0;color:#dbeafe;font-size:12px}
+        #ap-content .tds-modal-close{width:36px;height:36px;border:1px solid #ffffff55;border-radius:10px;background:#ffffff18;color:#fff;font-size:20px;cursor:pointer}
+        #ap-content .tds-modal-body{padding:20px 22px}
+        #ap-content .tds-modal-body #tdsFormCard{border:0;box-shadow:none;padding:0;margin:0}
+        #ap-content .tds-modal-body .tds-grid{grid-template-columns:1fr 1fr}
+        #ap-content .tds-modal-body .tds-actions{justify-content:flex-end}
+
         #ap-content .tds-unit-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
         #ap-content .tds-unit-top h4{font-size:15px;margin:0;color:#172033}
         #ap-content .tds-unit-percent{font-size:25px;font-weight:900;color:#b91c1c;white-space:nowrap}
@@ -96,7 +115,7 @@
         <div class="tds-hero"><h2><i class="fas fa-file-arrow-up"></i> Submit Teaching Documents</h2><p>Submit teaching, assessment, student-support, quality-assurance and professional-development evidence for HOD review. Only your assigned units are available.</p></div>
         <div class="tds-compliance-head"><div><h3 style="margin:0;font-size:17px">Unit document compliance</h3><p class="tds-muted" style="margin:4px 0 0">Track required academic documents for every unit assigned to you.</p></div><span id="tdsComplianceCount" class="tds-muted">Loading unit checklist…</span></div>
         <div id="tdsUnitCompliance" class="tds-unit-grid"><div class="tds-card tds-muted">Preparing your assigned unit checklists…</div></div>
-        <div class="tds-card">
+        <div id="tdsFormHome" style="display:none"></div><div class="tds-card" id="tdsFormCard">
           <form id="tdsForm">
             <div class="tds-grid">
               <div class="tds-field"><label for="tdsCategory">Document category</label><select id="tdsCategory" required></select></div><div class="tds-field"><label for="tdsType">Document type</label><select id="tdsType" required></select></div>
@@ -173,7 +192,7 @@
       if(meta.error)console.warn('[TeachingDocuments] Attachment metadata could not be recorded; storage path remains uploaded.',meta.error);
       const update=await client.from(TABLE).update({attachment_count:1,updated_at:new Date().toISOString()}).eq('id',row.id).eq('lecturer_user_id',identity.authUser);
       if(update.error)throw update.error;
-      $('tdsForm').reset();$('tdsYear').value=yearNow();message('Document submitted successfully to the HOD. You can track its review status below.');
+      $('tdsForm').reset();$('tdsYear').value=yearNow();closeUploadModal();toast('Document submitted successfully to the HOD.');
       await loadRows();
     }catch(error){console.error('[TeachingDocuments] submission failed',error);message(error.message||'Submission failed. Please try again.',true);}
     finally{state.loading=false;btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Submit to HOD';}
@@ -188,6 +207,31 @@
     ['Practical exam 1','practical_exam_1'],['Practical exam 2','practical_exam_2'],['Practical exam 3','practical_exam_3']
   ];
   function isNursingUnit(unit){return String(unit?.program||'').trim().toUpperCase()==='KRCHN';}
+
+  function closeUploadModal(){
+    const modal=$('tdsUploadModal'),card=$('tdsFormCard'),home=$('tdsFormHome');
+    if(card&&home)home.appendChild(card);
+    if(modal)modal.remove();
+    document.body.style.overflow='';
+  }
+  function openUploadModal(unit,documentLabel){
+    closeUploadModal();
+    const modal=document.createElement('div');modal.id='tdsUploadModal';modal.className='tds-modal-overlay';
+    modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Add academic document');
+    const panel=document.createElement('section');panel.className='tds-modal-panel';
+    const head=document.createElement('header');head.className='tds-modal-head';
+    const heading=document.createElement('div');heading.innerHTML='<h3>Add academic document</h3><p>'+esc(unit.subject_code||'')+' · '+esc(unit.subject_name||'')+'</p>';
+    const close=document.createElement('button');close.type='button';close.className='tds-modal-close';close.setAttribute('aria-label','Close');close.textContent='×';close.onclick=closeUploadModal;
+    head.append(heading,close);
+    const body=document.createElement('div');body.className='tds-modal-body';
+    const card=$('tdsFormCard');if(card)body.appendChild(card);
+    panel.append(head,body);modal.append(panel);
+    modal.addEventListener('click',e=>{if(e.target===modal)closeUploadModal();});
+    const key=e=>{if(e.key==='Escape'){closeUploadModal();document.removeEventListener('keydown',key);}};
+    document.addEventListener('keydown',key);
+    document.body.append(modal);document.body.style.overflow='hidden';
+    setTimeout(()=>$('tdsFile')?.focus(),80);
+  }
   function renderUnitCompliance(rows){
     const host=$('tdsUnitCompliance');if(!host)return;
     const units=state.units||[];
@@ -199,13 +243,13 @@
       const approved=items.filter(x=>x.row?.status==='approved').length;
       const pct=Math.round(approved/items.length*100);
       const term=[unit.program,unit.block,unit.academic_year].filter(Boolean).join(' · ');
-      return '<article class="tds-unit-card"><div class="tds-unit-top"><div><h4>'+esc(unit.subject_code||'UNIT')+' '+esc(unit.subject_name||'')+'</h4><div class="tds-muted" style="margin-top:5px">'+esc(unit.program||'')+' · '+esc(term||'Assigned unit')+'</div></div><div class="tds-unit-percent">'+pct+'%</div></div><div class="tds-progress"><span style="width:'+pct+'%"></span></div><div class="tds-muted">'+approved+' of '+items.length+' approved</div>'+
+      return '<article class="tds-unit-card"><div class="tds-unit-top"><div><h4>'+esc(unit.subject_code||'UNIT')+' '+esc(unit.subject_name||'')+'</h4><div class="tds-unit-meta"><span>'+esc(unit.program||'Programme')+'</span><span>'+esc(unit.block||'Academic block/term')+'</span></div></div><div class="tds-unit-percent">'+pct+'%</div></div><div class="tds-progress"><span style="width:'+pct+'%"></span></div><div class="tds-muted">'+approved+' of '+items.length+' approved · '+(items.length-approved)+' outstanding</div>'+
       items.map(item=>{
         const row=item.row,status=row?.status||'not_submitted';
         const label=status==='approved'?'Approved':(['submitted','under_review','resubmitted'].includes(status)?'Pending':(['returned','rejected'].includes(status)?'Revision required':'Not submitted'));
         const cls=status==='approved'?'approved':(['submitted','under_review','resubmitted'].includes(status)?'pending':'');
         return '<div class="tds-check-row"><span style="font-size:18px;color:'+(status==='approved'?'#078744':'#c3ccd8')+'">'+(status==='approved'?'●':'○')+'</span><div><div class="tds-check-name">'+esc(item.label)+'</div><div class="tds-muted">'+(row?.submitted_at?'Submitted '+esc(new Date(row.submitted_at).toLocaleDateString()):'No submission yet')+'</div></div><span class="tds-check-status '+cls+'">'+label+'</span><button type="button" class="tds-check-action '+(!row?'add':'')+'" data-unit="'+index+'" data-type="'+item.type+'" data-submission="'+(row?.id||'')+'">'+(row?'Open':'Add')+'</button></div>';
-      }).join('')+'<div style="border-top:1px solid #e2e8f0;margin-top:12px;padding-top:12px;display:flex;justify-content:flex-end"><button type="button" class="tds-check-action" data-folder-unit="'+index+'">'+(isNursingUnit(unit)?'▱ Intake folder':'▱ Course folder')+'</button></div></article>';
+      }).join('')+'<button type="button" class="tds-folder-btn" data-folder-unit="'+index+'">▰ Open '+(isNursingUnit(unit)?'Intake folder':'Course folder')+' <span style="float:right">→</span></button></article>';
     }).join('');
     host.querySelectorAll('[data-folder-unit]').forEach(button=>button.addEventListener('click',()=>{
       const unit=state.units[Number(button.dataset.folderUnit)];
@@ -218,7 +262,7 @@
       $('tdsUnit').value=String(unitIndex);$('tdsType').value=button.dataset.type;
       const meta=DOCUMENT_META[button.dataset.type];if(meta){$('tdsCategory').value=meta.categoryKey;$('tdsType').value=button.dataset.type;}
       $('tdsTitle').value=(meta?.label||'Academic document')+' — '+(unit.subject_code||unit.subject_name);
-      $('tdsForm').scrollIntoView({behavior:'smooth',block:'center'});$('tdsFile').focus();
+      openUploadModal(unit,meta?.label||'Academic document');
     }));
   }
   function openUnitFolder(unit,docs,folderLabel){
