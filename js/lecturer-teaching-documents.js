@@ -49,7 +49,7 @@
     if(!state.staffId) throw new Error('Your staff ID could not be matched to the assigned units.');
     return {client,authUser,name,p};
   }
-  function render(){
+  function render(selectedType){
     const mount=$('ap-content'); if(!mount)return;
     const unitOptions=state.units.map((u,i)=>'<option value="'+i+'">'+esc((u.subject_code?u.subject_code+' — ':'')+(u.subject_name||u.subject_code))+(u.block?' · '+esc(u.block):'')+'</option>').join('');
     mount.innerHTML=`
@@ -91,6 +91,7 @@
           <div class="tds-table-wrap"><table class="tds-table"><thead><tr><th>Document</th><th>Unit</th><th>Academic year</th><th>Submitted</th><th>Status</th><th>HOD comments</th><th>File</th></tr></thead><tbody id="tdsRows"><tr><td colspan="7" class="tds-muted">Loading submissions…</td></tr></tbody></table></div>
         </div>
       </div>`;
+    const typeSelect=$('tdsType');if(typeSelect&&['scheme_of_work','lesson_plan','record_of_work','course_outline'].includes(selectedType))typeSelect.value=selectedType;
     const select=$('tdsUnit');
     if(select) select.innerHTML='<option value="">-- Select an assigned unit --</option>'+unitOptions;
     $('tdsForm')?.addEventListener('submit',submit);
@@ -176,5 +177,5 @@
       if(signed.error)throw signed.error;window.open(signed.data.signedUrl,'_blank','noopener');
     }catch(error){toast(error.message||'Could not open document.',true);}
   }
-  window.TeachingDocumentsSubmission={open:async function(){const mount=$('ap-content');if(!mount)return;mount.innerHTML='<div style="padding:35px;text-align:center;color:#64748b"><i class="fas fa-spinner fa-spin"></i> Loading your teaching documents…</div>';try{await resolveIdentity();render();}catch(error){mount.innerHTML='<div style="padding:30px;background:#fff;border:1px solid #fecaca;border-radius:14px;color:#991b1b"><strong>Teaching Documents unavailable</strong><p>'+esc(error.message||error)+'</p><button type="button" onclick="TeachingDocumentsSubmission.open()">Retry</button></div>';}}};
+  window.TeachingDocumentsSubmission={open:async function(type){const mount=$('ap-content');if(!mount)return;mount.innerHTML='<div style="padding:35px;text-align:center;color:#64748b"><i class="fas fa-spinner fa-spin"></i> Loading your teaching documents…</div>';try{await resolveIdentity();render(type);}catch(error){mount.innerHTML='<div style="padding:30px;background:#fff;border:1px solid #fecaca;border-radius:14px;color:#991b1b"><strong>Teaching Documents unavailable</strong><p>'+esc(error.message||error)+'</p><button type="button" onclick="TeachingDocumentsSubmission.open()">Retry</button></div>';}}};
 })();
