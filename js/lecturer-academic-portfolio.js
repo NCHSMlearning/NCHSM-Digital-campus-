@@ -522,7 +522,7 @@ const AcademicPortfolio = {
           .ap-modern-progress span{display:block;height:100%;width:${completionPercent}%;background:linear-gradient(90deg,#16b85d,#0b9b52);border-radius:30px}
           .ap-modern-progress-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#475569;font-size:12px}
           .ap-modern-link{border:1px solid #d8d2fb;background:#f7f5ff;color:#4321a0;border-radius:10px;padding:9px 14px;font-weight:800;cursor:pointer}
-          .ap-modern-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+          .ap-modern-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.ap-document-submit-actions .ap-modern-action{min-height:94px;cursor:pointer}
           .ap-modern-action{min-height:105px;border:1px solid #e4ddfb;border-radius:13px;background:#f7f3ff;color:#4c1d95;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px 7px;text-align:center;font-size:12px;font-weight:800;cursor:pointer}
           .ap-modern-action i{font-size:23px}
           .ap-modern-action:nth-child(2){background:#eff6ff;border-color:#cfe0ff;color:#2563eb}
@@ -546,12 +546,8 @@ const AcademicPortfolio = {
           </header>
           <nav class="ap-modern-tabs" aria-label="Academic Portfolio sections">
             <button type="button" class="ap-modern-tab" data-ap-tab="dashboard"><i class="fas fa-th-large"></i><span>Overview</span></button>
-            ${tab('scheme-of-work','Teaching Plan','fa-book-open')}
-            ${tab('lesson-plans','Lesson Plans','fa-file-alt')}
+            ${tab('course-allocation','Course Allocation','fa-book-open')}
             ${tab('teaching-documents','Submit Documents','fa-file-upload')}
-            ${tab('records-submissions','Records','fa-layer-group')}
-            ${tab('assessments','Assessments','fa-clipboard-check')}
-            ${tab('reports','Reports','fa-chart-column')}
           </nav>
           <div class="ap-modern-grid">
             <div class="ap-modern-stat"><div class="ap-modern-stat-icon" style="background:#e7f0ff;color:#2563eb"><i class="fas fa-book-open"></i></div><div><strong>${Number(stats.totalCourses||0)}</strong><span>Units Assigned</span></div></div>
@@ -559,6 +555,16 @@ const AcademicPortfolio = {
             <div class="ap-modern-stat"><div class="ap-modern-stat-icon" style="background:#fff3df;color:#d97706"><i class="fas fa-clock"></i></div><div><strong>${pending}</strong><span>Pending HOD Review</span></div></div>
             <div class="ap-modern-stat"><div class="ap-modern-stat-icon" style="background:#f0eaff;color:#6d28d9"><i class="fas fa-check-circle"></i></div><div><strong>${approved}</strong><span>Approved Schemes</span></div></div>
           </div>
+          <section class="ap-modern-card" style="margin-bottom:18px">
+            <h3><i class="fas fa-cloud-arrow-up"></i> Submit Academic Documents</h3>
+            <p style="margin:-7px 0 15px;color:#64748b;font-size:13px">Choose a document type to upload it for HOD review. All submissions are managed here.</p>
+            <div class="ap-modern-actions ap-document-submit-actions">
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.open('scheme_of_work')"><i class="fas fa-list-check"></i><span>Scheme of Work</span></button>
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.open('lesson_plan')"><i class="fas fa-chalkboard-teacher"></i><span>Lesson Plan</span></button>
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.open('record_of_work')"><i class="fas fa-clipboard-list"></i><span>Record of Work</span></button>
+              <button type="button" class="ap-modern-action" onclick="TeachingDocumentsSubmission.open('course_outline')"><i class="fas fa-book"></i><span>Course Outline</span></button>
+            </div>
+          </section>
           <div class="ap-modern-lower">
             <section class="ap-modern-card">
               <h3><i class="fas fa-bullseye"></i> Portfolio Completion <span style="margin-left:auto;font-size:24px">${completionPercent}%</span></h3>
