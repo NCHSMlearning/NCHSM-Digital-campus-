@@ -77,7 +77,7 @@
         <div class="tds-card">
           <form id="tdsForm">
             <div class="tds-grid">
-              <div class="tds-field"><label for="tdsType">Document type</label><select id="tdsType" required><option value="scheme_of_work">Scheme of Work</option><option value="lesson_plan">Lesson Plan</option></select></div>
+              <div class="tds-field"><label for="tdsType">Document type</label><select id="tdsType" required><option value="scheme_of_work">Scheme of Work</option><option value="lesson_plan">Lesson Plan</option><option value="record_of_work">Record of Work</option><option value="course_outline">Course Outline</option></select></div>
               <div class="tds-field"><label for="tdsUnit">Assigned unit</label><select id="tdsUnit" required><option value="">Loading assigned units…</option>${unitOptions}</select></div>
               <div class="tds-field"><label for="tdsYear">Academic year</label><input id="tdsYear" value="${yearNow()}" placeholder="2026/2027" required></div>
               <div class="tds-field"><label for="tdsTitle">Document title</label><input id="tdsTitle" placeholder="e.g. Scheme of Work — Block 2" required></div>
@@ -149,7 +149,7 @@
       const rows=data||[];$('tdsCount').textContent=rows.length+' submission(s)';
       if(!rows.length){tbody.innerHTML='<tr><td colspan="7" class="tds-muted">You have not submitted a teaching document yet.</td></tr>';return;}
       tbody.innerHTML=rows.map(row=>{
-        const label=row.document_type==='scheme_of_work'?'Scheme of Work':row.document_type==='lesson_plan'?'Lesson Plan':row.document_type||'Teaching document';
+        const labels={scheme_of_work:'Scheme of Work',lesson_plan:'Lesson Plan',record_of_work:'Record of Work',course_outline:'Course Outline'};const label=labels[row.document_type]||row.document_type||'Teaching document';
         const color=statusColor(row.status);
         return '<tr><td><strong>'+esc(row.title||row.document_title||label)+'</strong><div class="tds-muted">'+esc(label)+'</div></td><td>'+esc(row.unit_name||'—')+'</td><td>'+esc(row.academic_year||'—')+'</td><td>'+esc(row.submitted_at?new Date(row.submitted_at).toLocaleDateString():'—')+'</td><td><span class="tds-status" style="background:'+color+'18;color:'+color+'">'+esc(statusLabel(row.status))+'</span></td><td>'+esc(row.reviewer_comments||'—')+'</td><td>'+(Number(row.attachment_count)>0?'<button class="tds-btn tds-secondary" style="padding:6px 9px" type="button" data-file="'+esc(row.id)+'">Open</button>':'—')+'</td></tr>';
       }).join('');
@@ -177,14 +177,4 @@
     }catch(error){toast(error.message||'Could not open document.',true);}
   }
   window.TeachingDocumentsSubmission={open:async function(){const mount=$('ap-content');if(!mount)return;mount.innerHTML='<div style="padding:35px;text-align:center;color:#64748b"><i class="fas fa-spinner fa-spin"></i> Loading your teaching documents…</div>';try{await resolveIdentity();render();}catch(error){mount.innerHTML='<div style="padding:30px;background:#fff;border:1px solid #fecaca;border-radius:14px;color:#991b1b"><strong>Teaching Documents unavailable</strong><p>'+esc(error.message||error)+'</p><button type="button" onclick="TeachingDocumentsSubmission.open()">Retry</button></div>';}}};
-  // The portfolio entry becomes the single teaching-documents workspace.
-  function install(){
-    if(!window.AcademicPortfolio)return false;
-    const portfolio=window.AcademicPortfolio;
-    portfolio.loadDashboard=()=>window.TeachingDocumentsSubmission.open();
-    portfolio.switchTab=()=>window.TeachingDocumentsSubmission.open();
-    portfolio.refresh=()=>window.TeachingDocumentsSubmission.open();
-    return true;
-  }
-  if(!install())document.addEventListener('DOMContentLoaded',install,{once:true});
 })();
