@@ -106,6 +106,7 @@
     root.innerHTML =
       '<div class="lp-shell lp-vault-shell">' +
         '<header class="lp-page-heading"><div><span class="lp-eyebrow-dark"><i class="fas fa-shield-alt"></i> STAFF RECORDS · PRIVATE WORKSPACE</span><h2>My profile</h2><p>Your details and supporting documents, kept encrypted. Only you and authorised administrators can access them.</p></div><button class="lp-btn lp-btn-light" id="lpReload" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></header>' +
+        '<div class="lp-profile-tools"><div class="lp-profile-trust"><i class="fas fa-user-shield"></i><span><strong>Private staff record</strong><small>Your files are stored in a private vault, not a public folder.</small></span></div><div class="lp-doc-search-wrap"><i class="fas fa-search"></i><input id="lpDocSearch" type="search" placeholder="Find a document…" aria-label="Find a profile document"><span id="lpDocCount">' + currentDocs.length + ' uploaded</span></div></div>' +
         '<section class="lp-profile-hero"><div class="lp-avatar-wrap"><img class="lp-avatar" id="lpAvatar" src="' + esc(photoSrc) + '" alt="Profile picture"><button class="lp-avatar-edit" type="button" data-upload="profile_photo" aria-label="Change profile picture"><i class="fas fa-camera"></i></button></div><div class="lp-identity"><h3>' + esc(name) + '</h3><p>' + esc(roleLabel(p)) + '</p><span><i class="fas fa-envelope"></i> ' + esc(email) + '</span><span><i class="fas fa-id-badge"></i> ' + esc(staffId) + '</span></div><div class="lp-completion"><div class="lp-completion-head"><strong>' + pct + '%</strong><span>Complete</span></div><div class="lp-progress"><span style="width:' + pct + '%"></span></div><small>' + (missing.length ? 'Still needed: ' + esc(missing.join(', ')) : 'All required documents are on file.') + '</small></div></section>' +
         '<div id="lpStatus" class="lp-status" role="status" aria-live="polite"></div>' +
         '<section class="lp-card lp-details-card"><div class="lp-section-heading"><div><span class="lp-section-kicker">YOUR INFORMATION</span><h3>Personal details</h3><p>Enter your official details as they appear on your identification documents.</p></div><i class="fas fa-user-edit"></i></div>' +
@@ -133,6 +134,7 @@
         '<section class="lp-card lp-security-card"><details><summary><i class="fas fa-key"></i> Account security · Change password</summary><form id="lpPasswordForm" novalidate><div class="lp-form-grid">' +
           passwordField('lpCurrentPassword','Current password','current-password') + passwordField('lpNewPassword','New password','new-password') + passwordField('lpConfirmPassword','Confirm new password','new-password') +
         '</div><div class="lp-form-actions"><button class="lp-btn lp-btn-primary" id="lpChangePassword" type="submit"><i class="fas fa-key"></i> Update password</button></div></form></details></section>' +
+        '<div class="lp-preview-modal" id="lpPreviewModal" aria-hidden="true"><div class="lp-preview-backdrop" data-preview-close></div><section class="lp-preview-panel" role="dialog" aria-modal="true" aria-labelledby="lpPreviewTitle"><header><div><span>SECURE DOCUMENT VIEWER</span><h3 id="lpPreviewTitle">Document preview</h3></div><div class="lp-preview-actions"><a id="lpPreviewDownload" class="lp-btn lp-btn-light" href="#" target="_blank" rel="noopener"><i class="fas fa-download"></i> Download</a><button type="button" class="lp-preview-close" data-preview-close aria-label="Close preview"><i class="fas fa-times"></i></button></div></header><div class="lp-preview-body" id="lpPreviewBody"><div class="lp-preview-loading"><i class="fas fa-spinner fa-spin"></i> Preparing secure preview…</div></div></section></div>' +
       '</div>';
 
     const avatar = $('lpAvatar');
@@ -144,6 +146,9 @@
     $('lpPasswordForm').addEventListener('submit', changePassword);
     root.onclick = handleDocumentAction;
     root.querySelectorAll('[data-file-input]').forEach(input => input.addEventListener('change', uploadDocument));
+    $('lpDocSearch').addEventListener('input', filterDocuments);
+    root.querySelectorAll('[data-preview-close]').forEach(el => el.addEventListener('click', closePreview));
+    document.addEventListener('keydown', handlePreviewKeydown);
     saved = {
       full_name: name, phone: p.phone || p.phone_number || '',
       national_id: privateDetails.national_id || '', kra_pin: privateDetails.kra_pin || '',
@@ -313,8 +318,6 @@
   async function openDocument(type, download) {
     const doc = docFor(type);
     if (!doc) { status('This document has not been uploaded.', 'error'); return; }
-    const popup = window.open('about:blank', '_blank');
-    if (!popup) { status('Your browser blocked the document window. Allow pop-ups for this site and try again.', 'error'); return; }
     try {
       const audit = await db().rpc('staff_profile_log_document_access', {
         p_document_id: doc.id,
@@ -323,12 +326,69 @@
       if (audit.error) throw audit.error;
       const url = await getSignedUrl(doc.storage_path, download);
       if (!url) throw new Error('A secure document link could not be created.');
-      popup.opener = null;
-      popup.location.replace(url);
-    } catch (err) {
-      try { popup.close(); } catch (_) {}
-      status('Could not open this document: ' + err.message, 'error');
+      if (download) {
+        const a = document.createElement('a');
+        a.href = url; a.download = doc.file_name || ''; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+        status('Secure download prepared.', 'success');
+        return;
+      }
+      showPreview(doc, url);
+    } catch (err) { status('Could not open this document: ' + err.message, 'error'); }
+  }
+  function showPreview(doc, url) {
+    const modal = $('lpPreviewModal'), body = $('lpPreviewBody');
+    if (!modal || !body) { status('Document viewer is unavailable. Refresh the page.', 'error'); return; }
+    $('lpPreviewTitle').textContent = doc.file_name || (docDef(doc.document_type) || {}).label || 'Document preview';
+    $('lpPreviewDownload').href = url;
+    $('lpPreviewDownload').onclick = async function(e) {
+      e.preventDefault();
+      try {
+        const audit = await db().rpc('staff_profile_log_document_access', { p_document_id:doc.id, p_action:'download' });
+        if (audit.error) throw audit.error;
+        const downloadUrl = await getSignedUrl(doc.storage_path, true);
+        const a = document.createElement('a'); a.href = downloadUrl; a.download = doc.file_name || ''; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch (err) { status('Download failed: ' + err.message, 'error'); }
+    };
+    const mime = String(doc.mime_type || '').toLowerCase();
+    if (mime === 'application/pdf') {
+      body.innerHTML = '<iframe class="lp-preview-frame" title="PDF document preview" src="' + esc(url) + '#toolbar=1&navpanes=0" loading="eager"></iframe>';
+    } else if (mime.startsWith('image/')) {
+      body.innerHTML = '<div class="lp-preview-image-wrap"><img src="' + esc(url) + '" alt="' + esc(doc.file_name || 'Uploaded document') + '"></div>';
+    } else {
+      body.innerHTML = '<div class="lp-preview-unavailable"><i class="fas fa-file-word"></i><h4>Preview not available for this file type</h4><p>This Word document is stored securely. Download it to view the full contents.</p><button type="button" class="lp-btn lp-btn-primary" id="lpWordDownload"><i class="fas fa-download"></i> Download document</button></div>';
+      $('lpWordDownload').onclick = () => $('lpPreviewDownload').click();
     }
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden','false');
+    document.body.classList.add('lp-preview-open');
+    const close = modal.querySelector('[data-preview-close]');
+    if (close) close.focus();
+  }
+  function closePreview() {
+    const modal = $('lpPreviewModal');
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden','true');
+    const body = $('lpPreviewBody');
+    if (body) body.innerHTML = '';
+    document.body.classList.remove('lp-preview-open');
+  }
+  function handlePreviewKeydown(e) {
+    if (e.key === 'Escape' && $('lpPreviewModal') && $('lpPreviewModal').classList.contains('is-open')) closePreview();
+  }
+  function filterDocuments() {
+    const q = String($('lpDocSearch').value || '').trim().toLowerCase();
+    const cards = Array.from(document.querySelectorAll('#profile-content [data-doc-card]'));
+    let visible = 0;
+    cards.forEach(card => {
+      const show = !q || card.textContent.toLowerCase().includes(q);
+      card.hidden = !show;
+      if (show) visible++;
+    });
+    const counter = $('lpDocCount');
+    if (counter) counter.textContent = visible + ' of ' + cards.length + ' shown';
   }
   async function removeDocument(type) {
     const doc = docFor(type);
