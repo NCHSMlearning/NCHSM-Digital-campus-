@@ -167,26 +167,68 @@
       tbody.querySelectorAll('[data-file]').forEach(button=>button.addEventListener('click',()=>openFile(button.dataset.file)));
     }catch(error){console.error('[TeachingDocuments] load submissions failed',error);tbody.innerHTML='<tr><td colspan="7" style="color:#991b1b">Could not load submissions: '+esc(error.message||error)+'</td></tr>';$('tdsCount').textContent='Unavailable';}
   }
+  function closeDocumentPreview(){
+    const modal=$('tdsDocumentPreview');
+    if(modal){modal.remove();document.body.style.overflow='';}
+  }
+  function showDocumentPreview(url,fileName){
+    closeDocumentPreview();
+    const ext=(String(fileName||'').split('.').pop()||'').toLowerCase();
+    const isPdf=ext==='pdf';
+    const modal=document.createElement('div');
+    modal.id='tdsDocumentPreview';
+    modal.setAttribute('role','dialog');
+    modal.setAttribute('aria-modal','true');
+    modal.setAttribute('aria-label','Document preview');
+    modal.style.cssText='position:fixed;inset:0;z-index:100500;background:rgba(15,23,42,.78);display:flex;align-items:center;justify-content:center;padding:clamp(6px,2vw,24px);';
+    const panel=document.createElement('section');
+    panel.style.cssText='width:min(1180px,100%);height:min(92vh,900px);background:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.35);';
+    const header=document.createElement('header');
+    header.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid #e2e8f0;background:#f8fafc;flex-wrap:wrap;';
+    const title=document.createElement('strong');title.textContent=fileName||'Document preview';title.style.cssText='font-size:13px;color:#172033;overflow-wrap:anywhere;flex:1;min-width:120px;';
+    const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;align-items:center;';
+    const download=document.createElement('a');download.href=url;download.target='_blank';download.rel='noopener';download.textContent='Download';download.style.cssText='padding:8px 12px;border-radius:8px;background:#e2e8f0;color:#334155;text-decoration:none;font-size:12px;font-weight:800;';
+    const close=document.createElement('button');close.type='button';close.textContent='✕ Close';close.style.cssText='padding:8px 12px;border:0;border-radius:8px;background:#0f4c75;color:#fff;font-weight:800;cursor:pointer;';
+    close.addEventListener('click',closeDocumentPreview);
+    actions.append(download,close);header.append(title,actions);
+    const frame=document.createElement('iframe');
+    frame.title='Inline document preview';
+    frame.style.cssText='display:block;width:100%;height:100%;flex:1;border:0;background:#f1f5f9;';
+    frame.referrerPolicy='no-referrer';
+    frame.allow='fullscreen';
+    frame.src=isPdf?url:'https://docs.google.com/gview?embedded=1&url='+encodeURIComponent(url);
+    const note=document.createElement('div');
+    note.textContent=isPdf?'PDF preview':'Word document preview is provided by the embedded document viewer. If it does not load, use Download.';
+    note.style.cssText='padding:7px 12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:11px;background:#fff;';
+    panel.append(header,frame,note);modal.append(panel);
+    modal.addEventListener('click',event=>{if(event.target===modal)closeDocumentPreview();});
+    const onKey=event=>{if(event.key==='Escape'){closeDocumentPreview();document.removeEventListener('keydown',onKey);}};
+    document.addEventListener('keydown',onKey);
+    document.body.append(modal);document.body.style.overflow='hidden';close.focus();
+  }
   async function openFile(id){
     try{
       const identity=await resolveIdentity();
       const {data,error}=await identity.client.from(ATTACHMENTS).select('storage_path,file_name').eq('submission_id',id).order('created_at',{ascending:false}).limit(1).maybeSingle();
       if(error)throw error;
       let path=data?.storage_path||'';
+      let fileName=data?.file_name||'Teaching document';
       if(!path){
-        const row=await identity.client.from(TABLE).select('created_at,submitted_at').eq('id',id).eq('lecturer_user_id',identity.authUser).maybeSingle();
+        const row=await identity.client.from(TABLE).select('created_at,submitted_at,title,document_title').eq('id',id).eq('lecturer_user_id',identity.authUser).maybeSingle();
+        fileName=row.data?.title||row.data?.document_title||fileName;
         const year=new Date(row.data?.created_at||row.data?.submitted_at||Date.now()).getFullYear();
         const prefixes=[identity.authUser+'/'+year+'/'+id,state.staffId+'/'+year+'/'+id].filter(Boolean);
         for(const prefix of prefixes){
           const listed=await identity.client.storage.from(BUCKET).list(prefix,{limit:30,sortBy:{column:'name',order:'desc'}});
           if(listed.error)throw listed.error;
           const item=(listed.data||[]).find(file=>file.name);
-          if(item){path=prefix+'/'+item.name;break;}
+          if(item){path=prefix+'/'+item.name;fileName=item.name;break;}
         }
       }
       if(!path)throw new Error('No uploaded file was found for this submission.');
-      const signed=await identity.client.storage.from(BUCKET).createSignedUrl(path,900);
-      if(signed.error)throw signed.error;window.open(signed.data.signedUrl,'_blank','noopener');
+      const signed=await identity.client.storage.from(BUCKET).createSignedUrl(path,3600);
+      if(signed.error)throw signed.error;
+      showDocumentPreview(signed.data.signedUrl,fileName);
     }catch(error){toast(error.message||'Could not open document.',true);}
   }
   window.TeachingDocumentsSubmission={
