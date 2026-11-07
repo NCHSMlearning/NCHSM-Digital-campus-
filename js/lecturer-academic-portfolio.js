@@ -548,6 +548,9 @@ const AcademicPortfolio = {
             <button type="button" class="ap-modern-tab" data-ap-tab="dashboard"><i class="fas fa-th-large"></i><span>Overview</span></button>
             ${tab('course-allocation','Course Allocation','fa-book-open')}
             ${tab('teaching-documents','Submit Documents','fa-file-upload')}
+            ${tab('clinical','Clinical','fa-stethoscope')}
+            ${tab('exams','Exams','fa-file-pen')}
+            ${tab('reports','Reports','fa-chart-column')}
           </nav>
           <div class="ap-modern-grid">
             <div class="ap-modern-stat"><div class="ap-modern-stat-icon" style="background:#e7f0ff;color:#2563eb"><i class="fas fa-book-open"></i></div><div><strong>${Number(stats.totalCourses||0)}</strong><span>Units Assigned</span></div></div>
