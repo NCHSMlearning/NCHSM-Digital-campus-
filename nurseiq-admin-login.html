@@ -519,13 +519,28 @@
     });
 
     async function loadAllData() {
-        const { data: q } = await sb.from('medical_assessments').select('*, courses(course_name)'); 
-        allQuestions = q || [];
-        const { data: s } = await sb.from('consolidated_user_profiles_table').select('*'); 
+        const { data: q, error: questionsError } = await sb.from('medical_assessments')
+            .select('*, unit:units_catalog!medical_assessments_unit_catalog_id_fkey(id, unit_code, unit_name, program, block, status)');
+        if (questionsError) throw questionsError;
+        allQuestions = (q || []).map(question => ({
+            ...question,
+            courses: question.unit ? {
+                id: question.unit.id,
+                course_name: question.unit.unit_name,
+                unit_code: question.unit.unit_code,
+                target_program: question.unit.program,
+                block: question.unit.block
+            } : null
+        }));
+        const { data: s, error: studentsError } = await sb.from('consolidated_user_profiles_table').select('*');
+        if (studentsError) throw studentsError;
         allStudents = s || [];
-        const { data: c } = await sb.from('courses').select('*'); 
-        allCourses = c || [];
-        const { data: prog } = await sb.from('user_progress').select('*'); 
+        const { data: units, error: unitsError } = await sb.from('units_catalog')
+            .select('id, unit_code, unit_name, program, block, status').order('program').order('block').order('unit_name');
+        if (unitsError) throw unitsError;
+        allCourses = (units || []).map(unit => ({ ...unit, course_name: unit.unit_name, target_program: unit.program }));
+        const { data: prog, error: progressError } = await sb.from('user_progress').select('*');
+        if (progressError) throw progressError;
         userProgress = {};
         if (prog) prog.forEach(p => { userProgress[p.user_id] = p.progress_data; });
         document.getElementById('stat-questions').innerText = allQuestions.length;
@@ -600,9 +615,9 @@
                     <button onclick="document.getElementById('bulk-text').value = ''" class="btn btn-secondary btn-sm">Clear</button>
                 </div>
                 <div class="form-group">
-                    <label>Select Course</label>
+                    <label>Select Unit</label>
                     <select id="bulk-course" class="form-control">
-                        <option value="">-- Select Course --</option>
+                        <option value="">-- Select Unit --</option>
                         ${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}
                     </select>
                 </div>
@@ -732,7 +747,8 @@
         let failed = 0;
         
         for (let q of pendingImportData) {
-          const payload = {
+          const selectedUnit = allCourses.find(unit => String(unit.id) === String(courseId));
+    const payload = {
     question_text: q.question,
     option_a: q.options.A || null,
     option_b: q.options.B || null,
@@ -740,10 +756,10 @@
     option_d: q.options.D || null,
     correct_answer: q.correctText,  // ← FIXED - stores ACTUAL ANSWER TEXT
     explanation: q.explanation.substring(0, 1000),
-    course_id: courseId,
+    unit_catalog_id: courseId, unit_name: selectedUnit?.unit_name || null, unit_code: selectedUnit?.unit_code || null,
     difficulty: 'medium',
     question_type: 'multiple_choice',
-    curriculum: 'KRCHN',
+    curriculum: selectedUnit?.program || 'KRCHN',
     is_active: true,
     is_published: true,
     created_at: new Date().toISOString()
@@ -775,7 +791,7 @@
     async function renderQuestionBank() {
         await loadAllData();
         reorderMode = false;
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Full Question Bank</h2><button onclick="exportAllQuestions()" class="btn btn-success btn-sm">Export CSV</button></div><div class="toolbar"><div class="toolbar-left"><span id="selected-count">0</span> selected <button id="delete-selected-btn" class="btn btn-danger btn-sm hidden" onclick="openDeleteModal()">Delete</button></div><div class="toolbar-right"><button onclick="toggleSelectAll()" class="btn btn-secondary btn-sm">Select All</button><button onclick="enableReorderMode()" class="btn btn-info btn-sm">Reorder</button><button id="save-order-btn" class="btn btn-success btn-sm hidden" onclick="saveNewOrder()">Save Order</button></div></div><div class="filters" style="display:flex;gap:10px;margin-bottom:20px;"><select id="filter-course" class="form-control"><option value="">All Courses</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select><select id="filter-difficulty" class="form-control"><option value="">All Difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><input type="text" id="search-questions" class="form-control" placeholder="Search..."></div><div id="questions-grid"></div></div>`;
+        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Full Question Bank</h2><button onclick="exportAllQuestions()" class="btn btn-success btn-sm">Export CSV</button></div><div class="toolbar"><div class="toolbar-left"><span id="selected-count">0</span> selected <button id="delete-selected-btn" class="btn btn-danger btn-sm hidden" onclick="openDeleteModal()">Delete</button></div><div class="toolbar-right"><button onclick="toggleSelectAll()" class="btn btn-secondary btn-sm">Select All</button><button onclick="enableReorderMode()" class="btn btn-info btn-sm">Reorder</button><button id="save-order-btn" class="btn btn-success btn-sm hidden" onclick="saveNewOrder()">Save Order</button></div></div><div class="filters" style="display:flex;gap:10px;margin-bottom:20px;"><select id="filter-course" class="form-control"><option value="">All Units</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select><select id="filter-difficulty" class="form-control"><option value="">All Difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><input type="text" id="search-questions" class="form-control" placeholder="Search..."></div><div id="questions-grid"></div></div>`;
         document.getElementById('filter-course')?.addEventListener('change', () => renderQuestionsList());
         document.getElementById('filter-difficulty')?.addEventListener('change', () => renderQuestionsList());
         document.getElementById('search-questions')?.addEventListener('input', () => renderQuestionsList());
@@ -787,7 +803,7 @@
         const difficulty = document.getElementById('filter-difficulty')?.value;
         const search = document.getElementById('search-questions')?.value.toLowerCase() || '';
         let filtered = [...allQuestions];
-        if (courseId) filtered = filtered.filter(q => q.course_id === courseId);
+        if (courseId) filtered = filtered.filter(q => q.unit_catalog_id === courseId);
         if (difficulty) filtered = filtered.filter(q => q.difficulty === difficulty);
         if (search) filtered = filtered.filter(q => q.question_text?.toLowerCase().includes(search));
         currentQuestionsList = filtered;
@@ -831,10 +847,11 @@
     async function deleteSingleQuestion(id) { if(confirm('Delete?')) { await sb.from('medical_assessments').delete().eq('id', id); await loadAllData(); renderQuestionsList(); showToast('Deleted', 'success'); } }
 
     function renderAddQuestion() {
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Add New Question</h2></div><form id="add-question-form"><div class="form-group"><label>Course</label><select id="q-course" class="form-control" required><option value="">-- Select --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="q-text" class="form-control" rows="3" required></textarea></div><div class="form-group"><label>Option A</label><input id="q-opt-a" class="form-control" required></div><div class="form-group"><label>Option B</label><input id="q-opt-b" class="form-control" required></div><div class="form-group"><label>Option C</label><input id="q-opt-c" class="form-control" required></div><div class="form-group"><label>Option D</label><input id="q-opt-d" class="form-control" required></div><div class="form-group"><label>Correct Answer (A, B, C, or D)</label><input id="q-correct" class="form-control" placeholder="A, B, C, or D" required></div><div class="form-group"><label>Explanation</label><textarea id="q-explanation" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Difficulty</label><select id="q-difficulty" class="form-control"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div><button type="submit" class="btn btn-primary">Save Question</button></form><div id="add-result"></div></div>`;
+        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Add New Question</h2></div><form id="add-question-form"><div class="form-group"><label>Unit</label><select id="q-course" class="form-control" required><option value="">-- Select --</option>${allCourses.map(c => `<option value="${c.id}">${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="q-text" class="form-control" rows="3" required></textarea></div><div class="form-group"><label>Option A</label><input id="q-opt-a" class="form-control" required></div><div class="form-group"><label>Option B</label><input id="q-opt-b" class="form-control" required></div><div class="form-group"><label>Option C</label><input id="q-opt-c" class="form-control" required></div><div class="form-group"><label>Option D</label><input id="q-opt-d" class="form-control" required></div><div class="form-group"><label>Correct Answer (A, B, C, or D)</label><input id="q-correct" class="form-control" placeholder="A, B, C, or D" required></div><div class="form-group"><label>Explanation</label><textarea id="q-explanation" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Difficulty</label><select id="q-difficulty" class="form-control"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div><button type="submit" class="btn btn-primary">Save Question</button></form><div id="add-result"></div></div>`;
         document.getElementById('add-question-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const payload = { question_text: document.getElementById('q-text').value, option_a: document.getElementById('q-opt-a').value, option_b: document.getElementById('q-opt-b').value, option_c: document.getElementById('q-opt-c').value, option_d: document.getElementById('q-opt-d').value, correct_answer: document.getElementById('q-correct').value, explanation: document.getElementById('q-explanation').value, course_id: document.getElementById('q-course').value, difficulty: document.getElementById('q-difficulty').value, question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString() };
+            const selectedUnit = allCourses.find(unit => String(unit.id) === String(document.getElementById('q-course').value));
+    const payload = { question_text: document.getElementById('q-text').value, option_a: document.getElementById('q-opt-a').value, option_b: document.getElementById('q-opt-b').value, option_c: document.getElementById('q-opt-c').value, option_d: document.getElementById('q-opt-d').value, correct_answer: document.getElementById('q-correct').value, explanation: document.getElementById('q-explanation').value, unit_catalog_id: document.getElementById('q-course').value, unit_name: selectedUnit?.unit_name || null, unit_code: selectedUnit?.unit_code || null, difficulty: document.getElementById('q-difficulty').value, question_type: 'multiple_choice', curriculum: 'KRCHN', is_active: true, is_published: true, created_at: new Date().toISOString() };
             const { error } = await sb.from('medical_assessments').insert([payload]);
             const resultDiv = document.getElementById('add-result');
             if (error) resultDiv.innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
@@ -844,13 +861,10 @@
 
     async function renderCourses() {
         await loadAllData();
-        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Course Manager</h2><button onclick="addNewCourse()" class="btn btn-success btn-sm">+ Add Course</button></div><div id="courses-list"></div></div>`;
+        panel.innerHTML = `<div class="card"><div class="card-header"><h2>Official Unit Catalogue</h2><span class="badge badge-success">Read only</span></div><p style="color:#64748b;margin:0 0 16px;">NurseIQ uses units_catalog as the source of truth. Edit units in the institution's Unit Management module.</p><div id="courses-list"></div></div>`;
         const container = document.getElementById('courses-list');
-        if(container) container.innerHTML = allCourses.map(c => `<div class="student-progress-card"><div><strong>${c.course_name}</strong><span class="badge ${c.status === 'Active' ? 'badge-success' : 'badge-danger'}" style="float:right;">${c.status || 'Active'}</span></div><div><small>Unit: ${c.unit_code || 'N/A'}</small></div><div style="margin-top:10px;"><button onclick="editCourse('${c.id}')" class="btn btn-warning btn-sm">Edit</button> <button onclick="toggleCourseStatus('${c.id}')" class="btn btn-info btn-sm">Toggle</button></div></div>`).join('');
+        if(container) container.innerHTML = allCourses.map(unit => `<div class="student-progress-card"><div><strong>${escapeHtml(unit.unit_name || unit.course_name)}</strong><span class="badge ${String(unit.status).toLowerCase() === 'active' ? 'badge-success' : 'badge-danger'}" style="float:right;">${escapeHtml(unit.status || 'active')}</span></div><div><small>${escapeHtml(unit.unit_code || 'No code')} · ${escapeHtml(unit.program || '')} · ${escapeHtml(unit.block || '')}</small></div></div>`).join('');
     }
-    window.addNewCourse = async () => { const name = prompt('Course name:'); if(name) { await sb.from('courses').insert([{ course_name: name, unit_code: '', status: 'Active', created_at: new Date().toISOString() }]); await loadAllData(); renderCourses(); showToast('Course added', 'success'); } };
-    window.editCourse = async (id) => { const newName = prompt('New name:'); if(newName) { await sb.from('courses').update({ course_name: newName }).eq('id', id); await loadAllData(); renderCourses(); showToast('Updated', 'success'); } };
-    window.toggleCourseStatus = async (id) => { const course = allCourses.find(c => c.id === id); const newStatus = course?.status === 'Active' ? 'Inactive' : 'Active'; await sb.from('courses').update({ status: newStatus }).eq('id', id); await loadAllData(); renderCourses(); showToast(`${newStatus}`, 'success'); };
 
     async function renderStudents() {
         await loadAllData();
@@ -917,11 +931,12 @@
     window.openEditModal = async (questionId) => {
         const q = allQuestions.find(q => q.id === questionId);
         const modal = document.createElement('div'); modal.className = 'modal';
-        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Course</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.course_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct (A, B, C, D)</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
+        modal.innerHTML = `<div class="modal-content"><h3>Edit Question</h3><form id="edit-form"><div class="form-group"><label>Unit</label><select id="edit-course" class="form-control">${allCourses.map(c => `<option value="${c.id}" ${c.id === q.unit_catalog_id ? 'selected' : ''}>${c.course_name}</option>`).join('')}</select></div><div class="form-group"><label>Question</label><textarea id="edit-text" class="form-control" rows="3">${escapeHtml(q.question_text || '')}</textarea></div><div class="form-group"><label>A</label><input id="edit-opt-a" value="${escapeHtml(q.option_a || '')}" class="form-control"></div><div class="form-group"><label>B</label><input id="edit-opt-b" value="${escapeHtml(q.option_b || '')}" class="form-control"></div><div class="form-group"><label>C</label><input id="edit-opt-c" value="${escapeHtml(q.option_c || '')}" class="form-control"></div><div class="form-group"><label>D</label><input id="edit-opt-d" value="${escapeHtml(q.option_d || '')}" class="form-control"></div><div class="form-group"><label>Correct (A, B, C, D)</label><input id="edit-correct" value="${escapeHtml(q.correct_answer || '')}" class="form-control"></div><div class="form-group"><label>Explanation</label><textarea id="edit-explanation" rows="2" class="form-control">${escapeHtml(q.explanation || '')}</textarea></div><div class="form-group"><label>Difficulty</label><select id="edit-difficulty" class="form-control"><option value="easy" ${q.difficulty === 'easy' ? 'selected' : ''}>Easy</option><option value="medium" ${q.difficulty === 'medium' ? 'selected' : ''}>Medium</option><option value="hard" ${q.difficulty === 'hard' ? 'selected' : ''}>Hard</option></select></div><div style="display:flex; gap:10px; margin-top:20px;"><button type="submit" class="btn btn-primary">Save</button><button type="button" onclick="this.closest('.modal').remove()" class="btn btn-secondary">Cancel</button></div></form></div>`;
         document.body.appendChild(modal);
         document.getElementById('edit-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const updates = { course_id: document.getElementById('edit-course').value, question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString() };
+            const selectedUnit = allCourses.find(unit => String(unit.id) === String(document.getElementById('edit-course').value));
+            const updates = { unit_catalog_id: document.getElementById('edit-course').value, unit_name: selectedUnit?.unit_name || null, unit_code: selectedUnit?.unit_code || null, curriculum: selectedUnit?.program || 'KRCHN', question_text: document.getElementById('edit-text').value, option_a: document.getElementById('edit-opt-a').value, option_b: document.getElementById('edit-opt-b').value, option_c: document.getElementById('edit-opt-c').value, option_d: document.getElementById('edit-opt-d').value, correct_answer: document.getElementById('edit-correct').value, explanation: document.getElementById('edit-explanation').value, difficulty: document.getElementById('edit-difficulty').value, updated_at: new Date().toISOString() };
             const { error } = await sb.from('medical_assessments').update(updates).eq('id', questionId);
             if (error) alert('Error: ' + error.message);
             else { alert('Updated!'); modal.remove(); await loadAllData(); if(document.getElementById('questions-grid')) renderQuestionsList(); }
