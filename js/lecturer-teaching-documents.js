@@ -84,16 +84,16 @@
         #ap-content .tds-unit-meta span{font-size:10px;font-weight:700;padding:5px 9px;border-radius:30px;background:#eef2ff;color:#3730a3;border:1px solid #dbe3ff}
         #ap-content .tds-folder-btn{width:100%;margin-top:14px;padding:11px 13px;border:1px solid #d9e2ef;border-radius:10px;background:#f8fafc;color:#164e63;font-weight:800;cursor:pointer;text-align:left}
         #ap-content .tds-folder-btn:hover{background:#eff6ff;border-color:#93c5fd}
-        #ap-content .tds-modal-overlay{position:fixed;inset:0;z-index:100300;background:rgba(8,18,38,.68);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px}
-        #ap-content .tds-modal-panel{width:min(720px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 28px 90px #02061755}
-        #ap-content .tds-modal-head{padding:20px 22px;background:linear-gradient(120deg,#102f50,#1d5a7a);color:#fff;display:flex;justify-content:space-between;gap:14px;align-items:center}
-        #ap-content .tds-modal-head h3{margin:0;font-size:18px}
-        #ap-content .tds-modal-head p{margin:5px 0 0;color:#dbeafe;font-size:12px}
-        #ap-content .tds-modal-close{width:36px;height:36px;border:1px solid #ffffff55;border-radius:10px;background:#ffffff18;color:#fff;font-size:20px;cursor:pointer}
-        #ap-content .tds-modal-body{padding:20px 22px}
-        #ap-content .tds-modal-body #tdsFormCard{border:0;box-shadow:none;padding:0;margin:0}
-        #ap-content .tds-modal-body .tds-grid{grid-template-columns:1fr 1fr}
-        #ap-content .tds-modal-body .tds-actions{justify-content:flex-end}
+        .tds-modal-overlay{position:fixed;inset:0;z-index:100300;background:rgba(8,18,38,.68);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px}
+        .tds-modal-panel{width:min(720px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 28px 90px #02061755}
+        .tds-modal-head{padding:20px 22px;background:linear-gradient(120deg,#102f50,#1d5a7a);color:#fff;display:flex;justify-content:space-between;gap:14px;align-items:center}
+        .tds-modal-head h3{margin:0;font-size:18px}
+        .tds-modal-head p{margin:5px 0 0;color:#dbeafe;font-size:12px}
+        .tds-modal-close{width:36px;height:36px;border:1px solid #ffffff55;border-radius:10px;background:#ffffff18;color:#fff;font-size:20px;cursor:pointer}
+        .tds-modal-body{padding:20px 22px}
+        .tds-modal-body #tdsFormCard{border:0;box-shadow:none;padding:0;margin:0}
+        .tds-modal-body .tds-grid{grid-template-columns:1fr 1fr}
+        .tds-modal-body .tds-actions{justify-content:flex-end}
 
         #ap-content .tds-unit-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
         #ap-content .tds-unit-top h4{font-size:15px;margin:0;color:#172033}
