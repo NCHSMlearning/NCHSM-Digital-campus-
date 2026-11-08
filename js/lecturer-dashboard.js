@@ -1352,7 +1352,7 @@ const LecturerDashboard = {
             this.attendanceMetrics.today=checkedToday.size;
             this.attendanceMetrics.present=presentToday.size;
             this.attendanceMetrics.absent=absentToday.size;
-            this.attendanceMetrics.pending=Math.max(0,students.length-checkedToday.size);
+            this.attendanceMetrics.pending=new Set(todayLogs.filter(x=>status(x)==='pending').map(x=>canonicalId(x.student_id))).size;
             this.attendanceMetrics.lectureCount=todayLogs.filter(x=>norm(x.session_type)==='lecture'||norm(x.session_type)==='class').length;
             this.attendanceMetrics.clinicalCount=todayLogs.filter(x=>norm(x.session_type)==='clinical').length;
             this.attendanceMetrics.labCount=todayLogs.filter(x=>norm(x.session_type)==='lab').length;
