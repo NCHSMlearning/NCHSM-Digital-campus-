@@ -717,8 +717,22 @@
         panel.innerHTML = `
           <style>
             #lrrManagementDashboard{margin:0 0 18px;color:#172033}
-            #lrrManagementDashboard .lrr-hero{background:linear-gradient(120deg,#102b46,#14566a);color:white;border-radius:18px;padding:22px;margin-bottom:14px;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}
-            #lrrManagementDashboard .lrr-hero h3{margin:0;font-size:20px}#lrrManagementDashboard .lrr-hero p{margin:6px 0 0;color:#dbeafe;font-size:13px}
+            #lrrManagementDashboard .lrr-hero{position:relative;overflow:hidden;background:linear-gradient(118deg,#092744 0%,#124b66 62%,#087f78 100%);color:white;border-radius:18px;padding:22px;margin-bottom:14px;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap;box-shadow:0 12px 28px rgba(9,39,68,.16)}
+            #lrrManagementDashboard .lrr-hero:after{content:"";position:absolute;width:230px;height:230px;border:1px solid rgba(255,255,255,.12);border-radius:50%;right:18%;top:-150px;box-shadow:0 0 0 24px rgba(255,255,255,.035),0 0 0 50px rgba(255,255,255,.025);pointer-events:none}
+            #lrrManagementDashboard .lrr-brand{display:flex;align-items:center;gap:15px;position:relative;z-index:1;min-width:0}
+            #lrrManagementDashboard .lrr-logo-wrap{width:70px;height:70px;flex:0 0 70px;background:#fff;border-radius:15px;padding:7px;display:grid;place-items:center;box-shadow:0 5px 16px rgba(0,0,0,.16);position:relative}
+            #lrrManagementDashboard .lrr-logo-wrap img{display:block;width:100%;height:100%;object-fit:contain}
+            #lrrManagementDashboard .lrr-logo-fallback{display:none;color:#0b3452;font-size:15px;font-weight:900}
+            #lrrManagementDashboard .lrr-logo-wrap.logo-fallback .lrr-logo-fallback{display:block}
+            #lrrManagementDashboard .lrr-brand-copy{min-width:0}
+            #lrrManagementDashboard .lrr-eyebrow{display:block;font-size:9px;letter-spacing:.12em;font-weight:850;color:#c7e8e9;margin-bottom:7px}
+            #lrrManagementDashboard .lrr-hero h3{margin:0;font-size:23px;letter-spacing:-.03em;font-weight:850}
+            #lrrManagementDashboard .lrr-hero p{margin:6px 0 0;color:#dbeafe;font-size:12px}
+            #lrrManagementDashboard .lrr-hero-actions{display:flex;gap:10px;align-items:center;position:relative;z-index:1;flex-wrap:wrap}
+            #lrrManagementDashboard .lrr-live{font-size:10px;color:#d8f5ec;display:flex;gap:7px;align-items:center}
+            #lrrManagementDashboard .lrr-live i{width:7px;height:7px;background:#7ce4b4;border-radius:50%;box-shadow:0 0 0 4px rgba(124,228,180,.13)}
+            #lrrManagementDashboard .lrr-primary{height:40px;border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:0 14px;background:#fff;color:#0b4057;font-weight:850;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+            #lrrManagementDashboard .lrr-primary i{margin-right:5px}
             #lrrManagementDashboard .lrr-school-grid,#lrrManagementDashboard .lrr-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:13px}
             #lrrManagementDashboard .lrr-school,#lrrManagementDashboard .lrr-stat{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:14px;text-align:left}
             #lrrManagementDashboard button{cursor:pointer}#lrrManagementDashboard .lrr-school{display:flex;gap:12px;align-items:center;color:#172033}
@@ -766,7 +780,11 @@
             #lrrManagementDashboard .lrr-school small{display:block;overflow-wrap:anywhere}
             @media(max-width:700px){
               #lrrManagementDashboard .lrr-hero{padding:16px;border-radius:13px;align-items:flex-start}
-              #lrrManagementDashboard .lrr-hero h3{font-size:17px}
+              #lrrManagementDashboard .lrr-logo-wrap{width:54px;height:54px;flex-basis:54px;border-radius:12px}
+              #lrrManagementDashboard .lrr-eyebrow{font-size:8px;line-height:1.4}
+              #lrrManagementDashboard .lrr-hero h3{font-size:18px}
+              #lrrManagementDashboard .lrr-hero-actions{width:100%;justify-content:space-between}
+              #lrrManagementDashboard .lrr-live{font-size:9px}
               #lrrManagementDashboard .lrr-school-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
               #lrrManagementDashboard .lrr-folder-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
               #lrrManagementDashboard .lrr-chart-grid{grid-template-columns:1fr}
@@ -789,7 +807,13 @@
               #lrrManagementDashboard .lrr-school-grid [data-school=""]{grid-column:auto}
             }
           </style>
-          <div class="lrr-hero"><div><h3>Teaching &amp; Learning Control Centre</h3><p>School-level oversight · lecturer submissions · document compliance · review deadlines</p></div><button class="lrr-primary" id="lrrRefreshAll" type="button">↻ Refresh overview</button></div>
+          <div class="lrr-hero">
+            <div class="lrr-brand">
+              <div class="lrr-logo-wrap"><img src="https://nchsm.co.ke/images/Logo_NCHSM.png" alt="Nakuru College of Health Sciences and Management logo" loading="eager" onerror="this.style.display='none';this.parentElement.classList.add('logo-fallback')"><span class="lrr-logo-fallback">NCHSM</span></div>
+              <div class="lrr-brand-copy"><span class="lrr-eyebrow">NAKURU COLLEGE OF HEALTH SCIENCES &amp; MANAGEMENT</span><h3>Teaching &amp; Learning</h3><p>Academic quality · lecturer portfolios · school compliance</p></div>
+            </div>
+            <div class="lrr-hero-actions"><span class="lrr-live"><i></i> Academic workspace</span><button class="lrr-primary" id="lrrRefreshAll" type="button"><i class="fas fa-sync-alt"></i> Refresh data</button></div>
+          </div>
           <nav class="lrr-subnav" aria-label="Teaching workspace sections">
             <button type="button" class="lrr-subtab active" data-jump="lrrSchoolOverview">Overview</button>
             <button type="button" class="lrr-subtab" data-jump="lrrFolderArea">School folders</button>
