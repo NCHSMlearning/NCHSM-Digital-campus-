@@ -1101,7 +1101,7 @@ const LecturerDashboard = {
             'pendingAttendanceCount': this.metrics.pendingAttendance,
             'examsDueCount': this.metrics.examsDue,
             'unreadMessagesCount': this.metrics.unreadMessages,
-            'avgPerformance': this.metrics.avgPerformance + '%'
+            'avgPerformance': this.metrics.avgPerformance === null || this.metrics.avgPerformance === undefined ? null : this.metrics.avgPerformance + '%'
         };
 
         Object.keys(elements).forEach(id => {
