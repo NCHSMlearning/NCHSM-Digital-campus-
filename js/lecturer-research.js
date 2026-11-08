@@ -151,6 +151,30 @@ window.LecturerResearch = (() => {
             .rs-side{max-height:42vh}
           }
         `;
+
+        st.textContent += `
+          .rs-doc-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;background:#fff;border-bottom:1px solid #e2e8f0}
+          .rs-doc-title{font-size:13px;font-weight:800;color:#1e293b;min-width:0;overflow-wrap:anywhere}
+          .rs-doc-top-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+          .rs-doc-top-actions .rs-btn{font-size:10px}
+          #rsSaveState{font-size:10px;color:#64748b;white-space:nowrap}
+          #rsSaveState[data-state="saving"]{color:#b45309}#rsSaveState[data-state="dirty"],#rsSaveState[data-state="error"]{color:#b91c1c}
+          .rs-review-toolbar{position:sticky;top:0;z-index:8;gap:5px;padding:7px 9px}
+          .rs-review-toolbar button{min-width:31px;height:31px;border:1px solid transparent}
+          .rs-review-toolbar button:hover{border-color:#cbd5e1;background:#f8fafc}
+          .rs-review-toolbar select{height:31px;font-size:10px;max-width:140px}
+          .rs-review-toolbar .rs-tool-separator{height:23px;width:1px;background:#e2e8f0;margin:0 3px}
+          .rs-editor-wrap{padding:28px 18px 50px}
+          .rs-editor-page{width:min(816px,100%);min-height:1056px;padding:76px 78px;line-height:1.7;font-size:14px;box-shadow:0 2px 12px rgba(15,23,42,.14)}
+          .rs-editor-page p{margin:0 0 10px}.rs-editor-page h1{font-size:25px}.rs-editor-page h2{font-size:20px}.rs-editor-page h3{font-size:16px}
+          .rs-editor-page table{width:100%;border-collapse:collapse;margin:12px 0}.rs-editor-page td,.rs-editor-page th{border:1px solid #94a3b8;padding:7px;min-width:40px}
+          .rs-editor-page blockquote{border-left:3px solid #7c3aed;margin:12px 0;padding:8px 14px;background:#f8fafc;color:#475569}
+          .rs-version-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px;border:1px solid #e2e8f0;border-radius:9px;margin:7px 0;background:#fff}
+          .rs-version-row small{display:block;color:#64748b;font-size:9px;margin-top:3px}
+          .rs-version-row button{flex:0 0 auto}
+          @media(max-width:900px){.rs-doc-topbar{padding:8px}.rs-doc-top-actions{width:100%}.rs-doc-top-actions .rs-btn{flex:1}.rs-editor-page{padding:38px 28px;min-height:850px;font-size:13px}}
+          @media(max-width:520px){.rs-review-toolbar{position:relative;max-height:none}.rs-review-toolbar select{max-width:112px}.rs-editor-page{width:100%;padding:28px 20px;min-height:720px;font-size:12px}.rs-doc-title{font-size:11px}}
+        `;
         document.head.appendChild(st);
     }
 
@@ -229,6 +253,7 @@ window.LecturerResearch = (() => {
                   <label>Supervisor / Lecturer Feedback</label>
                   <textarea id="rsFeedback" placeholder="Enter feedback, required corrections, recommendations or approval comments…"></textarea>
                   <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+                    <button class="rs-btn rs-secondary" type="button" id="rsSideSaveDraft">Save Draft</button>
                     <button class="rs-btn rs-success" type="button" id="rsSaveReview">Save Review</button>
                     <button class="rs-btn rs-warning" type="button" id="rsSendCorrection">Send Correction to Student</button>
                     <button class="rs-btn rs-secondary" type="button" id="rsDownload">Download</button>
@@ -696,7 +721,7 @@ window.LecturerResearch = (() => {
             while(n.firstChild)p.insertBefore(n.firstChild,n);
             p.removeChild(n);
         });
-        lecturerStoredArray(lecturerResearchCommentsKey(s)).forEach(function(c){
+        lecturerStoredArray(lecturerResearchCommentsKey(s)).filter(function(c){return c.status!=='resolved'}).forEach(function(c){
             if(!c.text)return;
             const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);
             let node,found=null;
@@ -721,39 +746,54 @@ window.LecturerResearch = (() => {
         if(!panel)return;
         const comments=lecturerStoredArray(lecturerResearchCommentsKey(s));
         panel.innerHTML=comments.length?comments.map(function(c){
-            return '<div class="rs-comment-card"><strong>'+esc(c.author_name||'Lecturer')+'</strong><small>'+esc(c.created_at?new Date(c.created_at).toLocaleString():'')+'</small><div class="rs-comment-selection">“'+esc(c.text||'')+'”</div><div>'+esc(c.comment||'')+'</div><button type="button" class="rs-comment-action" data-rs-comment-resolve="'+esc(c.id)+'">Resolve</button></div>';
+            return '<div class="rs-comment-card"><strong>'+esc(c.author_name||'Lecturer')+'</strong><small>'+esc(c.created_at?new Date(c.created_at).toLocaleString():'')+' · '+esc(c.status||'open')+'</small><div class="rs-comment-selection">“'+esc(c.text||'')+'”</div><div>'+esc(c.comment||'')+'</div>'+(c.status==='resolved'?'':'<button type="button" class="rs-comment-action" data-rs-comment-resolve="'+esc(c.id)+'">Resolve</button>')+'</div>';
         }).join(''):'<div class="rs-empty" style="padding:16px;font-size:9px">No comments. Select text and click Comment.</div>';
     }
 
-    function lecturerAddComment(s,editor){
-        const sel=lecturerSelection(editor);
-        const offsets=lecturerSelectionOffsets(editor);
+    async function lecturerAddComment(s,editor){
+        const sel=lecturerSelection(editor), offsets=lecturerSelectionOffsets(editor);
         if(!sel||!sel.text||!offsets)return notify('Select text in the document first.','warning');
         const comment=prompt('Add a comment for the selected text:');
         if(!comment||!comment.trim())return;
-        const item={id:lecturerCommentId(),text:sel.text,comment:comment.trim(),start:offsets.start,end:offsets.end,author_name:lecturerResearchName(),created_at:new Date().toISOString()};
-        const list=lecturerStoredArray(lecturerResearchCommentsKey(s));
-        list.push(item);lecturerSaveArray(lecturerResearchCommentsKey(s),list);
-        lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
-        lecturerBroadcast({type:'comment-add',comment:item});
+        await resolveUser();
+        const db=client();if(!db||!state.userId)return notify('Your account could not be verified.','error');
+        const payload={research_submission_id:s.id,user_id:state.userId,author_name:lecturerResearchName(),selected_text:sel.text,comment_text:comment.trim(),start_offset:offsets.start,end_offset:offsets.end,status:'open'};
+        const saved=await db.from('research_document_comments').insert(payload).select('id,created_at').single();
+        if(saved.error)return notify('Comment could not be saved: '+saved.error.message,'error');
+        const item={id:saved.data.id,text:sel.text,comment:comment.trim(),start:offsets.start,end:offsets.end,status:'open',author_name:lecturerResearchName(),created_at:saved.data.created_at};
+        const list=lecturerStoredArray(lecturerResearchCommentsKey(s));list.push(item);lecturerSaveArray(lecturerResearchCommentsKey(s),list);
+        lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);lecturerBroadcast({type:'comment-add',comment:item});
     }
 
-    function lecturerResolveComment(s,id,editor){
-        lecturerSaveArray(lecturerResearchCommentsKey(s),lecturerStoredArray(lecturerResearchCommentsKey(s)).filter(function(c){return String(c.id)!==String(id)}));
+    async function lecturerResolveComment(s,id,editor){
+        const db=client();
+        if(db){
+            const result=await db.from('research_document_comments').update({status:'resolved',updated_at:new Date().toISOString()}).eq('id',id);
+            if(result.error)return notify('Comment could not be resolved: '+result.error.message,'error');
+        }
+        const list=lecturerStoredArray(lecturerResearchCommentsKey(s));
+        const found=list.find(c=>String(c.id)===String(id));if(found)found.status='resolved';
+        lecturerSaveArray(lecturerResearchCommentsKey(s),list);
         lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
         lecturerBroadcast({type:'comment-delete',id:id});
     }
 
-    function lecturerAddSuggestion(s,editor){
-        const sel=lecturerSelection(editor);
-        const offsets=lecturerSelectionOffsets(editor);
+    async function lecturerAddSuggestion(s,editor){
+        const sel=lecturerSelection(editor),offsets=lecturerSelectionOffsets(editor);
         if(!sel||!sel.text||!offsets)return notify('Select text to suggest a replacement.','warning');
         const replacement=prompt('Suggested replacement:',sel.text);
         if(replacement===null)return;
-        const item={id:lecturerSuggestionId(),old_text:sel.text,new_text:String(replacement),start:offsets.start,end:offsets.end,status:'pending',author_name:lecturerResearchName(),created_at:new Date().toISOString()};
+        await resolveUser();const db=client();
+        if(!db||!state.userId)return notify('Your account could not be verified.','error');
+        const saved=await db.from('research_document_suggestions').insert({
+            research_submission_id:s.id,user_id:state.userId,author_name:lecturerResearchName(),
+            old_text:sel.text,new_text:String(replacement),start_offset:offsets.start,end_offset:offsets.end,status:'pending'
+        }).select('id,created_at').single();
+        if(saved.error)return notify('Suggestion could not be saved: '+saved.error.message,'error');
+        const item={id:saved.data.id,old_text:sel.text,new_text:String(replacement),start:offsets.start,end:offsets.end,status:'pending',author_name:lecturerResearchName(),created_at:saved.data.created_at};
         const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));list.push(item);lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
-        const range=sel.range;
-        const span=document.createElement('span');span.className='rs-suggestion';span.dataset.rsSuggestion=item.id;span.innerHTML='<del>'+esc(sel.text)+'</del><ins>'+esc(String(replacement))+'</ins>';
+        const range=sel.range,span=document.createElement('span');span.className='rs-suggestion';span.dataset.rsSuggestion=item.id;
+        span.innerHTML='<del>'+esc(sel.text)+'</del><ins>'+esc(String(replacement))+'</ins>';
         try{range.deleteContents();range.insertNode(span)}catch(e){}
         lecturerRenderSuggestions(s,editor);lecturerBroadcast({type:'suggestion-add',suggestion:item});
     }
@@ -767,16 +807,19 @@ window.LecturerResearch = (() => {
         }).join(''):'<div class="rs-empty" style="padding:16px;font-size:9px">No pending suggestions.</div>';
     }
 
-    function lecturerApplySuggestion(s,id,accept,editor){
+    async function lecturerApplySuggestion(s,id,accept,editor){
         const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));
-        const item=list.find(function(x){return String(x.id)===String(id)});
-        if(!item)return;
-        item.status=accept?'accepted':'rejected';
-        lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
-        const nodes=Array.from(editor.querySelectorAll('[data-rs-suggestion]')).filter(function(n){return String(n.dataset.rsSuggestion)===String(id)});
-        nodes.forEach(function(n){n.outerHTML=accept?esc(item.new_text):esc(item.old_text)});
-        lecturerRenderSuggestions(s,editor);
-        lecturerBroadcast({type:'suggestion-status',id:id,status:item.status});
+        const item=list.find(x=>String(x.id)===String(id));if(!item)return;
+        const status=accept?'accepted':'rejected',db=client();
+        if(db){
+            const result=await db.from('research_document_suggestions').update({status:status,updated_at:new Date().toISOString()}).eq('id',id);
+            if(result.error)return notify('Suggestion update failed: '+result.error.message,'error');
+        }
+        item.status=status;lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
+        const nodes=Array.from(editor.querySelectorAll('[data-rs-suggestion]')).filter(n=>String(n.dataset.rsSuggestion)===String(id));
+        nodes.forEach(n=>{n.outerHTML=accept?esc(item.new_text):esc(item.old_text)});
+        editor.dataset.dirty='1';scheduleResearchDraftSave(s,editor,300);
+        lecturerRenderSuggestions(s,editor);lecturerBroadcast({type:'suggestion-status',id:id,status:item.status});
     }
 
     function lecturerStartCollab(s,editor,statusEl){
@@ -1140,6 +1183,8 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         if(!s||!editor||!db)return;
         const html=editor.innerHTML.trim();
         if(!html||html==='<br>')return notify('There is no corrected document content to send.','warning');
+        try{await lecturerSaveResearchDraft(s,editor,{manual:false})}
+        catch(error){return notify('Save the working draft before sending the correction: '+(error.message||error),'error')}
         const feedback=($('rsFeedback')?.value||'').trim()||null;
         const btn=$('rsSendCorrection');
         if(btn)btn.disabled=true;
@@ -1213,6 +1258,237 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         }
     }
 
+
+    // ============================================================
+    // GOOGLE-DOCS-STYLE WORKSPACE: CLOUD DRAFTS + VERSION HISTORY
+    // Submitted source files remain immutable until "Send Correction".
+    // Working edits are saved separately per authenticated collaborator.
+    // ============================================================
+    const researchWorkspace = {
+        saveTimer:null,
+        saving:false,
+        pending:false,
+        draftId:null,
+        lastSavedHtml:'',
+        activeSubmissionId:null
+    };
+
+    function lecturerResearchWordCount(html){
+        const node=document.createElement('div');
+        node.innerHTML=String(html||'');
+        return (node.innerText||node.textContent||'').trim().split(/\s+/).filter(Boolean).length;
+    }
+
+    function lecturerResearchSaveIndicator(message,kind){
+        const el=document.getElementById('rsSaveState');
+        if(!el)return;
+        el.textContent=message;
+        el.dataset.state=kind||'saved';
+    }
+
+    async function lecturerLoadResearchDraft(s,editor){
+        const db=client();
+        if(!db||!state.userId)return false;
+        const result=await db.from('research_document_drafts')
+            .select('id,user_id,content_html,updated_at')
+            .eq('research_submission_id',s.id)
+            .order('updated_at',{ascending:false})
+            .limit(1)
+            .maybeSingle();
+        if(result.error){
+            console.warn('[Research] Draft lookup:',result.error.message);
+            return false;
+        }
+        const draft=result.data;
+        if(!draft||!draft.content_html)return false;
+        const sourceDate=new Date(s.submitted_at||s.updated_at||s.created_at||0).getTime();
+        const draftDate=new Date(draft.updated_at||0).getTime();
+        if(sourceDate && draftDate && draftDate<sourceDate)return false;
+        editor.innerHTML=draft.content_html;
+        researchWorkspace.draftId=draft.id;
+        researchWorkspace.lastSavedHtml=draft.content_html;
+        editor.dataset.dirty='0';
+        lecturerResearchSaveIndicator('Draft restored · '+fmtDate(draft.updated_at),'saved');
+        return true;
+    }
+
+    async function lecturerSaveResearchDraft(s,editor,options){
+        options=options||{};
+        const db=client();
+        if(!s||!editor||!db)throw new Error('Research editor is not ready.');
+        if(!editor.isContentEditable)throw new Error('This document is view-only.');
+        await resolveUser();
+        if(!state.userId)throw new Error('Your signed-in user could not be resolved.');
+        const html=editor.innerHTML.trim();
+        if(!html||html==='<br>')throw new Error('There is no document content to save.');
+        if(researchWorkspace.saving){
+            researchWorkspace.pending=true;
+            return false;
+        }
+        researchWorkspace.saving=true;
+        lecturerResearchSaveIndicator('Saving to NCHSM cloud…','saving');
+        try{
+            const now=new Date().toISOString();
+            const payload={
+                research_submission_id:s.id,
+                user_id:state.userId,
+                content_html:html,
+                updated_at:now
+            };
+            const saved=await db.from('research_document_drafts')
+                .upsert(payload,{onConflict:'research_submission_id,user_id'})
+                .select('id,updated_at')
+                .single();
+            if(saved.error)throw saved.error;
+            researchWorkspace.draftId=saved.data.id;
+            researchWorkspace.lastSavedHtml=html;
+            editor.dataset.dirty='0';
+            lecturerResearchSaveIndicator('All changes saved · '+new Date(saved.data.updated_at||now).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),'saved');
+            if(options.version){
+                const last=await db.from('research_document_draft_versions')
+                    .select('version_number')
+                    .eq('draft_id',saved.data.id)
+                    .order('version_number',{ascending:false})
+                    .limit(1)
+                    .maybeSingle();
+                if(last.error)throw last.error;
+                const versionNumber=Number(last.data?.version_number||0)+1;
+                const snapshot=await db.from('research_document_draft_versions').insert({
+                    draft_id:saved.data.id,
+                    research_submission_id:s.id,
+                    user_id:state.userId,
+                    version_number:versionNumber,
+                    content_html:html,
+                    word_count:lecturerResearchWordCount(html),
+                    label:options.label||'Manual checkpoint'
+                });
+                if(snapshot.error)throw snapshot.error;
+                notify('Draft saved and version '+versionNumber+' added to version history.','success');
+                await lecturerRenderResearchVersions(s,editor);
+            }else if(options.manual){
+                notify('Research draft saved securely. The submitted version has not been changed.','success');
+            }
+            return true;
+        }catch(error){
+            lecturerResearchSaveIndicator('Save failed · retry','error');
+            throw error;
+        }finally{
+            researchWorkspace.saving=false;
+            if(researchWorkspace.pending){
+                researchWorkspace.pending=false;
+                scheduleResearchDraftSave(s,editor,400);
+            }
+        }
+    }
+
+    function scheduleResearchDraftSave(s,editor,delay){
+        if(!s||!editor||!editor.isContentEditable)return;
+        if(researchWorkspace.saveTimer)clearTimeout(researchWorkspace.saveTimer);
+        lecturerResearchSaveIndicator('Unsaved changes','dirty');
+        researchWorkspace.saveTimer=setTimeout(async function(){
+            if(!editor.isConnected||researchState.current?.id!==s.id)return;
+            if(editor.innerHTML===researchWorkspace.lastSavedHtml)return;
+            try{await lecturerSaveResearchDraft(s,editor,{})}
+            catch(error){console.error('[Research] Autosave failed:',error);notify('Autosave could not reach the server. Use Save Draft and check your connection.','warning')}
+        },delay||1600);
+    }
+
+    async function lecturerRenderResearchVersions(s,editor){
+        const panel=document.getElementById('rsVersionHistoryList');
+        if(!panel)return;
+        const db=client();
+        if(!db){panel.textContent='Version history is unavailable.';return}
+        const drafts=await db.from('research_document_drafts')
+            .select('id')
+            .eq('research_submission_id',s.id)
+            .order('updated_at',{ascending:false});
+        if(drafts.error)throw drafts.error;
+        const ids=(drafts.data||[]).map(x=>x.id);
+        if(!ids.length){panel.innerHTML='<div class="rs-empty">No saved versions yet. Use Save Version to create a checkpoint.</div>';return}
+        const result=await db.from('research_document_draft_versions')
+            .select('id,draft_id,version_number,word_count,label,created_at,user_id')
+            .eq('research_submission_id',s.id)
+            .order('created_at',{ascending:false})
+            .limit(40);
+        if(result.error)throw result.error;
+        const rows=result.data||[];
+        panel.innerHTML=rows.length?rows.map(v=>'<div class="rs-version-row"><div><b>Version '+esc(v.version_number)+'</b><small>'+esc(v.label||'Saved checkpoint')+' · '+esc(v.word_count||0)+' words</small><small>'+esc(fmtDate(v.created_at))+'</small></div><button type="button" class="rs-comment-action" data-rs-version-restore="'+esc(v.id)+'">Restore</button></div>').join(''):'<div class="rs-empty">No saved versions yet.</div>';
+        panel.querySelectorAll('[data-rs-version-restore]').forEach(btn=>btn.addEventListener('click',async function(){
+            const row=rows.find(x=>String(x.id)===String(btn.dataset.rsVersionRestore));
+            if(!row)return;
+            if(!confirm('Restore Version '+row.version_number+'? Your current text will first be saved as a new checkpoint.'))return;
+            try{
+                await lecturerSaveResearchDraft(s,editor,{version:true,label:'Before restore'});
+                const full=await db.from('research_document_draft_versions').select('content_html').eq('id',row.id).single();
+                if(full.error)throw full.error;
+                editor.innerHTML=full.data.content_html||'<p></p>';
+                editor.dataset.dirty='1';
+                scheduleResearchDraftSave(s,editor,300);
+                notify('Version '+row.version_number+' restored. Save Draft will preserve it.','success');
+            }catch(error){notify('Could not restore version: '+(error.message||error),'error')}
+        }));
+    }
+
+    async function lecturerLoadResearchAnnotations(s,editor){
+        const db=client();
+        if(!db)return;
+        const [comments,suggestions]=await Promise.all([
+            db.from('research_document_comments').select('id,user_id,author_name,selected_text,comment_text,start_offset,end_offset,status,created_at').eq('research_submission_id',s.id).order('created_at',{ascending:true}),
+            db.from('research_document_suggestions').select('id,user_id,author_name,old_text,new_text,start_offset,end_offset,status,created_at').eq('research_submission_id',s.id).order('created_at',{ascending:true})
+        ]);
+        if(!comments.error){
+            const list=(comments.data||[]).map(c=>({id:c.id,text:c.selected_text,comment:c.comment_text,start:c.start_offset,end:c.end_offset,status:c.status,author_name:c.author_name,created_at:c.created_at}));
+            lecturerSaveArray(lecturerResearchCommentsKey(s),list);
+        }else console.warn('[Research] Comments could not be loaded:',comments.error.message);
+        if(!suggestions.error){
+            const list=(suggestions.data||[]).map(c=>({id:c.id,old_text:c.old_text,new_text:c.new_text,start:c.start_offset,end:c.end_offset,status:c.status,author_name:c.author_name,created_at:c.created_at}));
+            lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
+        }else console.warn('[Research] Suggestions could not be loaded:',suggestions.error.message);
+        lecturerRefreshCommentMarks(editor,s);
+        lecturerRenderComments(s,editor);
+        lecturerRenderSuggestions(s,editor);
+        await lecturerRenderResearchVersions(s,editor);
+    }
+
+    function lecturerResearchInsertTable(editor){
+        const rows=Math.max(1,Math.min(12,Number(prompt('Number of rows','3'))||3));
+        const cols=Math.max(1,Math.min(8,Number(prompt('Number of columns','3'))||3));
+        let html='<table style="width:100%;border-collapse:collapse" border="1"><tbody>';
+        for(let r=0;r<rows;r++){html+='<tr>';for(let c=0;c<cols;c++)html+='<td style="padding:7px;min-width:55px">'+(r===0?'Heading':'&nbsp;')+'</td>';html+='</tr>'}
+        html+='</tbody></table><p><br></p>';
+        editor.focus();document.execCommand('insertHTML',false,html);
+    }
+
+    function lecturerResearchInsertLink(editor){
+        const url=prompt('Enter the web address (https://…)');
+        if(!url)return;
+        let safe;
+        try{safe=new URL(url,location.href)}catch(e){return notify('Enter a valid web address.','warning')}
+        if(!['http:','https:'].includes(safe.protocol))return notify('Only secure web links are allowed.','warning');
+        editor.focus();document.execCommand('createLink',false,safe.href);
+    }
+
+    function lecturerResearchInsertImage(editor){
+        const input=document.createElement('input');
+        input.type='file';input.accept='image/png,image/jpeg,image/gif,image/webp';
+        input.onchange=()=>{
+            const file=input.files&&input.files[0];if(!file)return;
+            if(file.size>5*1024*1024)return notify('Images must be 5 MB or smaller.','warning');
+            const reader=new FileReader();
+            reader.onload=()=>{editor.focus();document.execCommand('insertImage',false,String(reader.result))};
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    }
+
+    function lecturerResearchPrint(editor,title){
+        const win=window.open('','_blank');
+        if(!win)return notify('Allow pop-ups to print the research document.','warning');
+        const safeTitle=esc(title||'Research Paper');
+        win.document.write('<!doctype html><html><head><title>'+safeTitle+'</title><style>body{font-family:Arial,sans-serif;line-height:1.65;color:#111827;max-width:850px;margin:35px auto;padding:0 28px}img{max-width:100%}table{width:100%;border-collapse:collapse}td,th{border:1px solid #94a3b8;padding:7px}@page{size:A4;margin:20mm}</style></head><body>'+editor.innerHTML+'</body></html>');
+        win.document.close();win.focus();setTimeout(()=>win.print(),350);
+    }
+
     async function openResearchReview(id) {
         const s = researchState.submissions.find(x => String(x.id) === String(id));
         if (!s) return notify('Research submission not found.', 'error');
@@ -1220,7 +1496,12 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         const p = researchState.profiles.get(s.student_id) || {};
         researchEnsureUI();
 
+        researchWorkspace.activeSubmissionId=String(s.id);
+        researchWorkspace.draftId=null;
+        researchWorkspace.lastSavedHtml='';
         $('rsModalTitle').textContent = s.title || 'Research Submission';
+        const workspaceTitle=document.getElementById('rsWorkspaceDocTitle');
+        if(workspaceTitle)workspaceTitle.textContent=s.title||'Research document';
         $('rsModalMeta').textContent = `${p.full_name || 'Student'} · ${p.admission_number || p.student_id || ''} · Version ${s.version_number || 1}`;
         $('rsStudentMeta').innerHTML =
             `<b>${esc(p.full_name || 'Student')}</b><br>${esc(p.admission_number || p.student_id || '')}<br>${esc(p.email || '')}<br>${esc(p.program || '')}${p.intake_year ? ' · Intake ' + esc(p.intake_year) : ''}${p.current_block || p.block ? ' · ' + esc(p.current_block || p.block) : ''}` +
@@ -1232,25 +1513,47 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
 
         $('rsPreview').innerHTML = `
           <div class="rs-review-main">
+            <div class="rs-doc-topbar">
+              <div><div class="rs-doc-title" id="rsWorkspaceDocTitle">Research document</div><div id="rsSaveState" data-state="saved">Loading document…</div></div>
+              <div class="rs-doc-top-actions">
+                <button class="rs-btn rs-secondary" type="button" data-rs-save-draft><i class="fas fa-cloud-arrow-up"></i> Save Draft</button>
+                <button class="rs-btn rs-secondary" type="button" data-rs-save-version><i class="fas fa-clock-rotate-left"></i> Save Version</button>
+                <button class="rs-btn rs-secondary" type="button" data-rs-export-docx><i class="fas fa-file-word"></i> Export DOCX</button>
+                <button class="rs-btn rs-secondary" type="button" data-rs-print><i class="fas fa-print"></i> Print</button>
+              </div>
+            </div>
             <div class="rs-review-toolbar">
-              <button type="button" data-rs-cmd="undo" title="Undo">↶</button>
-              <button type="button" data-rs-cmd="redo" title="Redo">↷</button>
-              <select data-rs-format title="Text style">
-                <option value="p">Normal text</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="blockquote">Quote</option>
-              </select>
-              <button type="button" data-rs-cmd="bold"><b>B</b></button>
-              <button type="button" data-rs-cmd="italic"><i>I</i></button>
-              <button type="button" data-rs-cmd="underline"><u>U</u></button>
+              <button type="button" data-rs-cmd="undo" title="Undo (Ctrl+Z)">↶</button>
+              <button type="button" data-rs-cmd="redo" title="Redo (Ctrl+Y)">↷</button>
+              <span class="rs-tool-separator"></span>
+              <select data-rs-format title="Paragraph style"><option value="p">Normal text</option><option value="h1">Title</option><option value="h2">Heading 1</option><option value="h3">Heading 2</option><option value="h4">Heading 3</option><option value="blockquote">Quote</option></select>
+              <select data-rs-font title="Font family"><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Calibri">Calibri</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option></select>
+              <select data-rs-font-size title="Font size"><option value="2">10 pt</option><option value="3" selected>12 pt</option><option value="4">14 pt</option><option value="5">18 pt</option><option value="6">24 pt</option><option value="7">32 pt</option></select>
+              <span class="rs-tool-separator"></span>
+              <button type="button" data-rs-cmd="bold" title="Bold"><b>B</b></button>
+              <button type="button" data-rs-cmd="italic" title="Italic"><i>I</i></button>
+              <button type="button" data-rs-cmd="underline" title="Underline"><u>U</u></button>
+              <button type="button" data-rs-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
               <button type="button" class="rs-color-btn" data-rs-text-color title="Text color"><b>A</b><span class="rs-color-indicator" style="background:#000"></span></button>
-              <button type="button" class="rs-color-btn rs-highlight-btn" data-rs-highlight-color title="Highlight color"><i class="fas fa-highlighter"></i><span class="rs-color-indicator" style="background:#ffff00"></span></button>
-              <button type="button" data-rs-cmd="justifyLeft"><i class="fas fa-align-left"></i></button>
-              <button type="button" data-rs-cmd="justifyCenter"><i class="fas fa-align-center"></i></button>
-              <button type="button" data-rs-cmd="justifyRight"><i class="fas fa-align-right"></i></button>
-              <button type="button" data-rs-cmd="insertUnorderedList"><i class="fas fa-list-ul"></i></button>
-              <button type="button" data-rs-cmd="insertOrderedList"><i class="fas fa-list-ol"></i></button>
+              <button type="button" class="rs-color-btn rs-highlight-btn" data-rs-highlight-color title="Highlight"><i class="fas fa-highlighter"></i><span class="rs-color-indicator" style="background:#ffff00"></span></button>
+              <span class="rs-tool-separator"></span>
+              <button type="button" data-rs-cmd="justifyLeft" title="Align left"><i class="fas fa-align-left"></i></button>
+              <button type="button" data-rs-cmd="justifyCenter" title="Center"><i class="fas fa-align-center"></i></button>
+              <button type="button" data-rs-cmd="justifyRight" title="Align right"><i class="fas fa-align-right"></i></button>
+              <button type="button" data-rs-cmd="justifyFull" title="Justify"><i class="fas fa-align-justify"></i></button>
+              <button type="button" data-rs-cmd="insertUnorderedList" title="Bulleted list"><i class="fas fa-list-ul"></i></button>
+              <button type="button" data-rs-cmd="insertOrderedList" title="Numbered list"><i class="fas fa-list-ol"></i></button>
+              <select data-rs-line-spacing title="Line spacing"><option value="1">Single</option><option value="1.15">1.15</option><option value="1.5" selected>1.5</option><option value="2">Double</option></select>
+              <span class="rs-tool-separator"></span>
+              <button type="button" data-rs-link title="Insert link"><i class="fas fa-link"></i></button>
+              <button type="button" data-rs-table title="Insert table"><i class="fas fa-table"></i></button>
+              <button type="button" data-rs-image title="Insert image"><i class="fas fa-image"></i></button>
+              <button type="button" data-rs-cmd="insertHorizontalRule" title="Horizontal line"><i class="fas fa-minus"></i></button>
+              <button type="button" data-rs-cmd="removeFormat" title="Clear formatting"><i class="fas fa-eraser"></i></button>
+              <span class="rs-tool-separator"></span>
               <button type="button" data-rs-comment-add title="Comment"><i class="fas fa-comment"></i></button>
-              <button type="button" data-rs-suggestion-add title="Suggest change"><i class="fas fa-pen-ruler"></i></button>
-              <button type="button" data-rs-fullscreen title="Full Screen"><i class="fas fa-expand"></i></button>
+              <button type="button" data-rs-suggestion-add title="Suggest edit"><i class="fas fa-pen-ruler"></i></button>
+              <button type="button" data-rs-fullscreen title="Full screen"><i class="fas fa-expand"></i></button>
               <span class="rs-review-status" id="rsCollaborators">Connecting…</span>
             </div>
             <div class="rs-editor-wrap">
@@ -1260,9 +1563,11 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
               <div class="rs-comment-tabs">
                 <button type="button" class="active" data-rs-comment-tab="comments">Comments</button>
                 <button type="button" data-rs-comment-tab="suggestions">Suggestions</button>
+                <button type="button" data-rs-comment-tab="versions">Version History</button>
               </div>
               <div id="rsCommentsList"></div>
               <div id="rsSuggestionsList" style="display:none"></div>
+              <div id="rsVersionHistoryList" style="display:none"></div>
             </div>
           </div>`;
 
@@ -1309,16 +1614,50 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         try{
             const kind=await lecturerLoadDocument(s,editor);
             if(statusEl)statusEl.textContent='Loaded · '+kind.toUpperCase();
-            lecturerRefreshCommentMarks(editor,s);
-            lecturerRenderComments(s,editor);
-            lecturerRenderSuggestions(s,editor);
+            const restored=await lecturerLoadResearchDraft(s,editor);
+            if(!restored){
+                researchWorkspace.lastSavedHtml=editor.innerHTML;
+                lecturerResearchSaveIndicator('Ready · cloud draft autosave enabled','saved');
+            }
+            await lecturerLoadResearchAnnotations(s,editor);
             lecturerStartCollab(s,editor,statusEl);
+            editor.addEventListener('input',function(){
+                if(!lecturerResearchCollab.applyingRemote){
+                    editor.dataset.dirty='1';
+                    scheduleResearchDraftSave(s,editor,1600);
+                }
+            });
+            editor.addEventListener('blur',function(){
+                if(editor.dataset.dirty==='1')scheduleResearchDraftSave(s,editor,250);
+            });
         }catch(e){
             console.error('Research document editor:',e);
             editor.innerHTML='<p style="color:#b42318">'+esc(e.message||e)+'</p>';
             if(statusEl)statusEl.textContent='View only';
         }
 
+        const saveDraft=async()=>{try{await lecturerSaveResearchDraft(s,editor,{manual:true})}catch(error){notify('Draft save failed: '+(error.message||error),'error')}};
+        modal.querySelectorAll('[data-rs-save-draft]').forEach(btn=>btn.addEventListener('click',saveDraft));
+        const sideSave=document.getElementById('rsSideSaveDraft');if(sideSave)sideSave.addEventListener('click',saveDraft);
+        modal.querySelectorAll('[data-rs-save-version]').forEach(btn=>btn.addEventListener('click',async()=>{
+            try{await lecturerSaveResearchDraft(s,editor,{version:true,label:'Manual checkpoint'})}
+            catch(error){notify('Version could not be saved: '+(error.message||error),'error')}
+        }));
+        modal.querySelectorAll('[data-rs-export-docx]').forEach(btn=>btn.addEventListener('click',async()=>{
+            try{
+                const blob=await lecturerHtmlToDocxBlob(editor.innerHTML,s.title||'Research Paper');
+                const url=URL.createObjectURL(blob),a=document.createElement('a');
+                a.href=url;a.download=(s.title||'Research_Paper').replace(/[^a-z0-9_-]+/gi,'_')+'.docx';a.click();
+                setTimeout(()=>URL.revokeObjectURL(url),1500);
+            }catch(error){notify('DOCX export failed: '+(error.message||error),'error')}
+        }));
+        modal.querySelectorAll('[data-rs-print]').forEach(btn=>btn.addEventListener('click',()=>lecturerResearchPrint(editor,s.title)));
+        modal.querySelectorAll('[data-rs-link]').forEach(btn=>btn.addEventListener('click',()=>lecturerResearchInsertLink(editor)));
+        modal.querySelectorAll('[data-rs-table]').forEach(btn=>btn.addEventListener('click',()=>lecturerResearchInsertTable(editor)));
+        modal.querySelectorAll('[data-rs-image]').forEach(btn=>btn.addEventListener('click',()=>lecturerResearchInsertImage(editor)));
+        const font=modal.querySelector('[data-rs-font]');if(font)font.addEventListener('change',()=>{editor.focus();document.execCommand('fontName',false,font.value)});
+        const size=modal.querySelector('[data-rs-font-size]');if(size)size.addEventListener('change',()=>{editor.focus();document.execCommand('fontSize',false,size.value)});
+        const spacing=modal.querySelector('[data-rs-line-spacing]');if(spacing)spacing.addEventListener('change',()=>{editor.focus();editor.style.lineHeight=spacing.value});
         modal.querySelectorAll('[data-rs-cmd]').forEach(btn=>{
             btn.addEventListener('mousedown',e=>{
                 e.preventDefault();editor.focus();document.execCommand(btn.dataset.rsCmd,false,null);
@@ -1339,6 +1678,8 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
             modal.querySelectorAll('[data-rs-comment-tab]').forEach(x=>x.classList.toggle('active',x===btn));
             $('rsCommentsList').style.display=btn.dataset.rsCommentTab==='comments'?'block':'none';
             $('rsSuggestionsList').style.display=btn.dataset.rsCommentTab==='suggestions'?'block':'none';
+            $('rsVersionHistoryList').style.display=btn.dataset.rsCommentTab==='versions'?'block':'none';
+            if(btn.dataset.rsCommentTab==='versions')lecturerRenderResearchVersions(s,editor).catch(err=>notify('Version history unavailable: '+err.message,'error'));
         });
 
         const panel=modal.querySelector('.rs-comments-panel');
@@ -1403,6 +1744,12 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
     }
 
     function closeResearchModal() {
+        const closingEditor=document.getElementById('rsInlineEditor');
+        const closingSubmission=researchState.current;
+        if(researchWorkspace.saveTimer){clearTimeout(researchWorkspace.saveTimer);researchWorkspace.saveTimer=null}
+        if(closingEditor&&closingSubmission&&closingEditor.dataset.dirty==='1'){
+            lecturerSaveResearchDraft(closingSubmission,closingEditor,{}).catch(err=>console.error('[Research] Final close save failed:',err));
+        }
         lecturerStopCollab();
         const m = $('rsReviewModal');
         const dialog=m&&m.querySelector('.rs-dialog');
@@ -1412,6 +1759,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
             m.setAttribute('aria-hidden', 'true');
         }
         researchState.current = null;
+        researchWorkspace.activeSubmissionId=null;
     }
 
     if(!window.__nchsmLecturerResearchEscBound){
