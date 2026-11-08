@@ -1,9 +1,9 @@
 // ============================================================
-// NCHSM Service Worker — v2.3.0 (Teaching workspace refresh)
+// NCHSM Service Worker — v2.4.0 (Network-first asset updates)
 // Caches static assets ONLY. Never caches Supabase API.
 // ============================================================
 
-const APP_VERSION  = '2.3.0';
+const APP_VERSION  = '2.4.0';
 const CACHE_NAME   = `nchsm-dashboard-v${APP_VERSION.replace(/\./g, '-')}`;
 const STATIC_CACHE = 'nchsm-static-v1';
 
@@ -144,40 +144,22 @@ self.addEventListener('fetch', event => {
 
     if (!isNavigation && !isStatic) return;
 
-    // 4. Stale-while-revalidate for assets, network-first for navigations
+    // 4. Network-first for ALL navigations and same-origin static assets.
+    // This prevents an installed PWA from pinning old JS/CSS after deployment.
     event.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
         try {
-            const cache = await caches.open(CACHE_NAME);
-            const cached = await cache.match(req);
-
-            const networkPromise = fetch(req)
-                .then(resp => {
-                    if (resp && resp.ok && new URL(req.url).origin === self.location.origin) {
-                        // Clone BEFORE reading
-                        cache.put(req, resp.clone()).catch(() => {});
-                    }
-                    return resp;
-                })
-                .catch(err => {
-                    console.warn('⚠️ network failed:', req.url, err.message);
-                    return null;
-                });
-
-            if (isNavigation) {
-                const fresh = await networkPromise;
-                if (fresh) return fresh;
-                if (cached) return cached;
-                return new Response('Offline', { status: 503 });
+            const fresh = await fetch(req, { cache: 'no-store' });
+            if (fresh && fresh.ok && new URL(req.url).origin === self.location.origin) {
+                cache.put(req, fresh.clone()).catch(() => {});
             }
-
+            return fresh;
+        } catch (err) {
+            console.warn('⚠️ network failed; using offline cache:', req.url, err.message);
+            const cached = await cache.match(req);
             if (cached) return cached;
-            const fresh = await networkPromise;
-            if (fresh) return fresh;
-
+            if (isNavigation) return new Response('Offline — reconnect to load the latest NCHSM version.', { status: 503 });
             return new Response('', { status: 504 });
-        } catch (e) {
-            console.warn('SW fetch error:', e);
-            return new Response('', { status: 500 });
         }
     })());
 });
