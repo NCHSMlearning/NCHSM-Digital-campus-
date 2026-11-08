@@ -822,7 +822,10 @@
 }
 </style>
 <style id="lecturer-reports-records-consolidation">#lecturerReportSubmissionSection{display:none!important}</style>
-</head>
+<style id="lecturer-workload-insights-style">
+.li-workload{margin:0 0 12px}.li-workload>header{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;border-bottom:1px solid #edf2f7}.li-workload>header>div{display:flex;align-items:center;gap:9px}.li-workload>header i{color:#6d28d9;font-size:18px}.li-workload h2{font-size:13px;margin:0;color:#172033}.li-workload header small{display:block;color:#94a3b8;font-size:9px;margin-top:3px}.li-live{font-size:8px;font-weight:900;letter-spacing:.6px;color:#047857;background:#d1fae5;padding:5px 8px;border-radius:20px}.li-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;padding:12px}.li-kpi-grid article{border:1px solid #e8edf4;background:#fbfcff;border-radius:10px;padding:11px;min-width:0}.li-kpi-grid article span{display:block;font-size:9px;font-weight:800;color:#64748b}.li-kpi-grid article b{display:block;font-size:23px;color:#172033;margin:5px 0}.li-kpi-grid article small{display:block;font-size:9px;color:#94a3b8;line-height:1.4}.li-unit-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid #edf2f7}.li-unit-heading h3{font-size:12px;margin:0;color:#172033}.li-unit-heading p{font-size:9px;color:#94a3b8;margin:3px 0 0}.li-unit-heading button{border:0;background:#f3e8ff;color:#6d28d9;border-radius:7px;padding:7px 10px;font-size:9px;font-weight:800}.li-table-wrap{overflow-x:auto;padding:0 12px 10px}.li-unit-table{width:100%;border-collapse:collapse;min-width:520px}.li-unit-table th{text-align:left;font-size:8px;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8;padding:9px 7px;background:#f8fafc}.li-unit-table td{padding:9px 7px;border-bottom:1px solid #f1f5f9;font-size:10px;color:#334155}.li-unit-table td strong{display:block;font-size:10px}.li-unit-table td small{display:block;color:#94a3b8;font-size:8px;margin-top:3px}.li-progress{display:inline-block;width:65px;height:6px;background:#e2e8f0;border-radius:9px;overflow:hidden;vertical-align:middle;margin-right:5px}.li-progress i{display:block;height:100%;background:linear-gradient(90deg,#7c3aed,#10b981);border-radius:9px}.li-footnote{font-size:8px;color:#94a3b8;padding:0 14px 12px}
+@media(max-width:760px){.li-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:9px}.li-kpi-grid article{padding:9px}.li-kpi-grid article b{font-size:20px}.li-unit-heading{align-items:flex-start}.li-unit-heading button{white-space:nowrap}}
+</style></head>
 <body>
     <!-- Mobile Navigation Toggle -->
 <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation" aria-expanded="false">
@@ -1750,6 +1753,23 @@
         <article class="nrd-card"><header><div><i class="fas fa-chart-line"></i><div><h2>Attendance Trend</h2><small>Last 7 days</small></div></div></header><div class="nrd-chart nrd-small-chart"><canvas id="attendanceTrendChart"></canvas></div></article>
         <article class="nrd-card"><header><div><i class="fas fa-venus-mars"></i><div><h2>Student Distribution</h2><small>Program demographics</small></div></div></header><div class="nrd-chart nrd-small-chart"><canvas id="studentDistributionChart"></canvas></div></article>
         <article class="nrd-card"><header><div><i class="fas fa-hospital"></i><div><h2>Clinical Hours</h2><small>1,500 hours required</small></div></div></header><div class="nrd-clinical"><div class="nrd-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"></circle><circle id="clinicalRing" cx="50" cy="50" r="40"></circle></svg><b id="clinicalHoursPercent">0%</b></div><div><strong><span id="clinicalHoursCompleted">0</span> / 1,500 hrs</strong><span>On Track: <b id="clinicalOnTrack">0</b></span><span>At Risk: <b id="clinicalAtRisk">0</b></span><span>Critical: <b id="clinicalCritical">0</b></span></div></div><div class="nrd-clinical-bar"><span id="clinicalHoursBar"></span></div></article>
+    </section>
+
+    <!-- EXTENDED ACADEMIC PERFORMANCE & WORKLOAD -->
+    <section class="nrd-card li-workload" id="lecturerWorkloadInsights">
+      <header><div><i class="fas fa-gauge-high"></i><div><h2>Academic Performance & Workload</h2><small>Live oversight of your assigned teaching responsibilities</small></div></div><span class="li-live">LIVE DATA</span></header>
+      <div class="li-kpi-grid">
+        <article><span>Marks submission</span><b id="liMarksProgress">—</b><small id="liMarksDetail">Loading unit marks...</small></article>
+        <article><span>Exam completion</span><b id="liExamProgress">—</b><small id="liExamDetail">Exam activity</small></article>
+        <article><span>Attendance rate</span><b id="liAttendanceRate">—</b><small id="liAttendanceDetail">Recorded attendance</small></article>
+        <article><span>Online assignments</span><b id="liAssignments">—</b><small id="liAssignmentDetail">Assigned unit tasks</small></article>
+        <article><span>NurseIQ participation</span><b id="liNurseIq">—</b><small id="liNurseIqDetail">Student practice activity</small></article>
+        <article><span>Research supervision</span><b id="liResearch">—</b><small id="liResearchDetail">Student research submissions</small></article>
+        <article><span>Teaching documents</span><b id="liTeachingDocs">—</b><small id="liTeachingDocsDetail">Schemes, lesson plans and reports</small></article>
+      </div>
+      <div class="li-unit-heading"><div><h3>Unit-by-unit performance</h3><p id="liUnitSummary">Loading assigned-unit performance...</p></div><button type="button" data-tab="reports">Detailed reports <i class="fas fa-arrow-right"></i></button></div>
+      <div class="li-table-wrap"><table class="li-unit-table"><thead><tr><th>Assigned unit</th><th>Students</th><th>Marks published</th><th>Average</th><th>Completion</th></tr></thead><tbody id="liUnitPerformanceRows"><tr><td colspan="5">Loading unit performance...</td></tr></tbody></table></div>
+      <div class="li-footnote">Marks progress uses approved and published marks only. Missing source data is shown as unavailable, not as zero.</div>
     </section>
 
     <div class="nrd-hidden-data" hidden>
