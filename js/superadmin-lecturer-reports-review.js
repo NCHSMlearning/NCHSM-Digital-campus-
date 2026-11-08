@@ -444,6 +444,7 @@
             populateFilters();
             updateCounters();
             renderManagementDashboard();
+            updateInstitutionalDashboard();
             applyFilters();
 
             state.initialized = true;
@@ -880,6 +881,68 @@
         renderManagementDashboard();
     }
 
+
+    function updateInstitutionalDashboard() {
+        const all = state.rows || [];
+        const now = Date.now();
+        const schoolRows = school => all.filter(row => schoolOf(row) === school);
+        const matchingSubmission = deadline => all.some(row =>
+            schoolOf(row) === deadline.school &&
+            (!deadline.document_type || row.document_type === deadline.document_type) &&
+            (!deadline.unit_code || String(row.subject_code || '').toLowerCase() === String(deadline.unit_code).toLowerCase()) &&
+            ['submitted','resubmitted','under_review','approved'].includes(row.status)
+        );
+        const overdue = deadlineRows.filter(d => new Date(d.due_at).getTime() < now && !matchingSubmission(d));
+        const dueSoon = deadlineRows.filter(d => {
+            const due = new Date(d.due_at).getTime();
+            return due >= now && due <= now + 7 * 24 * 60 * 60 * 1000 && !matchingSubmission(d);
+        });
+        const count = (rows, predicate) => rows.filter(predicate).length;
+        const set = (id, value) => { const node = getElement(id); if (node) node.textContent = String(value); };
+        const stats = rows => ({
+            total: rows.length,
+            pending: count(rows, r => ['draft','returned'].includes(r.status)),
+            awaiting: count(rows, r => ['submitted','resubmitted'].includes(r.status)),
+            review: count(rows, r => r.status === 'under_review'),
+            approved: count(rows, r => r.status === 'approved')
+        });
+        const nursing = stats(schoolRows('Nursing'));
+        const tvet = stats(schoolRows('TVET'));
+        const total = stats(all);
+        set('npoTotal', total.total); set('npoAwaiting', total.awaiting);
+        set('npoInReview', total.review); set('npoApproved', total.approved);
+        set('npoOverdue', overdue.length);
+        set('npoNursingTotal', nursing.total); set('npoNursingPending', nursing.pending);
+        set('npoNursingReview', nursing.review); set('npoNursingApproved', nursing.approved);
+        set('npoNursingOverdue', overdue.filter(d => d.school === 'Nursing').length);
+        set('npoNursingDue', dueSoon.filter(d => d.school === 'Nursing').length);
+        set('npoNursingAwaiting', nursing.awaiting);
+        set('npoTVETTotal', tvet.total); set('npoTVETPending', tvet.pending);
+        set('npoTVETReview', tvet.review); set('npoTVETApproved', tvet.approved);
+        set('npoTVETOverdue', overdue.filter(d => d.school === 'TVET').length);
+        set('npoTVETDue', dueSoon.filter(d => d.school === 'TVET').length);
+        set('npoTVETAwaiting', tvet.awaiting);
+        set('npoLastUpdated', 'Updated ' + new Date().toLocaleTimeString());
+        const renderBars = (targetId, entries) => {
+            const target = getElement(targetId); if (!target) return;
+            const max = Math.max(1, ...entries.map(entry => entry.value));
+            target.innerHTML = entries.map(entry =>
+                '<div class="npo-bar-row"><span>' + escapeHtml(entry.label) +
+                '</span><div class="npo-track"><div class="npo-fill" style="width:' +
+                Math.round(entry.value / max * 100) + '%"></div></div><b>' +
+                entry.value + '</b></div>'
+            ).join('');
+        };
+        renderBars('npoStatusChart', [
+            {label:'Pending',value:total.pending},{label:'Awaiting',value:total.awaiting},
+            {label:'In review',value:total.review},{label:'Approved',value:total.approved},
+            {label:'Rejected',value:count(all,r=>r.status==='rejected')}
+        ]);
+        renderBars('npoSchoolChart', [
+            {label:'Nursing',value:nursing.total},{label:'TVET',value:tvet.total}
+        ]);
+    }
+
     function renderManagementDashboard() {
         const panel=getElement('lrrManagementDashboard'); if(!panel)return;
         const rows=activeSchool?state.rows.filter(r=>schoolOf(r)===activeSchool):state.rows;
@@ -950,7 +1013,7 @@
             const {error}=await client.from(TABLE_DEADLINES).insert(payload);
             if(error)throw error;
             getElement('lrrDeadlineForm').reset();
-            await loadDeadlines();renderManagementDashboard();
+            await loadDeadlines();renderManagementDashboard();updateInstitutionalDashboard();
             showModuleToast('Submission deadline saved.','success');
         }catch(error){showModuleToast(error.message||'Could not save deadline. Apply the deadline-table SQL migration and check its RLS policies.','error');}
     }
@@ -2355,6 +2418,20 @@
         approve,
         reject,
         getState: () => ({ ...state })
+    };
+
+
+    window.openNchsmReports = function (school) {
+        activeSchool = school === 'Nursing' || school === 'TVET' ? school : '';
+        quickStatus = '';
+        const tabLink = document.querySelector('[data-tab="lecturer-reports-review"]');
+        if (tabLink) tabLink.click();
+        setTimeout(() => {
+            renderManagementDashboard();
+            applyFilters();
+            const panel = getElement('lrrManagementDashboard');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 180);
     };
 
     /*
