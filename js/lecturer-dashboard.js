@@ -68,6 +68,7 @@ const LecturerDashboard = {
     cacheKey: null,
     _assignedUnitsLoaded: false,
     _assignedStudentsLoaded: false,
+    totalAssignedEnrollments: null,
     _refreshInProgress: false,
     liveClockInterval: null,
 
@@ -238,6 +239,7 @@ const LecturerDashboard = {
                 this.assignedStudents = data.assignedStudents;
                 this._assignedStudentsLoaded = data.assignedStudentsLoaded !== false;
             }
+            if (Number.isFinite(Number(data.totalAssignedEnrollments))) this.totalAssignedEnrollments = Number(data.totalAssignedEnrollments);
             this.updateMetricCards();
             this.updateAttendanceMetricsUI();
             this.updateClinicalUI(this.clinicalMetrics.percent, this.clinicalMetrics.completed, this.clinicalMetrics.onTrack, this.clinicalMetrics.atRisk, this.clinicalMetrics.critical);
@@ -268,7 +270,8 @@ const LecturerDashboard = {
                     assignedUnits: this.assignedUnits,
                     assignedStudents: this.assignedStudents,
                     assignedUnitsLoaded: this._assignedUnitsLoaded,
-                    assignedStudentsLoaded: this._assignedStudentsLoaded
+                    assignedStudentsLoaded: this._assignedStudentsLoaded,
+                    totalAssignedEnrollments: this.totalAssignedEnrollments
                 }
             }));
         } catch (error) {
@@ -830,6 +833,7 @@ const LecturerDashboard = {
                 if (!this._assignedUnitsLoaded) return;
                 this.assignedStudents = [];
                 this._assignedStudentsLoaded = true;
+                this.totalAssignedEnrollments = 0;
                 this.assignedEnrollmentKeys = new Set();
                 this.metrics.totalStudents = 0;
                 this.updateMetricCards();
@@ -853,6 +857,7 @@ const LecturerDashboard = {
             const enrollments = (registrationRows || []).filter(enrollment =>
                 assignedUnitKeys.has(normalize(enrollment.unit_name) + '|' + normalize(enrollment.block))
             );
+            this.totalAssignedEnrollments = enrollments.length;
             // Keep exact student + unit + block membership for every downstream dashboard query.
             this.assignedEnrollmentKeys = new Set(enrollments.map(enrollment =>
                 String(enrollment.student_id || '').trim() + '|' + normalize(enrollment.unit_name) + '|' + normalize(enrollment.block)
@@ -865,6 +870,7 @@ const LecturerDashboard = {
             if (studentIds.length === 0) {
                 this.assignedStudents = [];
                 this._assignedStudentsLoaded = true;
+                this.totalAssignedEnrollments = 0;
                 this.metrics.totalStudents = 0;
                 this.updateMetricCards();
                 console.log('No approved registrations found for lecturer-assigned units/blocks.');
@@ -977,7 +983,9 @@ const LecturerDashboard = {
         const norm = value => String(value || '').trim().toLowerCase();
 
         if (this._assignedStudentsLoaded) this.metrics.totalStudents = students.length;
+        else if (!students.length) this.metrics.totalStudents = null;
         if (this._assignedUnitsLoaded) this.metrics.totalCourses = units.length;
+        else if (!units.length) this.metrics.totalCourses = null;
         if (!supabase) {
             console.error('[Lecturer Dashboard] Supabase client unavailable; showing cached metrics.');
             this.updateMetricCards();
@@ -1023,7 +1031,7 @@ const LecturerDashboard = {
             return result.value?.data || [];
         };
 
-        const attendance = getRows(0, 'At-risk attendance');
+        const attendance = this._assignedStudentsLoaded ? getRows(0, 'At-risk attendance') : null;
         if (attendance) {
             const absenceCounts = new Map();
             attendance.forEach(log => {
@@ -1038,7 +1046,7 @@ const LecturerDashboard = {
             this.metrics.atRiskStudents = [...absenceCounts.values()].filter(count => count > 5).length;
         }
 
-        const todayAttendance = getRows(1, 'Pending attendance');
+        const todayAttendance = this._assignedStudentsLoaded ? getRows(1, 'Pending attendance') : null;
         if (todayAttendance) {
             const pendingIds = new Set();
             todayAttendance.forEach(log => {
@@ -1052,7 +1060,7 @@ const LecturerDashboard = {
             this.metrics.pendingAttendance = pendingIds.size;
         }
 
-        const exams = getRows(2, 'Exams due');
+        const exams = this._assignedUnitsLoaded ? getRows(2, 'Exams due') : null;
         if (exams) {
             const active = new Set(['published', 'upcoming', 'scheduled']);
             this.metrics.examsDue = exams.filter(exam => {
@@ -1061,7 +1069,7 @@ const LecturerDashboard = {
             }).length;
         }
 
-        const marks = getRows(3, 'Published marks');
+        const marks = this._assignedUnitsLoaded ? getRows(3, 'Published marks') : null;
         if (marks) {
             const latestByStudentUnit = new Map();
             marks.forEach(mark => {
@@ -1241,34 +1249,43 @@ const LecturerDashboard = {
         const container = document.getElementById('quickStatsContainer');
         if (!container) return;
 
-        const totalStudents = this.assignedStudents.length || this.metrics.totalStudents || 0;
-        const totalUnits = this.assignedUnits.length || this.metrics.totalCourses || 0;
-        const avgStudentsPerUnit = totalUnits > 0 ? Math.round(totalStudents / totalUnits) : 0;
-        const totalEnrollments = totalStudents * totalUnits;
+        const unitsKnown = this._assignedUnitsLoaded;
+        const studentsKnown = this._assignedStudentsLoaded;
+        const totalStudents = studentsKnown ? this.assignedStudents.length : (this.assignedStudents.length || '—');
+        const totalUnits = unitsKnown ? this.assignedUnits.length : (this.assignedUnits.length || '—');
+        const enrollmentsKnown = Number.isFinite(this.totalAssignedEnrollments);
+        const totalEnrollments = enrollmentsKnown ? this.totalAssignedEnrollments : '—';
+        const avgStudentsPerUnit = enrollmentsKnown && unitsKnown && this.assignedUnits.length
+            ? (this.totalAssignedEnrollments / this.assignedUnits.length).toFixed(1)
+            : '—';
         const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
         const emoji = this.isTVET ? '🔧' : '🎓';
 
         container.innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; background: #f8fafc; border-radius: 12px; padding: 15px 20px; border: 1px solid #e5e7eb;">
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Program</div>
-                    <div style="font-size: 20px; font-weight: 700; color: ${this.isTVET ? '#7c3aed' : '#4C1D95'};">${emoji} ${typeLabel}</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;background:#f8fafc;border-radius:12px;padding:15px 20px;border:1px solid #e5e7eb;">
+                <div style="text-align:center;">
+                    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Program</div>
+                    <div style="font-size:20px;font-weight:700;color:${this.isTVET ? '#7c3aed' : '#4C1D95'};">${emoji} ${typeLabel}</div>
                 </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Avg/Unit</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${avgStudentsPerUnit}</div>
+                <div style="text-align:center;">
+                    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Avg. Enrolments / Unit</div>
+                    <div style="font-size:20px;font-weight:700;color:#0A3D62;">${avgStudentsPerUnit}</div>
                 </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Enrollments</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalEnrollments}</div>
+                <div style="text-align:center;">
+                    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Actual Unit Enrolments</div>
+                    <div style="font-size:20px;font-weight:700;color:#0A3D62;">${totalEnrollments}</div>
                 </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Units</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalUnits}</div>
+                <div style="text-align:center;">
+                    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Unique Students</div>
+                    <div style="font-size:20px;font-weight:700;color:#0A3D62;">${totalStudents}</div>
                 </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Passing</div>
-                    <div style="font-size: 20px; font-weight: 700; color: ${this.isTVET ? '#8b5cf6' : '#10b981'};">≥${this.getPassingThreshold()}%</div>
+                <div style="text-align:center;">
+                    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Assigned Units</div>
+                    <div style="font-size:20px;font-weight:700;color:#0A3D62;">${totalUnits}</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Passing</div>
+                    <div style="font-size:20px;font-weight:700;color:${this.isTVET ? '#8b5cf6' : '#10b981'};">≥${this.getPassingThreshold()}%</div>
                 </div>
             </div>
         `;
