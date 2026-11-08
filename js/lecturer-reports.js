@@ -2725,6 +2725,42 @@
                 console.warn('[Reports] Attachment metadata insert unavailable; Storage fallback will be used.', attachmentMetaError);
             }
 
+            // Preserve an immutable version record for every uploaded revision.
+            // A new row is written only after the file has successfully reached Storage.
+            try {
+                const { data: latestVersion, error: versionReadError } = await supabase
+                    .from('lecturer_report_document_versions')
+                    .select('version_number')
+                    .eq('submission_id', submissionId)
+                    .order('version_number', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (versionReadError) throw versionReadError;
+                const nextVersion = Number(latestVersion?.version_number || 0) + 1;
+                const { data: attachmentMeta } = await supabase
+                    .from('lecturer_report_attachments')
+                    .select('id')
+                    .eq('submission_id', submissionId)
+                    .eq('storage_path', uploadedFile.path)
+                    .maybeSingle();
+                const { error: versionInsertError } = await supabase
+                    .from('lecturer_report_document_versions')
+                    .insert({
+                        submission_id: submissionId,
+                        attachment_id: attachmentMeta?.id || null,
+                        version_number: nextVersion,
+                        file_name: uploadedFile.name,
+                        storage_path: uploadedFile.path,
+                        mime_type: uploadedFile.type || null,
+                        file_size: uploadedFile.size || 0,
+                        uploaded_by: payload.lecturer_user_id
+                    });
+                if (versionInsertError) throw versionInsertError;
+            } catch (versionError) {
+                console.error('[Reports] Upload succeeded, but version history could not be recorded.', versionError);
+                throw new Error('The document uploaded, but version history could not be saved. Contact the administrator before resubmitting to avoid duplicate versions.');
+            }
+
             /* Keep attachment count in sync with the uploaded file. */
             const { data: updated, error } = await supabase
                 .from(REPORT_SUBMISSION_TABLE)
