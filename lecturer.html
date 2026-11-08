@@ -877,7 +877,97 @@
  #lecturerWorkloadInsights .li-kpi-grid article span{font-size:10px!important}
  #lecturerWorkloadInsights .li-kpi-grid article b{font-size:21px!important}
 }
-</style></head>
+</style><style id="lecturer-dashboard-reference-replica">
+/* Full dashboard composition — faithful to the approved lecturer dashboard concept */
+#dashboard-content{background:#f5f7fb!important}
+#dashboard-content>.nchsm-reference-dashboard{max-width:1600px;margin:0 auto;padding:20px 22px 28px!important;display:flex;flex-direction:column;gap:17px}
+#dashboard-content .nrd-hero{min-height:188px!important;border-radius:18px!important;overflow:hidden!important;box-shadow:0 12px 30px rgba(42,28,93,.16)!important;background:linear-gradient(115deg,#25105f,#4c1d95 58%,#7651d5)!important}
+#dashboard-content .nrd-hero-image{opacity:.22!important;filter:saturate(.75)!important}
+#dashboard-content .nrd-hero-overlay{background:linear-gradient(100deg,rgba(27,13,69,.96),rgba(76,29,149,.82) 60%,rgba(104,74,190,.60))!important}
+#dashboard-content .nrd-hero-content{padding:26px 30px!important;min-height:188px!important;gap:24px!important}
+#dashboard-content .nrd-avatar{width:58px!important;height:58px!important;border:1px solid rgba(255,255,255,.45)!important;background:rgba(255,255,255,.15)!important;box-shadow:0 8px 20px rgba(0,0,0,.12)!important}
+#dashboard-content .nrd-kicker{font-size:10px!important;letter-spacing:1.4px!important;font-weight:850!important}
+#dashboard-content .nrd-hero-copy h1{font-size:clamp(22px,2.3vw,31px)!important;line-height:1.2!important;letter-spacing:-.7px!important}
+#dashboard-content .nrd-hero-copy p{font-size:13px!important;color:rgba(255,255,255,.82)!important}
+#dashboard-content .nrd-meta{gap:8px!important}
+#dashboard-content .nrd-meta span{padding:6px 9px!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:20px!important;background:rgba(255,255,255,.10)!important;font-size:10px!important}
+#dashboard-content .nrd-hero-time{min-width:190px!important;padding:12px 15px!important;border:1px solid rgba(255,255,255,.19)!important;border-radius:14px!important;background:rgba(20,10,55,.22)!important;backdrop-filter:blur(8px)}
+#dashboard-content .nrd-hero-time strong{font-size:32px!important}
+#dashboard-content .nrd-metrics{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:12px!important;margin:0!important}
+#dashboard-content .nrd-metric{min-height:102px!important;padding:15px!important;border:1px solid #e7eaf1!important;border-radius:14px!important;background:#fff!important;box-shadow:0 4px 14px rgba(15,23,42,.035)!important;display:flex!important;align-items:center!important;gap:12px!important;text-align:left!important;transition:transform .18s ease,box-shadow .18s ease!important}
+#dashboard-content .nrd-metric:hover{transform:translateY(-3px)!important;box-shadow:0 10px 24px rgba(15,23,42,.08)!important}
+#dashboard-content .nrd-metric-icon{width:42px!important;height:42px!important;flex:0 0 42px!important;border-radius:12px!important;font-size:17px!important}
+#dashboard-content .nrd-metric small{font-size:9px!important;letter-spacing:.45px!important;color:#64748b!important;font-weight:850!important}
+#dashboard-content .nrd-metric b{font-size:24px!important;color:#172554!important;line-height:1.15!important}
+#dashboard-content .nrd-metric em{font-size:9px!important;color:#94a3b8!important}
+#dashboard-content .nrd-class-exam-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important;margin:0!important}
+#dashboard-content .nrd-class-exam-row .nrd-next-class,#dashboard-content .nrd-class-exam-row .nrd-next-exam{height:auto!important;min-height:180px!important;border-radius:16px!important}
+#dashboard-content .nrd-card{border:1px solid #e6eaf1!important;border-radius:15px!important;background:#fff!important;box-shadow:0 5px 18px rgba(15,23,42,.045)!important;overflow:hidden}
+#dashboard-content .nrd-card>header:not(.li-workload>header){min-height:62px;padding:14px 17px!important;border-bottom:1px solid #edf0f5!important;background:#fff!important;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#dashboard-content .nrd-card>header>div{display:flex;align-items:center;gap:10px;min-width:0}
+#dashboard-content .nrd-card>header>div>i{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#f1edff;color:#5b21b6;font-size:14px}
+#dashboard-content .nrd-card>header h2{font-size:13px!important;font-weight:850!important;line-height:1.25!important;color:#172033!important;margin:0!important}
+#dashboard-content .nrd-card>header small{display:block;color:#94a3b8!important;font-size:10px!important;margin-top:3px!important}
+#dashboard-content .nrd-card>header button{border:1px solid #e5e7eb!important;background:#fff!important;color:#5b21b6!important;border-radius:8px!important;padding:7px 10px!important;font-size:9px!important;font-weight:800!important;white-space:nowrap}
+#dashboard-content .nrd-three-column{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important;margin:0!important;align-items:stretch}
+#dashboard-content .nrd-analytics .nrd-chart-card{min-height:260px!important}
+#dashboard-content .nrd-chart{height:205px!important;padding:13px 16px 16px!important;position:relative!important}
+#dashboard-content .nrd-chart canvas{max-width:100%!important}
+#dashboard-content .nrd-attendance-summary{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;padding:22px 15px 14px!important}
+#dashboard-content .nrd-attendance-summary>div{padding:13px 6px!important;border-radius:11px!important;background:#f8fafc!important;text-align:center}
+#dashboard-content .nrd-attendance-summary b{display:block;font-size:23px!important;color:#172554!important}
+#dashboard-content .nrd-attendance-summary span{font-size:10px!important;color:#64748b!important}
+#dashboard-content .nrd-attendance-foot{display:flex!important;justify-content:space-around!important;padding:11px 12px!important;border-top:1px solid #f0f2f6!important;color:#64748b!important;font-size:10px!important}
+#dashboard-content .nrd-risk-bars{padding:18px!important;display:flex;flex-direction:column;gap:17px}
+#dashboard-content .nrd-risk-bars>div{display:grid;grid-template-columns:1fr auto;gap:7px 12px;align-items:center;font-size:11px;color:#64748b}
+#dashboard-content .nrd-risk-bars>div>b{font-size:13px;color:#172033}
+#dashboard-content .nrd-risk-bars>div>i{grid-column:1/-1;height:8px!important;border-radius:20px!important;background:#f1f5f9!important;overflow:hidden}
+#dashboard-content .nrd-risk-bars>div>i>em{height:100%;display:block;border-radius:20px;background:linear-gradient(90deg,#7c3aed,#4f46e5)}
+#dashboard-content .nrd-insights>article{min-height:230px}
+#dashboard-content #topStudentsList,#dashboard-content #riskStudentList,#dashboard-content #recentActivityList{padding:8px 16px 14px!important}
+#dashboard-content .nrd-empty{padding:20px 10px!important;text-align:center!important;color:#94a3b8!important;font-size:11px!important}
+#dashboard-content .nrd-secondary-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important;margin:0!important}
+#dashboard-content .nrd-secondary-grid>.nrd-card{min-width:0}
+#dashboard-content .nrd-secondary-grid .nrd-small-chart{height:190px!important}
+#dashboard-content .nrd-clinical{display:flex!important;align-items:center!important;justify-content:center!important;gap:22px!important;padding:17px!important}
+#dashboard-content .nrd-ring{width:104px!important;height:104px!important;flex:0 0 104px!important}
+#dashboard-content .nrd-ring b{font-size:20px!important;color:#4c1d95!important}
+#dashboard-content .nrd-clinical>div:last-child{display:flex;flex-direction:column;gap:6px;font-size:10px;color:#64748b}
+#dashboard-content .nrd-clinical>div:last-child strong{font-size:14px;color:#172033}
+#dashboard-content .nrd-clinical-bar{height:8px!important;margin:0 17px 18px!important;border-radius:20px!important;background:#f1f5f9!important;overflow:hidden}
+#dashboard-content .nrd-clinical-bar span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#6d28d9,#8b5cf6)}
+#dashboard-content .nrd-quick-actions{margin:0!important}
+#dashboard-content .nrd-quick-actions .nrd-actions{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:10px!important;padding:15px!important}
+#dashboard-content .nrd-quick-actions .nrd-actions button{min-height:68px!important;border:1px solid #e8eaf1!important;border-radius:11px!important;background:#fbfcff!important;color:#334155!important;font-size:10px!important;font-weight:800!important}
+#dashboard-content .nrd-quick-actions .nrd-actions button i{color:#6d28d9!important;font-size:17px!important}
+#dashboard-content .nrd-footer{padding:8px 0 2px!important;color:#94a3b8!important;font-size:10px!important}
+@media(max-width:1200px){
+ #dashboard-content>.nchsm-reference-dashboard{padding:16px!important}
+ #dashboard-content .nrd-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ #dashboard-content .nrd-three-column,#dashboard-content .nrd-secondary-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:760px){
+ #dashboard-content>.nchsm-reference-dashboard{padding:10px!important;gap:12px!important}
+ #dashboard-content .nrd-hero,#dashboard-content .nrd-hero-content{min-height:0!important}
+ #dashboard-content .nrd-hero-content{padding:18px!important;align-items:flex-start!important}
+ #dashboard-content .nrd-hero-time{width:100%!important;min-width:0!important}
+ #dashboard-content .nrd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+ #dashboard-content .nrd-metric{min-height:88px!important;padding:10px!important;gap:8px!important}
+ #dashboard-content .nrd-metric-icon{width:34px!important;height:34px!important;flex-basis:34px!important;font-size:14px!important}
+ #dashboard-content .nrd-metric b{font-size:20px!important}
+ #dashboard-content .nrd-class-exam-row,#dashboard-content .nrd-three-column,#dashboard-content .nrd-secondary-grid{grid-template-columns:1fr!important;gap:11px!important}
+ #dashboard-content .nrd-class-exam-row .nrd-next-class,#dashboard-content .nrd-class-exam-row .nrd-next-exam{height:auto!important;min-height:170px!important}
+ #dashboard-content .nrd-quick-actions .nrd-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #dashboard-content .nrd-chart{height:220px!important}
+}
+@media(max-width:380px){
+ #dashboard-content>.nchsm-reference-dashboard{padding:7px!important}
+ #dashboard-content .nrd-metric{padding:8px!important}
+ #dashboard-content .nrd-metric b{font-size:18px!important}
+ #dashboard-content .nrd-card>header:not(.li-workload>header){padding:11px!important}
+}
+</style>
+</head>
 <body>
     <!-- Mobile Navigation Toggle -->
 <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation" aria-expanded="false">
@@ -1791,19 +1881,6 @@
       <div class="li-footnote">Marks progress uses approved and published marks only. Missing source data is shown as unavailable, not as zero.</div>
     </section>
 
-    <!-- QUICK ACTIONS -->
-    <article class="nrd-card nrd-quick-actions">
-        <header><div><i class="fas fa-bolt"></i><div><h2>Quick Actions</h2><small>Access your most-used lecturer tools</small></div></div><button data-tab="dashboard" type="button">Overview</button></header>
-        <div class="nrd-actions">
-            <button data-tab="cats" type="button"><i class="fas fa-file-circle-plus"></i><span>Create Exam</span></button>
-            <button data-tab="attendance" type="button"><i class="fas fa-user-check"></i><span>Mark Attendance</span></button>
-            <button data-tab="marks-management" type="button"><i class="fas fa-chart-column"></i><span>Manage Marks</span></button>
-            <button data-tab="my-students" type="button"><i class="fas fa-users"></i><span>View Students</span></button>
-            <button data-tab="online-learning" type="button"><i class="fas fa-laptop-code"></i><span>Online Learning</span></button>
-            <button data-tab="research-papers" type="button"><i class="fas fa-file-signature"></i><span>Research Papers</span></button>
-        </div>
-    </article>
-
     <!-- PERFORMANCE / ATTENDANCE / RISK -->
     <section class="nrd-three-column nrd-analytics">
         <article class="nrd-card nrd-chart-card"><header><div><i class="fas fa-chart-column"></i><div><h2>Student Performance Trends</h2><small>Performance by assigned unit</small></div></div><button data-tab="reports" type="button">View Details</button></header><div class="nrd-chart"><canvas id="performanceChart"></canvas></div></article>
@@ -1824,6 +1901,20 @@
         <article class="nrd-card"><header><div><i class="fas fa-venus-mars"></i><div><h2>Student Distribution</h2><small>Program demographics</small></div></div></header><div class="nrd-chart nrd-small-chart"><canvas id="studentDistributionChart"></canvas></div></article>
         <article class="nrd-card"><header><div><i class="fas fa-hospital"></i><div><h2>Clinical Hours</h2><small>1,500 hours required</small></div></div></header><div class="nrd-clinical"><div class="nrd-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"></circle><circle id="clinicalRing" cx="50" cy="50" r="40"></circle></svg><b id="clinicalHoursPercent">0%</b></div><div><strong><span id="clinicalHoursCompleted">0</span> / 1,500 hrs</strong><span>On Track: <b id="clinicalOnTrack">0</b></span><span>At Risk: <b id="clinicalAtRisk">0</b></span><span>Critical: <b id="clinicalCritical">0</b></span></div></div><div class="nrd-clinical-bar"><span id="clinicalHoursBar"></span></div></article>
     </section>
+
+    <!-- QUICK ACTIONS -->
+    <article class="nrd-card nrd-quick-actions">
+        <header><div><i class="fas fa-bolt"></i><div><h2>Quick Actions</h2><small>Access your most-used lecturer tools</small></div></div><button data-tab="dashboard" type="button">Overview</button></header>
+        <div class="nrd-actions">
+            <button data-tab="cats" type="button"><i class="fas fa-file-circle-plus"></i><span>Create Exam</span></button>
+            <button data-tab="attendance" type="button"><i class="fas fa-user-check"></i><span>Mark Attendance</span></button>
+            <button data-tab="marks-management" type="button"><i class="fas fa-chart-column"></i><span>Manage Marks</span></button>
+            <button data-tab="my-students" type="button"><i class="fas fa-users"></i><span>View Students</span></button>
+            <button data-tab="online-learning" type="button"><i class="fas fa-laptop-code"></i><span>Online Learning</span></button>
+            <button data-tab="research-papers" type="button"><i class="fas fa-file-signature"></i><span>Research Papers</span></button>
+        </div>
+    </article>
+
 
     <div class="nrd-hidden-data" hidden>
         <span id="todayAttendanceTotal">0</span><span id="todayAttendanceTotal2">0</span><span id="weeklyAttendanceTotal">0</span><span id="monthlyAttendanceRate">0%</span><span id="overallAttendanceTotal">0</span><span id="locationBreakdown">🏫 0 · 🏥 0</span><span id="todayDateDisplay"></span><span id="courseProgressList"></span><span id="attendanceAlerts"></span><span id="quickStatsContainer"></span>
