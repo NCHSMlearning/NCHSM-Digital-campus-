@@ -1549,7 +1549,7 @@ const LecturerDashboard = {
                     <span style="font-weight: 600; color: ${c.text}; font-size: 11px;">${c.label}</span>
                     <span style="flex: 1; font-size: 13px; color: #1e293b; font-weight: 500;">${s.name}</span>
                     <span style="font-size: 12px; color: #64748b;">${s.absences} absences</span>
-                    <span style="font-size: 12px; font-weight: 600; color: ${s.isPassing ? '#10b981' : '#ef4444'};">${s.avgScore}% ${passingEmoji}</span>
+                    <span style="font-size: 11px; font-weight: 600; color: ${s.hasMarks ? (s.isPassing ? '#10b981' : '#ef4444') : '#64748b'};">${s.hasMarks ? s.avgScore + '% ' + passingEmoji : 'No published marks'}</span>
                 </div>
             `;
         }).join('');
