@@ -510,10 +510,15 @@
         if (documentTypeSelect) {
             const common = [
                 ['scheme_of_work', 'Scheme of Work'],
+                ['lesson_plan', 'Lesson Plans'],
+                ['record_of_work', 'Teaching Log / Record of Work'],
+                ['instructional_materials', 'Teaching & Learning Materials'],
+                ['clinical_supervision_report', 'Clinical Supervision'],
+                ['course_evaluation_report', 'Course / Unit Evaluation'],
+                ['lecturer_self_evaluation', 'Lecturer Reflection / Self-Evaluation'],
                 ['course_outline', 'Course Outline'],
                 ['course_objectives', 'Course Objectives'],
-                ['records_of_work', 'Records of Work'],
-                ['lesson_plan', 'Lesson Plan'],
+                ['records_of_work', 'Legacy Records of Work'],
                 ['teaching_schedule', 'Teaching Schedule'],
                 ['learning_resources', 'Learning Resources / Materials'],
                 ['other_teaching_document', 'Other Teaching Document']
