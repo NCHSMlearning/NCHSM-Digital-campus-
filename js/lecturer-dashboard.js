@@ -1085,7 +1085,7 @@ const LecturerDashboard = {
                 const key = normalize(mark.subject_name) + '|' + normalize(mark.block);
                 const score = Number(mark.final_score);
                 if (!unitKeys.has(key) || !this.isMarkForAssignedRegistration(mark) || !Number.isFinite(score) || score < 0 || score > 100) return;
-                const rowKey = String(mark.student_id || mark.admission_number || '') + '|' + key;
+                const rowKey = String(mark.admission_number || mark.student_id || '') + '|' + key;
                 const old = latestByStudentUnit.get(rowKey);
                 if (!old || new Date(mark.updated_at || mark.created_at || 0) > new Date(old.updated_at || old.created_at || 0)) latestByStudentUnit.set(rowKey, mark);
             });
@@ -1172,7 +1172,7 @@ const LecturerDashboard = {
             const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key && this.isMarkForAssignedRegistration(m) && m.published === true && norm(m.approval_status) === 'approved');
             const publishedByStudent = new Map();
             unitMarks.forEach(m => {
-                const id=String(m.student_id||m.admission_number||'').trim(); if(!id)return;
+                const id=String(m.admission_number||m.student_id||'').trim(); if(!id)return;
                 const old=publishedByStudent.get(id);
                 if(!old || new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0)) publishedByStudent.set(id,m);
             });
