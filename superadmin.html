@@ -1,29 +1,39 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NCHSM Super Admin | Research Topics Vault</title>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NCHSM Super Admin Portal</title>
+<link rel="icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#172033;font-family:Inter,system-ui,Arial,sans-serif}.top{height:68px;background:#10243b;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 24px}.top strong{font-size:16px}.top button{background:#f3b33d;color:#10243b;border:0;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer}.layout{display:grid;grid-template-columns:245px 1fr;min-height:calc(100vh - 68px)}aside{background:#172b43;color:#dbeafe;padding:20px}aside h3{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8}aside a{display:block;color:#fff;text-decoration:none;padding:12px;border-radius:9px;background:#24415f}main{padding:24px;min-width:0}.intro{margin-bottom:18px}.intro h1{margin:0;font-size:24px}.intro p{color:#64748b}.notice{padding:12px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12px;margin-bottom:15px}@media(max-width:750px){.layout{grid-template-columns:1fr}aside{display:none}main{padding:12px}.top{padding:0 14px}}
-</style></head><body>
-<header class="top"><strong><i class="fa-solid fa-graduation-cap"></i> NCHSM · SUPER ADMIN</strong><button id="signout">Sign out</button></header>
-<div class="layout"><aside><h3>Research Governance</h3><a href="#research-topic-vault"><i class="fa-solid fa-book-bookmark"></i> Research Topics Vault</a></aside>
-<main><div class="intro"><h1>Research Topics Vault</h1><p>Institution-wide oversight of proposed, reserved, active and completed research topics across Nursing and TVET.</p></div>
-<div class="notice"><b>Reservation rule:</b> A topic remains reserved while pending, approved, active or completed. It becomes available again only after it is formally released or rejected. Exact duplicate titles are blocked by a database constraint.</div>
-<section id="research-topic-vault"></section>
-</main></div>
-<script>
-(function(){
- const URL='https://lwhtjozfsmbyihenfunw.supabase.co';
- const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsd2h0am96ZnNtYnllaGVuZnVudyIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzU5NjU4MTI3LCJleHAiOjIwNzUyMzQxMjN9.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
- window.supabaseClient=window.supabase.createClient(URL,KEY);
- window.addEventListener('DOMContentLoaded',async()=>{
-  const a=await window.supabaseClient.auth.getUser();
-  if(!a.data?.user){location.href='login.html';return}
-  const p=await window.supabaseClient.from('consolidated_user_profiles_table').select('role').eq('user_id',a.data.user.id).maybeSingle();
-  if(!p.data||!['superadmin','super_admin','super admin'].includes(String(p.data.role||'').toLowerCase())){alert('Super Admin access required.');location.href='login.html';return}
- });
- document.getElementById('signout').onclick=async()=>{await window.supabaseClient.auth.signOut();location.href='login.html'};
-})();
-</script><script src="js/research-topic-vault.js?v=20261108-v1" defer></script>
+*{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#172033;font-family:Inter,system-ui,Arial,sans-serif}.shell{min-height:100vh}.sidebar{position:fixed;inset:0 auto 0 0;width:260px;background:#10243b;color:#e2e8f0;padding:22px 14px;display:flex;flex-direction:column;z-index:20}.brand{padding:8px 12px 22px;border-bottom:1px solid #29435c}.brand strong{display:block;color:#fff;font-size:16px}.brand small{color:#a9bfd2}.nav-label{margin:24px 12px 8px;color:#8fa9bf;font-size:10px;letter-spacing:1.4px;font-weight:800}.nav a{display:flex;align-items:center;gap:12px;padding:13px 14px;margin:4px 0;border-radius:10px;color:#d9e5ef;text-decoration:none;font-size:13px;font-weight:650}.nav a:hover,.nav a.active{background:#244766;color:#fff}.nav a.active{box-shadow:inset 3px 0 #f3b33d}.nav i{width:19px;text-align:center}.sidebar-foot{margin-top:auto;padding:14px 10px;color:#91a8bc;font-size:11px}.main{margin-left:260px;min-height:100vh}.topbar{height:68px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;padding:0 28px}.topbar strong{color:#183b58}.topbar button{border:0;border-radius:9px;padding:10px 14px;background:#fff1d6;color:#784b00;font-weight:800;cursor:pointer}.content{padding:28px;max-width:1500px;margin:auto}.view{display:none}.view.active{display:block}.welcome{background:linear-gradient(120deg,#10243b,#1c5672);color:#fff;padding:26px;border-radius:16px;margin-bottom:20px}.welcome h1{margin:0 0 8px;font-size:25px}.welcome p{margin:0;color:#d2e1ec}.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.quick a{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:20px;color:#183b58;text-decoration:none;font-weight:750}.quick i{display:block;font-size:22px;color:#b7791f;margin-bottom:12px}@media(max-width:760px){.sidebar{width:76px;padding:14px 8px}.brand{padding:10px 4px 18px;text-align:center}.brand strong{font-size:10px}.brand small,.nav-label,.nav a span,.sidebar-foot{display:none}.nav a{justify-content:center;padding:15px 5px}.nav i{font-size:18px}.main{margin-left:76px}.topbar{padding:0 14px}.content{padding:14px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+ <div class="brand"><strong><i class="fa-solid fa-graduation-cap"></i> NCHSM</strong><small>Super Admin Portal</small></div>
+ <div class="nav-label">WORKSPACE</div>
+ <nav class="nav" id="superadmin-nav">
+  <a href="#dashboard" data-view="dashboard" class="active"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+  <a href="#research-topic-vault-view" data-view="research-topic-vault-view"><i class="fa-solid fa-book-bookmark"></i><span>Research Topics Vault</span></a>
+ </nav>
+ <div class="sidebar-foot">Institution-wide administration<br>© NCHSM</div>
+</aside>
+<div class="main">
+ <header class="topbar"><strong id="page-title">Super Admin Dashboard</strong><button id="signout"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button></header>
+ <main class="content">
+  <section class="view active" id="dashboard-view">
+   <div class="welcome"><h1>Super Admin Workspace</h1><p>Institution-wide oversight and governance for Nursing and TVET.</p></div>
+   <div class="quick"><a href="#research-topic-vault-view" data-view="research-topic-vault-view"><i class="fa-solid fa-book-bookmark"></i>Research Topics Vault<br><small>Review, approve and manage topic reservations</small></a></div>
+  </section>
+  <section class="view" id="research-topic-vault-view">
+   <div id="research-topic-vault"></div>
+  </section>
+ </main>
+</div>
+</div>
+<script src="js/superadmin.js?v=20261108-2" defer></script>
+<script src="js/research-topic-vault.js?v=20261108-2" defer></script>
 </body></html>
