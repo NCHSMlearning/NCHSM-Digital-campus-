@@ -21,7 +21,7 @@ async function init(){
 }
 function mount(){
  let root=$('research-topic-vault'); if(root)return;
- const section=$('research-papers-content')||$('research-papers')||$('online-learning-content');
+ const section=$('research-papers-content')||$('research-papers')||$('online-learning-content')||$('hub-online-learning')||$('research-supervision');
  if(section){
   root=document.createElement('section');root.id='research-topic-vault';root.className='rtv-wrap';
   root.style.cssText='margin:18px 0;padding:0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;color:#172033';
@@ -119,5 +119,5 @@ async function review(id){
  if(up.error){fail('Review failed: '+up.error.message);return}
  notify('Topic status updated.');await load();
 }
-document.addEventListener('DOMContentLoaded',()=>setTimeout(init,700));
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,700),{once:true});else setTimeout(init,700);
 })();
