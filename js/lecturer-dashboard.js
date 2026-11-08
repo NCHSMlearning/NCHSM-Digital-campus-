@@ -1085,7 +1085,7 @@ const LecturerDashboard = {
                 const key = normalize(mark.subject_name) + '|' + normalize(mark.block);
                 const score = Number(mark.final_score);
                 if (!unitKeys.has(key) || !this.isMarkForAssignedRegistration(mark) || !Number.isFinite(score) || score < 0 || score > 100) return;
-                const rowKey = String(mark.student_id) + '|' + key;
+                const rowKey = String(mark.student_id || mark.admission_number || '') + '|' + key;
                 const old = latestByStudentUnit.get(rowKey);
                 if (!old || new Date(mark.updated_at || mark.created_at || 0) > new Date(old.updated_at || old.created_at || 0)) latestByStudentUnit.set(rowKey, mark);
             });
@@ -1172,7 +1172,7 @@ const LecturerDashboard = {
             const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key && this.isMarkForAssignedRegistration(m) && m.published === true && norm(m.approval_status) === 'approved');
             const publishedByStudent = new Map();
             unitMarks.forEach(m => {
-                const id=String(m.student_id||''); if(!id)return;
+                const id=String(m.student_id||m.admission_number||'').trim(); if(!id)return;
                 const old=publishedByStudent.get(id);
                 if(!old || new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0)) publishedByStudent.set(id,m);
             });
@@ -1499,14 +1499,15 @@ const LecturerDashboard = {
             const marks=(marksResult.data||[]).filter(m=>unitKeys.has(norm(m.subject_name)+'|'+norm(m.block))&&this.isMarkForAssignedRegistration(m)&&Number.isFinite(Number(m.final_score)));
             const latestMarks=new Map();
             marks.forEach(m=>{
-                const key=String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block);
+                const key=String(m.student_id||m.admission_number||'')+'|'+norm(m.subject_name)+'|'+norm(m.block);
                 const old=latestMarks.get(key);
                 if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latestMarks.set(key,m);
             });
             const rows=studentIds.map(id=>{
                 const student=students.find(s=>String(s.user_id)===id);
                 const absences=attendance.filter(a=>String(a.student_id)===id&&norm(a.attendance_status||a.status)==='absent').length;
-                const studentMarks=[...latestMarks.values()].filter(m=>String(m.student_id)===id);
+                const studentAdmission=String(student?.student_id||student?.admission_number||'').trim();
+                const studentMarks=[...latestMarks.values()].filter(m=>String(m.student_id||'')===id||String(m.admission_number||'').trim()===studentAdmission);
                 const avg=studentMarks.length?studentMarks.reduce((sum,m)=>sum+Number(m.final_score),0)/studentMarks.length:null;
                 const expected=Math.max(1,Number(student?.unit_count)||1);
                 const coverage=Math.min(100,studentMarks.length/expected*100);
@@ -1677,7 +1678,7 @@ const LecturerDashboard = {
                 const latest=new Map();
                 (markResult.data||[]).forEach(m=>{
                     const score=Number(m.final_score);if(!Number.isFinite(score)||score<0||score>100||!this.isMarkForAssignedRegistration(m))return;
-                    const id=String(m.student_id),old=latest.get(id);
+                    const id=String(m.student_id||m.admission_number||'').trim(),old=latest.get(id);
                     if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(id,m);
                 });
                 const scores=[...latest.values()].map(x=>Number(x.final_score));
@@ -1710,7 +1711,7 @@ const LecturerDashboard = {
                 const old=latest.get(key);if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(key,m);
             });
             const aggregate=new Map();
-            latest.forEach(m=>{const id=String(m.student_id),entry=aggregate.get(id)||{name:m.student_name||students.find(s=>String(s.user_id)===id)?.full_name||'Student',scores:[]};entry.scores.push(Number(m.final_score));aggregate.set(id,entry);});
+            latest.forEach(m=>{const id=String(m.student_id||m.admission_number||'').trim(),matchedStudent=students.find(s=>String(s.user_id)===id||String(s.student_id||'').trim()===id||String(s.admission_number||'').trim()===id),entry=aggregate.get(id)||{name:m.student_name||matchedStudent?.full_name||'Student',scores:[]};entry.scores.push(Number(m.final_score));aggregate.set(id,entry);});
             const top=[...aggregate.values()].map(x=>({...x,avg:x.scores.reduce((a,b)=>a+b,0)/x.scores.length,units:x.scores.length})).sort((a,b)=>b.avg-a.avg).slice(0,5);
             container.innerHTML=top.length?top.map((x,i)=>'<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid #eef1f5"><b style="width:20px">'+(['🥇','🥈','🥉'][i]||String(i+1))+'</b><div style="flex:1;min-width:0"><strong style="font-size:10px">'+x.name+'</strong><div style="font-size:8px;color:#667085">'+x.units+' assigned units with published results</div></div><b style="font-size:13px;color:#15803d">'+Math.round(x.avg)+'%</b></div>').join(''):'<div class="nrd-empty">No approved and published marks yet.</div>';
         }catch(error){console.error('[Lecturer Dashboard] Top students failed:',error);container.innerHTML='<div class="nrd-empty">Unable to load top performers.</div>';}
@@ -2007,7 +2008,7 @@ const LecturerDashboard = {
                 const score=Number(m.final_score ?? m.score);
                 const key=normChart(m.subject_name)+'|'+normChart(m.block);
                 if(m.published!==true||normChart(m.approval_status)!=='approved'||!assignedUnitKeys.has(key)||!this.isMarkForAssignedRegistration(m)||!Number.isFinite(score)||score<0||score>100)return;
-                const rowKey=String(m.student_id)+'|'+key,old=latestPublished.get(rowKey);
+                const rowKey=String(m.student_id||m.admission_number||'')+'|'+key,old=latestPublished.get(rowKey);
                 if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latestPublished.set(rowKey,m);
             });
             const validPublishedMarks=[...latestPublished.values()];
