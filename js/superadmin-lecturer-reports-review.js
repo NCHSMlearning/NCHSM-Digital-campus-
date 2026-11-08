@@ -691,7 +691,7 @@
 
 
     function schoolOf(row) {
-        const raw = String(row.program || row.department || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const raw = [row.program, row.department].filter(Boolean).join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
         return raw.includes('tvet') || raw.includes('technicalvocational') || raw.includes('vocationaltraining') ? 'TVET' : 'Nursing';
     }
 
@@ -1059,6 +1059,7 @@
             const {error}=await client.from(TABLE_DEADLINES).insert(payload);
             if(error)throw error;
             getElement('lrrDeadlineForm').reset();
+            updateDeadlineScope();
             await loadDeadlines();populateDeadlinePrograms();renderManagementDashboard();updateInstitutionalDashboard();
             showModuleToast('Submission deadline saved.','success');
         }catch(error){showModuleToast(error.message||'Could not save deadline. Apply the deadline-table SQL migration and check its RLS policies.','error');}
