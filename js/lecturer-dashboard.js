@@ -280,45 +280,41 @@ const LecturerDashboard = {
     // ─── GET CURRENT PROGRAM ───
     getCurrentProgram() {
         try {
+            const normalize = value => String(value || '').trim();
+            const profile = window.lecturerDB?.getCurrentUserProfile?.() || {};
+
             if (window.CURRENT_PROGRAM) {
-                this.currentProgram = window.CURRENT_PROGRAM;
-                this.isTVET = window.IS_TVET || false;
-                localStorage.setItem('lecturerProgram', this.currentProgram);
-                localStorage.setItem('isTVET', JSON.stringify(this.isTVET));
-                return this.currentProgram;
+                this.currentProgram = normalize(window.CURRENT_PROGRAM);
+                this.isTVET = window.IS_TVET === true;
+            } else if (profile.program) {
+                this.currentProgram = normalize(profile.program);
+                this.isTVET = this.currentProgram.toUpperCase() !== 'KRCHN';
+            } else if (this.currentProgram && this.currentProgram.toUpperCase() !== 'NURSING') {
+                // Keep the programme already resolved from the authenticated staff record.
+                this.isTVET = this.currentProgram.toUpperCase() !== 'KRCHN';
+            } else {
+                const department = normalize(profile.department).toLowerCase();
+                const stored = normalize(localStorage.getItem('lecturerProgram'));
+                if (department === 'nursing' || department.includes('nursing')) {
+                    this.currentProgram = 'KRCHN';
+                    this.isTVET = false;
+                } else if (stored && stored.toUpperCase() !== 'NURSING') {
+                    this.currentProgram = stored;
+                    this.isTVET = this.currentProgram.toUpperCase() !== 'KRCHN';
+                } else if (department.includes('tvet')) {
+                    this.currentProgram = stored || 'TVET';
+                    this.isTVET = true;
+                } else {
+                    this.currentProgram = 'KRCHN';
+                    this.isTVET = false;
+                }
             }
 
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (profile?.program) {
-                this.currentProgram = profile.program;
-                this.isTVET = this.currentProgram !== 'KRCHN';
-                localStorage.setItem('lecturerProgram', this.currentProgram);
-                localStorage.setItem('isTVET', JSON.stringify(this.isTVET));
-                return this.currentProgram;
-            }
-
-            if (profile?.department) {
-                this.currentProgram = profile.department;
-                this.isTVET = this.currentProgram !== 'KRCHN';
-                localStorage.setItem('lecturerProgram', this.currentProgram);
-                localStorage.setItem('isTVET', JSON.stringify(this.isTVET));
-                return this.currentProgram;
-            }
-
-            const stored = localStorage.getItem('lecturerProgram');
-            if (stored) {
-                this.currentProgram = stored;
-                const storedTVET = localStorage.getItem('isTVET');
-                this.isTVET = storedTVET === 'true';
-                return stored;
-            }
-
-            console.warn('⚠️ No program found, using KRCHN as fallback');
-            this.currentProgram = 'KRCHN';
-            this.isTVET = false;
-            return 'KRCHN';
-        } catch (e) {
-            console.warn('⚠️ Error getting program:', e);
+            localStorage.setItem('lecturerProgram', this.currentProgram);
+            localStorage.setItem('isTVET', JSON.stringify(this.isTVET));
+            return this.currentProgram;
+        } catch (error) {
+            console.warn('[Lecturer Dashboard] Programme resolution failed:', error);
             this.currentProgram = 'KRCHN';
             this.isTVET = false;
             return 'KRCHN';
@@ -759,7 +755,7 @@ const LecturerDashboard = {
 
             const { data: staff, error: staffError } = await supabase
                 .from('staff_records')
-                .select('id, first_name, other_names, email')
+                .select('id, first_name, other_names, email, program, department')
                 .ilike('email', email)
                 .maybeSingle();
 
@@ -768,6 +764,13 @@ const LecturerDashboard = {
 
             this.lecturerUuid = window.currentUser?.id || profile.user_id || null;
             this.lecturerAssignmentId = String(staff.id);
+            if (staff.program) {
+                this.currentProgram = String(staff.program).trim();
+                this.isTVET = this.currentProgram.toUpperCase() !== 'KRCHN';
+            } else if (String(staff.department || '').toLowerCase().includes('nursing')) {
+                this.currentProgram = 'KRCHN';
+                this.isTVET = false;
+            }
             window.CORRECT_LECTURER_ID = String(staff.id);
             console.log('[Lecturer Dashboard] Resolved staff-record assignment ID:', this.lecturerAssignmentId);
             return this.lecturerAssignmentId;
