@@ -687,6 +687,10 @@ window.NCHSMLogin = {
                 full_name: profileData.full_name || 'User',
                 role: profileData.role || 'student',
                 program: profileData.program || profileData.department || '',
+                department: profileData.department || '',
+                school: profileData.school || profileData.school_name || profileData.department || '',
+                school_name: profileData.school_name || profileData.school || '',
+                campus: profileData.campus || '',
                 is_staff: !!isStaff,
                 two_factor_enabled: !!profileData.two_factor_enabled,
                 two_factor_verified: !!profileData.two_factor_verified
@@ -1837,16 +1841,10 @@ loadStaffRecords: async function() {
     // TRUSTED DEVICE
     // ============================================
     checkTrustedDevice: function() {
-        const deviceId = this.generateDeviceId();
-        const trustedDevice = this.state.trustedDevices[deviceId];
-        
-        if (trustedDevice && new Date(trustedDevice.expires) > new Date()) {
-            const storedUser = localStorage.getItem('userProfile');
-            if (storedUser) {
-                const profile = JSON.parse(storedUser);
-                this.redirectToDashboard(profile);
-            }
-        }
+        // A trusted-device marker or cached profile is not proof of authentication.
+        // Automatic redirects are handled by restoreVerifiedLoginSession() only
+        // after Supabase confirms the live session and matching database profile.
+        return false;
     },
     
     generateDeviceId: function() {
@@ -1921,12 +1919,13 @@ verifyStaffLogin: async function(identifier, password) {
         let twoFactorVerified = false;
 
         try {
-            const { data: profile } = await this.supabase
+            const { data: profile, error: profileError } = await this.supabase
                 .from('consolidated_user_profiles_table')
-                .select('user_id, two_factor_enabled, two_factor_secret, two_factor_verified')
-                .eq('email', staff.email)
+                .select('user_id, role, program, department, school, school_name, campus, two_factor_enabled, two_factor_secret, two_factor_verified')
+                .ilike('email', staff.email.trim())
                 .maybeSingle();
 
+            if (profileError) throw profileError;
             if (profile?.user_id) uuid = profile.user_id;
             twoFactorEnabled = !!profile?.two_factor_enabled;
             twoFactorSecret = profile?.two_factor_secret || null;
@@ -1947,8 +1946,12 @@ verifyStaffLogin: async function(identifier, password) {
             id: staff.id,
             email: staff.email,
             full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
-            role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
-            program: staff.department,
+            role: profile?.role || (/lecturer/i.test(staff.designation || '') ? 'lecturer' : 'staff'),
+            program: profile?.program || staff.department,
+            department: profile?.department || staff.department || '',
+            school: profile?.school || profile?.school_name || staff.department || '',
+            school_name: profile?.school_name || profile?.school || '',
+            campus: profile?.campus || '',
             is_staff: true,
             login_enabled: staff.login_enabled,
             status: staff.status,
@@ -2511,15 +2514,34 @@ executeLogin: async function(identifier, password) {
     redirectToDashboard: function(profileData) {
         console.log('🚀 Redirecting securely...');
 
-        let role = profileData.role?.toLowerCase() || 'student';
-        if (profileData.is_staff || role === 'staff' || role === 'lecturer') role = 'lecturer';
+        const rawRole = String(profileData?.role || 'student')
+            .normalize('NFKC')
+            .trim()
+            .toLowerCase()
+            .replace(/[\\s-]+/g, '_')
+            .replace(/_+/g, '_');
 
+        const roleAliases = {
+            administrator: 'admin',
+            super_admin: 'superadmin',
+            head_of_department: 'hod',
+            nursinghod: 'nursing_hod',
+            tvethod: 'tvet_hod'
+        };
+        let role = roleAliases[rawRole] || rawRole;
+
+        // Preserve explicit HOD roles even when the account is also marked as staff.
+        if (role === 'staff') role = 'lecturer';
+
+        const hodRoles = ['hod', 'nursing_hod', 'tvet_hod'];
         const roleRedirects = {
-            'admin': 'admin.html',
-            'superadmin': 'superadmin.html',
-            'super_admin': 'superadmin.html',
-            'student': '/student',
-            'lecturer': 'lecturer.html'
+            admin: 'admin.html',
+            superadmin: 'superadmin.html',
+            student: '/student',
+            lecturer: 'lecturer.html',
+            hod: 'admin.html',
+            nursing_hod: 'admin.html',
+            tvet_hod: 'admin.html'
         };
         let redirectFile = roleRedirects[role] || 'index.html';
 
@@ -2537,9 +2559,9 @@ executeLogin: async function(identifier, password) {
                 );
                 const isRoleDashboard = (
                     (role === 'student' && (path === '/student.html' || path === '/student')) ||
-                    (role === 'admin' && (path === '/admin.html' || path === '/admin')) ||
+                    ((role === 'admin' || hodRoles.includes(role)) && (path === '/admin.html' || path === '/admin')) ||
                     (role === 'lecturer' && (path === '/lecturer.html' || path === '/lecturer')) ||
-                    ((role === 'superadmin' || role === 'super_admin') && (path === '/superadmin.html' || path === '/superadmin'))
+                    (role === 'superadmin' && (path === '/superadmin.html' || path === '/superadmin'))
                 );
                 if (isRoleDashboard || isStudentRoute) redirectFile = target.pathname + target.search + target.hash;
             }
@@ -2807,7 +2829,11 @@ executeLogin: async function(identifier, password) {
                 email: email,
                 full_name: profile.full_name || name,
                 role: profile.role || 'student',
-                program: profile.program || profile.department,
+                program: profile.program || profile.department || '',
+                department: profile.department || '',
+                school: profile.school || profile.school_name || profile.department || '',
+                school_name: profile.school_name || profile.school || '',
+                campus: profile.campus || '',
                 staff_id: profile.staff_id || null,
                 is_staff: isStaff,
                 auth_provider: 'google',
