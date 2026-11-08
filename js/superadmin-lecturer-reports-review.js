@@ -851,7 +851,7 @@
             <form id="lrrDeadlineForm" class="lrr-deadline">
               <label>School<select id="lrrDeadlineSchool"><option value="Nursing">Nursing</option><option value="TVET">TVET</option></select></label>
               <label id="lrrDeadlineProgramWrap" style="display:none">Programme<select id="lrrDeadlineProgram" disabled><option value="">Select programme</option></select></label>
-              <label id="lrrDeadlineIntakeWrap">Intake year<select id="lrrDeadlineIntake" required><option value="">Select intake year</option></select></label>
+              <label id="lrrDeadlineIntakeWrap">Intake / academic year<select id="lrrDeadlineIntake" required><option value="">Select intake year</option></select></label>
               <label id="lrrDeadlineBlockWrap">Block<select id="lrrDeadlineBlock"><option value="">Select block</option><option value="Block 1">Block 1</option><option value="Block 2">Block 2</option><option value="Block 3">Block 3</option><option value="Block 4">Block 4</option><option value="Block 5">Block 5</option><option value="Block 6">Block 6</option></select></label>
               <label id="lrrDeadlineTermWrap" style="display:none">Term<select id="lrrDeadlineTerm"><option value="">Select term</option><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select></label>
               <label>Document type<select id="lrrDeadlineType"><option value="">All document types</option><option value="scheme_of_work">Scheme of Work</option><option value="lesson_plan">Lesson Plan</option><option value="record_of_work">Record of Work</option><option value="instructional_materials">Teaching Materials</option><option value="course_outline">Course Outline</option><option value="examination_question_paper">Examination Paper</option><option value="marking_scheme">Marking Scheme</option><option value="cat_1">CAT 1</option><option value="cat_2">CAT 2</option><option value="practical_exam_1">Practical Exam</option></select></label>
@@ -1077,9 +1077,9 @@
         if (!select) return;
         const values = [...new Set((state.rows || []).map(row =>
             String(row.intake_year || row.academic_year || '').trim()
-        ).filter(value => /^(19|20)\\d{2}$/.test(value)))].sort((a,b)=>Number(b)-Number(a));
+        ).filter(Boolean))];
         const years = [...new Set([...values, String(new Date().getFullYear()), String(new Date().getFullYear()+1)])]
-            .sort((a,b)=>Number(b)-Number(a));
+            .sort((a,b)=>b.localeCompare(a,undefined,{numeric:true}));
         select.innerHTML = '<option value="">Select intake year</option>' +
             years.map(year=>'<option value="'+escapeAttr(year)+'">'+escapeHtml(year)+'</option>').join('');
     }
