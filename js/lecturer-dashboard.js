@@ -1252,7 +1252,7 @@ const LecturerDashboard = {
             table.innerHTML = '<tr><td colspan="6">Unit performance data is unavailable. Check lecturer data permissions.</td></tr>';
         } else if (table) {
             table.innerHTML = unitRows.map((u,index) => {
-                const status = u.avg === null ? 'Pending' : (u.avg >= 70 ? 'Good' : 'Review');
+                const status = u.avg === null ? 'Pending' : (u.avg >= this.getPassingThreshold() ? 'Good' : 'Review');
                 const statusClass = status === 'Good' ? 'nrd-status-good' : (status === 'Review' ? 'nrd-status-review' : 'nrd-status-pending');
                 return '<tr><td>'+(index+1)+'</td><td><strong>'+String(u.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</strong><small>'+String(u.block||'')+'</small></td><td>'+u.students+'</td><td>'+(u.avg===null?'—':u.avg+'%')+'</td><td>'+(u.passRate===null?'—':u.passRate+'%')+'</td><td><span class="'+statusClass+'">'+status+'</span></td></tr>';
             }).join('') || '<tr><td colspan="6">No assigned units available.</td></tr>';
