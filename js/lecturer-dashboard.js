@@ -1369,54 +1369,47 @@ const LecturerDashboard = {
 
     // ─── LOAD CLINICAL HOURS ───
     async loadClinicalHours() {
+        const supabase = this.getSupabaseClient();
+        const students = this.assignedStudents || [];
+        const studentIds = [...new Set(students.map(s => String(s.user_id || '').trim()).filter(Boolean))];
+        if (!supabase || !studentIds.length) {
+            this.clinicalMetrics = {percent:0,completed:0,required:0,onTrack:0,atRisk:0,critical:0};
+            this.updateClinicalUI(0,0,0,0,0);
+            const requiredEl=document.getElementById('clinicalHoursRequired');
+            if(requiredEl) requiredEl.textContent='0';
+            return;
+        }
         try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-
-            const program = this.getCurrentProgram();
-            const studentIds = this.assignedStudents.map(s => s.user_id);
-
-            if (studentIds.length === 0) {
-                this.updateClinicalUI(0, 0, 0, 0, 0);
-                return;
-            }
-
-            const { data: logs } = await supabase
-                .from('clinical_hours_logs')
-                .select('student_id, hours_completed')
-                .in('student_id', studentIds)
-                .eq('program', program);
-
-            const totalHours = logs?.reduce((sum, l) => sum + (l.hours_completed || 0), 0) || 0;
-            const required = 1500;
-            const percent = Math.min(Math.round((totalHours / required) * 100), 100);
-
-            const studentHours = {};
-            logs?.forEach(l => {
-                studentHours[l.student_id] = (studentHours[l.student_id] || 0) + (l.hours_completed || 0);
+            const {data:logs,error}=await supabase.from('clinical_hours_logs')
+                .select('student_id,hours_completed,hours_required,verified')
+                .in('student_id',studentIds).eq('program',this.getCurrentProgram()).eq('verified',true);
+            if(error) throw error;
+            const hoursByStudent=new Map(studentIds.map(id=>[id,0]));
+            const requiredByStudent=new Map(studentIds.map(id=>[id,1500]));
+            (logs||[]).forEach(log=>{
+                const id=String(log.student_id||'');
+                if(!hoursByStudent.has(id))return;
+                hoursByStudent.set(id,hoursByStudent.get(id)+Math.max(0,Number(log.hours_completed)||0));
+                const required=Math.max(0,Number(log.hours_required)||1500);
+                requiredByStudent.set(id,Math.max(requiredByStudent.get(id),required));
             });
-
-            let onTrack = 0, atRisk = 0, critical = 0;
-            Object.values(studentHours).forEach(hours => {
-                const pct = (hours / required) * 100;
-                if (pct >= 80) onTrack++;
-                else if (pct >= 60) atRisk++;
-                else critical++;
+            const totalHours=[...hoursByStudent.values()].reduce((a,b)=>a+b,0);
+            const totalRequired=[...requiredByStudent.values()].reduce((a,b)=>a+b,0);
+            const percent=totalRequired?Math.min(100,Math.round(totalHours/totalRequired*100)):0;
+            let onTrack=0,atRisk=0,critical=0;
+            hoursByStudent.forEach((hours,id)=>{
+                const target=requiredByStudent.get(id)||1500;
+                const pct=target?hours/target*100:0;
+                if(pct>=80)onTrack++;else if(pct>=60)atRisk++;else critical++;
             });
-
-            this.clinicalMetrics = {
-                percent,
-                completed: totalHours,
-                required,
-                onTrack,
-                atRisk,
-                critical
-            };
-
-            this.updateClinicalUI(percent, totalHours, onTrack, atRisk, critical);
-
-        } catch (error) {
-            console.error('Failed to load clinical hours:', error);
+            this.clinicalMetrics={percent,completed:totalHours,required:totalRequired,onTrack,atRisk,critical};
+            this.updateClinicalUI(percent,Math.round(totalHours),onTrack,atRisk,critical);
+            const requiredEl=document.getElementById('clinicalHoursRequired');
+            if(requiredEl)requiredEl.textContent=totalRequired.toLocaleString();
+        } catch(error) {
+            console.error('[Lecturer Dashboard] Verified clinical hours failed:',error);
+            const pctEl=document.getElementById('clinicalHoursPercent');
+            if(pctEl)pctEl.textContent='—';
         }
     },
 
@@ -1451,80 +1444,47 @@ const LecturerDashboard = {
 
     // ─── LOAD RISK DATA ───
     async loadRiskData() {
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-
-            const program = this.getCurrentProgram();
-            const studentIds = this.assignedStudents.map(s => s.user_id);
-
-            if (studentIds.length === 0) {
-                this.updateRiskUI([], 0, 0, 0);
-                return;
-            }
-
-            const { data: attendance } = await supabase
-                .from('geo_attendance_logs')
-                .select('student_id, attendance_status')
-                .in('student_id', studentIds)
-                .eq('program', program);
-
-            const { data: marks } = await supabase
-                .from('student_marks')
-                .select('student_id, final_score')
-                .in('student_id', studentIds)
-                .eq('program', program);
-
-            const riskMap = {};
-            const threshold = this.getPassingThreshold();
-
-            studentIds.forEach(id => {
-                const student = this.assignedStudents.find(s => s.user_id === id);
-                const studentAttendance = attendance?.filter(a => a.student_id === id) || [];
-                const studentMarks = marks?.filter(m => m.student_id === id) || [];
-
-                const absences = studentAttendance.filter(a =>
-                    a.attendance_status === 'Absent' || a.attendance_status === 'absent'
-                ).length;
-
-                const avgScore = studentMarks.length > 0
-                    ? studentMarks.reduce((sum, m) => sum + (m.final_score || 0), 0) / studentMarks.length
-                    : 0;
-
-                const submissions = studentMarks.length;
-                const totalStudents = studentIds.length;
-                const submissionRate = totalStudents > 0 ? (submissions / totalStudents) * 100 : 0;
-
-                let riskScore = 0;
-                riskScore += Math.min(absences * 10, 50);
-                riskScore += Math.max((100 - avgScore) * 0.3, 0);
-                riskScore += Math.max((100 - submissionRate) * 0.2, 0);
-
-                const isPassing = avgScore >= threshold;
-
-                riskMap[id] = {
-                    name: student?.full_name || 'Unknown',
-                    absences,
-                    avgScore: Math.round(avgScore),
-                    submissionRate: Math.round(submissionRate),
-                    riskScore: Math.round(riskScore),
-                    riskLevel: riskScore > 50 ? 'high' : (riskScore > 25 ? 'medium' : 'low'),
-                    isPassing
-                };
+        const supabase=this.getSupabaseClient();
+        const students=this.assignedStudents||[];
+        const units=this.assignedUnits||[];
+        const studentIds=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        const unitNames=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
+        const norm=v=>String(v||'').trim().toLowerCase();
+        const unitKeys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
+        if(!supabase||!studentIds.length||!units.length){this.riskMetrics={high:0,medium:0,low:0,students:[]};this.updateRiskUI([],0,0,0);return;}
+        try{
+            const [attendanceResult,marksResult]=await Promise.all([
+                supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status').in('student_id',studentIds).in('unit_name',unitNames).eq('program',this.getCurrentProgram()),
+                supabase.from('student_marks').select('student_id,subject_name,block,final_score,published,approval_status,updated_at,created_at').in('student_id',studentIds).in('subject_name',unitNames).eq('program',this.getCurrentProgram()).eq('published',true).eq('approval_status','approved')
+            ]);
+            if(attendanceResult.error)throw attendanceResult.error;
+            if(marksResult.error)throw marksResult.error;
+            const attendance=(attendanceResult.data||[]).filter(a=>unitKeys.has(norm(a.unit_name)+'|'+norm(a.block)));
+            const marks=(marksResult.data||[]).filter(m=>unitKeys.has(norm(m.subject_name)+'|'+norm(m.block))&&Number.isFinite(Number(m.final_score)));
+            const latestMarks=new Map();
+            marks.forEach(m=>{
+                const key=String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block);
+                const old=latestMarks.get(key);
+                if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latestMarks.set(key,m);
             });
-
-            const riskStudents = Object.entries(riskMap).map(([id, data]) => ({ id, ...data }));
-
-            this.riskMetrics.high = riskStudents.filter(s => s.riskLevel === 'high').length;
-            this.riskMetrics.medium = riskStudents.filter(s => s.riskLevel === 'medium').length;
-            this.riskMetrics.low = riskStudents.filter(s => s.riskLevel === 'low').length;
-            this.riskMetrics.students = riskStudents.sort((a, b) => b.riskScore - a.riskScore);
-
-            this.updateRiskUI(riskStudents, this.riskMetrics.high, this.riskMetrics.medium, this.riskMetrics.low);
-
-        } catch (error) {
-            console.error('Failed to load risk data:', error);
-        }
+            const rows=studentIds.map(id=>{
+                const student=students.find(s=>String(s.user_id)===id);
+                const absences=attendance.filter(a=>String(a.student_id)===id&&norm(a.attendance_status||a.status)==='absent').length;
+                const studentMarks=[...latestMarks.values()].filter(m=>String(m.student_id)===id);
+                const avg=studentMarks.length?studentMarks.reduce((sum,m)=>sum+Number(m.final_score),0)/studentMarks.length:null;
+                const expected=Math.max(1,Number(student?.unit_count)||1);
+                const coverage=Math.min(100,studentMarks.length/expected*100);
+                const missingPenalty=(100-coverage)*0.3;
+                const scorePenalty=avg===null?20:Math.max((this.getPassingThreshold()-avg)*1.2,0);
+                const riskScore=Math.round(Math.min(100,Math.min(absences*10,50)+scorePenalty+missingPenalty));
+                return {id,name:student?.full_name||'Unknown',absences,avgScore:avg===null?null:Math.round(avg),submissionRate:Math.round(coverage),riskScore,riskLevel:riskScore>50?'high':riskScore>25?'medium':'low',isPassing:avg!==null&&avg>=this.getPassingThreshold(),hasMarks:avg!==null};
+            });
+            this.riskMetrics.high=rows.filter(x=>x.riskLevel==='high').length;
+            this.riskMetrics.medium=rows.filter(x=>x.riskLevel==='medium').length;
+            this.riskMetrics.low=rows.filter(x=>x.riskLevel==='low').length;
+            this.riskMetrics.students=rows.sort((a,b)=>b.riskScore-a.riskScore);
+            this.updateRiskUI(rows,this.riskMetrics.high,this.riskMetrics.medium,this.riskMetrics.low);
+        }catch(error){console.error('[Lecturer Dashboard] Assigned-unit risk calculation failed:',error);const el=document.getElementById('studentsAtRiskCountPanel');if(el)el.textContent='—';}
     },
 
     updateRiskUI(students, high, medium, low) {
@@ -1661,207 +1621,88 @@ const LecturerDashboard = {
 
     // ─── LOAD COURSE PROGRESS ───
     async loadCourseProgress() {
-        try {
-            const container = document.getElementById('courseProgressList');
-            if (!container) return;
-
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-
-            const program = this.getCurrentProgram();
-            const threshold = this.getPassingThreshold();
-            const unitNames = this.assignedUnits.map(u => u.subject_name);
-
-            if (unitNames.length === 0) {
-                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No courses assigned.</p>';
-                return;
-            }
-
-            const progressData = await Promise.all(unitNames.map(async (unit) => {
-                const { data: marks } = await supabase
-                    .from('student_marks')
-                    .select('final_score')
-                    .eq('subject_name', unit)
-                    .eq('program', program);
-
-                const validScores = marks?.filter(m => m.final_score > 0) || [];
-                const avgScore = validScores.length > 0
-                    ? Math.round(validScores.reduce((a, b) => a + b.final_score, 0) / validScores.length)
-                    : 0;
-                const studentCount = validScores.length;
-                const totalStudents = this.assignedStudents.length || 0;
-                const completionRate = totalStudents > 0 ? Math.round((studentCount / totalStudents) * 100) : 0;
-                const passingCount = validScores.filter(s => s >= threshold).length;
-                const passRate = studentCount > 0 ? Math.round((passingCount / studentCount) * 100) : 0;
-
-                return { unit, avgScore, studentCount, completionRate, totalStudents, passRate };
+        const container=document.getElementById('courseProgressList');
+        if(!container)return;
+        const supabase=this.getSupabaseClient();
+        const students=this.assignedStudents||[];
+        const units=this.assignedUnits||[];
+        const ids=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        if(!supabase||!ids.length||!units.length){container.innerHTML='<p class="nrd-empty">No assigned-unit results available.</p>';return;}
+        const norm=v=>String(v||'').trim().toLowerCase();
+        const threshold=this.getPassingThreshold();
+        try{
+            const rows=await Promise.all(units.map(async unit=>{
+                const [regResult,markResult]=await Promise.all([
+                    supabase.from('student_unit_registrations').select('student_id').in('student_id',ids).eq('program',this.getCurrentProgram()).eq('unit_name',unit.subject_name).eq('block',unit.block).in('status',['approved','completed']),
+                    supabase.from('student_marks').select('student_id,final_score,published,approval_status,updated_at,created_at').in('student_id',ids).eq('program',this.getCurrentProgram()).eq('subject_name',unit.subject_name).eq('block',unit.block).eq('published',true).eq('approval_status','approved')
+                ]);
+                if(regResult.error)throw regResult.error;if(markResult.error)throw markResult.error;
+                const enrolled=new Set((regResult.data||[]).map(x=>String(x.student_id)));
+                const latest=new Map();
+                (markResult.data||[]).forEach(m=>{
+                    const score=Number(m.final_score);if(!Number.isFinite(score)||score<0||score>100||!enrolled.has(String(m.student_id)))return;
+                    const id=String(m.student_id),old=latest.get(id);
+                    if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(id,m);
+                });
+                const scores=[...latest.values()].map(x=>Number(x.final_score));
+                return {unit:unit.subject_name,avg:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null,students:enrolled.size,marked:scores.length,completion:enrolled.size?Math.round(scores.length/enrolled.size*100):0,passRate:scores.length?Math.round(scores.filter(x=>x>=threshold).length/scores.length*100):null};
             }));
-
-            container.innerHTML = progressData.map(p => {
-                const color = p.avgScore >= 70 ? '#10b981' : (p.avgScore >= 50 ? '#f59e0b' : '#ef4444');
-                const passEmoji = p.passRate >= 80 ? '🌟' : (p.passRate >= 50 ? '📈' : '⚠️');
-                const statusLabel = p.avgScore >= 70 ? '✅ Excellent' : (p.avgScore >= 50 ? '⚡ Good' : '⚠️ Needs Improvement');
-                return `
-                    <div style="margin-bottom: 14px; padding: 10px 12px; background: #f8fafc; border-radius: 10px; border: 1px solid #e5e7eb;">
-                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
-                            <span style="color: #1e293b; font-weight: 600;">${p.unit}</span>
-                            <span style="color: ${color}; font-weight: 600;">
-                                ${p.avgScore}% avg · ${statusLabel}
-                            </span>
-                        </div>
-                        <div style="background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
-                            <div class="progress-bar" style="background: ${color}; width: ${p.avgScore}%; height: 100%; border-radius: 8px; transition: width 1.5s ease;"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 4px;">
-                            <span>📊 ${p.completionRate}% completion</span>
-                            <span>📝 ${p.studentCount} submissions</span>
-                            <span>👨‍🎓 ${p.totalStudents} enrolled</span>
-                            <span>${passEmoji} ${p.passRate}% passing</span>
-                        </div>
-                    </div>
-                `;
+            container.innerHTML=rows.map(p=>{
+                const color=p.avg===null?'#94a3b8':p.avg>=threshold?'#16a34a':'#d97706';
+                const status=p.avg===null?'Pending':p.avg>=threshold?'On track':'Needs review';
+                return '<div class="nrd-course-progress-row" style="margin-bottom:10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:6px"><strong>'+String(p.unit).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</strong><b style="color:'+color+'">'+(p.avg===null?'No published marks':p.avg+'% · '+status)+'</b></div><div style="height:7px;background:#e5e7eb;border-radius:8px;overflow:hidden"><div style="height:100%;width:'+p.completion+'%;background:'+color+'"></div></div><div style="display:flex;justify-content:space-between;font-size:9px;color:#64748b;margin-top:5px"><span>'+p.marked+'/'+p.students+' marked</span><span>'+(p.passRate===null?'—':p.passRate+'% passing')+'</span></div></div>';
             }).join('');
-
-        } catch (error) {
-            console.error('Failed to load course progress:', error);
-            const container = document.getElementById('courseProgressList');
-            if (container) {
-                container.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 20px;">Error loading progress</p>';
-            }
-        }
+        }catch(error){console.error('[Lecturer Dashboard] Unit progress query failed:',error);container.innerHTML='<p class="nrd-empty">Unable to load unit performance.</p>';}
     },
 
     // ─── LOAD TOP STUDENTS ───
     async loadTopStudents() {
-        try {
-            const container = document.getElementById('topStudentsList');
-            if (!container) return;
-
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-
-            const program = this.getCurrentProgram();
-            const studentIds = this.assignedStudents.map(s => s.user_id);
-
-            if (studentIds.length === 0) {
-                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No students assigned yet.</p>';
-                return;
-            }
-
-            const { data: marks } = await supabase
-                .from('student_marks')
-                .select('student_id, student_name, final_score, subject_name')
-                .in('student_id', studentIds)
-                .eq('program', program)
-                .order('final_score', { ascending: false })
-                .limit(5);
-
-            if (!marks || marks.length === 0) {
-                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No marks data available yet.</p>';
-                return;
-            }
-
-            const threshold = this.getPassingThreshold();
-
-            container.innerHTML = marks.map((m, i) => {
-                const medals = ['🥇', '🥈', '🥉'];
-                const isTop3 = i < 3;
-                const gradeInfo = this.getGrade(m.final_score || 0);
-                const isPassing = (m.final_score || 0) >= threshold;
-
-                return `
-                    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
-                        <span style="font-size: 20px;">${isTop3 ? medals[i] : (i + 1)}</span>
-                        <div style="flex: 1;">
-                            <div style="font-weight: 600; font-size: 14px; color: #1e293b;">${m.student_name || 'Unknown'}</div>
-                            <div style="font-size: 11px; color: #94a3b8;">${m.subject_name || 'General'} · Grade: ${gradeInfo.grade}</div>
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="font-weight: 700; color: ${isPassing ? '#10b981' : '#ef4444'}; font-size: 18px;">
-                                ${m.final_score || 0}%
-                            </span>
-                            <div style="font-size: 10px; color: ${isPassing ? '#10b981' : '#ef4444'};">
-                                ${isPassing ? '✅ Passed' : '❌ Failed'} · ${gradeInfo.remarks}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-        } catch (error) {
-            console.error('Failed to load top students:', error);
-            const container = document.getElementById('topStudentsList');
-            if (container) {
-                container.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 20px;">Error loading top students</p>';
-            }
-        }
+        const container=document.getElementById('topStudentsList');
+        if(!container)return;
+        const supabase=this.getSupabaseClient(),students=this.assignedStudents||[],units=this.assignedUnits||[];
+        const ids=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        const names=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
+        const norm=v=>String(v||'').trim().toLowerCase(),keys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
+        if(!supabase||!ids.length||!names.length){container.innerHTML='<div class="nrd-empty">No assigned students yet.</div>';return;}
+        try{
+            const {data,error}=await supabase.from('student_marks').select('student_id,student_name,subject_name,block,final_score,published,approval_status,updated_at,created_at').in('student_id',ids).in('subject_name',names).eq('program',this.getCurrentProgram()).eq('published',true).eq('approval_status','approved');
+            if(error)throw error;
+            const latest=new Map();
+            (data||[]).forEach(m=>{
+                const score=Number(m.final_score),key=String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block);
+                if(!keys.has(norm(m.subject_name)+'|'+norm(m.block))||!Number.isFinite(score)||score<0||score>100)return;
+                const old=latest.get(key);if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(key,m);
+            });
+            const aggregate=new Map();
+            latest.forEach(m=>{const id=String(m.student_id),entry=aggregate.get(id)||{name:m.student_name||students.find(s=>String(s.user_id)===id)?.full_name||'Student',scores:[]};entry.scores.push(Number(m.final_score));aggregate.set(id,entry);});
+            const top=[...aggregate.values()].map(x=>({...x,avg:x.scores.reduce((a,b)=>a+b,0)/x.scores.length,units:x.scores.length})).sort((a,b)=>b.avg-a.avg).slice(0,5);
+            container.innerHTML=top.length?top.map((x,i)=>'<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid #eef1f5"><b style="width:20px">'+(['🥇','🥈','🥉'][i]||String(i+1))+'</b><div style="flex:1;min-width:0"><strong style="font-size:10px">'+x.name+'</strong><div style="font-size:8px;color:#667085">'+x.units+' assigned units with published results</div></div><b style="font-size:13px;color:#15803d">'+Math.round(x.avg)+'%</b></div>').join(''):'<div class="nrd-empty">No approved and published marks yet.</div>';
+        }catch(error){console.error('[Lecturer Dashboard] Top students failed:',error);container.innerHTML='<div class="nrd-empty">Unable to load top performers.</div>';}
     },
 
     // ─── LOAD ATTENDANCE ALERTS ───
     async loadAttendanceAlerts() {
-        try {
-            const container = document.getElementById('attendanceAlerts');
-            if (!container) return;
-
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-
-            const program = this.getCurrentProgram();
-            const studentIds = this.assignedStudents.map(s => s.user_id);
-
-            if (studentIds.length === 0) {
-                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No students assigned yet.</p>';
-                return;
-            }
-
-            const { data: absences } = await supabase
-                .from('geo_attendance_logs')
-                .select('student_id, student_name, attendance_status, check_in_time')
-                .in('student_id', studentIds)
-                .eq('program', program)
-                .eq('attendance_status', 'Absent')
-                .gte('check_in_time', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-
-            const absenceCount = {};
-            absences?.forEach(a => {
-                if (!absenceCount[a.student_id]) {
-                    absenceCount[a.student_id] = { name: a.student_name || 'Unknown', count: 0 };
-                }
-                absenceCount[a.student_id].count++;
+        const container=document.getElementById('attendanceAlerts');
+        if(!container)return;
+        const supabase=this.getSupabaseClient(),students=this.assignedStudents||[],units=this.assignedUnits||[];
+        const ids=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        const names=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
+        const norm=v=>String(v||'').trim().toLowerCase();
+        const keys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
+        if(!supabase||!ids.length||!names.length){container.innerHTML='<p class="nrd-empty">No assigned students.</p>';return;}
+        try{
+            const since=new Date(Date.now()-7*86400000).toISOString();
+            const {data,error}=await supabase.from('geo_attendance_logs').select('student_id,student_name,unit_name,block,attendance_status,status,check_in_time').in('student_id',ids).in('unit_name',names).eq('program',this.getCurrentProgram()).gte('check_in_time',since);
+            if(error)throw error;
+            const counts=new Map();
+            (data||[]).forEach(row=>{
+                if(!keys.has(norm(row.unit_name)+'|'+norm(row.block))||norm(row.attendance_status||row.status)!=='absent')return;
+                const id=String(row.student_id),current=counts.get(id)||{name:row.student_name||students.find(s=>String(s.user_id)===id)?.full_name||'Student',count:0};
+                current.count++;counts.set(id,current);
             });
-
-            const alertStudents = Object.entries(absenceCount)
-                .filter(([_, data]) => data.count > 2)
-                .sort((a, b) => b[1].count - a[1].count)
-                .slice(0, 5);
-
-            if (alertStudents.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: #10b981;">
-                        <i class="fas fa-check-circle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                        <span style="font-size: 13px;">No attendance alerts! All students have good attendance.</span>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = alertStudents.map(([_, data]) => `
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #fef2f2; border-radius: 8px; margin-bottom: 6px; border-left: 3px solid #ef4444;">
-                    <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 14px;"></i>
-                    <span style="flex: 1; font-size: 13px; color: #1e293b; font-weight: 500;">${data.name}</span>
-                    <span style="font-size: 12px; color: #ef4444; font-weight: 600; background: #fee2e2; padding: 2px 12px; border-radius: 12px;">
-                        ${data.count} absences this week
-                    </span>
-                </div>
-            `).join('');
-
-        } catch (error) {
-            console.error('Failed to load attendance alerts:', error);
-            const container = document.getElementById('attendanceAlerts');
-            if (container) {
-                container.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 20px;">Error loading alerts</p>';
-            }
-        }
+            const alerts=[...counts.entries()].filter(([,x])=>x.count>2).sort((a,b)=>b[1].count-a[1].count).slice(0,5);
+            container.innerHTML=alerts.length?alerts.map(([,x])=>'<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;background:#fff1f1;border-radius:8px;margin-bottom:6px"><strong style="flex:1;font-size:10px">'+x.name+'</strong><b style="font-size:9px;color:#b42318">'+x.count+' absences / 7 days</b></div>').join(''):'<div class="nrd-empty">No repeated absences in assigned units this week.</div>';
+        }catch(error){console.error('[Lecturer Dashboard] Attendance alerts failed:',error);container.innerHTML='<div class="nrd-empty">Attendance alerts unavailable.</div>';}
     },
 
     // ─── LOAD INTELLIGENT ALERTS ───
