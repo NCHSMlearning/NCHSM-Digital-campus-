@@ -50,6 +50,7 @@
         filteredRows: [],
         selectedSubmission: null,
         selectedAttachments: [],
+        selectedVersions: [],
         selectedReviews: [],
         loading: false,
         initialized: false,
@@ -1576,10 +1577,48 @@
 
         await Promise.all([
             loadAttachments(id),
+            loadDocumentVersions(id),
             loadReviewHistory(id)
         ]);
 
         renderReviewModal();
+    }
+
+    async function loadDocumentVersions(submissionId) {
+        const client = getSupabaseClient();
+        state.selectedVersions = [];
+        if (!client) return;
+        try {
+            const { data, error } = await client.from(TABLE_VERSIONS)
+                .select('id,version_number,file_name,storage_path,mime_type,file_size,uploaded_by,created_at')
+                .eq('submission_id', submissionId)
+                .order('version_number', { ascending: false });
+            if (error) throw error;
+            state.selectedVersions = data || [];
+        } catch (error) {
+            console.warn('[LecturerReportsReview] Document version history unavailable', error);
+            state.selectedVersions = [];
+        }
+    }
+
+    function renderDocumentVersions() {
+        const versions = state.selectedVersions || [];
+        return `
+          <section style="margin-top:16px;border:1px solid #e2e8f0;border-radius:12px;padding:14px;background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px">
+              <strong style="font-size:13px;color:#0f2742">Document version history</strong>
+              <span style="font-size:11px;color:#64748b">${versions.length} version(s)</span>
+            </div>
+            ${versions.length ? versions.map(v => `
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #f1f5f9">
+                <div style="min-width:0">
+                  <strong style="font-size:12px">Version ${escapeHtml(v.version_number)}</strong>
+                  <div style="font-size:11px;color:#475569;overflow-wrap:anywhere">${escapeHtml(v.file_name || 'Uploaded document')}</div>
+                  <small style="color:#94a3b8">${escapeHtml(formatDate(v.created_at))} · ${Math.max(1,Math.round((v.file_size||0)/1024))} KB</small>
+                </div>
+                <button type="button" data-version-path="${escapeAttr(v.storage_path)}" class="lrr-version-open" style="flex:0 0 auto;border:1px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:800">Open</button>
+              </div>`).join('') : '<div style="font-size:12px;color:#64748b">No version records found. Older uploads may appear under Attachments.</div>'}
+          </section>`;
     }
 
     async function loadAttachments(submissionId) {
@@ -1818,6 +1857,7 @@
                     <div>
                         ${renderReportContent(row)}
                         ${renderAttachments()}
+                        ${renderDocumentVersions()}
                     </div>
 
                     <div>
@@ -1828,6 +1868,17 @@
             </div>
         `;
 
+        content.querySelectorAll('.lrr-version-open').forEach(button => button.addEventListener('click', async () => {
+            const path = button.dataset.versionPath;
+            if (!path) return;
+            try {
+                const client = getSupabaseClient();
+                const { data, error } = await client.storage.from(STORAGE_BUCKET).createSignedUrl(path, 300);
+                if (error) throw error;
+                if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener');
+                else showModuleToast('Could not open this document version.', 'error');
+            } catch (error) { showModuleToast('Could not open document version: ' + (error.message || 'Storage error'), 'error'); }
+        }));
         modal.style.display = 'flex';
 
         setTimeout(() => {
