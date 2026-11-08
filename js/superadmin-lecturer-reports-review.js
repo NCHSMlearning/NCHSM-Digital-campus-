@@ -849,13 +849,14 @@
           <div class="lrr-stat" style="margin-bottom:13px">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div><strong style="font-size:15px">Set submission deadlines</strong><div style="font-size:12px;color:#64748b;margin-top:4px">Create school, document and unit-specific due dates for lecturer submissions.</div></div><span id="lrrDeadlineCount" style="font-size:12px;color:#64748b">0 active deadlines</span></div>
             <form id="lrrDeadlineForm" class="lrr-deadline">
-              <label style="font-size:11px;color:#64748b">School<select id="lrrDeadlineSchool"><option value="Nursing">Nursing</option><option value="TVET">TVET</option></select></label>
-              <label id="lrrDeadlineProgramWrap" style="font-size:11px;color:#64748b;display:none">TVET programme<select id="lrrDeadlineProgram" disabled><option value="">Select programme first</option></select></label>
-              <label id="lrrDeadlineBlockWrap" style="font-size:11px;color:#64748b">Nursing block<select id="lrrDeadlineBlock"><option value="">Select block</option><option value="Block 1">Block 1</option><option value="Block 2">Block 2</option><option value="Block 3">Block 3</option><option value="Block 4">Block 4</option><option value="Block 5">Block 5</option><option value="Block 6">Block 6</option></select></label>
-              <label id="lrrDeadlineTermWrap" style="font-size:11px;color:#64748b;display:none">TVET term<select id="lrrDeadlineTerm"><option value="">Select term</option><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select></label>
-              <label style="font-size:11px;color:#64748b">Document type<select id="lrrDeadlineType"><option value="">All document types</option><option value="scheme_of_work">Scheme of Work</option><option value="lesson_plan">Lesson Plan</option><option value="record_of_work">Record of Work</option><option value="instructional_materials">Teaching Materials</option><option value="course_outline">Course Outline</option><option value="examination_question_paper">Examination Paper</option><option value="marking_scheme">Marking Scheme</option><option value="cat_1">CAT 1</option><option value="cat_2">CAT 2</option><option value="practical_exam_1">Practical Exam</option></select></label>
-              <label style="font-size:11px;color:#64748b">Unit code (optional)<input id="lrrDeadlineUnit" placeholder="e.g. NCK 101"></label>
-              <label style="font-size:11px;color:#64748b">Due date &amp; time<input id="lrrDeadlineDate" type="datetime-local" required></label>
+              <label>School<select id="lrrDeadlineSchool"><option value="Nursing">Nursing</option><option value="TVET">TVET</option></select></label>
+              <label id="lrrDeadlineProgramWrap" style="display:none">Programme<select id="lrrDeadlineProgram" disabled><option value="">Select programme</option></select></label>
+              <label id="lrrDeadlineIntakeWrap">Intake year<select id="lrrDeadlineIntake" required><option value="">Select intake year</option></select></label>
+              <label id="lrrDeadlineBlockWrap">Block<select id="lrrDeadlineBlock"><option value="">Select block</option><option value="Block 1">Block 1</option><option value="Block 2">Block 2</option><option value="Block 3">Block 3</option><option value="Block 4">Block 4</option><option value="Block 5">Block 5</option><option value="Block 6">Block 6</option></select></label>
+              <label id="lrrDeadlineTermWrap" style="display:none">Term<select id="lrrDeadlineTerm"><option value="">Select term</option><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select></label>
+              <label>Document type<select id="lrrDeadlineType"><option value="">All document types</option><option value="scheme_of_work">Scheme of Work</option><option value="lesson_plan">Lesson Plan</option><option value="record_of_work">Record of Work</option><option value="instructional_materials">Teaching Materials</option><option value="course_outline">Course Outline</option><option value="examination_question_paper">Examination Paper</option><option value="marking_scheme">Marking Scheme</option><option value="cat_1">CAT 1</option><option value="cat_2">CAT 2</option><option value="practical_exam_1">Practical Exam</option></select></label>
+              <label>Unit code <span style="font-weight:400;color:#8190a0">(optional)</span><input id="lrrDeadlineUnit" placeholder="e.g. NCK 101"></label>
+              <label>Due date &amp; time<input id="lrrDeadlineDate" type="datetime-local" required></label>
               <button class="lrr-primary" type="submit">＋ Set deadline</button>
             </form>
             <div id="lrrDeadlineList" style="margin-top:12px;font-size:12px;color:#64748b">Loading deadlines…</div>
@@ -879,6 +880,7 @@
         panel.querySelector('#lrrDeadlineForm')?.addEventListener('submit',saveDeadline);
         panel.querySelector('#lrrDeadlineSchool')?.addEventListener('change',updateDeadlineScope);
         populateDeadlinePrograms();
+        populateDeadlineIntakes();
         updateDeadlineScope();
         panel.querySelectorAll('[data-jump]').forEach(btn=>btn.addEventListener('click',()=>{
             panel.querySelectorAll('[data-jump]').forEach(x=>x.classList.toggle('active',x===btn));
@@ -895,6 +897,7 @@
         const matchingSubmission = deadline => all.some(row =>
             schoolOf(row) === deadline.school &&
             (!deadline.program || normalizeProgram(row.program || row.department) === normalizeProgram(deadline.program)) &&
+            (!deadline.intake_year || String(row.intake_year || row.academic_year || '') === String(deadline.intake_year)) &&
             (!deadline.block || String(row.block || '').toLowerCase() === String(deadline.block).toLowerCase()) &&
             (!deadline.term || String(row.term || '').toLowerCase() === String(deadline.term).toLowerCase()) &&
             (!deadline.document_type || row.document_type === deadline.document_type) &&
@@ -959,6 +962,10 @@
         const dueDeadlines=deadlineRows.filter(d=>{
             if(new Date(d.due_at).getTime()>=now)return false;
             return !state.rows.some(r=>schoolOf(r)===d.school &&
+                (!d.program || normalizeProgram(r.program || r.department)===normalizeProgram(d.program)) &&
+                (!d.intake_year || String(r.intake_year || r.academic_year || '')===String(d.intake_year)) &&
+                (!d.block || String(r.block||'').toLowerCase()===String(d.block).toLowerCase()) &&
+                (!d.term || String(r.term||'').toLowerCase()===String(d.term).toLowerCase()) &&
                 (!d.document_type || r.document_type===d.document_type) &&
                 (!d.unit_code || String(r.subject_code||'').toLowerCase()===String(d.unit_code).toLowerCase()) &&
                 ['submitted','resubmitted','under_review','approved'].includes(r.status));
@@ -1007,20 +1014,23 @@
             const bySchool=['Nursing','TVET','Other'].map(school=>({
                 school,items:groups.filter(item=>item.school===school)
             })).filter(group=>group.items.length);
+            folders.style.cssText='display:block!important;width:100%;max-width:100%;grid-template-columns:none!important;overflow:visible!important;';
             folders.innerHTML=bySchool.length?bySchool.map(group=>`
-                <section class="lrr-drive-school">
-                    <header class="lrr-drive-school-head">
-                        <span class="lrr-drive-school-icon">${group.school==='Nursing'?'✚':group.school==='TVET'?'⚙':'▦'}</span>
-                        <div><strong>${escapeHtml(group.school==='Other'?'Other submissions':group.school+' School')}</strong><small>${group.items.length} unit folders · ${group.items.reduce((n,item)=>n+item.rows.length,0)} documents</small></div>
-                        <span class="lrr-drive-school-count">${group.items.length}</span>
+                <section class="lrr-drive-school" style="display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:14px 0 18px;padding:16px;border:1px solid #e1e9ef;border-radius:17px;background:#fff;box-shadow:0 5px 18px rgba(16,42,67,.045);">
+                    <header class="lrr-drive-school-head" style="display:flex!important;width:100%;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid #edf1f5;">
+                        <span class="lrr-drive-school-icon" style="display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:13px;background:#e8f5f7;color:#0b7180;font-size:19px;">${group.school==='Nursing'?'✚':group.school==='TVET'?'⚙':'▦'}</span>
+                        <div style="flex:1;min-width:0;writing-mode:horizontal-tb;"><strong style="display:block;font-size:15px;color:#142d43;">${escapeHtml(group.school==='Other'?'Other submissions':group.school+' School')}</strong><small style="display:block;margin-top:3px;color:#718096;font-size:11px;">${group.items.length} unit folders · ${group.items.reduce((n,item)=>n+item.rows.length,0)} documents</small></div>
+                        <span style="margin-left:auto;padding:5px 10px;border-radius:20px;background:#eef6f7;color:#176d78;font-size:11px;font-weight:800;">${group.items.length}</span>
                     </header>
-                    <div class="lrr-drive-grid">${group.items.map(item=>`
-                        <button type="button" class="lrr-drive-folder" data-folder-key="${escapeAttr(item.school+'|'+(item.code||item.unit))}">
-                            <span class="lrr-drive-folder-icon">📁</span>
-                            <span class="lrr-drive-folder-copy"><strong>${escapeHtml(item.unit)}</strong><small>${item.code?escapeHtml(item.code)+' · ':''}${item.rows.length} document${item.rows.length===1?'':'s'}</small></span>
-                            <span class="lrr-drive-chevron">›</span>
-                        </button>`).join('')}</div>
-                </section>`).join(''):'<div class="lrr-drive-empty">No unit folders yet. Folders appear automatically as lecturers submit documents.</div>';
+                    <div class="lrr-drive-grid" style="display:grid!important;width:100%!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,235px),1fr))!important;gap:11px;padding-top:14px;">
+                    ${group.items.map(item=>`
+                        <button type="button" class="lrr-drive-folder" data-folder-key="${escapeAttr(item.school+'|'+(item.code||item.unit))}" style="display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:11px;width:100%!important;min-width:0!important;min-height:76px;height:auto!important;padding:13px!important;border:1px solid #e3ebf1!important;border-radius:13px!important;background:#fbfdff!important;text-align:left!important;white-space:normal!important;writing-mode:horizontal-tb!important;">
+                            <span class="lrr-drive-folder-icon" style="display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:11px;background:#eaf3ff;font-size:20px;">📁</span>
+                            <span class="lrr-drive-folder-copy" style="display:block;flex:1;min-width:0;white-space:normal!important;writing-mode:horizontal-tb!important;"><strong style="display:block;color:#20364a;font-size:12px;line-height:1.4;white-space:normal!important;overflow-wrap:anywhere;">${escapeHtml(item.unit)}</strong><small style="display:block;margin-top:4px;color:#718096;font-size:10px;">${item.code?escapeHtml(item.code)+' · ':''}${item.rows.length} document${item.rows.length===1?'':'s'}</small></span>
+                            <span style="flex:0 0 auto;color:#91a2b1;font-size:23px;">›</span>
+                        </button>`).join('')}
+                    </div>
+                </section>`).join(''):'<div class="lrr-drive-empty" style="padding:28px;text-align:center;border:1px dashed #cbd8e1;border-radius:15px;color:#718096;background:#fbfdff;">No unit folders yet. Folders appear automatically as lecturers submit documents.</div>';
             folders.querySelectorAll('[data-folder-key]').forEach(btn=>btn.addEventListener('click',()=>{
                 const item=grouped.get(btn.dataset.folderKey);
                 if(!item)return;
@@ -1045,7 +1055,7 @@
             }));
         }
         const list=getElement('lrrDeadlineList');
-        if(list) list.innerHTML=deadlineRows.length?deadlineRows.map(d=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid #e2e8f0"><span><b>'+escapeHtml(d.school)+'</b> · '+escapeHtml(humanize(d.document_type||'All document types'))+(d.program?' · '+escapeHtml(d.program):'')+(d.block?' · '+escapeHtml(d.block):'')+(d.term?' · '+escapeHtml(d.term):'')+(d.unit_code?' · '+escapeHtml(d.unit_code):'')+'</span><span>'+escapeHtml(formatDate(d.due_at))+'</span></div>').join(''):'No deadlines have been configured yet.';
+        if(list) list.innerHTML=deadlineRows.length?deadlineRows.map(d=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid #e2e8f0"><span><b>'+escapeHtml(d.school)+'</b> · '+escapeHtml(humanize(d.document_type||'All document types'))+(d.program?' · '+escapeHtml(d.program):'')+(d.intake_year?' · Intake '+escapeHtml(d.intake_year):'')+(d.block?' · '+escapeHtml(d.block):'')+(d.term?' · '+escapeHtml(d.term):'')+(d.unit_code?' · '+escapeHtml(d.unit_code):'')+'</span><span>'+escapeHtml(formatDate(d.due_at))+'</span></div>').join(''):'No deadlines have been configured yet.';
     }
 
     function populateDeadlinePrograms() {
@@ -1059,24 +1069,36 @@
         select.innerHTML = '<option value="">Select TVET programme</option>' +
             programs.map(value => '<option value="'+escapeAttr(value)+'">'+escapeHtml(value)+'</option>').join('');
         select.disabled = programs.length === 0;
-        if (!programs.length) select.innerHTML = '<option value="">No TVET programmes found in lecturer records</option>';
+        if (!programs.length) select.innerHTML = '<option value="">No TVET programmes found</option>';
+    }
+
+    function populateDeadlineIntakes() {
+        const select = getElement('lrrDeadlineIntake');
+        if (!select) return;
+        const values = [...new Set((state.rows || []).map(row =>
+            String(row.intake_year || row.academic_year || '').trim()
+        ).filter(value => /^(19|20)\\d{2}$/.test(value)))].sort((a,b)=>Number(b)-Number(a));
+        const years = [...new Set([...values, String(new Date().getFullYear()), String(new Date().getFullYear()+1)])]
+            .sort((a,b)=>Number(b)-Number(a));
+        select.innerHTML = '<option value="">Select intake year</option>' +
+            years.map(year=>'<option value="'+escapeAttr(year)+'">'+escapeHtml(year)+'</option>').join('');
     }
 
     function updateDeadlineScope() {
         const school = getElement('lrrDeadlineSchool')?.value || 'Nursing';
         const nursing = school === 'Nursing';
-        const programWrap = getElement('lrrDeadlineProgramWrap');
-        const blockWrap = getElement('lrrDeadlineBlockWrap');
-        const termWrap = getElement('lrrDeadlineTermWrap');
-        if (programWrap) programWrap.style.display = nursing ? 'none' : '';
-        if (blockWrap) blockWrap.style.display = nursing ? '' : 'none';
-        if (termWrap) termWrap.style.display = nursing ? 'none' : '';
-        const program = getElement('lrrDeadlineProgram');
-        const block = getElement('lrrDeadlineBlock');
-        const term = getElement('lrrDeadlineTerm');
-        if (program) program.required = !nursing;
-        if (block) block.required = nursing;
-        if (term) term.required = !nursing;
+        const show = (id,visible) => { const node=getElement(id); if(node)node.style.display=visible?'':'none'; };
+        show('lrrDeadlineProgramWrap',!nursing);
+        show('lrrDeadlineBlockWrap',nursing);
+        show('lrrDeadlineTermWrap',!nursing);
+        const program=getElement('lrrDeadlineProgram');
+        const block=getElement('lrrDeadlineBlock');
+        const term=getElement('lrrDeadlineTerm');
+        if(program)program.required=!nursing;
+        if(block)block.required=nursing;
+        if(term)term.required=!nursing;
+        const intake=getElement('lrrDeadlineIntake');
+        if(intake)intake.required=true;
     }
 
     async function saveDeadline(event) {
@@ -1087,11 +1109,13 @@
         if(!due)return;
         const school=getElement('lrrDeadlineSchool').value;
         const program=school==='TVET'?(getElement('lrrDeadlineProgram')?.value||''):null;
+        const intake_year=getElement('lrrDeadlineIntake')?.value||'';
         const block=school==='Nursing'?(getElement('lrrDeadlineBlock')?.value||''):null;
         const term=school==='TVET'?(getElement('lrrDeadlineTerm')?.value||''):null;
+        if(!intake_year){showModuleToast('Select the intake year.','error');return;}
         if(school==='TVET'&&(!program||!term)){showModuleToast('Select the TVET programme and term.','error');return;}
         if(school==='Nursing'&&!block){showModuleToast('Select the Nursing block.','error');return;}
-        const payload={school,program,block,term,document_type:getElement('lrrDeadlineType').value||null,unit_code:getElement('lrrDeadlineUnit').value.trim()||null,due_at:new Date(due).toISOString(),created_by:state.currentUser.id};
+        const payload={school,program,intake_year,block,term,document_type:getElement('lrrDeadlineType').value||null,unit_code:getElement('lrrDeadlineUnit').value.trim()||null,due_at:new Date(due).toISOString(),created_by:state.currentUser.id};
         try{
             const {error}=await client.from(TABLE_DEADLINES).insert(payload);
             if(error)throw error;
