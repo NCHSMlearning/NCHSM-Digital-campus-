@@ -375,7 +375,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         // ==========================================
         // 6. Detect program type
         // ==========================================
-        const program = profile.program || profile.department || 'KRCHN';
+        const rawProgram = profile.program || profile.department || 'KRCHN';
+        // Nursing is the department label; KRCHN is the canonical programme code used by data tables.
+        const program = String(rawProgram).trim().toLowerCase() === 'nursing' ? 'KRCHN' : String(rawProgram).trim();
         const programType = getProgramType(program);
         const programLevel = getProgramLevel(program);
         const isTVET = programType === 'TVET';
