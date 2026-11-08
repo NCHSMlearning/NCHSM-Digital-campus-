@@ -1140,7 +1140,9 @@ const LecturerDashboard = {
             const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key);
             const published = unitMarks.filter(m => m.published === true && norm(m.approval_status) === 'approved');
             const avg = published.length ? Math.round(published.reduce((sum,m)=>sum+Number(m.final_score||0),0)/published.length) : null;
-            return {name:unit.subject_name,block:unit.block,students:new Set(regs.map(r=>r.student_id)).size,marked:new Set(published.map(m=>m.student_id)).size,avg};
+            const passThreshold = 50;
+            const passRate = published.length ? Math.round(published.filter(m => Number(m.final_score) >= passThreshold).length / published.length * 100) : null;
+            return {name:unit.subject_name,block:unit.block,students:new Set(regs.map(r=>r.student_id)).size,marked:new Set(published.map(m=>m.student_id)).size,avg,passRate};
         });
         const expected = unitRows.reduce((sum,u)=>sum+u.students,0);
         const marked = unitRows.reduce((sum,u)=>sum+u.marked,0);
@@ -1176,13 +1178,20 @@ const LecturerDashboard = {
         const reportCount = reports === null ? null : reports.length;
         set('liTeachingDocs', schemeCount === null || lessonCount === null || reportCount === null ? '—' : String(schemeCount + lessonCount + reportCount));
         set('liTeachingDocsDetail', [schemeCount===null?'Schemes unavailable':schemeCount+' schemes',lessonCount===null?'lesson plans unavailable':lessonCount+' lesson plans',reportCount===null?'reports unavailable':reportCount+' reports'].join(' · '));
+        const availableUnitAverages = unitRows.filter(u => Number.isFinite(u.avg));
+        const overallUnitAverage = availableUnitAverages.length
+            ? Math.round(availableUnitAverages.reduce((sum,u)=>sum+u.avg,0)/availableUnitAverages.length)
+            : null;
+        set('liUnitAverage', overallUnitAverage === null ? '—' : overallUnitAverage + '%');
+        set('nrdPerformanceAverage', overallUnitAverage === null ? '—' : overallUnitAverage + '%');
 
         const table = document.getElementById('liUnitPerformanceRows');
         if (table) {
-            table.innerHTML = unitRows.map(u => {
-                const pct = u.students ? Math.round(u.marked/u.students*100) : 0;
-                return '<tr><td><strong>'+String(u.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</strong><small>'+String(u.block||'')+'</small></td><td>'+u.students+'</td><td>'+u.marked+'</td><td>'+(u.avg===null?'—':u.avg+'%')+'</td><td><span class="li-progress"><i style="width:'+pct+'%"></i></span><small>'+pct+'%</small></td></tr>';
-            }).join('') || '<tr><td colspan="5">No assigned units available.</td></tr>';
+            table.innerHTML = unitRows.map((u,index) => {
+                const status = u.avg === null ? 'Pending' : (u.avg >= 70 ? 'Good' : 'Review');
+                const statusClass = status === 'Good' ? 'nrd-status-good' : (status === 'Review' ? 'nrd-status-review' : 'nrd-status-pending');
+                return '<tr><td>'+(index+1)+'</td><td><strong>'+String(u.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</strong><small>'+String(u.block||'')+'</small></td><td>'+u.students+'</td><td>'+(u.avg===null?'—':u.avg+'%')+'</td><td>'+(u.passRate===null?'—':u.passRate+'%')+'</td><td><span class="'+statusClass+'">'+status+'</span></td></tr>';
+            }).join('') || '<tr><td colspan="6">No assigned units available.</td></tr>';
         }
         set('liUnitSummary', units.length + ' assigned units · ' + (registrations === null ? 'registration data unavailable' : expected + ' unit registrations'));
         console.log('[Lecturer insights] workload data loaded', {units:units.length,markPct,assignments:assignmentCount,nurseIq:nurseAttempts?.length,research:research?.length});
@@ -1531,6 +1540,8 @@ const LecturerDashboard = {
                 el.textContent = elements[id];
             }
         });
+        const interventionCount = document.getElementById('studentsAtRiskCountPanel');
+        if (interventionCount) interventionCount.textContent = Number(high || 0) + Number(medium || 0);
 
         const container = document.getElementById('riskStudentList');
         if (!container) return;
@@ -2191,22 +2202,32 @@ const LecturerDashboard = {
                 marksData = marks || [];
             }
 
-            const subjectMarks = {};
-            marksData.forEach(m => {
-                const subject = m.subject_name || 'Unknown';
-                if (!subjectMarks[subject]) {
-                    subjectMarks[subject] = [];
-                }
-                subjectMarks[subject].push(m.final_score || m.score || 0);
+            const assignedUnitKeys = new Set((this.assignedUnits || []).map(u =>
+                String(u.subject_name || '').trim().toLowerCase() + '|' + String(u.block || '').trim().toLowerCase()
+            ));
+            const validPublishedMarks = marksData.filter(m => {
+                const score = Number(m.final_score ?? m.score);
+                const key = String(m.subject_name || '').trim().toLowerCase() + '|' + String(m.block || '').trim().toLowerCase();
+                return m.published === true && String(m.approval_status || '').toLowerCase() === 'approved'
+                    && assignedUnitKeys.has(key) && Number.isFinite(score) && score >= 0 && score <= 100;
             });
-
-            const subjectNames = Object.keys(subjectMarks);
-            const subjectAverages = subjectNames.map(name => {
-                const scores = subjectMarks[name];
-                const validScores = scores.filter(s => s > 0);
-                if (validScores.length === 0) return 0;
-                return Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length);
+            const scores = validPublishedMarks.map(m => Number(m.final_score ?? m.score));
+            const gradeBuckets = [
+                scores.filter(score => score >= 75).length,
+                scores.filter(score => score >= 65 && score < 75).length,
+                scores.filter(score => score >= 50 && score < 65).length,
+                scores.filter(score => score < 50).length
+            ];
+            const averageScore = scores.length ? Math.round(scores.reduce((sum,score)=>sum+score,0)/scores.length) : null;
+            const legendValues = ['nrdGradeDistinction','nrdGradeCredit','nrdGradePass','nrdGradeFail'];
+            legendValues.forEach((id,index) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = gradeBuckets[index];
             });
+            const totalEl = document.getElementById('nrdGradeTotal');
+            if (totalEl) totalEl.textContent = scores.length ? 'Total marked results: ' + scores.length : 'No approved and published marks yet';
+            const averageEl = document.getElementById('nrdPerformanceAverage');
+            if (averageEl) averageEl.textContent = averageScore === null ? '—' : averageScore + '%';
 
             const ctx1 = document.getElementById('performanceChart');
             if (ctx1) {
@@ -2216,49 +2237,29 @@ const LecturerDashboard = {
                     this.chartInstances.performance.destroy();
                     this.chartInstances.performance = null;
                 }
-
-                const colors = this.isTVET ?
-                    ['#7c3aed', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'] :
-                    ['#4C1D95', '#667eea', '#764ba2', '#8b5cf6', '#FDB913'];
-
                 this.chartInstances.performance = new Chart(ctx1, {
-                    type: 'bar',
+                    type: 'doughnut',
                     data: {
-                        labels: subjectNames.length > 0 ? subjectNames : ['No Data'],
+                        labels: ['Distinction (≥75%)', 'Credit (65–74%)', 'Pass (50–64%)', 'Below 50%'],
                         datasets: [{
-                            label: `Average Score (%) - ${typeLabel}`,
-                            data: subjectAverages.length > 0 ? subjectAverages : [0],
-                            backgroundColor: subjectNames.map((_, i) => colors[i % colors.length]),
-                            borderRadius: 8
+                            data: scores.length ? gradeBuckets : [1,0,0,0],
+                            backgroundColor: ['#22a447','#1685ed','#f2b900','#ef4444'],
+                            borderWidth: 0,
+                            hoverOffset: 4
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        cutout: '70%',
                         plugins: {
                             legend: { display: false },
-                            title: {
-                                display: true,
-                                text: `${emoji} Performance by Subject - ${program} (${typeLabel})`,
-                                font: { size: 14, weight: '700' },
-                                padding: { bottom: 10 },
-                                color: '#0F172A'
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100,
-                                title: {
-                                    display: true,
-                                    text: 'Average Score (%)',
-                                    font: { weight: '500' }
-                                }
-                            }
+                            tooltip: { enabled: scores.length > 0 },
+                            title: { display: false }
                         }
                     }
                 });
-                console.log('✅ Performance chart updated with', subjectNames.length, 'subjects');
+                console.log('✅ Published grade distribution updated:', {count:scores.length,average:averageScore,buckets:gradeBuckets});
             }
 
             // ─── 3. ATTENDANCE TREND CHART ───
