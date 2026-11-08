@@ -740,45 +740,41 @@ const LecturerDashboard = {
     },
 
     // ─── RESOLVE LECTURER ID ───
+    // lecturer_subject_assignments.lecturer_id references staff_records.id,
+    // not auth.uid() and not consolidated_user_profiles_table.staff_id.
     async resolveLecturerId() {
         try {
             const supabase = this.getSupabaseClient();
-            if (!supabase) return;
+            if (!supabase) throw new Error('Supabase client is unavailable.');
 
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
+            const profile = window.lecturerDB?.getCurrentUserProfile() || {};
+            let email = String(profile.email || profile.email_address || window.currentUser?.email || '').trim();
 
-            const fullName = profile.full_name;
-            const authId = profile.user_id;
-
-            console.log('🔍 Dashboard - Auth ID:', authId);
-            console.log('🔍 Dashboard - Lecturer name:', fullName);
-
-            this.lecturerUuid = authId;
-
-            const { data: assignments, error: assignError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .ilike('lecturer_name', `%${fullName}%`);
-
-            if (!assignError && assignments && assignments.length > 0) {
-                const nonStaff = assignments.find(a => !a.lecturer_id.toString().startsWith('STAFF'));
-                if (nonStaff) {
-                    this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Dashboard using non-STAFF ID:', this.lecturerAssignmentId);
-                    return;
-                }
-                this.lecturerAssignmentId = assignments[0].lecturer_id;
-                console.log('✅ Dashboard using STAFF ID:', this.lecturerAssignmentId);
-                return;
+            if (!email && supabase.auth?.getUser) {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                if (error) throw error;
+                email = String(user?.email || '').trim();
             }
+            if (!email) throw new Error('Could not resolve the authenticated lecturer email.');
 
-            this.lecturerAssignmentId = authId;
-            console.log('⚠️ Dashboard falling back to auth ID:', this.lecturerAssignmentId);
+            const { data: staff, error: staffError } = await supabase
+                .from('staff_records')
+                .select('id, first_name, other_names, email')
+                .ilike('email', email)
+                .maybeSingle();
 
+            if (staffError) throw staffError;
+            if (!staff?.id) throw new Error('No staff record matches the signed-in lecturer email.');
+
+            this.lecturerUuid = window.currentUser?.id || profile.user_id || null;
+            this.lecturerAssignmentId = String(staff.id);
+            window.CORRECT_LECTURER_ID = String(staff.id);
+            console.log('[Lecturer Dashboard] Resolved staff-record assignment ID:', this.lecturerAssignmentId);
+            return this.lecturerAssignmentId;
         } catch (error) {
-            console.error('Error resolving lecturer ID:', error);
+            console.error('[Lecturer Dashboard] Lecturer identity resolution failed:', error);
             this.lecturerAssignmentId = null;
+            return null;
         }
     },
 
@@ -786,44 +782,36 @@ const LecturerDashboard = {
     async loadAssignedUnits() {
         try {
             const supabase = this.getSupabaseClient();
-            if (!supabase) return;
+            if (!supabase) throw new Error('Supabase client is unavailable.');
 
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
-
-            const fullName = profile.full_name;
-            const program = this.getCurrentProgram();
+            const lecturerId = String(this.lecturerAssignmentId || await this.resolveLecturerId() || '').trim();
+            if (!lecturerId) throw new Error('Lecturer staff-record ID could not be resolved.');
 
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('subject_name, subject_code, block, program, academic_year, lecturer_id')
-                .ilike('lecturer_name', `%${fullName}%`);
+                .eq('lecturer_id', lecturerId);
 
-            if (error) {
-                console.error('Error loading assigned units:', error);
-                this.assignedUnits = [];
-                return;
-            }
+            if (error) throw error;
 
-            // Never fall back to another program's assignments. Dashboard student
-            // totals must be derived only from this lecturer's own assigned units
-            // in the lecturer's active program.
             const normalize = value => String(value || '').trim().toLowerCase();
-            const programUnits = (assignments || []).filter(u =>
-                normalize(u.program) === normalize(program)
+            const program = normalize(this.getCurrentProgram());
+            const ownRows = (assignments || []).filter(row =>
+                String(row.lecturer_id || '') === lecturerId &&
+                (!program || normalize(row.program) === program)
             );
             const uniqueUnits = new Map();
-            programUnits.forEach(unit => {
+            ownRows.forEach(unit => {
                 const key = normalize(unit.subject_code || unit.subject_name) + '|' + normalize(unit.block);
                 if (!uniqueUnits.has(key)) uniqueUnits.set(key, unit);
             });
             this.assignedUnits = [...uniqueUnits.values()];
 
-            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for program ${program}`);
-            console.log(`📚 TVET Mode: ${this.isTVET}`);
-
+            console.log('[Lecturer Dashboard] Loaded assigned units:', this.assignedUnits.length, {
+                lecturerId, program: this.getCurrentProgram()
+            });
         } catch (error) {
-            console.error('Failed to load assigned units:', error);
+            console.error('[Lecturer Dashboard] Failed to load assigned units:', error);
             this.assignedUnits = [];
         }
     },
