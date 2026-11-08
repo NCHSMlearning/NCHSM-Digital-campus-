@@ -3,7 +3,7 @@ try { sessionStorage.removeItem('brevo_api_key'); } catch (_) {}
 
 // ============================================
 // NCHSM SECURE LOGIN SYSTEM - ULTIMATE
-// Version: 5.2 - FAST LOGIN / NON-BLOCKING SESSION
+// Version: 5.3 - HOD ROLE ROUTING / VERIFIED SESSION
 // Copyright © 2026 Nakuru College of Health Sciences and Management
 // ============================================
 
@@ -28,7 +28,7 @@ function trackGALogin(eventName, eventData) {
 // ✅ VERSION CHECK - WITHOUT CLEARING SESSION
 // ============================================
 (function() {
-    const VERSION = '5.2';
+    const VERSION = '5.3';
     const storedVersion = localStorage.getItem('nchsm_js_version');
     
     if (storedVersion !== VERSION) {
