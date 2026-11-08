@@ -10531,5 +10531,16 @@ h1:has(#welcomeHeader){display:none!important}
 }
 </style>
 
+
+<style id="nchsm-remove-legacy-dashboard-header-v1">
+/* Remove the old second dashboard header. Its programme, online state,
+   notification and help controls are already represented in the new shell/hero. */
+#mainContent > header:has(#welcomeHeader){display:none!important}
+@media(max-width:760px){
+  #mainContent > header:has(#welcomeHeader){display:none!important}
+  #mainContent{padding-top:12px!important}
+}
+</style>
+
 </body>
 </html>
