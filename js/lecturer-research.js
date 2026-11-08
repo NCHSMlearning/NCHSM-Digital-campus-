@@ -670,7 +670,10 @@ window.LecturerResearch = (() => {
     }
 
     function lecturerSelection(editor){
-        const sel=window.getSelection();
+        let sel=window.getSelection();
+        if((!sel||!sel.rangeCount||!editor.contains(sel.getRangeAt(0).commonAncestorContainer))&&lecturerSavedSelection){
+            try{sel.removeAllRanges();sel.addRange(lecturerSavedSelection)}catch(e){}
+        }
         if(!sel||!sel.rangeCount)return null;
         const range=sel.getRangeAt(0);
         if(!editor.contains(range.commonAncestorContainer))return null;
@@ -1545,7 +1548,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         let html='<table style="width:100%;border-collapse:collapse" border="1"><tbody>';
         for(let r=0;r<rows;r++){html+='<tr>';for(let c=0;c<cols;c++)html+='<td style="padding:7px;min-width:55px">'+(r===0?'Heading':'&nbsp;')+'</td>';html+='</tr>'}
         html+='</tbody></table><p><br></p>';
-        editor.focus();document.execCommand('insertHTML',false,html);
+        lecturerRestoreSelection();editor.focus();document.execCommand('insertHTML',false,html);
     }
 
     function lecturerResearchInsertLink(editor){
@@ -1554,17 +1557,18 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         let safe;
         try{safe=new URL(url,location.href)}catch(e){return notify('Enter a valid web address.','warning')}
         if(!['http:','https:'].includes(safe.protocol))return notify('Only secure web links are allowed.','warning');
-        editor.focus();document.execCommand('createLink',false,safe.href);
+        lecturerRestoreSelection();editor.focus();document.execCommand('createLink',false,safe.href);
     }
 
     function lecturerResearchInsertImage(editor){
         const input=document.createElement('input');
         input.type='file';input.accept='image/png,image/jpeg,image/gif,image/webp';
+        lecturerSaveSelection();
         input.onchange=()=>{
             const file=input.files&&input.files[0];if(!file)return;
             if(file.size>5*1024*1024)return notify('Images must be 5 MB or smaller.','warning');
             const reader=new FileReader();
-            reader.onload=()=>{editor.focus();document.execCommand('insertImage',false,String(reader.result))};
+            reader.onload=()=>{lecturerRestoreSelection();editor.focus();document.execCommand('insertImage',false,String(reader.result))};
             reader.readAsDataURL(file);
         };
         input.click();
@@ -1752,10 +1756,10 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         modal.querySelectorAll('[data-rs-table]').forEach(btn=>btn.addEventListener('click',()=>lecturerResearchInsertTable(editor)));
         modal.querySelectorAll('[data-rs-image]').forEach(btn=>btn.addEventListener('click',()=>lecturerResearchInsertImage(editor)));
         modal.querySelectorAll('[data-rs-page-break]').forEach(btn=>btn.addEventListener('click',()=>{
-            editor.focus();document.execCommand('insertHTML',false,'<div style="break-before:page;page-break-before:always;border-top:1px dashed #cbd5e1;margin:28px 0;padding-top:12px"><p><br></p></div>');
+            lecturerRestoreSelection();editor.focus();document.execCommand('insertHTML',false,'<div style="break-before:page;page-break-before:always;border-top:1px dashed #cbd5e1;margin:28px 0;padding-top:12px"><p><br></p></div>');
         }));
-        const font=modal.querySelector('[data-rs-font]');if(font)font.addEventListener('change',()=>{editor.focus();document.execCommand('fontName',false,font.value)});
-        const size=modal.querySelector('[data-rs-font-size]');if(size)size.addEventListener('change',()=>{editor.focus();document.execCommand('fontSize',false,size.value)});
+        const font=modal.querySelector('[data-rs-font]');if(font){font.addEventListener('mousedown',lecturerSaveSelection);font.addEventListener('change',()=>{lecturerRestoreSelection();editor.focus();document.execCommand('fontName',false,font.value)})}
+        const size=modal.querySelector('[data-rs-font-size]');if(size){size.addEventListener('mousedown',lecturerSaveSelection);size.addEventListener('change',()=>{lecturerRestoreSelection();editor.focus();document.execCommand('fontSize',false,size.value)})}
         const spacing=modal.querySelector('[data-rs-line-spacing]');if(spacing)spacing.addEventListener('change',()=>{editor.focus();editor.style.lineHeight=spacing.value});
         modal.querySelectorAll('[data-rs-cmd]').forEach(btn=>{
             btn.addEventListener('mousedown',e=>{
