@@ -332,6 +332,9 @@ const AcademicPortfolio = {
     },
 
     async openModule(tab) {
+        // Always return a previously mounted legacy section to its original page location
+        // before another workspace replaces the portfolio content.
+        this.restoreMountedSection();
         const groups = {
             'course-allocation':'teaching','scheme-of-work':'teaching','lesson-plans':'teaching',
             'teaching-documents':'teaching','teaching-log':'teaching','materials':'teaching',
@@ -421,7 +424,39 @@ const AcademicPortfolio = {
         heading.append(copy, back);
         const body = document.createElement('section');
         body.className = 'ap-module-body';
+        body.dataset.module = sectionId;
         body.style.cssText = 'min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:15px;padding:clamp(12px,2vw,22px);box-shadow:0 3px 14px rgba(15,23,42,.035);overflow-x:auto;';
+        const polish = document.createElement('style');
+        polish.textContent = `
+          .ap-module-body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033}
+          .ap-module-body #cats-content,.ap-module-body #marks-management-content,.ap-module-body #reports-content{width:100%;min-width:0}
+          .ap-module-body #cats-content>div,.ap-module-body #marks-management-content>div{max-width:100%}
+          .ap-module-body #cats-content [style*="border-radius"],.ap-module-body #marks-management-content [style*="border-radius"]{border-radius:14px!important}
+          .ap-module-body #cats-content [style*="box-shadow"],.ap-module-body #marks-management-content [style*="box-shadow"]{box-shadow:0 5px 20px rgba(15,23,42,.055)!important}
+          .ap-module-body #cats-content button,.ap-module-body #marks-management-content button,.ap-module-body #reports-content button{min-height:38px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+          .ap-module-body #cats-content button:hover,.ap-module-body #marks-management-content button:hover,.ap-module-body #reports-content button:hover{filter:brightness(.97);box-shadow:0 5px 15px rgba(15,23,42,.10)}
+          .ap-module-body #cats-content input,.ap-module-body #cats-content select,.ap-module-body #cats-content textarea,.ap-module-body #marks-management-content input,.ap-module-body #marks-management-content select,.ap-module-body #marks-management-content textarea{max-width:100%;min-height:42px;border-radius:10px!important;border:1px solid #d8e1ec!important;padding:9px 11px!important;font:inherit;box-sizing:border-box}
+          .ap-module-body #cats-content input:focus,.ap-module-body #cats-content select:focus,.ap-module-body #cats-content textarea:focus,.ap-module-body #marks-management-content input:focus,.ap-module-body #marks-management-content select:focus,.ap-module-body #marks-management-content textarea:focus{outline:none;border-color:#7653c7!important;box-shadow:0 0 0 3px rgba(118,83,199,.12)!important}
+          .ap-module-body #cats-content table,.ap-module-body #marks-management-content table,.ap-module-body #reports-content table{border-collapse:separate;border-spacing:0;width:100%;max-width:100%}
+          .ap-module-body #cats-content th,.ap-module-body #marks-management-content th,.ap-module-body #reports-content th{position:sticky;top:0;z-index:1;background:#f5f7fb!important;color:#475569!important;font-size:11px;letter-spacing:.035em;text-transform:uppercase}
+          .ap-module-body #cats-content td,.ap-module-body #cats-content th,.ap-module-body #marks-management-content td,.ap-module-body #marks-management-content th,.ap-module-body #reports-content td,.ap-module-body #reports-content th{padding:11px 12px}
+          .ap-module-body #cats-content tr:hover td,.ap-module-body #marks-management-content tr:hover td,.ap-module-body #reports-content tr:hover td{background:#fafbff}
+          .ap-module-body #marks-management-content .marks-system-header{padding:20px;border:1px solid #e5eaf2;border-radius:16px;background:linear-gradient(135deg,#fff,#f7f8ff);margin-bottom:16px}
+          .ap-module-body #marks-management-content .marks-system-header h2{font-size:clamp(21px,2.5vw,27px);font-weight:800;color:#172554}
+          .ap-module-body #reports-content .lr-wrap{max-width:none}
+          .ap-module-body #reports-content .lr-stats{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
+          .ap-module-body #reports-content .lr-form-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
+          .ap-module-body #reports-content .lr-options{grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}
+          @media(max-width:700px){
+            .ap-module-body{padding:10px!important;border-radius:12px}
+            .ap-module-body #cats-content>div[style*="display:flex"],.ap-module-body #marks-management-content .marks-system-header{gap:12px}
+            .ap-module-body #cats-content table,.ap-module-body #marks-management-content table,.ap-module-body #reports-content table{min-width:680px}
+            .ap-module-body #cats-content [style*="min-width:1250px"]{min-width:850px!important}
+            .ap-module-body #reports-content .lr-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+          }
+          @media(prefers-reduced-motion:reduce){.ap-module-body *{transition:none!important;scroll-behavior:auto!important}}
+        `;
+        body.appendChild(polish);
         body.appendChild(host);
         workspace.append(heading, body);
         container.replaceChildren(workspace);
