@@ -950,6 +950,19 @@ const LecturerDashboard = {
         return identifiers.some(id => registered.has(id + '|' + unitKey));
     },
 
+    getAssignedStudentIdentifierMap() {
+        const identifiers = new Map();
+        (this.assignedStudents || []).forEach(student => {
+            const userId=String(student.user_id||'').trim();
+            if(!userId)return;
+            [student.user_id,student.student_id,student.admission_number].forEach(value=>{
+                const key=String(value||'').trim();
+                if(key)identifiers.set(key,userId);
+            });
+        });
+        return identifiers;
+    },
+
     // ─── LOAD METRICS ───
     async loadMetrics() {
         const supabase = this.getSupabaseClient();
@@ -957,6 +970,7 @@ const LecturerDashboard = {
         const units = Array.isArray(this.assignedUnits) ? this.assignedUnits : [];
         const program = this.getCurrentProgram();
         const studentIds = [...new Set(students.map(s => String(s.user_id || '').trim()).filter(Boolean))];
+        const attendanceStudentIds = [...this.getAssignedStudentIdentifierMap().keys()];
         const unitNames = [...new Set(units.map(u => String(u.subject_name || '').trim()).filter(Boolean))];
         const unitKeys = new Set(units.map(u =>
             String(u.subject_name || '').trim().toLowerCase() + '|' + String(u.block || '').trim().toLowerCase()
@@ -991,7 +1005,7 @@ const LecturerDashboard = {
             const { data, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('student_id, unit_name, block, attendance_status, status')
-                .in('student_id', studentIds)
+                .in('student_id', attendanceStudentIds)
                 .in('unit_name', unitNames)
                 .eq('program', program);
             if (error) throw error;
@@ -1155,7 +1169,7 @@ const LecturerDashboard = {
         const [registrations, marks, attendanceRecords, assignments, assignmentSubmissions, exams, schemes, lessons, nurseAttempts, research, reports] = await Promise.all([
             safe(supabase.from('student_unit_registrations').select('student_id,unit_name,block,status,program').in('student_id', studentIds).eq('program', program), 'unit registrations'),
             safe(supabase.from('student_marks').select('student_id,admission_number,subject_name,block,final_score,published,approval_status,program,updated_at,created_at').in('subject_name', unitNames).eq('program', program), 'marks'),
-            safe(supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status,program').in('student_id', studentIds).eq('program', program), 'attendance rate'),
+            safe(supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status,program').in('student_id', [...this.getAssignedStudentIdentifierMap().keys()]).eq('program', program), 'attendance rate'),
             authId ? safe(supabase.from('online_assignments').select('id,title,unit_code,unit_name,program,block,published,due_at,created_by').eq('created_by', authId).eq('program', program), 'online assignments') : Promise.resolve(null),
             studentIds.length ? safe(supabase.from('online_submissions').select('id,assignment_id,student_id,status,submitted_at').in('student_id', studentIds), 'assignment submissions') : Promise.resolve([]),
             safe(supabase.from('exams').select('id,title,exam_name,course_name,block,status,exam_date,target_program,is_published').eq('target_program', program), 'assigned examinations'),
@@ -1307,7 +1321,7 @@ const LecturerDashboard = {
     // ─── LOAD ATTENDANCE METRICS ───
     async loadAttendanceMetrics() {
         const supabase=this.getSupabaseClient(),students=this.assignedStudents||[],units=this.assignedUnits||[];
-        const ids=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        const ids=[...this.getAssignedStudentIdentifierMap().keys()];
         const names=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
         const norm=v=>String(v||'').trim().toLowerCase(),keys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
         if(!supabase||!ids.length||!names.length){
@@ -1329,13 +1343,14 @@ const LecturerDashboard = {
             const kenyaDate=value=>new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Nairobi',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
             const status=x=>norm(x.attendance_status||x.status);
             const todayLogs=logs.filter(x=>x.check_in_time&&kenyaDate(x.check_in_time)===todayStr);
-            const checkedToday=new Set(todayLogs.map(x=>String(x.student_id)));
-            const presentToday=new Set(todayLogs.filter(x=>['present','verified'].includes(status(x))).map(x=>String(x.student_id)));
-            const absentToday=new Set(todayLogs.filter(x=>status(x)==='absent').map(x=>String(x.student_id)));
+            const canonicalId=value=>identifierMap.get(String(value||''))||String(value||'');
+            const checkedToday=new Set(todayLogs.map(x=>canonicalId(x.student_id)));
+            const presentToday=new Set(todayLogs.filter(x=>['present','verified'].includes(status(x))).map(x=>canonicalId(x.student_id)));
+            const absentToday=new Set(todayLogs.filter(x=>status(x)==='absent').map(x=>canonicalId(x.student_id)));
             this.attendanceMetrics.today=checkedToday.size;
             this.attendanceMetrics.present=presentToday.size;
             this.attendanceMetrics.absent=absentToday.size;
-            this.attendanceMetrics.pending=Math.max(0,ids.length-checkedToday.size);
+            this.attendanceMetrics.pending=Math.max(0,students.length-checkedToday.size);
             this.attendanceMetrics.lectureCount=todayLogs.filter(x=>norm(x.session_type)==='lecture'||norm(x.session_type)==='class').length;
             this.attendanceMetrics.clinicalCount=todayLogs.filter(x=>norm(x.session_type)==='clinical').length;
             this.attendanceMetrics.labCount=todayLogs.filter(x=>norm(x.session_type)==='lab').length;
@@ -1505,7 +1520,8 @@ const LecturerDashboard = {
             });
             const rows=studentIds.map(id=>{
                 const student=students.find(s=>String(s.user_id)===id);
-                const absences=attendance.filter(a=>String(a.student_id)===id&&norm(a.attendance_status||a.status)==='absent').length;
+                const studentIdentifiers=[id,student?.student_id,student?.admission_number].map(v=>String(v||'').trim()).filter(Boolean);
+                const absences=attendance.filter(a=>studentIdentifiers.includes(String(a.student_id||'').trim())&&norm(a.attendance_status||a.status)==='absent').length;
                 const studentAdmission=String(student?.student_id||student?.admission_number||'').trim();
                 const studentMarks=[...latestMarks.values()].filter(m=>String(m.student_id||'')===id||String(m.admission_number||'').trim()===studentAdmission);
                 const avg=studentMarks.length?studentMarks.reduce((sum,m)=>sum+Number(m.final_score),0)/studentMarks.length:null;
@@ -1722,7 +1738,7 @@ const LecturerDashboard = {
         const container=document.getElementById('attendanceAlerts');
         if(!container)return;
         const supabase=this.getSupabaseClient(),students=this.assignedStudents||[],units=this.assignedUnits||[];
-        const ids=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        const ids=[...this.getAssignedStudentIdentifierMap().keys()];
         const names=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
         const norm=v=>String(v||'').trim().toLowerCase();
         const keys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
@@ -1832,7 +1848,7 @@ const LecturerDashboard = {
         const container=document.getElementById('recentActivityList');
         if(!container)return;
         const supabase=this.getSupabaseClient(),students=this.assignedStudents||[],units=this.assignedUnits||[];
-        const ids=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        const ids=[...this.getAssignedStudentIdentifierMap().keys()];
         const names=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
         const norm=v=>String(v||'').trim().toLowerCase(),keys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
         if(!supabase||!ids.length||!units.length){container.innerHTML='<div class="nrd-empty">No assigned-unit activity available.</div>';return;}
@@ -2076,7 +2092,8 @@ const LecturerDashboard = {
                 }
 
                 const normAttendance=value=>String(value||'').trim().toLowerCase();
-                const assignedStudentIds=[...new Set((this.assignedStudents||[]).map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+                const attendanceIdentifierMap=this.getAssignedStudentIdentifierMap();
+                const assignedStudentIds=[...attendanceIdentifierMap.keys()];
                 const assignedNames=[...new Set((this.assignedUnits||[]).map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
                 const assignedKeys=new Set((this.assignedUnits||[]).map(u=>normAttendance(u.subject_name)+'|'+normAttendance(u.block)));
                 const chartDays=[];
@@ -2091,7 +2108,7 @@ const LecturerDashboard = {
                         .gte('check_in_time',start).lt('check_in_time',end);
                     if(error)throw error;
                     const enrollmentKeys=this.assignedEnrollmentKeys||new Set();
-                    const present=new Set((data||[]).filter(row=>assignedKeys.has(normAttendance(row.unit_name)+'|'+normAttendance(row.block))&&enrollmentKeys.has(String(row.student_id)+'|'+normAttendance(row.unit_name)+'|'+normAttendance(row.block))&&['present','verified'].includes(normAttendance(row.attendance_status||row.status))).map(row=>String(row.student_id)));
+                    const present=new Set((data||[]).filter(row=>assignedKeys.has(normAttendance(row.unit_name)+'|'+normAttendance(row.block))&&enrollmentKeys.has(String(row.student_id)+'|'+normAttendance(row.unit_name)+'|'+normAttendance(row.block))&&['present','verified'].includes(normAttendance(row.attendance_status||row.status))).map(row=>attendanceIdentifierMap.get(String(row.student_id||''))||String(row.student_id||'')));
                     return {count:present.size};
                 }));
                 const attendanceData=attendanceResults.map(x=>x.count);
