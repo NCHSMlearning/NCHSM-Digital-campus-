@@ -18,6 +18,10 @@ async function init(){
  profile=p.data||user.user_metadata||{};
  mode=isStaff()?'staff':'student';
  mount(); await load();
+ if(mode==='student'){
+  document.addEventListener('click',e=>{if(e.target.closest('[data-ol-tab="research"]'))setTimeout(()=>{mount();load();},250);});
+  const content=$('ol-content');if(content&&window.MutationObserver){new MutationObserver(()=>{if(document.querySelector('#hub-online-learning [data-ol-tab="research"].active')&&!$('research-topic-vault'))setTimeout(mount,80);}).observe(content,{childList:true});}
+ }
 }
 function mount(){
  let root=$('research-topic-vault'); if(root)return;
@@ -94,7 +98,7 @@ async function submitTopic(e){
   if(exact)throw new Error('This exact title is already registered or awaiting review. Please propose a different title.');
   const ins=await sb.from('research_topic_vault').insert(payload).select('id').single();if(ins.error)throw ins.error;
   e.currentTarget.reset();notify('Topic submitted. It will be reserved only after approval.');await load();
- }catch(err){fail(err.message||String(err))}finally{b.disabled=false;b.textContent='Submit topic for review'}
+ }catch(err){fail(err.code==='23505'?'This title is already reserved or awaiting review. Please submit a different title.':(err.message||String(err)))}finally{b.disabled=false;b.textContent='Submit topic for review'}
 }
 function paintRows(){
  const body=$('rtv-rows');if(!body)return;
