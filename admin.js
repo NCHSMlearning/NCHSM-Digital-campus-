@@ -1159,9 +1159,6 @@ async function loadLecturersForAssignment() {
         if (!isGlobalAdmin && currentAdmin?.department) {
             query = query.eq('department', currentAdmin.department);
         }
-        if (!isGlobalAdmin && currentAdmin?.program) {
-            query = query.eq('program', currentAdmin.program);
-        }
         const { data, error } = await query;
         if (error) throw error;
         allLecturers = data || [];
@@ -1361,9 +1358,6 @@ async function renderAvailableUnits(lecturerId, assignedUnits) {
     const lecturer = allLecturers.find(l => l.user_id === lecturerId);
     let available = availableUnitsForAssignment;
     if (lecturer?.program) available = available.filter(u => u.program === lecturer.program);
-    if (currentAdmin?.program && !['admin','administrator'].includes(String(currentAdmin.role || '').toLowerCase())) {
-        available = available.filter(u => u.program === currentAdmin.program);
-    }
     const assignedKeys = new Set(assignedUnits.map(a => [a.program,a.block,a.unit_code].join('|')));
     available = available.filter(u => !assignedKeys.has([u.program,u.block,u.unit_code].join('|')));
     if (!available.length) {
