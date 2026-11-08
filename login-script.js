@@ -1917,19 +1917,21 @@ verifyStaffLogin: async function(identifier, password) {
         let twoFactorEnabled = false;
         let twoFactorSecret = null;
         let twoFactorVerified = false;
+        let linkedProfile = null;
 
         try {
             const { data: profile, error: profileError } = await this.supabase
                 .from('consolidated_user_profiles_table')
-                .select('user_id, role, program, department, school, school_name, campus, two_factor_enabled, two_factor_secret, two_factor_verified')
+                .select('*')
                 .ilike('email', staff.email.trim())
                 .maybeSingle();
 
             if (profileError) throw profileError;
-            if (profile?.user_id) uuid = profile.user_id;
-            twoFactorEnabled = !!profile?.two_factor_enabled;
-            twoFactorSecret = profile?.two_factor_secret || null;
-            twoFactorVerified = !!profile?.two_factor_verified;
+            linkedProfile = profile;
+            if (linkedProfile?.user_id) uuid = linkedProfile.user_id;
+            twoFactorEnabled = !!linkedProfile?.two_factor_enabled;
+            twoFactorSecret = linkedProfile?.two_factor_secret || null;
+            twoFactorVerified = !!linkedProfile?.two_factor_verified;
         } catch (e) {
             console.warn('⚠️ Could not load staff profile/2FA state');
         }
@@ -1946,12 +1948,12 @@ verifyStaffLogin: async function(identifier, password) {
             id: staff.id,
             email: staff.email,
             full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
-            role: profile?.role || (/lecturer/i.test(staff.designation || '') ? 'lecturer' : 'staff'),
-            program: profile?.program || staff.department,
-            department: profile?.department || staff.department || '',
-            school: profile?.school || profile?.school_name || staff.department || '',
-            school_name: profile?.school_name || profile?.school || '',
-            campus: profile?.campus || '',
+            role: linkedProfile?.role || (/lecturer/i.test(staff.designation || '') ? 'lecturer' : 'staff'),
+            program: linkedProfile?.program || linkedProfile?.department || staff.department,
+            department: linkedProfile?.department || staff.department || '',
+            school: linkedProfile?.school || linkedProfile?.school_name || linkedProfile?.department || staff.department || '',
+            school_name: linkedProfile?.school_name || linkedProfile?.school || '',
+            campus: linkedProfile?.campus || '',
             is_staff: true,
             login_enabled: staff.login_enabled,
             status: staff.status,
@@ -2518,7 +2520,7 @@ executeLogin: async function(identifier, password) {
             .normalize('NFKC')
             .trim()
             .toLowerCase()
-            .replace(/[\\s-]+/g, '_')
+            .replace(/[\s-]+/g, '_')
             .replace(/_+/g, '_');
 
         const roleAliases = {
