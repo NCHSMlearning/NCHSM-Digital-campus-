@@ -970,7 +970,8 @@ const LecturerDashboard = {
         const units = Array.isArray(this.assignedUnits) ? this.assignedUnits : [];
         const program = this.getCurrentProgram();
         const studentIds = [...new Set(students.map(s => String(s.user_id || '').trim()).filter(Boolean))];
-        const attendanceStudentIds = [...this.getAssignedStudentIdentifierMap().keys()];
+        const attendanceIdentifierMap = this.getAssignedStudentIdentifierMap();
+        const attendanceStudentIds = [...attendanceIdentifierMap.keys()];
         const unitNames = [...new Set(units.map(u => String(u.subject_name || '').trim()).filter(Boolean))];
         const unitKeys = new Set(units.map(u =>
             String(u.subject_name || '').trim().toLowerCase() + '|' + String(u.block || '').trim().toLowerCase()
@@ -1016,7 +1017,7 @@ const LecturerDashboard = {
                 if (!unitKeys.has(key) || !(this.assignedEnrollmentKeys||new Set()).has(String(log.student_id||'')+'|'+key)) return;
                 const status = normalize(log.attendance_status || log.status);
                 if (status === 'absent') {
-                    const id = String(log.student_id || '').trim();
+                    const id = attendanceIdentifierMap.get(String(log.student_id || '').trim()) || String(log.student_id || '').trim();
                     absenceCounts.set(id, (absenceCounts.get(id) || 0) + 1);
                 }
             });
@@ -1037,7 +1038,7 @@ const LecturerDashboard = {
             const { data, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('student_id, unit_name, block, attendance_status, status, check_in_time')
-                .in('student_id', studentIds)
+                .in('student_id', attendanceStudentIds)
                 .in('unit_name', unitNames)
                 .eq('program', program)
                 .gte('check_in_time', startOfDay)
@@ -1048,7 +1049,7 @@ const LecturerDashboard = {
             (data || []).forEach(log => {
                 const key = normalize(log.unit_name) + '|' + normalize(log.block);
                 const status = normalize(log.attendance_status || log.status);
-                if (unitKeys.has(key) && (this.assignedEnrollmentKeys||new Set()).has(String(log.student_id||'')+'|'+key) && status === 'pending') pendingIds.add(String(log.student_id));
+                if (unitKeys.has(key) && (this.assignedEnrollmentKeys||new Set()).has(String(log.student_id||'')+'|'+key) && status === 'pending') pendingIds.add(attendanceIdentifierMap.get(String(log.student_id||'')) || String(log.student_id||''));
             });
             this.metrics.pendingAttendance = pendingIds.size;
             console.debug('[Lecturer Dashboard] Pending attendance date:', localDate, pendingIds.size);
@@ -1498,13 +1499,14 @@ const LecturerDashboard = {
         const students=this.assignedStudents||[];
         const units=this.assignedUnits||[];
         const studentIds=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        const attendanceStudentIds=[...this.getAssignedStudentIdentifierMap().keys()];
         const unitNames=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
         const norm=v=>String(v||'').trim().toLowerCase();
         const unitKeys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
         if(!supabase||!studentIds.length||!units.length){this.riskMetrics={high:0,medium:0,low:0,students:[]};this.updateRiskUI([],0,0,0);return;}
         try{
             const [attendanceResult,marksResult]=await Promise.all([
-                supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status').in('student_id',studentIds).in('unit_name',unitNames).eq('program',this.getCurrentProgram()),
+                supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status').in('student_id',attendanceStudentIds).in('unit_name',unitNames).eq('program',this.getCurrentProgram()),
                 supabase.from('student_marks').select('student_id,admission_number,subject_name,block,final_score,published,approval_status,updated_at,created_at').in('subject_name',unitNames).eq('program',this.getCurrentProgram()).eq('published',true).eq('approval_status','approved')
             ]);
             if(attendanceResult.error)throw attendanceResult.error;
