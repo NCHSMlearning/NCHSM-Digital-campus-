@@ -164,21 +164,38 @@
 
     async function assertAdmin() {
         const user = await getCurrentUser();
-
         if (!user) {
-            showModuleToast('Your session could not be verified.', 'error');
+            showModuleToast('Your session could not be verified. Please sign in again.', 'error');
             return false;
         }
 
-        const profile = await getCurrentProfile(user);
-        const role =
-            profile?.role ||
-            user?.user_metadata?.role ||
-            user?.app_metadata?.role ||
-            '';
+        const client = getSupabaseClient();
+        let authorized = false;
 
-        if (!ADMIN_ROLES.includes(String(role).toLowerCase())) {
-            console.warn(`[${MODULE}] Unauthorized role:`, role);
+        // Prefer the database's SECURITY DEFINER role check. This avoids a
+        // false denial when profile-row RLS prevents the module from reading
+        // the administrator's own profile.
+        try {
+            if (client?.rpc) {
+                const { data, error } = await client.rpc('is_report_admin');
+                if (!error) authorized = data === true;
+            }
+        } catch (rpcError) {
+            console.warn(`[${MODULE}] Admin RPC check unavailable; using profile fallback.`, rpcError);
+        }
+
+        if (!authorized) {
+            const profile = await getCurrentProfile(user);
+            const roles = [
+                profile?.role,
+                user?.user_metadata?.role,
+                user?.app_metadata?.role
+            ].filter(Boolean).map(value => String(value).trim().toLowerCase().replace(/[\\s-]+/g, '_'));
+            authorized = roles.some(role => ADMIN_ROLES.includes(role) || role === 'admin');
+        }
+
+        if (!authorized) {
+            console.warn(`[${MODULE}] Authenticated user lacks an approved administrator role.`);
             showModuleToast('You are not authorized to review lecturer reports.', 'error');
             return false;
         }
@@ -344,19 +361,22 @@
     }
 
     async function loadReports() {
-        if (!(await assertAdmin())) return;
-
-        const client = getSupabaseClient();
-
-        if (!client) {
-            showModuleToast(
-                'Supabase client was not found. Check the main Super Admin initialization.',
-                'error'
-            );
-            return;
-        }
-
+        const table = getElement('lecturerReportsReviewTable');
+        if (!table) return;
         setLoading(true);
+
+        try {
+            if (!(await assertAdmin())) {
+                renderEmptyState('Administrator access could not be verified. Refresh the page and sign in again.');
+                return;
+            }
+
+            const client = getSupabaseClient();
+            if (!client) {
+                renderEmptyState('Supabase is not initialized on this page. Reload the Super Admin dashboard.');
+                showModuleToast('Supabase client was not found.', 'error');
+                return;
+            }
 
         try {
             const { data, error } = await client
@@ -479,15 +499,8 @@
 
             state.rows = [];
             state.filteredRows = [];
-
-            renderEmptyState(
-                'Unable to load lecturer reports. Check RLS, table names, and the Supabase session.'
-            );
-
-            showModuleToast(
-                error?.message || 'Failed to load lecturer reports.',
-                'error'
-            );
+            renderEmptyState('Unable to load lecturer reports: ' + (error?.message || 'Unknown database error'));
+            showModuleToast(error?.message || 'Failed to load lecturer reports.', 'error');
         } finally {
             state.loading = false;
         }
