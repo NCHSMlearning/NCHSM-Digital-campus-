@@ -835,6 +835,7 @@ const LecturerDashboard = {
             // A lecturer with no assigned units must not be shown the whole programme.
             if (assignedUnitKeys.size === 0) {
                 this.assignedStudents = [];
+                this.assignedEnrollmentKeys = new Set();
                 this.metrics.totalStudents = 0;
                 this.updateMetricCards();
                 return;
@@ -857,6 +858,10 @@ const LecturerDashboard = {
             const enrollments = (registrationRows || []).filter(enrollment =>
                 assignedUnitKeys.has(normalize(enrollment.unit_name) + '|' + normalize(enrollment.block))
             );
+            // Keep exact student + unit + block membership for every downstream dashboard query.
+            this.assignedEnrollmentKeys = new Set(enrollments.map(enrollment =>
+                String(enrollment.student_id || '').trim() + '|' + normalize(enrollment.unit_name) + '|' + normalize(enrollment.block)
+            ));
 
             const studentIds = [...new Set(enrollments
                 .map(enrollment => String(enrollment.student_id || '').trim())
@@ -917,6 +922,7 @@ const LecturerDashboard = {
         } catch (error) {
             console.error('Failed to load assigned students:', error);
             this.assignedStudents = [];
+            this.assignedEnrollmentKeys = new Set();
             // Do not silently turn a failed database request into a valid-looking zero.
             this.metrics.totalStudents = null;
             this.updateMetricCards();
@@ -1057,7 +1063,7 @@ const LecturerDashboard = {
             (data || []).forEach(mark => {
                 const key = normalize(mark.subject_name) + '|' + normalize(mark.block);
                 const score = Number(mark.final_score);
-                if (!unitKeys.has(key) || !Number.isFinite(score) || score < 0 || score > 100) return;
+                if (!unitKeys.has(key) || !(this.assignedEnrollmentKeys||new Set()).has(String(mark.student_id)+'|'+key) || !Number.isFinite(score) || score < 0 || score > 100) return;
                 const rowKey = String(mark.student_id) + '|' + key;
                 const old = latestByStudentUnit.get(rowKey);
                 if (!old || new Date(mark.updated_at || mark.created_at || 0) > new Date(old.updated_at || old.created_at || 0)) latestByStudentUnit.set(rowKey, mark);
@@ -1295,7 +1301,8 @@ const LecturerDashboard = {
                 .select('student_id,unit_name,block,program,check_in_time,attendance_status,status,session_type,location_name,location_address,location_friendly_name')
                 .in('student_id',ids).in('unit_name',names).eq('program',this.getCurrentProgram()).gte('check_in_time',monthStartUtc);
             if(error)throw error;
-            const logs=(data||[]).filter(x=>keys.has(norm(x.unit_name)+'|'+norm(x.block)));
+            const enrollmentKeys=this.assignedEnrollmentKeys||new Set();
+            const logs=(data||[]).filter(x=>keys.has(norm(x.unit_name)+'|'+norm(x.block))&&enrollmentKeys.has(String(x.student_id)+'|'+norm(x.unit_name)+'|'+norm(x.block)));
             const kenyaDate=value=>new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Nairobi',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
             const status=x=>norm(x.attendance_status||x.status);
             const todayLogs=logs.filter(x=>x.check_in_time&&kenyaDate(x.check_in_time)===todayStr);
@@ -1464,8 +1471,9 @@ const LecturerDashboard = {
             ]);
             if(attendanceResult.error)throw attendanceResult.error;
             if(marksResult.error)throw marksResult.error;
-            const attendance=(attendanceResult.data||[]).filter(a=>unitKeys.has(norm(a.unit_name)+'|'+norm(a.block)));
-            const marks=(marksResult.data||[]).filter(m=>unitKeys.has(norm(m.subject_name)+'|'+norm(m.block))&&Number.isFinite(Number(m.final_score)));
+            const enrollmentKeys=this.assignedEnrollmentKeys||new Set();
+            const attendance=(attendanceResult.data||[]).filter(a=>unitKeys.has(norm(a.unit_name)+'|'+norm(a.block))&&enrollmentKeys.has(String(a.student_id)+'|'+norm(a.unit_name)+'|'+norm(a.block)));
+            const marks=(marksResult.data||[]).filter(m=>unitKeys.has(norm(m.subject_name)+'|'+norm(m.block))&&enrollmentKeys.has(String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block))&&Number.isFinite(Number(m.final_score)));
             const latestMarks=new Map();
             marks.forEach(m=>{
                 const key=String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block);
@@ -1675,7 +1683,7 @@ const LecturerDashboard = {
             const latest=new Map();
             (data||[]).forEach(m=>{
                 const score=Number(m.final_score),key=String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block);
-                if(!keys.has(norm(m.subject_name)+'|'+norm(m.block))||!Number.isFinite(score)||score<0||score>100)return;
+                if(!keys.has(norm(m.subject_name)+'|'+norm(m.block))||!(this.assignedEnrollmentKeys||new Set()).has(String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block))||!Number.isFinite(score)||score<0||score>100)return;
                 const old=latest.get(key);if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(key,m);
             });
             const aggregate=new Map();
@@ -1701,7 +1709,7 @@ const LecturerDashboard = {
             if(error)throw error;
             const counts=new Map();
             (data||[]).forEach(row=>{
-                if(!keys.has(norm(row.unit_name)+'|'+norm(row.block))||norm(row.attendance_status||row.status)!=='absent')return;
+                if(!keys.has(norm(row.unit_name)+'|'+norm(row.block))||!(this.assignedEnrollmentKeys||new Set()).has(String(row.student_id)+'|'+norm(row.unit_name)+'|'+norm(row.block))||norm(row.attendance_status||row.status)!=='absent')return;
                 const id=String(row.student_id),current=counts.get(id)||{name:row.student_name||students.find(s=>String(s.user_id)===id)?.full_name||'Student',count:0};
                 current.count++;counts.set(id,current);
             });
@@ -1813,7 +1821,7 @@ const LecturerDashboard = {
                 supabase.from('online_assignments').select('title,unit_name,unit_code,block,created_at,program,created_by').eq('created_by',this.lecturerUuid).eq('program',program).order('created_at',{ascending:false}).limit(10)
             ]);
             const activities=[];
-            if(!att.error)(att.data||[]).filter(x=>keys.has(norm(x.unit_name)+'|'+norm(x.block))).forEach(x=>activities.push({icon:'fa-clipboard-check',color:'#10b981',message:(x.student_name||'Student')+' checked in · '+x.unit_name,time:x.check_in_time}));
+            if(!att.error)(att.data||[]).filter(x=>keys.has(norm(x.unit_name)+'|'+norm(x.block))&&(this.assignedEnrollmentKeys||new Set()).has(String(x.student_id)+'|'+norm(x.unit_name)+'|'+norm(x.block))).forEach(x=>activities.push({icon:'fa-clipboard-check',color:'#10b981',message:(x.student_name||'Student')+' checked in · '+x.unit_name,time:x.check_in_time}));
             if(!exams.error)(exams.data||[]).filter(x=>keys.has(norm(x.course_name||x.exam_name||x.title)+'|'+norm(x.block))).forEach(x=>activities.push({icon:'fa-file-alt',color:'#8b5cf6',message:'Exam created · '+(x.exam_name||x.title||x.course_name),time:x.created_at}));
             if(!sessions.error)(sessions.data||[]).filter(x=>keys.has(norm(x.unit_name||x.course_name)+'|'+norm(x.block))).forEach(x=>activities.push({icon:'fa-calendar-plus',color:'#f59e0b',message:'Teaching session scheduled · '+(x.session_title||x.title||x.unit_name),time:x.created_at}));
             if(!assignments.error)(assignments.data||[]).forEach(x=>activities.push({icon:'fa-file-lines',color:'#0875ee',message:'Assignment created · '+x.title,time:x.created_at}));
@@ -1975,7 +1983,7 @@ const LecturerDashboard = {
             marksData.forEach(m => {
                 const score=Number(m.final_score ?? m.score);
                 const key=normChart(m.subject_name)+'|'+normChart(m.block);
-                if(m.published!==true||normChart(m.approval_status)!=='approved'||!assignedUnitKeys.has(key)||!Number.isFinite(score)||score<0||score>100)return;
+                if(m.published!==true||normChart(m.approval_status)!=='approved'||!assignedUnitKeys.has(key)||!(this.assignedEnrollmentKeys||new Set()).has(String(m.student_id)+'|'+key)||!Number.isFinite(score)||score<0||score>100)return;
                 const rowKey=String(m.student_id)+'|'+key,old=latestPublished.get(rowKey);
                 if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latestPublished.set(rowKey,m);
             });
@@ -2058,7 +2066,8 @@ const LecturerDashboard = {
                         .in('student_id',assignedStudentIds).in('unit_name',assignedNames).eq('program',program)
                         .gte('check_in_time',start).lt('check_in_time',end);
                     if(error)throw error;
-                    const present=new Set((data||[]).filter(row=>assignedKeys.has(normAttendance(row.unit_name)+'|'+normAttendance(row.block))&&['present','verified'].includes(normAttendance(row.attendance_status||row.status))).map(row=>String(row.student_id)));
+                    const enrollmentKeys=this.assignedEnrollmentKeys||new Set();
+                    const present=new Set((data||[]).filter(row=>assignedKeys.has(normAttendance(row.unit_name)+'|'+normAttendance(row.block))&&enrollmentKeys.has(String(row.student_id)+'|'+normAttendance(row.unit_name)+'|'+normAttendance(row.block))&&['present','verified'].includes(normAttendance(row.attendance_status||row.status))).map(row=>String(row.student_id)));
                     return {count:present.size};
                 }));
                 const attendanceData=attendanceResults.map(x=>x.count);
