@@ -2100,5 +2100,92 @@
     <script src="admin.js"></script>
 
 <script src="/js/nchsm-mobile-enhancements.js?v=7" defer></script>
+
+<style id="admin-mobile-touch-scroll-fix">
+/* Admin portal only: make the document the single vertical touch-scroll surface. */
+@media (max-width: 768px) {
+  html:has(body #mainNav) {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-y pinch-zoom !important;
+  }
+  body:has(#mainNav) {
+    display: block !important;
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    position: static !important;
+    touch-action: pan-y pinch-zoom !important;
+    overscroll-behavior-y: auto !important;
+  }
+  body:has(#mainNav) > .container {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    transform: none !important;
+  }
+  body:has(#mainNav) main.main {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    position: relative !important;
+    transform: none !important;
+    touch-action: pan-y pinch-zoom !important;
+    -webkit-overflow-scrolling: auto !important;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+  }
+  body:has(#mainNav) main.main > .tab-content,
+  body:has(#mainNav) main.main > .tab-content.active,
+  body:has(#mainNav) main.main > section {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: relative !important;
+    touch-action: pan-y pinch-zoom !important;
+  }
+  body:has(#mainNav) .mobile-nav-toggle {
+    touch-action: manipulation !important;
+  }
+  body:has(#mainNav) .sidebar {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+  body:has(#mainNav) .sidebar .nav {
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+  body:has(#mainNav) .table-responsive,
+  body:has(#mainNav) .modal-body {
+    touch-action: pan-x pan-y pinch-zoom !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+</style>
+
 </body>
 </html>
