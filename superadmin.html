@@ -549,6 +549,75 @@
 #me_marks_table tbody tr[data-result-status="pass"] { border-left:4px solid #16a34a !important; }
 #me_marks_table tbody tr[data-result-status="fail"] { border-left:4px solid #eab308 !important; }
 </style>
+
+<style id="superadmin-premium-shell">
+/* NCHSM Super Admin — responsive visual system; preserves existing module IDs and handlers */
+:root{--sa-ink:#14213d;--sa-muted:#64748b;--sa-line:#e5eaf2;--sa-surface:#fff;--sa-canvas:#f4f7fc;--sa-brand:#173f70;--sa-accent:#0f8b8d;--sa-shadow:0 10px 30px rgba(15,35,65,.07)}
+html{scroll-behavior:smooth}
+body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoothing:antialiased}
+.container{min-height:100vh}
+.main{box-sizing:border-box!important;min-width:0;padding:clamp(18px,2.5vw,38px)!important;background:var(--sa-canvas)!important}
+.main>header{position:relative;background:linear-gradient(120deg,#fff 0%,#f8fbff 100%);border:1px solid var(--sa-line);border-radius:20px;padding:22px 24px;margin:0 0 24px;box-shadow:var(--sa-shadow)}
+.main>header h1{font-size:clamp(22px,2.2vw,30px)!important;letter-spacing:-.7px;line-height:1.2}
+.main>header .subtitle{font-size:13px!important;margin-top:7px}
+.sidebar{border-right:1px solid rgba(255,255,255,.08);box-sizing:border-box;scrollbar-width:thin}
+.sidebar-header img{object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.18))}
+#mainNav{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+#mainNav a{min-height:42px;box-sizing:border-box}
+#mainNav a:focus-visible,.main button:focus-visible,.main input:focus-visible,.main select:focus-visible,.main textarea:focus-visible{outline:3px solid rgba(15,139,141,.28)!important;outline-offset:2px}
+.main .tab-content{min-width:0;animation:saFadeIn .22s ease both}
+@keyframes saFadeIn{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:none}}
+.main .card,.main .analytics-card,.main .health-card,.main .task-item,.main .unit-card,.main .modal-content,.main .security-settings,.main .error-logs{border:1px solid var(--sa-line);border-radius:16px;box-shadow:var(--sa-shadow)}
+.main .card:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(15,35,65,.11)}
+.main button,.main .btn-action,.main .quick-btn{transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease}
+.main button:hover:not(:disabled){filter:brightness(.98)}
+.main button:active:not(:disabled){transform:translateY(1px)}
+.main input,.main select,.main textarea{max-width:100%;box-sizing:border-box;border-radius:9px}
+.main table{border:1px solid var(--sa-line);border-radius:14px}
+.main th{font-size:11px;letter-spacing:.35px;text-transform:uppercase;color:#52627a;background:#f6f8fc}
+.main td{font-size:13px}
+.main .table-responsive{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.main .modal{padding:16px;box-sizing:border-box}
+.main .modal-content{max-width:min(720px,96vw);max-height:88vh}
+.main img{max-width:100%}
+#toast-container{max-width:min(420px,calc(100vw - 28px))}
+.mobile-nav-toggle{align-items:center;justify-content:center;background:#fff!important;border:1px solid #dce4ef!important;border-radius:12px;box-shadow:0 8px 22px rgba(15,35,65,.14);width:46px;height:46px}
+.mobile-nav-toggle span{background:#173f70!important}
+#superadminSidebarBackdrop{z-index:10030}
+@media(max-width:1100px){.main{padding:22px!important}.main>header{padding:18px;margin-bottom:18px}}
+@media(max-width:768px){
+ .main{margin-left:0!important;width:100%;padding:78px 14px 22px!important}
+ .main>header{padding:17px 15px;border-radius:15px;margin-bottom:17px}
+ .main>header>div{align-items:flex-start!important}
+ .main>header h1{font-size:22px!important}
+ .main>header .subtitle{font-size:12px!important}
+ .main .header-right{width:100%;justify-content:space-between;gap:10px!important;flex-wrap:wrap}
+ .mobile-nav-toggle{display:flex!important;top:13px!important;left:13px!important;z-index:10040!important}
+ .sidebar{width:min(300px,86vw)!important;max-width:86vw;left:-110%!important;z-index:10035!important;box-shadow:12px 0 38px rgba(3,10,30,.24)!important}
+ .sidebar.active,.sidebar.mobile-open{left:0!important}
+ body.mobile-sidebar-open{overflow:hidden}
+ .main .cards,.main .health-cards,.main .analytics-grid,.main .scheduled-tasks{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px}
+ .main .quick-action-buttons{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .main .data{font-size:24px}
+ .main .inline-form{padding:14px;gap:9px}
+ .main .inline-form input,.main .inline-form select,.main .inline-form textarea{width:100%;min-width:0}
+ .main .filter-bar,.main .toolbar{gap:9px}
+ .main .filter-bar>* ,.main .toolbar>*{min-width:0;max-width:100%}
+ .main table{min-width:680px}
+ .main .modal{align-items:flex-end}
+ .main .modal-content{width:100%;max-width:100%;max-height:88vh;border-radius:18px 18px 0 0}
+}
+@media(max-width:480px){
+ .main{padding-left:10px!important;padding-right:10px!important}
+ .main>header{padding:15px 12px}
+ .main .quick-action-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .main .cards,.main .health-cards,.main .analytics-grid,.main .scheduled-tasks{grid-template-columns:1fr}
+ .main .card,.main .analytics-card,.main .health-card,.main .task-item{padding:15px}
+ .main .data{font-size:22px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.main .tab-content{animation:none}*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
+
 </head>
 <body>
     <div class="container">
