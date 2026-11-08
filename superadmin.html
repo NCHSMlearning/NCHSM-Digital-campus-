@@ -918,6 +918,11 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
                         "
                     >
                         <li>
+                            <a href="#" data-tab="hod-access" style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:13px" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.8)'">
+                                <i class="fas fa-user-shield" style="width:18px;text-align:center;font-size:12px"></i><span>HOD Role Management</span>
+                            </a>
+                        </li>
+                        <li>
                             <a href="#" data-tab="users" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-users" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>Manage Users</span>
@@ -8320,6 +8325,28 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
                     </div>
                 </div>
             </section>
+<!-- SUPER ADMIN: HOD ROLE MANAGEMENT -->
+<section id="hod-access" class="tab-content" style="display:none">
+  <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);border-radius:16px;padding:22px 26px;margin-bottom:20px;color:white">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
+      <div><h2 style="margin:0;color:white"><i class="fas fa-user-shield" style="color:#FDB913"></i> HOD Role Management</h2>
+      <p style="margin:7px 0 0;color:#e2e8f0">Appoint or revoke Nursing and TVET Heads of Department. Only Super Admin can make these changes.</p></div>
+      <button id="hodAccessRefresh" type="button" style="background:#FDB913;color:#0A3D62;border:0;border-radius:9px;padding:10px 16px;font-weight:700;cursor:pointer"><i class="fas fa-sync-alt"></i> Refresh</button>
+    </div>
+  </div>
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;box-shadow:0 4px 18px rgba(15,23,42,.05)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div><h3 style="margin:0;color:#0f172a">Lecturer and HOD Accounts</h3><p style="margin:5px 0 0;color:#64748b;font-size:13px">Select a lecturer, then assign the appropriate school. The HOD receives access to all programmes within that school.</p></div>
+      <input id="hodAccessSearch" type="search" placeholder="Search name, email or staff ID…" style="min-width:240px;max-width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px">
+    </div>
+    <div id="hodAccessNotice" role="status" style="min-height:20px;margin-bottom:8px;font-size:13px"></div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:760px">
+      <thead><tr style="background:#f1f5f9;text-align:left"><th style="padding:12px">Staff member</th><th style="padding:12px">Email</th><th style="padding:12px">School</th><th style="padding:12px">Current role</th><th style="padding:12px">Action</th></tr></thead>
+      <tbody id="hodAccessTableBody"><tr><td colspan="5" style="padding:22px;text-align:center;color:#64748b">Open HOD Role Management to load staff accounts.</td></tr></tbody>
+    </table></div>
+  </div>
+</section>
+
 <!-- ============================================================ -->
 <!-- 👥 TAB 1: MANAGE USERS - COMPLETE TVET PROGRAM SUPPORT        -->
 <!-- ============================================================ -->
@@ -15769,5 +15796,6 @@ console.log('✅ Search function loaded successfully!');
 <script src="./js/superadmin-rejection-fix.js?v=20261024-1"></script>
 <script src="./js/superadmin-unit-registration-init.js?v=20261025-1"></script>
 <script src="./js/superadmin-clinical-placements.js?v=20261101-final-export-print-2" defer></script>
+<script src="./js/superadmin-hod-access.js?v=20261108-hod-roles-1"></script>
 </body>
 </html>
