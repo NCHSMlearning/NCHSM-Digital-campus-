@@ -1322,7 +1322,8 @@ const LecturerDashboard = {
     // ─── LOAD ATTENDANCE METRICS ───
     async loadAttendanceMetrics() {
         const supabase=this.getSupabaseClient(),students=this.assignedStudents||[],units=this.assignedUnits||[];
-        const ids=[...this.getAssignedStudentIdentifierMap().keys()];
+        const identifierMap=this.getAssignedStudentIdentifierMap();
+        const ids=[...identifierMap.keys()];
         const names=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
         const norm=v=>String(v||'').trim().toLowerCase(),keys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
         if(!supabase||!ids.length||!names.length){
@@ -1696,7 +1697,7 @@ const LecturerDashboard = {
                 const latest=new Map();
                 (markResult.data||[]).forEach(m=>{
                     const score=Number(m.final_score);if(!Number.isFinite(score)||score<0||score>100||!this.isMarkForAssignedRegistration(m))return;
-                    const id=String(m.student_id||m.admission_number||'').trim(),old=latest.get(id);
+                    const id=String(m.admission_number||m.student_id||'').trim(),old=latest.get(id);
                     if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(id,m);
                 });
                 const scores=[...latest.values()].map(x=>Number(x.final_score));
