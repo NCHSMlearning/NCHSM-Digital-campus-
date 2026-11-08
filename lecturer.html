@@ -9497,7 +9497,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 
 <!-- Lecturer Modules -->
 <script src="js/lecturer-ui.js?v=20261107-sidebar-unified"></script>
-<script src="js/lecturer-dashboard.js?v=20261108-live-data-fix3"></script>
+<script src="js/lecturer-dashboard.js?v=20261108-live-data-fix4"></script>
 <script src="js/lecturer-profile.js"></script>
 <script src="js/lecturer-courses.js?v=20261108-staff-id-fix"></script>
 <script src="js/lecturer-students.js"></script>
@@ -9955,6 +9955,31 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
                 window.LecturerOnlineLearning.load();
             if(tabId === 'reports' && window.NCHSMReports?.refresh)
                 window.NCHSMReports.refresh();
+            // Keep legacy module loaders connected to the unified tab manager.
+            if(tabId === 'my-courses' && window.LecturerCourses?.loadCourses)
+                window.LecturerCourses.loadCourses();
+            if(tabId === 'cats' && window.LecturerExams?.loadExams)
+                window.LecturerExams.loadExams();
+            if(tabId === 'marks-management' && window.LecturerMarks?.init)
+                window.LecturerMarks.init();
+            if(tabId === 'sessions' && window.LecturerSessions?.loadSessions)
+                window.LecturerSessions.loadSessions();
+            if(tabId === 'resources' && window.LecturerResources?.loadResources)
+                window.LecturerResources.loadResources();
+            if(tabId === 'messages' && window.LecturerMessages?.loadMessages)
+                window.LecturerMessages.loadMessages();
+            if(tabId === 'profile' && window.LecturerProfile?.loadProfile)
+                window.LecturerProfile.loadProfile();
+            if(tabId === 'academic-portfolio' && window.AcademicPortfolio?.loadDashboard)
+                window.AcademicPortfolio.loadDashboard();
+            if(tabId === 'calendar' && window.LecturerCalendar?.loadCalendar)
+                window.LecturerCalendar.loadCalendar();
+            if(tabId === 'nursing-system' && window.lecturerNCKLoadData)
+                setTimeout(window.lecturerNCKLoadData, 300);
+            if(tabId === 'nurseiq-questions' && window.LecturerNurseIQ?.init)
+                setTimeout(window.LecturerNurseIQ.init, 150);
+            if(tabId === 'lecturer-questions' && window.LecturerQuestions?.init)
+                setTimeout(window.LecturerQuestions.init, 300);
         }catch(err){
             console.warn('[NCHSM Tabs] section loader warning:',err);
         }
