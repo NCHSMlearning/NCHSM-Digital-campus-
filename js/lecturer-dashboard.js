@@ -753,7 +753,7 @@ const LecturerDashboard = {
             if (staffError) throw staffError;
             if (!staff?.id) throw new Error('No staff record matches the signed-in lecturer email.');
 
-            this.lecturerUuid = window.currentUser?.id || profile.user_id || null;
+            this.lecturerUuid = window.currentUser?.id || profile.user_id || this.lecturerUuid || null;
             this.lecturerAssignmentId = String(staff.id);
             if (staff.program) {
                 this.currentProgram = String(staff.program).trim();
@@ -864,6 +864,7 @@ const LecturerDashboard = {
 
             if (studentIds.length === 0) {
                 this.assignedStudents = [];
+                this._assignedStudentsLoaded = true;
                 this.metrics.totalStudents = 0;
                 this.updateMetricCards();
                 console.log('No approved registrations found for lecturer-assigned units/blocks.');
