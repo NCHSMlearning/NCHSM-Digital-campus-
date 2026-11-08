@@ -876,6 +876,17 @@
           </div>
           <section id="lrrComplianceArea" class="lrr-feature-panel">
             <div class="lrr-feature-head"><div><h3>Academic compliance</h3><p>Expected documents compared with actual submissions, using configured requirements and deadlines.</p></div><button type="button" class="lrr-export-btn" id="lrrExportCompliance">Export compliance</button></div>
+            <form id="lrrRequirementForm" class="lrr-requirement-form">
+              <label>School<select id="lrrReqSchool"><option>Nursing</option><option>TVET</option></select></label>
+              <label>Programme (TVET)<input id="lrrReqProgram" placeholder="Programme name"></label>
+              <label>Intake year<select id="lrrReqIntake"><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option><option value="2030">2030</option></select></label>
+              <label>Block<select id="lrrReqBlock"><option value="">Not applicable</option><option>Introductory</option><option>Block 1</option><option>Block 2</option><option>Block 3</option><option>Block 4</option><option>Block 5</option></select></label>
+              <label>Term<select id="lrrReqTerm"><option value="">Not applicable</option><option>Term 1</option><option>Term 2</option><option>Term 3</option></select></label>
+              <label>Document type<input id="lrrReqDocument" required placeholder="e.g. Scheme of Work"></label>
+              <label>Unit code (optional)<input id="lrrReqUnit" placeholder="e.g. NCK 101"></label>
+              <label>Due date (optional)<input id="lrrReqDue" type="datetime-local"></label>
+              <button type="submit" class="lrr-export-btn">＋ Add requirement</button>
+            </form>
             <div id="lrrComplianceSummary" class="lrr-feature-grid"></div>
             <div class="lrr-feature-table" id="lrrComplianceTable"></div>
           </section>
@@ -903,6 +914,7 @@
         panel.querySelector('#lrrRefreshAll')?.addEventListener('click', async()=>{await loadReports();});
         panel.querySelector('#lrrCreateBackup')?.addEventListener('click',createTeachingBackup);
         panel.querySelector('#lrrRefreshBackupHistory')?.addEventListener('click',loadBackupHistory);
+        panel.querySelector('#lrrRequirementForm')?.addEventListener('submit',saveRequirement);
         panel.querySelector('#lrrExportCompliance')?.addEventListener('click',()=>exportCsv('NCHSM-Compliance-'+new Date().toISOString().slice(0,10)+'.csv',(state.requirements||[]).map(r=>({school:r.school,program:r.program,intake_year:r.intake_year,block:r.block,term:r.term,document_type:r.document_type,unit_code:r.unit_code,due_at:r.due_at}))));
         panel.querySelector('#lrrExportReports')?.addEventListener('click',()=>exportCsv('NCHSM-Teaching-Reports-'+new Date().toISOString().slice(0,10)+'.csv',reportExportRows(state.filteredRows||[])));
         panel.querySelector('#lrrExportFolders')?.addEventListener('click',()=>exportCsv('NCHSM-School-Folders-'+new Date().toISOString().slice(0,10)+'.csv',(state.rows||[]).map(row=>({school:schoolOf(row),folder:row.unit_name||row.subject_code||'Unassigned unit',unit_code:row.subject_code,document:row.title||humanize(row.document_type||row.report_type),document_type:row.document_type,lecturer:row.lecturer_name,status:row.status,programme:row.program,block:row.block,intake_year:row.intake_year||row.academic_year,submitted_at:row.submitted_at,submission_id:row.id}))));
@@ -1079,6 +1091,26 @@
         const max=Math.max(1,...items.map(x=>x.value));
         host.innerHTML='<div class="lrr-school-bars">'+items.map(item=>'<div class="lrr-school-bar"><div class="lrr-school-bar-label"><strong>'+item.label+'</strong><b>'+item.value+'</b></div><div class="lrr-school-bar-track"><span style="width:'+Math.max(item.value?2:0,item.value/max*100)+'%;background:'+item.color+'"></span></div><small>'+(state.rows.length?Math.round(item.value/state.rows.length*100):0)+'% of all submissions</small></div>').join('')+'</div>';
     }
+    async function saveRequirement(event){
+        event.preventDefault();
+        if(!(await assertAdmin()))return;
+        const client=getSupabaseClient();
+        const school=getElement('lrrReqSchool').value;
+        const block=getElement('lrrReqBlock').value||null;
+        const term=getElement('lrrReqTerm').value||null;
+        const program=getElement('lrrReqProgram').value.trim()||null;
+        const payload={school,program,intake_year:getElement('lrrReqIntake').value,block:school==='Nursing'?block:null,term:school==='TVET'?term:null,document_type:getElement('lrrReqDocument').value.trim().toLowerCase().replace(/\\s+/g,'_'),unit_code:getElement('lrrReqUnit').value.trim()||null,due_at:getElement('lrrReqDue').value?new Date(getElement('lrrReqDue').value).toISOString():null,created_by:state.currentUser.id};
+        if(school==='TVET'&&!program){showModuleToast('Enter the TVET programme.','error');return;}
+        if(school==='Nursing'&&!block){showModuleToast('Select a Nursing block.','error');return;}
+        if(school==='TVET'&&!term){showModuleToast('Select a TVET term.','error');return;}
+        const {error}=await client.from(TABLE_REQUIREMENTS).insert(payload);
+        if(error){showModuleToast('Could not save requirement: '+error.message,'error');return;}
+        showModuleToast('Document requirement added.','success');
+        getElement('lrrRequirementForm').reset();
+        const {data}=await client.from(TABLE_REQUIREMENTS).select('*').order('created_at',{ascending:false});
+        state.requirements=data||[];
+        renderTeachingFeatures();
+    }
     function renderTeachingFeatures(){
         const rows=state.rows||[];
         const reqs=state.requirements||[];
@@ -1126,7 +1158,7 @@
         const client=getSupabaseClient();if(!client){host.textContent='Backup history unavailable.';return;}
         const {data,error}=await client.from(TABLE_BACKUPS).select('created_at,backup_file_name,record_counts,attachment_count,attachment_bytes,status').order('created_at',{ascending:false}).limit(30);
         if(error){host.innerHTML='<div class="lrr-feature-empty">Backup history is unavailable: '+escapeHtml(error.message)+'</div>';return;}
-        host.innerHTML=data?.length?'<table><thead><tr><th>Created</th><th>Backup file</th><th>Records</th><th>Attachments</th><th>Status</th></tr></thead><tbody>'+data.map(x=>'<tr><td>'+formatDate(x.created_at)+'</td><td>'+escapeHtml(x.backup_file_name)+'</td><td>'+escapeHtml(JSON.stringify(x.record_counts||{}))+'</td><td>'+x.attachment_count+' · '+Math.round((x.attachment_bytes||0)/1024)+' KB</td><td>'+statusBadge(x.status==='partial'?'returned':'approved')+'</td></tr>').join('')+'</tbody></table>':'<div class="lrr-feature-empty">No backups recorded yet.</div>';
+        host.innerHTML=data?.length?'<table><thead><tr><th>Created</th><th>Backup file</th><th>Records</th><th>Attachments</th><th>Status</th></tr></thead><tbody>'+data.map(x=>'<tr><td>'+formatDate(x.created_at)+'</td><td>'+escapeHtml(x.backup_file_name)+'</td><td>'+escapeHtml(JSON.stringify(x.record_counts||{}))+'</td><td>'+x.attachment_count+' · '+Math.round((x.attachment_bytes||0)/1024)+' KB</td><td>'+('<span class="lrr-backup-status">'+escapeHtml(x.status)+'</span>')+'</td></tr>').join('')+'</tbody></table>':'<div class="lrr-feature-empty">No backups recorded yet.</div>';
     }
     function renderManagementDashboard() {
         const panel=getElement('lrrManagementDashboard'); if(!panel)return;
@@ -2669,6 +2701,12 @@
 
         style.textContent += `
 
+            #lrrManagementDashboard .lrr-requirement-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;padding:14px;margin:12px 0;border:1px solid #e5edf2;border-radius:13px;background:#f8fbfd}
+            #lrrManagementDashboard .lrr-requirement-form label{display:grid;gap:5px;font-size:10px;font-weight:750;color:#526579}
+            #lrrManagementDashboard .lrr-requirement-form input,#lrrManagementDashboard .lrr-requirement-form select{height:40px;min-width:0;border:1px solid #d6e0e8;border-radius:9px;background:#fff;padding:0 9px;font-size:11px}
+            #lrrManagementDashboard .lrr-requirement-form button{align-self:end;min-height:40px}
+            #lrrManagementDashboard .lrr-backup-status{display:inline-block;padding:5px 8px;border-radius:20px;background:#edf7f3;color:#08745e;font-size:10px;font-weight:800;text-transform:capitalize}
+            @media(max-width:650px){#lrrManagementDashboard .lrr-requirement-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
             #lrrManagementDashboard .lrr-feature-panel{margin:16px 0;padding:18px;border:1px solid #e4ebf1;border-radius:17px;background:#fff;box-shadow:0 5px 18px rgba(16,42,67,.035);scroll-margin-top:90px}
             #lrrManagementDashboard .lrr-feature-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
             #lrrManagementDashboard .lrr-feature-head h3{margin:0;font-size:17px;color:#17334b}
