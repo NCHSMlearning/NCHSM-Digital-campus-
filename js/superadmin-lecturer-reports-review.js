@@ -2722,7 +2722,15 @@
         window.filterLecturerReportsReview = applyFilters;
     }
 
+    function removeDashboardTeachingOverview() {
+        // The institutional Teaching & Learning summary belongs only in the
+        // dedicated Teaching Portfolio Review workspace, never on Dashboard.
+        const dashboardOverview = document.getElementById('nchsmPortfolioOverview');
+        if (dashboardOverview) dashboardOverview.remove();
+    }
+
     function initialize() {
+        removeDashboardTeachingOverview();
         injectStyles();
         injectManagementDashboard();
         bindFilters();
