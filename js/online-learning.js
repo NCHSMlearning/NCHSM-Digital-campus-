@@ -288,10 +288,11 @@ function ensureResearchCorrectionModal(){
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="undo">Undo</button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="redo">Redo</button>'+
     '</div>'+
-    '<div id="ol-research-correction-editor" contenteditable="true" spellcheck="true" style="height:calc(94vh - 180px);overflow:auto;padding:35px;max-width:900px;margin:0 auto;background:#fff;line-height:1.6;font-size:14px;outline:none"></div>'+
+    '<div id="ol-research-correction-editor" contenteditable="true" spellcheck="true" style="height:calc(94vh - 205px);overflow:auto;padding:35px;max-width:900px;margin:0 auto;background:#fff;line-height:1.6;font-size:14px;outline:none"></div>'+
+    '<div id="ol-research-correction-feedback" style="max-width:900px;margin:0 auto;padding:10px 16px;font-size:10px;color:#526b86;max-height:150px;overflow:auto"></div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid #e5edf4;background:#f8fafc">'+
-    '<span id="ol-rce-file-label" style="font-size:11px;color:#64748b">Original document format</span>'+
-    '<div style="display:flex;gap:7px"><button type="button" class="ol-btn ol-btn-secondary" id="ol-rce-save"><i class="fas fa-floppy-disk"></i> Save Draft</button>'+
+    '<span id="ol-rce-file-label" style="font-size:11px;color:#64748b">Original document format</span><span id="ol-rce-word-count" style="font-size:10px;color:#64748b">0 words</span>'+
+    '<div style="display:flex;gap:7px"><button type="button" class="ol-btn ol-btn-secondary" id="ol-rce-save"><i class="fas fa-cloud-arrow-up"></i> Save Draft</button>'+
     '<button type="button" class="ol-btn ol-btn-primary" id="ol-rce-submit"><i class="fas fa-paper-plane"></i> Submit Correction for Review</button></div></div>'+
     '</div>';
   document.body.appendChild(m);
@@ -343,8 +344,12 @@ async function openResearchCorrection(id){
   document.getElementById('ol-research-correction-state').textContent='Opening document…';
   m.classList.add('open');m.setAttribute('aria-hidden','false');
   try{
-    var draft=localStorage.getItem(researchDraftKey(r));
-    if(draft){ed.innerHTML=draft;document.getElementById('ol-research-correction-state').textContent='Saved draft restored';return}
+    studentResearchLastSaved='';
+    var restored=await loadStudentResearchCloudDraft(r,ed);
+    if(restored){await loadStudentResearchFeedback(r);ed.oninput=markResearchCorrectionDirty;return}
+    var localDraft=localStorage.getItem(researchDraftKey(r));
+    if(localDraft){ed.innerHTML=studentResearchSanitize(localDraft);studentResearchSaveState('Local draft restored · saving to cloud…')}
+    else{
     var url=await sbSignedResearchUrl(r.document_path);
     if(window.mammoth){
       var resp=await fetch(url);var ab=await resp.arrayBuffer();
@@ -353,18 +358,113 @@ async function openResearchCorrection(id){
     }else{
       ed.innerHTML='<p>Mammoth.js is required to edit DOCX documents. Please load Mammoth before opening the editor.</p>';
     }
-    document.getElementById('ol-research-correction-state').textContent='Editing V'+(r.version_number||1)+' · DOCX';
+    studentResearchLastSaved=ed.innerHTML;
+    studentResearchSaveState('Editing V'+(r.version_number||1)+' · cloud autosave enabled');
+    }
+    await loadStudentResearchFeedback(r);
   }catch(e){
     console.error('Research correction open failed:',e);
     ed.innerHTML='<p style="color:#b42318">Could not open this DOCX document. '+esc(e.message||e)+'</p>';
     document.getElementById('ol-research-correction-state').textContent='Unable to open document';
   }
   ed.oninput=markResearchCorrectionDirty;
+  ed.addEventListener('input',function(){
+    var wc=document.getElementById('ol-rce-word-count');if(wc)wc.textContent=studentResearchWordCount(ed.innerHTML)+' words';
+    scheduleStudentResearchCloudSave(1400);
+  });
+  var wc=document.getElementById('ol-rce-word-count');if(wc)wc.textContent=studentResearchWordCount(ed.innerHTML)+' words';
 }
 function markResearchCorrectionDirty(){
   var r=state.researchCurrent,ed=document.getElementById('ol-research-correction-editor');if(!r||!ed)return;
-  localStorage.setItem(researchDraftKey(r),ed.innerHTML);
-  var st=document.getElementById('ol-research-correction-state');if(st)st.textContent='Draft saved locally · unsent changes';
+  ed.dataset.dirty='1';
+  try{localStorage.setItem(researchDraftKey(r),ed.innerHTML)}catch(e){}
+  scheduleStudentResearchCloudSave(1400);
+}
+
+
+function studentResearchSaveState(message){
+  var e=document.getElementById('ol-research-correction-state');if(e)e.textContent=message;
+}
+function studentResearchWordCount(html){
+  var d=document.createElement('div');d.innerHTML=String(html||'');return (d.innerText||d.textContent||'').trim().split(/\s+/).filter(Boolean).length;
+}
+function studentResearchSanitize(html){
+  var d=new DOMParser().parseFromString('<!doctype html><body>'+String(html||'')+'</body>','text/html');
+  d.querySelectorAll('script,style,iframe,object,embed,form,input,button,textarea,select,link,meta,base,video,audio,source').forEach(function(n){n.remove()});
+  var allowed=new Set(['P','DIV','SPAN','BR','HR','H1','H2','H3','H4','H5','H6','STRONG','B','EM','I','U','S','DEL','INS','BLOCKQUOTE','UL','OL','LI','A','IMG','TABLE','THEAD','TBODY','TFOOT','TR','TD','TH','SUB','SUP']);
+  d.body.querySelectorAll('*').forEach(function(el){
+    if(!allowed.has(el.tagName)){el.replaceWith.apply(el,Array.from(el.childNodes));return}
+    Array.from(el.attributes).forEach(function(a){
+      var n=a.name.toLowerCase(),v=String(a.value||'').trim();
+      if(n.indexOf('on')===0||n==='contenteditable'||n==='srcset'||n==='formaction'){el.removeAttribute(a.name);return}
+      if(n==='href'||n==='src'){
+        if(n==='src'&&el.tagName==='IMG'&&/^data:image\/(png|jpeg|gif|webp);base64,/i.test(v))return;
+        try{var u=new URL(v,location.href);if(!['http:','https:','mailto:'].includes(u.protocol))el.removeAttribute(a.name);else el.setAttribute(a.name,u.href)}catch(e){el.removeAttribute(a.name)}
+      }
+      if(n==='style'&&/(?:javascript:|expression\s*\(|url\s*\(|@import)/i.test(v))el.removeAttribute(a.name);
+    });
+    if(el.tagName==='A'){el.setAttribute('target','_blank');el.setAttribute('rel','noopener noreferrer')}
+  });
+  return d.body.innerHTML;
+}
+var studentResearchCloudTimer=null,studentResearchCloudSaving=false,studentResearchCloudPending=false,studentResearchLastSaved='';
+async function saveStudentResearchCloudDraft(manual){
+  var r=state.researchCurrent,ed=document.getElementById('ol-research-correction-editor'),sb=client(),id=uid();
+  if(!r||!ed||!sb||!id)throw new Error('Your research editor session is not ready.');
+  var html=studentResearchSanitize(ed.innerHTML).trim();if(!html)throw new Error('There is no document content to save.');
+  if(studentResearchCloudSaving){studentResearchCloudPending=true;return false}
+  studentResearchCloudSaving=true;studentResearchSaveState('Saving securely to NCHSM cloud…');
+  try{
+    var now=new Date().toISOString();
+    var saved=await sb.from('research_document_drafts').upsert({
+      research_submission_id:r.id,user_id:id,content_html:html,updated_at:now
+    },{onConflict:'research_submission_id,user_id'}).select('id,updated_at').single();
+    if(saved.error)throw saved.error;
+    studentResearchLastSaved=html;ed.dataset.dirty='0';
+    studentResearchSaveState('All changes saved · '+new Date(saved.data.updated_at||now).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+    if(manual)alert('Your research draft is saved securely to your NCHSM account.');
+    return true;
+  }catch(e){studentResearchSaveState('Cloud save failed · retry');throw e}
+  finally{
+    studentResearchCloudSaving=false;
+    if(studentResearchCloudPending){studentResearchCloudPending=false;scheduleStudentResearchCloudSave(350)}
+  }
+}
+function scheduleStudentResearchCloudSave(delay){
+  if(studentResearchCloudTimer)clearTimeout(studentResearchCloudTimer);
+  studentResearchSaveState('Unsaved changes · autosaving…');
+  studentResearchCloudTimer=setTimeout(function(){
+    var ed=document.getElementById('ol-research-correction-editor');
+    if(!ed||!ed.isConnected||!state.researchCurrent||ed.innerHTML===studentResearchLastSaved)return;
+    saveStudentResearchCloudDraft(false).catch(function(e){console.error('[Student Research] Cloud autosave failed',e)});
+  },delay||1400);
+}
+async function loadStudentResearchCloudDraft(r,editor){
+  var sb=client(),id=uid();if(!sb||!id)return false;
+  var q=await sb.from('research_document_drafts').select('content_html,updated_at')
+    .eq('research_submission_id',r.id).eq('user_id',id).maybeSingle();
+  if(q.error){console.warn('[Student Research] Cloud draft lookup failed',q.error.message);return false}
+  if(!q.data||!q.data.content_html)return false;
+  var sourceTime=new Date(r.submitted_at||r.updated_at||r.created_at||0).getTime();
+  var draftTime=new Date(q.data.updated_at||0).getTime();
+  if(sourceTime&&draftTime&&draftTime<sourceTime)return false;
+  editor.innerHTML=studentResearchSanitize(q.data.content_html);
+  studentResearchLastSaved=editor.innerHTML;editor.dataset.dirty='0';
+  studentResearchSaveState('Cloud draft restored · '+fmtDateTime(q.data.updated_at));
+  return true;
+}
+async function loadStudentResearchFeedback(r){
+  var host=document.getElementById('ol-research-correction-feedback');if(!host)return;
+  var sb=client();if(!sb)return;
+  var [comments,suggestions]=await Promise.all([
+    sb.from('research_document_comments').select('id,author_name,selected_text,comment_text,status,created_at').eq('research_submission_id',r.id).order('created_at',{ascending:true}),
+    sb.from('research_document_suggestions').select('id,author_name,old_text,new_text,status,created_at').eq('research_submission_id',r.id).order('created_at',{ascending:true})
+  ]);
+  var html='';
+  if(!comments.error&&(comments.data||[]).length)html+='<h4>Supervisor comments</h4>'+(comments.data||[]).map(function(c){return '<article class="ol-rs-feedback-item"><b>'+esc(c.author_name||'Supervisor')+'</b><small>'+esc(fmtDateTime(c.created_at))+' · '+esc(c.status||'open')+'</small><blockquote>'+esc(c.selected_text||'')+'</blockquote><p>'+esc(c.comment_text||'')+'</p></article>'}).join('');
+  if(!suggestions.error&&(suggestions.data||[]).length)html+='<h4>Suggested corrections</h4>'+(suggestions.data||[]).map(function(c){return '<article class="ol-rs-feedback-item"><b>'+esc(c.author_name||'Supervisor')+'</b><small>'+esc(fmtDateTime(c.created_at))+' · '+esc(c.status||'pending')+'</small><del>'+esc(c.old_text||'')+'</del><ins>'+esc(c.new_text||'')+'</ins></article>'}).join('');
+  if(!html)html='<p>No paragraph comments or suggested edits have been added yet.</p>';
+  host.innerHTML=html;
 }
 
 function researchFileExtension(item){
@@ -480,15 +580,15 @@ async function researchHtmlToDocxBlob(html,title){
 async function saveResearchCorrection(submit){
   var r=state.researchCurrent,sb=client(),id=uid(),ed=document.getElementById('ol-research-correction-editor');
   if(!r||!sb||!id||!ed)return;
-  var html=ed.innerHTML.trim();
+  var html=studentResearchSanitize(ed.innerHTML).trim();
   if(!html||html==='<br>'){alert('Please make the required corrections before submitting.');return}
   var btn=document.getElementById(submit?'ol-rce-submit':'ol-rce-save');
   if(btn)btn.disabled=true;
   try{
-    localStorage.setItem(researchDraftKey(r),html);
+    if(studentResearchCloudTimer){clearTimeout(studentResearchCloudTimer);studentResearchCloudTimer=null}
+    await saveStudentResearchCloudDraft(false);
     if(!submit){
-      var st=document.getElementById('ol-research-correction-state');if(st)st.textContent='Draft saved locally';
-      alert('Correction draft saved on this device. You can continue editing later.');
+      alert('Correction draft saved securely to your NCHSM account. You can continue on another device.');
       return;
     }
     /*
@@ -523,6 +623,15 @@ async function saveResearchCorrection(submit){
       await sb.storage.from('research-papers').remove([path]);
       throw ins.error;
     }
+    var newDraft=await sb.from('research_document_drafts').upsert({
+      research_submission_id:ins.data.id,user_id:id,content_html:html,updated_at:now
+    },{onConflict:'research_submission_id,user_id'});
+    if(newDraft.error)console.warn('New correction draft seed failed:',newDraft.error.message);
+    var version=await sb.from('research_document_draft_versions').insert({
+      draft_id:(await sb.from('research_document_drafts').select('id').eq('research_submission_id',ins.data.id).eq('user_id',id).single()).data?.id,
+      research_submission_id:ins.data.id,user_id:id,version_number:next,content_html:html,word_count:studentResearchWordCount(html),label:'Submitted correction V'+next
+    });
+    if(version.error)console.warn('Submitted version history snapshot failed:',version.error.message);
     localStorage.removeItem(researchDraftKey(r));
     state.research.unshift(ins.data);
     state.researchCurrent=ins.data;
