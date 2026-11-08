@@ -304,40 +304,31 @@ function setupAssignmentEventListeners() {
 // ------------------------------------------------------------------
 async function checkUserSession() {
     if (!db) return false;
-    
     try {
-        const session = await db.auth.getSession();
-        
-        if (!session.data.session) {
-            window.location.href = 'login.html';
-            return false;
-        }
-        
-        const userEmail = session.data.session.user.email;
-        const { data: profile } = await db
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('email', userEmail)
-            .single();
-        
-        if (!profile) {
-            window.location.href = 'login.html';
-            return false;
-        }
+        const { data: sessionData, error: sessionError } = await db.auth.getSession();
+        if (sessionError || !sessionData?.session) { window.location.href = 'login.html'; return false; }
+        const user = sessionData.session.user;
+        const { data: profile, error } = await db.from('consolidated_user_profiles_table')
+            .select('user_id,email,full_name,role,status,program,department,staff_id')
+            .eq('user_id', user.id).maybeSingle();
+        if (error || !profile) { window.location.href = 'login.html'; return false; }
         currentAdmin = profile;
-        
-        const nameSpan = document.getElementById('adminName');
-            if (nameSpan && profile.full_name) {
-                nameSpan.textContent = profile.full_name;
-            }
-            
-        if (profile.role === 'superadmin' || profile.role === 'super_admin') {
-            window.location.href = 'superadmin.html';
+        const role = String(profile.role || '').toLowerCase().trim();
+        if (role === 'superadmin' || role === 'super_admin') { window.location.href = 'superadmin.html'; return false; }
+        const allowedRoles = ['admin','administrator','hod','head_of_department','school_admin','nursing_hod','tvet_hod'];
+        if (!allowedRoles.includes(role)) {
+            showToast('This portal is restricted to authorised administrators and Heads of Department.', 'error');
+            await db.auth.signOut();
+            window.location.href = 'login.html';
             return false;
         }
+        const nameSpan = document.getElementById('adminName');
+        if (nameSpan) nameSpan.textContent = profile.full_name || 'Administrator';
+        const roleLabel = document.getElementById('adminRoleLabel');
+        if (roleLabel) roleLabel.textContent = role.includes('hod') || role === 'head_of_department' ? 'HEAD OF DEPARTMENT' : 'ADMINISTRATOR';
         return true;
-    } catch(e) {
-        console.warn('Session check failed:', e?.message || e);
+    } catch (e) {
+        console.error('Admin session validation failed:', e);
         window.location.href = 'login.html';
         return false;
     }
@@ -1156,34 +1147,24 @@ window.addNewUnitRecord = async function() {
 // ------------------------------------------------------------------
 async function loadLecturersForAssignment() {
     const container = document.getElementById('lecturer-assignment-list');
-    if (!container) {
-        console.warn('lecturer-assignment-list container not found');
-        return;
-    }
-    
+    if (!container) return;
     container.innerHTML = '<div class="loading-spinner"></div><p>Loading lecturers...</p>';
-    
     if (!db) return;
-    
     try {
-        const { data, error } = await db
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('role', 'lecturer')
-            .eq('status', 'approved')
-            .order('full_name');
-        
+        let query = db.from('consolidated_user_profiles_table')
+            .select('user_id,full_name,email,program,department,staff_id,role,status')
+            .eq('role','lecturer').eq('status','approved').order('full_name');
+        if (currentAdmin?.program && !['admin','administrator'].includes(String(currentAdmin.role || '').toLowerCase())) {
+            query = query.eq('program', currentAdmin.program);
+        }
+        const { data, error } = await query;
         if (error) throw error;
-        
         allLecturers = data || [];
-        
         await loadExistingAssignments();
-        updateAssignmentStats();
-        renderLecturerList();
-        
-    } catch(err) {
-        console.error('Error loading lecturers:', err);
-        container.innerHTML = '<p style="color: #dc2626;">Error loading lecturers: ' + err.message + '</p>';
+        updateAssignmentStats(); renderLecturerList();
+    } catch (err) {
+        console.error('Error loading lecturers/assignments:', err);
+        container.innerHTML = '<p style="color:#b91c1c">Unable to load lecturer assignments: '+escapeHtml(err.message)+'</p>';
     }
 }
 
@@ -1192,20 +1173,14 @@ async function loadLecturersForAssignment() {
 // ------------------------------------------------------------------
 async function loadExistingAssignments() {
     if (!db) return;
-    
-    try {
-        const { data, error } = await db
-            .from('lecturer_unit_assignments')
-            .select('*');
-        
-        if (error) throw error;
-        
-        allLecturerAssignments = data || [];
-        
-    } catch(err) {
-        console.error('Error loading assignments:', err);
-        allLecturerAssignments = [];
-    }
+    const { data, error } = await db.from('lecturer_subject_assignments')
+        .select('id,lecturer_id,lecturer_name,program,block,subject_name,subject_code,academic_year,created_at')
+        .order('created_at', { ascending: false });
+    if (error) throw error;
+    allLecturerAssignments = (data || []).map(a => ({
+        ...a, unit_code: a.subject_code, unit_name: a.subject_name,
+        unit_id: [a.program, a.block, a.subject_code].join('|')
+    }));
 }
 
 // ------------------------------------------------------------------
@@ -1213,23 +1188,11 @@ async function loadExistingAssignments() {
 // ------------------------------------------------------------------
 async function loadAvailableUnitsForAssignment() {
     if (!db) return;
-    
-    try {
-        const { data, error } = await db
-            .from('units_catalog')
-            .select('*')
-            .eq('status', 'active')
-            .order('block')
-            .order('unit_code');
-        
-        if (error) throw error;
-        
-        availableUnitsForAssignment = data || [];
-        
-    } catch(err) {
-        console.error('Error loading available units:', err);
-        availableUnitsForAssignment = [];
-    }
+    const { data, error } = await db.from('units_catalog')
+        .select('id,unit_code,unit_name,program,block,term,year,status')
+        .eq('status', 'active').order('program').order('block').order('unit_code');
+    if (error) throw error;
+    availableUnitsForAssignment = data || [];
 }
 
 // ------------------------------------------------------------------
@@ -1389,35 +1352,24 @@ function renderAssignedUnits(assignedUnits) {
 async function renderAvailableUnits(lecturerId, assignedUnits) {
     const container = document.getElementById('available-units-list');
     if (!container) return;
-    
     await loadAvailableUnitsForAssignment();
-    
-    const assignedUnitIds = assignedUnits.map(a => a.unit_id);
-    const available = availableUnitsForAssignment.filter(u => !assignedUnitIds.includes(u.id));
-    
-    if (available.length === 0) {
-        container.innerHTML = '<p class="text-muted"><i class="fas fa-check-circle"></i> All units assigned</p>';
+    const lecturer = allLecturers.find(l => l.user_id === lecturerId);
+    let available = availableUnitsForAssignment;
+    if (lecturer?.program) available = available.filter(u => u.program === lecturer.program);
+    if (currentAdmin?.program && !['admin','administrator'].includes(String(currentAdmin.role || '').toLowerCase())) {
+        available = available.filter(u => u.program === currentAdmin.program);
+    }
+    const assignedKeys = new Set(assignedUnits.map(a => [a.program,a.block,a.unit_code].join('|')));
+    available = available.filter(u => !assignedKeys.has([u.program,u.block,u.unit_code].join('|')));
+    if (!available.length) {
+        container.innerHTML = '<p class="text-muted"><i class="fas fa-check-circle"></i> No unassigned units are available for this lecturer and programme.</p>';
         return;
     }
-    
-    var html = '';
-    for (var i = 0; i < available.length; i++) {
-        var u = available[i];
-        var blockTermLabel = getBlockTermLabel(u.program);
-        
-        html += `
-            <div class="available-unit-item" onclick="assignUnitToLecturer('${lecturerId}', '${u.id}', '${escapeHtml(u.unit_code)}', '${escapeHtml(u.unit_name)}')">
-                <span class="unit-code">${escapeHtml(u.unit_code)}</span>
-                <span class="unit-name">${escapeHtml(u.unit_name)}</span>
-                <span class="unit-block"><i class="fas fa-layer-group"></i> ${blockTermLabel}: ${escapeHtml(u.block)}</span>
-                <button class="btn-sm btn-success">
-                    <i class="fas fa-plus"></i> Assign
-                </button>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
+    container.innerHTML = available.map(u => {
+        const term = u.program === 'KRCHN' ? (u.block || '') : (u.term || u.block || '');
+        const year = u.year || new Date().getFullYear();
+        return '<div class="available-unit-item"><span class="unit-code">'+escapeHtml(u.unit_code)+'</span><span class="unit-name">'+escapeHtml(u.unit_name)+'</span><span class="unit-block">'+escapeHtml(term)+' · '+escapeHtml(year)+'</span><button class="btn-sm btn-success" onclick="assignUnitToLecturer(\''+String(lecturerId)+'\',\''+String(u.id)+'\')"><i class="fas fa-plus"></i> Assign</button></div>';
+    }).join('');
 }
 
 // ------------------------------------------------------------------
@@ -1442,46 +1394,30 @@ function filterAvailableUnits() {
 // ------------------------------------------------------------------
 // ASSIGN UNIT TO LECTURER
 // ------------------------------------------------------------------
-async function assignUnitToLecturer(lecturerId, unitId, unitCode, unitName) {
+async function assignUnitToLecturer(lecturerId, unitId) {
     if (!db) return;
-    
-    const existing = allLecturerAssignments.find(
-        a => a.lecturer_id === lecturerId && a.unit_id === unitId
-    );
-    
-    if (existing) {
-        showToast('This unit is already assigned to this lecturer.', 'warning');
-        return;
-    }
-    
+    const lecturer = allLecturers.find(l => l.user_id === lecturerId);
+    const unit = availableUnitsForAssignment.find(u => String(u.id) === String(unitId));
+    if (!lecturer || !unit) { showToast('Lecturer or unit could not be found. Refresh and try again.', 'error'); return; }
+    const duplicate = allLecturerAssignments.some(a => a.lecturer_id === lecturerId && a.program === unit.program && a.block === unit.block && a.unit_code === unit.unit_code);
+    if (duplicate) { showToast('This unit is already assigned to this lecturer.', 'warning'); return; }
     try {
         const assignmentData = {
-            lecturer_id: lecturerId,
-            unit_id: unitId,
-            unit_code: unitCode,
-            unit_name: unitName,
-            assigned_by: currentAdmin?.user_id || 'admin',
-            assigned_at: new Date().toISOString()
+            lecturer_id: String(lecturerId), lecturer_name: lecturer.full_name || '',
+            program: unit.program, block: unit.block || unit.term || '',
+            subject_name: unit.unit_name, subject_code: unit.unit_code,
+            academic_year: String(unit.year || new Date().getFullYear())
         };
-        
-        const { data, error } = await db
-            .from('lecturer_unit_assignments')
-            .insert([assignmentData])
-            .select();
-        
+        const { data, error } = await db.from('lecturer_subject_assignments').insert([assignmentData])
+            .select('id,lecturer_id,lecturer_name,program,block,subject_name,subject_code,academic_year,created_at').single();
         if (error) throw error;
-        
-        if (data && data.length > 0) {
-            allLecturerAssignments.push(data[0]);
-        }
-        
+        allLecturerAssignments.unshift({...data, unit_code:data.subject_code, unit_name:data.subject_name});
         await refreshAssignmentModal(lecturerId);
-        showToast('✅ Unit ' + unitCode + ' assigned successfully!', 'success');
-        updateAssignmentStats();
-        renderLecturerList();
-        
-    } catch(err) {
-        showToast('Error assigning unit: ' + err.message, 'error');
+        updateAssignmentStats(); renderLecturerList();
+        showToast('Unit '+unit.unit_code+' assigned successfully.', 'success');
+    } catch (err) {
+        console.error('Unit assignment failed:', err);
+        showToast('Could not assign unit: '+(err.message || 'Database permission or validation error'), 'error');
     }
 }
 
@@ -1490,26 +1426,17 @@ async function assignUnitToLecturer(lecturerId, unitId, unitCode, unitName) {
 // ------------------------------------------------------------------
 async function removeUnitFromLecturer(assignmentId, unitCode) {
     if (!confirm('Remove unit ' + unitCode + ' from this lecturer?')) return;
-    
     if (!db) return;
-    
     try {
-        const { error } = await db
-            .from('lecturer_unit_assignments')
-            .delete()
-            .eq('id', assignmentId);
-        
+        const { error } = await db.from('lecturer_subject_assignments').delete().eq('id', assignmentId);
         if (error) throw error;
-        
         allLecturerAssignments = allLecturerAssignments.filter(a => a.id !== assignmentId);
         await refreshAssignmentModal(currentLecturerId);
-        
-        showToast('✅ Unit ' + unitCode + ' removed successfully!', 'success');
-        updateAssignmentStats();
-        renderLecturerList();
-        
-    } catch(err) {
-        showToast('Error removing unit: ' + err.message, 'error');
+        updateAssignmentStats(); renderLecturerList();
+        showToast('Unit ' + unitCode + ' removed successfully.', 'success');
+    } catch (err) {
+        console.error('Unit removal failed:', err);
+        showToast('Could not remove unit: ' + (err.message || 'Database permission error'), 'error');
     }
 }
 
@@ -1535,10 +1462,9 @@ async function refreshAssignmentModal(lecturerId) {
 // SAVE ALL UNIT ASSIGNMENTS
 // ------------------------------------------------------------------
 async function saveAllUnitAssignments() {
-    showToast('✅ All assignments saved successfully!', 'success');
+    showToast('Assignments are saved immediately when you add or remove a unit.', 'info');
     closeModal('unitAssignmentModal');
-    updateAssignmentStats();
-    renderLecturerList();
+    await loadLecturersForAssignment();
 }
 
 // ------------------------------------------------------------------
