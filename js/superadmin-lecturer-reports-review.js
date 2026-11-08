@@ -1,3 +1,10 @@
+            #lrrManagementDashboard .lrr-audit-toolbar{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin:12px 0}
+            #lrrManagementDashboard .lrr-audit-toolbar input,#lrrManagementDashboard .lrr-audit-toolbar select{height:40px;border:1px solid #cbd5e1;border-radius:8px;padding:0 10px;min-width:0}
+            #lrrManagementDashboard #lrrAuditTable{overflow-x:auto}
+            #lrrManagementDashboard #lrrAuditTable table{min-width:850px}
+            #lrrManagementDashboard #lrrAuditTable small{display:block;color:#94a3b8;font-size:10px;margin-top:3px}
+            #lrrManagementDashboard #lrrAuditTable details{margin-top:5px;font-size:11px}
+            @media(max-width:700px){#lrrManagementDashboard .lrr-audit-toolbar{grid-template-columns:1fr 1fr}#lrrManagementDashboard .lrr-audit-toolbar input{grid-column:1/-1}}
             #lrrManagementDashboard .lrr-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:10px 0 16px}
             #lrrManagementDashboard .lrr-cal-weekday{text-align:center;color:#64748b;font-size:10px;font-weight:800;padding:6px 0}
             #lrrManagementDashboard .lrr-cal-day{min-height:76px;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff;overflow:hidden}
@@ -46,6 +53,7 @@
     const TABLE_REQUIREMENTS = 'lecturer_report_requirements';
     const TABLE_VERSIONS = 'lecturer_report_document_versions';
     const TABLE_BACKUPS = 'lecturer_report_backup_history';
+    const TABLE_AUDIT_LOGS = 'audit_logs';
     let deadlineRows = [];
     let activeSchool = '';
     let quickStatus = '';
@@ -836,6 +844,7 @@
             <button type="button" class="lrr-subtab" data-jump="lrrPortfoliosArea">Lecturers</button>
             <button type="button" class="lrr-subtab" data-jump="lrrQualityArea">Quality</button>
             <button type="button" class="lrr-subtab" data-jump="lrrBackupArea">Backup history</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrAuditArea">Audit logs</button>
           </nav>
           <div id="lrrSchoolOverview"></div>
           <div class="lrr-school-grid">
@@ -916,6 +925,17 @@
             <div class="lrr-feature-head"><div><h3>Backup history</h3><p>Recent downloadable backup records and attachment coverage.</p></div><button type="button" class="lrr-export-btn" id="lrrRefreshBackupHistory">Refresh history</button></div>
             <div id="lrrBackupHistoryTable" class="lrr-feature-table"></div>
           </section>
+          <section id="lrrAuditArea" class="lrr-feature-panel">
+            <div class="lrr-feature-head"><div><h3>Audit trail</h3><p>Who did what, to which record, and exactly when. Database changes are captured automatically.</p></div><button type="button" class="lrr-export-btn" id="lrrRefreshAudit">Refresh logs</button></div>
+            <div class="lrr-audit-toolbar">
+              <input id="lrrAuditSearch" placeholder="Search user, action, table or record">
+              <select id="lrrAuditAction"><option value="">All actions</option><option value="insert">Created</option><option value="update">Updated</option><option value="delete">Deleted</option></select>
+              <select id="lrrAuditModule"><option value="">All modules</option><option value="Teaching & Learning">Teaching & Learning</option></select>
+              <button type="button" class="lrr-export-btn" id="lrrExportAudit">Export CSV</button>
+            </div>
+            <div id="lrrAuditSummary" class="lrr-feature-grid"></div>
+            <div id="lrrAuditTable" class="lrr-feature-table"></div>
+          </section>
           <div id="lrrFolderArea"></div><div class="lrr-folder-toolbar"><div><strong>School document folders</strong><small>Browse, open and export document collections</small></div><button type="button" class="lrr-export-btn" id="lrrExportFolders">↓ Export folders</button></div><p class="lrr-folder-note">Browse by school, then open a unit folder to see its document collections.</p><div id="lrrFolderGrid" class="lrr-folder-grid" style="margin-top:8px"></div>
         `;
         const heading = section.querySelector('h2')?.parentElement?.parentElement;
@@ -923,6 +943,11 @@
         panel.querySelector('#lrrRefreshAll')?.addEventListener('click', async()=>{await loadReports();});
         panel.querySelector('#lrrCreateBackup')?.addEventListener('click',createTeachingBackup);
         panel.querySelector('#lrrRefreshBackupHistory')?.addEventListener('click',loadBackupHistory);
+        panel.querySelector('#lrrRefreshAudit')?.addEventListener('click',loadAuditLogs);
+        panel.querySelector('#lrrAuditSearch')?.addEventListener('input',renderAuditLogs);
+        panel.querySelector('#lrrAuditAction')?.addEventListener('change',renderAuditLogs);
+        panel.querySelector('#lrrAuditModule')?.addEventListener('change',renderAuditLogs);
+        panel.querySelector('#lrrExportAudit')?.addEventListener('click',exportAuditLogs);
         panel.querySelector('#lrrCalendarMonth')?.addEventListener('change',renderTeachingFeatures);
         panel.querySelector('#lrrRequirementForm')?.addEventListener('submit',saveRequirement);
         panel.querySelector('#lrrExportCompliance')?.addEventListener('click',()=>exportCsv('NCHSM-Compliance-'+new Date().toISOString().slice(0,10)+'.csv',(state.requirements||[]).map(r=>({school:r.school,program:r.program,intake_year:r.intake_year,block:r.block,term:r.term,document_type:r.document_type,unit_code:r.unit_code,due_at:r.due_at}))));
@@ -1177,6 +1202,38 @@
         }
         loadBackupHistory();
     }
+    let auditRows = [];
+    async function loadAuditLogs(){
+        const host=getElement('lrrAuditTable');if(!host)return;
+        const client=getSupabaseClient();if(!client){host.textContent='Audit log connection unavailable.';return;}
+        host.innerHTML='<div class="lrr-feature-empty">Loading audit trail…</div>';
+        const {data,error}=await client.from(TABLE_AUDIT_LOGS)
+          .select('id,timestamp,user_id,user_email,role,user_role,actor_name,action_type,module,target_table,target_id,description,status,details,old_data,new_data,source,ip_address,device_info,user_agent')
+          .order('timestamp',{ascending:false}).limit(500);
+        if(error){host.innerHTML='<div class="lrr-feature-empty">Could not load audit logs: '+escapeHtml(error.message)+'</div>';return;}
+        auditRows=data||[];renderAuditLogs();
+    }
+    function renderAuditLogs(){
+        const host=getElement('lrrAuditTable');if(!host)return;
+        const query=(getElement('lrrAuditSearch')?.value||'').toLowerCase();
+        const action=getElement('lrrAuditAction')?.value||'';
+        const module=getElement('lrrAuditModule')?.value||'';
+        const rows=auditRows.filter(r=>(!action||String(r.action_type||'').toLowerCase()===action)&&(!module||r.module===module)&&(!query||[r.actor_name,r.user_email,r.role,r.user_role,r.action_type,r.module,r.target_table,r.target_id,r.description,r.details,r.source].join(' ').toLowerCase().includes(query)));
+        const summary=getElement('lrrAuditSummary');
+        if(summary)summary.innerHTML=[['Events loaded',auditRows.length],['Shown',rows.length],['Creates',rows.filter(r=>r.action_type==='insert').length],['Updates',rows.filter(r=>r.action_type==='update').length],['Deletes',rows.filter(r=>r.action_type==='delete').length]].map(([k,v])=>'<div class="lrr-feature-kpi"><small>'+k+'</small><strong>'+v+'</strong></div>').join('');
+        host.innerHTML=rows.length?'<table><thead><tr><th>Date & time</th><th>Who</th><th>Action</th><th>Module / table</th><th>Record</th><th>What changed</th><th>Source</th></tr></thead><tbody>'+rows.map(r=>{
+          const when=r.timestamp?new Date(r.timestamp).toLocaleString('en-KE',{timeZone:'Africa/Nairobi',dateStyle:'medium',timeStyle:'medium'}):'—';
+          const who=r.actor_name||r.user_email||r.user_id||'System / unknown';
+          const detail=r.description||r.details||((r.action_type||'action')+' on '+(r.target_table||'record'));
+          const change=(r.old_data||r.new_data)?JSON.stringify({before:r.old_data,after:r.new_data}):'';
+          return '<tr><td>'+escapeHtml(when)+'</td><td>'+escapeHtml(who)+'<small>'+escapeHtml(r.user_email||'')+' · '+escapeHtml(r.user_role||r.role||'')+'</small></td><td>'+escapeHtml(String(r.action_type||'').toUpperCase())+'</td><td>'+escapeHtml(r.module||'')+'<small>'+escapeHtml(r.target_table||'')+'</small></td><td>'+escapeHtml(r.target_id||'—')+'</td><td>'+escapeHtml(detail)+(change?'<details><summary>Before / after data</summary><pre style="white-space:pre-wrap;max-width:420px">'+escapeHtml(change)+'</pre></details>':'')+'</td><td>'+escapeHtml(r.source||'application')+'</td></tr>';
+        }).join('')+'</tbody></table>':'<div class="lrr-feature-empty">No audit events match these filters.</div>';
+    }
+    function exportAuditLogs(){
+        const rows=auditRows.map(r=>({timestamp:r.timestamp,actor:r.actor_name,user_email:r.user_email,role:r.user_role||r.role,action:r.action_type,module:r.module,table:r.target_table,record_id:r.target_id,description:r.description,details:r.details,source:r.source,before:JSON.stringify(r.old_data||{}),after:JSON.stringify(r.new_data||{}),ip_address:r.ip_address,device_info:r.device_info,user_agent:r.user_agent}));
+        exportCsv('NCHSM-Audit-Trail-'+new Date().toISOString().slice(0,10)+'.csv',rows);
+    }
+
     async function loadBackupHistory(){
         const host=getElement('lrrBackupHistoryTable');if(!host)return;
         const client=getSupabaseClient();if(!client){host.textContent='Backup history unavailable.';return;}
