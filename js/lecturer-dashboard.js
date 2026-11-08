@@ -239,7 +239,7 @@ const LecturerDashboard = {
                 this.assignedStudents = data.assignedStudents;
                 this._assignedStudentsLoaded = data.assignedStudentsLoaded !== false;
             }
-            if (Number.isFinite(Number(data.totalAssignedEnrollments))) this.totalAssignedEnrollments = Number(data.totalAssignedEnrollments);
+            if (data.totalAssignedEnrollments !== null && data.totalAssignedEnrollments !== undefined && Number.isFinite(Number(data.totalAssignedEnrollments))) this.totalAssignedEnrollments = Number(data.totalAssignedEnrollments);
             this.updateMetricCards();
             this.updateAttendanceMetricsUI();
             this.updateClinicalUI(this.clinicalMetrics.percent, this.clinicalMetrics.completed, this.clinicalMetrics.onTrack, this.clinicalMetrics.atRisk, this.clinicalMetrics.critical);
