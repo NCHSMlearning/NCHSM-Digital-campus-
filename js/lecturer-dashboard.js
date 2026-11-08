@@ -64,7 +64,10 @@ const LecturerDashboard = {
 
     // Student-dashboard-inspired reliability layer
     CACHE_DURATION: 120000,
+    CACHE_MAX_AGE: 86400000,
     cacheKey: null,
+    _assignedUnitsLoaded: false,
+    _assignedStudentsLoaded: false,
     _refreshInProgress: false,
     liveClockInterval: null,
 
@@ -215,38 +218,36 @@ const LecturerDashboard = {
         if (!this.cacheKey) return false;
 
         try {
-            const cached = localStorage.getItem(this.cacheKey);
-            if (!cached) return false;
+            const raw = localStorage.getItem(this.cacheKey);
+            if (!raw) return false;
+            const parsed = JSON.parse(raw);
+            const age = Date.now() - Number(parsed.timestamp || 0);
+            if (!parsed?.data || !Number.isFinite(age) || age < 0 || age > this.CACHE_MAX_AGE) return false;
+            if (parsed.program && String(parsed.program).toLowerCase() !== String(this.getCurrentProgram()).toLowerCase()) return false;
 
-            const parsed = JSON.parse(cached);
-            if (!parsed?.data || Date.now() - parsed.timestamp >= this.CACHE_DURATION) {
-                return false;
+            const data = parsed.data;
+            if (data.metrics) this.metrics = { ...this.metrics, ...data.metrics };
+            if (data.attendanceMetrics) this.attendanceMetrics = { ...this.attendanceMetrics, ...data.attendanceMetrics };
+            if (data.clinicalMetrics) this.clinicalMetrics = { ...this.clinicalMetrics, ...data.clinicalMetrics };
+            if (data.riskMetrics) this.riskMetrics = { ...this.riskMetrics, ...data.riskMetrics };
+            if (Array.isArray(data.assignedUnits)) {
+                this.assignedUnits = data.assignedUnits;
+                this._assignedUnitsLoaded = data.assignedUnitsLoaded !== false;
             }
-
-            if (parsed.data.metrics) this.metrics = { ...this.metrics, ...parsed.data.metrics };
-            if (parsed.data.attendanceMetrics) this.attendanceMetrics = { ...this.attendanceMetrics, ...parsed.data.attendanceMetrics };
-            if (parsed.data.clinicalMetrics) this.clinicalMetrics = { ...this.clinicalMetrics, ...parsed.data.clinicalMetrics };
-            if (parsed.data.riskMetrics) this.riskMetrics = { ...this.riskMetrics, ...parsed.data.riskMetrics };
-            if (Array.isArray(parsed.data.assignedUnits)) this.assignedUnits = parsed.data.assignedUnits;
-            if (Array.isArray(parsed.data.assignedStudents)) this.assignedStudents = parsed.data.assignedStudents;
-
+            if (Array.isArray(data.assignedStudents)) {
+                this.assignedStudents = data.assignedStudents;
+                this._assignedStudentsLoaded = data.assignedStudentsLoaded !== false;
+            }
             this.updateMetricCards();
             this.updateAttendanceMetricsUI();
-            this.updateClinicalUI(
-                this.clinicalMetrics.percent,
-                this.clinicalMetrics.completed,
-                this.clinicalMetrics.onTrack,
-                this.clinicalMetrics.atRisk,
-                this.clinicalMetrics.critical
-            );
+            this.updateClinicalUI(this.clinicalMetrics.percent, this.clinicalMetrics.completed, this.clinicalMetrics.onTrack, this.clinicalMetrics.atRisk, this.clinicalMetrics.critical);
             this.updateRiskUI();
             this.updateWelcomeBanner();
             this.loadQuickStats();
-
-            console.log('ℹ️ Showing cached lecturer dashboard values while fresh data loads...');
+            console.log('⚡ Cached lecturer dashboard displayed; live data is refreshing.');
             return true;
         } catch (error) {
-            console.warn('⚠️ Ignoring invalid lecturer dashboard cache:', error);
+            console.warn('Ignoring invalid lecturer dashboard cache:', error);
             return false;
         }
     },
@@ -258,13 +259,16 @@ const LecturerDashboard = {
         try {
             localStorage.setItem(this.cacheKey, JSON.stringify({
                 timestamp: Date.now(),
+                program: this.getCurrentProgram(),
                 data: {
                     metrics: this.metrics,
                     attendanceMetrics: this.attendanceMetrics,
                     clinicalMetrics: this.clinicalMetrics,
                     riskMetrics: this.riskMetrics,
                     assignedUnits: this.assignedUnits,
-                    assignedStudents: this.assignedStudents
+                    assignedStudents: this.assignedStudents,
+                    assignedUnitsLoaded: this._assignedUnitsLoaded,
+                    assignedStudentsLoaded: this._assignedStudentsLoaded
                 }
             }));
         } catch (error) {
@@ -580,93 +584,74 @@ const LecturerDashboard = {
 
     // ─── INIT ───
     async init() {
-        // Avoid overlapping bootstraps from duplicate tab/orchestrator handlers.
-        if (this._initialized || this._initializing) {
-            console.debug('Lecturer dashboard init skipped: already initialized or in progress.');
-            return;
-        }
+        if (this._initialized || this._initializing) return;
         this._initializing = true;
         console.log('📊 Initializing Lecturer Dashboard...');
-        const program = this.getCurrentProgram();
-        const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
-        console.log(`📚 Current Program: ${program} (${typeLabel})`);
+        this.getCurrentProgram();
 
         try {
-            this.setCacheKey();
-            this.loadCachedSnapshot();
             this.updateTimeGreeting();
 
-            // Wait for the same authenticated session layer used by the
-            // student dashboard before making lecturer data requests.
-            await this.withTimeout(this.ensureSupabaseSession(), 10000, 'Lecturer session initialization');
+            // Resolve the authenticated identity first so the cache is keyed to
+            // the correct lecturer even when the profile module hydrates late.
+            const auth = await this.withTimeout(this.ensureSupabaseSession(), 10000, 'Lecturer session initialization');
+            this.lecturerUuid = auth.session.user.id;
 
-            // Dashboard's DOMContentLoaded timer may fire before lecturer-main
-            // hydrates the signed-in profile. Wait briefly instead of treating
-            // an empty profile as a successfully initialized dashboard.
             let profile = window.lecturerDB?.getCurrentUserProfile?.();
             const profileWaitStarted = Date.now();
             while (!profile && Date.now() - profileWaitStarted < 8000) {
-                await new Promise(resolve => setTimeout(resolve, 200));
+                await new Promise(resolve => setTimeout(resolve, 150));
                 profile = window.lecturerDB?.getCurrentUserProfile?.();
             }
             if (!profile) throw new Error('Lecturer profile was not ready after authentication.');
 
+            this.setCacheKey();
+            this.loadCachedSnapshot();
             await this.withTimeout(this.resolveLecturerId(), 8000, 'Lecturer profile resolution');
-            await this.withTimeout(this.loadAssignedUnits(), 8000, 'Assigned units loading');
-            await this.runDashboardTask(() => this.loadNextClassAndExam(), 8000, 'Next class and exam loading');
-            await this.withTimeout(this.loadAssignedStudents(), 10000, 'Assigned students loading');
 
-            // Independent dashboard sections load together after the core
-            // lecturer assignments are ready, reducing serial wait time.
+            // Unit assignments and timetable data are independent once the
+            // staff-record identity has been resolved.
+            await Promise.all([
+                this.runDashboardTask(() => this.loadAssignedUnits(), 8000, 'Assigned units loading'),
+                this.runDashboardTask(() => this.loadNextClassAndExam(), 8000, 'Next class and exam loading')
+            ]);
+
+            await this.withTimeout(this.loadAssignedStudents(), 10000, 'Assigned students loading');
             this.updateWelcomeBanner();
             this.loadQuickStats();
+
+            // These sections depend on the lecturer's assigned students/units,
+            // but not on one another. Run together to avoid serial page delays.
             await Promise.all([
-                this.runDashboardTask(() => this.loadMetrics(), 8000, 'Dashboard metrics loading'),
-                this.runDashboardTask(() => this.loadAttendanceMetrics(), 8000, 'Attendance metrics loading'),
-                this.runDashboardTask(() => this.loadClinicalHours(), 8000, 'Clinical hours loading'),
-                this.runDashboardTask(() => this.loadRiskData(), 8000, 'Student risk data loading'),
-                this.runDashboardTask(() => this.loadCourseProgress(), 8000, 'Course progress loading'),
-                this.runDashboardTask(() => this.loadTopStudents(), 8000, 'Top students loading'),
-                this.runDashboardTask(() => this.loadAttendanceAlerts(), 8000, 'Attendance alerts loading'),
-                this.runDashboardTask(() => this.loadIntelligentAlerts(), 8000, 'Intelligent alerts loading'),
-                this.runDashboardTask(() => this.loadRecentActivity(), 8000, 'Recent activity loading'),
-                this.runDashboardTask(() => this.loadCharts(), 8000, 'Dashboard charts loading')
+                this.runDashboardTask(() => this.loadMetrics(), 10000, 'Dashboard metrics loading'),
+                this.runDashboardTask(() => this.loadAttendanceMetrics(), 10000, 'Attendance metrics loading'),
+                this.runDashboardTask(() => this.loadClinicalHours(), 10000, 'Clinical hours loading'),
+                this.runDashboardTask(() => this.loadRiskData(), 10000, 'Student risk data loading'),
+                this.runDashboardTask(() => this.loadCourseProgress(), 10000, 'Course progress loading'),
+                this.runDashboardTask(() => this.loadTopStudents(), 10000, 'Top students loading'),
+                this.runDashboardTask(() => this.loadAttendanceAlerts(), 10000, 'Attendance alerts loading'),
+                this.runDashboardTask(() => this.loadIntelligentAlerts(), 10000, 'Intelligent alerts loading'),
+                this.runDashboardTask(() => this.loadRecentActivity(), 10000, 'Recent activity loading'),
+                this.runDashboardTask(() => this.loadCharts(), 10000, 'Dashboard charts loading'),
+                this.runDashboardTask(() => this.loadWorkloadInsights(), 12000, 'Workload insights loading')
             ]);
-            await this.runDashboardTask(() => this.loadWorkloadInsights(), 12000, 'Workload insights loading');
+
             this.setupEventListeners();
-        if (this.liveClockInterval) clearInterval(this.liveClockInterval);
-        this.liveClockInterval = setInterval(() => {
-            const now = new Date();
-            const hour = now.getHours();
-            let greeting = 'Good Morning', icon = '🌅';
-            if (hour >= 12 && hour < 17) { greeting = 'Good Afternoon'; icon = '☀️'; }
-            else if (hour >= 17 && hour < 21) { greeting = 'Good Evening'; icon = '🌆'; }
-            else if (hour >= 21 || hour < 5) { greeting = 'Good Night'; icon = '🌙'; }
-            const g = document.getElementById('lecturerGreetingText');
-            const e = document.getElementById('lecturerGreetingEmoji');
-            const c = document.getElementById('nrdClock');
-            const d = document.getElementById('nrdDaypart');
-            if (g) g.textContent = greeting;
-            if (e) e.textContent = icon;
-            if (d) d.textContent = icon;
-            if (c) c.textContent = now.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
-        }, 30000);
+            this.startLiveClock();
             this.startAutoRefresh();
             this.updateLastUpdated();
             this.updateProgramBadge();
             this.updateDashboardGradingInfo();
-            this.updateTimeGreeting();
             this.saveToCache();
             this._initialized = true;
-            console.log('✅ Lecturer Dashboard initialized');
-            console.log(`📚 ${this.assignedUnits.length} assigned units`);
-            console.log(`👨‍🎓 ${this.assignedStudents.length} assigned students`);
-            console.log(`🎯 Program: ${this.currentProgram} (${typeLabel})`);
-            console.log(`📊 Grading: ${this.isTVET ? 'TVET (Pass: 50%)' : 'Nursing (Pass: 60%)'}`);
+            console.log('✅ Lecturer dashboard initialized:', {
+                units: this.assignedUnits.length,
+                students: this.assignedStudents.length,
+                program: this.currentProgram
+            });
         } catch (error) {
             console.error('❌ Dashboard initialization error:', error);
         } finally {
-            // Let a later attempt recover from a failed initialization.
             this._initializing = false;
         }
     },
@@ -815,13 +800,16 @@ const LecturerDashboard = {
                 if (!uniqueUnits.has(key)) uniqueUnits.set(key, unit);
             });
             this.assignedUnits = [...uniqueUnits.values()];
+            this._assignedUnitsLoaded = true;
+            this.metrics.totalCourses = this.assignedUnits.length;
+            this.updateMetricCards();
 
             console.log('[Lecturer Dashboard] Loaded assigned units:', this.assignedUnits.length, {
                 lecturerId, program: this.getCurrentProgram()
             });
         } catch (error) {
-            console.error('[Lecturer Dashboard] Failed to load assigned units:', error);
-            this.assignedUnits = [];
+            console.error('[Lecturer Dashboard] Failed to load assigned units; retaining last valid snapshot:', error);
+            this._assignedUnitsLoaded = false;
         }
     },
 
@@ -839,7 +827,9 @@ const LecturerDashboard = {
 
             // A lecturer with no assigned units must not be shown the whole programme.
             if (assignedUnitKeys.size === 0) {
+                if (!this._assignedUnitsLoaded) return;
                 this.assignedStudents = [];
+                this._assignedStudentsLoaded = true;
                 this.assignedEnrollmentKeys = new Set();
                 this.metrics.totalStudents = 0;
                 this.updateMetricCards();
@@ -932,15 +922,16 @@ const LecturerDashboard = {
             });
 
             // One student is counted once, even when enrolled in several assigned units.
+            this._assignedStudentsLoaded = true;
             this.metrics.totalStudents = this.assignedStudents.length;
             this.updateMetricCards();
             console.log(`👨‍🎓 Loaded ${this.assignedStudents.length} unique assigned students for program ${program}`);
         } catch (error) {
-            console.error('Failed to load assigned students:', error);
-            this.assignedStudents = [];
-            this.assignedEnrollmentKeys = new Set();
-            // Do not silently turn a failed database request into a valid-looking zero.
-            this.metrics.totalStudents = null;
+            console.error('Failed to load assigned students; retaining last valid snapshot:', error);
+            this._assignedStudentsLoaded = false;
+            // Keep the last valid student list/count visible while permissions or
+            // connectivity recover. A query failure is never presented as zero.
+            if (!this.assignedStudents.length) this.metrics.totalStudents = null;
             this.updateMetricCards();
         }
     },
@@ -975,175 +966,130 @@ const LecturerDashboard = {
         const units = Array.isArray(this.assignedUnits) ? this.assignedUnits : [];
         const program = this.getCurrentProgram();
         const studentIds = [...new Set(students.map(s => String(s.user_id || '').trim()).filter(Boolean))];
-        const attendanceIdentifierMap = this.getAssignedStudentIdentifierMap();
-        const attendanceStudentIds = [...attendanceIdentifierMap.keys()];
+        const identifierMap = this.getAssignedStudentIdentifierMap();
+        const attendanceIds = [...identifierMap.keys()];
         const unitNames = [...new Set(units.map(u => String(u.subject_name || '').trim()).filter(Boolean))];
-        const unitKeys = new Set(units.map(u =>
-            String(u.subject_name || '').trim().toLowerCase() + '|' + String(u.block || '').trim().toLowerCase()
-        ));
-        const normalize = value => String(value || '').trim().toLowerCase();
+        const unitKeys = new Set(units.map(u => this.normalizeUnitName(u.subject_name) + '|' + String(u.block || '').trim().toLowerCase()));
+        const norm = value => String(value || '').trim().toLowerCase();
 
-        this.metrics.totalStudents = students.length;
-        this.metrics.totalCourses = units.length;
-        this.metrics.atRiskStudents = null;
-        this.metrics.pendingAttendance = null;
-        this.metrics.examsDue = null;
-        this.metrics.avgPerformance = null;
-
+        if (this._assignedStudentsLoaded) this.metrics.totalStudents = students.length;
+        if (this._assignedUnitsLoaded) this.metrics.totalCourses = units.length;
         if (!supabase) {
-            console.error('[Lecturer Dashboard] Metrics: Supabase client unavailable.');
+            console.error('[Lecturer Dashboard] Supabase client unavailable; showing cached metrics.');
             this.updateMetricCards();
             return;
         }
 
-        if (!studentIds.length || !unitNames.length) {
-            this.metrics.atRiskStudents = 0;
-            this.metrics.pendingAttendance = 0;
-            this.metrics.examsDue = 0;
-            this.metrics.avgPerformance = 0;
-            this.updateMetricCards();
-            return;
-        }
+        // Use the Africa/Nairobi calendar day for attendance and exam cut-offs.
+        const dateParts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Africa/Nairobi', year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(new Date()).reduce((acc, part) => {
+            if (part.type !== 'literal') acc[part.type] = part.value;
+            return acc;
+        }, {});
+        const localDate = dateParts.year + '-' + dateParts.month + '-' + dateParts.day;
+        const startOfDay = new Date(localDate + 'T00:00:00+03:00').toISOString();
+        const endOfDay = new Date(new Date(localDate + 'T00:00:00+03:00').getTime() + 86400000).toISOString();
 
-        // Attendance-based risk: count distinct students with more than five
-        // recorded absences in their own assigned units.
-        try {
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('student_id, unit_name, block, attendance_status, status')
-                .in('student_id', attendanceStudentIds)
-                .in('unit_name', unitNames)
-                .eq('program', program);
-            if (error) throw error;
+        const requests = [
+            attendanceIds.length && unitNames.length
+                ? supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status').in('student_id', attendanceIds).in('unit_name', unitNames).eq('program', program)
+                : Promise.resolve({ data: [], error: null }),
+            attendanceIds.length && unitNames.length
+                ? supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status,check_in_time').in('student_id', attendanceIds).in('unit_name', unitNames).eq('program', program).gte('check_in_time', startOfDay).lt('check_in_time', endOfDay)
+                : Promise.resolve({ data: [], error: null }),
+            unitNames.length
+                ? supabase.from('exams').select('id,title,exam_name,course_name,course_code,block,target_program,status,exam_date,is_published').eq('target_program', program).gte('exam_date', localDate)
+                : Promise.resolve({ data: [], error: null }),
+            unitNames.length
+                ? supabase.from('student_marks').select('student_id,admission_number,subject_name,block,final_score,published,approval_status,program,updated_at,created_at').in('subject_name', unitNames).eq('program', program).eq('published', true).eq('approval_status', 'approved')
+                : Promise.resolve({ data: [], error: null }),
+            this.lecturerUuid
+                ? supabase.from('messages').select('id').eq('receiver_id', this.lecturerUuid).eq('is_read', false)
+                : Promise.resolve({ data: null, error: null })
+        ];
 
+        const results = await Promise.allSettled(requests);
+        const getRows = (index, label) => {
+            const result = results[index];
+            if (result.status !== 'fulfilled' || result.value?.error) {
+                console.warn('[Lecturer Dashboard] ' + label + ' query failed; keeping cached value.', result.status === 'rejected' ? result.reason : result.value?.error);
+                return null;
+            }
+            return result.value?.data || [];
+        };
+
+        const attendance = getRows(0, 'At-risk attendance');
+        if (attendance) {
             const absenceCounts = new Map();
-            (data || []).forEach(log => {
-                const key = normalize(log.unit_name) + '|' + normalize(log.block);
-                if (!unitKeys.has(key) || !(this.assignedEnrollmentKeys||new Set()).has(String(log.student_id||'')+'|'+key)) return;
-                const status = normalize(log.attendance_status || log.status);
-                if (status === 'absent') {
-                    const id = attendanceIdentifierMap.get(String(log.student_id || '').trim()) || String(log.student_id || '').trim();
+            attendance.forEach(log => {
+                const key = norm(log.unit_name) + '|' + norm(log.block);
+                const studentKey = String(log.student_id || '').trim() + '|' + key;
+                if (!unitKeys.has(key) || !(this.assignedEnrollmentKeys || new Set()).has(studentKey)) return;
+                if (norm(log.attendance_status || log.status) === 'absent') {
+                    const id = identifierMap.get(String(log.student_id || '').trim()) || String(log.student_id || '').trim();
                     absenceCounts.set(id, (absenceCounts.get(id) || 0) + 1);
                 }
             });
             this.metrics.atRiskStudents = [...absenceCounts.values()].filter(count => count > 5).length;
-        } catch (error) {
-            console.warn('[Lecturer Dashboard] At-risk attendance metric failed:', error);
-            this.metrics.atRiskStudents = null;
         }
 
-        // Pending attendance counts only explicit pending records for today;
-        // it does not assume every student has a class every day.
-        try {
-            const now = new Date();
-            const localDate = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-            const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('student_id, unit_name, block, attendance_status, status, check_in_time')
-                .in('student_id', attendanceStudentIds)
-                .in('unit_name', unitNames)
-                .eq('program', program)
-                .gte('check_in_time', startOfDay)
-                .lt('check_in_time', endOfDay);
-            if (error) throw error;
-
+        const todayAttendance = getRows(1, 'Pending attendance');
+        if (todayAttendance) {
             const pendingIds = new Set();
-            (data || []).forEach(log => {
-                const key = normalize(log.unit_name) + '|' + normalize(log.block);
-                const status = normalize(log.attendance_status || log.status);
-                if (unitKeys.has(key) && (this.assignedEnrollmentKeys||new Set()).has(String(log.student_id||'')+'|'+key) && status === 'pending') pendingIds.add(attendanceIdentifierMap.get(String(log.student_id||'')) || String(log.student_id||''));
+            todayAttendance.forEach(log => {
+                const key = norm(log.unit_name) + '|' + norm(log.block);
+                const id = String(log.student_id || '').trim();
+                if (unitKeys.has(key) && (this.assignedEnrollmentKeys || new Set()).has(id + '|' + key) &&
+                    norm(log.attendance_status || log.status) === 'pending') {
+                    pendingIds.add(identifierMap.get(id) || id);
+                }
             });
             this.metrics.pendingAttendance = pendingIds.size;
-            console.debug('[Lecturer Dashboard] Pending attendance date:', localDate, pendingIds.size);
-        } catch (error) {
-            console.warn('[Lecturer Dashboard] Pending attendance metric failed:', error);
-            this.metrics.pendingAttendance = null;
         }
 
-        // Exams due: only published/scheduled exams belonging to this lecturer's
-        // assigned units and blocks, with an exam date today or in the future.
-        try {
-            const today = new Date();
-            const localToday = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
-            const { data, error } = await supabase
-                .from('exams')
-                .select('id, title, exam_name, course_name, course_code, block, target_program, status, exam_date, is_published')
-                .eq('target_program', program)
-                .gte('exam_date', localToday);
-            if (error) throw error;
-
-            const activeStatuses = new Set(['published', 'upcoming', 'scheduled']);
-            this.metrics.examsDue = (data || []).filter(exam => {
-                const examName = normalize(exam.course_name || exam.exam_name || exam.title);
-                const key = examName + '|' + normalize(exam.block);
-                const isAssigned = unitKeys.has(key);
-                const isActive = activeStatuses.has(normalize(exam.status)) || exam.is_published === true;
-                return isAssigned && isActive;
+        const exams = getRows(2, 'Exams due');
+        if (exams) {
+            const active = new Set(['published', 'upcoming', 'scheduled']);
+            this.metrics.examsDue = exams.filter(exam => {
+                const key = norm(exam.course_name || exam.exam_name || exam.title) + '|' + norm(exam.block);
+                return unitKeys.has(key) && (active.has(norm(exam.status)) || exam.is_published === true);
             }).length;
-        } catch (error) {
-            console.warn('[Lecturer Dashboard] Exams due metric failed:', error);
-            this.metrics.examsDue = null;
         }
 
-        // Performance is calculated only from approved AND published marks,
-        // and only for the lecturer's assigned units/blocks.
-        try {
-            const { data, error } = await supabase
-                .from('student_marks')
-                .select('student_id, admission_number, subject_name, block, final_score, published, approval_status, program, updated_at, created_at')
-                .in('subject_name', unitNames)
-                .eq('program', program)
-                .eq('published', true)
-                .eq('approval_status', 'approved');
-            if (error) throw error;
-
+        const marks = getRows(3, 'Published marks');
+        if (marks) {
             const latestByStudentUnit = new Map();
-            (data || []).forEach(mark => {
-                const key = normalize(mark.subject_name) + '|' + normalize(mark.block);
+            marks.forEach(mark => {
+                const key = norm(mark.subject_name) + '|' + norm(mark.block);
                 const score = Number(mark.final_score);
-                if (!unitKeys.has(key) || !this.isMarkForAssignedRegistration(mark) || !Number.isFinite(score) || score < 0 || score > 100) return;
-                const rowKey = String(mark.admission_number || mark.student_id || '') + '|' + key;
+                if (!unitKeys.has(key) || !this.isMarkForAssignedRegistration(mark) ||
+                    !Number.isFinite(score) || score < 0 || score > 100) return;
+                const rowKey = String(mark.admission_number || mark.student_id || '').trim() + '|' + key;
                 const old = latestByStudentUnit.get(rowKey);
-                if (!old || new Date(mark.updated_at || mark.created_at || 0) > new Date(old.updated_at || old.created_at || 0)) latestByStudentUnit.set(rowKey, mark);
+                if (!old || new Date(mark.updated_at || mark.created_at || 0) > new Date(old.updated_at || old.created_at || 0)) {
+                    latestByStudentUnit.set(rowKey, mark);
+                }
             });
-            const validScores = [...latestByStudentUnit.values()];
-            this.metrics.avgPerformance = validScores.length
-                ? Math.round(validScores.reduce((sum, mark) => sum + Number(mark.final_score), 0) / validScores.length)
+            const scores = [...latestByStudentUnit.values()].map(mark => Number(mark.final_score));
+            this.metrics.avgPerformance = scores.length
+                ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
                 : 0;
-        } catch (error) {
-            console.warn('[Lecturer Dashboard] Average performance metric failed:', error);
-            this.metrics.avgPerformance = null;
         }
 
-        // Keep unread-message count independent of the academic KPI queries.
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile?.();
-            const lecturerId = this.lecturerUuid || profile?.user_id;
-            if (lecturerId) {
-                const { data, error } = await supabase
-                    .from('messages')
-                    .select('id')
-                    .eq('receiver_id', lecturerId);
-                if (error) throw error;
-                this.metrics.unreadMessages = (data || []).length;
-            }
-        } catch (error) {
-            console.warn('[Lecturer Dashboard] Message count failed:', error);
-        }
+        const messages = getRows(4, 'Unread messages');
+        if (messages) this.metrics.unreadMessages = messages.length;
 
         this.updateMetricCards();
-        console.log('[Lecturer Dashboard] KPI refresh complete:', {
+        this.loadQuickStats();
+        console.log('[Lecturer Dashboard] Live KPI refresh complete:', {
             students: this.metrics.totalStudents,
             units: this.metrics.totalCourses,
             atRisk: this.metrics.atRiskStudents,
             pendingAttendance: this.metrics.pendingAttendance,
             examsDue: this.metrics.examsDue,
-            assignedExams: assignedExams?.length,
-            completedExams,
-            averagePerformance: this.metrics.avgPerformance
+            averagePerformance: this.metrics.avgPerformance,
+            unreadMessages: this.metrics.unreadMessages
         });
     },
 
@@ -1917,30 +1863,16 @@ const LecturerDashboard = {
     // ─── START AUTO REFRESH ───
     startAutoRefresh() {
         if (this.refreshInterval) clearInterval(this.refreshInterval);
-
         this.refreshInterval = setInterval(async () => {
-            // Do not run dashboard queries while the user is in another section.
-            // Background refreshes used to compete with the active module and
-            // could make the portal appear to freeze and reload its data.
             const dashboard = document.getElementById('dashboard-content');
-            const dashboardVisible = !!dashboard &&
-                dashboard.classList.contains('active') &&
+            const visible = !!dashboard && dashboard.classList.contains('active') &&
                 getComputedStyle(dashboard).display !== 'none';
-
-            if (document.hidden || !dashboardVisible ||
-                this._refreshInProgress || this.isRefreshing) return;
-
-            this._refreshInProgress = true;
-            try {
-                await this.refresh({ silent: true });
-            } catch (error) {
-                console.warn('Automatic lecturer dashboard refresh skipped:', error);
-            } finally {
-                this._refreshInProgress = false;
-            }
-        }, Math.max(this.CACHE_DURATION, 300000));
-
-        console.log('🔄 Auto-refresh started (5-minute minimum; dashboard visible only)');
+            if (document.hidden || !visible || this._refreshInProgress || this.isRefreshing) return;
+            // refresh() owns the in-flight lock; do not set it here or it will
+            // reject its own refresh call.
+            await this.refresh({ silent: true });
+        }, Math.max(this.CACHE_DURATION, 120000));
+        console.log('🔄 Lecturer dashboard auto-refresh enabled (2-minute minimum, visible tab only).');
     },
 
     // ─── CHARTS ───
@@ -2197,57 +2129,45 @@ const LecturerDashboard = {
     // ─── REFRESH ───
     async refresh(options = {}) {
         const silent = options.silent === true;
-
-        if (this.isRefreshing || this._refreshInProgress) {
-            console.log('⏭️ Dashboard refresh already in progress');
-            return;
-        }
-
-        if (!this._initialized && !silent) {
-            console.log('⏭️ Dashboard still initializing, skipping refresh');
-            return;
-        }
+        if (this.isRefreshing || this._refreshInProgress) return;
+        if (!this._initialized && !this._initializing && !silent) return;
 
         this.isRefreshing = true;
         this._refreshInProgress = true;
-
         const status = document.getElementById('nrdLiveStatus');
         if (status) {
             status.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Updating';
             status.classList.add('refreshing');
         }
 
-        if (!silent) this.clearCache();
-
-        console.log(`🔄 ${silent ? 'Automatic' : 'Manual'} lecturer dashboard refresh...`);
-
         try {
-            const freshClient = this.getSupabaseClient();
-            if (!freshClient) throw new Error('No valid Supabase client available.');
-            await this.ensureSupabaseSession();
-
+            const auth = await this.ensureSupabaseSession();
+            this.lecturerUuid = auth.session.user.id;
             this.getCurrentProgram();
-
             await this.resolveLecturerId();
             this.setCacheKey();
-            await this.loadAssignedUnits();
-            await this.loadNextClassAndExam();
+
+            await Promise.all([
+                this.runDashboardTask(() => this.loadAssignedUnits(), 8000, 'Assigned units refresh'),
+                this.runDashboardTask(() => this.loadNextClassAndExam(), 8000, 'Timetable refresh')
+            ]);
             await this.loadAssignedStudents();
-            await this.loadMetrics();
-            await this.loadAttendanceMetrics();
-            await this.loadClinicalHours();
-            await this.loadRiskData();
 
             this.updateWelcomeBanner();
             this.loadQuickStats();
-
-            await this.loadCourseProgress();
-            await this.loadTopStudents();
-            await this.loadAttendanceAlerts();
-            await this.loadIntelligentAlerts();
-            await this.loadRecentActivity();
-            await this.loadCharts();
-            await this.loadWorkloadInsights();
+            await Promise.all([
+                this.runDashboardTask(() => this.loadMetrics(), 10000, 'Metrics refresh'),
+                this.runDashboardTask(() => this.loadAttendanceMetrics(), 10000, 'Attendance refresh'),
+                this.runDashboardTask(() => this.loadClinicalHours(), 10000, 'Clinical hours refresh'),
+                this.runDashboardTask(() => this.loadRiskData(), 10000, 'Risk refresh'),
+                this.runDashboardTask(() => this.loadCourseProgress(), 10000, 'Course progress refresh'),
+                this.runDashboardTask(() => this.loadTopStudents(), 10000, 'Top students refresh'),
+                this.runDashboardTask(() => this.loadAttendanceAlerts(), 10000, 'Attendance alerts refresh'),
+                this.runDashboardTask(() => this.loadIntelligentAlerts(), 10000, 'Intelligent alerts refresh'),
+                this.runDashboardTask(() => this.loadRecentActivity(), 10000, 'Recent activity refresh'),
+                this.runDashboardTask(() => this.loadCharts(), 10000, 'Charts refresh'),
+                this.runDashboardTask(() => this.loadWorkloadInsights(), 12000, 'Workload insights refresh')
+            ]);
 
             this.updateTimeGreeting();
             this.updateLastUpdated();
@@ -2255,22 +2175,21 @@ const LecturerDashboard = {
             this.updateDashboardGradingInfo();
             this.saveToCache();
 
+            if (status) {
+                status.innerHTML = '<i class="fas fa-circle"></i> Live';
+                status.classList.remove('refreshing');
+            }
             if (!silent && window.LecturerUI) {
                 window.LecturerUI.showNotification('Dashboard refreshed successfully!', 'success');
             }
-
-            console.log('✅ Lecturer dashboard refreshed');
         } catch (error) {
-            console.error('❌ Refresh error:', error);
-
-            const failedStatus = document.getElementById('nrdLiveStatus');
-            if (failedStatus) {
-                failedStatus.innerHTML = '<i class="fas fa-circle"></i> Update failed';
-                failedStatus.classList.remove('refreshing');
+            console.error('❌ Lecturer dashboard refresh failed; cached values retained:', error);
+            if (status) {
+                status.innerHTML = '<i class="fas fa-exclamation-circle"></i> Showing last saved data';
+                status.classList.remove('refreshing');
             }
-
             if (!silent && window.LecturerUI) {
-                window.LecturerUI.showNotification('Error refreshing dashboard', 'error');
+                window.LecturerUI.showNotification('Could not refresh live data. Last saved dashboard values are still shown.', 'warning');
             }
         } finally {
             this.isRefreshing = false;
