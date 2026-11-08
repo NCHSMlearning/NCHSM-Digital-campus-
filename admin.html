@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NCHSM Admin Dashboard</title>
+    <title>NCHSM HOD & Administration Portal</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1368,7 +1368,7 @@
                     <ul class="dropdown-menu">
                         <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
                         <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
-                        <li><a href="#" data-tab="lecturer-assignment"><i class="fas fa-user-tie"></i> Assign Units <span class="badge-success">New</span></a></li>
+                        <li><a href="#" data-tab="lecturer-assignment"><i class="fas fa-user-tie"></i> HOD Unit Allocation <span class="badge-success">HOD</span></a></li>
                         <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
                     </ul>
                 </li>
@@ -1414,7 +1414,7 @@
             <!-- ===== HEADER ===== -->
             <div class="page-header">
                 <div>
-                    <h1>Welcome, <span id="adminName">Administrator</span>!</h1>
+                    <h1>Welcome, <span id="adminName">Administrator</span> <small id="adminRoleLabel" class="admin-badge">ADMINISTRATOR</small>!</h1>
                     <p class="subtitle">Manage students, lecturers, courses, and unit assignments</p>
                 </div>
                 <div class="header-right">
@@ -1799,29 +1799,29 @@
             <!-- LECTURER UNIT ASSIGNMENT SECTION                              -->
             <!-- ============================================================ -->
             <section id="lecturer-assignment" class="tab-content">
-                <h2><i class="fas fa-user-tie"></i> Assign Units to Lecturers</h2>
+                <h2><i class="fas fa-user-tie"></i> HOD Lecturer Unit Allocation</h2>
                 <p style="color: #64748b; margin-bottom: 16px;">
                     <i class="fas fa-info-circle"></i> 
-                    Select a lecturer to view and manage their assigned units. You can assign or remove units from any lecturer.
+                    Allocate units from the official Units Catalogue to lecturers in your programme. Assignments are saved immediately and become available to lecturers through their teaching workspace.
                 </p>
                 
                 <!-- Stats -->
                 <div class="cards">
                     <div class="card card-primary">
                         <i class="fas fa-users card-icon"></i>
-                        <h3>Total Lecturers</h3>
+                        <h3>Approved Lecturers</h3>
                         <p class="data" id="assignmentTotalLecturers">0</p>
                         <p class="minor-data">Active teaching staff</p>
                     </div>
                     <div class="card card-success">
                         <i class="fas fa-book card-icon"></i>
-                        <h3>Total Assignments</h3>
+                        <h3>Unit Allocations</h3>
                         <p class="data" id="assignmentTotalAssignments">0</p>
                         <p class="minor-data">Units assigned to lecturers</p>
                     </div>
                     <div class="card card-warning">
                         <i class="fas fa-clock card-icon"></i>
-                        <h3>Pending Assignments</h3>
+                        <h3>Lecturers Without Units</h3>
                         <p class="data" id="assignmentPending">0</p>
                         <p class="minor-data">Awaiting assignment</p>
                     </div>
@@ -2023,14 +2023,14 @@
     <div id="unitAssignmentModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-chalkboard-teacher"></i> Assign Units to <span id="assignmentLecturerName">Lecturer</span></h3>
+                <h3><i class="fas fa-chalkboard-teacher"></i> Allocate Units — <span id="assignmentLecturerName">Lecturer</span></h3>
                 <button class="close" onclick="closeModal('unitAssignmentModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="assignment-info">
                     <p><strong>Lecturer:</strong> <span id="modalLecturerName">-</span></p>
                     <p><strong>Email:</strong> <span id="modalLecturerEmail">-</span></p>
-                    <p><strong>Program:</strong> <span id="modalLecturerProgram">-</span></p>
+                    <p><strong>Programme:</strong> <span id="modalLecturerProgram">-</span></p>
                     <p><strong>Units Assigned:</strong> <span id="modalAssignedCount">0</span></p>
                 </div>
                 
