@@ -1148,7 +1148,8 @@ const LecturerDashboard = {
         const unitRows = units.map(unit => {
             const key = unitKey(unit);
             const regs = (registrations || []).filter(r => unitKey({subject_name:r.unit_name,block:r.block}) === key && ['approved','completed'].includes(norm(r.status)));
-            const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key && m.published === true && norm(m.approval_status) === 'approved');
+            const enrolledIds = new Set(regs.map(r=>String(r.student_id||'')));
+            const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key && enrolledIds.has(String(m.student_id||'')) && m.published === true && norm(m.approval_status) === 'approved');
             const publishedByStudent = new Map();
             unitMarks.forEach(m => {
                 const id=String(m.student_id||''); if(!id)return;
@@ -1159,7 +1160,7 @@ const LecturerDashboard = {
             const avg = published.length ? Math.round(published.reduce((sum,m)=>sum+Number(m.final_score),0)/published.length) : null;
             const passThreshold = this.getPassingThreshold();
             const passRate = published.length ? Math.round(published.filter(m => Number(m.final_score) >= passThreshold).length / published.length * 100) : null;
-            return {name:unit.subject_name,block:unit.block,students:new Set(regs.map(r=>r.student_id)).size,marked:published.length,avg,passRate};
+            return {name:unit.subject_name,block:unit.block,students:new Set(regs.map(r=>r.student_id)).size,marked:published.length,avg,scoreTotal:published.reduce((sum,m)=>sum+Number(m.final_score),0),passRate};
         });
         const expected = unitRows.reduce((sum,u)=>sum+u.students,0);
         const marked = unitRows.reduce((sum,u)=>sum+u.marked,0);
@@ -1204,9 +1205,9 @@ const LecturerDashboard = {
         const reportCount = reports === null ? null : reports.length;
         set('liTeachingDocs', schemeCount === null || lessonCount === null || reportCount === null ? '—' : String(schemeCount + lessonCount + reportCount));
         set('liTeachingDocsDetail', [schemeCount===null?'Schemes unavailable':schemeCount+' schemes',lessonCount===null?'lesson plans unavailable':lessonCount+' lesson plans',reportCount===null?'reports unavailable':reportCount+' reports'].join(' · '));
-        const availableUnitAverages = unitRows.filter(u => Number.isFinite(u.avg));
-        const overallUnitAverage = availableUnitAverages.length
-            ? Math.round(availableUnitAverages.reduce((sum,u)=>sum+u.avg,0)/availableUnitAverages.length)
+        const markedUnitRows = unitRows.filter(u => u.marked > 0 && Number.isFinite(u.scoreTotal));
+        const overallUnitAverage = markedUnitRows.length
+            ? Math.round(markedUnitRows.reduce((sum,u)=>sum+u.scoreTotal,0)/markedUnitRows.reduce((sum,u)=>sum+u.marked,0))
             : null;
         set('liUnitAverage', overallUnitAverage === null ? '—' : overallUnitAverage + '%');
         set('nrdPerformanceAverage', overallUnitAverage === null ? '—' : overallUnitAverage + '%');
