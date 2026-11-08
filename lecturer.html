@@ -2033,6 +2033,19 @@ body:has(#dashboard-content.active){background:#f4f6fb!important}
         <span id="unreadMessagesCount" hidden>0</span>
     </section>
 
+    <!-- QUICK ACTIONS -->
+    <article class="nrd-card nrd-quick-actions">
+        <header><div><i class="fas fa-bolt"></i><div><h2>Quick Actions</h2><small>Access your most-used lecturer tools</small></div></div><button data-tab="dashboard" type="button">Overview</button></header>
+        <div class="nrd-actions">
+            <button data-tab="cats" type="button"><i class="fas fa-file-circle-plus"></i><span>Create Exam</span></button>
+            <button data-tab="attendance" type="button"><i class="fas fa-user-check"></i><span>Mark Attendance</span></button>
+            <button data-tab="marks-management" type="button"><i class="fas fa-chart-column"></i><span>Manage Marks</span></button>
+            <button data-tab="my-students" type="button"><i class="fas fa-users"></i><span>View Students</span></button>
+            <button data-tab="online-learning" type="button"><i class="fas fa-laptop-code"></i><span>Online Learning</span></button>
+            <button data-tab="research-papers" type="button"><i class="fas fa-file-signature"></i><span>Research Papers</span></button>
+        </div>
+    </article>
+
     <!-- HIDDEN COMPATIBILITY VALUES USED BY EXISTING JS -->
     <div hidden>
         <span id="welcomeHeader">Lecturer</span><span id="welcomeBannerText"></span><span id="studentCountDisplay">0</span><span id="unitCountDisplay">0</span>
@@ -2153,18 +2166,7 @@ body:has(#dashboard-content.active){background:#f4f6fb!important}
         <article class="nrd-card nrd-risk-hidden-card"><header><div><i class="fas fa-shield-halved"></i><div><h2>Risk Level Distribution</h2><small>Early warning system</small></div></div></header><div class="nrd-risk-bars"><div><span>High Risk</span><b id="highRiskCount">0</b><i><em id="nrdHighRiskBar"></em></i></div><div><span>Medium Risk</span><b id="mediumRiskCount">0</b><i><em id="nrdMediumRiskBar"></em></i></div><div><span>Low Risk</span><b id="lowRiskCount">0</b><i><em id="nrdLowRiskBar"></em></i></div></div></article>
     </section>
 
-    <!-- QUICK ACTIONS -->
-    <article class="nrd-card nrd-quick-actions">
-        <header><div><i class="fas fa-bolt"></i><div><h2>Quick Actions</h2><small>Access your most-used lecturer tools</small></div></div><button data-tab="dashboard" type="button">Overview</button></header>
-        <div class="nrd-actions">
-            <button data-tab="cats" type="button"><i class="fas fa-file-circle-plus"></i><span>Create Exam</span></button>
-            <button data-tab="attendance" type="button"><i class="fas fa-user-check"></i><span>Mark Attendance</span></button>
-            <button data-tab="marks-management" type="button"><i class="fas fa-chart-column"></i><span>Manage Marks</span></button>
-            <button data-tab="my-students" type="button"><i class="fas fa-users"></i><span>View Students</span></button>
-            <button data-tab="online-learning" type="button"><i class="fas fa-laptop-code"></i><span>Online Learning</span></button>
-            <button data-tab="research-papers" type="button"><i class="fas fa-file-signature"></i><span>Research Papers</span></button>
-        </div>
-    </article>
+
 
 
     <div class="nrd-hidden-data" hidden>
@@ -10439,6 +10441,93 @@ h1:has(> #welcomeHeader){display:none!important}
   #dashboard-content .nrd-hero-time #nrdDaypart{grid-column:3!important;font-size:16px!important}
   #dashboard-content .nrd-hero-time em{display:none!important}
   #dashboard-content .nrd-refresh-btn{min-height:30px!important;padding:4px 8px!important}
+}
+</style>
+
+
+<style id="nchsm-lecturer-mobile-reference-layout-v3">
+/* Mobile dashboard composition aligned to the approved compact reference. */
+h1:has(#welcomeHeader){display:none!important}
+@media(max-width:640px){
+  #dashboard-content{padding-top:0!important}
+  #dashboard-content .nchsm-reference-dashboard{padding:0 0 18px!important}
+  #dashboard-content .nrd-hero{
+    position:relative!important;min-height:0!important;height:auto!important;
+    margin:0 0 12px!important;border:1.5px solid #a78bfa!important;
+    border-radius:16px!important;overflow:hidden!important;
+    box-shadow:0 8px 22px rgba(76,29,149,.16)!important;
+  }
+  #dashboard-content .nrd-hero-image{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important}
+  #dashboard-content .nrd-hero-overlay{position:absolute!important;inset:0!important;background:linear-gradient(110deg,rgba(55,20,120,.97),rgba(91,35,177,.91) 62%,rgba(109,40,217,.76))!important}
+  #dashboard-content .nrd-hero-content{
+    position:relative!important;min-height:0!important;height:auto!important;
+    padding:15px 15px 13px!important;display:flex!important;
+    flex-direction:column!important;align-items:stretch!important;
+    justify-content:flex-start!important;gap:11px!important;
+  }
+  #dashboard-content .nrd-hero-identity{display:block!important;min-width:0!important}
+  #dashboard-content .nrd-avatar{display:none!important}
+  #dashboard-content .nrd-hero-copy{width:100%!important;min-width:0!important}
+  #dashboard-content .nrd-kicker{font-size:8px!important;letter-spacing:1.8px!important;margin:0 0 5px!important;color:#e9d5ff!important}
+  #dashboard-content .nrd-hero-copy h1{
+    margin:0!important;color:#fff!important;font-size:clamp(20px,5.5vw,24px)!important;
+    line-height:1.16!important;letter-spacing:-.35px!important;overflow-wrap:anywhere!important;
+  }
+  #dashboard-content .nrd-hero-copy p{font-size:11px!important;line-height:1.35!important;margin:5px 0 9px!important;color:rgba(255,255,255,.9)!important}
+  #dashboard-content .nrd-meta{display:flex!important;flex-wrap:wrap!important;gap:6px!important}
+  #dashboard-content .nrd-meta span{
+    font-size:9px!important;line-height:1.2!important;padding:5px 8px!important;
+    border:1px solid rgba(255,255,255,.32)!important;background:rgba(255,255,255,.12)!important;
+    color:#fff!important;border-radius:999px!important;
+  }
+  #dashboard-content .nrd-meta i{color:#e9d5ff!important}
+  #dashboard-content .nrd-hero-time{
+    width:100%!important;min-width:0!important;text-align:left!important;
+    display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;
+    align-items:center!important;gap:5px 9px!important;
+    padding:9px 10px!important;border:1px solid rgba(255,255,255,.25)!important;
+    border-radius:11px!important;background:rgba(35,12,82,.28)!important;
+  }
+  #dashboard-content .nrd-hero-time .nrd-live-row{
+    grid-column:1/-1!important;display:flex!important;align-items:center!important;
+    justify-content:flex-start!important;gap:8px!important;margin:0!important;
+  }
+  #dashboard-content .nrd-live-status{font-size:9px!important;padding:4px 8px!important;color:#d1fae5!important;background:rgba(16,185,129,.2)!important;border-color:rgba(167,243,208,.25)!important}
+  #dashboard-content .nrd-refresh-btn{min-height:29px!important;padding:4px 9px!important;font-size:10px!important}
+  #dashboard-content .nrd-hero-time #currentDateTime{grid-column:1!important;font-size:10px!important;line-height:1.35!important;color:#f3e8ff!important}
+  #dashboard-content .nrd-hero-time strong{grid-column:2!important;margin:0!important;font-size:25px!important;line-height:1!important;color:#fff!important;white-space:nowrap!important}
+  #dashboard-content .nrd-hero-time #nrdDaypart{grid-column:3!important;font-size:16px!important}
+  #dashboard-content .nrd-hero-time em{display:none!important}
+  #dashboard-content .nrd-metrics{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:9px!important;margin:0 0 13px!important;
+  }
+  #dashboard-content .nrd-metric{
+    min-width:0!important;min-height:82px!important;padding:10px!important;
+    border-radius:13px!important;gap:9px!important;box-shadow:0 3px 12px rgba(15,23,42,.06)!important;
+  }
+  #dashboard-content .nrd-metric-icon{width:37px!important;height:37px!important;flex:0 0 37px!important;font-size:15px!important}
+  #dashboard-content .nrd-metric small{font-size:8px!important;line-height:1.2!important;letter-spacing:.25px!important}
+  #dashboard-content .nrd-metric b{font-size:20px!important;line-height:1.1!important;margin:3px 0!important}
+  #dashboard-content .nrd-metric em{font-size:8px!important;white-space:normal!important;line-height:1.2!important}
+  #dashboard-content .nrd-quick-actions{margin:0 0 12px!important;border-radius:14px!important}
+  #dashboard-content .nrd-quick-actions>header{padding:11px 12px!important;min-height:48px!important}
+  #dashboard-content .nrd-quick-actions>header h2{font-size:15px!important}
+  #dashboard-content .nrd-quick-actions>header small{font-size:9px!important}
+  #dashboard-content .nrd-actions{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:9px!important;padding:10px!important;
+  }
+  #dashboard-content .nrd-actions button{
+    min-width:0!important;min-height:64px!important;padding:10px 8px!important;
+    border-radius:11px!important;display:flex!important;flex-direction:column!important;
+    justify-content:center!important;gap:6px!important;font-size:10px!important;
+    text-align:center!important;white-space:normal!important;
+  }
+  #dashboard-content .nrd-actions i{font-size:17px!important}
+}
+@media(min-width:641px){
+  h1:has(#welcomeHeader){display:none!important}
 }
 </style>
 
