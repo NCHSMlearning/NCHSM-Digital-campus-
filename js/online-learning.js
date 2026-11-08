@@ -280,11 +280,19 @@ function ensureResearchCorrectionModal(){
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="bold"><b>B</b></button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="italic"><i>I</i></button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="underline"><u>U</u></button>'+
+    '<select data-rce-format title="Paragraph style"><option value="p">Normal</option><option value="h1">Title</option><option value="h2">Heading 1</option><option value="h3">Heading 2</option><option value="h4">Heading 3</option></select>'+
+    '<select data-rce-font title="Font family"><option>Arial</option><option>Times New Roman</option><option>Calibri</option><option>Georgia</option><option>Verdana</option></select>'+
+    '<select data-rce-size title="Font size"><option value="2">10 pt</option><option value="3" selected>12 pt</option><option value="4">14 pt</option><option value="5">18 pt</option><option value="6">24 pt</option></select>'+
+    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="strikeThrough">S</button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="insertUnorderedList">• List</button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="insertOrderedList">1. List</button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="justifyLeft">Left</button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="justifyCenter">Center</button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="justifyRight">Right</button>'+
+    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="justifyFull">Justify</button>'+
+    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-link>Link</button>'+
+    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-table>Table</button>'+
+    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-pagebreak>Page break</button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="undo">Undo</button>'+
     '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="redo">Redo</button>'+
     '</div>'+
@@ -322,6 +330,12 @@ function ensureResearchCorrectionModal(){
   m.querySelectorAll('[data-rce-cmd]').forEach(function(b){
     b.onclick=function(){var e=document.getElementById('ol-research-correction-editor');e.focus();document.execCommand(this.dataset.rceCmd,false,null);markResearchCorrectionDirty()};
   });
+  m.querySelector('[data-rce-format]').addEventListener('change',function(){var e=document.getElementById('ol-research-correction-editor');e.focus();document.execCommand('formatBlock',false,this.value);markResearchCorrectionDirty()});
+  m.querySelector('[data-rce-font]').addEventListener('change',function(){var e=document.getElementById('ol-research-correction-editor');e.focus();document.execCommand('fontName',false,this.value);markResearchCorrectionDirty()});
+  m.querySelector('[data-rce-size]').addEventListener('change',function(){var e=document.getElementById('ol-research-correction-editor');e.focus();document.execCommand('fontSize',false,this.value);markResearchCorrectionDirty()});
+  m.querySelector('[data-rce-link]').onclick=function(){var u=prompt('Enter a secure web address');if(!u)return;try{var x=new URL(u);if(!['https:','http:'].includes(x.protocol))throw 0;var e=document.getElementById('ol-research-correction-editor');e.focus();document.execCommand('createLink',false,x.href);markResearchCorrectionDirty()}catch(e){alert('Enter a valid http or https link.')}};
+  m.querySelector('[data-rce-table]').onclick=function(){var rows=Math.max(1,Math.min(12,Number(prompt('Rows','3'))||3)),cols=Math.max(1,Math.min(8,Number(prompt('Columns','3'))||3)),h='<table border="1" style="width:100%;border-collapse:collapse"><tbody>';for(var i=0;i<rows;i++){h+='<tr>';for(var j=0;j<cols;j++)h+='<td style="padding:7px">'+(i===0?'Heading':'&nbsp;')+'</td>';h+='</tr>'}h+='</tbody></table><p><br></p>';var e=document.getElementById('ol-research-correction-editor');e.focus();document.execCommand('insertHTML',false,h);markResearchCorrectionDirty()};
+  m.querySelector('[data-rce-pagebreak]').onclick=function(){var e=document.getElementById('ol-research-correction-editor');e.focus();document.execCommand('insertHTML',false,'<div style="break-before:page;page-break-before:always"><p><br></p></div>');markResearchCorrectionDirty()};
   document.getElementById('ol-rce-save').onclick=function(){saveResearchCorrection(false)};
   document.getElementById('ol-rce-submit').onclick=function(){saveResearchCorrection(true)};
 }
@@ -340,7 +354,7 @@ async function openResearchCorrection(id){
   var m=document.getElementById('ol-research-correction-modal');
   var ed=document.getElementById('ol-research-correction-editor');
   document.getElementById('ol-research-correction-title').textContent=(r.title||'Research Paper')+' — Correction';
-  document.getElementById('ol-rce-file-label').textContent=(rootExt==='docx'?'DOCX':'HTML')+' · Current version V'+(r.version_number||1);
+  document.getElementById('ol-rce-file-label').textContent=(/\.docx$/i.test(String(r.document_name||''))?'DOCX':'HTML')+' · Current version V'+(r.version_number||1);
   document.getElementById('ol-research-correction-state').textContent='Opening document…';
   m.classList.add('open');m.setAttribute('aria-hidden','false');
   try{
