@@ -34,6 +34,11 @@
     const TABLE_REVIEWS = 'lecturer_report_reviews';
     const TABLE_ATTACHMENTS = 'lecturer_report_attachments';
     const STORAGE_BUCKET = 'lecturer-reports';
+    const TABLE_DEADLINES = 'lecturer_report_deadlines';
+    let deadlineRows = [];
+    let activeSchool = '';
+    let quickStatus = '';
+
 
     const ADMIN_ROLES = ['super_admin', 'superadmin'];
 
@@ -435,8 +440,10 @@
             }));
             state.filteredRows = [...state.rows];
 
+            await loadDeadlines();
             populateFilters();
             updateCounters();
+            renderManagementDashboard();
             applyFilters();
 
             state.initialized = true;
@@ -630,6 +637,15 @@
         const status = getFilterValue('lrrStatusFilter');
 
         state.filteredRows = state.rows.filter(row => {
+            if (activeSchool && schoolOf(row)!==activeSchool) return false;
+            if (quickStatus==='pending' && !['draft','submitted'].includes(row.status)) return false;
+            if (quickStatus==='under_review' && row.status!=='under_review') return false;
+            if (quickStatus==='awaiting' && !['submitted','resubmitted'].includes(row.status)) return false;
+            if (quickStatus==='approved' && row.status!=='approved') return false;
+            if (quickStatus==='due') {
+                const overdue = deadlineRows.some(d => d.school===schoolOf(row) && (!d.document_type || d.document_type===row.document_type) && (!d.unit_code || d.unit_code===row.subject_code) && new Date(d.due_at).getTime()<Date.now() && !['approved','rejected'].includes(row.status));
+                if (!overdue) return false;
+            }
             if (reportType && String(row.report_type || '') !== reportType) return false;
             if (documentType && String(row.document_type || '') !== documentType) return false;
             if (program) {
@@ -672,13 +688,144 @@
         updateVisibleCount();
     }
 
+
+    function schoolOf(row) {
+        const raw = String(row.program || row.department || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return raw.includes('tvet') || raw.includes('technicalvocational') || raw.includes('vocationaltraining') ? 'TVET' : 'Nursing';
+    }
+
+    async function loadDeadlines() {
+        const client = getSupabaseClient();
+        if (!client) return;
+        try {
+            const { data, error } = await client.from(TABLE_DEADLINES)
+                .select('id,school,document_type,unit_code,unit_name,academic_year,block,due_at,created_at')
+                .order('due_at', { ascending: true });
+            if (error) throw error;
+            deadlineRows = data || [];
+        } catch (error) {
+            deadlineRows = [];
+            console.warn('[LecturerReportsReview] Deadline calendar unavailable. Apply the supplied SQL migration.', error);
+        }
+    }
+
+    function renderManagementDashboard() {
+        const section = getElement('lecturer-reports-review');
+        if (!section || getElement('lrrManagementDashboard')) return;
+        const panel = document.createElement('div');
+        panel.id = 'lrrManagementDashboard';
+        panel.innerHTML = `
+          <style>
+            #lrrManagementDashboard{margin:0 0 18px;color:#172033}
+            #lrrManagementDashboard .lrr-hero{background:linear-gradient(120deg,#102b46,#14566a);color:white;border-radius:18px;padding:22px;margin-bottom:14px;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}
+            #lrrManagementDashboard .lrr-hero h3{margin:0;font-size:20px}#lrrManagementDashboard .lrr-hero p{margin:6px 0 0;color:#dbeafe;font-size:13px}
+            #lrrManagementDashboard .lrr-school-grid,#lrrManagementDashboard .lrr-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:13px}
+            #lrrManagementDashboard .lrr-school,#lrrManagementDashboard .lrr-stat{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:14px;text-align:left}
+            #lrrManagementDashboard button{cursor:pointer}#lrrManagementDashboard .lrr-school{display:flex;gap:12px;align-items:center;color:#172033}
+            #lrrManagementDashboard .lrr-school.active{border:2px solid #0f766e;background:#f0fdfa}
+            #lrrManagementDashboard .lrr-school .ico{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:#e0f2fe;color:#0369a1;font-size:19px}
+            #lrrManagementDashboard .lrr-school strong{display:block;font-size:22px}#lrrManagementDashboard .lrr-school small{color:#64748b}
+            #lrrManagementDashboard .lrr-stat span{font-size:10px;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+            #lrrManagementDashboard .lrr-stat strong{display:block;font-size:25px;margin-top:5px}
+            #lrrManagementDashboard .lrr-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:12px;margin-bottom:13px}
+            #lrrManagementDashboard .lrr-chip{border:1px solid #dbe3ec;background:#fff;color:#334155;border-radius:30px;padding:8px 13px;font-weight:750;font-size:12px}
+            #lrrManagementDashboard .lrr-chip.active{background:#102f50;color:white;border-color:#102f50}
+            #lrrManagementDashboard .lrr-deadline{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr auto;gap:8px;align-items:end}
+            #lrrManagementDashboard input,#lrrManagementDashboard select{min-width:0;width:100%;height:40px;border:1px solid #cbd5e1;border-radius:8px;padding:0 10px;background:#fff}
+            #lrrManagementDashboard .lrr-primary{height:40px;border:0;border-radius:8px;padding:0 14px;background:#0f766e;color:#fff;font-weight:800}
+            #lrrManagementDashboard .lrr-folder-note{font-size:12px;color:#64748b;margin:0 0 10px}
+            @media(max-width:700px){#lrrManagementDashboard .lrr-deadline{grid-template-columns:1fr 1fr}#lrrManagementDashboard .lrr-deadline button{grid-column:1/-1}}
+          </style>
+          <div class="lrr-hero"><div><h3>Teaching &amp; Learning Control Centre</h3><p>School-level oversight · lecturer submissions · document compliance · review deadlines</p></div><button class="lrr-primary" id="lrrRefreshAll" type="button">↻ Refresh overview</button></div>
+          <div class="lrr-school-grid">
+            <button type="button" class="lrr-school active" data-school=""><span class="ico">▦</span><span><strong id="lrrAllSchoolCount">0</strong><small>All schools · submissions</small></span></button>
+            <button type="button" class="lrr-school" data-school="Nursing"><span class="ico">✚</span><span><strong id="lrrNursingCount">0</strong><small>Nursing School</small></span></button>
+            <button type="button" class="lrr-school" data-school="TVET"><span class="ico">⚙</span><span><strong id="lrrTVETCount">0</strong><small>TVET School</small></span></button>
+          </div>
+          <div class="lrr-stat-grid">
+            <div class="lrr-stat"><span>Pending</span><strong id="lrrPendingMetric">0</strong></div>
+            <div class="lrr-stat"><span>Due / Overdue</span><strong id="lrrDueMetric">0</strong></div>
+            <div class="lrr-stat"><span>In Progress</span><strong id="lrrProgressMetric">0</strong></div>
+            <div class="lrr-stat"><span>Awaiting Review</span><strong id="lrrAwaitingMetric">0</strong></div>
+            <div class="lrr-stat"><span>Approved</span><strong id="lrrApprovedMetric">0</strong></div>
+          </div>
+          <div class="lrr-toolbar" aria-label="Quick submission filters">
+            <strong style="font-size:12px;margin-right:5px">Quick filters</strong>
+            <button type="button" class="lrr-chip active" data-quick="">All submissions</button>
+            <button type="button" class="lrr-chip" data-quick="pending">Pending</button>
+            <button type="button" class="lrr-chip" data-quick="due">Due / Overdue</button>
+            <button type="button" class="lrr-chip" data-quick="under_review">In progress</button>
+            <button type="button" class="lrr-chip" data-quick="awaiting">Awaiting review</button>
+            <button type="button" class="lrr-chip" data-quick="approved">Approved</button>
+          </div>
+          <div class="lrr-stat" style="margin-bottom:13px">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div><strong style="font-size:15px">Set submission deadlines</strong><div style="font-size:12px;color:#64748b;margin-top:4px">Create school, document and unit-specific due dates for lecturer submissions.</div></div><span id="lrrDeadlineCount" style="font-size:12px;color:#64748b">0 active deadlines</span></div>
+            <form id="lrrDeadlineForm" class="lrr-deadline">
+              <label style="font-size:11px;color:#64748b">School<select id="lrrDeadlineSchool"><option value="Nursing">Nursing</option><option value="TVET">TVET</option></select></label>
+              <label style="font-size:11px;color:#64748b">Document type<select id="lrrDeadlineType"><option value="">All document types</option><option value="scheme_of_work">Scheme of Work</option><option value="lesson_plan">Lesson Plan</option><option value="record_of_work">Record of Work</option><option value="instructional_materials">Teaching Materials</option><option value="course_outline">Course Outline</option><option value="examination_question_paper">Examination Paper</option><option value="marking_scheme">Marking Scheme</option><option value="cat_1">CAT 1</option><option value="cat_2">CAT 2</option><option value="practical_exam_1">Practical Exam</option></select></label>
+              <label style="font-size:11px;color:#64748b">Unit code (optional)<input id="lrrDeadlineUnit" placeholder="e.g. NCK 101"></label>
+              <label style="font-size:11px;color:#64748b">Due date &amp; time<input id="lrrDeadlineDate" type="datetime-local" required></label>
+              <button class="lrr-primary" type="submit">＋ Set deadline</button>
+            </form>
+            <div id="lrrDeadlineList" style="margin-top:12px;font-size:12px;color:#64748b">Loading deadlines…</div>
+          </div>
+          <p class="lrr-folder-note">School folders organise submitted teaching evidence by school, then by unit and document type. Select a school folder to filter its files.</p>
+        `;
+        const heading = section.querySelector('h2')?.parentElement?.parentElement;
+        if (heading?.nextSibling) section.insertBefore(panel, heading.nextSibling); else section.insertBefore(panel, section.firstChild);
+        panel.querySelector('#lrrRefreshAll')?.addEventListener('click', async()=>{await loadReports();});
+        panel.querySelectorAll('[data-school]').forEach(btn=>btn.addEventListener('click',()=>{
+            activeSchool=btn.dataset.school||'';
+            panel.querySelectorAll('[data-school]').forEach(x=>x.classList.toggle('active',x===btn));
+            applyFilters();
+            renderManagementDashboard();
+        }));
+        panel.querySelectorAll('[data-quick]').forEach(btn=>btn.addEventListener('click',()=>{
+            quickStatus=btn.dataset.quick||'';
+            panel.querySelectorAll('[data-quick]').forEach(x=>x.classList.toggle('active',x===btn));
+            applyFilters();
+        }));
+        panel.querySelector('#lrrDeadlineForm')?.addEventListener('submit',saveDeadline);
+        renderManagementDashboard();
+    }
+
+    function renderManagementDashboard() {
+        const panel=getElement('lrrManagementDashboard'); if(!panel)return;
+        const rows=activeSchool?state.rows.filter(r=>schoolOf(r)===activeSchool):state.rows;
+        const now=Date.now();
+        const dueDeadlines=deadlineRows.filter(d=>new Date(d.due_at).getTime()<now);
+        const count=(fn)=>rows.filter(fn).length;
+        setText('lrrAllSchoolCount',state.rows.length);
+        setText('lrrNursingCount',state.rows.filter(r=>schoolOf(r)==='Nursing').length);
+        setText('lrrTVETCount',state.rows.filter(r=>schoolOf(r)==='TVET').length);
+        setText('lrrPendingMetric',count(r=>['draft','submitted'].includes(r.status)));
+        setText('lrrDueMetric',dueDeadlines.filter(d=>!activeSchool||d.school===activeSchool).length);
+        setText('lrrProgressMetric',count(r=>r.status==='under_review'));
+        setText('lrrAwaitingMetric',count(r=>['submitted','resubmitted'].includes(r.status)));
+        setText('lrrApprovedMetric',count(r=>r.status==='approved'));
+        setText('lrrDeadlineCount',deadlineRows.length+' active deadlines');
+        const list=getElement('lrrDeadlineList');
+        if(list) list.innerHTML=deadlineRows.length?deadlineRows.map(d=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid #e2e8f0"><span><b>'+escapeHtml(d.school)+'</b> · '+escapeHtml(humanize(d.document_type||'All document types'))+(d.unit_code?' · '+escapeHtml(d.unit_code):'')+'</span><span>'+escapeHtml(formatDate(d.due_at))+'</span></div>').join(''):'No deadlines have been configured yet.';
+    }
+
+    async function saveDeadline(event) {
+        event.preventDefault();
+        if(!(await assertAdmin()))return;
+        const client=getSupabaseClient();
+        const due=getElement('lrrDeadlineDate')?.value;
+        if(!due)return;
+        const payload={school:getElement('lrrDeadlineSchool').value,document_type:getElement('lrrDeadlineType').value||null,unit_code:getElement('lrrDeadlineUnit').value.trim()||null,due_at:new Date(due).toISOString(),created_by:state.currentUser.id};
+        try{
+            const {error}=await client.from(TABLE_DEADLINES).insert(payload);
+            if(error)throw error;
+            getElement('lrrDeadlineForm').reset();
+            await loadDeadlines();renderManagementDashboard();
+            showModuleToast('Submission deadline saved.','success');
+        }catch(error){showModuleToast(error.message||'Could not save deadline. Apply the deadline-table SQL migration and check its RLS policies.','error');}
+    }
+
     function updateCounters() {
-        const counts = {
-            submitted: 0,
-            under_review: 0,
-            returned: 0,
-            approved: 0
-        };
+        const counts = { submitted: 0, under_review: 0, returned: 0, approved: 0 };
 
         state.rows.forEach(row => {
             if (row.status === 'submitted') counts.submitted++;
@@ -1857,10 +2004,22 @@
                 rejected: 'Report rejected.'
             };
 
+            let emailNotice = '';
+            if (options.status === 'approved') {
+                const recipient = String(updated?.lecturer_email || row.lecturer_email || '').trim();
+                if (recipient && typeof window.sendEmailWithBrevo === 'function') {
+                    const subject = 'Teaching portfolio submission approved - NCHSM';
+                    const html = '<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#172033"><h2 style="color:#0f766e">Submission approved</h2><p>Dear '+escapeHtml(updated?.lecturer_name||row.lecturer_name||'Lecturer')+',</p><p>Your teaching portfolio submission has been approved by the School administration.</p><p><b>Document:</b> '+escapeHtml(updated?.title||row.title||humanize(row.document_type))+'<br><b>Unit:</b> '+escapeHtml(row.unit_name||'—')+'</p><p>Log in to NCHSM Digital Campus to view the review record.</p><p>Nakuru College of Health Sciences &amp; Management</p></div>';
+                    try { const mailResult=await window.sendEmailWithBrevo(recipient,subject,html); emailNotice=mailResult?.success?' Lecturer email sent.':' Approval saved; email could not be sent: '+(mailResult?.error||'sender unavailable'); }
+                    catch(mailError){emailNotice=' Approval saved; email delivery failed.';console.error('[LecturerReportsReview] Approval email failed',mailError);}
+                } else { emailNotice = recipient ? ' Approval saved; email sender is not loaded.' : ' Approval saved; lecturer email address is missing.'; }
+            }
+
             showModuleToast(
                 messages[options.status] || 'Review action completed.',
                 options.status === 'approved' ? 'success' : 'info'
             );
+            if (emailNotice) showModuleToast(emailNotice, emailNotice.includes('sent') ? 'success' : 'warning');
 
             if (typeof window.refreshLecturerReportsReview === 'function') {
                 window.refreshLecturerReportsReview();
