@@ -940,6 +940,16 @@ const LecturerDashboard = {
         }
     },
 
+    // A mark can be keyed by Auth UUID or by the student's admission number.
+    isMarkForAssignedRegistration(mark) {
+        const norm = value => String(value || '').trim().toLowerCase();
+        const unitKey = norm(mark?.subject_name) + '|' + norm(mark?.block);
+        const identifiers = [mark?.student_id, mark?.admission_number]
+            .map(value => String(value || '').trim()).filter(Boolean);
+        const registered = this.assignedEnrollmentKeys || new Set();
+        return identifiers.some(id => registered.has(id + '|' + unitKey));
+    },
+
     // ─── LOAD METRICS ───
     async loadMetrics() {
         const supabase = this.getSupabaseClient();
@@ -1063,8 +1073,8 @@ const LecturerDashboard = {
         try {
             const { data, error } = await supabase
                 .from('student_marks')
-                .select('student_id, subject_name, block, final_score, published, approval_status, program, updated_at, created_at')
-                .in('student_id', studentIds)
+                .select('student_id, admission_number, subject_name, block, final_score, published, approval_status, program, updated_at, created_at')
+                .in('subject_name', unitNames)
                 .eq('program', program)
                 .eq('published', true)
                 .eq('approval_status', 'approved');
@@ -1074,7 +1084,7 @@ const LecturerDashboard = {
             (data || []).forEach(mark => {
                 const key = normalize(mark.subject_name) + '|' + normalize(mark.block);
                 const score = Number(mark.final_score);
-                if (!unitKeys.has(key) || !(this.assignedEnrollmentKeys||new Set()).has(String(mark.student_id)+'|'+key) || !Number.isFinite(score) || score < 0 || score > 100) return;
+                if (!unitKeys.has(key) || !this.isMarkForAssignedRegistration(mark) || !Number.isFinite(score) || score < 0 || score > 100) return;
                 const rowKey = String(mark.student_id) + '|' + key;
                 const old = latestByStudentUnit.get(rowKey);
                 if (!old || new Date(mark.updated_at || mark.created_at || 0) > new Date(old.updated_at || old.created_at || 0)) latestByStudentUnit.set(rowKey, mark);
@@ -1144,7 +1154,7 @@ const LecturerDashboard = {
 
         const [registrations, marks, attendanceRecords, assignments, assignmentSubmissions, exams, schemes, lessons, nurseAttempts, research, reports] = await Promise.all([
             safe(supabase.from('student_unit_registrations').select('student_id,unit_name,block,status,program').in('student_id', studentIds).eq('program', program), 'unit registrations'),
-            safe(supabase.from('student_marks').select('student_id,subject_name,block,final_score,published,approval_status,program,updated_at,created_at').in('student_id', studentIds).eq('program', program), 'marks'),
+            safe(supabase.from('student_marks').select('student_id,admission_number,subject_name,block,final_score,published,approval_status,program,updated_at,created_at').in('subject_name', unitNames).eq('program', program), 'marks'),
             safe(supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status,program').in('student_id', studentIds).eq('program', program), 'attendance rate'),
             authId ? safe(supabase.from('online_assignments').select('id,title,unit_code,unit_name,program,block,published,due_at,created_by').eq('created_by', authId).eq('program', program), 'online assignments') : Promise.resolve(null),
             studentIds.length ? safe(supabase.from('online_submissions').select('id,assignment_id,student_id,status,submitted_at').in('student_id', studentIds), 'assignment submissions') : Promise.resolve([]),
@@ -1159,8 +1169,7 @@ const LecturerDashboard = {
         const unitRows = units.map(unit => {
             const key = unitKey(unit);
             const regs = (registrations || []).filter(r => unitKey({subject_name:r.unit_name,block:r.block}) === key && ['approved','completed'].includes(norm(r.status)));
-            const enrolledIds = new Set(regs.map(r=>String(r.student_id||'')));
-            const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key && enrolledIds.has(String(m.student_id||'')) && m.published === true && norm(m.approval_status) === 'approved');
+            const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key && this.isMarkForAssignedRegistration(m) && m.published === true && norm(m.approval_status) === 'approved');
             const publishedByStudent = new Map();
             unitMarks.forEach(m => {
                 const id=String(m.student_id||''); if(!id)return;
@@ -1481,13 +1490,13 @@ const LecturerDashboard = {
         try{
             const [attendanceResult,marksResult]=await Promise.all([
                 supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status').in('student_id',studentIds).in('unit_name',unitNames).eq('program',this.getCurrentProgram()),
-                supabase.from('student_marks').select('student_id,subject_name,block,final_score,published,approval_status,updated_at,created_at').in('student_id',studentIds).in('subject_name',unitNames).eq('program',this.getCurrentProgram()).eq('published',true).eq('approval_status','approved')
+                supabase.from('student_marks').select('student_id,admission_number,subject_name,block,final_score,published,approval_status,updated_at,created_at').in('subject_name',unitNames).eq('program',this.getCurrentProgram()).eq('published',true).eq('approval_status','approved')
             ]);
             if(attendanceResult.error)throw attendanceResult.error;
             if(marksResult.error)throw marksResult.error;
             const enrollmentKeys=this.assignedEnrollmentKeys||new Set();
             const attendance=(attendanceResult.data||[]).filter(a=>unitKeys.has(norm(a.unit_name)+'|'+norm(a.block))&&enrollmentKeys.has(String(a.student_id)+'|'+norm(a.unit_name)+'|'+norm(a.block)));
-            const marks=(marksResult.data||[]).filter(m=>unitKeys.has(norm(m.subject_name)+'|'+norm(m.block))&&enrollmentKeys.has(String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block))&&Number.isFinite(Number(m.final_score)));
+            const marks=(marksResult.data||[]).filter(m=>unitKeys.has(norm(m.subject_name)+'|'+norm(m.block))&&this.isMarkForAssignedRegistration(m)&&Number.isFinite(Number(m.final_score)));
             const latestMarks=new Map();
             marks.forEach(m=>{
                 const key=String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block);
@@ -1661,13 +1670,13 @@ const LecturerDashboard = {
             const rows=await Promise.all(units.map(async unit=>{
                 const [regResult,markResult]=await Promise.all([
                     supabase.from('student_unit_registrations').select('student_id').in('student_id',ids).eq('program',this.getCurrentProgram()).eq('unit_name',unit.subject_name).eq('block',unit.block).in('status',['approved','completed']),
-                    supabase.from('student_marks').select('student_id,final_score,published,approval_status,updated_at,created_at').in('student_id',ids).eq('program',this.getCurrentProgram()).eq('subject_name',unit.subject_name).eq('block',unit.block).eq('published',true).eq('approval_status','approved')
+                    supabase.from('student_marks').select('student_id,admission_number,final_score,published,approval_status,updated_at,created_at').eq('program',this.getCurrentProgram()).eq('subject_name',unit.subject_name).eq('block',unit.block).eq('published',true).eq('approval_status','approved')
                 ]);
                 if(regResult.error)throw regResult.error;if(markResult.error)throw markResult.error;
                 const enrolled=new Set((regResult.data||[]).map(x=>String(x.student_id)));
                 const latest=new Map();
                 (markResult.data||[]).forEach(m=>{
-                    const score=Number(m.final_score);if(!Number.isFinite(score)||score<0||score>100||!enrolled.has(String(m.student_id)))return;
+                    const score=Number(m.final_score);if(!Number.isFinite(score)||score<0||score>100||!this.isMarkForAssignedRegistration(m))return;
                     const id=String(m.student_id),old=latest.get(id);
                     if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(id,m);
                 });
@@ -1692,12 +1701,12 @@ const LecturerDashboard = {
         const norm=v=>String(v||'').trim().toLowerCase(),keys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
         if(!supabase||!ids.length||!names.length){container.innerHTML='<div class="nrd-empty">No assigned students yet.</div>';return;}
         try{
-            const {data,error}=await supabase.from('student_marks').select('student_id,student_name,subject_name,block,final_score,published,approval_status,updated_at,created_at').in('student_id',ids).in('subject_name',names).eq('program',this.getCurrentProgram()).eq('published',true).eq('approval_status','approved');
+            const {data,error}=await supabase.from('student_marks').select('student_id,admission_number,student_name,subject_name,block,final_score,published,approval_status,updated_at,created_at').in('subject_name',names).eq('program',this.getCurrentProgram()).eq('published',true).eq('approval_status','approved');
             if(error)throw error;
             const latest=new Map();
             (data||[]).forEach(m=>{
                 const score=Number(m.final_score),key=String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block);
-                if(!keys.has(norm(m.subject_name)+'|'+norm(m.block))||!(this.assignedEnrollmentKeys||new Set()).has(String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block))||!Number.isFinite(score)||score<0||score>100)return;
+                if(!keys.has(norm(m.subject_name)+'|'+norm(m.block))||!this.isMarkForAssignedRegistration(m)||!Number.isFinite(score)||score<0||score>100)return;
                 const old=latest.get(key);if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(key,m);
             });
             const aggregate=new Map();
@@ -1983,8 +1992,8 @@ const LecturerDashboard = {
             if (studentIds.length > 0) {
                 const { data: marks } = await supabase
                     .from('student_marks')
-                    .select('*')
-                    .in('student_id', studentIds)
+                    .select('student_id,admission_number,subject_name,block,final_score,published,approval_status,updated_at,created_at')
+                    .in('subject_name', [...new Set((this.assignedUnits || []).map(u => String(u.subject_name || '').trim()).filter(Boolean))])
                     .eq('program', program);
                 marksData = marks || [];
             }
@@ -1997,7 +2006,7 @@ const LecturerDashboard = {
             marksData.forEach(m => {
                 const score=Number(m.final_score ?? m.score);
                 const key=normChart(m.subject_name)+'|'+normChart(m.block);
-                if(m.published!==true||normChart(m.approval_status)!=='approved'||!assignedUnitKeys.has(key)||!(this.assignedEnrollmentKeys||new Set()).has(String(m.student_id)+'|'+key)||!Number.isFinite(score)||score<0||score>100)return;
+                if(m.published!==true||normChart(m.approval_status)!=='approved'||!assignedUnitKeys.has(key)||!this.isMarkForAssignedRegistration(m)||!Number.isFinite(score)||score<0||score>100)return;
                 const rowKey=String(m.student_id)+'|'+key,old=latestPublished.get(rowKey);
                 if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latestPublished.set(rowKey,m);
             });
