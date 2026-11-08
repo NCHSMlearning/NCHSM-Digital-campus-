@@ -111,10 +111,15 @@ async function review(id){
  const next=prompt('Set status: '+choices.join(', '),r.status);if(!next)return;
  if(!choices.includes(next)){fail('Invalid status.');return}
  const comments=prompt('Reviewer comments / similarity findings:',r.reviewer_comments||'')||'';
+ if(r.similarity_note&&['approved','active'].includes(next)&&comments.trim().length<15){
+  fail('This topic has a potential match. Record at least 15 characters explaining the comparison and why approval is appropriate, or request revision/reject it.');
+  return;
+ }
  let supervisor=r.supervisor_name||'';
  if(next==='approved'||next==='active'){supervisor=prompt('Supervisor name (leave blank if not assigned):',supervisor)||supervisor;}
  const now=new Date().toISOString();
  const patch={status:next,reviewer_comments:comments,reviewed_by:user.id,reviewed_at:now,updated_at:now,supervisor_name:supervisor};
+ if(r.similarity_note&&['approved','active'].includes(next))patch.similarity_note=r.similarity_note+' | REVIEWED: '+comments.trim();
  if(next==='approved')patch.approved_at=now;
  if(next==='released')patch.released_at=now;
  const up=await sb.from('research_topic_vault').update(patch).eq('id',id);
