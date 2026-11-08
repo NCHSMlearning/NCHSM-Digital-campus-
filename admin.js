@@ -416,9 +416,7 @@ function loadTabContent(tabName) {
         case 'dashboard': loadDashboardNumbers(); break;
         case 'users': loadAllUsers(); break;
         case 'pending': loadPendingUsers(); break;
-        case 'enroll': loadStudents(); break;
-        case 'courses': loadAllCourses(); break;
-        case 'unit-management': loadAllUnits(); break;
+        case 'enroll': loadStudents(); break;case 'unit-management': loadAllUnits(); break;
         case 'lecturer-assignment': loadLecturersForAssignment(); break;
         case 'support-tickets': loadAdminTickets(); break;
         case 'sessions': loadScheduledSessions(); break;
@@ -454,10 +452,6 @@ async function loadDashboardNumbers() {
             totalUsersQuery, pendingQuery, studentQuery
         ]);
 
-        const { count: courseCount } = await db
-            .from('courses')
-            .select('*', { count: 'exact', head: true });
-        
         const { count: unitCount } = await db
             .from('units_catalog')
             .select('*', { count: 'exact', head: true });
@@ -481,18 +475,14 @@ async function loadDashboardNumbers() {
         
         var totalEl = document.getElementById('totalUsers');
         var pendingEl = document.getElementById('pendingApprovals');
-        var studentsEl = document.getElementById('totalStudents');
-        var coursesEl = document.getElementById('totalCourses');
-        var unitsEl = document.getElementById('dashboardTotalUnits');
+        var studentsEl = document.getElementById('totalStudents');var unitsEl = document.getElementById('dashboardTotalUnits');
         var ticketsEl = document.getElementById('dashboardOpenTickets');
         var checkinsEl = document.getElementById('totalDailyCheckIns');
         var lecturersEl = document.getElementById('dashboardLecturers');
         
         if (totalEl) totalEl.textContent = totalUsers || 0;
         if (pendingEl) pendingEl.textContent = pendingCount || 0;
-        if (studentsEl) studentsEl.textContent = studentCount || 0;
-        if (coursesEl) coursesEl.textContent = courseCount || 0;
-        if (unitsEl) unitsEl.textContent = unitCount || 0;
+        if (studentsEl) studentsEl.textContent = studentCount || 0;if (unitsEl) unitsEl.textContent = unitCount || 0;
         if (ticketsEl) ticketsEl.textContent = openTickets || 0;
         if (checkinsEl) checkinsEl.textContent = checkIns || 0;
         if (lecturersEl) lecturersEl.textContent = lecturerCount || 0;
@@ -930,94 +920,6 @@ document.getElementById('edit-user-form')?.addEventListener('submit', async func
         showToast('Error: ' + err.message, 'error');
     }
 });
-
-// ------------------------------------------------------------------
-// COURSE MANAGEMENT
-// ------------------------------------------------------------------
-async function loadAllCourses() {
-    var tbody = document.getElementById('courses-table-body');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...</td></tr>';
-    
-    if (!db) return;
-    
-    const { data, error } = await db.from('courses').select('*').order('course_name');
-    
-    if (error) {
-        tbody.innerHTML = '<tr><td colspan="5">Error: ' + error.message + '</td></tr>';
-        return;
-    }
-    
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No courses found</td></tr>';
-        return;
-    }
-    
-    var html = '';
-    for (var i = 0; i < data.length; i++) {
-        var c = data[i];
-        var programName = getProgramDisplayName(c.target_program);
-        
-        html += '<tr>';
-        html += '<td>' + escapeHtml(c.course_name) + '</td>';
-        html += '<td>' + escapeHtml(c.unit_code || 'N/A') + '</td>';
-        html += '<td>' + escapeHtml(programName) + '</td>';
-        html += '<td>' + (c.intake_year || 'N/A') + '</td>';
-        html += '<td><button class="btn-sm btn-delete" onclick="deleteCourseItem(\'' + c.id + '\')"><i class="fas fa-trash"></i></button></td>';
-        html += '</tr>';
-    }
-    
-    tbody.innerHTML = html;
-}
-
-document.getElementById('add-course-form')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    var name = document.getElementById('course-name').value;
-    var code = document.getElementById('course-unit-code').value;
-    var program = document.getElementById('course-program').value;
-    var intake = document.getElementById('course-intake').value;
-    var block = document.getElementById('course-block')?.value || 'General';
-    
-    if (!name || !code) {
-        showToast('Course name and unit code are required', 'warning');
-        return;
-    }
-    
-    try {
-        const { error } = await db.from('courses').insert([{
-            course_name: name,
-            unit_code: code,
-            target_program: program,
-            intake_year: intake,
-            block: block,
-            status: 'Active'
-        }]);
-        
-        if (error) throw error;
-        
-        showToast('✅ Course added!', 'success');
-        e.target.reset();
-        loadAllCourses();
-        
-    } catch(err) {
-        showToast('Error: ' + err.message, 'error');
-    }
-});
-
-window.deleteCourseItem = async function(courseId) {
-    if (!confirm('Delete this course?')) return;
-    
-    try {
-        const { error } = await db.from('courses').delete().eq('id', courseId);
-        if (error) throw error;
-        showToast('✅ Course deleted', 'success');
-        loadAllCourses();
-    } catch(err) {
-        showToast('Error: ' + err.message, 'error');
-    }
-};
 
 // ------------------------------------------------------------------
 // UNIT MANAGEMENT
