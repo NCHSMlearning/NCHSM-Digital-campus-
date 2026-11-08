@@ -60,3 +60,42 @@ with check (
     where s.id = submission_id and s.lecturer_user_id = auth.uid()
   )
 );
+
+-- Extend the existing institutional audit log rather than creating a parallel log.
+alter table public.audit_logs
+  add column if not exists actor_name text,
+  add column if not exists old_data jsonb,
+  add column if not exists new_data jsonb,
+  add column if not exists source text not null default 'application',
+  add column if not exists request_id text;
+create index if not exists audit_logs_timestamp_idx on public.audit_logs ("timestamp" desc);
+create index if not exists audit_logs_target_idx on public.audit_logs (target_table, target_id);
+create index if not exists audit_logs_user_time_idx on public.audit_logs (user_id, "timestamp" desc);
+
+create or replace function public.capture_teaching_audit_log()
+returns trigger language plpgsql security definer set search_path = public, auth as $$
+declare
+  v_old jsonb; v_new jsonb; v_row jsonb; v_actor uuid := auth.uid();
+  v_name text; v_email text; v_role text; v_record_id text; v_action text := lower(tg_op);
+begin
+  if tg_op in ('UPDATE','DELETE') then v_old := to_jsonb(old); end if;
+  if tg_op in ('INSERT','UPDATE') then v_new := to_jsonb(new); end if;
+  v_row := coalesce(v_new, v_old);
+  v_record_id := coalesce(v_row->>'id', v_row->>'submission_id', v_row->>'user_id');
+  select p.full_name, p.email, p.role into v_name, v_email, v_role
+  from public.consolidated_user_profiles_table p where p.user_id = v_actor limit 1;
+  insert into public.audit_logs("timestamp",user_id,user_email,role,action_type,module,target_table,target_id,description,status,details,user_role,created_at,actor_name,old_data,new_data,source)
+  values(now(),v_actor,v_email,v_role,v_action,'Teaching & Learning',tg_table_name,v_record_id,initcap(v_action)||' on '||tg_table_name,'success',initcap(v_action)||' on '||tg_table_name,v_role,now(),v_name,v_old,v_new,'database_trigger');
+  if tg_op='DELETE' then return old; end if;
+  return new;
+end; $$;
+revoke all on function public.capture_teaching_audit_log() from public, anon, authenticated;
+do $$ declare t text; begin
+  foreach t in array array['lecturer_report_submissions','lecturer_report_reviews','lecturer_report_attachments','lecturer_report_deadlines','lecturer_report_requirements','lecturer_report_document_versions','lecturer_report_backup_history'] loop
+    execute format('drop trigger if exists audit_teaching_changes on public.%I',t);
+    execute format('create trigger audit_teaching_changes after insert or update or delete on public.%I for each row execute function public.capture_teaching_audit_log()',t);
+  end loop;
+end $$;
+drop policy if exists "audit_logs_superadmin_read" on public.audit_logs;
+create policy "audit_logs_superadmin_read" on public.audit_logs for select to authenticated
+using (exists(select 1 from public.consolidated_user_profiles_table p where p.user_id=auth.uid() and lower(coalesce(p.role,'')) in ('super_admin','superadmin','admin')));
