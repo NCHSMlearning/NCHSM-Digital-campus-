@@ -1932,7 +1932,30 @@ window.deleteResourceItem = async function(resourceId) {
 
 window.handleResourceUpload = async function(e) {
     e.preventDefault();
-    showToast('Resource upload feature - Configure Supabase Storage bucket first', 'info');
+    const form=e.currentTarget||document.getElementById('upload-resource-form');
+    const title=document.getElementById('resource_title')?.value?.trim();
+    const program=document.getElementById('resource_program')?.value||'KRCHN';
+    const file=document.getElementById('resource_file')?.files?.[0];
+    if(!title||!file){showToast('Enter a title and select a file.','warning');return;}
+    if(file.size>30*1024*1024){showToast('Maximum file size is 30 MB.','warning');return;}
+    const button=form?.querySelector('[type="submit"]');if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Uploading…';}
+    let uploadedPath='';
+    try{
+      const {data:{user},error:userError}=await db.auth.getUser();if(userError||!user)throw userError||new Error('Please sign in again.');
+      const {data:profile}=await db.from('consolidated_user_profiles_table').select('full_name,role,program,department').eq('user_id',user.id).maybeSingle();
+      const role=String(profile?.role||'').toLowerCase();
+      const scope=typeof getHODProgramScope==='function'?getHODProgramScope():'';
+      if(scope&&((scope==='KRCHN'&&program!=='KRCHN')||(scope==='TVET'&&program!=='TVET')))throw new Error('You can only upload resources for your assigned programme.');
+      const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      uploadedPath='admin/'+program+'/'+user.id+'/'+Date.now()+'_'+safeName;
+      const up=await db.storage.from('resources').upload(uploadedPath,file,{upsert:false,contentType:file.type||'application/octet-stream'});
+      if(up.error)throw up.error;
+      const publicResult=db.storage.from('resources').getPublicUrl(uploadedPath);
+      const ins=await db.from('resources').insert({title,file_name:file.name,file_url:publicResult.data?.publicUrl||'',file_path:uploadedPath,file_size:file.size,file_type:file.type||'application/octet-stream',program_type:program,target_program:program,program:program,uploaded_by:user.id,uploaded_by_name:profile?.full_name||user.email,allow_download:true,approval_status:['super_admin','superadmin','admin','administrator'].includes(role)?'approved':'pending'}).select('id').single();
+      if(ins.error)throw ins.error;
+      form?.reset();showToast('Resource uploaded successfully.','success');if(typeof loadAllResources==='function')await loadAllResources();
+    }catch(err){if(uploadedPath){try{await db.storage.from('resources').remove([uploadedPath]);}catch(cleanupError){console.warn(cleanupError);}}showToast('Upload failed: '+(err.message||err),'error');}
+    finally{if(button){button.disabled=false;button.textContent=button.dataset.originalText||'Upload';}}
 };
 
 window.togglePastPaperFields = function() {
