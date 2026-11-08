@@ -99,3 +99,53 @@ end $$;
 drop policy if exists "audit_logs_superadmin_read" on public.audit_logs;
 create policy "audit_logs_superadmin_read" on public.audit_logs for select to authenticated
 using (exists(select 1 from public.consolidated_user_profiles_table p where p.user_id=auth.uid() and lower(coalesce(p.role,'')) in ('super_admin','superadmin','admin')));
+
+-- System-wide audit capture for operational public tables.
+create or replace function public.audit_redact_jsonb(p_data jsonb)
+returns jsonb language plpgsql immutable set search_path=public as $$
+declare result jsonb; item record; k text;
+begin
+ if p_data is null then return null; end if;
+ if jsonb_typeof(p_data)='object' then
+  result:='{}'::jsonb;
+  for item in select key,value from jsonb_each(p_data) loop
+   k:=lower(item.key);
+   if k ~ '(password|passwd|secret|token|otp|verification_code|recovery_code|private_key|api_key|access_key|refresh_token|session_token|credential|pin|salt|password_hash|two_factor)' then
+    result:=result||jsonb_build_object(item.key,'[REDACTED]');
+   else result:=result||jsonb_build_object(item.key,public.audit_redact_jsonb(item.value)); end if;
+  end loop; return result;
+ elsif jsonb_typeof(p_data)='array' then
+  select coalesce(jsonb_agg(public.audit_redact_jsonb(value)),'[]'::jsonb) into result from jsonb_array_elements(p_data); return result;
+ end if; return p_data;
+end; $$;
+
+create or replace function public.capture_system_audit_log()
+returns trigger language plpgsql security definer set search_path=public,auth as $$
+declare v_old jsonb; v_new jsonb; v_row jsonb; v_actor uuid:=auth.uid();
+ v_name text; v_email text; v_role text; v_record_id text; v_action text:=lower(tg_op); v_claims jsonb;
+begin
+ if tg_op in ('UPDATE','DELETE') then v_old:=public.audit_redact_jsonb(to_jsonb(old)); end if;
+ if tg_op in ('INSERT','UPDATE') then v_new:=public.audit_redact_jsonb(to_jsonb(new)); end if;
+ v_row:=coalesce(v_new,v_old);
+ v_record_id:=coalesce(v_row->>'id',v_row->>'user_id',v_row->>'student_id',v_row->>'submission_id',v_row->>'record_id');
+ select p.full_name,p.email,p.role into v_name,v_email,v_role from public.consolidated_user_profiles_table p where p.user_id=v_actor limit 1;
+ if v_actor is null then begin v_claims:=nullif(current_setting('request.jwt.claims',true),'')::jsonb; v_actor:=nullif(v_claims->>'sub','')::uuid; exception when others then v_actor:=null; end; end if;
+ insert into public.audit_logs("timestamp",user_id,user_email,role,action_type,module,target_table,target_id,description,status,details,user_role,created_at,actor_name,old_data,new_data,source)
+ values(now(),v_actor,v_email,v_role,v_action,coalesce(nullif(tg_argv[0],''),'System'),tg_table_name,v_record_id,
+ case v_action when 'insert' then 'Created a record in '||tg_table_name when 'update' then 'Updated a record in '||tg_table_name when 'delete' then 'Deleted a record from '||tg_table_name else initcap(v_action)||' on '||tg_table_name end,
+ 'success',initcap(v_action)||' on '||tg_table_name,v_role,now(),v_name,v_old,v_new,'database_trigger');
+ if tg_op='DELETE' then return old; end if; return new;
+end; $$;
+revoke all on function public.capture_system_audit_log() from public,anon,authenticated;
+revoke all on function public.audit_redact_jsonb(jsonb) from public,anon,authenticated;
+do $$ declare t record; begin
+ for t in select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace
+ where n.nspname='public' and c.relkind='r'
+ and c.relname not in ('audit_logs','admin_edit_logs','application_logs','approved_edit_logs','attendance_logs','drms_audit_logs','email_logs','exam_heartbeats','exam_proctoring_logs','failed_login_attempts','finance_audit_logs','finance_stk_logs','geo_attendance_logs','login_history','mark_approval_logs','mark_entry_logs','score_publication_logs','system_activity_log','task_logs','teaching_logs','trigger_errors','user_status_monitor','sync_errors','spatial_ref_sys','auth_users_backup','profile_backup_mercy','profile_backup_mercy_before_restore','student_marks_block0_backup','units_catalog_backup','units_catalog_backup_20250121','hod_tracker_cache','shared_cache','hod_tracker_data')
+ and c.relname not like '%_cache' and c.relname not like '%_backup%'
+ and not exists(select 1 from pg_trigger tr where tr.tgrelid=c.oid and not tr.tgisinternal and tr.tgname in ('audit_teaching_changes','audit_system_changes'))
+ loop execute format('create trigger audit_system_changes after insert or update or delete on public.%I for each row execute function public.capture_system_audit_log(%L)',t.relname,'System'); end loop;
+end $$;
+drop policy if exists "audit_logs_superadmin_read" on public.audit_logs;
+create policy "audit_logs_superadmin_read" on public.audit_logs for select to authenticated
+using(exists(select 1 from public.consolidated_user_profiles_table p where p.user_id=auth.uid() and lower(coalesce(p.role,'')) in ('super_admin','superadmin','admin')));
