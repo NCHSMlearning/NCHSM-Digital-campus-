@@ -1898,6 +1898,21 @@
         return String(getElement('lrrReviewComment')?.value || '').trim();
     }
 
+
+    async function sendLecturerApprovalEmail(row) {
+        const client=getSupabaseClient();
+        const recipient=String(row?.lecturer_email||'').trim();
+        if(!client?.auth?.getSession||!recipient)return {success:false,error:'Lecturer email address or authenticated session is unavailable.'};
+        const {data,error:sessionError}=await client.auth.getSession();
+        const token=data?.session?.access_token;
+        if(sessionError||!token)return {success:false,error:'Administrator session is unavailable.'};
+        const subject='Teaching portfolio submission approved - NCHSM';
+        const html='<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#172033"><h2 style="color:#0f766e">Submission approved</h2><p>Dear '+escapeHtml(row.lecturer_name||'Lecturer')+',</p><p>Your teaching portfolio submission has been approved by the School administration.</p><p><b>Document:</b> '+escapeHtml(row.title||humanize(row.document_type))+'<br><b>Unit:</b> '+escapeHtml(row.unit_name||'—')+'</p><p>Log in to NCHSM Digital Campus to view the review record.</p><p>Nakuru College of Health Sciences &amp; Management</p></div>';
+        const response=await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({to:recipient,subject,html,from:'NCHSM Academic Office <noreply@nchsm.co.ke>'})});
+        const result=await response.json().catch(()=>({}));
+        return response.ok&&result.success?{success:true}:{success:false,error:result.error||'Email service rejected the request.'};
+    }
+
     async function performReview(action, options = {}) {
         const row = state.selectedSubmission;
 
@@ -2006,13 +2021,8 @@
 
             let emailNotice = '';
             if (options.status === 'approved') {
-                const recipient = String(updated?.lecturer_email || row.lecturer_email || '').trim();
-                if (recipient && typeof window.sendEmailWithBrevo === 'function') {
-                    const subject = 'Teaching portfolio submission approved - NCHSM';
-                    const html = '<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#172033"><h2 style="color:#0f766e">Submission approved</h2><p>Dear '+escapeHtml(updated?.lecturer_name||row.lecturer_name||'Lecturer')+',</p><p>Your teaching portfolio submission has been approved by the School administration.</p><p><b>Document:</b> '+escapeHtml(updated?.title||row.title||humanize(row.document_type))+'<br><b>Unit:</b> '+escapeHtml(row.unit_name||'—')+'</p><p>Log in to NCHSM Digital Campus to view the review record.</p><p>Nakuru College of Health Sciences &amp; Management</p></div>';
-                    try { const mailResult=await window.sendEmailWithBrevo(recipient,subject,html); emailNotice=mailResult?.success?' Lecturer email sent.':' Approval saved; email could not be sent: '+(mailResult?.error||'sender unavailable'); }
-                    catch(mailError){emailNotice=' Approval saved; email delivery failed.';console.error('[LecturerReportsReview] Approval email failed',mailError);}
-                } else { emailNotice = recipient ? ' Approval saved; email sender is not loaded.' : ' Approval saved; lecturer email address is missing.'; }
+                const mailResult = await sendLecturerApprovalEmail(state.selectedSubmission || updated || row);
+                emailNotice = mailResult.success ? ' Lecturer email sent.' : ' Approval saved; email could not be sent: ' + mailResult.error;
             }
 
             showModuleToast(
