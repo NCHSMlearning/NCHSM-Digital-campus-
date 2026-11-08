@@ -926,11 +926,11 @@
             <div id="lrrBackupHistoryTable" class="lrr-feature-table"></div>
           </section>
           <section id="lrrAuditArea" class="lrr-feature-panel">
-            <div class="lrr-feature-head"><div><h3>Audit trail</h3><p>Who did what, to which record, and exactly when. Database changes are captured automatically.</p></div><button type="button" class="lrr-export-btn" id="lrrRefreshAudit">Refresh logs</button></div>
+            <div class="lrr-feature-head"><div><h3>System-wide audit trail</h3><p>Who did what, to which record, and exactly when across academic, student, finance, examination, HR and Teaching &amp; Learning modules.</p></div><button type="button" class="lrr-export-btn" id="lrrRefreshAudit">Refresh logs</button></div>
             <div class="lrr-audit-toolbar">
               <input id="lrrAuditSearch" placeholder="Search user, action, table or record">
               <select id="lrrAuditAction"><option value="">All actions</option><option value="insert">Created</option><option value="update">Updated</option><option value="delete">Deleted</option></select>
-              <select id="lrrAuditModule"><option value="">All modules</option><option value="Teaching & Learning">Teaching & Learning</option></select>
+              <select id="lrrAuditModule"><option value="">All modules</option></select>
               <button type="button" class="lrr-export-btn" id="lrrExportAudit">Export CSV</button>
             </div>
             <div id="lrrAuditSummary" class="lrr-feature-grid"></div>
@@ -1209,9 +1209,12 @@
         host.innerHTML='<div class="lrr-feature-empty">Loading audit trail…</div>';
         const {data,error}=await client.from(TABLE_AUDIT_LOGS)
           .select('id,timestamp,user_id,user_email,role,user_role,actor_name,action_type,module,target_table,target_id,description,status,details,old_data,new_data,source,ip_address,device_info,user_agent')
-          .order('timestamp',{ascending:false}).limit(500);
+          .order('timestamp',{ascending:false}).limit(2000);
         if(error){host.innerHTML='<div class="lrr-feature-empty">Could not load audit logs: '+escapeHtml(error.message)+'</div>';return;}
-        auditRows=data||[];renderAuditLogs();
+        auditRows=data||[];
+        const moduleSelect=getElement('lrrAuditModule');
+        if(moduleSelect){const selected=moduleSelect.value;const modules=[...new Set(auditRows.map(r=>r.module).filter(Boolean))].sort();moduleSelect.innerHTML='<option value="">All modules</option>'+modules.map(m=>'<option value="'+escapeAttr(m)+'">'+escapeHtml(m)+'</option>').join('');moduleSelect.value=modules.includes(selected)?selected:'';}
+        renderAuditLogs();
     }
     function renderAuditLogs(){
         const host=getElement('lrrAuditTable');if(!host)return;
