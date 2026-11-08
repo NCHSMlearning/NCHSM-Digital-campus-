@@ -1973,77 +1973,7 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
     </div>
 
 
-    <!-- Consolidated institutional teaching portfolio overview -->
-    <section id="nchsmPortfolioOverview" aria-labelledby="nchsmPortfolioTitle" style="margin:0 0 22px;background:#fff;border:1px solid #dbe5ee;border-radius:18px;padding:clamp(14px,2vw,22px);box-shadow:0 8px 24px rgba(15,40,65,.06);">
-      <style>
-        #nchsmPortfolioOverview{color:#16324a}
-        #nchsmPortfolioOverview .npo-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-        #nchsmPortfolioOverview .npo-eyebrow{font-size:9px;letter-spacing:.14em;font-weight:850;color:#0f766e;text-transform:uppercase}
-        #nchsmPortfolioOverview h2{font-size:clamp(18px,2vw,23px);margin:4px 0;color:#12395b}
-        #nchsmPortfolioOverview .npo-muted{font-size:11px;color:#64748b;margin:0}
-        #nchsmPortfolioOverview .npo-actions{display:flex;gap:8px;flex-wrap:wrap}
-        #nchsmPortfolioOverview button{cursor:pointer;border:1px solid #d7e2eb;border-radius:9px;padding:8px 12px;background:#fff;color:#12395b;font-size:11px;font-weight:750}
-        #nchsmPortfolioOverview button.npo-primary{background:#12395b;color:#fff;border-color:#12395b}
-        #nchsmPortfolioOverview .npo-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
-        #nchsmPortfolioOverview .npo-kpi{border:1px solid #e5edf3;border-radius:12px;padding:12px;min-width:0;background:#f9fbfd}
-        #nchsmPortfolioOverview .npo-kpi small{display:block;font-size:10px;color:#64748b;font-weight:700}
-        #nchsmPortfolioOverview .npo-kpi strong{display:block;font-size:25px;line-height:1.2;margin-top:5px;color:#12395b;font-variant-numeric:tabular-nums}
-        #nchsmPortfolioOverview .npo-schools{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-        #nchsmPortfolioOverview .npo-school{border:1px solid #dce7ee;border-radius:14px;padding:15px;min-width:0;background:linear-gradient(145deg,#fff,#f8fbfd)}
-        #nchsmPortfolioOverview .npo-school-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
-        #nchsmPortfolioOverview .npo-school-title{display:flex;align-items:center;gap:9px;font-weight:850;color:#12395b;font-size:14px}
-        #nchsmPortfolioOverview .npo-school-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#e6f3f5;color:#0f766e}
-        #nchsmPortfolioOverview .npo-school.tv .npo-school-icon{background:#fff4d9;color:#9a6700}
-        #nchsmPortfolioOverview .npo-school-head strong{font-size:22px;color:#12395b;font-variant-numeric:tabular-nums}
-        #nchsmPortfolioOverview .npo-school-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-        #nchsmPortfolioOverview .npo-school-stat{background:#f1f6f9;border-radius:9px;padding:9px}
-        #nchsmPortfolioOverview .npo-school-stat span{display:block;color:#64748b;font-size:9px;font-weight:700}
-        #nchsmPortfolioOverview .npo-school-stat b{display:block;font-size:18px;margin-top:3px;color:#12395b;font-variant-numeric:tabular-nums}
-        #nchsmPortfolioOverview .npo-school-stat.overdue b{color:#b42318}
-        #nchsmPortfolioOverview .npo-school-stat.pending b{color:#a16207}
-        #nchsmPortfolioOverview .npo-school-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
-        #nchsmPortfolioOverview .npo-school-foot small{font-size:10px;color:#64748b}
-        #nchsmPortfolioOverview .npo-chart{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
-        #nchsmPortfolioOverview .npo-chart-card{border:1px solid #e5edf3;border-radius:12px;padding:13px;min-width:0}
-        #nchsmPortfolioOverview .npo-chart-card h3{font-size:11px;margin:0 0 12px;color:#12395b}
-        #nchsmPortfolioOverview .npo-bar-row{display:grid;grid-template-columns:85px minmax(0,1fr) 28px;gap:8px;align-items:center;margin:8px 0;font-size:10px;color:#526579}
-        #nchsmPortfolioOverview .npo-track{height:8px;background:#edf2f6;border-radius:99px;overflow:hidden}
-        #nchsmPortfolioOverview .npo-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#12395b,#0f766e)}
-        #nchsmPortfolioOverview .npo-bar-row b{text-align:right;color:#12395b;font-variant-numeric:tabular-nums}
-        #nchsmPortfolioOverview .npo-footnote{font-size:10px;color:#64748b;margin:12px 0 0}
-        @media(max-width:760px){#nchsmPortfolioOverview .npo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#nchsmPortfolioOverview .npo-schools,#nchsmPortfolioOverview .npo-chart{grid-template-columns:1fr}}
-        @media(max-width:390px){#nchsmPortfolioOverview .npo-school-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#nchsmPortfolioOverview .npo-bar-row{grid-template-columns:72px minmax(0,1fr) 24px}}
-      </style>
-      <div class="npo-head">
-        <div><span class="npo-eyebrow">Institutional quality &amp; compliance</span><h2 id="nchsmPortfolioTitle">Teaching &amp; Learning Overview</h2><p class="npo-muted">Live lecturer document submissions, deadlines and approvals across both schools.</p></div>
-        <div class="npo-actions"><span id="npoLastUpdated" class="npo-muted" style="align-self:center">Waiting for submission data…</span><button type="button" onclick="window.refreshLecturerReportsReview&amp;&amp;window.refreshLecturerReportsReview()"><i class="fas fa-rotate"></i> Refresh</button><button type="button" class="npo-primary" onclick="showTab('lecturer-reports-review')">Open document centre <i class="fas fa-arrow-right"></i></button></div>
-      </div>
-      <div class="npo-kpis" aria-live="polite">
-        <div class="npo-kpi"><small>Total submissions</small><strong id="npoTotal">—</strong></div>
-        <div class="npo-kpi"><small>Awaiting review</small><strong id="npoAwaiting">—</strong></div>
-        <div class="npo-kpi"><small>Under review</small><strong id="npoInReview">—</strong></div>
-        <div class="npo-kpi"><small>Approved</small><strong id="npoApproved">—</strong></div>
-        <div class="npo-kpi"><small>Overdue items</small><strong id="npoOverdue" style="color:#b42318">—</strong></div>
-      </div>
-      <div class="npo-schools">
-        <article class="npo-school">
-          <div class="npo-school-head"><div class="npo-school-title"><span class="npo-school-icon"><i class="fas fa-user-nurse"></i></span><span>School of Nursing</span></div><strong id="npoNursingTotal">—</strong></div>
-          <div class="npo-school-stats">
-            <div class="npo-school-stat pending"><span>Pending</span><b id="npoNursingPending">—</b></div><div class="npo-school-stat"><span>Under review</span><b id="npoNursingReview">—</b></div><div class="npo-school-stat"><span>Approved</span><b id="npoNursingApproved">—</b></div><div class="npo-school-stat overdue"><span>Overdue</span><b id="npoNursingOverdue">—</b></div><div class="npo-school-stat"><span>Due in 7 days</span><b id="npoNursingDue">—</b></div><div class="npo-school-stat"><span>Awaiting review</span><b id="npoNursingAwaiting">—</b></div>
-          </div>
-          <div class="npo-school-foot"><small>School-specific submission and deadline counts</small><button type="button" onclick="window.openNchsmReports&amp;&amp;window.openNchsmReports('Nursing')">View Nursing <i class="fas fa-arrow-right"></i></button></div>
-        </article>
-        <article class="npo-school tv">
-          <div class="npo-school-head"><div class="npo-school-title"><span class="npo-school-icon"><i class="fas fa-gears"></i></span><span>School of TVET</span></div><strong id="npoTVETTotal">—</strong></div>
-          <div class="npo-school-stats">
-            <div class="npo-school-stat pending"><span>Pending</span><b id="npoTVETPending">—</b></div><div class="npo-school-stat"><span>Under review</span><b id="npoTVETReview">—</b></div><div class="npo-school-stat"><span>Approved</span><b id="npoTVETApproved">—</b></div><div class="npo-school-stat overdue"><span>Overdue</span><b id="npoTVETOverdue">—</b></div><div class="npo-school-stat"><span>Due in 7 days</span><b id="npoTVETDue">—</b></div><div class="npo-school-stat"><span>Awaiting review</span><b id="npoTVETAwaiting">—</b></div>
-          </div>
-          <div class="npo-school-foot"><small>School-specific submission and deadline counts</small><button type="button" onclick="window.openNchsmReports&amp;&amp;window.openNchsmReports('TVET')">View TVET <i class="fas fa-arrow-right"></i></button></div>
-        </article>
-      </div>
-      <div class="npo-chart"><div class="npo-chart-card"><h3>Submission status distribution</h3><div id="npoStatusChart"><p class="npo-muted">Submission data will appear after loading.</p></div></div><div class="npo-chart-card"><h3>School comparison · total submissions</h3><div id="npoSchoolChart"><p class="npo-muted">Submission data will appear after loading.</p></div></div></div>
-      <p class="npo-footnote">Overdue counts represent configured deadlines that have passed without a matching submitted, reviewed or approved document. Due soon counts cover the next seven days. Counts use lecturer_report_submissions and lecturer_report_deadlines.</p>
-    </section>
+
 
     <!-- ====== PRIMARY METRICS ROW 1 - GLASS CARDS ====== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 18px;">
@@ -15828,8 +15758,8 @@ console.log('✅ Search function loaded successfully!');
     });
 </script>
 
-<script src="./js/superadmin-lecturer-reports-review.js?v=20261108-brand-colors-7"></script>
-<script src="./js/superadmin-dashboard-reliability.js"></script>
+<script src="./js/superadmin-lecturer-reports-review.js?v=20261108-systemwide-fix-2"></script>
+<script src="./js/superadmin-dashboard-reliability.js?v=20261108-systemwide-fix-2"></script>
 <script src="./js/superadmin-rejection-fix.js?v=20261024-1"></script>
 <script src="./js/superadmin-unit-registration-init.js?v=20261025-1"></script>
 <script src="./js/superadmin-clinical-placements.js?v=20261101-final-export-print-2" defer></script>
