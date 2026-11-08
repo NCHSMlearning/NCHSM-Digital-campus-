@@ -152,3 +152,33 @@ body.lp-preview-open{overflow:hidden}
 #profile-content .lp-top-upload{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;margin-top:7px;min-height:34px;padding:7px 11px;border:1px solid #d9cff5;border-radius:9px;background:#eee9fb;color:#4c328f;font:inherit;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;position:relative;z-index:2}
 #profile-content .lp-top-upload:active{transform:scale(.97)}
 @media(max-width:640px){#profile-content .lp-doc-badges{min-width:78px}#profile-content .lp-top-upload{font-size:11px;padding:8px 10px}}
+
+
+/* Refined document cards: clear hierarchy, status and unmistakable upload CTA */
+#profile-content .lp-doc-card-polished{display:flex;flex-direction:column;gap:12px;padding:17px;border:1px solid #e5e7ef;border-radius:16px;background:linear-gradient(180deg,#fff 0%,#fbfaff 100%);box-shadow:0 3px 12px rgba(31,24,66,.035);transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+#profile-content .lp-doc-card-polished:hover{border-color:#cfc4ed;box-shadow:0 8px 22px rgba(57,38,111,.08);transform:translateY(-1px)}
+#profile-content .lp-doc-card-polished.is-empty{border-style:solid;border-color:#e1dcef}
+#profile-content .lp-doc-card-polished.has-file{border-color:#cfe8d9;background:linear-gradient(180deg,#fff 0%,#f8fdf9 100%)}
+#profile-content .lp-doc-card-polished .lp-doc-card-top{align-items:center;gap:13px}
+#profile-content .lp-doc-card-polished .lp-doc-icon{width:46px;height:46px;border-radius:14px;background:#f0ebff;color:#56389b;font-size:17px}
+#profile-content .lp-doc-card-polished .lp-doc-title strong{font-size:14px;line-height:1.35;font-weight:800;color:#252a40}
+#profile-content .lp-doc-card-polished .lp-doc-title small{font-size:12px;line-height:1.45;margin-top:5px;color:#7b8292}
+#profile-content .lp-doc-status-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:11px;border-top:1px solid #eef0f5}
+#profile-content .lp-doc-status-row .lp-required,#profile-content .lp-doc-status-row .lp-optional{font-size:10px;letter-spacing:.06em}
+#profile-content .lp-doc-status-row .lp-doc-state{font-size:11px}
+#profile-content .lp-doc-upload-prompt{display:flex;align-items:center;gap:8px;color:#81889a;font-size:11px;line-height:1.4}
+#profile-content .lp-doc-upload-prompt i{font-size:15px;color:#8a73c3}
+#profile-content .lp-doc-primary-upload{width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;gap:9px;padding:11px 13px;border:1px solid #4d328f;border-radius:11px;background:linear-gradient(100deg,#4b2e8e,#674bb1);color:#fff;font:inherit;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 4px 10px rgba(76,50,143,.16);transition:filter .15s ease,transform .15s ease}
+#profile-content .lp-doc-primary-upload:hover{filter:brightness(1.08)}
+#profile-content .lp-doc-primary-upload:active{transform:scale(.985)}
+#profile-content .lp-doc-primary-upload>span{flex:1;text-align:center}
+#profile-content .lp-doc-primary-upload>i:last-child{font-size:11px;opacity:.8}
+#profile-content .lp-doc-card-polished .lp-doc-meta{font-size:11px;margin:0;padding:10px 0 0}
+#profile-content .lp-doc-card-polished .lp-doc-actions{padding-top:2px;gap:14px}
+#profile-content .lp-doc-card-polished .lp-link-btn{font-size:11px}
+@media(max-width:640px){
+ #profile-content .lp-doc-card-polished{padding:15px;border-radius:14px;gap:11px}
+ #profile-content .lp-doc-card-polished .lp-doc-icon{width:44px;height:44px}
+ #profile-content .lp-doc-card-polished .lp-doc-title strong{font-size:14px}
+ #profile-content .lp-doc-primary-upload{min-height:46px;font-size:13px}
+}
