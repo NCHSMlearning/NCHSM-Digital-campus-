@@ -1120,11 +1120,12 @@ const LecturerDashboard = {
         };
         if (!supabase) return;
 
-        const [registrations, marks, assignments, assignmentSubmissions, exams, schemes, lessons, nurseAttempts, research, reports] = await Promise.all([
+        const [registrations, marks, attendanceRecords, assignments, assignmentSubmissions, exams, schemes, lessons, nurseAttempts, research, reports] = await Promise.all([
             safe(supabase.from('student_unit_registrations').select('student_id,unit_name,block,status,program').in('student_id', studentIds).eq('program', program), 'unit registrations'),
             safe(supabase.from('student_marks').select('student_id,subject_name,block,final_score,published,approval_status,program').in('student_id', studentIds).eq('program', program), 'marks'),
+            safe(supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status,program').in('student_id', studentIds).eq('program', program), 'attendance rate'),
             authId ? safe(supabase.from('online_assignments').select('id,title,unit_name,block,published,due_at,created_by').eq('created_by', authId), 'online assignments') : Promise.resolve(null),
-            studentIds.length ? safe(supabase.from('online_learning_submissions').select('id,assignment_id,student_id,status,submitted_at').in('student_id', studentIds), 'assignment submissions') : Promise.resolve([]),
+            studentIds.length ? safe(supabase.from('online_submissions').select('id,assignment_id,student_id,status,submitted_at').in('student_id', studentIds), 'assignment submissions') : Promise.resolve([]),
             safe(supabase.from('exams').select('id,title,exam_name,course_name,block,status,exam_date,target_program,is_published').eq('target_program', program), 'assigned examinations'),
             assignmentIds.length ? safe(supabase.from('schemes_of_work').select('id,lecturer_subject_assignment_id,status,hod_approved').in('lecturer_subject_assignment_id', assignmentIds), 'schemes of work') : Promise.resolve([]),
             assignmentIds.length ? safe(supabase.from('lesson_plans').select('id,lecturer_subject_assignment_id,status,hod_approved').in('lecturer_subject_assignment_id', assignmentIds), 'lesson plans') : Promise.resolve([]),
@@ -1150,15 +1151,20 @@ const LecturerDashboard = {
         const completedExams = assignedExams === null ? 0 : assignedExams.filter(exam => norm(exam.status) === 'completed').length;
         set('liExamProgress', assignedExams === null ? '—' : (assignedExams.length ? Math.round(completedExams / assignedExams.length * 100) : 0) + '%');
         set('liExamDetail', assignedExams === null ? 'Data unavailable' : completedExams + ' completed of ' + assignedExams.length + ' published/scheduled exams');
-        set('liAttendanceRate', this.attendanceMetrics?.overall ? Math.round(this.attendanceMetrics.overall) + '%' : '—');
-        set('liAttendanceDetail', 'Based on recorded attendance sessions');
+        const scopedAttendance = attendanceRecords === null ? null : attendanceRecords.filter(log => assignedKeys.has(norm(log.unit_name)+'|'+norm(log.block)));
+        const presentCount = scopedAttendance ? scopedAttendance.filter(log => ['present','verified'].includes(norm(log.attendance_status || log.status))).length : 0;
+        const absentCount = scopedAttendance ? scopedAttendance.filter(log => norm(log.attendance_status || log.status) === 'absent').length : 0;
+        const attendanceDenominator = presentCount + absentCount;
+        set('liAttendanceRate', scopedAttendance === null ? '—' : (attendanceDenominator ? Math.round(presentCount / attendanceDenominator * 100) : 0) + '%');
+        set('liAttendanceDetail', scopedAttendance === null ? 'Data unavailable' : presentCount + ' present / ' + absentCount + ' absent records');
         const assignmentCount = assignments === null ? null : assignments.filter(a => assignedKeys.has(norm(a.unit_name)+'|'+norm(a.block))).length;
         set('liAssignments', assignmentCount === null ? '—' : String(assignmentCount));
         const scopedAssignments = assignments === null ? [] : assignments.filter(a => assignedKeys.has(norm(a.unit_name)+'|'+norm(a.block)));
         const scopedAssignmentIds = scopedAssignments.map(a=>a.id);
         const scopedSubmissions = assignmentSubmissions === null ? null : assignmentSubmissions.filter(s=>scopedAssignmentIds.includes(s.assignment_id));
+        const submittedPairs = scopedSubmissions === null ? 0 : new Set(scopedSubmissions.map(s=>String(s.assignment_id)+'|'+String(s.student_id))).size;
         const submissionRate = scopedAssignments.length && scopedSubmissions !== null
-            ? Math.round(new Set(scopedSubmissions.map(s=>s.student_id)).size / Math.max(1, scopedAssignments.length * Math.max(1, students.length)) * 100)
+            ? Math.min(100, Math.round(submittedPairs / Math.max(1, scopedAssignments.length * Math.max(1, students.length)) * 100))
             : null;
         set('liAssignmentDetail', assignments === null || assignmentSubmissions === null ? 'Submission data unavailable' : assignmentCount + ' assignments · ' + scopedSubmissions.length + ' submissions (' + submissionRate + '% participation estimate)');
         set('liNurseIq', nurseAttempts === null ? '—' : String(nurseAttempts.length));
