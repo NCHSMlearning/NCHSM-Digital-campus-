@@ -625,9 +625,9 @@ const LecturerDashboard = {
                 this.runDashboardTask(() => this.loadAttendanceAlerts(), 8000, 'Attendance alerts loading'),
                 this.runDashboardTask(() => this.loadIntelligentAlerts(), 8000, 'Intelligent alerts loading'),
                 this.runDashboardTask(() => this.loadRecentActivity(), 8000, 'Recent activity loading'),
-                this.runDashboardTask(() => this.loadCharts(), 8000, 'Dashboard charts loading'),
-                this.runDashboardTask(() => this.loadWorkloadInsights(), 10000, 'Workload insights loading')
+                this.runDashboardTask(() => this.loadCharts(), 8000, 'Dashboard charts loading')
             ]);
+            await this.runDashboardTask(() => this.loadWorkloadInsights(), 12000, 'Workload insights loading');
             this.setupEventListeners();
         if (this.liveClockInterval) clearInterval(this.liveClockInterval);
         this.liveClockInterval = setInterval(() => {
@@ -1089,6 +1089,8 @@ const LecturerDashboard = {
             atRisk: this.metrics.atRiskStudents,
             pendingAttendance: this.metrics.pendingAttendance,
             examsDue: this.metrics.examsDue,
+            assignedExams: assignedExams?.length,
+            completedExams,
             averagePerformance: this.metrics.avgPerformance
         });
     },
@@ -1118,10 +1120,12 @@ const LecturerDashboard = {
         };
         if (!supabase) return;
 
-        const [registrations, marks, assignments, schemes, lessons, nurseAttempts, research, reports] = await Promise.all([
+        const [registrations, marks, assignments, assignmentSubmissions, exams, schemes, lessons, nurseAttempts, research, reports] = await Promise.all([
             safe(supabase.from('student_unit_registrations').select('student_id,unit_name,block,status,program').in('student_id', studentIds).eq('program', program), 'unit registrations'),
             safe(supabase.from('student_marks').select('student_id,subject_name,block,final_score,published,approval_status,program').in('student_id', studentIds).eq('program', program), 'marks'),
             authId ? safe(supabase.from('online_assignments').select('id,title,unit_name,block,published,due_at,created_by').eq('created_by', authId), 'online assignments') : Promise.resolve(null),
+            studentIds.length ? safe(supabase.from('online_learning_submissions').select('id,assignment_id,student_id,status,submitted_at').in('student_id', studentIds), 'assignment submissions') : Promise.resolve([]),
+            safe(supabase.from('exams').select('id,title,exam_name,course_name,block,status,exam_date,target_program,is_published').eq('target_program', program), 'assigned examinations'),
             assignmentIds.length ? safe(supabase.from('schemes_of_work').select('id,lecturer_subject_assignment_id,status,hod_approved').in('lecturer_subject_assignment_id', assignmentIds), 'schemes of work') : Promise.resolve([]),
             assignmentIds.length ? safe(supabase.from('lesson_plans').select('id,lecturer_subject_assignment_id,status,hod_approved').in('lecturer_subject_assignment_id', assignmentIds), 'lesson plans') : Promise.resolve([]),
             studentIds.length ? safe(supabase.from('nurseiq_attempts').select('id,student_id,score,total_questions,completed_at').in('student_id', studentIds), 'NurseIQ attempts') : Promise.resolve([]),
@@ -1142,13 +1146,21 @@ const LecturerDashboard = {
         const markPct = expected ? Math.round(marked/expected*100) : 0;
         set('liMarksProgress', registrations === null || marks === null ? '—' : markPct + '%');
         set('liMarksDetail', registrations === null || marks === null ? 'Data unavailable' : marked + ' of ' + expected + ' unit registrations have published marks');
-        set('liExamProgress', '—');
-        set('liExamDetail', 'Exam completion data is being reconciled');
+        const assignedExams = exams === null ? null : exams.filter(exam => assignedKeys.has(norm(exam.course_name || exam.exam_name || exam.title) + '|' + norm(exam.block)) && (exam.is_published === true || ['published','upcoming','scheduled','completed'].includes(norm(exam.status))));
+        const completedExams = assignedExams === null ? 0 : assignedExams.filter(exam => norm(exam.status) === 'completed').length;
+        set('liExamProgress', assignedExams === null ? '—' : (assignedExams.length ? Math.round(completedExams / assignedExams.length * 100) : 0) + '%');
+        set('liExamDetail', assignedExams === null ? 'Data unavailable' : completedExams + ' completed of ' + assignedExams.length + ' published/scheduled exams');
         set('liAttendanceRate', this.attendanceMetrics?.overall ? Math.round(this.attendanceMetrics.overall) + '%' : '—');
         set('liAttendanceDetail', 'Based on recorded attendance sessions');
         const assignmentCount = assignments === null ? null : assignments.filter(a => assignedKeys.has(norm(a.unit_name)+'|'+norm(a.block))).length;
         set('liAssignments', assignmentCount === null ? '—' : String(assignmentCount));
-        set('liAssignmentDetail', assignments === null ? 'Data unavailable' : assignmentCount + ' assignments created for assigned units');
+        const scopedAssignments = assignments === null ? [] : assignments.filter(a => assignedKeys.has(norm(a.unit_name)+'|'+norm(a.block)));
+        const scopedAssignmentIds = scopedAssignments.map(a=>a.id);
+        const scopedSubmissions = assignmentSubmissions === null ? null : assignmentSubmissions.filter(s=>scopedAssignmentIds.includes(s.assignment_id));
+        const submissionRate = scopedAssignments.length && scopedSubmissions !== null
+            ? Math.round(new Set(scopedSubmissions.map(s=>s.student_id)).size / Math.max(1, scopedAssignments.length * Math.max(1, students.length)) * 100)
+            : null;
+        set('liAssignmentDetail', assignments === null || assignmentSubmissions === null ? 'Submission data unavailable' : assignmentCount + ' assignments · ' + scopedSubmissions.length + ' submissions (' + submissionRate + '% participation estimate)');
         set('liNurseIq', nurseAttempts === null ? '—' : String(nurseAttempts.length));
         set('liNurseIqDetail', nurseAttempts === null ? 'Data unavailable' : new Set(nurseAttempts.map(a=>a.student_id)).size + ' participating students');
         set('liResearch', research === null ? '—' : String(research.length));
