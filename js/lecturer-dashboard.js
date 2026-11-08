@@ -1122,9 +1122,9 @@ const LecturerDashboard = {
 
         const [registrations, marks, attendanceRecords, assignments, assignmentSubmissions, exams, schemes, lessons, nurseAttempts, research, reports] = await Promise.all([
             safe(supabase.from('student_unit_registrations').select('student_id,unit_name,block,status,program').in('student_id', studentIds).eq('program', program), 'unit registrations'),
-            safe(supabase.from('student_marks').select('student_id,subject_name,block,final_score,published,approval_status,program').in('student_id', studentIds).eq('program', program), 'marks'),
+            safe(supabase.from('student_marks').select('student_id,subject_name,block,final_score,published,approval_status,program,updated_at,created_at').in('student_id', studentIds).eq('program', program), 'marks'),
             safe(supabase.from('geo_attendance_logs').select('student_id,unit_name,block,attendance_status,status,program').in('student_id', studentIds).eq('program', program), 'attendance rate'),
-            authId ? safe(supabase.from('online_assignments').select('id,title,unit_name,block,published,due_at,created_by').eq('created_by', authId), 'online assignments') : Promise.resolve(null),
+            authId ? safe(supabase.from('online_assignments').select('id,title,unit_code,unit_name,program,block,published,due_at,created_by').eq('created_by', authId).eq('program', program), 'online assignments') : Promise.resolve(null),
             studentIds.length ? safe(supabase.from('online_submissions').select('id,assignment_id,student_id,status,submitted_at').in('student_id', studentIds), 'assignment submissions') : Promise.resolve([]),
             safe(supabase.from('exams').select('id,title,exam_name,course_name,block,status,exam_date,target_program,is_published').eq('target_program', program), 'assigned examinations'),
             assignmentIds.length ? safe(supabase.from('schemes_of_work').select('id,lecturer_subject_assignment_id,status,hod_approved').in('lecturer_subject_assignment_id', assignmentIds), 'schemes of work') : Promise.resolve([]),
@@ -1137,12 +1137,18 @@ const LecturerDashboard = {
         const unitRows = units.map(unit => {
             const key = unitKey(unit);
             const regs = (registrations || []).filter(r => unitKey({subject_name:r.unit_name,block:r.block}) === key && ['approved','completed'].includes(norm(r.status)));
-            const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key);
-            const published = unitMarks.filter(m => m.published === true && norm(m.approval_status) === 'approved');
-            const avg = published.length ? Math.round(published.reduce((sum,m)=>sum+Number(m.final_score||0),0)/published.length) : null;
-            const passThreshold = 50;
+            const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key && m.published === true && norm(m.approval_status) === 'approved');
+            const publishedByStudent = new Map();
+            unitMarks.forEach(m => {
+                const id=String(m.student_id||''); if(!id)return;
+                const old=publishedByStudent.get(id);
+                if(!old || new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0)) publishedByStudent.set(id,m);
+            });
+            const published = [...publishedByStudent.values()].filter(m=>Number.isFinite(Number(m.final_score))&&Number(m.final_score)>=0&&Number(m.final_score)<=100);
+            const avg = published.length ? Math.round(published.reduce((sum,m)=>sum+Number(m.final_score),0)/published.length) : null;
+            const passThreshold = this.getPassingThreshold();
             const passRate = published.length ? Math.round(published.filter(m => Number(m.final_score) >= passThreshold).length / published.length * 100) : null;
-            return {name:unit.subject_name,block:unit.block,students:new Set(regs.map(r=>r.student_id)).size,marked:new Set(published.map(m=>m.student_id)).size,avg,passRate};
+            return {name:unit.subject_name,block:unit.block,students:new Set(regs.map(r=>r.student_id)).size,marked:published.length,avg,passRate};
         });
         const expected = unitRows.reduce((sum,u)=>sum+u.students,0);
         const marked = unitRows.reduce((sum,u)=>sum+u.marked,0);
@@ -1159,10 +1165,18 @@ const LecturerDashboard = {
         const attendanceDenominator = presentCount + absentCount;
         set('liAttendanceRate', scopedAttendance === null ? '—' : (attendanceDenominator ? Math.round(presentCount / attendanceDenominator * 100) : 0) + '%');
         set('liAttendanceDetail', scopedAttendance === null ? 'Data unavailable' : presentCount + ' present / ' + absentCount + ' absent records');
-        const assignmentCount = assignments === null ? null : assignments.filter(a => assignedKeys.has(norm(a.unit_name)+'|'+norm(a.block))).length;
+        const assignedBlocks = new Set(units.map(u=>norm(u.block)));
+        const assignedCodes = new Set(units.map(u=>norm(u.subject_code)).filter(Boolean));
+        const scopedAssignments = assignments === null ? null : assignments.filter(a => {
+            const blockMatch = assignedBlocks.has(norm(a.block));
+            const codeMatch = norm(a.unit_code) && assignedCodes.has(norm(a.unit_code));
+            const unitMatch = assignedKeys.has(norm(a.unit_name)+'|'+norm(a.block));
+            return unitMatch || codeMatch || blockMatch;
+        });
+        const assignmentCount = scopedAssignments === null ? null : scopedAssignments.length;
         set('liAssignments', assignmentCount === null ? '—' : String(assignmentCount));
-        const scopedAssignments = assignments === null ? [] : assignments.filter(a => assignedKeys.has(norm(a.unit_name)+'|'+norm(a.block)));
-        const scopedAssignmentIds = scopedAssignments.map(a=>a.id);
+        const scopedAssignmentRows = scopedAssignments || [];
+        const scopedAssignmentIds = scopedAssignmentRows.map(a=>a.id);
         const scopedSubmissions = assignmentSubmissions === null ? null : assignmentSubmissions.filter(s=>scopedAssignmentIds.includes(s.assignment_id));
         const submittedPairs = scopedSubmissions === null ? 0 : new Set(scopedSubmissions.map(s=>String(s.assignment_id)+'|'+String(s.student_id))).size;
         const submissionRate = scopedAssignments.length && scopedSubmissions !== null
@@ -1257,64 +1271,49 @@ const LecturerDashboard = {
 
     // ─── LOAD ATTENDANCE METRICS ───
     async loadAttendanceMetrics() {
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-
-            const program = this.getCurrentProgram();
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-
-            const { data: todayLogs } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('program', program)
-                .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
-                .lte('check_in_time', `${todayStr}T23:59:59.999Z`);
-
-            const logs = todayLogs || [];
-            this.attendanceMetrics.today = logs.length;
-            this.attendanceMetrics.present = logs.filter(l => l.attendance_status === 'Present' || l.status === 'present').length;
-            this.attendanceMetrics.absent = logs.filter(l => l.attendance_status === 'Absent' || l.status === 'absent').length;
-            this.attendanceMetrics.pending = this.assignedStudents.length - logs.length;
-
-            this.attendanceMetrics.lectureCount = logs.filter(l => l.session_type === 'Lecture' || l.session_type === 'Class').length;
-            this.attendanceMetrics.clinicalCount = logs.filter(l => l.session_type === 'Clinical').length;
-            this.attendanceMetrics.labCount = logs.filter(l => l.session_type === 'Lab').length;
-
-            this.attendanceMetrics.campusCount = logs.filter(l =>
-                l.location && l.location.toLowerCase().includes('kiamunyi')
-            ).length;
-            this.attendanceMetrics.hospitalCount = logs.filter(l =>
-                l.location && l.location.toLowerCase().includes('hospital')
-            ).length;
-
-            const weekRange = this.getWeekRange();
-            const { data: weekLogs } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('program', program);
-
-            this.attendanceMetrics.week = weekLogs?.filter(l => {
-                const date = new Date(l.check_in_time);
-                return date >= weekRange.start && date <= weekRange.end;
-            }).length || 0;
-
-            const { data: monthLogs } = await supabase
-                .from('geo_attendance_logs')
-                .select('student_id')
-                .eq('program', program);
-
-            const uniqueStudents = [...new Set(monthLogs?.map(l => l.student_id) || [])];
-            const totalStudents = this.assignedStudents.length || this.metrics.totalStudents || 1;
-            this.attendanceMetrics.month = totalStudents > 0 ? Math.round((uniqueStudents.length / totalStudents) * 100) : 0;
-            this.attendanceMetrics.overall = monthLogs?.length || 0;
-
-            this.updateAttendanceMetricsUI();
-
-        } catch (error) {
-            console.error('Failed to load attendance metrics:', error);
+        const supabase=this.getSupabaseClient(),students=this.assignedStudents||[],units=this.assignedUnits||[];
+        const ids=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        const names=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
+        const norm=v=>String(v||'').trim().toLowerCase(),keys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
+        if(!supabase||!ids.length||!names.length){
+            this.attendanceMetrics={today:0,week:0,month:0,overall:0,present:0,absent:0,pending:students.length,lectureCount:0,clinicalCount:0,labCount:0,campusCount:0,hospitalCount:0};
+            this.updateAttendanceMetricsUI();return;
         }
+        try{
+            const now=new Date(),localParts=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Nairobi',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
+            const part=t=>localParts.find(x=>x.type===t)?.value;
+            const todayStr=part('year')+'-'+part('month')+'-'+part('day');
+            const monthStart=todayStr.slice(0,7)+'-01';
+            const monthStartUtc=new Date(monthStart+'T00:00:00+03:00').toISOString();
+            const {data,error}=await supabase.from('geo_attendance_logs')
+                .select('student_id,unit_name,block,program,check_in_time,attendance_status,status,session_type,location_name,location_address,location_friendly_name')
+                .in('student_id',ids).in('unit_name',names).eq('program',this.getCurrentProgram()).gte('check_in_time',monthStartUtc);
+            if(error)throw error;
+            const logs=(data||[]).filter(x=>keys.has(norm(x.unit_name)+'|'+norm(x.block)));
+            const kenyaDate=value=>new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Nairobi',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
+            const status=x=>norm(x.attendance_status||x.status);
+            const todayLogs=logs.filter(x=>x.check_in_time&&kenyaDate(x.check_in_time)===todayStr);
+            const checkedToday=new Set(todayLogs.map(x=>String(x.student_id)));
+            const presentToday=new Set(todayLogs.filter(x=>['present','verified'].includes(status(x))).map(x=>String(x.student_id)));
+            const absentToday=new Set(todayLogs.filter(x=>status(x)==='absent').map(x=>String(x.student_id)));
+            this.attendanceMetrics.today=checkedToday.size;
+            this.attendanceMetrics.present=presentToday.size;
+            this.attendanceMetrics.absent=absentToday.size;
+            this.attendanceMetrics.pending=Math.max(0,ids.length-checkedToday.size);
+            this.attendanceMetrics.lectureCount=todayLogs.filter(x=>norm(x.session_type)==='lecture'||norm(x.session_type)==='class').length;
+            this.attendanceMetrics.clinicalCount=todayLogs.filter(x=>norm(x.session_type)==='clinical').length;
+            this.attendanceMetrics.labCount=todayLogs.filter(x=>norm(x.session_type)==='lab').length;
+            this.attendanceMetrics.campusCount=todayLogs.filter(x=>norm(x.location_name||x.location_friendly_name||x.location_address).includes('kiamunyi')).length;
+            this.attendanceMetrics.hospitalCount=todayLogs.filter(x=>norm(x.location_name||x.location_friendly_name||x.location_address).includes('hospital')).length;
+            const weekStart=new Date(now);weekStart.setHours(0,0,0,0);const dow=(weekStart.getDay()+6)%7;weekStart.setDate(weekStart.getDate()-dow);
+            const weekStartKey=kenyaDate(weekStart);
+            this.attendanceMetrics.week=logs.filter(x=>x.check_in_time&&kenyaDate(x.check_in_time)>=weekStartKey).length;
+            const monthPresent=logs.filter(x=>['present','verified'].includes(status(x))).length;
+            const monthAbsent=logs.filter(x=>status(x)==='absent').length;
+            this.attendanceMetrics.month=monthPresent+monthAbsent?Math.round(monthPresent/(monthPresent+monthAbsent)*100):0;
+            this.attendanceMetrics.overall=logs.length;
+            this.updateAttendanceMetricsUI();
+        }catch(error){console.error('[Lecturer Dashboard] Assigned-unit attendance metrics failed:',error);}
     },
 
     getWeekRange() {
@@ -1792,110 +1791,29 @@ const LecturerDashboard = {
 
     // ─── LOAD RECENT ACTIVITY ───
     async loadRecentActivity() {
-        try {
-            const container = document.getElementById('recentActivityList');
-            if (!container) return;
-
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-
-            const program = this.getCurrentProgram();
-            const activities = [];
-
-            const { data: recentAttendance } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('program', program)
-                .order('check_in_time', { ascending: false })
-                .limit(3);
-
-            if (recentAttendance && recentAttendance.length > 0) {
-                recentAttendance.forEach(a => {
-                    const sessionType = a.session_type || 'class';
-                    activities.push({
-                        type: 'attendance',
-                        icon: 'fa-clipboard-check',
-                        color: '#10b981',
-                        message: `${a.student_name || 'Student'} checked in for ${sessionType.toLowerCase()}`,
-                        time: a.check_in_time
-                    });
-                });
-            }
-
-            const { data: recentExams } = await supabase
-                .from('exams')
-                .select('*')
-                .eq('target_program', program)
-                .order('created_at', { ascending: false })
-                .limit(2);
-
-            if (recentExams && recentExams.length > 0) {
-                recentExams.forEach(e => {
-                    activities.push({
-                        type: 'exam',
-                        icon: 'fa-file-alt',
-                        color: '#8b5cf6',
-                        message: `Exam "${e.exam_name || e.title || 'Untitled'}" was created`,
-                        time: e.created_at
-                    });
-                });
-            }
-
-            const { data: recentSessions } = await supabase
-                .from('scheduled_sessions')
-                .select('*')
-                .eq('target_program', program)
-                .order('created_at', { ascending: false })
-                .limit(2);
-
-            if (recentSessions && recentSessions.length > 0) {
-                recentSessions.forEach(s => {
-                    activities.push({
-                        type: 'session',
-                        icon: 'fa-calendar-plus',
-                        color: '#f59e0b',
-                        message: `Session "${s.session_title || s.title || 'Untitled'}" was scheduled`,
-                        time: s.created_at
-                    });
-                });
-            }
-
-            activities.sort((a, b) => new Date(b.time) - new Date(a.time));
-
-            if (activities.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: #94a3b8;">
-                        <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                        <span style="font-size: 13px;">No recent activity found.</span>
-                    </div>
-                `;
-                return;
-            }
-
-            const topActivities = activities.slice(0, 5);
-
-            container.innerHTML = topActivities.map(a => {
-                const timeAgo = this.timeAgo(new Date(a.time));
-                return `
-                    <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
-                        <div style="background: ${a.color}20; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas ${a.icon}" style="color: ${a.color}; font-size: 14px;"></i>
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="font-size: 13px; color: #1e293b;">${a.message}</div>
-                            <div style="font-size: 11px; color: #94a3b8;">${timeAgo}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-        } catch (error) {
-            console.error('Failed to load recent activity:', error);
-            const container = document.getElementById('recentActivityList');
-            if (container) {
-                container.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 20px;">Error loading activity</p>';
-            }
-        }
+        const container=document.getElementById('recentActivityList');
+        if(!container)return;
+        const supabase=this.getSupabaseClient(),students=this.assignedStudents||[],units=this.assignedUnits||[];
+        const ids=[...new Set(students.map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+        const names=[...new Set(units.map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
+        const norm=v=>String(v||'').trim().toLowerCase(),keys=new Set(units.map(u=>norm(u.subject_name)+'|'+norm(u.block)));
+        if(!supabase||!ids.length||!units.length){container.innerHTML='<div class="nrd-empty">No assigned-unit activity available.</div>';return;}
+        try{
+            const program=this.getCurrentProgram();
+            const [att,exams,sessions,assignments]=await Promise.all([
+                supabase.from('geo_attendance_logs').select('student_id,student_name,unit_name,block,session_type,check_in_time').in('student_id',ids).in('unit_name',names).eq('program',program).order('check_in_time',{ascending:false}).limit(20),
+                supabase.from('exams').select('exam_name,title,course_name,course_code,block,created_at,target_program').eq('target_program',program).order('created_at',{ascending:false}).limit(20),
+                supabase.from('scheduled_sessions').select('session_title,title,unit_name,course_name,block,created_at,target_program,lecturer_staff_id,lecturer_id').eq('target_program',program).order('created_at',{ascending:false}).limit(20),
+                supabase.from('online_assignments').select('title,unit_name,unit_code,block,created_at,program,created_by').eq('created_by',this.lecturerUuid).eq('program',program).order('created_at',{ascending:false}).limit(10)
+            ]);
+            const activities=[];
+            if(!att.error)(att.data||[]).filter(x=>keys.has(norm(x.unit_name)+'|'+norm(x.block))).forEach(x=>activities.push({icon:'fa-clipboard-check',color:'#10b981',message:(x.student_name||'Student')+' checked in · '+x.unit_name,time:x.check_in_time}));
+            if(!exams.error)(exams.data||[]).filter(x=>keys.has(norm(x.course_name||x.exam_name||x.title)+'|'+norm(x.block))).forEach(x=>activities.push({icon:'fa-file-alt',color:'#8b5cf6',message:'Exam created · '+(x.exam_name||x.title||x.course_name),time:x.created_at}));
+            if(!sessions.error)(sessions.data||[]).filter(x=>keys.has(norm(x.unit_name||x.course_name)+'|'+norm(x.block))).forEach(x=>activities.push({icon:'fa-calendar-plus',color:'#f59e0b',message:'Teaching session scheduled · '+(x.session_title||x.title||x.unit_name),time:x.created_at}));
+            if(!assignments.error)(assignments.data||[]).forEach(x=>activities.push({icon:'fa-file-lines',color:'#0875ee',message:'Assignment created · '+x.title,time:x.created_at}));
+            activities.sort((a,b)=>new Date(b.time||0)-new Date(a.time||0));
+            container.innerHTML=activities.length?activities.slice(0,6).map(x=>'<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid #eef1f5"><span style="width:27px;height:27px;display:grid;place-items:center;border-radius:8px;background:'+x.color+'18;color:'+x.color+'"><i class="fas '+x.icon+'"></i></span><div style="flex:1;min-width:0"><div style="font-size:9px;color:#344054">'+x.message+'</div><small style="font-size:8px;color:#98a2b3">'+(x.time?this.timeAgo(new Date(x.time)):'')+'</small></div></div>').join(''):'<div class="nrd-empty">No recent activity in your assigned units.</div>';
+        }catch(error){console.error('[Lecturer Dashboard] Scoped recent activity failed:',error);container.innerHTML='<div class="nrd-empty">Activity feed unavailable.</div>';}
     },
 
     // ─── TIME AGO HELPER ───
