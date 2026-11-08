@@ -1213,7 +1213,9 @@ const LecturerDashboard = {
         set('nrdPerformanceAverage', overallUnitAverage === null ? '—' : overallUnitAverage + '%');
 
         const table = document.getElementById('liUnitPerformanceRows');
-        if (table) {
+        if (table && (registrations === null || marks === null)) {
+            table.innerHTML = '<tr><td colspan="6">Unit performance data is unavailable. Check lecturer data permissions.</td></tr>';
+        } else if (table) {
             table.innerHTML = unitRows.map((u,index) => {
                 const status = u.avg === null ? 'Pending' : (u.avg >= 70 ? 'Good' : 'Review');
                 const statusClass = status === 'Good' ? 'nrd-status-good' : (status === 'Review' ? 'nrd-status-review' : 'nrd-status-pending');
