@@ -1,6 +1,6 @@
 /* Super Admin HOD role assignment */
 (() => {
-  const sbClient = () => window.sb || window.supabase || null;
+  const sbClient = () => window.sb || (typeof sb !== 'undefined' ? sb : null) || window.supabase || null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let hodRows = [], busy = false;
   async function requireSuperAdmin(client) {
