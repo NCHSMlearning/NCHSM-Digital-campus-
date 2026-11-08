@@ -1044,6 +1044,11 @@ body:has(#dashboard-content.active){background:#f4f6fb!important}
 #dashboard-content .nrd-unit-table-wrap .li-unit-table th{font-size:8px!important;text-transform:none!important;white-space:nowrap!important;padding:8px 7px!important}
 #dashboard-content .nrd-unit-table-wrap .li-unit-table td{font-size:9px!important;padding:8px 7px!important}
 #dashboard-content .nrd-unit-table-wrap .li-unit-table td:first-child{font-weight:750!important}
+#dashboard-content .nrd-unit-table-wrap .nrd-status-good,#dashboard-content .nrd-unit-table-wrap .nrd-status-review,#dashboard-content .nrd-unit-table-wrap .nrd-status-pending{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:3px 8px;font-size:8px;font-weight:850;white-space:nowrap}
+#dashboard-content .nrd-unit-table-wrap .nrd-status-good{background:#dcfce7;color:#15803d}
+#dashboard-content .nrd-unit-table-wrap .nrd-status-review{background:#fff7ed;color:#c2410c}
+#dashboard-content .nrd-unit-table-wrap .nrd-status-pending{background:#f1f5f9;color:#64748b}
+#dashboard-content .nrd-unit-table-wrap tbody tr:hover{background:#f8faff}
 #dashboard-content .nrd-support-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:11px!important;align-items:stretch}
 #dashboard-content .nrd-support-grid>.nrd-card{min-width:0!important;min-height:205px!important}
 #dashboard-content .nrd-clinical{padding:13px!important;gap:12px!important;justify-content:flex-start!important}
@@ -1068,7 +1073,7 @@ body:has(#dashboard-content.active){background:#f4f6fb!important}
 #dashboard-content .nrd-quick-actions .nrd-actions{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important;padding:11px!important}
 #dashboard-content .nrd-quick-actions .nrd-actions button{min-height:53px!important;border-radius:9px!important;font-size:9px!important}
 #dashboard-content .nrd-footer{font-size:9px!important}
-@media(max-width:1250px){
+@media(max-width:1000px){
  #dashboard-content .nrd-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}
  #dashboard-content .nrd-support-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  #dashboard-content #lecturerWorkloadInsights .li-kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
