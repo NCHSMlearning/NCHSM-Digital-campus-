@@ -378,7 +378,6 @@
                 return;
             }
 
-        try {
             const { data, error } = await client
                 .from(TABLE_SUBMISSIONS)
                 .select(`
