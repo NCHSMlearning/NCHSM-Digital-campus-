@@ -1092,6 +1092,83 @@ const LecturerDashboard = {
         });
     },
 
+    // ─── LECTURER WORKLOAD & ACADEMIC INSIGHTS ───
+    async loadWorkloadInsights() {
+        const supabase = this.getSupabaseClient();
+        const students = this.assignedStudents || [];
+        const units = this.assignedUnits || [];
+        const profile = window.lecturerDB?.getCurrentUserProfile?.() || {};
+        const authId = this.lecturerUuid || profile.user_id || window.currentUser?.id;
+        const lecturerName = String(profile.full_name || profile.name || '').trim();
+        const lecturerId = String(this.lecturerAssignmentId || '');
+        const program = this.getCurrentProgram();
+        const studentIds = [...new Set(students.map(s => String(s.user_id || '').trim()).filter(Boolean))];
+        const assignmentIds = [...new Set(units.map(u => String(u.id || '').trim()).filter(Boolean))];
+        const norm = v => String(v || '').trim().toLowerCase();
+        const unitKey = u => norm(u.subject_name) + '|' + norm(u.block);
+        const assignedKeys = new Set(units.map(unitKey));
+        const unitNames = [...new Set(units.map(u => String(u.subject_name || '').trim()).filter(Boolean))];
+        const root = document.getElementById('lecturerWorkloadInsights');
+        if (!root) return;
+        const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+        const safe = async (query, label) => {
+            try { const result = await query; if (result.error) throw result.error; return result.data || []; }
+            catch (error) { console.warn('[Lecturer insights] ' + label + ' unavailable:', error.message); return null; }
+        };
+        if (!supabase) return;
+
+        const [registrations, marks, assignments, schemes, lessons, nurseAttempts, research, reports] = await Promise.all([
+            safe(supabase.from('student_unit_registrations').select('student_id,unit_name,block,status,program').in('student_id', studentIds).eq('program', program), 'unit registrations'),
+            safe(supabase.from('student_marks').select('student_id,subject_name,block,final_score,published,approval_status,program').in('student_id', studentIds).eq('program', program), 'marks'),
+            authId ? safe(supabase.from('online_assignments').select('id,title,unit_name,block,published,due_at,created_by').eq('created_by', authId), 'online assignments') : Promise.resolve(null),
+            assignmentIds.length ? safe(supabase.from('schemes_of_work').select('id,lecturer_subject_assignment_id,status,hod_approved').in('lecturer_subject_assignment_id', assignmentIds), 'schemes of work') : Promise.resolve([]),
+            assignmentIds.length ? safe(supabase.from('lesson_plans').select('id,lecturer_subject_assignment_id,status,hod_approved').in('lecturer_subject_assignment_id', assignmentIds), 'lesson plans') : Promise.resolve([]),
+            studentIds.length ? safe(supabase.from('nurseiq_attempts').select('id,student_id,score,total_questions,completed_at').in('student_id', studentIds), 'NurseIQ attempts') : Promise.resolve([]),
+            lecturerName ? safe(supabase.from('research_submissions').select('id,student_id,title,status,submission_type,submitted_at,supervisor_name').ilike('supervisor_name', lecturerName), 'research supervision') : Promise.resolve(null),
+            authId ? safe(supabase.from('lecturer_report_submissions').select('id,status,document_type,report_type').eq('lecturer_user_id', authId), 'teaching documents') : Promise.resolve(null)
+        ]);
+
+        const unitRows = units.map(unit => {
+            const key = unitKey(unit);
+            const regs = (registrations || []).filter(r => unitKey({subject_name:r.unit_name,block:r.block}) === key && ['approved','completed'].includes(norm(r.status)));
+            const unitMarks = (marks || []).filter(m => unitKey({subject_name:m.subject_name,block:m.block}) === key);
+            const published = unitMarks.filter(m => m.published === true && norm(m.approval_status) === 'approved');
+            const avg = published.length ? Math.round(published.reduce((sum,m)=>sum+Number(m.final_score||0),0)/published.length) : null;
+            return {name:unit.subject_name,block:unit.block,students:new Set(regs.map(r=>r.student_id)).size,marked:new Set(published.map(m=>m.student_id)).size,avg};
+        });
+        const expected = unitRows.reduce((sum,u)=>sum+u.students,0);
+        const marked = unitRows.reduce((sum,u)=>sum+u.marked,0);
+        const markPct = expected ? Math.round(marked/expected*100) : 0;
+        set('liMarksProgress', registrations === null || marks === null ? '—' : markPct + '%');
+        set('liMarksDetail', registrations === null || marks === null ? 'Data unavailable' : marked + ' of ' + expected + ' unit registrations have published marks');
+        set('liExamProgress', '—');
+        set('liExamDetail', 'Exam completion data is being reconciled');
+        set('liAttendanceRate', this.attendanceMetrics?.overall ? Math.round(this.attendanceMetrics.overall) + '%' : '—');
+        set('liAttendanceDetail', 'Based on recorded attendance sessions');
+        const assignmentCount = assignments === null ? null : assignments.filter(a => assignedKeys.has(norm(a.unit_name)+'|'+norm(a.block))).length;
+        set('liAssignments', assignmentCount === null ? '—' : String(assignmentCount));
+        set('liAssignmentDetail', assignments === null ? 'Data unavailable' : assignmentCount + ' assignments created for assigned units');
+        set('liNurseIq', nurseAttempts === null ? '—' : String(nurseAttempts.length));
+        set('liNurseIqDetail', nurseAttempts === null ? 'Data unavailable' : new Set(nurseAttempts.map(a=>a.student_id)).size + ' participating students');
+        set('liResearch', research === null ? '—' : String(research.length));
+        set('liResearchDetail', research === null ? 'Supervisor records unavailable' : research.filter(r=>['pending','submitted','under_review','resubmitted'].includes(norm(r.status))).length + ' submissions awaiting review');
+        const schemeCount = schemes === null ? null : schemes.length;
+        const lessonCount = lessons === null ? null : lessons.length;
+        const reportCount = reports === null ? null : reports.length;
+        set('liTeachingDocs', schemeCount === null || lessonCount === null || reportCount === null ? '—' : String(schemeCount + lessonCount + reportCount));
+        set('liTeachingDocsDetail', [schemeCount===null?'Schemes unavailable':schemeCount+' schemes',lessonCount===null?'lesson plans unavailable':lessonCount+' lesson plans',reportCount===null?'reports unavailable':reportCount+' reports'].join(' · '));
+
+        const table = document.getElementById('liUnitPerformanceRows');
+        if (table) {
+            table.innerHTML = unitRows.map(u => {
+                const pct = u.students ? Math.round(u.marked/u.students*100) : 0;
+                return '<tr><td><strong>'+String(u.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</strong><small>'+String(u.block||'')+'</small></td><td>'+u.students+'</td><td>'+u.marked+'</td><td>'+(u.avg===null?'—':u.avg+'%')+'</td><td><span class="li-progress"><i style="width:'+pct+'%"></i></span><small>'+pct+'%</small></td></tr>';
+            }).join('') || '<tr><td colspan="5">No assigned units available.</td></tr>';
+        }
+        set('liUnitSummary', units.length + ' assigned units · ' + (registrations === null ? 'registration data unavailable' : expected + ' unit registrations'));
+        console.log('[Lecturer insights] workload data loaded', {units:units.length,markPct,assignments:assignmentCount,nurseIq:nurseAttempts?.length,research:research?.length});
+    },
+
     // ─── UPDATE METRIC CARDS ───
     updateMetricCards() {
         const elements = {
