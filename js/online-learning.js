@@ -1695,3 +1695,6 @@ window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 // Legacy inline handlers in the student portal call this function by its global name.
 window.deleteSubmissionDocument=deleteSubmissionDocument;
 })();
+
+/* Load the shared Research Topics Vault inside the existing student Research Papers workflow. */
+(function(){if(document.querySelector('script[data-research-topic-vault]'))return;var s=document.createElement('script');s.src='js/research-topic-vault.js?v=20261108-v1';s.defer=true;s.dataset.researchTopicVault='1';document.head.appendChild(s);})();
