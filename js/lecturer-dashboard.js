@@ -870,7 +870,6 @@ const LecturerDashboard = {
             if (studentIds.length === 0) {
                 this.assignedStudents = [];
                 this._assignedStudentsLoaded = true;
-                this.totalAssignedEnrollments = 0;
                 this.metrics.totalStudents = 0;
                 this.updateMetricCards();
                 console.log('No approved registrations found for lecturer-assigned units/blocks.');
@@ -979,7 +978,7 @@ const LecturerDashboard = {
         const identifierMap = this.getAssignedStudentIdentifierMap();
         const attendanceIds = [...identifierMap.keys()];
         const unitNames = [...new Set(units.map(u => String(u.subject_name || '').trim()).filter(Boolean))];
-        const unitKeys = new Set(units.map(u => this.normalizeUnitName(u.subject_name) + '|' + String(u.block || '').trim().toLowerCase()));
+        const unitKeys = new Set(units.map(u => String(u.subject_name || '').trim().toLowerCase() + '|' + String(u.block || '').trim().toLowerCase()));
         const norm = value => String(value || '').trim().toLowerCase();
 
         if (this._assignedStudentsLoaded) this.metrics.totalStudents = students.length;
