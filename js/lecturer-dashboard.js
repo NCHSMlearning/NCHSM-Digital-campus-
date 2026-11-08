@@ -1046,7 +1046,7 @@ const LecturerDashboard = {
         try {
             const { data, error } = await supabase
                 .from('student_marks')
-                .select('student_id, subject_name, block, final_score, published, approval_status, program')
+                .select('student_id, subject_name, block, final_score, published, approval_status, program, updated_at, created_at')
                 .in('student_id', studentIds)
                 .eq('program', program)
                 .eq('published', true)
@@ -1184,8 +1184,9 @@ const LecturerDashboard = {
         const scopedAssignmentIds = scopedAssignmentRows.map(a=>a.id);
         const scopedSubmissions = assignmentSubmissions === null ? null : assignmentSubmissions.filter(s=>scopedAssignmentIds.includes(s.assignment_id));
         const submittedPairs = scopedSubmissions === null ? 0 : new Set(scopedSubmissions.map(s=>String(s.assignment_id)+'|'+String(s.student_id))).size;
-        const submissionRate = scopedAssignments.length && scopedSubmissions !== null
-            ? Math.min(100, Math.round(submittedPairs / Math.max(1, scopedAssignments.length * Math.max(1, students.length)) * 100))
+        const assignmentExpected = scopedAssignmentRows.reduce((sum,a)=>sum + students.filter(student => units.some(unit => norm(unit.block) === norm(a.block))).length,0);
+        const submissionRate = scopedAssignments !== null && scopedSubmissions !== null && assignmentExpected > 0
+            ? Math.min(100, Math.round(submittedPairs / assignmentExpected * 100))
             : null;
         set('liAssignmentDetail', assignments === null || assignmentSubmissions === null ? 'Submission data unavailable' : assignmentCount + ' assignments · ' + scopedSubmissions.length + ' submissions (' + submissionRate + '% participation estimate)');
         set('liNurseIq', nurseAttempts === null ? '—' : String(nurseAttempts.length));
