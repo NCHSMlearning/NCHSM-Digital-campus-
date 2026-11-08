@@ -734,7 +734,35 @@
             #lrrManagementDashboard input,#lrrManagementDashboard select{min-width:0;width:100%;height:40px;border:1px solid #cbd5e1;border-radius:8px;padding:0 10px;background:#fff}
             #lrrManagementDashboard .lrr-primary{height:40px;border:0;border-radius:8px;padding:0 14px;background:#0f766e;color:#fff;font-weight:800}
             #lrrManagementDashboard .lrr-folder-note{font-size:12px;color:#64748b;margin:0 0 10px}
-            @media(max-width:700px){#lrrManagementDashboard .lrr-deadline{grid-template-columns:1fr 1fr}#lrrManagementDashboard .lrr-deadline button{grid-column:1/-1}}
+            #lrrManagementDashboard,#lrrManagementDashboard *{box-sizing:border-box;min-width:0}
+            #lrrManagementDashboard{width:100%;max-width:100%;overflow:hidden}
+            #lrrManagementDashboard .lrr-school-grid,#lrrManagementDashboard .lrr-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+            #lrrManagementDashboard .lrr-deadline label{display:block;min-width:0}
+            #lrrManagementDashboard .lrr-deadline select,#lrrManagementDashboard .lrr-deadline input{display:block;margin-top:5px}
+            #lrrManagementDashboard .lrr-school{width:100%;min-width:0}
+            #lrrManagementDashboard .lrr-school span:last-child{min-width:0;overflow-wrap:anywhere}
+            #lrrManagementDashboard .lrr-school small{display:block;overflow-wrap:anywhere}
+            @media(max-width:700px){
+              #lrrManagementDashboard .lrr-hero{padding:16px;border-radius:13px;align-items:flex-start}
+              #lrrManagementDashboard .lrr-hero h3{font-size:17px}
+              #lrrManagementDashboard .lrr-school-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+              #lrrManagementDashboard .lrr-school-grid [data-school=""]{grid-column:1/-1}
+              #lrrManagementDashboard .lrr-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+              #lrrManagementDashboard .lrr-stat{padding:12px}
+              #lrrManagementDashboard .lrr-stat strong{font-size:23px}
+              #lrrManagementDashboard .lrr-deadline{grid-template-columns:minmax(0,1fr)}
+              #lrrManagementDashboard .lrr-deadline button{grid-column:auto;width:100%}
+              #lrrManagementDashboard .lrr-toolbar{gap:7px;padding:10px}
+              #lrrManagementDashboard .lrr-toolbar strong{width:100%}
+              #lrrManagementDashboard .lrr-chip{padding:8px 11px}
+              #lrrManagementDashboard .lrr-school{padding:10px;gap:8px}
+              #lrrManagementDashboard .lrr-school .ico{width:34px;height:34px;flex:0 0 34px}
+              #lrrManagementDashboard .lrr-folder-note{line-height:1.5}
+            }
+            @media(max-width:360px){
+              #lrrManagementDashboard .lrr-school-grid,#lrrManagementDashboard .lrr-stat-grid{grid-template-columns:minmax(0,1fr)}
+              #lrrManagementDashboard .lrr-school-grid [data-school=""]{grid-column:auto}
+            }
           </style>
           <div class="lrr-hero"><div><h3>Teaching &amp; Learning Control Centre</h3><p>School-level oversight · lecturer submissions · document compliance · review deadlines</p></div><button class="lrr-primary" id="lrrRefreshAll" type="button">↻ Refresh overview</button></div>
           <div class="lrr-school-grid">
@@ -793,7 +821,13 @@
         const panel=getElement('lrrManagementDashboard'); if(!panel)return;
         const rows=activeSchool?state.rows.filter(r=>schoolOf(r)===activeSchool):state.rows;
         const now=Date.now();
-        const dueDeadlines=deadlineRows.filter(d=>new Date(d.due_at).getTime()<now);
+        const dueDeadlines=deadlineRows.filter(d=>{
+            if(new Date(d.due_at).getTime()>=now)return false;
+            return !state.rows.some(r=>schoolOf(r)===d.school &&
+                (!d.document_type || r.document_type===d.document_type) &&
+                (!d.unit_code || String(r.subject_code||'').toLowerCase()===String(d.unit_code).toLowerCase()) &&
+                ['submitted','resubmitted','under_review','approved'].includes(r.status));
+        });
         const count=(fn)=>rows.filter(fn).length;
         setText('lrrAllSchoolCount',state.rows.length);
         setText('lrrNursingCount',state.rows.filter(r=>schoolOf(r)==='Nursing').length);
