@@ -2042,7 +2042,7 @@ body:has(#dashboard-content.active){background:#f4f6fb!important}
     <section class="nrd-support-grid" aria-label="Student support and lecturer activity">
       <article class="nrd-card nrd-clinical-card">
         <header><div><i class="fas fa-stethoscope"></i><div><h2>Clinical Hours Tracking</h2><small>Student practicum progress</small></div></div></header>
-        <div class="nrd-clinical"><div class="nrd-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"></circle><circle id="clinicalRing" cx="50" cy="50" r="40"></circle></svg><b id="clinicalHoursPercent">0%</b></div><div><strong><span id="clinicalHoursCompleted">0</span> / <span id="clinicalHoursRequired">0</span> hrs cohort target</strong><span>On Track: <b id="clinicalOnTrack">0</b></span><span>At Risk: <b id="clinicalAtRisk">0</b></span><span>Critical: <b id="clinicalCritical">0</b></span></div></div><div class="nrd-clinical-bar"><span id="clinicalHoursBar"></span></div><button class="nrd-panel-action" data-tab="clinical-practicum" type="button">View Details →</button>
+        <div class="nrd-clinical"><div class="nrd-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"></circle><circle id="clinicalRing" cx="50" cy="50" r="40"></circle></svg><b id="clinicalHoursPercent">0%</b></div><div><strong><span id="clinicalHoursCompleted">0</span> / <span id="clinicalHoursRequired">0</span> hrs cohort target</strong><span>On Track: <b id="clinicalOnTrack">0</b></span><span>At Risk: <b id="clinicalAtRisk">0</b></span><span>Critical: <b id="clinicalCritical">0</b></span></div></div><div class="nrd-clinical-bar"><span id="clinicalHoursBar"></span></div><button class="nrd-panel-action" data-tab="my-students" type="button">View Student Progress →</button>
       </article>
       <article class="nrd-card nrd-intervention-card">
         <header><div><i class="fas fa-user-shield"></i><div><h2>Students Requiring Intervention</h2><small>Below threshold or low attendance</small></div></div><button data-tab="my-students" type="button">View Students →</button></header>
@@ -9497,7 +9497,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 
 <!-- Lecturer Modules -->
 <script src="js/lecturer-ui.js?v=20261107-sidebar-unified"></script>
-<script src="js/lecturer-dashboard.js?v=20261108-live-data-fix2"></script>
+<script src="js/lecturer-dashboard.js?v=20261108-live-data-fix3"></script>
 <script src="js/lecturer-profile.js"></script>
 <script src="js/lecturer-courses.js?v=20261108-staff-id-fix"></script>
 <script src="js/lecturer-students.js"></script>
@@ -9883,7 +9883,7 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 (function(){
     'use strict';
 
-    const TAB_IDS = ['dashboard', 'profile', 'my-courses', 'my-students', 'online-learning', 'sessions', 'attendance', 'academic-portfolio', 'cats', 'marks-management', 'lecturer-questions', 'nurseiq-questions', 'nursing-system', 'resources', 'reports', 'messages', 'calendar', 'settings'];
+    const TAB_IDS = ['dashboard', 'profile', 'my-courses', 'my-students', 'online-learning', 'sessions', 'attendance', 'academic-portfolio', 'cats', 'marks-management', 'lecturer-questions', 'nurseiq-questions', 'nursing-system', 'resources', 'reports', 'messages', 'calendar', 'settings', 'research-papers'];
 
     function getSection(tabId){
         return document.getElementById(tabId + '-content') || document.getElementById(tabId);
@@ -9968,6 +9968,25 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 
     window.showTab = showTabClean;
     window.__NCHSMShowTabV18 = showTabClean;
+
+    // Dashboard cards, KPI tiles, chart actions and quick-action buttons all
+    // use the same tab controller as the sidebar. Delegate clicks so that
+    // dynamically rendered dashboard controls work as well.
+    document.addEventListener('click', function(event){
+        const control = event.target.closest('#dashboard-content [data-tab]');
+        if(!control) return;
+        const tabId = String(control.getAttribute('data-tab') || '').trim();
+        if(!TAB_IDS.includes(tabId) || !getSection(tabId)){
+            console.warn('[NCHSM Dashboard] No destination section for dashboard action:', tabId);
+            if(typeof window.showNotification === 'function'){
+                window.showNotification('This dashboard destination is not available yet.', 'warning');
+            }
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        showTabClean(tabId);
+    }, true);
 
     function boot(){
         // Always start on Dashboard after a full page refresh.
