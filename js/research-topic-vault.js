@@ -24,7 +24,7 @@ async function init(){
  }
 }
 function mount(){
- let root=$('research-topic-vault'); if(root)return;
+ let root=$('research-topic-vault'); if(root){render();return;}
  const section=$('research-papers-content')||$('research-papers')||$('online-learning-content')||$('hub-online-learning')||$('research-supervision');
  if(section){
   root=document.createElement('section');root.id='research-topic-vault';root.className='rtv-wrap';
@@ -62,7 +62,7 @@ function render(){
  <label class="wide">Research objectives<textarea name="objectives" placeholder="List the main objectives"></textarea></label>
  <label class="wide">Rationale / brief description<textarea name="rationale" placeholder="Why is this topic important?"></textarea></label>
  <div class="wide"><button class="rtv-btn" type="submit">Submit topic for review</button></div></form>
- <p style="font-size:11px;color:#64748b;margin:0 0 12px">Submitting a topic does not reserve it. It is reserved only after an authorised reviewer approves it. Similar topics are checked by the research team.</p>`:''}
+ <p style="font-size:11px;color:#64748b;margin:0 0 12px">A topic remains pending until approval. The Vault automatically flags potentially similar titles across all students; flagged topics require reviewer comparison before approval.</p>`:''}
  <div class="rtv-tools"><input id="rtv-search" placeholder="Search title, programme or student…" value="${esc(search)}"><select id="rtv-filter"><option value="all">All statuses</option><option value="pending">Pending</option><option value="revision_required">Revision required</option><option value="approved">Approved / reserved</option><option value="active">Active</option><option value="completed">Completed</option><option value="rejected">Rejected</option><option value="released">Released</option></select></div>
  <div class="rtv-table-wrap"><table class="rtv-table"><thead><tr><th>Research topic</th><th>Student</th><th>Programme</th><th>Supervisor</th><th>Status</th><th>Submitted</th>${mode==='staff'?'<th>Review</th>':''}</tr></thead><tbody id="rtv-rows"><tr><td colspan="7" class="rtv-empty">Loading topics…</td></tr></tbody></table></div>
  </div>`;
@@ -91,20 +91,18 @@ async function submitTopic(e){
  const payload={student_id:user.id,title,objectives:String(f.get('objectives')||'').trim(),rationale:String(f.get('rationale')||'').trim(),program:profile.program||profile.department||null,department:profile.department||null,intake_year:profile.intake_year||null,status:'pending'};
  const b=e.currentTarget.querySelector('button[type=submit]');b.disabled=true;b.textContent='Checking and submitting…';
  try{
-  const dupe=await sb.from('research_topic_vault').select('id,title,status').in('status',['pending','approved','active','completed']).limit(500);
-  if(dupe.error)throw dupe.error;
-  const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'').trim();
-  const exact=(dupe.data||[]).find(x=>norm(x.title)===norm(title));
-  if(exact)throw new Error('This exact title is already registered or awaiting review. Please propose a different title.');
-  const ins=await sb.from('research_topic_vault').insert(payload).select('id').single();if(ins.error)throw ins.error;
-  e.currentTarget.reset();notify('Topic submitted. It will be reserved only after approval.');await load();
+  // Database trigger performs cross-student similarity screening; unique index blocks exact duplicates atomically.
+  const ins=await sb.from('research_topic_vault').insert(payload).select('id,similarity_note').single();if(ins.error)throw ins.error;
+  e.currentTarget.reset();
+  notify(ins.data?.similarity_note?'Topic submitted and flagged for similarity review. It remains pending.':'Topic submitted. It remains pending until reviewer approval.');
+  await load();
  }catch(err){fail(err.code==='23505'?'This title is already reserved or awaiting review. Please submit a different title.':(err.message||String(err)))}finally{b.disabled=false;b.textContent='Submit topic for review'}
 }
 function paintRows(){
  const body=$('rtv-rows');if(!body)return;
  const q=search.toLowerCase();
  const list=rows.filter(r=>(filter==='all'||r.status===filter)&&(!q||[r.title,r.program,r.department,r.student?.full_name,r.student?.student_id,r.supervisor_name].join(' ').toLowerCase().includes(q)));
- body.innerHTML=list.map(r=>`<tr><td><strong>${esc(r.title)}</strong>${r.reviewer_comments?'<div style="color:#64748b;margin-top:4px">'+esc(r.reviewer_comments)+'</div>':''}</td><td>${esc(r.student?.full_name|| (r.student_id===user?.id?'You':'Student'))}</td><td>${esc(r.program||r.department||'—')}</td><td>${esc(r.supervisor_name||'—')}</td><td><span class="rtv-pill ${esc(r.status)}">${esc(r.status.replace(/_/g,' '))}</span></td><td>${esc(new Date(r.created_at).toLocaleDateString())}</td>${mode==='staff'?'<td><button class="rtv-btn alt" data-review="'+r.id+'">Review</button></td>':''}</tr>`).join('')||'<tr><td colspan="7" class="rtv-empty">No topics match this view.</td></tr>';
+ body.innerHTML=list.map(r=>`<tr><td><strong>${esc(r.title)}</strong>${(r.similarity_note?'<div style="color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:7px;margin-top:6px;font-size:11px">⚠ '+esc(r.similarity_note)+'</div>':'')+(r.reviewer_comments?'<div style="color:#64748b;margin-top:4px">'+esc(r.reviewer_comments)+'</div>':'')}</td><td>${esc(r.student?.full_name|| (r.student_id===user?.id?'You':'Student'))}</td><td>${esc(r.program||r.department||'—')}</td><td>${esc(r.supervisor_name||'—')}</td><td><span class="rtv-pill ${esc(r.status)}">${esc(r.status.replace(/_/g,' '))}</span></td><td>${esc(new Date(r.created_at).toLocaleDateString())}</td>${mode==='staff'?'<td><button class="rtv-btn alt" data-review="'+r.id+'">Review</button></td>':''}</tr>`).join('')||'<tr><td colspan="7" class="rtv-empty">No topics match this view.</td></tr>';
  if(mode==='staff')body.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>review(b.dataset.review));
 }
 async function review(id){
@@ -123,5 +121,6 @@ async function review(id){
  if(up.error){fail('Review failed: '+up.error.message);return}
  notify('Topic status updated.');await load();
 }
+window.addEventListener('nchsm:research-vault-open',()=>{if(!sb){init();return;}mount();load();});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,700),{once:true});else setTimeout(init,700);
 })();
