@@ -939,6 +939,9 @@ const LecturerDashboard = {
 
     // A mark can be keyed by Auth UUID or by the student's admission number.
     isMarkForAssignedRegistration(mark) {
+        // Match the same key format used when assignedEnrollmentKeys are built.
+        // Do not strip Roman numerals here: doing so made units such as
+        // "Clinical Pharmacology II" fail to match their own registrations.
         const norm = value => String(value || '').trim().toLowerCase();
         const unitKey = norm(mark?.subject_name) + '|' + norm(mark?.block);
         const identifiers = [mark?.student_id, mark?.admission_number]
