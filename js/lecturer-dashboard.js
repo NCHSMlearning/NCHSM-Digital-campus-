@@ -1711,7 +1711,7 @@ const LecturerDashboard = {
                 const old=latest.get(key);if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(key,m);
             });
             const aggregate=new Map();
-            latest.forEach(m=>{const id=String(m.student_id||m.admission_number||'').trim(),matchedStudent=students.find(s=>String(s.user_id)===id||String(s.student_id||'').trim()===id||String(s.admission_number||'').trim()===id),entry=aggregate.get(id)||{name:m.student_name||matchedStudent?.full_name||'Student',scores:[]};entry.scores.push(Number(m.final_score));aggregate.set(id,entry);});
+            latest.forEach(m=>{const id=String(m.admission_number||m.student_id||'').trim(),matchedStudent=students.find(s=>String(s.user_id)===id||String(s.student_id||'').trim()===id||String(s.admission_number||'').trim()===id),entry=aggregate.get(id)||{name:m.student_name||matchedStudent?.full_name||'Student',scores:[]};entry.scores.push(Number(m.final_score));aggregate.set(id,entry);});
             const top=[...aggregate.values()].map(x=>({...x,avg:x.scores.reduce((a,b)=>a+b,0)/x.scores.length,units:x.scores.length})).sort((a,b)=>b.avg-a.avg).slice(0,5);
             container.innerHTML=top.length?top.map((x,i)=>'<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid #eef1f5"><b style="width:20px">'+(['🥇','🥈','🥉'][i]||String(i+1))+'</b><div style="flex:1;min-width:0"><strong style="font-size:10px">'+x.name+'</strong><div style="font-size:8px;color:#667085">'+x.units+' assigned units with published results</div></div><b style="font-size:13px;color:#15803d">'+Math.round(x.avg)+'%</b></div>').join(''):'<div class="nrd-empty">No approved and published marks yet.</div>';
         }catch(error){console.error('[Lecturer Dashboard] Top students failed:',error);container.innerHTML='<div class="nrd-empty">Unable to load top performers.</div>';}
@@ -2008,7 +2008,7 @@ const LecturerDashboard = {
                 const score=Number(m.final_score ?? m.score);
                 const key=normChart(m.subject_name)+'|'+normChart(m.block);
                 if(m.published!==true||normChart(m.approval_status)!=='approved'||!assignedUnitKeys.has(key)||!this.isMarkForAssignedRegistration(m)||!Number.isFinite(score)||score<0||score>100)return;
-                const rowKey=String(m.student_id||m.admission_number||'')+'|'+key,old=latestPublished.get(rowKey);
+                const rowKey=String(m.admission_number||m.student_id||'')+'|'+key,old=latestPublished.get(rowKey);
                 if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latestPublished.set(rowKey,m);
             });
             const validPublishedMarks=[...latestPublished.values()];
