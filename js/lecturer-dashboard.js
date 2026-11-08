@@ -848,7 +848,7 @@ const LecturerDashboard = {
                 .select('student_id, unit_name, block, status, program')
                 .in('unit_name', unitNames)
                 .eq('program', program)
-                .eq('status', 'approved');
+                .in('status', ['approved', 'completed']);
 
             if (enrollError) throw enrollError;
 
