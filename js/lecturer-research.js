@@ -1105,31 +1105,91 @@ window.LecturerResearch = (() => {
 
     async function lecturerHtmlToDocxBlob(html,title){
         const docx=await ensureLecturerDocxGenerator();
-        const parsed=new DOMParser().parseFromString(String(html||''),'text/html');
+        const parsed=new DOMParser().parseFromString(String(lecturerSanitizeResearchHtml(html)||''),'text/html');
         const children=[];
-        [...(parsed.body?.children||[])].forEach(function(el){
-            const tag=el.tagName.toLowerCase();
-            const runs=lecturerDocxTextRuns(el,docx);
+        const borders={
+            top:{style:docx.BorderStyle.SINGLE,size:1,color:'AAB4C0'},
+            bottom:{style:docx.BorderStyle.SINGLE,size:1,color:'AAB4C0'},
+            left:{style:docx.BorderStyle.SINGLE,size:1,color:'AAB4C0'},
+            right:{style:docx.BorderStyle.SINGLE,size:1,color:'AAB4C0'},
+            insideHorizontal:{style:docx.BorderStyle.SINGLE,size:1,color:'D5DCE5'},
+            insideVertical:{style:docx.BorderStyle.SINGLE,size:1,color:'D5DCE5'}
+        };
+        function paragraphFor(el,extra){
+            const tag=el.tagName.toLowerCase(),runs=lecturerDocxTextRuns(el,docx);
+            const opts={children:runs};
             if(/^h[1-6]$/.test(tag)){
                 const level=Math.min(6,Number(tag.slice(1)));
-                children.push(new docx.Paragraph({
-                    children:runs,
-                    heading:level===1?docx.HeadingLevel.HEADING_1:
-                            level===2?docx.HeadingLevel.HEADING_2:
-                            level===3?docx.HeadingLevel.HEADING_3:
-                            level===4?docx.HeadingLevel.HEADING_4:
-                            level===5?docx.HeadingLevel.HEADING_5:
-                            docx.HeadingLevel.HEADING_6
-                }));
-            }else{
-                children.push(new docx.Paragraph({children:runs}));
+                opts.heading=docx.HeadingLevel['HEADING_'+level];
             }
-        });
-        if(!children.length) children.push(new docx.Paragraph({children:[new docx.TextRun({text:String(parsed.body?.textContent||'')})]}));
+            if(extra)Object.assign(opts,extra);
+            return new docx.Paragraph(opts);
+        }
+        function addTable(table){
+            const sourceRows=Array.from(table.querySelectorAll('tr'));
+            if(!sourceRows.length)return;
+            const rows=sourceRows.map(function(tr){
+                const cells=Array.from(tr.children).filter(c=>['TD','TH'].includes(c.tagName));
+                return new docx.TableRow({children:cells.map(function(cell){
+                    const content=lecturerDocxTextRuns(cell,docx);
+                    if(cell.tagName==='TH')content.forEach(run=>{});
+                    return new docx.TableCell({
+                        children:[new docx.Paragraph({children:content})],
+                        verticalAlign:docx.VerticalAlign.CENTER,
+                        margins:{top:90,bottom:90,left:100,right:100}
+                    });
+                })});
+            });
+            children.push(new docx.Table({
+                rows:rows,
+                width:{size:100,type:docx.WidthType.PERCENTAGE},
+                borders:borders,
+                margins:{top:80,bottom:80,left:80,right:80}
+            }));
+            children.push(new docx.Paragraph({children:[new docx.TextRun({text:''})]}));
+        }
+        function addBlock(el){
+            if(el.nodeType===3){
+                if(el.nodeValue.trim())children.push(new docx.Paragraph({children:[new docx.TextRun({text:el.nodeValue.trim()})]}));
+                return;
+            }
+            if(el.nodeType!==1)return;
+            const tag=el.tagName.toLowerCase();
+            if(tag==='table'){addTable(el);return}
+            if(tag==='ul'||tag==='ol'){
+                Array.from(el.children).filter(x=>x.tagName==='LI').forEach(function(li,index){
+                    const prefix=tag==='ol'?(index+1)+'. ':'';
+                    const runs=lecturerDocxTextRuns(li,docx);
+                    if(prefix)runs.unshift(new docx.TextRun({text:prefix}));
+                    children.push(new docx.Paragraph({children:runs,bullet:tag==='ul'?{level:0}:undefined}));
+                });
+                return;
+            }
+            if(tag==='div' && Array.from(el.children).some(x=>['P','H1','H2','H3','H4','H5','H6','TABLE','UL','OL'].includes(x.tagName))){
+                Array.from(el.childNodes).forEach(addBlock);return;
+            }
+            if(tag==='hr'){
+                children.push(new docx.Paragraph({children:[new docx.TextRun({text:'────────────────────────────────'})]}));return;
+            }
+            if(el.style?.pageBreakBefore==='always'||el.style?.breakBefore==='page'){
+                children.push(new docx.Paragraph({pageBreakBefore:true,children:[new docx.TextRun({text:''})]}));return;
+            }
+            if(/^h[1-6]$/.test(tag)||['p','blockquote','div'].includes(tag)){
+                children.push(paragraphFor(el,tag==='blockquote'?{indent:{left:360}}:null));return;
+            }
+            children.push(paragraphFor(el));
+        }
+        Array.from(parsed.body.childNodes).forEach(addBlock);
+        if(!children.length)children.push(new docx.Paragraph({children:[new docx.TextRun({text:String(title||'Research Paper')})]}));
         const document=new docx.Document({
             sections:[{
-                properties:{},
-                children
+                properties:{
+                    page:{
+                        size:{width:11906,height:16838},
+                        margin:{top:1134,right:1134,bottom:1134,left:1134}
+                    }
+                },
+                children:children
             }]
         });
         return await docx.Packer.toBlob(document);
