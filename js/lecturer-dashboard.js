@@ -924,80 +924,172 @@ const LecturerDashboard = {
 
     // ─── LOAD METRICS ───
     async loadMetrics() {
+        const supabase = this.getSupabaseClient();
+        const students = Array.isArray(this.assignedStudents) ? this.assignedStudents : [];
+        const units = Array.isArray(this.assignedUnits) ? this.assignedUnits : [];
+        const program = this.getCurrentProgram();
+        const studentIds = [...new Set(students.map(s => String(s.user_id || '').trim()).filter(Boolean))];
+        const unitNames = [...new Set(units.map(u => String(u.subject_name || '').trim()).filter(Boolean))];
+        const unitKeys = new Set(units.map(u =>
+            String(u.subject_name || '').trim().toLowerCase() + '|' + String(u.block || '').trim().toLowerCase()
+        ));
+        const normalize = value => String(value || '').trim().toLowerCase();
+
+        this.metrics.totalStudents = students.length;
+        this.metrics.totalCourses = units.length;
+        this.metrics.atRiskStudents = null;
+        this.metrics.pendingAttendance = null;
+        this.metrics.examsDue = null;
+        this.metrics.avgPerformance = null;
+
+        if (!supabase) {
+            console.error('[Lecturer Dashboard] Metrics: Supabase client unavailable.');
+            this.updateMetricCards();
+            return;
+        }
+
+        if (!studentIds.length || !unitNames.length) {
+            this.metrics.atRiskStudents = 0;
+            this.metrics.pendingAttendance = 0;
+            this.metrics.examsDue = 0;
+            this.metrics.avgPerformance = 0;
+            this.updateMetricCards();
+            return;
+        }
+
+        // Attendance-based risk: count distinct students with more than five
+        // recorded absences in their own assigned units.
         try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-
-            const program = this.getCurrentProgram();
-            const threshold = this.getPassingThreshold();
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-
-            // totalStudents is set by loadAssignedStudents; preserve null on a failed load.
-            this.metrics.totalCourses = this.assignedUnits.length || 0;
-
-            const atRisk = this.assignedStudents.filter(s => {
-                return (s.absences || 0) > 5 || (s.cumulative_absences || 0) > 5;
-            });
-            this.metrics.atRiskStudents = atRisk.length || 0;
-
-            const { data: exams, error: examError } = await supabase
-                .from('exams')
-                .select('*')
-                .eq('target_program', program)
-                .eq('status', 'Scheduled');
-
-            if (!examError) {
-                this.metrics.examsDue = exams?.length || 0;
-            }
-
-            const today = new Date().toISOString().split('T')[0];
-            const { data: todayLogs } = await supabase
+            const { data, error } = await supabase
                 .from('geo_attendance_logs')
-                .select('student_id')
+                .select('student_id, unit_name, block, attendance_status, status')
+                .in('student_id', studentIds)
+                .in('unit_name', unitNames)
+                .eq('program', program);
+            if (error) throw error;
+
+            const absenceCounts = new Map();
+            (data || []).forEach(log => {
+                const key = normalize(log.unit_name) + '|' + normalize(log.block);
+                if (!unitKeys.has(key)) return;
+                const status = normalize(log.attendance_status || log.status);
+                if (status === 'absent') {
+                    const id = String(log.student_id || '').trim();
+                    absenceCounts.set(id, (absenceCounts.get(id) || 0) + 1);
+                }
+            });
+            this.metrics.atRiskStudents = [...absenceCounts.values()].filter(count => count > 5).length;
+        } catch (error) {
+            console.warn('[Lecturer Dashboard] At-risk attendance metric failed:', error);
+            this.metrics.atRiskStudents = null;
+        }
+
+        // Pending attendance counts only explicit pending records for today;
+        // it does not assume every student has a class every day.
+        try {
+            const now = new Date();
+            const localDate = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('student_id, unit_name, block, attendance_status, status, check_in_time')
+                .in('student_id', studentIds)
+                .in('unit_name', unitNames)
                 .eq('program', program)
-                .gte('check_in_time', `${today}T00:00:00.000Z`)
-                .lte('check_in_time', `${today}T23:59:59.999Z`);
+                .gte('check_in_time', startOfDay)
+                .lt('check_in_time', endOfDay);
+            if (error) throw error;
 
-            const checkedIn = new Set(todayLogs?.map(l => l.student_id) || []);
-            const pending = this.assignedStudents.filter(s => !checkedIn.has(s.user_id));
-            this.metrics.pendingAttendance = pending.length || 0;
+            const pendingIds = new Set();
+            (data || []).forEach(log => {
+                const key = normalize(log.unit_name) + '|' + normalize(log.block);
+                const status = normalize(log.attendance_status || log.status);
+                if (unitKeys.has(key) && status === 'pending') pendingIds.add(String(log.student_id));
+            });
+            this.metrics.pendingAttendance = pendingIds.size;
+            console.debug('[Lecturer Dashboard] Pending attendance date:', localDate, pendingIds.size);
+        } catch (error) {
+            console.warn('[Lecturer Dashboard] Pending attendance metric failed:', error);
+            this.metrics.pendingAttendance = null;
+        }
 
-            // Messages for this lecturer (unread tracking not available in schema)
+        // Exams due: only published/scheduled exams belonging to this lecturer's
+        // assigned units and blocks, with an exam date today or in the future.
+        try {
+            const today = new Date();
+            const localToday = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
+            const { data, error } = await supabase
+                .from('exams')
+                .select('id, title, exam_name, course_name, course_code, block, target_program, status, exam_date, is_published')
+                .eq('target_program', program)
+                .gte('exam_date', localToday);
+            if (error) throw error;
+
+            const activeStatuses = new Set(['published', 'upcoming', 'scheduled']);
+            this.metrics.examsDue = (data || []).filter(exam => {
+                const examName = normalize(exam.course_name || exam.exam_name || exam.title);
+                const key = examName + '|' + normalize(exam.block);
+                const isAssigned = unitKeys.has(key);
+                const isActive = activeStatuses.has(normalize(exam.status)) || exam.is_published === true;
+                return isAssigned && isActive;
+            }).length;
+        } catch (error) {
+            console.warn('[Lecturer Dashboard] Exams due metric failed:', error);
+            this.metrics.examsDue = null;
+        }
+
+        // Performance is calculated only from approved AND published marks,
+        // and only for the lecturer's assigned units/blocks.
+        try {
+            const { data, error } = await supabase
+                .from('student_marks')
+                .select('student_id, subject_name, block, final_score, published, approval_status, program')
+                .in('student_id', studentIds)
+                .eq('program', program)
+                .eq('published', true)
+                .eq('approval_status', 'approved');
+            if (error) throw error;
+
+            const validScores = (data || []).filter(mark => {
+                const key = normalize(mark.subject_name) + '|' + normalize(mark.block);
+                const score = Number(mark.final_score);
+                return unitKeys.has(key) && Number.isFinite(score) && score >= 0 && score <= 100;
+            });
+            this.metrics.avgPerformance = validScores.length
+                ? Math.round(validScores.reduce((sum, mark) => sum + Number(mark.final_score), 0) / validScores.length)
+                : 0;
+        } catch (error) {
+            console.warn('[Lecturer Dashboard] Average performance metric failed:', error);
+            this.metrics.avgPerformance = null;
+        }
+
+        // Keep unread-message count independent of the academic KPI queries.
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile?.();
             const lecturerId = this.lecturerUuid || profile?.user_id;
             if (lecturerId) {
-                const { data: messages, error: msgErr } = await supabase
+                const { data, error } = await supabase
                     .from('messages')
-                    .select('*')
+                    .select('id')
                     .eq('receiver_id', lecturerId);
-
-                if (msgErr) {
-                    console.warn('messages query error:', msgErr.message);
-                    this.metrics.unreadMessages = 0;
-                } else {
-                    this.metrics.unreadMessages = messages?.length || 0;
-                }
+                if (error) throw error;
+                this.metrics.unreadMessages = (data || []).length;
             }
-
-            const studentIds = this.assignedStudents.map(s => s.user_id);
-            if (studentIds.length > 0) {
-                const { data: marks } = await supabase
-                    .from('student_marks')
-                    .select('final_score')
-                    .in('student_id', studentIds)
-                    .eq('program', program);
-
-                const validScores = marks?.filter(m => m.final_score > 0) || [];
-                if (validScores.length > 0) {
-                    const avg = validScores.reduce((a, b) => a + b.final_score, 0) / validScores.length;
-                    this.metrics.avgPerformance = Math.round(avg);
-                }
-            }
-
-            this.updateMetricCards();
-
         } catch (error) {
-            console.error('Failed to load metrics:', error);
+            console.warn('[Lecturer Dashboard] Message count failed:', error);
         }
+
+        this.updateMetricCards();
+        console.log('[Lecturer Dashboard] KPI refresh complete:', {
+            students: this.metrics.totalStudents,
+            units: this.metrics.totalCourses,
+            atRisk: this.metrics.atRiskStudents,
+            pendingAttendance: this.metrics.pendingAttendance,
+            examsDue: this.metrics.examsDue,
+            averagePerformance: this.metrics.avgPerformance
+        });
     },
 
     // ─── UPDATE METRIC CARDS ───
