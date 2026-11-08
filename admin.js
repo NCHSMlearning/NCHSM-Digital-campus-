@@ -1854,7 +1854,8 @@ async function loadAllResources() {
         
         if (error) throw error;
         
-        allResourcesData = data || [];
+        const scope=typeof getHODProgramScope==='function'?getHODProgramScope():'';
+        allResourcesData = (data || []).filter(r=>!scope||String(r.program_type||r.target_program||'').toUpperCase()===scope);
         
         var materialCount = allResourcesData.filter(function(r) { return r.resource_type === 'material'; }).length;
         var pastpaperCount = allResourcesData.filter(function(r) { return r.resource_type === 'pastpaper'; }).length;
@@ -2267,6 +2268,8 @@ if (programFilter) {
 // INIT RESOURCE FILTERS
 // ------------------------------------------------------------------
 initResourceFilters();
+const resourceUploadForm=document.getElementById('upload-resource-form');
+if(resourceUploadForm&&!resourceUploadForm.dataset.bound){resourceUploadForm.dataset.bound='true';resourceUploadForm.addEventListener('submit',window.handleResourceUpload);}
 
 console.log('✅ Admin dashboard loaded successfully!');
 console.log('✅ Unit Assignment feature enabled!');
