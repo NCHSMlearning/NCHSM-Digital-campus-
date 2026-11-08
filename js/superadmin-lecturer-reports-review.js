@@ -769,7 +769,7 @@
             </form>
             <div id="lrrDeadlineList" style="margin-top:12px;font-size:12px;color:#64748b">Loading deadlines…</div>
           </div>
-          <p class="lrr-folder-note">School folders organise submitted teaching evidence by school, then by unit and document type. Select a school folder to filter its files.</p>
+          <p class="lrr-folder-note">School folders organise submitted teaching evidence by school, then by unit and document type. Select a school folder to filter its files.</p><div id="lrrFolderGrid" class="lrr-school-grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-top:8px"></div>
         `;
         const heading = section.querySelector('h2')?.parentElement?.parentElement;
         if (heading?.nextSibling) section.insertBefore(panel, heading.nextSibling); else section.insertBefore(panel, section.firstChild);
@@ -804,6 +804,25 @@
         setText('lrrAwaitingMetric',count(r=>['submitted','resubmitted'].includes(r.status)));
         setText('lrrApprovedMetric',count(r=>r.status==='approved'));
         setText('lrrDeadlineCount',deadlineRows.length+' active deadlines');
+        const folders=getElement('lrrFolderGrid');
+        if(folders){
+            const grouped=new Map();
+            rows.forEach(row=>{
+                const key=[schoolOf(row),row.unit_name||row.subject_code||'Unassigned unit',row.subject_code||'',row.document_type||row.report_type||'General'].join('|');
+                const item=grouped.get(key)||{school:schoolOf(row),unit:row.unit_name||row.subject_code||'Unassigned unit',code:row.subject_code||'',type:row.document_type||row.report_type||'General',count:0};
+                item.count++;grouped.set(key,item);
+            });
+            folders.innerHTML=grouped.size?[...grouped.values()].map(item=>'<button type="button" class="lrr-school" data-folder-school="'+escapeAttr(item.school)+'" data-folder-unit="'+escapeAttr(item.code||item.unit)+'"><span class="ico">📁</span><span><strong style="font-size:13px">'+escapeHtml(item.unit)+'</strong><small>'+escapeHtml(item.school)+' · '+escapeHtml(humanize(item.type))+' · '+item.count+' files</small></span></button>').join(''):'<div class="lrr-stat" style="grid-column:1/-1;color:#64748b">No unit folders yet. Folders appear automatically as lecturers submit documents.</div>';
+            folders.querySelectorAll('[data-folder-unit]').forEach(btn=>btn.addEventListener('click',()=>{
+                activeSchool=btn.dataset.folderSchool||'';
+                const search=getElement('lrrSearch');
+                if(search)search.value=btn.dataset.folderUnit;
+                quickStatus='';
+                applyFilters();
+                const target=getElement('lecturerReportsReviewTable');
+                if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+            }));
+        }
         const list=getElement('lrrDeadlineList');
         if(list) list.innerHTML=deadlineRows.length?deadlineRows.map(d=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid #e2e8f0"><span><b>'+escapeHtml(d.school)+'</b> · '+escapeHtml(humanize(d.document_type||'All document types'))+(d.unit_code?' · '+escapeHtml(d.unit_code):'')+'</span><span>'+escapeHtml(formatDate(d.due_at))+'</span></div>').join(''):'No deadlines have been configured yet.';
     }
