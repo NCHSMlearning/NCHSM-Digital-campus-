@@ -347,18 +347,18 @@ const AcademicPortfolio = {
         });
         const loaders = {
             'course-allocation': () => this.loadCourseAllocation(),
-            'scheme-of-work': () => this.loadSchemeOfWork(),
-            'lesson-plans': () => this.loadLessonPlans(),
+            'scheme-of-work': () => window.TeachingDocumentsSubmission?.open?.('scheme_of_work'),
+            'lesson-plans': () => window.TeachingDocumentsSubmission?.open?.('lesson_plan'),
             'teaching-documents': () => window.TeachingDocumentsSubmission?.open?.(),
-            'teaching-log': () => this.loadTeachingLog(),
-            'materials': () => this.loadMaterials(),
+            'teaching-log': () => window.TeachingDocumentsSubmission?.open?.('record_of_work'),
+            'materials': () => window.TeachingDocumentsSubmission?.open?.('instructional_materials'),
             'assessments': () => this.mountExistingSection('cats-content', 'Assessment & Examination Management'),
             'exams': () => this.mountExistingSection('cats-content', 'Assessment & Examination Management'),
             'marks-entry': () => this.mountExistingSection('marks-management-content', 'Marks Entry & Submission'),
             'report-generator': () => this.mountExistingSection('reports-content', 'Academic Report Generator'),
-            'clinical': () => this.loadClinical(),
-            'evaluations': () => this.loadEvaluations(),
-            'reflections': () => this.loadReflections()
+            'clinical': () => window.TeachingDocumentsSubmission?.open?.('clinical_supervision_report'),
+            'evaluations': () => window.TeachingDocumentsSubmission?.open?.('course_evaluation_report'),
+            'reflections': () => window.TeachingDocumentsSubmission?.open?.('lecturer_self_evaluation')
         };
         const container = document.getElementById('ap-content');
         if (!container || !loaders[tab]) return;
