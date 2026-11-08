@@ -68,6 +68,7 @@
         selectedAttachments: [],
         selectedVersions: [],
         selectedReviews: [],
+        assignedUnits: [],
         loading: false,
         initialized: false,
         filtersBound: false,
@@ -360,6 +361,42 @@
         }
     }
 
+    async function loadAssignedLecturerUnits(client) {
+        state.assignedUnits = [];
+        try {
+            const { data: assignments, error } = await client
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id,lecturer_name,program,block,subject_name,subject_code,academic_year');
+            if (error) throw error;
+
+            const rows = assignments || [];
+            const staffIds = [...new Set(rows.map(x => String(x.lecturer_id || '').trim()).filter(Boolean))];
+            let profiles = [];
+            if (staffIds.length) {
+                const { data, error: profileError } = await client
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id,full_name,email,staff_id,program,department,role')
+                    .in('staff_id', staffIds);
+                if (profileError) throw profileError;
+                profiles = data || [];
+            }
+            const profileByStaff = new Map(profiles.map(p => [String(p.staff_id || '').trim().toLowerCase(), p]));
+            state.assignedUnits = rows.map(item => {
+                const profile = profileByStaff.get(String(item.lecturer_id || '').trim().toLowerCase());
+                return {
+                    ...item,
+                    lecturer_user_id: profile?.user_id || null,
+                    lecturer_name: item.lecturer_name || profile?.full_name || 'Name unavailable',
+                    lecturer_email: profile?.email || '',
+                    school: schoolOf({ program: item.program })
+                };
+            });
+        } catch (error) {
+            state.assignedUnits = [];
+            console.warn('[LecturerReportsReview] Assigned-unit compliance data unavailable', error);
+        }
+    }
+
     async function loadReports() {
         const table = getElement('lecturerReportsReviewTable');
         if (!table) return;
@@ -479,6 +516,7 @@
             }));
             state.filteredRows = [...state.rows];
 
+            await loadAssignedLecturerUnits(client);
             await loadDeadlines();
             try{const {data:requirements,error:requirementsError}=await getSupabaseClient().from(TABLE_REQUIREMENTS).select('*').order('created_at',{ascending:false});if(requirementsError)throw requirementsError;state.requirements=data||[];}catch(requirementsError){state.requirements=[];console.warn('[LecturerReportsReview] Requirements unavailable',requirementsError);}
             populateDeadlinePrograms();
@@ -1164,21 +1202,48 @@
         const fmt=(v)=>escapeHtml(v||'—');
         const compliance=getElement('lrrComplianceTable');
         if(compliance){
+            const assignments=state.assignedUnits||[];
             const items=reqs.map(req=>{
-                const matched=rows.filter(row=>schoolOf(row)===req.school&&
+                const expectedRows=assignments.filter(a=>
+                    (!req.program||normalizeProgram(a.program)===normalizeProgram(req.program))&&
+                    (!req.block||String(a.block||'').toLowerCase()===String(req.block).toLowerCase())&&
+                    (!req.term||String(a.block||'').toLowerCase()===String(req.term).toLowerCase())&&
+                    (!req.unit_code||String(a.subject_code||'').toLowerCase()===String(req.unit_code).toLowerCase())
+                );
+                const expectedMap=new Map();
+                expectedRows.forEach(a=>{
+                    const key=String(a.lecturer_user_id||a.lecturer_id||a.lecturer_name).toLowerCase();
+                    if(!expectedMap.has(key))expectedMap.set(key,a);
+                });
+                const expected=[...expectedMap.values()];
+                const submittedRows=rows.filter(row=>
+                    schoolOf(row)===req.school&&
                     (!req.program||normalizeProgram(row.program||row.department)===normalizeProgram(req.program))&&
                     String(row.intake_year||row.academic_year||'')===String(req.intake_year)&&
-                    (!req.block||String(row.block||'').toLowerCase()===String(req.block).toLowerCase())&&
-                    (!req.term||String(row.term||'').toLowerCase()===String(req.term).toLowerCase())&&
-                    row.document_type===req.document_type&&(!req.unit_code||String(row.subject_code||'').toLowerCase()===String(req.unit_code).toLowerCase()));
-                const approved=matched.some(row=>row.status==='approved');
-                const submitted=matched.length>0;
-                return {...req,submitted,approved,lecturers:new Set(matched.map(x=>x.lecturer_user_id)).size};
+                    (!req.block||String(row.block||row.class_block||'').toLowerCase()===String(req.block).toLowerCase())&&
+                    (!req.term||String(row.term||row.block||'').toLowerCase()===String(req.term).toLowerCase())&&
+                    row.document_type===req.document_type&&
+                    (!req.unit_code||String(row.subject_code||'').toLowerCase()===String(req.unit_code).toLowerCase())
+                );
+                const lecturerResults=expected.map(person=>{
+                    const found=submittedRows.filter(row=>
+                        (person.lecturer_user_id&&String(row.lecturer_user_id)===String(person.lecturer_user_id))||
+                        (person.lecturer_id&&String(row.lecturer_id||'').trim().toLowerCase()===String(person.lecturer_id).trim().toLowerCase())||
+                        (person.lecturer_name&&String(row.lecturer_name||'').trim().toLowerCase()===String(person.lecturer_name).trim().toLowerCase())
+                    );
+                    return {person,submitted:found.length>0,approved:found.some(x=>x.status==='approved')};
+                });
+                const submitted=lecturerResults.filter(x=>x.submitted).length;
+                const approved=lecturerResults.filter(x=>x.approved).length;
+                const missing=lecturerResults.filter(x=>!x.submitted).map(x=>x.person.lecturer_name||x.person.lecturer_id);
+                return {...req,expected:expected.length,submittedCount:submitted,approvedCount:approved,missing,complete:expected.length>0&&submitted===expected.length,approvedComplete:expected.length>0&&approved===expected.length};
             });
-            const counts={required:items.length,approved:items.filter(x=>x.approved).length,submitted:items.filter(x=>x.submitted).length,missing:items.filter(x=>!x.submitted).length};
+            const totalExpected=items.reduce((n,x)=>n+x.expected,0);
+            const totalSubmitted=items.reduce((n,x)=>n+x.submittedCount,0);
+            const totalApproved=items.reduce((n,x)=>n+x.approvedCount,0);
             const summary=getElement('lrrComplianceSummary');
-            if(summary)summary.innerHTML=[['Requirements',counts.required],['Approved',counts.approved],['Submitted',counts.submitted],['Missing',counts.missing]].map(([k,v])=>'<div class="lrr-feature-kpi"><small>'+k+'</small><strong>'+v+'</strong></div>').join('');
-            compliance.innerHTML=items.length?'<table><thead><tr><th>School / Programme</th><th>Intake</th><th>Block / Term</th><th>Required document</th><th>Due</th><th>Compliance</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+fmt(x.school+' '+(x.program||''))+'</td><td>'+fmt(x.intake_year)+'</td><td>'+fmt(x.block||x.term)+'</td><td>'+fmt(humanize(x.document_type))+'</td><td>'+fmt(formatDate(x.due_at))+'</td><td>'+statusBadge(x.approved?'approved':x.submitted?'submitted':'returned')+'</td></tr>').join('')+'</tbody></table>':'<div class="lrr-feature-empty">No formal requirements configured yet. Add requirement rules to calculate compliance against expected documents.</div>';
+            if(summary)summary.innerHTML=[['Expected lecturer submissions',totalExpected],['Submitted',totalSubmitted],['Approved',totalApproved],['Outstanding',Math.max(0,totalExpected-totalSubmitted)]].map(([k,v])=>'<div class="lrr-feature-kpi"><small>'+k+'</small><strong>'+v+'</strong></div>').join('');
+            compliance.innerHTML=items.length?'<table><thead><tr><th>School / Programme</th><th>Intake</th><th>Block / Term</th><th>Required document</th><th>Due</th><th>Lecturer compliance</th><th>Outstanding lecturers</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+fmt(x.school+' '+(x.program||''))+'</td><td>'+fmt(x.intake_year)+'</td><td>'+fmt(x.block||x.term)+'</td><td>'+fmt(humanize(x.document_type))+(x.unit_code?'<small>'+fmt(x.unit_code+' · '+x.unit_name)+'</small>':'')+'</td><td>'+fmt(formatDate(x.due_at))+'</td><td><strong>'+x.submittedCount+'/'+x.expected+' submitted</strong><small>'+x.approvedCount+'/'+x.expected+' approved</small></td><td>'+fmt(x.missing.length?x.missing.join(', '):x.expected?'None':'No matching lecturer assignments')+'</td></tr>').join('')+'</tbody></table>':'<div class="lrr-feature-empty">No formal requirements configured yet. Add requirement rules to calculate compliance against assigned lecturers and units.</div>';
         }
         const people=new Map();
         rows.forEach(row=>{const key=row.lecturer_user_id||row.lecturer_email||row.lecturer_name;const p=people.get(key)||{name:row.lecturer_name,email:row.lecturer_email,staff:row.lecturer_id,total:0,approved:0,returned:0,overdue:0};p.total++;if(row.status==='approved')p.approved++;if(row.status==='returned'||row.status==='rejected')p.returned++;people.set(key,p);});
