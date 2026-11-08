@@ -2783,14 +2783,40 @@
     }
 
     function removeDashboardTeachingOverview() {
-        // The institutional Teaching & Learning summary belongs only in the
-        // dedicated Teaching Portfolio Review workspace, never on Dashboard.
-        const dashboardOverview = document.getElementById('nchsmPortfolioOverview');
-        if (dashboardOverview) dashboardOverview.remove();
+        // The overview has appeared with different wrappers across dashboard
+        // revisions. Remove it by its distinctive content, not one assumed ID.
+        const known = document.getElementById('nchsmPortfolioOverview');
+        if (known) known.remove();
+
+        const headings = Array.from(document.querySelectorAll('h1,h2,h3,h4,[role="heading"]'));
+        const heading = headings.find(el => /teaching\s*&\s*learning\s+overview/i.test(el.textContent || ''));
+        if (heading) {
+            let node = heading;
+            while (node && node !== document.body) {
+                const content = (node.innerText || node.textContent || '').replace(/\s+/g, ' ').trim();
+                if (/teaching\s*&\s*learning\s+overview/i.test(content) &&
+                    /school of nursing/i.test(content) &&
+                    /school of tvet/i.test(content) &&
+                    /open document centre/i.test(content)) {
+                    node.remove();
+                    return true;
+                }
+                node = node.parentElement;
+            }
+        }
+        return false;
+    }
+
+    function watchForDashboardTeachingOverview() {
+        removeDashboardTeachingOverview();
+        if (window.__nchsmTeachingOverviewRemovalObserver) return;
+        const observer = new MutationObserver(() => removeDashboardTeachingOverview());
+        observer.observe(document.body, { childList: true, subtree: true });
+        window.__nchsmTeachingOverviewRemovalObserver = observer;
     }
 
     function initialize() {
-        removeDashboardTeachingOverview();
+        watchForDashboardTeachingOverview();
         injectStyles();
         injectManagementDashboard();
         bindFilters();
