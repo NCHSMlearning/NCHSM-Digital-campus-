@@ -720,10 +720,6 @@
             #lrrManagementDashboard .lrr-hero{position:relative;overflow:hidden;background:linear-gradient(118deg,#092744 0%,#124b66 62%,#087f78 100%);color:white;border-radius:18px;padding:22px;margin-bottom:14px;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap;box-shadow:0 12px 28px rgba(9,39,68,.16)}
             #lrrManagementDashboard .lrr-hero:after{content:"";position:absolute;width:230px;height:230px;border:1px solid rgba(255,255,255,.12);border-radius:50%;right:18%;top:-150px;box-shadow:0 0 0 24px rgba(255,255,255,.035),0 0 0 50px rgba(255,255,255,.025);pointer-events:none}
             #lrrManagementDashboard .lrr-brand{display:flex;align-items:center;gap:15px;position:relative;z-index:1;min-width:0}
-            #lrrManagementDashboard .lrr-logo-wrap{width:70px;height:70px;flex:0 0 70px;background:#fff;border-radius:15px;padding:7px;display:grid;place-items:center;box-shadow:0 5px 16px rgba(0,0,0,.16);position:relative}
-            #lrrManagementDashboard .lrr-logo-wrap img{display:block;width:100%;height:100%;object-fit:contain}
-            #lrrManagementDashboard .lrr-logo-fallback{display:none;color:#0b3452;font-size:15px;font-weight:900}
-            #lrrManagementDashboard .lrr-logo-wrap.logo-fallback .lrr-logo-fallback{display:block}
             #lrrManagementDashboard .lrr-brand-copy{min-width:0}
             #lrrManagementDashboard .lrr-eyebrow{display:block;font-size:9px;letter-spacing:.12em;font-weight:850;color:#c7e8e9;margin-bottom:7px}
             #lrrManagementDashboard .lrr-hero h3{margin:0;font-size:23px;letter-spacing:-.03em;font-weight:850}
@@ -780,7 +776,6 @@
             #lrrManagementDashboard .lrr-school small{display:block;overflow-wrap:anywhere}
             @media(max-width:700px){
               #lrrManagementDashboard .lrr-hero{padding:16px;border-radius:13px;align-items:flex-start}
-              #lrrManagementDashboard .lrr-logo-wrap{width:54px;height:54px;flex-basis:54px;border-radius:12px}
               #lrrManagementDashboard .lrr-eyebrow{font-size:8px;line-height:1.4}
               #lrrManagementDashboard .lrr-hero h3{font-size:18px}
               #lrrManagementDashboard .lrr-hero-actions{width:100%;justify-content:space-between}
@@ -809,7 +804,6 @@
           </style>
           <div class="lrr-hero">
             <div class="lrr-brand">
-              <div class="lrr-logo-wrap"><img src="https://nchsm.co.ke/images/Logo_NCHSM.png" alt="Nakuru College of Health Sciences and Management logo" loading="eager" onerror="this.style.display='none';this.parentElement.classList.add('logo-fallback')"><span class="lrr-logo-fallback">NCHSM</span></div>
               <div class="lrr-brand-copy"><span class="lrr-eyebrow">NAKURU COLLEGE OF HEALTH SCIENCES &amp; MANAGEMENT</span><h3>Teaching &amp; Learning</h3><p>Academic quality · lecturer portfolios · school compliance</p></div>
             </div>
             <div class="lrr-hero-actions"><span class="lrr-live"><i></i> Academic workspace</span><button class="lrr-primary" id="lrrRefreshAll" type="button"><i class="fas fa-sync-alt"></i> Refresh data</button></div>
