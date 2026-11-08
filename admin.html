@@ -1391,9 +1391,7 @@
                         <span>Academic</span>
                         <i class="fas fa-chevron-down"></i>
                     </a>
-                    <ul class="dropdown-menu">
-                        <li><a href="#" data-tab="courses"><i class="fas fa-book"></i> Courses</a></li>
-                        <li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
+                    <ul class="dropdown-menu"><li><a href="#" data-tab="unit-management"><i class="fas fa-plus-circle"></i> Unit Registration</a></li>
                         <li><a href="#" data-tab="lecturer-assignment"><i class="fas fa-user-tie"></i> HOD Unit Allocation <span class="badge-success">HOD</span></a></li>
                         <li><a href="#" data-tab="cats"><i class="fas fa-file-alt"></i> CATS/Exams</a></li>
                     </ul>
@@ -1506,12 +1504,6 @@
                         <h3>Today's Check-ins</h3>
                         <p class="data" id="totalDailyCheckIns">--</p>
                         <p class="minor-data">Total Check-ins Today</p>
-                    </div>
-                    <div class="card card-success" onclick="showTab('courses')">
-                        <i class="fas fa-book card-icon"></i>
-                        <h3>Total Courses</h3>
-                        <p class="data" id="totalCourses">--</p>
-                        <p class="minor-data">Across all programs</p>
                     </div>
                     <div class="card card-primary" onclick="showTab('unit-management')">
                         <i class="fas fa-book-open card-icon"></i>
@@ -1684,67 +1676,6 @@
                         <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Program</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody id="students-table-body">
                             <tr><td colspan="6"><div class="loading-spinner"></div> Loading students...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- ============================================================ -->
-            <!-- COURSES SECTION                                               -->
-            <!-- ============================================================ -->
-            <section id="courses" class="tab-content">
-                <h2><i class="fas fa-book"></i> Courses Management</h2>
-                <form id="add-course-form" class="inline-form">
-                    <input type="text" id="course-name" placeholder="Course Name" required>
-                    <input type="text" id="course-unit-code" placeholder="Unit Code" required>
-                    <textarea id="course-description" placeholder="Description" rows="2"></textarea>
-                    <select id="course-program" required>
-                        <option value="">-- Select Program --</option>
-                        <option value="KRCHN">KRCHN Nursing</option>
-                        <optgroup label="TVET Programs">
-                            <option value="DPOTT">DPOTT</option><option value="DCH">DCH</option>
-                            <option value="DHRIT">DHRIT</option><option value="DSL">DSL</option>
-                            <option value="DSW">DSW</option><option value="DCJS">DCJS</option>
-                            <option value="DHSS">DHSS</option><option value="DICT">DICT</option>
-                            <option value="DME">DME</option>
-                            <option value="CPOTT">CPOTT</option><option value="CCH">CCH</option>
-                            <option value="CHRIT">CHRIT</option><option value="CPC">CPC</option>
-                            <option value="CSL">CSL</option><option value="CSW">CSW</option>
-                            <option value="CCJS">CCJS</option><option value="CAG">CAG</option>
-                            <option value="CHSS">CHSS</option><option value="CICT">CICT</option>
-                            <option value="ACH">ACH</option><option value="AAG">AAG</option>
-                            <option value="ASW">ASW</option><option value="CCA">CCA</option>
-                            <option value="PTE">PTE</option>
-                        </optgroup>
-                    </select>
-                    <select id="course-intake">
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026">2026</option>
-                        <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                    </select>
-                    <select id="course-block">
-                        <option value="Introductory">Introductory</option>
-                        <option value="Block 1">Block 1</option>
-                        <option value="Block 2">Block 2</option>
-                        <option value="Block 3">Block 3</option>
-                        <option value="Block 4">Block 4</option>
-                        <option value="Final">Final</option>
-                    </select>
-                    <button type="submit" class="btn-action">Add Course</button>
-                </form>
-                
-                <div class="toolbar">
-                    <input type="text" id="course-search" placeholder="Search courses..." onkeyup="filterTable('course-search', 'courses-table', [0,1,2])">
-                    <button onclick="exportTableToCSV('courses-table', 'Courses_Export.csv')" class="btn-action">Export CSV</button>
-                    <button onclick="loadAllCourses()" class="btn-action">Refresh</button>
-                </div>
-                <div class="table-responsive">
-                    <table id="courses-table">
-                        <thead><tr><th>Course Name</th><th>Unit Code</th><th>Program</th><th>Intake</th><th>Actions</th></tr></thead>
-                        <tbody id="courses-table-body">
-                            <tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...</td></tr>
                         </tbody>
                     </table>
                 </div>
