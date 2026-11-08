@@ -734,6 +734,28 @@
             #lrrManagementDashboard input,#lrrManagementDashboard select{min-width:0;width:100%;height:40px;border:1px solid #cbd5e1;border-radius:8px;padding:0 10px;background:#fff}
             #lrrManagementDashboard .lrr-primary{height:40px;border:0;border-radius:8px;padding:0 14px;background:#0f766e;color:#fff;font-weight:800}
             #lrrManagementDashboard .lrr-folder-note{font-size:12px;color:#64748b;margin:0 0 10px}
+            #lrrManagementDashboard .lrr-subnav{position:sticky;top:0;z-index:5;display:flex;gap:6px;overflow-x:auto;white-space:nowrap;padding:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:13px;scrollbar-width:none}
+            #lrrManagementDashboard .lrr-subtab{flex:0 0 auto;border:0;background:#f1f5f9;color:#475569;border-radius:8px;padding:8px 11px;font-size:11px;font-weight:800}
+            #lrrManagementDashboard .lrr-subtab.active{background:#0f766e;color:white}
+            #lrrManagementDashboard .lrr-folder-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:8px 0 16px}
+            #lrrManagementDashboard .lrr-folder-grid .lrr-school{min-height:76px;box-shadow:0 2px 8px rgba(15,23,42,.035)}
+            #lrrManagementDashboard .lrr-analytics{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:15px;margin:0 0 14px}
+            #lrrManagementDashboard .lrr-analytics-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}
+            #lrrManagementDashboard .lrr-analytics-head strong{display:block;font-size:14px}
+            #lrrManagementDashboard .lrr-analytics-head small{display:block;color:#64748b;margin-top:3px}
+            #lrrManagementDashboard .lrr-analytics-head span{font-size:11px;color:#64748b}
+            #lrrManagementDashboard .lrr-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+            #lrrManagementDashboard .lrr-chart-card{border:1px solid #edf1f5;border-radius:11px;padding:12px;min-width:0}
+            #lrrManagementDashboard .lrr-chart-card>strong{font-size:12px}
+            #lrrManagementDashboard .lrr-bars{display:grid;gap:9px;margin-top:12px}
+            #lrrManagementDashboard .lrr-bar-row{display:grid;grid-template-columns:92px minmax(0,1fr) 26px;gap:7px;align-items:center;font-size:10px;color:#64748b}
+            #lrrManagementDashboard .lrr-bar-track{height:9px;background:#eef2f7;border-radius:20px;overflow:hidden}
+            #lrrManagementDashboard .lrr-bar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,#0f766e,#38bdf8);min-width:0}
+            #lrrManagementDashboard .lrr-bar-value{font-weight:800;text-align:right;color:#172033}
+            #lrrManagementDashboard [id$="Area"],#lrrManagementDashboard #lrrSchoolOverview{scroll-margin-top:70px}
+            #lecturer-reports-review #lrrTotalCount,#lecturer-reports-review #lrrSubmittedCount,#lecturer-reports-review #lrrUnderReviewCount,#lecturer-reports-review #lrrReturnedCount,#lecturer-reports-review #lrrApprovedCount{display:none!important}
+            #lecturer-reports-review .lrr-legacy-stat-card{display:none!important}
+
             #lrrManagementDashboard,#lrrManagementDashboard *{box-sizing:border-box;min-width:0}
             #lrrManagementDashboard{width:100%;max-width:100%;overflow:hidden}
             #lrrManagementDashboard .lrr-school-grid,#lrrManagementDashboard .lrr-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -746,6 +768,9 @@
               #lrrManagementDashboard .lrr-hero{padding:16px;border-radius:13px;align-items:flex-start}
               #lrrManagementDashboard .lrr-hero h3{font-size:17px}
               #lrrManagementDashboard .lrr-school-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+              #lrrManagementDashboard .lrr-folder-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+              #lrrManagementDashboard .lrr-chart-grid{grid-template-columns:1fr}
+              #lrrManagementDashboard .lrr-bar-row{grid-template-columns:82px minmax(0,1fr) 24px}
               #lrrManagementDashboard .lrr-school-grid [data-school=""]{grid-column:1/-1}
               #lrrManagementDashboard .lrr-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
               #lrrManagementDashboard .lrr-stat{padding:12px}
@@ -760,22 +785,37 @@
               #lrrManagementDashboard .lrr-folder-note{line-height:1.5}
             }
             @media(max-width:360px){
-              #lrrManagementDashboard .lrr-school-grid,#lrrManagementDashboard .lrr-stat-grid{grid-template-columns:minmax(0,1fr)}
+              #lrrManagementDashboard .lrr-school-grid,#lrrManagementDashboard .lrr-stat-grid,#lrrManagementDashboard .lrr-folder-grid{grid-template-columns:minmax(0,1fr)}
               #lrrManagementDashboard .lrr-school-grid [data-school=""]{grid-column:auto}
             }
           </style>
           <div class="lrr-hero"><div><h3>Teaching &amp; Learning Control Centre</h3><p>School-level oversight · lecturer submissions · document compliance · review deadlines</p></div><button class="lrr-primary" id="lrrRefreshAll" type="button">↻ Refresh overview</button></div>
+          <nav class="lrr-subnav" aria-label="Teaching workspace sections">
+            <button type="button" class="lrr-subtab active" data-jump="lrrSchoolOverview">Overview</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrFolderArea">School folders</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrDeadlineArea">Deadlines</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrSubmissionArea">Submissions</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrAnalyticsArea">Analytics</button>
+          </nav>
+          <div id="lrrSchoolOverview"></div>
           <div class="lrr-school-grid">
             <button type="button" class="lrr-school active" data-school=""><span class="ico">▦</span><span><strong id="lrrAllSchoolCount">0</strong><small>All schools · submissions</small></span></button>
             <button type="button" class="lrr-school" data-school="Nursing"><span class="ico">✚</span><span><strong id="lrrNursingCount">0</strong><small>Nursing School</small></span></button>
             <button type="button" class="lrr-school" data-school="TVET"><span class="ico">⚙</span><span><strong id="lrrTVETCount">0</strong><small>TVET School</small></span></button>
           </div>
-          <div class="lrr-stat-grid">
+          <div class="lrr-stat-grid" id="lrrPrimaryStats">
             <div class="lrr-stat"><span>Pending</span><strong id="lrrPendingMetric">0</strong></div>
             <div class="lrr-stat"><span>Due / Overdue</span><strong id="lrrDueMetric">0</strong></div>
             <div class="lrr-stat"><span>In Progress</span><strong id="lrrProgressMetric">0</strong></div>
             <div class="lrr-stat"><span>Awaiting Review</span><strong id="lrrAwaitingMetric">0</strong></div>
             <div class="lrr-stat"><span>Approved</span><strong id="lrrApprovedMetric">0</strong></div>
+          </div>
+          <div id="lrrAnalyticsArea" class="lrr-analytics">
+            <div class="lrr-analytics-head"><div><strong>Submission analytics</strong><small>Live distribution for the selected school</small></div><span id="lrrAnalyticsTotal">0 records</span></div>
+            <div class="lrr-chart-grid">
+              <div class="lrr-chart-card"><strong>Workflow status</strong><div id="lrrStatusChart" class="lrr-bars"></div></div>
+              <div class="lrr-chart-card"><strong>School comparison</strong><div id="lrrSchoolChart" class="lrr-bars"></div></div>
+            </div>
           </div>
           <div class="lrr-toolbar" aria-label="Quick submission filters">
             <strong style="font-size:12px;margin-right:5px">Quick filters</strong>
@@ -786,6 +826,7 @@
             <button type="button" class="lrr-chip" data-quick="awaiting">Awaiting review</button>
             <button type="button" class="lrr-chip" data-quick="approved">Approved</button>
           </div>
+          <div id="lrrDeadlineArea"></div>
           <div class="lrr-stat" style="margin-bottom:13px">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div><strong style="font-size:15px">Set submission deadlines</strong><div style="font-size:12px;color:#64748b;margin-top:4px">Create school, document and unit-specific due dates for lecturer submissions.</div></div><span id="lrrDeadlineCount" style="font-size:12px;color:#64748b">0 active deadlines</span></div>
             <form id="lrrDeadlineForm" class="lrr-deadline">
@@ -797,7 +838,7 @@
             </form>
             <div id="lrrDeadlineList" style="margin-top:12px;font-size:12px;color:#64748b">Loading deadlines…</div>
           </div>
-          <p class="lrr-folder-note">School folders organise submitted teaching evidence by school, then by unit and document type. Select a school folder to filter its files.</p><div id="lrrFolderGrid" class="lrr-school-grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-top:8px"></div>
+          <div id="lrrFolderArea"></div><p class="lrr-folder-note">Browse by school, then open a unit folder to see its document collections.</p><div id="lrrFolderGrid" class="lrr-folder-grid" style="margin-top:8px"></div>
         `;
         const heading = section.querySelector('h2')?.parentElement?.parentElement;
         if (heading?.nextSibling) section.insertBefore(panel, heading.nextSibling); else section.insertBefore(panel, section.firstChild);
@@ -814,6 +855,10 @@
             applyFilters();
         }));
         panel.querySelector('#lrrDeadlineForm')?.addEventListener('submit',saveDeadline);
+        panel.querySelectorAll('[data-jump]').forEach(btn=>btn.addEventListener('click',()=>{
+            panel.querySelectorAll('[data-jump]').forEach(x=>x.classList.toggle('active',x===btn));
+            const target=getElement(btn.dataset.jump);if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+        }));
         renderManagementDashboard();
     }
 
@@ -838,6 +883,21 @@
         setText('lrrAwaitingMetric',count(r=>['submitted','resubmitted'].includes(r.status)));
         setText('lrrApprovedMetric',count(r=>r.status==='approved'));
         setText('lrrDeadlineCount',deadlineRows.length+' active deadlines');
+        const statusRows=[
+          ['Pending',count(r=>['draft','returned'].includes(r.status))],
+          ['Awaiting',count(r=>['submitted','resubmitted'].includes(r.status))],
+          ['In review',count(r=>r.status==='under_review')],
+          ['Approved',count(r=>r.status==='approved')],
+          ['Rejected',count(r=>r.status==='rejected')]
+        ];
+        const maxStatus=Math.max(1,...statusRows.map(x=>x[1]));
+        const statusChart=getElement('lrrStatusChart');
+        if(statusChart)statusChart.innerHTML=statusRows.map(([label,value])=>'<div class="lrr-bar-row"><span>'+label+'</span><div class="lrr-bar-track"><div class="lrr-bar-fill" style="width:'+Math.round(value/maxStatus*100)+'%"></div></div><b class="lrr-bar-value">'+value+'</b></div>').join('');
+        const schoolRows=[['Nursing',state.rows.filter(r=>schoolOf(r)==='Nursing').length],['TVET',state.rows.filter(r=>schoolOf(r)==='TVET').length]];
+        const maxSchool=Math.max(1,...schoolRows.map(x=>x[1]));
+        const schoolChart=getElement('lrrSchoolChart');
+        if(schoolChart)schoolChart.innerHTML=schoolRows.map(([label,value])=>'<div class="lrr-bar-row"><span>'+label+'</span><div class="lrr-bar-track"><div class="lrr-bar-fill" style="width:'+Math.round(value/maxSchool*100)+'%"></div></div><b class="lrr-bar-value">'+value+'</b></div>').join('');
+        setText('lrrAnalyticsTotal',rows.length+' records');
         const folders=getElement('lrrFolderGrid');
         if(folders){
             const grouped=new Map();
@@ -907,10 +967,14 @@
             'lecturerReportsApprovedCount'
         ], counts.approved);
 
-        setCounter([
-            'lrrTotalCount',
-            'lecturerReportsTotalCount'
-        ], state.rows.length);
+        ['lrrTotalCount','lrrSubmittedCount','lrrUnderReviewCount','lrrReturnedCount','lrrApprovedCount'].forEach(id=>{
+            const el=getElement(id);
+            const card=el?.parentElement?.parentElement;
+            if(card)card.style.display='none';
+        });
+        ['lecturerReportsTotalCount','lecturerReportsSubmittedCount','lecturerReportsUnderReviewCount','lecturerReportsReturnedCount','lecturerReportsApprovedCount'].forEach(id=>{
+            const el=getElement(id);if(el){const card=el.parentElement?.parentElement;if(card)card.style.display='none';}
+        });
     }
 
     function setCounter(ids, value) {
