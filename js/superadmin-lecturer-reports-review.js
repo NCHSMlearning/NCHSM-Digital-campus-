@@ -834,8 +834,8 @@
           <div id="lrrAnalyticsArea" class="lrr-analytics">
             <div class="lrr-analytics-head"><div><strong>Submission analytics</strong><small>Live distribution for the selected school</small></div><span id="lrrAnalyticsTotal">0 records</span></div>
             <div class="lrr-chart-grid">
-              <div class="lrr-chart-card"><strong>Workflow status</strong><div id="lrrStatusChart" class="lrr-bars"></div></div>
-              <div class="lrr-chart-card"><strong>School comparison</strong><div id="lrrSchoolChart" class="lrr-bars"></div></div>
+              <div class="lrr-chart-card"><strong>Submission status</strong><div id="lrrStatusChart" class="lrr-visual-chart"></div></div>
+              <div class="lrr-chart-card"><strong>Nursing vs TVET</strong><div id="lrrSchoolChart" class="lrr-visual-chart"></div></div>
             </div>
           </div>
           <div class="lrr-toolbar" aria-label="Quick submission filters">
@@ -847,13 +847,14 @@
             <button type="button" class="lrr-chip" data-quick="awaiting">Awaiting review</button>
             <button type="button" class="lrr-chip" data-quick="approved">Approved</button>
           </div>
+          <div class="lrr-export-toolbar"><div><strong>Reports export</strong><small>Exports respect the current school and filters</small></div><button type="button" class="lrr-export-btn" id="lrrExportReports">↓ Export filtered reports</button></div>
           <div id="lrrDeadlineArea"></div>
           <div class="lrr-stat" style="margin-bottom:13px">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div><strong style="font-size:15px">Set submission deadlines</strong><div style="font-size:12px;color:#64748b;margin-top:4px">Create school, document and unit-specific due dates for lecturer submissions.</div></div><span id="lrrDeadlineCount" style="font-size:12px;color:#64748b">0 active deadlines</span></div>
             <form id="lrrDeadlineForm" class="lrr-deadline">
               <label>School<select id="lrrDeadlineSchool"><option value="Nursing">Nursing</option><option value="TVET">TVET</option></select></label>
               <label id="lrrDeadlineProgramWrap" style="display:none">Programme<select id="lrrDeadlineProgram" disabled><option value="">Select programme</option></select></label>
-              <label id="lrrDeadlineIntakeWrap">Intake / academic year<select id="lrrDeadlineIntake" required><option value="">Select intake year</option></select></label>
+              <label id="lrrDeadlineIntakeWrap">Intake / academic year<select id="lrrDeadlineIntake" required><option value="">Select intake year</option><option value="2030">2030</option><option value="2029">2029</option><option value="2028">2028</option><option value="2027">2027</option><option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option></select></label>
               <label id="lrrDeadlineBlockWrap">Block<select id="lrrDeadlineBlock"><option value="">Select Nursing block</option><option value="Introductory">Introductory</option><option value="Block 1">Block 1</option><option value="Block 2">Block 2</option><option value="Block 3">Block 3</option><option value="Block 4">Block 4</option><option value="Block 5">Block 5</option></select></label>
               <label id="lrrDeadlineTermWrap" style="display:none">Term<select id="lrrDeadlineTerm"><option value="">Select term</option><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select></label>
               <label>Document type<select id="lrrDeadlineType"><option value="">All document types</option><option value="scheme_of_work">Scheme of Work</option><option value="lesson_plan">Lesson Plan</option><option value="record_of_work">Record of Work</option><option value="instructional_materials">Teaching Materials</option><option value="course_outline">Course Outline</option><option value="examination_question_paper">Examination Paper</option><option value="marking_scheme">Marking Scheme</option><option value="cat_1">CAT 1</option><option value="cat_2">CAT 2</option><option value="practical_exam_1">Practical Exam</option></select></label>
@@ -863,11 +864,13 @@
             </form>
             <div id="lrrDeadlineList" style="margin-top:12px;font-size:12px;color:#64748b">Loading deadlines…</div>
           </div>
-          <div id="lrrFolderArea"></div><p class="lrr-folder-note">Browse by school, then open a unit folder to see its document collections.</p><div id="lrrFolderGrid" class="lrr-folder-grid" style="margin-top:8px"></div>
+          <div id="lrrFolderArea"></div><div class="lrr-folder-toolbar"><div><strong>School document folders</strong><small>Browse, open and export document collections</small></div><button type="button" class="lrr-export-btn" id="lrrExportFolders">↓ Export folders</button></div><p class="lrr-folder-note">Browse by school, then open a unit folder to see its document collections.</p><div id="lrrFolderGrid" class="lrr-folder-grid" style="margin-top:8px"></div>
         `;
         const heading = section.querySelector('h2')?.parentElement?.parentElement;
         if (heading?.nextSibling) section.insertBefore(panel, heading.nextSibling); else section.insertBefore(panel, section.firstChild);
         panel.querySelector('#lrrRefreshAll')?.addEventListener('click', async()=>{await loadReports();});
+        panel.querySelector('#lrrExportReports')?.addEventListener('click',()=>exportCsv('NCHSM-Teaching-Reports-'+new Date().toISOString().slice(0,10)+'.csv',reportExportRows(state.filteredRows||[])));
+        panel.querySelector('#lrrExportFolders')?.addEventListener('click',()=>exportCsv('NCHSM-School-Folders-'+new Date().toISOString().slice(0,10)+'.csv',(state.rows||[]).map(row=>({school:schoolOf(row),folder:row.unit_name||row.subject_code||'Unassigned unit',unit_code:row.subject_code,document:row.title||humanize(row.document_type||row.report_type),document_type:row.document_type,lecturer:row.lecturer_name,status:row.status,programme:row.program,block:row.block,intake_year:row.intake_year||row.academic_year,submitted_at:row.submitted_at,submission_id:row.id}))));
         panel.querySelectorAll('[data-school]').forEach(btn=>btn.addEventListener('click',()=>{
             activeSchool=btn.dataset.school||'';
             panel.querySelectorAll('[data-school]').forEach(x=>x.classList.toggle('active',x===btn));
@@ -957,6 +960,30 @@
         ]);
     }
 
+    function exportCsv(filename, rows) {
+        if (!Array.isArray(rows) || !rows.length) { showModuleToast('There are no records to export.','info'); return; }
+        const headers=[...new Set(rows.flatMap(row=>Object.keys(row)))];
+        const quote=value=>{const raw=value==null?'':Array.isArray(value)?value.join('; '):typeof value==='object'?JSON.stringify(value):String(value);return '"'+raw.replace(/"/g,'""')+'"';};
+        const csv=[headers.map(quote).join(','),...rows.map(row=>headers.map(key=>quote(row[key])).join(','))].join('\r\n');
+        const blob=new Blob(['\uFEFF',csv],{type:'text/csv;charset=utf-8;'});
+        const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        showModuleToast('Export ready: '+filename,'success');
+    }
+    function reportExportRows(rows) {
+        return rows.map(row=>({school:schoolOf(row),lecturer:row.lecturer_name,staff_id:row.lecturer_id,email:row.lecturer_email,report_type:row.report_type,document_type:row.document_type,title:row.title,unit:row.unit_name,unit_code:row.subject_code,programme:row.program,block:row.block,intake_year:row.intake_year||row.academic_year,status:row.status,submitted_at:row.submitted_at,reviewed_at:row.reviewed_at,approved_at:row.approved_at,reviewer:row.reviewer_name,reviewer_comments:row.reviewer_comments,summary:row.summary,submission_id:row.id}));
+    }
+    function renderStatusVisual(rows) {
+        const host=getElement('lrrStatusChart');if(!host)return;
+        const items=[{label:'Pending',value:rows.filter(r=>['draft','returned'].includes(r.status)).length,color:'#f59e0b'},{label:'Awaiting review',value:rows.filter(r=>['submitted','resubmitted'].includes(r.status)).length,color:'#0d9488'},{label:'In review',value:rows.filter(r=>r.status==='under_review').length,color:'#3b82f6'},{label:'Approved',value:rows.filter(r=>r.status==='approved').length,color:'#16a34a'},{label:'Rejected',value:rows.filter(r=>r.status==='rejected').length,color:'#ef4444'}];
+        const total=items.reduce((n,x)=>n+x.value,0);let cursor=0;const stops=items.map(item=>{const start=total?cursor/total*100:0;cursor+=item.value;const end=total?cursor/total*100:0;return item.color+' '+start+'% '+end+'%';}).join(',');
+        host.innerHTML='<div class="lrr-donut-wrap"><div class="lrr-donut" style="background:'+(total?'conic-gradient('+stops+')':'#e9eef3')+'"><div><strong>'+total+'</strong><small>Submissions</small></div></div><div class="lrr-chart-legend">'+items.map(item=>'<div><i style="background:'+item.color+'"></i><span>'+item.label+'</span><b>'+item.value+'</b></div>').join('')+'</div></div>';
+    }
+    function renderSchoolVisual() {
+        const host=getElement('lrrSchoolChart');if(!host)return;
+        const items=[{label:'Nursing',value:state.rows.filter(r=>schoolOf(r)==='Nursing').length,color:'#0d9488'},{label:'TVET',value:state.rows.filter(r=>schoolOf(r)==='TVET').length,color:'#2563eb'}];
+        const max=Math.max(1,...items.map(x=>x.value));
+        host.innerHTML='<div class="lrr-school-bars">'+items.map(item=>'<div class="lrr-school-bar"><div class="lrr-school-bar-label"><strong>'+item.label+'</strong><b>'+item.value+'</b></div><div class="lrr-school-bar-track"><span style="width:'+Math.max(item.value?2:0,item.value/max*100)+'%;background:'+item.color+'"></span></div><small>'+(state.rows.length?Math.round(item.value/state.rows.length*100):0)+'% of all submissions</small></div>').join('')+'</div>';
+    }
     function renderManagementDashboard() {
         const panel=getElement('lrrManagementDashboard'); if(!panel)return;
         const rows=activeSchool?state.rows.filter(r=>schoolOf(r)===activeSchool):state.rows;
@@ -982,20 +1009,8 @@
         setText('lrrAwaitingMetric',count(r=>['submitted','resubmitted'].includes(r.status)));
         setText('lrrApprovedMetric',count(r=>r.status==='approved'));
         setText('lrrDeadlineCount',deadlineRows.length+' active deadlines');
-        const statusRows=[
-          ['Pending',count(r=>['draft','returned'].includes(r.status))],
-          ['Awaiting',count(r=>['submitted','resubmitted'].includes(r.status))],
-          ['In review',count(r=>r.status==='under_review')],
-          ['Approved',count(r=>r.status==='approved')],
-          ['Rejected',count(r=>r.status==='rejected')]
-        ];
-        const maxStatus=Math.max(1,...statusRows.map(x=>x[1]));
-        const statusChart=getElement('lrrStatusChart');
-        if(statusChart)statusChart.innerHTML=statusRows.map(([label,value])=>'<div class="lrr-bar-row"><span>'+label+'</span><div class="lrr-bar-track"><div class="lrr-bar-fill" style="width:'+Math.round(value/maxStatus*100)+'%"></div></div><b class="lrr-bar-value">'+value+'</b></div>').join('');
-        const schoolRows=[['Nursing',state.rows.filter(r=>schoolOf(r)==='Nursing').length],['TVET',state.rows.filter(r=>schoolOf(r)==='TVET').length]];
-        const maxSchool=Math.max(1,...schoolRows.map(x=>x[1]));
-        const schoolChart=getElement('lrrSchoolChart');
-        if(schoolChart)schoolChart.innerHTML=schoolRows.map(([label,value])=>'<div class="lrr-bar-row"><span>'+label+'</span><div class="lrr-bar-track"><div class="lrr-bar-fill" style="width:'+Math.round(value/maxSchool*100)+'%"></div></div><b class="lrr-bar-value">'+value+'</b></div>').join('');
+        renderStatusVisual(rows);
+        renderSchoolVisual();
         setText('lrrAnalyticsTotal',rows.length+' records');
         const folders=getElement('lrrFolderGrid');
         if(folders){
@@ -1045,7 +1060,7 @@
                     <section class="lrr-drive-open">
                         <div class="lrr-drive-open-head">
                             <div><button type="button" class="lrr-drive-back" data-folder-back>← All folders</button><h3>📁 ${escapeHtml(item.unit)}</h3><p>${escapeHtml(item.school)} · ${item.rows.length} documents</p></div>
-                            <span class="lrr-drive-pill">${item.rows.length} files</span>
+                            <div style="display:flex;gap:7px;align-items:center"><button type="button" class="lrr-export-btn" data-export-folder>↓ Export</button><span class="lrr-drive-pill">${item.rows.length} files</span></div>
                         </div>
                         <div class="lrr-drive-files">${item.rows.slice().sort((a,b)=>new Date(b.submitted_at||b.created_at||0)-new Date(a.submitted_at||a.created_at||0)).map(row=>`
                             <button type="button" class="lrr-drive-file" data-open-submission="${escapeAttr(row.id)}">
@@ -1055,6 +1070,7 @@
                             </button>`).join('')}</div>
                     </section>`;
                 area.querySelector('[data-folder-back]')?.addEventListener('click',()=>{area.innerHTML='';folders.style.display='block';if(folderNote)folderNote.style.display='';});
+                area.querySelector('[data-export-folder]')?.addEventListener('click',()=>exportCsv('NCHSM-'+item.school+'-'+item.unit.replace(/[^a-z0-9]+/gi,'-')+'.csv',reportExportRows(item.rows)));
                 area.querySelectorAll('[data-open-submission]').forEach(file=>file.addEventListener('click',()=>openSubmission(file.dataset.openSubmission)));
                 area.scrollIntoView({behavior:'smooth',block:'start'});
             }));
@@ -2509,6 +2525,27 @@
 
         style.textContent += `
             /* NCHSM Teaching & Learning workspace refresh */
+            #lrrManagementDashboard .lrr-export-toolbar,#lrrManagementDashboard .lrr-folder-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;margin:10px 0 14px;border:1px solid #e3ebf1;border-radius:14px;background:#fff}
+            #lrrManagementDashboard .lrr-export-toolbar strong,#lrrManagementDashboard .lrr-folder-toolbar strong{display:block;font-size:12px;color:#1d3449}
+            #lrrManagementDashboard .lrr-export-toolbar small,#lrrManagementDashboard .lrr-folder-toolbar small{display:block;margin-top:3px;font-size:10px;color:#718096}
+            #lrrManagementDashboard .lrr-export-btn{border:0;border-radius:10px;padding:10px 14px;background:linear-gradient(120deg,#0b6d70,#0e9487);color:#fff;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 5px 12px rgba(15,118,110,.15)}
+            #lrrManagementDashboard .lrr-visual-chart{padding:14px 4px 4px;min-height:190px}
+            #lrrManagementDashboard .lrr-donut-wrap{display:flex;align-items:center;justify-content:center;gap:22px;min-height:175px}
+            #lrrManagementDashboard .lrr-donut{width:150px;height:150px;flex:0 0 150px;border-radius:50%;display:grid;place-items:center;position:relative}
+            #lrrManagementDashboard .lrr-donut:before{content:"";position:absolute;inset:19px;border-radius:50%;background:#fff}
+            #lrrManagementDashboard .lrr-donut>div{position:relative;display:grid;text-align:center}
+            #lrrManagementDashboard .lrr-donut strong{font-size:27px;line-height:1.1;color:#142d43}
+            #lrrManagementDashboard .lrr-donut small{font-size:10px;color:#718096}
+            #lrrManagementDashboard .lrr-chart-legend{display:grid;gap:10px;min-width:130px}
+            #lrrManagementDashboard .lrr-chart-legend>div{display:grid;grid-template-columns:9px 1fr auto;align-items:center;gap:7px;font-size:10px;color:#64748b}
+            #lrrManagementDashboard .lrr-chart-legend i{width:8px;height:8px;border-radius:50%}
+            #lrrManagementDashboard .lrr-chart-legend b{color:#1d3449;font-size:11px}
+            #lrrManagementDashboard .lrr-school-bars{display:grid;gap:22px;padding:18px 5px}
+            #lrrManagementDashboard .lrr-school-bar-label{display:flex;justify-content:space-between;font-size:12px;color:#31475b}
+            #lrrManagementDashboard .lrr-school-bar-track{height:16px;margin:9px 0 5px;background:#edf2f6;border-radius:20px;overflow:hidden}
+            #lrrManagementDashboard .lrr-school-bar-track span{display:block;height:100%;border-radius:20px;transition:width .35s}
+            #lrrManagementDashboard .lrr-school-bar small{font-size:10px;color:#8090a0}
+            @media(max-width:600px){#lrrManagementDashboard .lrr-export-toolbar,#lrrManagementDashboard .lrr-folder-toolbar{align-items:flex-start;flex-direction:column}#lrrManagementDashboard .lrr-export-btn{width:100%}#lrrManagementDashboard .lrr-donut-wrap{gap:13px;flex-wrap:wrap}#lrrManagementDashboard .lrr-donut{width:125px;height:125px;flex-basis:125px}#lrrManagementDashboard .lrr-chart-grid{grid-template-columns:1fr}}
             #lrrManagementDashboard{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#14263b}
             #lrrManagementDashboard .lrr-hero{min-height:174px;padding:28px 30px;border-radius:22px;background:radial-gradient(circle at 85% 10%,rgba(48,193,178,.30),transparent 34%),linear-gradient(120deg,#082a49 0%,#0b4962 58%,#087f78 100%);box-shadow:0 18px 42px rgba(8,42,73,.18)}
             #lrrManagementDashboard .lrr-hero h3{font-size:clamp(23px,3vw,30px);letter-spacing:-.045em}
