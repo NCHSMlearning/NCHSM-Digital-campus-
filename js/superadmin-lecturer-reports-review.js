@@ -700,7 +700,7 @@
         if (!client) return;
         try {
             const { data, error } = await client.from(TABLE_DEADLINES)
-                .select('id,school,document_type,unit_code,unit_name,academic_year,block,due_at,created_at')
+                .select('id,school,program,term,document_type,unit_code,unit_name,academic_year,block,due_at,created_at')
                 .order('due_at', { ascending: true });
             if (error) throw error;
             deadlineRows = data || [];
@@ -850,6 +850,9 @@
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div><strong style="font-size:15px">Set submission deadlines</strong><div style="font-size:12px;color:#64748b;margin-top:4px">Create school, document and unit-specific due dates for lecturer submissions.</div></div><span id="lrrDeadlineCount" style="font-size:12px;color:#64748b">0 active deadlines</span></div>
             <form id="lrrDeadlineForm" class="lrr-deadline">
               <label style="font-size:11px;color:#64748b">School<select id="lrrDeadlineSchool"><option value="Nursing">Nursing</option><option value="TVET">TVET</option></select></label>
+              <label id="lrrDeadlineProgramWrap" style="font-size:11px;color:#64748b;display:none">TVET programme<select id="lrrDeadlineProgram" disabled><option value="">Select programme first</option></select></label>
+              <label id="lrrDeadlineBlockWrap" style="font-size:11px;color:#64748b">Nursing block<select id="lrrDeadlineBlock"><option value="">Select block</option><option value="Block 1">Block 1</option><option value="Block 2">Block 2</option><option value="Block 3">Block 3</option><option value="Block 4">Block 4</option><option value="Block 5">Block 5</option><option value="Block 6">Block 6</option></select></label>
+              <label id="lrrDeadlineTermWrap" style="font-size:11px;color:#64748b;display:none">TVET term<select id="lrrDeadlineTerm"><option value="">Select term</option><option value="Term 1">Term 1</option><option value="Term 2">Term 2</option><option value="Term 3">Term 3</option></select></label>
               <label style="font-size:11px;color:#64748b">Document type<select id="lrrDeadlineType"><option value="">All document types</option><option value="scheme_of_work">Scheme of Work</option><option value="lesson_plan">Lesson Plan</option><option value="record_of_work">Record of Work</option><option value="instructional_materials">Teaching Materials</option><option value="course_outline">Course Outline</option><option value="examination_question_paper">Examination Paper</option><option value="marking_scheme">Marking Scheme</option><option value="cat_1">CAT 1</option><option value="cat_2">CAT 2</option><option value="practical_exam_1">Practical Exam</option></select></label>
               <label style="font-size:11px;color:#64748b">Unit code (optional)<input id="lrrDeadlineUnit" placeholder="e.g. NCK 101"></label>
               <label style="font-size:11px;color:#64748b">Due date &amp; time<input id="lrrDeadlineDate" type="datetime-local" required></label>
@@ -874,6 +877,9 @@
             applyFilters();
         }));
         panel.querySelector('#lrrDeadlineForm')?.addEventListener('submit',saveDeadline);
+        panel.querySelector('#lrrDeadlineSchool')?.addEventListener('change',updateDeadlineScope);
+        populateDeadlinePrograms();
+        updateDeadlineScope();
         panel.querySelectorAll('[data-jump]').forEach(btn=>btn.addEventListener('click',()=>{
             panel.querySelectorAll('[data-jump]').forEach(x=>x.classList.toggle('active',x===btn));
             const target=getElement(btn.dataset.jump);if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
@@ -888,6 +894,9 @@
         const schoolRows = school => all.filter(row => schoolOf(row) === school);
         const matchingSubmission = deadline => all.some(row =>
             schoolOf(row) === deadline.school &&
+            (!deadline.program || normalizeProgram(row.program || row.department) === normalizeProgram(deadline.program)) &&
+            (!deadline.block || String(row.block || '').toLowerCase() === String(deadline.block).toLowerCase()) &&
+            (!deadline.term || String(row.term || '').toLowerCase() === String(deadline.term).toLowerCase()) &&
             (!deadline.document_type || row.document_type === deadline.document_type) &&
             (!deadline.unit_code || String(row.subject_code || '').toLowerCase() === String(deadline.unit_code).toLowerCase()) &&
             ['submitted','resubmitted','under_review','approved'].includes(row.status)
@@ -999,7 +1008,38 @@
             }));
         }
         const list=getElement('lrrDeadlineList');
-        if(list) list.innerHTML=deadlineRows.length?deadlineRows.map(d=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid #e2e8f0"><span><b>'+escapeHtml(d.school)+'</b> · '+escapeHtml(humanize(d.document_type||'All document types'))+(d.unit_code?' · '+escapeHtml(d.unit_code):'')+'</span><span>'+escapeHtml(formatDate(d.due_at))+'</span></div>').join(''):'No deadlines have been configured yet.';
+        if(list) list.innerHTML=deadlineRows.length?deadlineRows.map(d=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid #e2e8f0"><span><b>'+escapeHtml(d.school)+'</b> · '+escapeHtml(humanize(d.document_type||'All document types'))+(d.program?' · '+escapeHtml(d.program):'')+(d.block?' · '+escapeHtml(d.block):'')+(d.term?' · '+escapeHtml(d.term):'')+(d.unit_code?' · '+escapeHtml(d.unit_code):'')+'</span><span>'+escapeHtml(formatDate(d.due_at))+'</span></div>').join(''):'No deadlines have been configured yet.';
+    }
+
+    function populateDeadlinePrograms() {
+        const select = getElement('lrrDeadlineProgram');
+        if (!select) return;
+        const programs = [...new Set((state.rows || [])
+            .filter(row => schoolOf(row) === 'TVET')
+            .map(row => String(row.program || row.department || '').trim())
+            .filter(value => value && !/^(tvet|technical vocational education and training)$/i.test(value))) ]
+            .sort((a,b)=>a.localeCompare(b));
+        select.innerHTML = '<option value="">Select TVET programme</option>' +
+            programs.map(value => '<option value="'+escapeAttr(value)+'">'+escapeHtml(value)+'</option>').join('');
+        select.disabled = programs.length === 0;
+        if (!programs.length) select.innerHTML = '<option value="">No TVET programmes found in lecturer records</option>';
+    }
+
+    function updateDeadlineScope() {
+        const school = getElement('lrrDeadlineSchool')?.value || 'Nursing';
+        const nursing = school === 'Nursing';
+        const programWrap = getElement('lrrDeadlineProgramWrap');
+        const blockWrap = getElement('lrrDeadlineBlockWrap');
+        const termWrap = getElement('lrrDeadlineTermWrap');
+        if (programWrap) programWrap.style.display = nursing ? 'none' : '';
+        if (blockWrap) blockWrap.style.display = nursing ? '' : 'none';
+        if (termWrap) termWrap.style.display = nursing ? 'none' : '';
+        const program = getElement('lrrDeadlineProgram');
+        const block = getElement('lrrDeadlineBlock');
+        const term = getElement('lrrDeadlineTerm');
+        if (program) program.required = !nursing;
+        if (block) block.required = nursing;
+        if (term) term.required = !nursing;
     }
 
     async function saveDeadline(event) {
@@ -1008,12 +1048,18 @@
         const client=getSupabaseClient();
         const due=getElement('lrrDeadlineDate')?.value;
         if(!due)return;
-        const payload={school:getElement('lrrDeadlineSchool').value,document_type:getElement('lrrDeadlineType').value||null,unit_code:getElement('lrrDeadlineUnit').value.trim()||null,due_at:new Date(due).toISOString(),created_by:state.currentUser.id};
+        const school=getElement('lrrDeadlineSchool').value;
+        const program=school==='TVET'?(getElement('lrrDeadlineProgram')?.value||''):null;
+        const block=school==='Nursing'?(getElement('lrrDeadlineBlock')?.value||''):null;
+        const term=school==='TVET'?(getElement('lrrDeadlineTerm')?.value||''):null;
+        if(school==='TVET'&&(!program||!term)){showModuleToast('Select the TVET programme and term.','error');return;}
+        if(school==='Nursing'&&!block){showModuleToast('Select the Nursing block.','error');return;}
+        const payload={school,program,block,term,document_type:getElement('lrrDeadlineType').value||null,unit_code:getElement('lrrDeadlineUnit').value.trim()||null,due_at:new Date(due).toISOString(),created_by:state.currentUser.id};
         try{
             const {error}=await client.from(TABLE_DEADLINES).insert(payload);
             if(error)throw error;
             getElement('lrrDeadlineForm').reset();
-            await loadDeadlines();renderManagementDashboard();updateInstitutionalDashboard();
+            await loadDeadlines();populateDeadlinePrograms();renderManagementDashboard();updateInstitutionalDashboard();
             showModuleToast('Submission deadline saved.','success');
         }catch(error){showModuleToast(error.message||'Could not save deadline. Apply the deadline-table SQL migration and check its RLS policies.','error');}
     }
