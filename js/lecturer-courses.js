@@ -97,62 +97,41 @@ const LecturerCourses = {
         console.log('✅ Lecturer Courses initialized');
     },
     
-    // ============================================
-    // RESOLVE THE CORRECT LECTURER ID - FIXED WITH ilike
-    // ============================================
+    // Resolve the assignment foreign key from staff_records.id.
+    // Auth UUID and the human-readable STAFF code are different identifiers.
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                return;
+            if (!supabase) throw new Error('Supabase client is unavailable.');
+
+            const profile = window.lecturerDB?.getCurrentUserProfile() || {};
+            let email = String(profile.email || profile.email_address || window.currentUser?.email || '').trim();
+            if (!email && supabase.auth?.getUser) {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                if (error) throw error;
+                email = String(user?.email || '').trim();
             }
-            
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                return;
-            }
-            
-            const fullName = profile.full_name;
-            const authId = profile.user_id;
-            
-            console.log('🔍 Auth ID:', authId);
-            console.log('🔍 Lecturer name:', fullName);
-            
-            // ✅ Use ilike for partial name matching
-            const { data: nameData, error: nameError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .ilike('lecturer_name', `%${fullName}%`);
-            
-            if (!nameError && nameData && nameData.length > 0) {
-                console.log('📋 Found matches:', nameData);
-                
-                // First priority: non-STAFF ID (UUID format)
-                const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
-                if (nonStaff) {
-                    this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
-                    return;
-                }
-                
-                // Second priority: STAFF ID
-                this.lecturerAssignmentId = nameData[0].lecturer_id;
-                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
-                return;
-            }
-            
-            // Fallback to auth ID
-            this.lecturerAssignmentId = authId;
-            console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
-            
+            if (!email) throw new Error('Could not resolve authenticated lecturer email.');
+
+            const { data: staff, error } = await supabase
+                .from('staff_records')
+                .select('id, first_name, other_names, email')
+                .ilike('email', email)
+                .maybeSingle();
+            if (error) throw error;
+            if (!staff?.id) throw new Error('No staff record found for this lecturer email.');
+
+            this.lecturerAssignmentId = String(staff.id);
+            window.CORRECT_LECTURER_ID = String(staff.id);
+            console.log('[Lecturer Courses] Assignment ID resolved from staff_records:', this.lecturerAssignmentId);
+            return this.lecturerAssignmentId;
         } catch (error) {
-            console.error('Error resolving lecturer ID:', error);
+            console.error('[Lecturer Courses] Identity resolution failed:', error);
             this.lecturerAssignmentId = null;
+            return null;
         }
     },
-    
+
     // ============================================
     // LOAD COURSES - WITH TVET SUPPORT
     // ============================================
@@ -178,38 +157,26 @@ const LecturerCourses = {
                 return;
             }
             
-            const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            console.log('🔍 Using lecturer ID for courses:', lecturerId);
+            const lecturerId = String(this.lecturerAssignmentId || await this.resolveLecturerId() || '').trim();
+            if (!lecturerId) throw new Error('Lecturer staff-record ID could not be resolved.');
+            console.log('[Lecturer Courses] Using staff-record assignment ID:', lecturerId);
             console.log(`📚 Program Type: ${this.getProgramTypeLabel()}`);
-            
+
             let units = [];
             const program = this.currentProgram || profile.program || 'KRCHN';
-            
-            // Assignment lecturer_id is not consistently the Supabase Auth UID.
-            // Resolve by exact lecturer name as well as ID, then merge without duplicates.
-            const fullName = String(profile.full_name || profile.name || '').trim();
-            const queries = [];
-            if (fullName) queries.push(
-                supabase.from('lecturer_subject_assignments').select('*')
-                    .ilike('lecturer_name', `%${fullName.replace(/[%_,]/g, ' ')}%`)
-            );
-            if (lecturerId) queries.push(
-                supabase.from('lecturer_subject_assignments').select('*')
-                    .eq('lecturer_id', String(lecturerId))
-            );
-            const results = await Promise.all(queries);
-            const queryError = results.find(r => r.error)?.error;
-            if (queryError) throw queryError;
-            const rows = results.flatMap(r => r.data || []);
-            const exactNameRows = fullName ? rows.filter(x =>
-                String(x.lecturer_name || '').trim().toLowerCase() === fullName.toLowerCase()
-            ) : [];
-            const assignments = exactNameRows.length ? exactNameRows : rows;
-            const uniqueAssignments = [...new Map(assignments.map(x => [
-                String(x.id || [x.lecturer_id, x.subject_name, x.subject_code, x.program, x.block, x.academic_year].join('|')), x
+
+            // Read only assignments linked to this lecturer's staff_records.id.
+            const { data: assignmentRows, error: assignmentError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('id, lecturer_id, lecturer_name, subject_name, subject_code, block, program, academic_year')
+                .eq('lecturer_id', lecturerId);
+            if (assignmentError) throw assignmentError;
+
+            const uniqueAssignments = [...new Map((assignmentRows || []).map(row => [
+                String(row.id || [row.lecturer_id, row.subject_name, row.subject_code, row.program, row.block, row.academic_year].join('|')), row
             ])).values()];
 
-            console.log('📊 Found lecturer assignments:', uniqueAssignments.length);
+            console.log('[Lecturer Courses] Found own assignments:', uniqueAssignments.length);
 
             // The official units_catalog is the source of canonical unit codes.
             // Match assignment rows by code first, then exact unit name.
