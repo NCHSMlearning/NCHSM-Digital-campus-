@@ -992,19 +992,56 @@
         if(folders){
             const grouped=new Map();
             rows.forEach(row=>{
-                const key=[schoolOf(row),row.unit_name||row.subject_code||'Unassigned unit',row.subject_code||'',row.document_type||row.report_type||'General'].join('|');
-                const item=grouped.get(key)||{school:schoolOf(row),unit:row.unit_name||row.subject_code||'Unassigned unit',code:row.subject_code||'',type:row.document_type||row.report_type||'General',count:0};
-                item.count++;grouped.set(key,item);
+                const school=schoolOf(row)||'Other';
+                const unit=String(row.unit_name||row.subject_code||'Unassigned unit').trim();
+                const code=String(row.subject_code||'').trim();
+                const key=[school,code||unit].join('|');
+                const item=grouped.get(key)||{school,unit,code,rows:[]};
+                item.rows.push(row);grouped.set(key,item);
             });
-            folders.innerHTML=grouped.size?[...grouped.values()].map(item=>'<button type="button" class="lrr-school" data-folder-school="'+escapeAttr(item.school)+'" data-folder-unit="'+escapeAttr(item.code||item.unit)+'"><span class="ico">📁</span><span><strong style="font-size:13px">'+escapeHtml(item.unit)+'</strong><small>'+escapeHtml(item.school)+' · '+escapeHtml(humanize(item.type))+' · '+item.count+' files</small></span></button>').join(''):'<div class="lrr-stat" style="grid-column:1/-1;color:#64748b">No unit folders yet. Folders appear automatically as lecturers submit documents.</div>';
-            folders.querySelectorAll('[data-folder-unit]').forEach(btn=>btn.addEventListener('click',()=>{
-                activeSchool=btn.dataset.folderSchool||'';
-                const search=getElement('lrrSearch');
-                if(search)search.value=btn.dataset.folderUnit;
-                quickStatus='';
-                applyFilters();
-                const target=getElement('lecturerReportsReviewTable');
-                if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+            const schoolOrder=['Nursing','TVET','Other'];
+            const groups=[...grouped.values()].sort((a,b)=>
+                (schoolOrder.indexOf(a.school)-schoolOrder.indexOf(b.school))||
+                a.unit.localeCompare(b.unit,undefined,{numeric:true})
+            );
+            const bySchool=['Nursing','TVET','Other'].map(school=>({
+                school,items:groups.filter(item=>item.school===school)
+            })).filter(group=>group.items.length);
+            folders.innerHTML=bySchool.length?bySchool.map(group=>`
+                <section class="lrr-drive-school">
+                    <header class="lrr-drive-school-head">
+                        <span class="lrr-drive-school-icon">${group.school==='Nursing'?'✚':group.school==='TVET'?'⚙':'▦'}</span>
+                        <div><strong>${escapeHtml(group.school==='Other'?'Other submissions':group.school+' School')}</strong><small>${group.items.length} unit folders · ${group.items.reduce((n,item)=>n+item.rows.length,0)} documents</small></div>
+                        <span class="lrr-drive-school-count">${group.items.length}</span>
+                    </header>
+                    <div class="lrr-drive-grid">${group.items.map(item=>`
+                        <button type="button" class="lrr-drive-folder" data-folder-key="${escapeAttr(item.school+'|'+(item.code||item.unit))}">
+                            <span class="lrr-drive-folder-icon">📁</span>
+                            <span class="lrr-drive-folder-copy"><strong>${escapeHtml(item.unit)}</strong><small>${item.code?escapeHtml(item.code)+' · ':''}${item.rows.length} document${item.rows.length===1?'':'s'}</small></span>
+                            <span class="lrr-drive-chevron">›</span>
+                        </button>`).join('')}</div>
+                </section>`).join(''):'<div class="lrr-drive-empty">No unit folders yet. Folders appear automatically as lecturers submit documents.</div>';
+            folders.querySelectorAll('[data-folder-key]').forEach(btn=>btn.addEventListener('click',()=>{
+                const item=grouped.get(btn.dataset.folderKey);
+                if(!item)return;
+                const area=getElement('lrrFolderArea');
+                if(!area)return;
+                area.innerHTML=`
+                    <section class="lrr-drive-open">
+                        <div class="lrr-drive-open-head">
+                            <div><button type="button" class="lrr-drive-back" data-folder-back>← All folders</button><h3>📁 ${escapeHtml(item.unit)}</h3><p>${escapeHtml(item.school)} · ${item.rows.length} documents</p></div>
+                            <span class="lrr-drive-pill">${item.rows.length} files</span>
+                        </div>
+                        <div class="lrr-drive-files">${item.rows.slice().sort((a,b)=>new Date(b.submitted_at||b.created_at||0)-new Date(a.submitted_at||a.created_at||0)).map(row=>`
+                            <button type="button" class="lrr-drive-file" data-open-submission="${escapeAttr(row.id)}">
+                                <span class="lrr-drive-file-icon">${/pdf/i.test(row.document_type||'')?'📕':'📄'}</span>
+                                <span><strong>${escapeHtml(row.title||humanize(row.document_type||row.report_type||'Teaching document'))}</strong><small>${escapeHtml(row.lecturer_name||'Lecturer')} · ${escapeHtml(humanize(row.document_type||row.report_type||'Document'))} · ${escapeHtml(formatDate(row.submitted_at||row.created_at,false))}</small></span>
+                                <span class="lrr-drive-file-status">${statusBadge(row.status)}</span>
+                            </button>`).join('')}</div>
+                    </section>`;
+                area.querySelector('[data-folder-back]')?.addEventListener('click',()=>{area.innerHTML='';});
+                area.querySelectorAll('[data-open-submission]').forEach(file=>file.addEventListener('click',()=>openSubmission(file.dataset.openSubmission)));
+                area.scrollIntoView({behavior:'smooth',block:'start'});
             }));
         }
         const list=getElement('lrrDeadlineList');
@@ -2440,6 +2477,93 @@
             }
         `;
 
+
+        style.textContent += `
+            /* NCHSM Teaching & Learning workspace refresh */
+            #lrrManagementDashboard{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#14263b}
+            #lrrManagementDashboard .lrr-hero{min-height:174px;padding:28px 30px;border-radius:22px;background:radial-gradient(circle at 85% 10%,rgba(48,193,178,.30),transparent 34%),linear-gradient(120deg,#082a49 0%,#0b4962 58%,#087f78 100%);box-shadow:0 18px 42px rgba(8,42,73,.18)}
+            #lrrManagementDashboard .lrr-hero h3{font-size:clamp(23px,3vw,30px);letter-spacing:-.045em}
+            #lrrManagementDashboard .lrr-subnav{padding:7px;border-radius:14px;box-shadow:0 5px 18px rgba(16,42,67,.045)}
+            #lrrManagementDashboard .lrr-subtab{padding:10px 15px;border-radius:10px;transition:background .18s,transform .18s}
+            #lrrManagementDashboard .lrr-subtab:hover{transform:translateY(-1px)}
+            #lrrManagementDashboard .lrr-school-grid{gap:13px;margin:15px 0}
+            #lrrManagementDashboard .lrr-school{border-radius:17px;padding:17px;min-height:92px;box-shadow:0 5px 18px rgba(16,42,67,.045);transition:transform .18s,box-shadow .18s,border-color .18s}
+            #lrrManagementDashboard .lrr-school:hover,#lrrManagementDashboard .lrr-stat:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(16,42,67,.09)}
+            #lrrManagementDashboard .lrr-school.active{border:1.5px solid #0f8b82;background:linear-gradient(135deg,#effcf9,#fff)}
+            #lrrManagementDashboard .lrr-school .ico{width:46px;height:46px;border-radius:14px;background:#e5f4f7;color:#0d687c}
+            #lrrManagementDashboard .lrr-school strong{font-size:25px;letter-spacing:-.04em}
+            #lrrManagementDashboard .lrr-stat-grid{gap:12px;margin:14px 0}
+            #lrrManagementDashboard .lrr-stat{border-radius:16px;padding:17px;box-shadow:0 4px 16px rgba(16,42,67,.035);transition:transform .18s,box-shadow .18s}
+            #lrrManagementDashboard .lrr-stat span{font-size:10px;letter-spacing:.09em}
+            #lrrManagementDashboard .lrr-stat strong{font-size:29px;letter-spacing:-.04em;color:#102f50}
+            #lrrManagementDashboard .lrr-analytics{padding:19px;border-radius:17px;box-shadow:0 5px 20px rgba(16,42,67,.04)}
+            #lrrManagementDashboard .lrr-chart-card{padding:15px;border-radius:14px;background:linear-gradient(180deg,#fff,#fbfdff)}
+            #lrrManagementDashboard .lrr-toolbar{padding:14px;border-radius:15px;box-shadow:0 4px 16px rgba(16,42,67,.035)}
+            #lrrManagementDashboard .lrr-chip{padding:9px 15px;transition:all .18s}
+            #lrrManagementDashboard .lrr-chip.active{background:#0b3856;border-color:#0b3856;box-shadow:0 4px 10px rgba(11,56,86,.16)}
+            #lrrManagementDashboard .lrr-deadline{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:18px;background:#f8fbfd;border:1px solid #e8eef3;border-radius:15px}
+            #lrrManagementDashboard .lrr-deadline label{font-size:11px!important;font-weight:750;color:#526579!important}
+            #lrrManagementDashboard .lrr-deadline select,#lrrManagementDashboard .lrr-deadline input{height:46px;margin-top:7px;border:1px solid #d6e0e8;border-radius:11px;background:#fff;padding:0 12px;font-size:13px}
+            #lrrManagementDashboard .lrr-deadline select:focus,#lrrManagementDashboard .lrr-deadline input:focus,#lrrManagementDashboard input:focus,#lrrManagementDashboard select:focus{outline:0;border-color:#0f8b82;box-shadow:0 0 0 3px rgba(15,139,130,.12)}
+            #lrrManagementDashboard .lrr-deadline .lrr-primary{height:46px;align-self:end;border-radius:11px;background:linear-gradient(120deg,#0b6d70,#0e9487);box-shadow:0 6px 14px rgba(15,118,110,.18)}
+            #lrrManagementDashboard .lrr-folder-note{font-size:13px;margin:8px 0 13px}
+            #lrrManagementDashboard .lrr-folder-grid{display:block;margin:10px 0 18px}
+            #lrrManagementDashboard .lrr-drive-school{margin:14px 0 18px;padding:17px;border:1px solid #e4ebf1;border-radius:17px;background:#fff;box-shadow:0 5px 18px rgba(16,42,67,.035)}
+            #lrrManagementDashboard .lrr-drive-school-head{display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid #edf1f5}
+            #lrrManagementDashboard .lrr-drive-school-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:#e8f5f7;color:#0b7180;font-size:19px}
+            #lrrManagementDashboard .lrr-drive-school-head strong{display:block;font-size:15px;color:#142d43}
+            #lrrManagementDashboard .lrr-drive-school-head small{display:block;margin-top:3px;color:#718096;font-size:11px}
+            #lrrManagementDashboard .lrr-drive-school-count{margin-left:auto;padding:5px 10px;border-radius:20px;background:#eef6f7;color:#176d78;font-size:11px;font-weight:800}
+            #lrrManagementDashboard .lrr-drive-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-top:14px}
+            #lrrManagementDashboard .lrr-drive-folder{display:flex;align-items:center;gap:11px;width:100%;min-width:0;padding:13px;border:1px solid #e8edf2;border-radius:13px;background:#fbfdff;text-align:left;transition:all .18s}
+            #lrrManagementDashboard .lrr-drive-folder:hover{border-color:#83c9c3;background:#f2fbfa;transform:translateY(-2px);box-shadow:0 8px 18px rgba(16,42,67,.07)}
+            #lrrManagementDashboard .lrr-drive-folder-icon{display:grid;place-items:center;flex:0 0 38px;height:38px;border-radius:11px;background:#eaf3ff;font-size:20px}
+            #lrrManagementDashboard .lrr-drive-folder-copy{min-width:0;flex:1}
+            #lrrManagementDashboard .lrr-drive-folder-copy strong{display:block;color:#20364a;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+            #lrrManagementDashboard .lrr-drive-folder-copy small{display:block;margin-top:4px;color:#718096;font-size:10px}
+            #lrrManagementDashboard .lrr-drive-chevron{color:#91a2b1;font-size:23px}
+            #lrrManagementDashboard .lrr-drive-open{margin:12px 0 17px;padding:18px;border:1px solid #dce8ee;border-radius:17px;background:#fff;box-shadow:0 10px 26px rgba(16,42,67,.07)}
+            #lrrManagementDashboard .lrr-drive-open-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid #edf1f5}
+            #lrrManagementDashboard .lrr-drive-back{border:0;background:transparent;color:#0e817c;font-size:11px;font-weight:800;padding:0 0 10px}
+            #lrrManagementDashboard .lrr-drive-open h3{margin:0;color:#17334b;font-size:19px}
+            #lrrManagementDashboard .lrr-drive-open p{margin:5px 0 0;color:#718096;font-size:12px}
+            #lrrManagementDashboard .lrr-drive-pill{padding:6px 10px;border-radius:20px;background:#eef8f6;color:#0e817c;font-size:11px;font-weight:800}
+            #lrrManagementDashboard .lrr-drive-files{display:grid;gap:7px;padding-top:12px}
+            #lrrManagementDashboard .lrr-drive-file{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border:1px solid #edf1f5;border-radius:12px;background:#fff;text-align:left}
+            #lrrManagementDashboard .lrr-drive-file:hover{background:#f7fbfd;border-color:#cbdde4}
+            #lrrManagementDashboard .lrr-drive-file-icon{font-size:20px}
+            #lrrManagementDashboard .lrr-drive-file>span:nth-child(2){flex:1;min-width:0}
+            #lrrManagementDashboard .lrr-drive-file strong{display:block;color:#20364a;font-size:12px}
+            #lrrManagementDashboard .lrr-drive-file small{display:block;margin-top:4px;color:#718096;font-size:10px;overflow-wrap:anywhere}
+            #lrrManagementDashboard .lrr-drive-file-status{font-size:10px}
+            #lrrManagementDashboard .lrr-drive-empty{padding:28px;text-align:center;border:1px dashed #cbd8e1;border-radius:15px;color:#718096;background:#fbfdff}
+            #lrrManagementDashboard #lecturerReportsReviewTable{border:1px solid #e5ebf0;border-radius:15px;background:#fff;overflow:hidden}
+            #lrrManagementDashboard #lecturerReportsReviewTable table{min-width:900px}
+            @media(max-width:850px){
+              #lrrManagementDashboard .lrr-drive-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+              #lrrManagementDashboard .lrr-deadline{grid-template-columns:repeat(2,minmax(0,1fr))}
+              #lrrManagementDashboard .lrr-deadline label:first-child{grid-column:1/-1}
+              #lrrManagementDashboard .lrr-deadline button{grid-column:1/-1}
+            }
+            @media(max-width:600px){
+              #lrrManagementDashboard .lrr-hero{padding:20px;border-radius:17px}
+              #lrrManagementDashboard .lrr-hero-actions{justify-content:space-between}
+              #lrrManagementDashboard .lrr-school-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+              #lrrManagementDashboard .lrr-school-grid [data-school=""]{grid-column:1/-1}
+              #lrrManagementDashboard .lrr-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+              #lrrManagementDashboard .lrr-stat:last-child{grid-column:1/-1}
+              #lrrManagementDashboard .lrr-deadline{grid-template-columns:1fr;padding:13px}
+              #lrrManagementDashboard .lrr-deadline label:first-child,#lrrManagementDashboard .lrr-deadline button{grid-column:auto}
+              #lrrManagementDashboard .lrr-drive-grid{grid-template-columns:1fr}
+              #lrrManagementDashboard .lrr-drive-school{padding:13px}
+              #lrrManagementDashboard .lrr-drive-file{align-items:flex-start}
+              #lrrManagementDashboard .lrr-drive-file-status{display:none}
+              #lrrManagementDashboard .lrr-subnav{position:relative}
+              #lrrManagementDashboard .lrr-toolbar{align-items:stretch}
+              #lrrManagementDashboard .lrr-chip{flex:1 1 auto}
+              #lrrManagementDashboard .lrr-analytics{padding:13px}
+            }
+        `;
         document.head.appendChild(style);
     }
 
