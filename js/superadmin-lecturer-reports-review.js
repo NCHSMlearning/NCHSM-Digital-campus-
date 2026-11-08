@@ -1,3 +1,11 @@
+            #lrrManagementDashboard .lrr-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:10px 0 16px}
+            #lrrManagementDashboard .lrr-cal-weekday{text-align:center;color:#64748b;font-size:10px;font-weight:800;padding:6px 0}
+            #lrrManagementDashboard .lrr-cal-day{min-height:76px;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff;overflow:hidden}
+            #lrrManagementDashboard .lrr-cal-day strong{display:block;font-size:12px;color:#0f2742}
+            #lrrManagementDashboard .lrr-cal-day span{display:block;font-size:9px;color:#0f766e;font-weight:800}
+            #lrrManagementDashboard .lrr-cal-day small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8px;color:#64748b;margin-top:3px}
+            #lrrManagementDashboard .lrr-cal-day.is-empty{background:#f8fafc;border-style:dashed}
+            #lrrManagementDashboard .lrr-cal-day.has-deadline{border-color:#99d5cd;background:#f0fdfa}
 /*
  * NCHSM SUPER ADMIN
  * Lecturer Reports Review Module
@@ -892,7 +900,7 @@
             <div class="lrr-feature-table" id="lrrComplianceTable"></div>
           </section>
           <section id="lrrCalendarArea" class="lrr-feature-panel">
-            <div class="lrr-feature-head"><div><h3>Deadlines calendar</h3><p>Upcoming, due and overdue requirements across Nursing and TVET.</p></div><select id="lrrCalendarMonth" aria-label="Calendar month"></select></div>
+            <div class="lrr-feature-head"><div><h3>Deadlines calendar</h3><p>Upcoming, due and overdue requirements across Nursing and TVET.</p></div><input id="lrrCalendarMonth" type="month" aria-label="Choose calendar month"></div>
             <div id="lrrCalendarGrid" class="lrr-calendar-grid"></div>
           </section>
           <section id="lrrPortfoliosArea" class="lrr-feature-panel">
@@ -915,6 +923,7 @@
         panel.querySelector('#lrrRefreshAll')?.addEventListener('click', async()=>{await loadReports();});
         panel.querySelector('#lrrCreateBackup')?.addEventListener('click',createTeachingBackup);
         panel.querySelector('#lrrRefreshBackupHistory')?.addEventListener('click',loadBackupHistory);
+        panel.querySelector('#lrrCalendarMonth')?.addEventListener('change',renderTeachingFeatures);
         panel.querySelector('#lrrRequirementForm')?.addEventListener('submit',saveRequirement);
         panel.querySelector('#lrrExportCompliance')?.addEventListener('click',()=>exportCsv('NCHSM-Compliance-'+new Date().toISOString().slice(0,10)+'.csv',(state.requirements||[]).map(r=>({school:r.school,program:r.program,intake_year:r.intake_year,block:r.block,term:r.term,document_type:r.document_type,unit_code:r.unit_code,due_at:r.due_at}))));
         panel.querySelector('#lrrExportReports')?.addEventListener('click',()=>exportCsv('NCHSM-Teaching-Reports-'+new Date().toISOString().slice(0,10)+'.csv',reportExportRows(state.filteredRows||[])));
@@ -1149,8 +1158,22 @@
         if(qtable)qtable.innerHTML='<table><thead><tr><th>Document</th><th>Lecturer</th><th>Decision</th><th>Reviewer</th><th>Comments</th><th>Last update</th></tr></thead><tbody>'+rows.filter(x=>['returned','rejected','approved','under_review'].includes(x.status)).slice(0,100).map(x=>'<tr><td>'+fmt(x.title||humanize(x.document_type))+'</td><td>'+fmt(x.lecturer_name)+'</td><td>'+statusBadge(x.status)+'</td><td>'+fmt(x.reviewer_name)+'</td><td>'+fmt(x.reviewer_comments)+'</td><td>'+fmt(formatDate(x.reviewed_at||x.updated_at))+'</td></tr>').join('')+'</tbody></table>';
         const cal=getElement('lrrCalendarGrid');
         if(cal){
-            const upcoming=deadlineRows.slice().sort((a,b)=>new Date(a.due_at)-new Date(b.due_at));
-            cal.innerHTML=upcoming.length?'<div class="lrr-calendar-list">'+upcoming.map(d=>{const late=new Date(d.due_at)<new Date();return '<div class="lrr-calendar-item"><div class="lrr-calendar-date"><strong>'+new Date(d.due_at).toLocaleDateString('en-KE',{day:'2-digit'})+'</strong><small>'+new Date(d.due_at).toLocaleDateString('en-KE',{month:'short',year:'numeric'})+'</small></div><div><strong>'+fmt(humanize(d.document_type||'All documents'))+'</strong><small>'+fmt(d.school+' '+(d.program||''))+' · '+fmt(d.intake_year||d.academic_year)+' · '+fmt(d.block||d.term)+'</small></div><span class="lrr-calendar-status">'+(late?'Overdue':'Upcoming')+'</span></div>';}).join('')+'</div>':'<div class="lrr-feature-empty">No deadlines scheduled.</div>';
+            const monthInput=getElement('lrrCalendarMonth');
+            const nowDate=new Date();
+            if(monthInput&&!monthInput.value)monthInput.value=nowDate.getFullYear()+'-'+String(nowDate.getMonth()+1).padStart(2,'0');
+            const chosen=(monthInput?.value||nowDate.getFullYear()+'-'+String(nowDate.getMonth()+1).padStart(2,'0')).split('-').map(Number);
+            const year=chosen[0],month=chosen[1]-1;
+            const first=new Date(year,month,1),days=new Date(year,month+1,0).getDate(),offset=(first.getDay()+6)%7;
+            const byDay=new Map();
+            deadlineRows.forEach(d=>{const dt=new Date(d.due_at);if(dt.getFullYear()===year&&dt.getMonth()===month){const day=dt.getDate();byDay.set(day,[...(byDay.get(day)||[]),d]);}});
+            const cells=[];
+            ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(day=>cells.push('<div class="lrr-cal-weekday">'+day+'</div>'));
+            for(let i=0;i<offset;i++)cells.push('<div class="lrr-cal-day is-empty"></div>');
+            for(let day=1;day<=days;day++){
+                const entries=byDay.get(day)||[];
+                cells.push('<div class="lrr-cal-day'+(entries.length?' has-deadline':'')+'"><strong>'+day+'</strong>'+(entries.length?'<span>'+entries.length+' deadline(s)</span>':'')+entries.slice(0,2).map(d=>'<small title="'+fmt(d.document_type||'Deadline')+'">'+fmt(d.school)+' · '+fmt(humanize(d.document_type||'Report'))+'</small>').join('')+'</div>');
+            }
+            cal.innerHTML='<div class="lrr-month-grid">'+cells.join('')+'</div><div class="lrr-calendar-list">'+deadlineRows.filter(d=>{const dt=new Date(d.due_at);return dt.getFullYear()===year&&dt.getMonth()===month;}).sort((a,b)=>new Date(a.due_at)-new Date(b.due_at)).map(d=>{const late=new Date(d.due_at)<new Date();return '<div class="lrr-calendar-item"><div class="lrr-calendar-date"><strong>'+new Date(d.due_at).toLocaleDateString('en-KE',{day:'2-digit'})+'</strong><small>'+new Date(d.due_at).toLocaleDateString('en-KE',{month:'short',year:'numeric'})+'</small></div><div><strong>'+fmt(humanize(d.document_type||'All documents'))+'</strong><small>'+fmt(d.school+' '+(d.program||''))+' · '+fmt(d.intake_year||d.academic_year)+' · '+fmt(d.block||d.term)+'</small></div><span class="lrr-calendar-status">'+(late?'Overdue':'Upcoming')+'</span></div>';}).join('')+'</div>';
         }
         loadBackupHistory();
     }
