@@ -1322,6 +1322,32 @@
                 text-align: center;
             }
         }
+    /* Keep the document itself scrollable on mobile; avoid nested fixed-height traps. */
+        html { min-height: 100%; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        body { min-height: 100%; height: auto; overflow-x: hidden; overflow-y: auto !important; position: relative; touch-action: pan-y; }
+        .container { min-height: 100vh; min-height: 100dvh; height: auto; overflow: visible; align-items: stretch; }
+        .main { min-height: 100vh; min-height: 100dvh; height: auto; overflow: visible; padding-bottom: max(40px, env(safe-area-inset-bottom)); }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                height: 100vh;
+                height: 100dvh;
+                max-height: 100dvh;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                -webkit-overflow-scrolling: touch;
+            }
+            .sidebar .nav { min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+            .main {
+                width: 100%;
+                margin-left: 0;
+                overflow: visible;
+                padding: 84px 16px max(40px, env(safe-area-inset-bottom));
+            }
+            .tab-content { min-width: 0; overflow: visible; }
+            .table-responsive { max-width: 100%; -webkit-overflow-scrolling: touch; }
+        }
+
     </style>
 </head>
 <body>
