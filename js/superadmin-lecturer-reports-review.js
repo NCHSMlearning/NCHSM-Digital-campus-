@@ -967,7 +967,7 @@
         const button=getElement('lrrCreateBackup');if(button){button.disabled=true;button.textContent='Preparing backup…';}
         try {
             const tables=[TABLE_SUBMISSIONS,TABLE_REVIEWS,TABLE_ATTACHMENTS,TABLE_DEADLINES];
-            const backup={application:'NCHSM Digital Campus - Teaching & Learning',created_at:new Date().toISOString(),format_version:1,contents:{},storage_note:'This backup contains database records and attachment storage paths/metadata. Uploaded file binaries remain in the Supabase Storage bucket lecturer-reports and are not embedded in this JSON file.'};
+            const backup={application:'NCHSM Digital Campus - Teaching & Learning',created_at:new Date().toISOString(),format_version:2,contents:{},attachments_binary:[],attachments_not_embedded:[],storage_bucket:STORAGE_BUCKET};
             for(const table of tables){
                 let all=[],from=0,batchSize=500;
                 while(true){
@@ -980,10 +980,34 @@
                 }
                 backup.contents[table]=all;
             }
+            const fileRefs=new Map();
+            (backup.contents[TABLE_ATTACHMENTS]||[]).forEach(file=>{if(file.storage_path)fileRefs.set(file.storage_path,{path:file.storage_path,name:file.file_name||file.storage_path});});
+            (backup.contents[TABLE_SUBMISSIONS]||[]).forEach(row=>{if(row.attachment_path)fileRefs.set(row.attachment_path,{path:row.attachment_path,name:row.attachment_name||row.attachment_path});});
+            let embeddedBytes=0;
+            for(const file of fileRefs.values()){
+                try{
+                    const {data,error}=await client.storage.from(STORAGE_BUCKET).download(file.path);
+                    if(error||!data)throw error||new Error('File download returned no data');
+                    if(embeddedBytes+data.size>100*1024*1024){
+                        backup.attachments_not_embedded.push({path:file.path,name:file.name,size:data.size,reason:'100 MB backup size limit reached; file remains in Storage'});
+                        continue;
+                    }
+                    const bytes=new Uint8Array(await data.arrayBuffer());
+                    let binary='';const chunk=0x8000;
+                    for(let offset=0;offset<bytes.length;offset+=chunk)binary+=String.fromCharCode(...bytes.subarray(offset,Math.min(offset+chunk,bytes.length)));
+                    backup.attachments_binary.push({path:file.path,name:file.name,mime_type:data.type||'application/octet-stream',size:data.size,base64:btoa(binary)});
+                    embeddedBytes+=data.size;
+                }catch(fileError){
+                    backup.attachments_not_embedded.push({path:file.path,name:file.name,reason:fileError?.message||'Storage download failed'});
+                }
+            }
             backup.summary=Object.fromEntries(Object.entries(backup.contents).map(([name,rows])=>[name,rows.length]));
+            backup.summary.attachments_embedded=backup.attachments_binary.length;
+            backup.summary.attachments_not_embedded=backup.attachments_not_embedded.length;
+            backup.summary.attachment_bytes_embedded=embeddedBytes;
             const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json;charset=utf-8'});
             const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='NCHSM-Teaching-Learning-Backup-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
-            showModuleToast('Backup downloaded. '+Object.values(backup.summary).reduce((a,b)=>a+b,0)+' records included. Uploaded files remain in Storage.','success');
+            showModuleToast('Backup downloaded. '+backup.summary.attachments_embedded+' files embedded; '+backup.summary.attachments_not_embedded+' files need separate Storage backup.','success');
         } catch(error){console.error('[LecturerReportsReview] Backup failed',error);showModuleToast(error.message||'Backup failed. No file was downloaded.','error');}
         finally{if(button){button.disabled=false;button.textContent='⬇ Create backup';}}
     }
