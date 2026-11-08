@@ -35,6 +35,9 @@
     const TABLE_ATTACHMENTS = 'lecturer_report_attachments';
     const STORAGE_BUCKET = 'lecturer-reports';
     const TABLE_DEADLINES = 'lecturer_report_deadlines';
+    const TABLE_REQUIREMENTS = 'lecturer_report_requirements';
+    const TABLE_VERSIONS = 'lecturer_report_document_versions';
+    const TABLE_BACKUPS = 'lecturer_report_backup_history';
     let deadlineRows = [];
     let activeSchool = '';
     let quickStatus = '';
@@ -441,12 +444,14 @@
             state.filteredRows = [...state.rows];
 
             await loadDeadlines();
+            try{const {data:requirements,error:requirementsError}=await getSupabaseClient().from(TABLE_REQUIREMENTS).select('*').order('created_at',{ascending:false});if(requirementsError)throw requirementsError;state.requirements=data||[];}catch(requirementsError){state.requirements=[];console.warn('[LecturerReportsReview] Requirements unavailable',requirementsError);}
             populateDeadlinePrograms();
             populateDeadlineIntakes();
             populateFilters();
             updateCounters();
             renderManagementDashboard();
             updateInstitutionalDashboard();
+            renderTeachingFeatures();
             applyFilters();
 
             state.initialized = true;
@@ -702,7 +707,7 @@
         if (!client) return;
         try {
             const { data, error } = await client.from(TABLE_DEADLINES)
-                .select('id,school,program,term,document_type,unit_code,unit_name,academic_year,block,due_at,created_at')
+                .select('id,school,program,term,document_type,unit_code,unit_name,academic_year,intake_year,block,due_at,created_at')
                 .order('due_at', { ascending: true });
             if (error) throw error;
             deadlineRows = data || [];
@@ -817,6 +822,11 @@
             <button type="button" class="lrr-subtab" data-jump="lrrDeadlineForm">Deadlines</button>
             <button type="button" class="lrr-subtab" data-jump="lecturerReportsReviewTable">Submissions</button>
             <button type="button" class="lrr-subtab" data-jump="lrrAnalyticsArea">Analytics</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrComplianceArea">Compliance</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrCalendarArea">Calendar</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrPortfoliosArea">Lecturers</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrQualityArea">Quality</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrBackupArea">Backup history</button>
           </nav>
           <div id="lrrSchoolOverview"></div>
           <div class="lrr-school-grid">
@@ -864,12 +874,36 @@
             </form>
             <div id="lrrDeadlineList" style="margin-top:12px;font-size:12px;color:#64748b">Loading deadlines…</div>
           </div>
+          <section id="lrrComplianceArea" class="lrr-feature-panel">
+            <div class="lrr-feature-head"><div><h3>Academic compliance</h3><p>Expected documents compared with actual submissions, using configured requirements and deadlines.</p></div><button type="button" class="lrr-export-btn" id="lrrExportCompliance">Export compliance</button></div>
+            <div id="lrrComplianceSummary" class="lrr-feature-grid"></div>
+            <div class="lrr-feature-table" id="lrrComplianceTable"></div>
+          </section>
+          <section id="lrrCalendarArea" class="lrr-feature-panel">
+            <div class="lrr-feature-head"><div><h3>Deadlines calendar</h3><p>Upcoming, due and overdue requirements across Nursing and TVET.</p></div><select id="lrrCalendarMonth" aria-label="Calendar month"></select></div>
+            <div id="lrrCalendarGrid" class="lrr-calendar-grid"></div>
+          </section>
+          <section id="lrrPortfoliosArea" class="lrr-feature-panel">
+            <div class="lrr-feature-head"><div><h3>Lecturer portfolios</h3><p>Submission history, approval progress and outstanding work by lecturer.</p></div><input id="lrrPortfolioSearch" placeholder="Search lecturer or staff ID"></div>
+            <div id="lrrPortfolioTable" class="lrr-feature-table"></div>
+          </section>
+          <section id="lrrQualityArea" class="lrr-feature-panel">
+            <div class="lrr-feature-head"><div><h3>Quality assurance</h3><p>Review decisions, returned documents and audit history.</p></div></div>
+            <div id="lrrQualitySummary" class="lrr-feature-grid"></div>
+            <div id="lrrQualityTable" class="lrr-feature-table"></div>
+          </section>
+          <section id="lrrBackupArea" class="lrr-feature-panel">
+            <div class="lrr-feature-head"><div><h3>Backup history</h3><p>Recent downloadable backup records and attachment coverage.</p></div><button type="button" class="lrr-export-btn" id="lrrRefreshBackupHistory">Refresh history</button></div>
+            <div id="lrrBackupHistoryTable" class="lrr-feature-table"></div>
+          </section>
           <div id="lrrFolderArea"></div><div class="lrr-folder-toolbar"><div><strong>School document folders</strong><small>Browse, open and export document collections</small></div><button type="button" class="lrr-export-btn" id="lrrExportFolders">↓ Export folders</button></div><p class="lrr-folder-note">Browse by school, then open a unit folder to see its document collections.</p><div id="lrrFolderGrid" class="lrr-folder-grid" style="margin-top:8px"></div>
         `;
         const heading = section.querySelector('h2')?.parentElement?.parentElement;
         if (heading?.nextSibling) section.insertBefore(panel, heading.nextSibling); else section.insertBefore(panel, section.firstChild);
         panel.querySelector('#lrrRefreshAll')?.addEventListener('click', async()=>{await loadReports();});
         panel.querySelector('#lrrCreateBackup')?.addEventListener('click',createTeachingBackup);
+        panel.querySelector('#lrrRefreshBackupHistory')?.addEventListener('click',loadBackupHistory);
+        panel.querySelector('#lrrExportCompliance')?.addEventListener('click',()=>exportCsv('NCHSM-Compliance-'+new Date().toISOString().slice(0,10)+'.csv',(state.requirements||[]).map(r=>({school:r.school,program:r.program,intake_year:r.intake_year,block:r.block,term:r.term,document_type:r.document_type,unit_code:r.unit_code,due_at:r.due_at}))));
         panel.querySelector('#lrrExportReports')?.addEventListener('click',()=>exportCsv('NCHSM-Teaching-Reports-'+new Date().toISOString().slice(0,10)+'.csv',reportExportRows(state.filteredRows||[])));
         panel.querySelector('#lrrExportFolders')?.addEventListener('click',()=>exportCsv('NCHSM-School-Folders-'+new Date().toISOString().slice(0,10)+'.csv',(state.rows||[]).map(row=>({school:schoolOf(row),folder:row.unit_name||row.subject_code||'Unassigned unit',unit_code:row.subject_code,document:row.title||humanize(row.document_type||row.report_type),document_type:row.document_type,lecturer:row.lecturer_name,status:row.status,programme:row.program,block:row.block,intake_year:row.intake_year||row.academic_year,submitted_at:row.submitted_at,submission_id:row.id}))));
         panel.querySelectorAll('[data-school]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -966,7 +1000,7 @@
         if(!client){showModuleToast('Supabase connection is unavailable.','error');return;}
         const button=getElement('lrrCreateBackup');if(button){button.disabled=true;button.textContent='Preparing backup…';}
         try {
-            const tables=[TABLE_SUBMISSIONS,TABLE_REVIEWS,TABLE_ATTACHMENTS,TABLE_DEADLINES];
+            const tables=[TABLE_SUBMISSIONS,TABLE_REVIEWS,TABLE_ATTACHMENTS,TABLE_DEADLINES,TABLE_REQUIREMENTS,TABLE_VERSIONS];
             const backup={application:'NCHSM Digital Campus - Teaching & Learning',created_at:new Date().toISOString(),format_version:2,contents:{},attachments_binary:[],attachments_not_embedded:[],storage_bucket:STORAGE_BUCKET};
             for(const table of tables){
                 let all=[],from=0,batchSize=500;
@@ -1005,8 +1039,18 @@
             backup.summary.attachments_embedded=backup.attachments_binary.length;
             backup.summary.attachments_not_embedded=backup.attachments_not_embedded.length;
             backup.summary.attachment_bytes_embedded=embeddedBytes;
+            const backupName='NCHSM-Teaching-Learning-Backup-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+            try{
+                const {error:historyError}=await client.from(TABLE_BACKUPS).insert({
+                    created_by:state.currentUser.id,backup_file_name:backupName,backup_format:'json',
+                    record_counts:backup.summary,attachment_count:backup.summary.attachments_embedded,
+                    attachment_bytes:embeddedBytes,attachment_failures:backup.attachments_not_embedded,
+                    status:backup.attachments_not_embedded.length?'partial':'completed'
+                });
+                if(historyError)console.warn('[LecturerReportsReview] Backup history could not be recorded',historyError);
+            }catch(historyError){console.warn('[LecturerReportsReview] Backup history unavailable',historyError);}
             const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json;charset=utf-8'});
-            const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='NCHSM-Teaching-Learning-Backup-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+            const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=backupName;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
             showModuleToast('Backup downloaded. '+backup.summary.attachments_embedded+' files embedded; '+backup.summary.attachments_not_embedded+' files need separate Storage backup.','success');
         } catch(error){console.error('[LecturerReportsReview] Backup failed',error);showModuleToast(error.message||'Backup failed. No file was downloaded.','error');}
         finally{if(button){button.disabled=false;button.textContent='⬇ Create backup';}}
@@ -1034,6 +1078,55 @@
         const items=[{label:'Nursing',value:state.rows.filter(r=>schoolOf(r)==='Nursing').length,color:'#0d9488'},{label:'TVET',value:state.rows.filter(r=>schoolOf(r)==='TVET').length,color:'#2563eb'}];
         const max=Math.max(1,...items.map(x=>x.value));
         host.innerHTML='<div class="lrr-school-bars">'+items.map(item=>'<div class="lrr-school-bar"><div class="lrr-school-bar-label"><strong>'+item.label+'</strong><b>'+item.value+'</b></div><div class="lrr-school-bar-track"><span style="width:'+Math.max(item.value?2:0,item.value/max*100)+'%;background:'+item.color+'"></span></div><small>'+(state.rows.length?Math.round(item.value/state.rows.length*100):0)+'% of all submissions</small></div>').join('')+'</div>';
+    }
+    function renderTeachingFeatures(){
+        const rows=state.rows||[];
+        const reqs=state.requirements||[];
+        const fmt=(v)=>escapeHtml(v||'—');
+        const compliance=getElement('lrrComplianceTable');
+        if(compliance){
+            const items=reqs.map(req=>{
+                const matched=rows.filter(row=>schoolOf(row)===req.school&&
+                    (!req.program||normalizeProgram(row.program||row.department)===normalizeProgram(req.program))&&
+                    String(row.intake_year||row.academic_year||'')===String(req.intake_year)&&
+                    (!req.block||String(row.block||'').toLowerCase()===String(req.block).toLowerCase())&&
+                    (!req.term||String(row.term||'').toLowerCase()===String(req.term).toLowerCase())&&
+                    row.document_type===req.document_type&&(!req.unit_code||String(row.subject_code||'').toLowerCase()===String(req.unit_code).toLowerCase()));
+                const approved=matched.some(row=>row.status==='approved');
+                const submitted=matched.length>0;
+                return {...req,submitted,approved,lecturers:new Set(matched.map(x=>x.lecturer_user_id)).size};
+            });
+            const counts={required:items.length,approved:items.filter(x=>x.approved).length,submitted:items.filter(x=>x.submitted).length,missing:items.filter(x=>!x.submitted).length};
+            const summary=getElement('lrrComplianceSummary');
+            if(summary)summary.innerHTML=[['Requirements',counts.required],['Approved',counts.approved],['Submitted',counts.submitted],['Missing',counts.missing]].map(([k,v])=>'<div class="lrr-feature-kpi"><small>'+k+'</small><strong>'+v+'</strong></div>').join('');
+            compliance.innerHTML=items.length?'<table><thead><tr><th>School / Programme</th><th>Intake</th><th>Block / Term</th><th>Required document</th><th>Due</th><th>Compliance</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+fmt(x.school+' '+(x.program||''))+'</td><td>'+fmt(x.intake_year)+'</td><td>'+fmt(x.block||x.term)+'</td><td>'+fmt(humanize(x.document_type))+'</td><td>'+fmt(formatDate(x.due_at))+'</td><td>'+statusBadge(x.approved?'approved':x.submitted?'submitted':'returned')+'</td></tr>').join('')+'</tbody></table>':'<div class="lrr-feature-empty">No formal requirements configured yet. Add requirement rules to calculate compliance against expected documents.</div>';
+        }
+        const people=new Map();
+        rows.forEach(row=>{const key=row.lecturer_user_id||row.lecturer_email||row.lecturer_name;const p=people.get(key)||{name:row.lecturer_name,email:row.lecturer_email,staff:row.lecturer_id,total:0,approved:0,returned:0,overdue:0};p.total++;if(row.status==='approved')p.approved++;if(row.status==='returned'||row.status==='rejected')p.returned++;people.set(key,p);});
+        const portfolio=getElement('lrrPortfolioTable');
+        const drawPeople=()=>{
+            const query=(getElement('lrrPortfolioSearch')?.value||'').toLowerCase();
+            const list=[...people.values()].filter(p=>(p.name+' '+p.email+' '+p.staff).toLowerCase().includes(query)).sort((a,b)=>b.total-a.total);
+            if(portfolio)portfolio.innerHTML='<table><thead><tr><th>Lecturer</th><th>Staff ID</th><th>Submissions</th><th>Approved</th><th>Returned / rejected</th><th>Approval rate</th></tr></thead><tbody>'+list.map(p=>'<tr><td>'+fmt(p.name)+'<small>'+fmt(p.email)+'</small></td><td>'+fmt(p.staff)+'</td><td>'+p.total+'</td><td>'+p.approved+'</td><td>'+p.returned+'</td><td>'+Math.round(p.approved/Math.max(1,p.total)*100)+'%</td></tr>').join('')+'</tbody></table>';
+        };
+        drawPeople();getElement('lrrPortfolioSearch')?.addEventListener('input',drawPeople);
+        const quality=getElement('lrrQualitySummary');
+        if(quality)quality.innerHTML=[['Awaiting review',rows.filter(x=>['submitted','resubmitted'].includes(x.status)).length],['Returned for correction',rows.filter(x=>x.status==='returned').length],['Rejected',rows.filter(x=>x.status==='rejected').length],['Approved',rows.filter(x=>x.status==='approved').length]].map(([k,v])=>'<div class="lrr-feature-kpi"><small>'+k+'</small><strong>'+v+'</strong></div>').join('');
+        const qtable=getElement('lrrQualityTable');
+        if(qtable)qtable.innerHTML='<table><thead><tr><th>Document</th><th>Lecturer</th><th>Decision</th><th>Reviewer</th><th>Comments</th><th>Last update</th></tr></thead><tbody>'+rows.filter(x=>['returned','rejected','approved','under_review'].includes(x.status)).slice(0,100).map(x=>'<tr><td>'+fmt(x.title||humanize(x.document_type))+'</td><td>'+fmt(x.lecturer_name)+'</td><td>'+statusBadge(x.status)+'</td><td>'+fmt(x.reviewer_name)+'</td><td>'+fmt(x.reviewer_comments)+'</td><td>'+fmt(formatDate(x.reviewed_at||x.updated_at))+'</td></tr>').join('')+'</tbody></table>';
+        const cal=getElement('lrrCalendarGrid');
+        if(cal){
+            const upcoming=deadlineRows.slice().sort((a,b)=>new Date(a.due_at)-new Date(b.due_at));
+            cal.innerHTML=upcoming.length?'<div class="lrr-calendar-list">'+upcoming.map(d=>{const late=new Date(d.due_at)<new Date();return '<div class="lrr-calendar-item"><div class="lrr-calendar-date"><strong>'+new Date(d.due_at).toLocaleDateString('en-KE',{day:'2-digit'})+'</strong><small>'+new Date(d.due_at).toLocaleDateString('en-KE',{month:'short',year:'numeric'})+'</small></div><div><strong>'+fmt(humanize(d.document_type||'All documents'))+'</strong><small>'+fmt(d.school+' '+(d.program||''))+' · '+fmt(d.intake_year||d.academic_year)+' · '+fmt(d.block||d.term)+'</small></div><span class="lrr-calendar-status">'+(late?'Overdue':'Upcoming')+'</span></div>';}).join('')+'</div>':'<div class="lrr-feature-empty">No deadlines scheduled.</div>';
+        }
+        loadBackupHistory();
+    }
+    async function loadBackupHistory(){
+        const host=getElement('lrrBackupHistoryTable');if(!host)return;
+        const client=getSupabaseClient();if(!client){host.textContent='Backup history unavailable.';return;}
+        const {data,error}=await client.from(TABLE_BACKUPS).select('created_at,backup_file_name,record_counts,attachment_count,attachment_bytes,status').order('created_at',{ascending:false}).limit(30);
+        if(error){host.innerHTML='<div class="lrr-feature-empty">Backup history is unavailable: '+escapeHtml(error.message)+'</div>';return;}
+        host.innerHTML=data?.length?'<table><thead><tr><th>Created</th><th>Backup file</th><th>Records</th><th>Attachments</th><th>Status</th></tr></thead><tbody>'+data.map(x=>'<tr><td>'+formatDate(x.created_at)+'</td><td>'+escapeHtml(x.backup_file_name)+'</td><td>'+escapeHtml(JSON.stringify(x.record_counts||{}))+'</td><td>'+x.attachment_count+' · '+Math.round((x.attachment_bytes||0)/1024)+' KB</td><td>'+statusBadge(x.status==='partial'?'returned':'approved')+'</td></tr>').join('')+'</tbody></table>':'<div class="lrr-feature-empty">No backups recorded yet.</div>';
     }
     function renderManagementDashboard() {
         const panel=getElement('lrrManagementDashboard'); if(!panel)return;
@@ -2575,6 +2668,30 @@
 
 
         style.textContent += `
+
+            #lrrManagementDashboard .lrr-feature-panel{margin:16px 0;padding:18px;border:1px solid #e4ebf1;border-radius:17px;background:#fff;box-shadow:0 5px 18px rgba(16,42,67,.035);scroll-margin-top:90px}
+            #lrrManagementDashboard .lrr-feature-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+            #lrrManagementDashboard .lrr-feature-head h3{margin:0;font-size:17px;color:#17334b}
+            #lrrManagementDashboard .lrr-feature-head p{margin:4px 0 0;font-size:11px;color:#718096}
+            #lrrManagementDashboard .lrr-feature-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+            #lrrManagementDashboard .lrr-feature-kpi{padding:14px;border:1px solid #e8eef3;border-radius:12px;background:#f9fbfd}
+            #lrrManagementDashboard .lrr-feature-kpi small{display:block;font-size:10px;color:#718096}
+            #lrrManagementDashboard .lrr-feature-kpi strong{display:block;margin-top:5px;font-size:23px;color:#12314b}
+            #lrrManagementDashboard .lrr-feature-table{max-width:100%;overflow:auto;border:1px solid #e8eef3;border-radius:12px}
+            #lrrManagementDashboard .lrr-feature-table table{width:100%;min-width:700px;border-collapse:collapse;font-size:11px}
+            #lrrManagementDashboard .lrr-feature-table th,#lrrManagementDashboard .lrr-feature-table td{padding:11px;border-bottom:1px solid #edf1f5;text-align:left;vertical-align:top}
+            #lrrManagementDashboard .lrr-feature-table th{background:#f7fafc;color:#506477;font-size:10px;text-transform:uppercase}
+            #lrrManagementDashboard .lrr-feature-table td small{display:block;color:#8190a0;margin-top:3px}
+            #lrrManagementDashboard .lrr-feature-empty{padding:22px;text-align:center;color:#718096;font-size:12px}
+            #lrrManagementDashboard .lrr-calendar-list{display:grid;gap:8px}
+            #lrrManagementDashboard .lrr-calendar-item{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #edf1f5;border-radius:12px}
+            #lrrManagementDashboard .lrr-calendar-date{display:grid;place-items:center;min-width:54px;padding:7px;border-radius:10px;background:#eef7f8;color:#176d78}
+            #lrrManagementDashboard .lrr-calendar-date strong{font-size:18px}
+            #lrrManagementDashboard .lrr-calendar-date small,#lrrManagementDashboard .lrr-calendar-item small{display:block;font-size:10px;color:#718096}
+            #lrrManagementDashboard .lrr-calendar-item>div:nth-child(2){flex:1;min-width:0}
+            #lrrManagementDashboard .lrr-calendar-status{font-size:10px;font-weight:800;color:#0e817c}
+            @media(max-width:650px){#lrrManagementDashboard .lrr-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#lrrManagementDashboard .lrr-feature-panel{padding:13px}#lrrManagementDashboard .lrr-calendar-item{align-items:flex-start;flex-wrap:wrap}}
+
             /* NCHSM Teaching & Learning workspace refresh */
             #lrrManagementDashboard .lrr-backup-btn{border:1px solid rgba(255,255,255,.45);border-radius:10px;padding:10px 14px;background:rgba(255,255,255,.12);color:#fff;font-size:11px;font-weight:800;white-space:nowrap}
             #lrrManagementDashboard .lrr-backup-btn:hover{background:rgba(255,255,255,.22)}
