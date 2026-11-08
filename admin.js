@@ -87,6 +87,24 @@ const PROGRAM_DISPLAY_NAMES = {
     'PTE': 'TVET/CDACC (PTE)'
 };
 
+function getHODProgramScope() {
+    const role = String(currentAdmin?.role || '').toLowerCase().trim();
+    if (role === 'nursing_hod') return 'KRCHN';
+    if (role === 'tvet_hod') return 'TVET';
+    return null;
+}
+
+function applyHODStudentScope(query) {
+    const scope = getHODProgramScope();
+    if (scope === 'KRCHN') return query.eq('program', 'KRCHN');
+    if (scope === 'TVET') return query.in('program', TVET_PROGRAMS);
+    return query;
+}
+
+function isHODUser() {
+    return ['hod', 'head_of_department', 'nursing_hod', 'tvet_hod'].includes(String(currentAdmin?.role || '').toLowerCase());
+}
+
 function getProgramDisplayName(code) {
     if (!code) return 'Unknown Program';
     return PROGRAM_DISPLAY_NAMES[code] || code;
@@ -313,7 +331,9 @@ async function checkUserSession() {
             .eq('user_id', user.id).maybeSingle();
         if (error || !profile) { window.location.href = 'login.html'; return false; }
         currentAdmin = profile;
-        const role = String(profile.role || '').toLowerCase().trim();
+        const role = String(profile.role || '').normalize('NFKC').toLowerCase().trim().replace(/[\s-]+/g, '_');
+        currentAdmin.role = role;
+        currentAdmin.program_scope = role === 'nursing_hod' ? 'KRCHN' : (role === 'tvet_hod' ? 'TVET' : null);
         if (role === 'superadmin' || role === 'super_admin') { window.location.href = 'superadmin.html'; return false; }
         const allowedRoles = ['admin','administrator','hod','head_of_department','school_admin','nursing_hod','tvet_hod'];
         if (!allowedRoles.includes(role)) {
@@ -418,20 +438,22 @@ async function loadDashboardNumbers() {
     if (!db) return;
     
     try {
-        const { count: totalUsers } = await db
-            .from('consolidated_user_profiles_table')
-            .select('*', { count: 'exact', head: true });
-        
-        const { count: pendingCount } = await db
-            .from('consolidated_user_profiles_table')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'pending');
-        
-        const { count: studentCount } = await db
-            .from('consolidated_user_profiles_table')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'student');
-        
+        let totalUsersQuery = db.from('consolidated_user_profiles_table').select('*', { count: 'exact', head: true });
+        let pendingQuery = db.from('consolidated_user_profiles_table').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        let studentQuery = db.from('consolidated_user_profiles_table').select('*', { count: 'exact', head: true }).eq('role', 'student');
+
+        // HOD dashboard user metrics are limited to the HOD's school and student population.
+        if (isHODUser()) {
+            totalUsersQuery = totalUsersQuery.eq('role', 'student');
+            pendingQuery = pendingQuery.eq('role', 'student');
+            totalUsersQuery = applyHODStudentScope(totalUsersQuery);
+            pendingQuery = applyHODStudentScope(pendingQuery);
+            studentQuery = applyHODStudentScope(studentQuery);
+        }
+        const [{ count: totalUsers }, { count: pendingCount }, { count: studentCount }] = await Promise.all([
+            totalUsersQuery, pendingQuery, studentQuery
+        ]);
+
         const { count: courseCount } = await db
             .from('courses')
             .select('*', { count: 'exact', head: true });
@@ -595,11 +617,12 @@ async function loadAllUsers() {
     
     if (!db) return;
     
-    const { data, error } = await db
-        .from('consolidated_user_profiles_table')
-        .select('*')
-        .neq('role', 'superadmin')
-        .order('full_name');
+    let usersQuery = db.from('consolidated_user_profiles_table').select('*').neq('role', 'superadmin');
+    if (isHODUser()) {
+        usersQuery = usersQuery.eq('role', 'student');
+        usersQuery = applyHODStudentScope(usersQuery);
+    }
+    const { data, error } = await usersQuery.order('full_name');
     
     if (error) {
         tbody.innerHTML = '<tr><td colspan="7">Error: ' + error.message + '</td></tr>';
@@ -645,11 +668,12 @@ async function loadPendingUsers() {
     
     if (!db) return;
     
-    const { data, error } = await db
-        .from('consolidated_user_profiles_table')
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at');
+    let pendingQuery = db.from('consolidated_user_profiles_table').select('*').eq('status', 'pending');
+    if (isHODUser()) {
+        pendingQuery = pendingQuery.eq('role', 'student');
+        pendingQuery = applyHODStudentScope(pendingQuery);
+    }
+    const { data, error } = await pendingQuery.order('created_at');
     
     if (error) {
         tbody.innerHTML = '<tr><td colspan="6">Error: ' + error.message + '</td></tr>';
@@ -691,11 +715,9 @@ async function loadStudents() {
     
     if (!db) return;
     
-    const { data, error } = await db
-        .from('consolidated_user_profiles_table')
-        .select('*')
-        .eq('role', 'student')
-        .order('full_name');
+    let studentsQuery = db.from('consolidated_user_profiles_table').select('*').eq('role', 'student');
+    studentsQuery = applyHODStudentScope(studentsQuery);
+    const { data, error } = await studentsQuery.order('full_name');
     
     if (error) {
         tbody.innerHTML = '<tr><td colspan="6">Error: ' + error.message + '</td></tr>';
