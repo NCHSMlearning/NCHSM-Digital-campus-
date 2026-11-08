@@ -942,6 +942,9 @@
             </form>
             <div id="lrrComplianceSummary" class="lrr-feature-grid"></div>
             <div class="lrr-feature-table" id="lrrComplianceTable"></div>
+            <div class="lrr-feature-head" style="margin-top:22px"><div><h3>Individual lecturer submission progress</h3><p>One row per lecturer, showing assigned obligations, submissions, approvals and outstanding documents.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="lrrIndividualProgressSearch" placeholder="Search lecturer, programme or staff ID"><button type="button" class="lrr-export-btn" id="lrrExportIndividualProgress">Export lecturer progress</button></div></div>
+            <div id="lrrIndividualProgressSummary" class="lrr-feature-grid"></div>
+            <div class="lrr-feature-table" id="lrrIndividualProgressTable"></div>
           </section>
           <section id="lrrCalendarArea" class="lrr-feature-panel">
             <div class="lrr-feature-head"><div><h3>Deadlines calendar</h3><p>Upcoming, due and overdue requirements across Nursing and TVET.</p></div><input id="lrrCalendarMonth" type="month" aria-label="Choose calendar month"></div>
@@ -1230,6 +1233,66 @@
             if(summary)summary.innerHTML=[['Expected lecturer submissions',totalExpected],['Submitted',totalSubmitted],['Approved',totalApproved],['Outstanding',Math.max(0,totalExpected-totalSubmitted)]].map(([k,v])=>'<div class="lrr-feature-kpi"><small>'+k+'</small><strong>'+v+'</strong></div>').join('');
             compliance.innerHTML=items.length?'<table><thead><tr><th>School / Programme</th><th>Intake</th><th>Block / Term</th><th>Required document</th><th>Due</th><th>Lecturer compliance</th><th>Outstanding lecturers</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+fmt(x.school+' '+(x.program||''))+'</td><td>'+fmt(x.intake_year)+'</td><td>'+fmt(x.block||x.term)+'</td><td>'+fmt(humanize(x.document_type))+(x.unit_code?'<small>'+fmt(x.unit_code+' · '+x.unit_name)+'</small>':'')+'</td><td>'+fmt(formatDate(x.due_at))+'</td><td><strong>'+x.submittedCount+'/'+x.expected+' submitted</strong><small>'+x.approvedCount+'/'+x.expected+' approved</small></td><td>'+fmt(x.missing.length?x.missing.join(', '):x.expected?'None':'No matching lecturer assignments')+'</td></tr>').join('')+'</tbody></table>':'<div class="lrr-feature-empty">No formal requirements configured yet. Add requirement rules to calculate compliance against assigned lecturers and units.</div>';
         }
+        // Aggregate expected requirements per individual lecturer, based on
+        // the live lecturer-to-unit assignment catalogue.
+        const progressMap=new Map();
+        const assignments=state.assignedUnits||[];
+        reqs.forEach(req=>{
+            const expected=assignments.filter(a=>
+                schoolOf({program:a.program})===req.school&&
+                (!req.program||normalizeProgram(a.program)===normalizeProgram(req.program))&&
+                (!req.block||String(a.block||'').toLowerCase()===String(req.block).toLowerCase())&&
+                (!req.term||String(a.block||'').toLowerCase()===String(req.term).toLowerCase())&&
+                (!req.unit_code||String(a.subject_code||'').trim().toLowerCase()===String(req.unit_code).trim().toLowerCase())
+            );
+            const unique=new Map();
+            expected.forEach(a=>{
+                const key=String(a.lecturer_user_id||a.lecturer_id||a.lecturer_name||'').trim().toLowerCase();
+                if(key&&!unique.has(key))unique.set(key,a);
+            });
+            [...unique.entries()].forEach(([key,person])=>{
+                if(!progressMap.has(key))progressMap.set(key,{
+                    key,name:person.lecturer_name||'Name unavailable',staff:person.lecturer_id||'',
+                    email:person.lecturer_email||'',school:req.school,program:person.program||req.program||'',
+                    expected:0,submitted:0,approved:0,overdue:0,missing:[]
+                });
+                const p=progressMap.get(key);p.expected++;
+                const matches=rows.filter(row=>
+                    schoolOf(row)===req.school&&
+                    (!req.program||normalizeProgram(row.program||row.department)===normalizeProgram(req.program))&&
+                    String(row.intake_year||row.academic_year||'')===String(req.intake_year)&&
+                    (!req.block||String(row.block||row.class_block||'').toLowerCase()===String(req.block).toLowerCase())&&
+                    (!req.term||String(row.term||row.block||'').toLowerCase()===String(req.term).toLowerCase())&&
+                    row.document_type===req.document_type&&
+                    (!req.unit_code||String(row.subject_code||'').trim().toLowerCase()===String(req.unit_code).trim().toLowerCase())&&
+                    ((person.lecturer_user_id&&String(row.lecturer_user_id)===String(person.lecturer_user_id))||
+                     (person.lecturer_id&&String(row.lecturer_id||'').trim().toLowerCase()===String(person.lecturer_id).trim().toLowerCase())||
+                     (person.lecturer_name&&String(row.lecturer_name||'').trim().toLowerCase()===String(person.lecturer_name).trim().toLowerCase()))
+                );
+                if(matches.length){p.submitted++;if(matches.some(x=>x.status==='approved'))p.approved++;}
+                else{
+                    const due=req.due_at?new Date(req.due_at):null;
+                    if(due&&due<new Date())p.overdue++;
+                    p.missing.push(humanize(req.document_type)+(req.unit_code?' · '+req.unit_code:'')+' ['+(req.school==='TVET'?(req.term||''):(req.block||''))+']');
+                }
+            });
+        });
+        const individualRows=[...progressMap.values()].map(p=>({...p,rate:p.expected?Math.round(p.submitted/p.expected*100):0,approvalRate:p.expected?Math.round(p.approved/p.expected*100):0})).sort((a,b)=>a.rate-b.rate||a.name.localeCompare(b.name));
+        const individualSearch=getElement('lrrIndividualProgressSearch');
+        const individualTable=getElement('lrrIndividualProgressTable');
+        const individualSummary=getElement('lrrIndividualProgressSummary');
+        const drawIndividualProgress=()=>{
+            const term=(individualSearch?.value||'').trim().toLowerCase();
+            const visible=individualRows.filter(p=>(p.name+' '+p.staff+' '+p.email+' '+p.program+' '+p.school).toLowerCase().includes(term));
+            if(individualSummary){
+                const expected=visible.reduce((n,p)=>n+p.expected,0),submitted=visible.reduce((n,p)=>n+p.submitted,0),approved=visible.reduce((n,p)=>n+p.approved,0),overdue=visible.reduce((n,p)=>n+p.overdue,0);
+                individualSummary.innerHTML=[['Lecturers',visible.length],['Expected submissions',expected],['Submitted',submitted],['Approved',approved],['Overdue outstanding',overdue]].map(([k,v])=>'<div class="lrr-feature-kpi"><small>'+k+'</small><strong>'+v+'</strong></div>').join('');
+            }
+            if(individualTable)individualTable.innerHTML=visible.length?'<table><thead><tr><th>Lecturer</th><th>School / Programme</th><th>Expected</th><th>Submitted</th><th>Approved</th><th>Progress</th><th>Outstanding documents</th></tr></thead><tbody>'+visible.map(p=>'<tr><td><strong>'+fmt(p.name)+'</strong><small>'+fmt(p.staff)+' · '+fmt(p.email)+'</small></td><td>'+fmt(p.school)+'<small>'+fmt(p.program)+'</small></td><td>'+p.expected+'</td><td>'+p.submitted+'</td><td>'+p.approved+'</td><td><strong>'+p.rate+'%</strong><small>'+p.approvalRate+'% approved</small></td><td>'+fmt(p.missing.length?p.missing.join('; '):'All required documents submitted')+(p.overdue?'<small style="color:#b45309">'+p.overdue+' overdue</small>':'')+'</td></tr>').join('')+'</tbody></table>':'<div class="lrr-feature-empty">No lecturer obligations match the configured requirements and unit assignments. Configure requirements to populate this table.</div>';
+        };
+        drawIndividualProgress();
+        if(individualSearch)individualSearch.oninput=drawIndividualProgress;
+        getElement('lrrExportIndividualProgress')?.addEventListener('click',()=>exportCsv('NCHSM-Individual-Lecturer-Submission-Progress.csv',individualRows.map(p=>({lecturer:p.name,staff_id:p.staff,email:p.email,school:p.school,programme:p.program,expected:p.expected,submitted:p.submitted,approved:p.approved,submission_progress_percent:p.rate,approval_progress_percent:p.approvalRate,overdue:p.overdue,outstanding_documents:p.missing.join('; ')}))));
         const people=new Map();
         rows.forEach(row=>{const key=row.lecturer_user_id||row.lecturer_email||row.lecturer_name;const p=people.get(key)||{name:row.lecturer_name,email:row.lecturer_email,staff:row.lecturer_id,total:0,approved:0,returned:0,overdue:0};p.total++;if(row.status==='approved')p.approved++;if(row.status==='returned'||row.status==='rejected')p.returned++;people.set(key,p);});
         const portfolio=getElement('lrrPortfolioTable');
