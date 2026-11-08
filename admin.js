@@ -1154,7 +1154,12 @@ async function loadLecturersForAssignment() {
         let query = db.from('consolidated_user_profiles_table')
             .select('user_id,full_name,email,program,department,staff_id,role,status')
             .eq('role','lecturer').eq('status','approved').order('full_name');
-        if (currentAdmin?.program && !['admin','administrator'].includes(String(currentAdmin.role || '').toLowerCase())) {
+        const adminRole = String(currentAdmin?.role || '').toLowerCase();
+        const isGlobalAdmin = ['admin','administrator'].includes(adminRole);
+        if (!isGlobalAdmin && currentAdmin?.department) {
+            query = query.eq('department', currentAdmin.department);
+        }
+        if (!isGlobalAdmin && currentAdmin?.program) {
             query = query.eq('program', currentAdmin.program);
         }
         const { data, error } = await query;
@@ -1174,7 +1179,7 @@ async function loadLecturersForAssignment() {
 async function loadExistingAssignments() {
     if (!db) return;
     const { data, error } = await db.from('lecturer_subject_assignments')
-        .select('id,lecturer_id,lecturer_name,program,block,subject_name,subject_code,academic_year,created_at')
+        .select('id,lecturer_id,lecturer_name,department,program,block,subject_name,subject_code,academic_year,created_at')
         .order('created_at', { ascending: false });
     if (error) throw error;
     allLecturerAssignments = (data || []).map(a => ({
@@ -1404,12 +1409,13 @@ async function assignUnitToLecturer(lecturerId, unitId) {
     try {
         const assignmentData = {
             lecturer_id: String(lecturerId), lecturer_name: lecturer.full_name || '',
+            department: lecturer.department || currentAdmin?.department || '',
             program: unit.program, block: unit.block || unit.term || '',
             subject_name: unit.unit_name, subject_code: unit.unit_code,
             academic_year: String(unit.year || new Date().getFullYear())
         };
         const { data, error } = await db.from('lecturer_subject_assignments').insert([assignmentData])
-            .select('id,lecturer_id,lecturer_name,program,block,subject_name,subject_code,academic_year,created_at').single();
+            .select('id,lecturer_id,lecturer_name,department,program,block,subject_name,subject_code,academic_year,created_at').single();
         if (error) throw error;
         allLecturerAssignments.unshift({...data, unit_code:data.subject_code, unit_name:data.subject_name});
         await refreshAssignmentModal(lecturerId);
