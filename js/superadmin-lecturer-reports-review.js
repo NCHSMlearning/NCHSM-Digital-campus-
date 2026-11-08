@@ -809,13 +809,13 @@
             <div class="lrr-brand">
               <div class="lrr-brand-copy"><span class="lrr-eyebrow">NAKURU COLLEGE OF HEALTH SCIENCES &amp; MANAGEMENT</span><h3>Teaching &amp; Learning</h3><p>Academic quality · lecturer portfolios · school compliance</p></div>
             </div>
-            <div class="lrr-hero-actions"><span class="lrr-live"><i></i> Academic workspace</span><button class="lrr-primary" id="lrrRefreshAll" type="button"><i class="fas fa-sync-alt"></i> Refresh data</button></div>
+            <div class="lrr-hero-actions"><span class="lrr-live"><i></i> Academic workspace</span><button class="lrr-primary" id="lrrRefreshAll" type="button"><i class="fas fa-sync-alt"></i> Refresh data</button><button class="lrr-backup-btn" id="lrrCreateBackup" type="button">⬇ Create backup</button></div>
           </div>
           <nav class="lrr-subnav" aria-label="Teaching workspace sections">
             <button type="button" class="lrr-subtab active" data-jump="lrrSchoolOverview">Overview</button>
-            <button type="button" class="lrr-subtab" data-jump="lrrFolderArea">School folders</button>
-            <button type="button" class="lrr-subtab" data-jump="lrrDeadlineArea">Deadlines</button>
-            <button type="button" class="lrr-subtab" data-jump="lrrSubmissionArea">Submissions</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrFolderGrid">Folders</button>
+            <button type="button" class="lrr-subtab" data-jump="lrrDeadlineForm">Deadlines</button>
+            <button type="button" class="lrr-subtab" data-jump="lecturerReportsReviewTable">Submissions</button>
             <button type="button" class="lrr-subtab" data-jump="lrrAnalyticsArea">Analytics</button>
           </nav>
           <div id="lrrSchoolOverview"></div>
@@ -869,6 +869,7 @@
         const heading = section.querySelector('h2')?.parentElement?.parentElement;
         if (heading?.nextSibling) section.insertBefore(panel, heading.nextSibling); else section.insertBefore(panel, section.firstChild);
         panel.querySelector('#lrrRefreshAll')?.addEventListener('click', async()=>{await loadReports();});
+        panel.querySelector('#lrrCreateBackup')?.addEventListener('click',createTeachingBackup);
         panel.querySelector('#lrrExportReports')?.addEventListener('click',()=>exportCsv('NCHSM-Teaching-Reports-'+new Date().toISOString().slice(0,10)+'.csv',reportExportRows(state.filteredRows||[])));
         panel.querySelector('#lrrExportFolders')?.addEventListener('click',()=>exportCsv('NCHSM-School-Folders-'+new Date().toISOString().slice(0,10)+'.csv',(state.rows||[]).map(row=>({school:schoolOf(row),folder:row.unit_name||row.subject_code||'Unassigned unit',unit_code:row.subject_code,document:row.title||humanize(row.document_type||row.report_type),document_type:row.document_type,lecturer:row.lecturer_name,status:row.status,programme:row.program,block:row.block,intake_year:row.intake_year||row.academic_year,submitted_at:row.submitted_at,submission_id:row.id}))));
         panel.querySelectorAll('[data-school]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -960,6 +961,32 @@
         ]);
     }
 
+    async function createTeachingBackup() {
+        const client=getSupabaseClient();
+        if(!client){showModuleToast('Supabase connection is unavailable.','error');return;}
+        const button=getElement('lrrCreateBackup');if(button){button.disabled=true;button.textContent='Preparing backup…';}
+        try {
+            const tables=[TABLE_SUBMISSIONS,TABLE_REVIEWS,TABLE_ATTACHMENTS,TABLE_DEADLINES];
+            const backup={application:'NCHSM Digital Campus - Teaching & Learning',created_at:new Date().toISOString(),format_version:1,contents:{},storage_note:'This backup contains database records and attachment storage paths/metadata. Uploaded file binaries remain in the Supabase Storage bucket lecturer-reports and are not embedded in this JSON file.'};
+            for(const table of tables){
+                let all=[],from=0,batchSize=500;
+                while(true){
+                    const {data,error}=await client.from(table).select('*').range(from,from+batchSize-1);
+                    if(error)throw new Error('Could not back up '+table+': '+error.message);
+                    const page=data||[];all=all.concat(page);
+                    if(page.length<batchSize)break;
+                    from+=batchSize;
+                    if(from>100000)throw new Error('Backup stopped at 100,000 rows for safety.');
+                }
+                backup.contents[table]=all;
+            }
+            backup.summary=Object.fromEntries(Object.entries(backup.contents).map(([name,rows])=>[name,rows.length]));
+            const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json;charset=utf-8'});
+            const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='NCHSM-Teaching-Learning-Backup-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+            showModuleToast('Backup downloaded. '+Object.values(backup.summary).reduce((a,b)=>a+b,0)+' records included. Uploaded files remain in Storage.','success');
+        } catch(error){console.error('[LecturerReportsReview] Backup failed',error);showModuleToast(error.message||'Backup failed. No file was downloaded.','error');}
+        finally{if(button){button.disabled=false;button.textContent='⬇ Create backup';}}
+    }
     function exportCsv(filename, rows) {
         if (!Array.isArray(rows) || !rows.length) { showModuleToast('There are no records to export.','info'); return; }
         const headers=[...new Set(rows.flatMap(row=>Object.keys(row)))];
@@ -2525,6 +2552,14 @@
 
         style.textContent += `
             /* NCHSM Teaching & Learning workspace refresh */
+            #lrrManagementDashboard .lrr-backup-btn{border:1px solid rgba(255,255,255,.45);border-radius:10px;padding:10px 14px;background:rgba(255,255,255,.12);color:#fff;font-size:11px;font-weight:800;white-space:nowrap}
+            #lrrManagementDashboard .lrr-backup-btn:hover{background:rgba(255,255,255,.22)}
+            #lrrManagementDashboard .lrr-backup-btn:disabled{opacity:.65;cursor:wait}
+            #lrrManagementDashboard .lrr-subnav{top:8px;box-shadow:0 7px 20px rgba(16,42,67,.08)}
+            #lrrManagementDashboard [data-jump]{scroll-margin-top:92px}
+            #lrrManagementDashboard .lrr-hero-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+            #lrrManagementDashboard .lrr-subtab{min-height:40px;padding:10px 15px}
+            @media(max-width:600px){#lrrManagementDashboard .lrr-hero-actions{align-items:stretch}#lrrManagementDashboard .lrr-hero-actions button{flex:1 1 100%}#lrrManagementDashboard .lrr-subnav{top:4px;gap:5px}#lrrManagementDashboard .lrr-subtab{padding:10px 12px}}
             #lrrManagementDashboard .lrr-export-toolbar,#lrrManagementDashboard .lrr-folder-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;margin:10px 0 14px;border:1px solid #e3ebf1;border-radius:14px;background:#fff}
             #lrrManagementDashboard .lrr-export-toolbar strong,#lrrManagementDashboard .lrr-folder-toolbar strong{display:block;font-size:12px;color:#1d3449}
             #lrrManagementDashboard .lrr-export-toolbar small,#lrrManagementDashboard .lrr-folder-toolbar small{display:block;margin-top:3px;font-size:10px;color:#718096}
