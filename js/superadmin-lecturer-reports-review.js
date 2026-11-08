@@ -191,7 +191,7 @@
                 user?.user_metadata?.role,
                 user?.app_metadata?.role
             ].filter(Boolean).map(value => String(value).trim().toLowerCase().replace(/[\\s-]+/g, '_'));
-            authorized = roles.some(role => ADMIN_ROLES.includes(role) || role === 'admin');
+            authorized = roles.some(role => ADMIN_ROLES.includes(role));
         }
 
         if (!authorized) {
@@ -3089,9 +3089,17 @@
     });
 
     document.addEventListener('click', function (event) {
-        const link = event.target.closest?.('[data-lrr-focus="deadlines"]');
-        if (!link) return;
-        setTimeout(() => getElement('lrrDeadlineForm')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
+        const focusLink = event.target.closest?.('[data-lrr-focus]');
+        if (!focusLink) return;
+        const target = focusLink.dataset.lrrFocus;
+        setTimeout(() => {
+            if (target === 'deadlines') {
+                getElement('lrrDeadlineForm')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (target === 'audit') {
+                loadAuditLogs();
+                getElement('lrrAuditArea')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 350);
     });
 
     console.log(`✅ ${MODULE} module loaded.`);
