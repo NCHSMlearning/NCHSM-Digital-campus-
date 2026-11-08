@@ -869,30 +869,22 @@ const LecturerDashboard = {
                 return;
             }
 
-            // Registration student_id may store either the profile UUID or the
-            // college student/admission ID. Query both keys so valid students aren't lost.
-            const profileFields = 'user_id, student_id, full_name, program, block, intake_year, email, phone, gender';
-            const profileQueries = await Promise.all([
-                supabase.from('consolidated_user_profiles_table')
-                    .select(profileFields)
-                    .in('user_id', studentIds)
-                    .eq('role', 'student')
-                    .eq('program', program),
-                supabase.from('consolidated_user_profiles_table')
-                    .select(profileFields)
-                    .in('student_id', studentIds)
-                    .eq('role', 'student')
-                    .eq('program', program)
-            ]);
+            // student_unit_registrations.student_id is UUID and maps directly
+            // to consolidated_user_profiles_table.user_id (also UUID).
+            // Do not query the legacy varchar student_id column with UUID values.
+            const { data: studentProfiles, error: profileError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, full_name, program, block, intake_year, email, phone, gender')
+                .in('user_id', studentIds)
+                .eq('role', 'student')
+                .eq('program', program);
 
-            const profileError = profileQueries.find(result => result.error)?.error;
             if (profileError) throw profileError;
 
             const profileMap = new Map();
-            profileQueries.forEach(result => (result.data || []).forEach(student => {
+            (studentProfiles || []).forEach(student => {
                 if (student.user_id) profileMap.set(String(student.user_id), student);
-                if (student.student_id) profileMap.set(String(student.student_id), student);
-            }));
+            });
 
             const enrollmentMap = new Map();
             enrollments.forEach(enrollment => {
