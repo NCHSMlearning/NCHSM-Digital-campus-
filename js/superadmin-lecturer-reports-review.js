@@ -1,18 +1,3 @@
-            #lrrManagementDashboard .lrr-audit-toolbar{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin:12px 0}
-            #lrrManagementDashboard .lrr-audit-toolbar input,#lrrManagementDashboard .lrr-audit-toolbar select{height:40px;border:1px solid #cbd5e1;border-radius:8px;padding:0 10px;min-width:0}
-            #lrrManagementDashboard #lrrAuditTable{overflow-x:auto}
-            #lrrManagementDashboard #lrrAuditTable table{min-width:850px}
-            #lrrManagementDashboard #lrrAuditTable small{display:block;color:#94a3b8;font-size:10px;margin-top:3px}
-            #lrrManagementDashboard #lrrAuditTable details{margin-top:5px;font-size:11px}
-            @media(max-width:700px){#lrrManagementDashboard .lrr-audit-toolbar{grid-template-columns:1fr 1fr}#lrrManagementDashboard .lrr-audit-toolbar input{grid-column:1/-1}}
-            #lrrManagementDashboard .lrr-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:10px 0 16px}
-            #lrrManagementDashboard .lrr-cal-weekday{text-align:center;color:#64748b;font-size:10px;font-weight:800;padding:6px 0}
-            #lrrManagementDashboard .lrr-cal-day{min-height:76px;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff;overflow:hidden}
-            #lrrManagementDashboard .lrr-cal-day strong{display:block;font-size:12px;color:#0f2742}
-            #lrrManagementDashboard .lrr-cal-day span{display:block;font-size:9px;color:#0f766e;font-weight:800}
-            #lrrManagementDashboard .lrr-cal-day small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8px;color:#64748b;margin-top:3px}
-            #lrrManagementDashboard .lrr-cal-day.is-empty{background:#f8fafc;border-style:dashed}
-            #lrrManagementDashboard .lrr-cal-day.has-deadline{border-color:#99d5cd;background:#f0fdfa}
 /*
  * NCHSM SUPER ADMIN
  * Lecturer Reports Review Module
@@ -2945,6 +2930,22 @@
 
 
         style.textContent += `
+#lrrManagementDashboard .lrr-audit-toolbar{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin:12px 0}
+            #lrrManagementDashboard .lrr-audit-toolbar input,#lrrManagementDashboard .lrr-audit-toolbar select{height:40px;border:1px solid #cbd5e1;border-radius:8px;padding:0 10px;min-width:0}
+            #lrrManagementDashboard #lrrAuditTable{overflow-x:auto}
+            #lrrManagementDashboard #lrrAuditTable table{min-width:850px}
+            #lrrManagementDashboard #lrrAuditTable small{display:block;color:#94a3b8;font-size:10px;margin-top:3px}
+            #lrrManagementDashboard #lrrAuditTable details{margin-top:5px;font-size:11px}
+            @media(max-width:700px){#lrrManagementDashboard .lrr-audit-toolbar{grid-template-columns:1fr 1fr}#lrrManagementDashboard .lrr-audit-toolbar input{grid-column:1/-1}}
+            #lrrManagementDashboard .lrr-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:10px 0 16px}
+            #lrrManagementDashboard .lrr-cal-weekday{text-align:center;color:#64748b;font-size:10px;font-weight:800;padding:6px 0}
+            #lrrManagementDashboard .lrr-cal-day{min-height:76px;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff;overflow:hidden}
+            #lrrManagementDashboard .lrr-cal-day strong{display:block;font-size:12px;color:#0f2742}
+            #lrrManagementDashboard .lrr-cal-day span{display:block;font-size:9px;color:#0f766e;font-weight:800}
+            #lrrManagementDashboard .lrr-cal-day small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8px;color:#64748b;margin-top:3px}
+            #lrrManagementDashboard .lrr-cal-day.is-empty{background:#f8fafc;border-style:dashed}
+            #lrrManagementDashboard .lrr-cal-day.has-deadline{border-color:#99d5cd;background:#f0fdfa}
+
 
             #lrrManagementDashboard .lrr-requirement-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;padding:14px;margin:12px 0;border:1px solid #e5edf2;border-radius:13px;background:#f8fbfd}
             #lrrManagementDashboard .lrr-requirement-form label{display:grid;gap:5px;font-size:10px;font-weight:750;color:#526579}
