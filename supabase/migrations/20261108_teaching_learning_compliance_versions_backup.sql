@@ -46,3 +46,17 @@ create policy "Super admins manage lecturer report backup history" on public.lec
 using (exists(select 1 from public.consolidated_user_profiles_table p where p.user_id=auth.uid() and lower(coalesce(p.role,'')) in ('super_admin','superadmin')))
 with check (exists(select 1 from public.consolidated_user_profiles_table p where p.user_id=auth.uid() and lower(coalesce(p.role,'')) in ('super_admin','superadmin')));
 grant select,insert,update,delete on public.lecturer_report_requirements,public.lecturer_report_document_versions,public.lecturer_report_backup_history to authenticated;
+
+
+-- Allow lecturers to create immutable version records only for their own submissions.
+create policy "lecturers_insert_own_report_versions"
+on public.lecturer_report_document_versions
+for insert
+to authenticated
+with check (
+  uploaded_by = auth.uid()
+  and exists (
+    select 1 from public.lecturer_report_submissions s
+    where s.id = submission_id and s.lecturer_user_id = auth.uid()
+  )
+);
