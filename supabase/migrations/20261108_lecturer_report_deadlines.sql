@@ -41,3 +41,15 @@ create policy "Super admins manage lecturer report deadlines"
   );
 
 grant select, insert, update, delete on public.lecturer_report_deadlines to authenticated;
+
+
+-- School-specific academic scope for deadline scheduling.
+alter table public.lecturer_report_deadlines
+  add column if not exists program text null,
+  add column if not exists term text null,
+  add column if not exists block text null,
+  add column if not exists academic_year text null,
+  add column if not exists unit_name text null;
+
+create index if not exists lecturer_report_deadlines_scope_idx
+  on public.lecturer_report_deadlines (school, program, block, term, due_at);
