@@ -53,3 +53,7 @@ alter table public.lecturer_report_deadlines
 
 create index if not exists lecturer_report_deadlines_scope_idx
   on public.lecturer_report_deadlines (school, program, block, term, due_at);
+
+-- Intake-specific deadlines (for example, March 2025 cohort).
+alter table public.lecturer_report_deadlines
+  add column if not exists intake_year text null;
