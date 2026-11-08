@@ -10384,5 +10384,63 @@ console.log('✅ showTab updated with NCK protection and Question Bank');
 }
 </style>
 
+
+<style id="nchsm-lecturer-mobile-hero-final-v2">
+/* The outer heading is separate from the hero greeting: retain its programme
+   subtitle and controls, but remove only the repeated Welcome line. */
+h1:has(> #welcomeHeader){display:none!important}
+@media(max-width:640px){
+  #dashboard-content .nchsm-reference-dashboard{padding:0 0 14px!important}
+  #dashboard-content .nrd-hero{
+    min-height:0!important;height:auto!important;
+    margin:0 0 10px!important;border-width:1px!important;
+    border-radius:15px!important;
+  }
+  #dashboard-content .nrd-hero-image,
+  #dashboard-content .nrd-hero-overlay{position:absolute!important;inset:0!important}
+  #dashboard-content .nrd-hero-content{
+    min-height:0!important;height:auto!important;
+    padding:14px!important;display:flex!important;
+    flex-direction:column!important;align-items:stretch!important;
+    justify-content:flex-start!important;gap:10px!important;
+  }
+  #dashboard-content .nrd-hero-identity{display:block!important;min-width:0!important}
+  #dashboard-content .nrd-avatar{display:none!important}
+  #dashboard-content .nrd-hero-copy{width:100%!important;min-width:0!important}
+  #dashboard-content .nrd-kicker{font-size:8px!important;margin:0 0 4px!important}
+  #dashboard-content .nrd-hero-copy h1{
+    font-size:clamp(19px,5.2vw,22px)!important;
+    line-height:1.16!important;margin:0!important;
+  }
+  #dashboard-content .nrd-hero-copy p{
+    font-size:11px!important;line-height:1.35!important;margin:5px 0 7px!important;
+  }
+  #dashboard-content .nrd-meta{gap:5px!important}
+  #dashboard-content .nrd-meta span{font-size:8px!important;padding:4px 7px!important}
+  #dashboard-content .nrd-hero-time{
+    width:100%!important;min-width:0!important;
+    display:grid!important;grid-template-columns:1fr auto auto!important;
+    align-items:center!important;gap:5px 8px!important;
+    padding:8px 9px!important;text-align:left!important;
+    border:1px solid rgba(255,255,255,.2)!important;
+    border-radius:10px!important;background:rgba(15,23,42,.2)!important;
+  }
+  #dashboard-content .nrd-hero-time .nrd-live-row{
+    grid-column:1/-1!important;display:flex!important;
+    justify-content:flex-start!important;align-items:center!important;gap:7px!important;
+  }
+  #dashboard-content .nrd-hero-time #currentDateTime{
+    grid-column:1!important;font-size:9px!important;line-height:1.3!important;
+  }
+  #dashboard-content .nrd-hero-time strong{
+    grid-column:2!important;font-size:23px!important;line-height:1!important;
+    margin:0!important;white-space:nowrap!important;
+  }
+  #dashboard-content .nrd-hero-time #nrdDaypart{grid-column:3!important;font-size:16px!important}
+  #dashboard-content .nrd-hero-time em{display:none!important}
+  #dashboard-content .nrd-refresh-btn{min-height:30px!important;padding:4px 8px!important}
+}
+</style>
+
 </body>
 </html>
