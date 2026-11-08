@@ -844,7 +844,8 @@ window.LecturerResearch = (() => {
                     return;
                 }
                 lecturerResearchCollab.applyingRemote=true;
-                if(editor.innerHTML!==p.html)editor.innerHTML=p.html;
+                const safeRemote=lecturerSanitizeResearchHtml(p.html);
+                if(editor.innerHTML!==safeRemote)editor.innerHTML=safeRemote;
                 lecturerResearchCollab.applyingRemote=false;
                 if(statusEl)statusEl.textContent='Live update received';
                 return;
@@ -911,6 +912,30 @@ window.LecturerResearch = (() => {
         lecturerResearchCollab.pendingRemoteHtml=null;
     }
 
+
+    function lecturerSanitizeResearchHtml(input){
+        const parsed=new DOMParser().parseFromString('<!doctype html><body>'+String(input||'')+'</body>','text/html');
+        parsed.querySelectorAll('script,style,iframe,object,embed,form,input,button,textarea,select,link,meta,base,video,audio,source').forEach(n=>n.remove());
+        const allowed=new Set(['P','DIV','SPAN','BR','HR','H1','H2','H3','H4','H5','H6','STRONG','B','EM','I','U','S','STRIKE','DEL','INS','BLOCKQUOTE','UL','OL','LI','A','IMG','TABLE','THEAD','TBODY','TFOOT','TR','TD','TH','SUB','SUP']);
+        parsed.body.querySelectorAll('*').forEach(el=>{
+            if(!allowed.has(el.tagName)){el.replaceWith(...el.childNodes);return}
+            [...el.attributes].forEach(attr=>{
+                const name=attr.name.toLowerCase(),value=String(attr.value||'').trim();
+                if(name.startsWith('on')||name==='contenteditable'||name==='srcset'||name==='formaction'){el.removeAttribute(attr.name);return}
+                if(name==='href'||name==='src'){
+                    if(name==='src'&&el.tagName==='IMG'&&/^data:image\/(png|jpeg|gif|webp);base64,/i.test(value))return;
+                    let url;try{url=new URL(value,location.href)}catch(e){el.removeAttribute(attr.name);return}
+                    if(!['http:','https:','mailto:'].includes(url.protocol)){el.removeAttribute(attr.name);return}
+                    el.setAttribute(attr.name,url.href);
+                }
+                if(name==='style'&&/(?:javascript:|expression\s*\(|url\s*\(|@import)/i.test(value))el.removeAttribute(attr.name);
+            });
+            if(el.tagName==='A'){el.setAttribute('target','_blank');el.setAttribute('rel','noopener noreferrer')}
+            if(el.tagName==='IMG'){el.setAttribute('alt',el.getAttribute('alt')||'Research image');el.removeAttribute('width');el.removeAttribute('height')}
+        });
+        return parsed.body.innerHTML;
+    }
+
     async function lecturerLoadDocument(s,editor){
         const url=await researchSignedUrl(s);
         const ext=String(s.document_name||s.document_path||'').toLowerCase().split('.').pop();
@@ -929,7 +954,7 @@ window.LecturerResearch = (() => {
                 });
             }
             const out=await window.mammoth.convertToHtml({arrayBuffer:await resp.arrayBuffer()});
-            editor.innerHTML=out.value||'<p></p>';
+            editor.innerHTML=lecturerSanitizeResearchHtml(out.value||'<p></p>');
             return 'docx';
         }
         if(ext==='html'){
@@ -937,7 +962,7 @@ window.LecturerResearch = (() => {
             if(!resp.ok)throw new Error('Could not read the HTML document.');
             const raw=await resp.text();
             const match=raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-            editor.innerHTML=match?match[1]:raw;
+            editor.innerHTML=lecturerSanitizeResearchHtml(match?match[1]:raw);
             return 'html';
         }
         throw new Error('This file type cannot be edited inline.');
@@ -1181,7 +1206,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         const editor=document.getElementById('rsInlineEditor');
         const db=client();
         if(!s||!editor||!db)return;
-        const html=editor.innerHTML.trim();
+        const html=lecturerSanitizeResearchHtml(editor.innerHTML).trim();
         if(!html||html==='<br>')return notify('There is no corrected document content to send.','warning');
         try{await lecturerSaveResearchDraft(s,editor,{manual:false})}
         catch(error){return notify('Save the working draft before sending the correction: '+(error.message||error),'error')}
@@ -1304,7 +1329,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         const sourceDate=new Date(s.submitted_at||s.updated_at||s.created_at||0).getTime();
         const draftDate=new Date(draft.updated_at||0).getTime();
         if(sourceDate && draftDate && draftDate<sourceDate)return false;
-        editor.innerHTML=draft.content_html;
+        editor.innerHTML=lecturerSanitizeResearchHtml(draft.content_html);
         researchWorkspace.draftId=draft.id;
         researchWorkspace.lastSavedHtml=draft.content_html;
         editor.dataset.dirty='0';
@@ -1421,7 +1446,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
                 await lecturerSaveResearchDraft(s,editor,{version:true,label:'Before restore'});
                 const full=await db.from('research_document_draft_versions').select('content_html').eq('id',row.id).single();
                 if(full.error)throw full.error;
-                editor.innerHTML=full.data.content_html||'<p></p>';
+                editor.innerHTML=lecturerSanitizeResearchHtml(full.data.content_html||'<p></p>');
                 editor.dataset.dirty='1';
                 scheduleResearchDraftSave(s,editor,300);
                 notify('Version '+row.version_number+' restored. Save Draft will preserve it.','success');
@@ -1514,7 +1539,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         $('rsPreview').innerHTML = `
           <div class="rs-review-main">
             <div class="rs-doc-topbar">
-              <div><div class="rs-doc-title" id="rsWorkspaceDocTitle">Research document</div><div id="rsSaveState" data-state="saved">Loading document…</div></div>
+              <div><div class="rs-doc-title" id="rsWorkspaceDocTitle">Research document</div><div id="rsSaveState" data-state="saved">Loading document…</div><small id="rsWordCount" style="font-size:9px;color:#64748b">0 words</small></div>
               <div class="rs-doc-top-actions">
                 <button class="rs-btn rs-secondary" type="button" data-rs-save-draft><i class="fas fa-cloud-arrow-up"></i> Save Draft</button>
                 <button class="rs-btn rs-secondary" type="button" data-rs-save-version><i class="fas fa-clock-rotate-left"></i> Save Version</button>
@@ -1549,6 +1574,7 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
               <button type="button" data-rs-table title="Insert table"><i class="fas fa-table"></i></button>
               <button type="button" data-rs-image title="Insert image"><i class="fas fa-image"></i></button>
               <button type="button" data-rs-cmd="insertHorizontalRule" title="Horizontal line"><i class="fas fa-minus"></i></button>
+              <button type="button" data-rs-page-break title="Page break"><i class="fas fa-file-alt"></i></button>
               <button type="button" data-rs-cmd="removeFormat" title="Clear formatting"><i class="fas fa-eraser"></i></button>
               <span class="rs-tool-separator"></span>
               <button type="button" data-rs-comment-add title="Comment"><i class="fas fa-comment"></i></button>
@@ -1624,9 +1650,13 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
             editor.addEventListener('input',function(){
                 if(!lecturerResearchCollab.applyingRemote){
                     editor.dataset.dirty='1';
+                    const count=document.getElementById('rsWordCount');
+                    if(count)count.textContent=lecturerResearchWordCount(editor.innerHTML)+' words';
                     scheduleResearchDraftSave(s,editor,1600);
                 }
             });
+            const initialWordCount=document.getElementById('rsWordCount');
+            if(initialWordCount)initialWordCount.textContent=lecturerResearchWordCount(editor.innerHTML)+' words';
             editor.addEventListener('blur',function(){
                 if(editor.dataset.dirty==='1')scheduleResearchDraftSave(s,editor,250);
             });
@@ -1655,6 +1685,9 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         modal.querySelectorAll('[data-rs-link]').forEach(btn=>btn.addEventListener('click',()=>lecturerResearchInsertLink(editor)));
         modal.querySelectorAll('[data-rs-table]').forEach(btn=>btn.addEventListener('click',()=>lecturerResearchInsertTable(editor)));
         modal.querySelectorAll('[data-rs-image]').forEach(btn=>btn.addEventListener('click',()=>lecturerResearchInsertImage(editor)));
+        modal.querySelectorAll('[data-rs-page-break]').forEach(btn=>btn.addEventListener('click',()=>{
+            editor.focus();document.execCommand('insertHTML',false,'<div style="break-before:page;page-break-before:always;border-top:1px dashed #cbd5e1;margin:28px 0;padding-top:12px"><p><br></p></div>');
+        }));
         const font=modal.querySelector('[data-rs-font]');if(font)font.addEventListener('change',()=>{editor.focus();document.execCommand('fontName',false,font.value)});
         const size=modal.querySelector('[data-rs-font-size]');if(size)size.addEventListener('change',()=>{editor.focus();document.execCommand('fontSize',false,size.value)});
         const spacing=modal.querySelector('[data-rs-line-spacing]');if(spacing)spacing.addEventListener('change',()=>{editor.focus();editor.style.lineHeight=spacing.value});
