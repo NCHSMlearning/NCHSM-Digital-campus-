@@ -441,6 +441,8 @@
             state.filteredRows = [...state.rows];
 
             await loadDeadlines();
+            populateDeadlinePrograms();
+            populateDeadlineIntakes();
             populateFilters();
             updateCounters();
             renderManagementDashboard();
@@ -1036,6 +1038,9 @@
                 if(!item)return;
                 const area=getElement('lrrFolderArea');
                 if(!area)return;
+                folders.style.display='none';
+                const folderNote=panel.querySelector('.lrr-folder-note');
+                if(folderNote)folderNote.style.display='none';
                 area.innerHTML=`
                     <section class="lrr-drive-open">
                         <div class="lrr-drive-open-head">
@@ -1049,7 +1054,7 @@
                                 <span class="lrr-drive-file-status">${statusBadge(row.status)}</span>
                             </button>`).join('')}</div>
                     </section>`;
-                area.querySelector('[data-folder-back]')?.addEventListener('click',()=>{area.innerHTML='';});
+                area.querySelector('[data-folder-back]')?.addEventListener('click',()=>{area.innerHTML='';folders.style.display='block';if(folderNote)folderNote.style.display='';});
                 area.querySelectorAll('[data-open-submission]').forEach(file=>file.addEventListener('click',()=>openSubmission(file.dataset.openSubmission)));
                 area.scrollIntoView({behavior:'smooth',block:'start'});
             }));
