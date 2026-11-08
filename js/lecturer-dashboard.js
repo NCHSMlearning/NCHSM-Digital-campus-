@@ -1053,11 +1053,16 @@ const LecturerDashboard = {
                 .eq('approval_status', 'approved');
             if (error) throw error;
 
-            const validScores = (data || []).filter(mark => {
+            const latestByStudentUnit = new Map();
+            (data || []).forEach(mark => {
                 const key = normalize(mark.subject_name) + '|' + normalize(mark.block);
                 const score = Number(mark.final_score);
-                return unitKeys.has(key) && Number.isFinite(score) && score >= 0 && score <= 100;
+                if (!unitKeys.has(key) || !Number.isFinite(score) || score < 0 || score > 100) return;
+                const rowKey = String(mark.student_id) + '|' + key;
+                const old = latestByStudentUnit.get(rowKey);
+                if (!old || new Date(mark.updated_at || mark.created_at || 0) > new Date(old.updated_at || old.created_at || 0)) latestByStudentUnit.set(rowKey, mark);
             });
+            const validScores = [...latestByStudentUnit.values()];
             this.metrics.avgPerformance = validScores.length
                 ? Math.round(validScores.reduce((sum, mark) => sum + Number(mark.final_score), 0) / validScores.length)
                 : 0;
@@ -1961,32 +1966,38 @@ const LecturerDashboard = {
                 marksData = marks || [];
             }
 
+            const normChart = value => String(value || '').trim().toLowerCase();
             const assignedUnitKeys = new Set((this.assignedUnits || []).map(u =>
-                String(u.subject_name || '').trim().toLowerCase() + '|' + String(u.block || '').trim().toLowerCase()
+                normChart(u.subject_name) + '|' + normChart(u.block)
             ));
-            const validPublishedMarks = marksData.filter(m => {
-                const score = Number(m.final_score ?? m.score);
-                const key = String(m.subject_name || '').trim().toLowerCase() + '|' + String(m.block || '').trim().toLowerCase();
-                return m.published === true && String(m.approval_status || '').toLowerCase() === 'approved'
-                    && assignedUnitKeys.has(key) && Number.isFinite(score) && score >= 0 && score <= 100;
+            const latestPublished = new Map();
+            marksData.forEach(m => {
+                const score=Number(m.final_score ?? m.score);
+                const key=normChart(m.subject_name)+'|'+normChart(m.block);
+                if(m.published!==true||normChart(m.approval_status)!=='approved'||!assignedUnitKeys.has(key)||!Number.isFinite(score)||score<0||score>100)return;
+                const rowKey=String(m.student_id)+'|'+key,old=latestPublished.get(rowKey);
+                if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latestPublished.set(rowKey,m);
             });
-            const scores = validPublishedMarks.map(m => Number(m.final_score ?? m.score));
-            const gradeBuckets = [
-                scores.filter(score => score >= 75).length,
-                scores.filter(score => score >= 65 && score < 75).length,
-                scores.filter(score => score >= 50 && score < 65).length,
-                scores.filter(score => score < 50).length
+            const validPublishedMarks=[...latestPublished.values()];
+            const scores=validPublishedMarks.map(m=>Number(m.final_score ?? m.score));
+            const gradeBands=this.isTVET?[80,65,50]:[75,65,60];
+            const gradeBuckets=[
+                scores.filter(score=>score>=gradeBands[0]).length,
+                scores.filter(score=>score>=gradeBands[1]&&score<gradeBands[0]).length,
+                scores.filter(score=>score>=gradeBands[2]&&score<gradeBands[1]).length,
+                scores.filter(score=>score<gradeBands[2]).length
             ];
-            const averageScore = scores.length ? Math.round(scores.reduce((sum,score)=>sum+score,0)/scores.length) : null;
-            const legendValues = ['nrdGradeDistinction','nrdGradeCredit','nrdGradePass','nrdGradeFail'];
-            legendValues.forEach((id,index) => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = gradeBuckets[index];
-            });
-            const totalEl = document.getElementById('nrdGradeTotal');
-            if (totalEl) totalEl.textContent = scores.length ? 'Total marked results: ' + scores.length : 'No approved and published marks yet';
-            const averageEl = document.getElementById('nrdPerformanceAverage');
-            if (averageEl) averageEl.textContent = averageScore === null ? '—' : averageScore + '%';
+            const averageScore=scores.length?Math.round(scores.reduce((sum,score)=>sum+score,0)/scores.length):null;
+            const legendValues=['nrdGradeDistinction','nrdGradeCredit','nrdGradePass','nrdGradeFail'];
+            legendValues.forEach((id,index)=>{const el=document.getElementById(id);if(el)el.textContent=gradeBuckets[index];});
+            const legendLabels=this.isTVET?['Distinction (≥80%)','Credit (65–79%)','Pass (50–64%)','Below 50%']:['Distinction (≥75%)','Credit (65–74%)','Pass (60–64%)','Below 60%'];
+            document.querySelectorAll('#nrdGradeLegend .nrd-grade-label').forEach((el,index)=>{if(legendLabels[index])el.textContent=legendLabels[index];});
+            const totalEl=document.getElementById('nrdGradeTotal');
+            if(totalEl)totalEl.textContent=scores.length?'Approved & published results: '+scores.length:'No approved and published marks yet';
+            const averageEl=document.getElementById('nrdPerformanceAverage');
+            if(averageEl)averageEl.textContent=averageScore===null?'—':averageScore+'%';
+            const unitAverageEl=document.getElementById('liUnitAverage');
+            if(unitAverageEl)unitAverageEl.textContent=averageScore===null?'—':averageScore+'%';
 
             const ctx1 = document.getElementById('performanceChart');
             if (ctx1) {
@@ -2031,23 +2042,25 @@ const LecturerDashboard = {
                     this.chartInstances.trend = null;
                 }
 
-                const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                const attendanceData = [];
-
-                for (let i = 6; i >= 0; i--) {
-                    const date = new Date();
-                    date.setDate(date.getDate() - i);
-                    const dateStr = date.toISOString().split('T')[0];
-
-                    const { data: dayLogs } = await supabase
-                        .from('geo_attendance_logs')
-                        .select('*')
-                        .eq('program', program)
-                        .gte('check_in_time', `${dateStr}T00:00:00.000Z`)
-                        .lte('check_in_time', `${dateStr}T23:59:59.999Z`);
-
-                    attendanceData.push(dayLogs?.length || 0);
-                }
+                const normAttendance=value=>String(value||'').trim().toLowerCase();
+                const assignedStudentIds=[...new Set((this.assignedStudents||[]).map(s=>String(s.user_id||'').trim()).filter(Boolean))];
+                const assignedNames=[...new Set((this.assignedUnits||[]).map(u=>String(u.subject_name||'').trim()).filter(Boolean))];
+                const assignedKeys=new Set((this.assignedUnits||[]).map(u=>normAttendance(u.subject_name)+'|'+normAttendance(u.block)));
+                const chartDays=[];
+                for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);d.setHours(0,0,0,0);chartDays.push(d);}
+                const weekDays=chartDays.map(d=>d.toLocaleDateString('en-KE',{weekday:'short',timeZone:'Africa/Nairobi'}));
+                const attendanceResults=await Promise.all(chartDays.map(async day=>{
+                    const start=day.toISOString(),end=new Date(day.getTime()+86400000).toISOString();
+                    if(!assignedStudentIds.length||!assignedNames.length)return {count:0};
+                    const {data,error}=await supabase.from('geo_attendance_logs')
+                        .select('student_id,unit_name,block,attendance_status,status,check_in_time')
+                        .in('student_id',assignedStudentIds).in('unit_name',assignedNames).eq('program',program)
+                        .gte('check_in_time',start).lt('check_in_time',end);
+                    if(error)throw error;
+                    const present=new Set((data||[]).filter(row=>assignedKeys.has(normAttendance(row.unit_name)+'|'+normAttendance(row.block))&&['present','verified'].includes(normAttendance(row.attendance_status||row.status))).map(row=>String(row.student_id)));
+                    return {count:present.size};
+                }));
+                const attendanceData=attendanceResults.map(x=>x.count);
 
                 this.chartInstances.trend = new Chart(ctx3, {
                     type: 'line',
