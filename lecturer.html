@@ -1102,6 +1102,92 @@ body:has(#dashboard-content.active){background:#f4f6fb!important}
  #dashboard-content .nrd-quick-actions .nrd-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
 </style>
+
+<style id="nchsm-lecturer-mobile-hero-refinement-v1">
+/* One welcome only: keep the programme subtitle and utility controls. */
+#dashboard-content h1:has(#welcomeHeader){display:none!important}
+@media(max-width:640px){
+  #dashboard-content > header{
+    margin-bottom:12px!important;
+    gap:8px!important;
+    align-items:center!important;
+  }
+  #dashboard-content > header .header-right{
+    gap:14px!important;
+  }
+  .nchsm-reference-dashboard{padding:0 0 18px!important}
+  .nrd-hero{
+    min-height:0!important;
+    margin-bottom:10px!important;
+    border-width:1.5px!important;
+    border-radius:16px!important;
+  }
+  .nrd-hero-content{
+    min-height:0!important;
+    padding:16px 16px 14px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
+    gap:12px!important;
+  }
+  .nrd-hero-identity{
+    gap:0!important;
+    align-items:flex-start!important;
+  }
+  .nrd-avatar{display:none!important}
+  .nrd-hero-copy{min-width:0!important;width:100%!important}
+  .nrd-kicker{font-size:8px!important;letter-spacing:1.25px!important;margin-bottom:5px!important}
+  .nrd-hero-copy h1{
+    font-size:clamp(19px,5.4vw,23px)!important;
+    line-height:1.18!important;
+    overflow-wrap:anywhere!important;
+  }
+  .nrd-hero-copy p{font-size:11px!important;line-height:1.35!important;margin:5px 0 8px!important}
+  .nrd-meta{gap:6px!important}
+  .nrd-meta span{font-size:9px!important;padding:5px 8px!important}
+  .nrd-hero-time{
+    min-width:0!important;
+    width:100%!important;
+    text-align:left!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto auto!important;
+    align-items:center!important;
+    column-gap:10px!important;
+    row-gap:5px!important;
+    padding:9px 10px!important;
+    border:1px solid rgba(255,255,255,.18)!important;
+    border-radius:12px!important;
+    background:rgba(15,23,42,.17)!important;
+  }
+  .nrd-hero-time .nrd-live-row{
+    grid-column:1/-1!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:8px!important;
+  }
+  .nrd-hero-time #currentDateTime{
+    grid-column:1!important;
+    font-size:10px!important;
+    line-height:1.35!important;
+  }
+  .nrd-hero-time strong{
+    grid-column:2!important;
+    font-size:25px!important;
+    line-height:1!important;
+    margin:0!important;
+    white-space:nowrap!important;
+  }
+  .nrd-hero-time #nrdDaypart{
+    grid-column:3!important;
+    font-size:17px!important;
+  }
+  .nrd-hero-time em{display:none!important}
+  .nrd-refresh-btn{min-height:32px!important;padding:5px 9px!important}
+}
+</style>
+
 </head>
 <body>
     <!-- Mobile Navigation Toggle -->
