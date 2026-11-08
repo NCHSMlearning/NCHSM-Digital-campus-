@@ -625,7 +625,8 @@ const LecturerDashboard = {
                 this.runDashboardTask(() => this.loadAttendanceAlerts(), 8000, 'Attendance alerts loading'),
                 this.runDashboardTask(() => this.loadIntelligentAlerts(), 8000, 'Intelligent alerts loading'),
                 this.runDashboardTask(() => this.loadRecentActivity(), 8000, 'Recent activity loading'),
-                this.runDashboardTask(() => this.loadCharts(), 8000, 'Dashboard charts loading')
+                this.runDashboardTask(() => this.loadCharts(), 8000, 'Dashboard charts loading'),
+                this.runDashboardTask(() => this.loadWorkloadInsights(), 10000, 'Workload insights loading')
             ]);
             this.setupEventListeners();
         if (this.liveClockInterval) clearInterval(this.liveClockInterval);
@@ -792,7 +793,7 @@ const LecturerDashboard = {
 
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
-                .select('subject_name, subject_code, block, program, academic_year, lecturer_id')
+                .select('id, subject_name, subject_code, block, program, academic_year, lecturer_id')
                 .eq('lecturer_id', lecturerId);
 
             if (error) throw error;
@@ -2396,6 +2397,7 @@ const LecturerDashboard = {
             await this.loadIntelligentAlerts();
             await this.loadRecentActivity();
             await this.loadCharts();
+            await this.loadWorkloadInsights();
 
             this.updateTimeGreeting();
             this.updateLastUpdated();
