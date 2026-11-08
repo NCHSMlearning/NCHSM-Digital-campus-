@@ -798,7 +798,7 @@
         setText('lrrAllSchoolCount',state.rows.length);
         setText('lrrNursingCount',state.rows.filter(r=>schoolOf(r)==='Nursing').length);
         setText('lrrTVETCount',state.rows.filter(r=>schoolOf(r)==='TVET').length);
-        setText('lrrPendingMetric',count(r=>['draft','submitted'].includes(r.status)));
+        setText('lrrPendingMetric',count(r=>['draft','returned'].includes(r.status)));
         setText('lrrDueMetric',dueDeadlines.filter(d=>!activeSchool||d.school===activeSchool).length);
         setText('lrrProgressMetric',count(r=>r.status==='under_review'));
         setText('lrrAwaitingMetric',count(r=>['submitted','resubmitted'].includes(r.status)));
@@ -2262,6 +2262,12 @@
         setTimeout(() => {
             loadReports();
         }, 100);
+    });
+
+    document.addEventListener('click', function (event) {
+        const link = event.target.closest?.('[data-lrr-focus="deadlines"]');
+        if (!link) return;
+        setTimeout(() => getElement('lrrDeadlineForm')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
     });
 
     console.log(`✅ ${MODULE} module loaded.`);
