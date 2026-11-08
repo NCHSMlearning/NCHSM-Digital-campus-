@@ -709,7 +709,7 @@
         }
     }
 
-    function renderManagementDashboard() {
+    function injectManagementDashboard() {
         const section = getElement('lecturer-reports-review');
         if (!section || getElement('lrrManagementDashboard')) return;
         const panel = document.createElement('div');
@@ -2137,6 +2137,7 @@
 
     function initialize() {
         injectStyles();
+        injectManagementDashboard();
         bindFilters();
         bindGlobalRefresh();
 
