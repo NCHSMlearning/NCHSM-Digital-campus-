@@ -281,20 +281,25 @@ const LecturerDashboard = {
     getCurrentProgram() {
         try {
             const normalize = value => String(value || '').trim();
+            const canonicalProgram = value => {
+                const code = normalize(value);
+                // "Nursing" is a department label, not the database programme code.
+                return code.toLowerCase() === 'nursing' ? 'KRCHN' : code;
+            };
             const profile = window.lecturerDB?.getCurrentUserProfile?.() || {};
 
             if (window.CURRENT_PROGRAM) {
-                this.currentProgram = normalize(window.CURRENT_PROGRAM);
-                this.isTVET = window.IS_TVET === true;
+                this.currentProgram = canonicalProgram(window.CURRENT_PROGRAM);
+                this.isTVET = this.currentProgram.toUpperCase() !== 'KRCHN';
             } else if (profile.program) {
-                this.currentProgram = normalize(profile.program);
+                this.currentProgram = canonicalProgram(profile.program);
                 this.isTVET = this.currentProgram.toUpperCase() !== 'KRCHN';
             } else if (this.currentProgram && this.currentProgram.toUpperCase() !== 'NURSING') {
-                // Keep the programme already resolved from the authenticated staff record.
+                this.currentProgram = canonicalProgram(this.currentProgram);
                 this.isTVET = this.currentProgram.toUpperCase() !== 'KRCHN';
             } else {
                 const department = normalize(profile.department).toLowerCase();
-                const stored = normalize(localStorage.getItem('lecturerProgram'));
+                const stored = canonicalProgram(localStorage.getItem('lecturerProgram'));
                 if (department === 'nursing' || department.includes('nursing')) {
                     this.currentProgram = 'KRCHN';
                     this.isTVET = false;
