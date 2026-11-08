@@ -999,7 +999,7 @@ const LecturerDashboard = {
             const absenceCounts = new Map();
             (data || []).forEach(log => {
                 const key = normalize(log.unit_name) + '|' + normalize(log.block);
-                if (!unitKeys.has(key)) return;
+                if (!unitKeys.has(key) || !(this.assignedEnrollmentKeys||new Set()).has(String(log.student_id||'')+'|'+key)) return;
                 const status = normalize(log.attendance_status || log.status);
                 if (status === 'absent') {
                     const id = String(log.student_id || '').trim();
@@ -1034,7 +1034,7 @@ const LecturerDashboard = {
             (data || []).forEach(log => {
                 const key = normalize(log.unit_name) + '|' + normalize(log.block);
                 const status = normalize(log.attendance_status || log.status);
-                if (unitKeys.has(key) && status === 'pending') pendingIds.add(String(log.student_id));
+                if (unitKeys.has(key) && (this.assignedEnrollmentKeys||new Set()).has(String(log.student_id||'')+'|'+key) && status === 'pending') pendingIds.add(String(log.student_id));
             });
             this.metrics.pendingAttendance = pendingIds.size;
             console.debug('[Lecturer Dashboard] Pending attendance date:', localDate, pendingIds.size);
@@ -1191,7 +1191,7 @@ const LecturerDashboard = {
         const completedExams = assignedExams === null ? 0 : assignedExams.filter(exam => norm(exam.status) === 'completed').length;
         set('liExamProgress', assignedExams === null ? '—' : (assignedExams.length ? Math.round(completedExams / assignedExams.length * 100) : 0) + '%');
         set('liExamDetail', assignedExams === null ? 'Data unavailable' : completedExams + ' completed of ' + assignedExams.length + ' published/scheduled exams');
-        const scopedAttendance = attendanceRecords === null ? null : attendanceRecords.filter(log => assignedKeys.has(norm(log.unit_name)+'|'+norm(log.block)));
+        const scopedAttendance = attendanceRecords === null ? null : attendanceRecords.filter(log => assignedKeys.has(norm(log.unit_name)+'|'+norm(log.block)) && (this.assignedEnrollmentKeys||new Set()).has(String(log.student_id||'')+'|'+norm(log.unit_name)+'|'+norm(log.block)));
         const presentCount = scopedAttendance ? scopedAttendance.filter(log => ['present','verified'].includes(norm(log.attendance_status || log.status))).length : 0;
         const absentCount = scopedAttendance ? scopedAttendance.filter(log => norm(log.attendance_status || log.status) === 'absent').length : 0;
         const attendanceDenominator = presentCount + absentCount;
@@ -1499,7 +1499,7 @@ const LecturerDashboard = {
             const marks=(marksResult.data||[]).filter(m=>unitKeys.has(norm(m.subject_name)+'|'+norm(m.block))&&this.isMarkForAssignedRegistration(m)&&Number.isFinite(Number(m.final_score)));
             const latestMarks=new Map();
             marks.forEach(m=>{
-                const key=String(m.student_id||m.admission_number||'')+'|'+norm(m.subject_name)+'|'+norm(m.block);
+                const key=String(m.admission_number||m.student_id||'')+'|'+norm(m.subject_name)+'|'+norm(m.block);
                 const old=latestMarks.get(key);
                 if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latestMarks.set(key,m);
             });
@@ -1706,7 +1706,7 @@ const LecturerDashboard = {
             if(error)throw error;
             const latest=new Map();
             (data||[]).forEach(m=>{
-                const score=Number(m.final_score),key=String(m.student_id)+'|'+norm(m.subject_name)+'|'+norm(m.block);
+                const score=Number(m.final_score),key=String(m.admission_number||m.student_id||'')+'|'+norm(m.subject_name)+'|'+norm(m.block);
                 if(!keys.has(norm(m.subject_name)+'|'+norm(m.block))||!this.isMarkForAssignedRegistration(m)||!Number.isFinite(score)||score<0||score>100)return;
                 const old=latest.get(key);if(!old||new Date(m.updated_at||m.created_at||0)>new Date(old.updated_at||old.created_at||0))latest.set(key,m);
             });
