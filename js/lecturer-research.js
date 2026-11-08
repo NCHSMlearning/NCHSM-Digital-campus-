@@ -845,9 +845,13 @@ window.LecturerResearch = (() => {
                 }
                 lecturerResearchCollab.applyingRemote=true;
                 const safeRemote=lecturerSanitizeResearchHtml(p.html);
-                if(editor.innerHTML!==safeRemote)editor.innerHTML=safeRemote;
+                if(editor.innerHTML!==safeRemote){
+                    editor.innerHTML=safeRemote;
+                    editor.dataset.dirty='1';
+                    scheduleResearchDraftSave(s,editor,700);
+                }
                 lecturerResearchCollab.applyingRemote=false;
-                if(statusEl)statusEl.textContent='Live update received';
+                if(statusEl)statusEl.textContent='Live update received · synced to your draft';
                 return;
             }
             if(p.type==='comment-add'&&p.comment){
@@ -1624,8 +1628,10 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
                 lecturerResearchCollab.pendingRemoteHtml=null;
                 if(editor.innerHTML!==pending){
                     lecturerResearchCollab.applyingRemote=true;
-                    editor.innerHTML=pending;
+                    editor.innerHTML=lecturerSanitizeResearchHtml(pending);
                     lecturerResearchCollab.applyingRemote=false;
+                    editor.dataset.dirty='1';
+                    scheduleResearchDraftSave(s,editor,500);
                 }
             }
         };
@@ -1743,6 +1749,11 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         const s = researchState.current;
         const db = client();
         if (!s || !db) return;
+        const editor=document.getElementById('rsInlineEditor');
+        if(editor&&editor.dataset.dirty==='1'){
+            try{await lecturerSaveResearchDraft(s,editor,{manual:false})}
+            catch(error){return notify('Save the document draft before saving this review: '+(error.message||error),'error')}
+        }
         await resolveUser();
         if (!state.userId) return notify('Lecturer user ID could not be resolved.', 'error');
 
