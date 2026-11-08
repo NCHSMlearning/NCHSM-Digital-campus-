@@ -1951,7 +1951,7 @@ window.handleResourceUpload = async function(e) {
       const up=await db.storage.from('resources').upload(uploadedPath,file,{upsert:false,contentType:file.type||'application/octet-stream'});
       if(up.error)throw up.error;
       const publicResult=db.storage.from('resources').getPublicUrl(uploadedPath);
-      const ins=await db.from('resources').insert({title,file_name:file.name,file_url:publicResult.data?.publicUrl||'',file_path:uploadedPath,file_size:file.size,file_type:file.type||'application/octet-stream',program_type:program,target_program:program,program:program,uploaded_by:user.id,uploaded_by_name:profile?.full_name||user.email,allow_download:true,approval_status:['super_admin','superadmin','admin','administrator'].includes(role)?'approved':'pending'}).select('id').single();
+      const ins=await db.from('resources').insert({title,file_name:file.name,file_url:publicResult.data?.publicUrl||'',file_path:uploadedPath,file_size:file.size,file_type:file.type||'application/octet-stream',program_type:program,target_program:program,uploaded_by:user.id,uploaded_by_name:profile?.full_name||user.email,allow_download:true,approval_status:['super_admin','superadmin','admin','administrator'].includes(role)?'approved':'pending'}).select('id').single();
       if(ins.error)throw ins.error;
       form?.reset();showToast('Resource uploaded successfully.','success');if(typeof loadAllResources==='function')await loadAllResources();
     }catch(err){if(uploadedPath){try{await db.storage.from('resources').remove([uploadedPath]);}catch(cleanupError){console.warn(cleanupError);}}showToast('Upload failed: '+(err.message||err),'error');}
