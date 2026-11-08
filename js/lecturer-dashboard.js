@@ -880,7 +880,7 @@ const LecturerDashboard = {
             // Do not query the legacy varchar student_id column with UUID values.
             const { data: studentProfiles, error: profileError } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, full_name, program, block, intake_year, email, phone, gender')
+                .select('user_id, student_id, admission_number, full_name, program, block, intake_year, email, phone, gender')
                 .in('user_id', studentIds)
                 .eq('role', 'student')
                 .eq('program', program);
@@ -914,6 +914,17 @@ const LecturerDashboard = {
                 })
                 .filter(Boolean)
                 .sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || '')));
+            // Legacy marks may carry the admission number instead of the Auth UUID.
+            // Keep both identifiers mapped to the same registered unit/block pair.
+            this.assignedEnrollmentKeys = new Set();
+            enrollments.forEach(enrollment => {
+                const id=String(enrollment.student_id||'').trim();
+                const student=profileMap.get(id);
+                const unitKey=normalize(enrollment.unit_name)+'|'+normalize(enrollment.block);
+                [id,student?.student_id,student?.admission_number].filter(Boolean).forEach(identifier=>{
+                    this.assignedEnrollmentKeys.add(String(identifier).trim()+'|'+unitKey);
+                });
+            });
 
             // One student is counted once, even when enrolled in several assigned units.
             this.metrics.totalStudents = this.assignedStudents.length;
