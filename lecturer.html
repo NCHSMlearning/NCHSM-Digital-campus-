@@ -2023,10 +2023,10 @@ body:has(#dashboard-content.active){background:#f4f6fb!important}
         <div class="nrd-performance-body">
           <div class="nrd-performance-donut"><canvas id="performanceChart" aria-label="Student grade distribution"></canvas><div class="nrd-donut-center"><strong id="nrdPerformanceAverage">—</strong><span>Average score</span></div></div>
           <div class="nrd-grade-legend" id="nrdGradeLegend">
-            <div><i class="grade-distinction"></i><span>Distinction (≥75%)</span><b id="nrdGradeDistinction">—</b></div>
-            <div><i class="grade-credit"></i><span>Credit (65–74%)</span><b id="nrdGradeCredit">—</b></div>
-            <div><i class="grade-pass"></i><span>Pass (50–64%)</span><b id="nrdGradePass">—</b></div>
-            <div><i class="grade-fail"></i><span>Below 50%</span><b id="nrdGradeFail">—</b></div>
+            <div><i class="grade-distinction"></i><span class="nrd-grade-label">Distinction (≥75%)</span><b id="nrdGradeDistinction">—</b></div>
+            <div><i class="grade-credit"></i><span class="nrd-grade-label">Credit (65–74%)</span><b id="nrdGradeCredit">—</b></div>
+            <div><i class="grade-pass"></i><span class="nrd-grade-label">Pass (60–64%)</span><b id="nrdGradePass">—</b></div>
+            <div><i class="grade-fail"></i><span class="nrd-grade-label">Below 60%</span><b id="nrdGradeFail">—</b></div>
             <small id="nrdGradeTotal">Based on available marks</small>
           </div>
         </div>
@@ -2042,7 +2042,7 @@ body:has(#dashboard-content.active){background:#f4f6fb!important}
     <section class="nrd-support-grid" aria-label="Student support and lecturer activity">
       <article class="nrd-card nrd-clinical-card">
         <header><div><i class="fas fa-stethoscope"></i><div><h2>Clinical Hours Tracking</h2><small>Student practicum progress</small></div></div></header>
-        <div class="nrd-clinical"><div class="nrd-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"></circle><circle id="clinicalRing" cx="50" cy="50" r="40"></circle></svg><b id="clinicalHoursPercent">0%</b></div><div><strong><span id="clinicalHoursCompleted">0</span> / 1,500 hrs</strong><span>On Track: <b id="clinicalOnTrack">0</b></span><span>At Risk: <b id="clinicalAtRisk">0</b></span><span>Critical: <b id="clinicalCritical">0</b></span></div></div><div class="nrd-clinical-bar"><span id="clinicalHoursBar"></span></div><button class="nrd-panel-action" data-tab="clinical-practicum" type="button">View Details →</button>
+        <div class="nrd-clinical"><div class="nrd-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"></circle><circle id="clinicalRing" cx="50" cy="50" r="40"></circle></svg><b id="clinicalHoursPercent">0%</b></div><div><strong><span id="clinicalHoursCompleted">0</span> / <span id="clinicalHoursRequired">0</span> hrs cohort target</strong><span>On Track: <b id="clinicalOnTrack">0</b></span><span>At Risk: <b id="clinicalAtRisk">0</b></span><span>Critical: <b id="clinicalCritical">0</b></span></div></div><div class="nrd-clinical-bar"><span id="clinicalHoursBar"></span></div><button class="nrd-panel-action" data-tab="clinical-practicum" type="button">View Details →</button>
       </article>
       <article class="nrd-card nrd-intervention-card">
         <header><div><i class="fas fa-user-shield"></i><div><h2>Students Requiring Intervention</h2><small>Below threshold or low attendance</small></div></div><button data-tab="my-students" type="button">View Students →</button></header>
