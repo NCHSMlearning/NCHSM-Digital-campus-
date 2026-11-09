@@ -3673,24 +3673,65 @@ window.viewStudentProfile = async function(pid) {
     };
 
     // ============================================
-    // 🚀 FORCE SUBMIT STUDENT
+    // FORCE SUBMIT STUDENT — secure, atomic server-side action
     // ============================================
     window.forceSubmitStudent = async function(studentId, examId) {
-        if (!confirm(`⚠️ Force submit this student's exam?`)) return;
-        
+        const numericExamId = Number(examId);
+        if (!studentId || !Number.isInteger(numericExamId) || numericExamId <= 0) {
+            alert('Cannot force-submit: student or examination identifier is invalid.');
+            return;
+        }
+
+        const student = (window.liveStudentsData || []).find(row =>
+            String(row.student_id || row.user_id || row.id) === String(studentId)
+        );
+        const studentLabel = student?.student_name || student?.full_name || student?.name || 'this student';
+        if (!confirm(
+            'FORCE SUBMIT EXAM\\n\\nStudent: ' + studentLabel +
+            '\\nExam ID: ' + numericExamId +
+            '\\n\\nThis closes the current attempt and removes its active live session. Saved answers are retained. No score will be invented. Continue?'
+        )) return;
+
+        const buttons = [...document.querySelectorAll('button[onclick*="forceSubmitStudent"]')];
+        buttons.forEach(button => { button.disabled = true; button.dataset.forceSubmitBusy = '1'; });
+
         try {
-            await sb.from('exam_grades').upsert({
-                student_id: studentId,
-                exam_id: parseInt(examId),
-                question_id: '00000000-0000-0000-0000-000000000000',
-                result_status: 'PENDING_REVIEW',
-                graded_at: new Date().toISOString()
-            }, { onConflict: 'student_id, exam_id, question_id' });
-            
-            alert('✅ Exam force submitted!');
-            loadStudentsWithResults();
+            const { data, error } = await sb.rpc('admin_force_submit_exam_attempt', {
+                p_student_id: String(studentId),
+                p_exam_id: numericExamId
+            });
+            if (error) throw error;
+
+            const result = Array.isArray(data) ? data[0] : data;
+            if (!result || result.success !== true) {
+                throw new Error(result?.message || 'The server did not confirm submission.');
+            }
+
+            const submittedAt = result.submitted_at
+                ? new Date(result.submitted_at).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })
+                : 'already in a terminal state';
+            alert(
+                'Exam submission confirmed.\\n\\nStatus: ' + (result.status || 'SUBMITTED') +
+                '\\nSubmitted: ' + submittedAt +
+                '\\nAttempt: ' + (result.attempt_id || '—') +
+                '\\n\\nThe live session has been closed. Existing saved answers were not deleted. ' +
+                (result.score == null ? 'No score was generated; marking/review remains separate.' : 'Existing score: ' + result.score)
+            );
+
+            await Promise.allSettled([
+                loadStudentsWithResults(),
+                typeof loadLiveStudents === 'function' ? loadLiveStudents() : Promise.resolve()
+            ]);
         } catch (error) {
-            alert('❌ Error: ' + error.message);
+            console.error('Force-submit failed:', error);
+            alert('Force submission failed. The attempt was not reported as submitted.\\n\\n' + (error?.message || String(error)));
+        } finally {
+            buttons.forEach(button => {
+                if (button.dataset.forceSubmitBusy === '1') {
+                    button.disabled = false;
+                    delete button.dataset.forceSubmitBusy;
+                }
+            });
         }
     };
 
