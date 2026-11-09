@@ -9,34 +9,48 @@
   "background_color": "#0A3D62",
   "theme_color": "#0A3D62",
   "orientation": "portrait",
-  "categories": ["education", "productivity"],
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "/images/Logo_NCHSM.png",
+      "src": "/images/nchsm-pwa-icon.svg",
       "sizes": "any",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "/images/nchsm-pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     },
     {
       "src": "/images/Logo_NCHSM.png",
       "sizes": "any",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ],
   "shortcuts": [
     {
-      "name": "Login",
+      "name": "Student Login",
       "short_name": "Login",
-      "description": "Open NCHSM Digital Campus login",
+      "description": "Sign in to NCHSM Digital Campus",
       "url": "/login.html",
       "icons": [
         {
-          "src": "/images/Logo_NCHSM.png",
+          "src": "/images/nchsm-pwa-icon.svg",
           "sizes": "any",
-          "type": "image/png"
+          "type": "image/svg+xml"
         }
       ]
     }
-  ]
+  ],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "prefer_related_applications": false
 }
