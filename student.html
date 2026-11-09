@@ -5995,9 +5995,31 @@ console.info('[NCHSM] Online Learning module script initialized');
 var state={tab:'assignments',assignments:[],submissions:[],results:[],research:[],current:null,currentQuestions:[],file:null,bound:false,researchCurrent:null,researchFile:null};
 
 function client(){
-  return (window.db&&window.db.supabase)||window.supabase||window.supabaseClient||null;
+  // config.js exposes the authenticated Supabase client as window.sb before
+  // Database finishes publishing its aliases.
+  return (window.db&&window.db.supabase)||
+    (window.sb&&typeof window.sb.rpc==='function'?window.sb:null)||
+    (window.supabase&&typeof window.supabase.rpc==='function'?window.supabase:null)||
+    (window.supabaseClient&&typeof window.supabaseClient.rpc==='function'?window.supabaseClient:null)||null;
 }
-function uid(){return (window.db&&window.db.currentUserId)||window.currentUserId||null}
+function uid(){return (window.db&&window.db.currentUserId)||window.currentUserId||window.currentUser?.id||null}
+async function resolveStudentId(sb){
+  var id=uid();
+  if(id)return id;
+  if(sb&&sb.auth&&typeof sb.auth.getSession==='function'){
+    try{
+      var sessionResult=await sb.auth.getSession();
+      id=sessionResult&&sessionResult.data&&sessionResult.data.session&&sessionResult.data.session.user
+        ?sessionResult.data.session.user.id:null;
+      if(id){
+        window.currentUserId=id;
+        if(window.db)window.db.currentUserId=id;
+        return id;
+      }
+    }catch(authError){console.warn('Online Learning session is still restoring:',authError&&authError.message||authError)}
+  }
+  return null;
+}
 function profile(){return (window.db&&window.db.currentUserProfile)||window.currentUserProfile||{}}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function fmtDate(v){if(!v)return '—';var d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'})}
@@ -6079,10 +6101,23 @@ function updateStats(){
   set('ol-stat-assigned',as.length);set('ol-stat-due',due);set('ol-stat-submitted',sub.length);set('ol-stat-average',avg.length?(Math.round(avg.reduce(function(x,y){return x+y},0)/avg.length)+'%'):'—');
 }
 async function loadData(){
-  var sb=client(), id=uid();
   setError('');
+  setContent('<div class="ol-loading"><i class="fas fa-spinner fa-spin"></i><strong>Connecting to Online Learning…</strong><span style="display:block;margin-top:6px;color:#64748b;font-size:12px">Restoring your secure student session</span></div>');
+  var sb=client(),id=null;
+  // The module is embedded before the portal's asynchronous auth/profile
+  // restoration completes. Wait briefly instead of leaving the page stuck.
+  for(var attempt=0;attempt<24;attempt++){
+    sb=client();
+    if(sb){
+      id=await resolveStudentId(sb);
+      if(id)break;
+    }
+    await new Promise(function(resolve){setTimeout(resolve,250)});
+  }
   if(!sb||!id){
-    setError('Your secure session is not ready yet. Please wait for the portal to finish loading, then refresh this module.');
+    setError('Your secure student session could not be restored. Please sign out and sign in again, then select Refresh.');
+    setContent('<div class="ol-empty"><i class="fas fa-lock"></i><strong>Secure session not ready</strong><br>Online Learning is waiting for your authenticated student session. Use the portal refresh button or sign in again.</div>');
+    updateStats();
     return;
   }
   loading();
@@ -7551,9 +7586,22 @@ function initResearch(){researchEnsureUI();bindResearch();loadResearch()}
 var _originalRender=render;
 render=function(){if(state.tab==='research'){renderResearch();return}_originalRender.apply(this,arguments)};
 
-function boot(){bind();initResearch();loadData()}
+var booted=false,loadOnNavigationBound=false;
+function boot(){
+  if(!booted){bind();initResearch();booted=true}
+  loadData();
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-document.addEventListener('appReady',function(){setTimeout(function(){bind();initResearch();loadData()},300)});
+document.addEventListener('appReady',function(){setTimeout(boot,300)});
+// Always retry when the student opens Online Learning. This covers cases
+// where the portal session becomes ready after the module's first boot.
+if(!loadOnNavigationBound){
+  loadOnNavigationBound=true;
+  document.addEventListener('click',function(e){
+    var link=e.target&&e.target.closest?e.target.closest('[data-tab="hub-online-learning"]'):null;
+    if(link)setTimeout(loadData,350);
+  });
+}
 
 // Publish callbacks while still inside this module's scope. Referencing these
 // local declarations after the IIFE closes throws a ReferenceError.
