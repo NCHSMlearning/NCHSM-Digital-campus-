@@ -395,8 +395,32 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
                 </div>
             </div>
 
-            <div id="liveStudentsStats" style="display:none; background: #F0FDF4; padding: 12px 20px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #D1FAE5;">
-                <span id="liveCountDisplay">0</span> students currently taking exams
+            <div id="liveStudentsStats" style="display:none; background:#F0FDF4; padding:12px 20px; border-radius:8px; margin-bottom:12px; border:1px solid #D1FAE5;">
+                <strong><span id="liveCountDisplay">0</span> active exam records</strong>
+                <span id="liveStudentsFilteredCount" style="margin-left:12px;color:#475569;font-size:12px;"></span>
+            </div>
+            <div id="liveStudentsFilters" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:14px;">
+                <div style="flex:1 1 260px;min-width:220px;">
+                    <label for="liveStudentSearch" style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px;">Search student</label>
+                    <input id="liveStudentSearch" type="search" placeholder="Name, admission number, email..." autocomplete="off" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;">
+                </div>
+                <div style="flex:1 1 220px;min-width:190px;">
+                    <label for="liveStudentExamFilter" style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px;">Filter by examination</label>
+                    <select id="liveStudentExamFilter" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;"><option value="">All examinations</option></select>
+                </div>
+                <div style="flex:0 1 160px;min-width:140px;">
+                    <label for="liveStudentStatusFilter" style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px;">Activity</label>
+                    <select id="liveStudentStatusFilter" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;">
+                        <option value="">All activity</option><option value="active">Active (last 5 min)</option><option value="inactive">No recent activity</option>
+                    </select>
+                </div>
+                <div style="flex:0 1 120px;min-width:110px;">
+                    <label for="liveStudentsPageSize" style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px;">Rows per page</label>
+                    <select id="liveStudentsPageSize" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;">
+                        <option value="15">15</option><option value="30">30</option><option value="50">50</option><option value="100">100</option><option value="all">All</option>
+                    </select>
+                </div>
+                <button type="button" onclick="clearLiveStudentsFilters()" style="padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;color:#334155;font-weight:700;cursor:pointer;"><i class="fas fa-undo"></i> Clear filters</button>
             </div>
 
             <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
@@ -2094,7 +2118,7 @@ body{background:var(--exam-canvas);color:var(--exam-ink)}
     <!-- Main JavaScript -->
     <script src="js/admin-questions.js"></script>
 
-    <script src="js/admindashboard.js?v=20261109-force-submit-1"></script>
+    <script src="js/admindashboard.js?v=20261109-live-student-filters-1"></script>
 
 <script src="/js/nchsm-mobile-enhancements.js?v=7" defer></script>
 
