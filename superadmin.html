@@ -479,6 +479,22 @@
         }
     }
 </style>
+<style id="nchsm-easy-sidebar">
+/* NCHSM Super Admin navigation: compact, searchable, collapsible like Director workspace */
+#sidebar{width:280px!important;padding:20px 14px!important;overflow-y:auto!important;scrollbar-width:thin}
+#sidebar .sidebar-header{padding-bottom:16px!important;margin-bottom:12px!important}
+#sidebar .search-container{padding:0 8px 12px!important;margin-bottom:10px!important}
+#mainNav{padding:0 2px 18px!important}
+#mainNav .nav-section{padding:12px 10px 5px!important;margin-top:3px!important}
+#mainNav a{min-height:38px;gap:10px!important;padding:9px 12px!important;border-radius:9px!important;font-size:13px!important;border-left:3px solid transparent;transition:background .18s ease,border-color .18s ease}
+#mainNav a:hover{background:rgba(255,255,255,.11)!important;color:#fff!important}
+#mainNav a.active{background:rgba(255,255,255,.16)!important;border-left-color:#fff!important;color:#fff!important}
+#mainNav .dropdown-menu{padding:3px 0 5px 14px!important}
+#mainNav .dropdown-menu a{min-height:34px!important;padding:7px 10px!important;font-size:12px!important}
+#sidebar .sidebar-header img{width:44px!important;height:44px!important}
+#sidebar .color-btn{width:17px!important;height:17px!important}
+@media(max-width:768px){#sidebar{left:-290px!important;width:280px!important;z-index:1200!important}#sidebar.active{left:0!important}body.sidebar-open:after{content:"";position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:1100}}
+</style>
 </head>
 <body>
     <div class="container">
@@ -15379,6 +15395,28 @@ console.log('✅ Search function loaded successfully!');
         
         console.log('✅ All modules initialized!');
     });
+</script>
+<script id="nchsm-easy-sidebar-behavior">
+document.addEventListener('DOMContentLoaded',function(){
+ const side=document.getElementById('sidebar');
+ document.querySelectorAll('#mainNav .nav-dropdown > .dropdown-toggle').forEach(function(toggle){
+  toggle.addEventListener('click',function(e){
+   e.preventDefault();const menu=toggle.nextElementSibling;if(!menu)return;
+   const open=menu.style.display==='block';menu.style.display=open?'none':'block';
+   toggle.setAttribute('aria-expanded',String(!open));
+   const chevron=toggle.querySelector('.fa-chevron-down,.fa-chevron-up');
+   if(chevron){chevron.classList.toggle('fa-chevron-down',open);chevron.classList.toggle('fa-chevron-up',!open);}
+  });
+ });
+ const search=document.getElementById('sidebarSearch');
+ if(search){search.addEventListener('keydown',function(e){if(e.key==='Escape'){search.value='';if(typeof filterSidebarMenus==='function')filterSidebarMenus('');document.getElementById('searchResults')?.style.setProperty('display','none');search.blur();}});}
+ document.querySelectorAll('#mainNav a[data-tab]').forEach(function(a){a.addEventListener('click',function(){
+  document.querySelectorAll('#mainNav a[data-tab]').forEach(x=>x.classList.remove('active'));
+  a.classList.add('active');side?.classList.remove('active');
+ });});
+ const mobile=document.getElementById('mobileNavToggle');
+ if(mobile)mobile.setAttribute('aria-label','Toggle navigation');
+});
 </script>
 </body>
 </html>
