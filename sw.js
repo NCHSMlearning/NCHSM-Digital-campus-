@@ -3,7 +3,7 @@
 // Caches static assets ONLY. Never caches Supabase API.
 // ============================================================
 
-const APP_VERSION  = '2.5.0';
+const APP_VERSION  = '2.5.1';
 const CACHE_NAME   = `nchsm-dashboard-v${APP_VERSION.replace(/\./g, '-')}`;
 const STATIC_CACHE = 'nchsm-static-v1';
 
@@ -12,11 +12,11 @@ const urlsToCache = [
     '/',
     '/index.html',
     '/login.html',
-    '/student.html',
     '/superadmin.html',
     '/js/superadmin-lecturer-reports-review.js',
     '/manifest.json',
     '/images/Logo_NCHSM.png',
+    '/images/nchsm-pwa-icon.svg',
     '/css/main.css',
     '/css/dashboard.css',
     '/js/database.js',
