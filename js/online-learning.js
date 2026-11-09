@@ -3,6 +3,7 @@
 
 (function(){
 'use strict';
+console.info('[NCHSM] online-learning.js initialized');
 
 var state={tab:'assignments',assignments:[],submissions:[],results:[],research:[],current:null,currentQuestions:[],file:null,bound:false,researchCurrent:null,researchFile:null};
 
@@ -113,13 +114,27 @@ function updateStats(){
   set('ol-stat-assigned',as.length);set('ol-stat-due',due);set('ol-stat-submitted',sub.length);set('ol-stat-average',avg.length?(Math.round(avg.reduce(function(x,y){return x+y},0)/avg.length)+'%'):'—');
 }
 async function loadData(){
-  var sb=client();
   setError('');
+  setContent('<div class="ol-loading"><i class="fas fa-spinner fa-spin"></i><strong>Connecting to Online Learning…</strong><span style="display:block;margin-top:6px;color:#64748b;font-size:12px">Restoring your secure student session</span></div>');
+  var sb=client(),id=null;
+  // Wait for config.js and Supabase auth restoration instead of leaving the
+  // module in a permanent loading state during a hard refresh.
+  for(var attempt=0;attempt<24;attempt++){
+    sb=client();
+    if(sb){
+      try{id=await resolveStudentSession(sb)}catch(authError){console.warn('Online Learning session restore retry:',authError&&authError.message||authError)}
+      if(id)break;
+    }
+    await new Promise(function(resolve){setTimeout(resolve,250)});
+  }
+  if(!sb||!id){
+    setError('Your secure student session could not be restored. Please sign out and sign in again, then select Refresh.');
+    setContent('<div class="ol-empty"><i class="fas fa-lock"></i><strong>Secure session not ready</strong><br>Online Learning is waiting for your authenticated student session. Use the portal refresh button or sign in again.</div>');
+    updateStats();
+    return;
+  }
   loading();
   try{
-    if(!sb)throw new Error('The student database client has not finished initializing. Please refresh this section.');
-    var id=await resolveStudentSession(sb);
-    if(!id)throw new Error('Your student sign-in session is not ready. Please sign in again, then refresh this section.');
     /*
      * IMPORTANT:
      * The lecturer dashboard writes to online_assignments and
@@ -1711,12 +1726,20 @@ function initResearch(){researchEnsureUI();bindResearch();loadResearch()}
 var _originalRender=render;
 render=function(){if(state.tab==='research'){renderResearch();return}_originalRender.apply(this,arguments)};
 
+var bootBound=false;
 function boot(){
   if(!document.getElementById('hub-online-learning'))return;
-  bind();initResearch();loadData();
+  if(!bootBound){bind();bootBound=true}
+  // Re-run research loading too; the first attempt may precede auth restore.
+  initResearch();
+  loadData();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 document.addEventListener('appReady',function(){setTimeout(boot,300)});
+document.addEventListener('click',function(e){
+  var link=e.target&&e.target.closest?e.target.closest('[data-tab="hub-online-learning"]'):null;
+  if(link)setTimeout(boot,350);
+});
 window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};
 window.NCHSMStudentOnlineLearning.load=function(){boot()};
 window.NCHSMStudentOnlineLearning.refresh=function(){return loadData()};
