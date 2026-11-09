@@ -3710,18 +3710,26 @@ window.viewStudentProfile = async function(pid) {
             const submittedAt = result.submitted_at
                 ? new Date(result.submitted_at).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })
                 : 'already in a terminal state';
+            showToast('✓ FORCE SUBMIT SUCCESSFUL — ' + studentLabel + ' is now locked for this examination.', 'success');
             alert(
-                'Exam submission confirmed.\n\nStatus: ' + (result.status || 'SUBMITTED') +
-                '\nSubmitted: ' + submittedAt +
-                '\nAttempt: ' + (result.attempt_id || '—') +
-                '\n\nThe live session has been closed. Existing saved answers were not deleted. ' +
+                '✓ FORCE SUBMIT SUCCESSFUL\\n\\nStudent: ' + studentLabel +
+                '\\nStatus: ' + (result.status || 'SUBMITTED') +
+                '\\nSubmitted: ' + submittedAt +
+                '\\nAttempt: ' + (result.attempt_id || '—') +
+                '\\n\\nThe live session is closed. This examination will remain locked until you authorize the student to continue. Saved answers were not deleted. ' +
                 (result.score == null ? 'No score was generated; marking/review remains separate.' : 'Existing score: ' + result.score)
             );
 
-            await Promise.allSettled([
-                loadStudentsWithResults(),
-                typeof loadLiveStudents === 'function' ? loadLiveStudents() : Promise.resolve()
-            ]);
+            const lockedRow = (window.liveStudentsData || []).find(item =>
+                String(item.student?.user_id || '') === String(studentId) &&
+                String(item.exam?.id || item.examId || '') === String(numericExamId)
+            );
+            if (lockedRow) {
+                lockedRow.isLocked = true;
+                lockedRow.attempt = { ...(lockedRow.attempt || {}), status: 'SUBMITTED', submitted_at: result.submitted_at || new Date().toISOString() };
+                window.displayLiveStudents();
+            }
+            if (typeof loadStudentsWithResults === 'function') await loadStudentsWithResults();
         } catch (error) {
             console.error('Force-submit failed:', error);
             alert('Force submission failed. The attempt was not reported as submitted.\n\n' + (error?.message || String(error)));
@@ -4530,7 +4538,6 @@ window.closeCameraModal = function() {
             sb.from('exam_attempts')
                 .select('id, student_id, exam_id, status, started_at, submitted_at, updated_at, attempt_number')
                 .gte('started_at', attemptCutoff)
-                .is('submitted_at', null)
                 .order('updated_at', { ascending: false })
                 .limit(2000),
             sb.from('exam_proctoring_logs')
@@ -4573,13 +4580,13 @@ window.closeCameraModal = function() {
 
         attemptRows.forEach(attempt => {
             const status = normalizeAttemptStatus(attempt.status);
-            if (!attempt.student_id || !attempt.exam_id || attempt.submitted_at || terminalAttemptStatuses.has(status)) return;
-            // Older exam pages use variants such as "ongoing", "in-progress",
-            // "taking exam", or custom non-terminal values. Keep these attempts
-            // visible; camera/heartbeat availability is shown separately.
+            if (!attempt.student_id || !attempt.exam_id) return;
+            const isTerminal = !!attempt.submitted_at || terminalAttemptStatuses.has(status);
+            // Retain submitted attempts for 12 hours as locked rows.
+            if (isTerminal && (!attempt.submitted_at || new Date(attempt.submitted_at).getTime() < now - 12 * 60 * 60 * 1000)) return;
             const key = sessionKey(attempt.student_id, attempt.exam_id);
             const existing = sessions.get(key);
-            upsertSession(attempt.student_id, attempt.exam_id, { attempt, source: existing?.heartbeat ? 'heartbeat+attempt' : 'attempt' }, attempt.updated_at || attempt.started_at);
+            upsertSession(attempt.student_id, attempt.exam_id, { attempt, isLocked: isTerminal, source: existing?.heartbeat ? 'heartbeat+attempt' : 'attempt' }, attempt.updated_at || attempt.submitted_at || attempt.started_at);
         });
 
         const latestLogByPair = new Map();
@@ -4845,7 +4852,8 @@ window.displayLiveStudents = function() {
             const progressHandler = escapeAdminHtml('viewStudentProgress(' + JSON.stringify(studentUserId) + ',' + JSON.stringify(studentNameRaw) + ',' + examId + ')');
             const timerHandler = escapeAdminHtml('openTimerModal(' + JSON.stringify(studentUserId) + ',' + JSON.stringify(studentNameRaw) + ',' + examId + ',' + JSON.stringify(examNameRaw) + ')');
             const submitHandler = escapeAdminHtml('forceSubmitStudent(' + JSON.stringify(studentUserId) + ',' + examId + ')');
-            const actions = studentUserId && examId ? '<div style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn btn-view" onclick="' + progressHandler + '" style="background:#4299E1;color:white;border:0;padding:5px 9px;border-radius:4px;cursor:pointer;font-size:.68rem;">Progress</button><button class="action-btn btn-warning" onclick="' + timerHandler + '" style="background:#F59E0B;color:white;border:0;padding:5px 9px;border-radius:4px;cursor:pointer;font-size:.68rem;">Timer</button><button class="action-btn btn-danger" onclick="' + submitHandler + '" style="background:#DC2626;color:white;border:0;padding:5px 9px;border-radius:4px;cursor:pointer;font-size:.68rem;">Force Submit</button></div>' : '—';
+            const isLocked = !!item.isLocked || !!item.attempt?.submitted_at || ['SUBMITTED','COMPLETED','FINISHED','GRADED','PASSED','FAILED','CANCELLED','CANCELED','ABANDONED','EXPIRED'].includes(String(item.attempt?.status || '').toUpperCase());
+            const actions = studentUserId && examId ? '<div style="display:flex;gap:4px;flex-wrap:wrap;"><button class="action-btn btn-view" onclick="' + progressHandler + '" style="background:#4299E1;color:white;border:0;padding:5px 9px;border-radius:4px;cursor:pointer;font-size:.68rem;">Progress</button><button class="action-btn btn-warning" onclick="' + timerHandler + '" style="background:#F59E0B;color:white;border:0;padding:5px 9px;border-radius:4px;cursor:pointer;font-size:.68rem;">Timer</button>' + (isLocked ? '<button type="button" disabled style="background:#475569;color:white;border:0;padding:5px 9px;border-radius:4px;font-size:.68rem;cursor:not-allowed;"><i class="fas fa-lock"></i> Locked</button>' : '<button class="action-btn btn-danger" onclick="' + submitHandler + '" style="background:#DC2626;color:white;border:0;padding:5px 9px;border-radius:4px;cursor:pointer;font-size:.68rem;"><i class="fas fa-paper-plane"></i> Force Submit</button>') + '</div>' : '—';
             return '<tr><td style="padding:10px 12px;"><strong>' + statusIcon + '</strong><div style="font-size:.65rem;color:#64748B;">' + statusText + '</div></td><td style="padding:10px 12px;"><span class="student-id-badge">' + studentId + '</span></td><td style="padding:10px 12px;"><strong>' + studentName + '</strong><div style="font-size:.7rem;color:#64748B;">' + program + '</div></td><td style="padding:10px 12px;"><strong>' + examName + '</strong><div style="font-size:.65rem;color:#64748B;">' + (item.answeredCount || 0) + '/' + (item.totalQuestions || 0) + ' answered</div></td><td style="padding:10px 12px;">' + progressBar + '</td><td style="padding:10px 12px;"><span class="' + (item.statusClass || 'status-active') + '" style="font-weight:600;font-family:monospace;padding:4px 8px;border-radius:6px;">' + (item.timeDisplay || '--') + '</span></td><td style="padding:10px 12px;text-align:center;font-size:1.2rem;">' + (item.cameraIcon || '⚪') + '<div style="font-size:.55rem;color:#64748B;">' + escapeAdminHtml(item.cameraStatus || 'unknown') + '</div></td><td style="padding:10px 12px;font-size:.7rem;color:#64748B;">' + escapeAdminHtml(formattedTime) + '<div style="font-size:.6rem;">' + alertIcon + '</div></td><td style="padding:10px 12px;">' + actions + '</td></tr>';
         }).join('');
     }
