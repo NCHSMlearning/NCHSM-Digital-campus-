@@ -7,9 +7,31 @@
 var state={tab:'assignments',assignments:[],submissions:[],results:[],research:[],current:null,currentQuestions:[],file:null,bound:false,researchCurrent:null,researchFile:null};
 
 function client(){
-  return (window.db&&window.db.supabase)||window.supabase||window.supabaseClient||null;
+  var candidates=[window.db&&window.db.supabase,window.sb,window.supabaseClient,window.supabase];
+  for(var i=0;i<candidates.length;i++){
+    var candidate=candidates[i];
+    if(candidate&&typeof candidate.rpc==='function'&&candidate.auth&&typeof candidate.auth.getSession==='function')return candidate;
+  }
+  return null;
 }
-function uid(){return (window.db&&window.db.currentUserId)||window.currentUserId||null}
+function uid(){
+  var p=(window.db&&window.db.currentUserProfile)||window.currentUserProfile||window.currentUser||{};
+  return (window.db&&window.db.currentUserId)||window.currentUserId||window.currentUser?.id||p.user_id||p.id||null;
+}
+async function resolveStudentSession(sb){
+  var id=uid();
+  if(id)return id;
+  if(!sb||!sb.auth)return null;
+  var sessionResult=await sb.auth.getSession();
+  if(sessionResult.error)throw sessionResult.error;
+  var user=sessionResult.data&&sessionResult.data.session&&sessionResult.data.session.user;
+  if(user&&user.id){
+    window.currentUserId=user.id;
+    if(window.db)window.db.currentUserId=window.db.currentUserId||user.id;
+    return user.id;
+  }
+  return null;
+}
 function profile(){return (window.db&&window.db.currentUserProfile)||window.currentUserProfile||{}}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function fmtDate(v){if(!v)return '—';var d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'})}
@@ -91,14 +113,13 @@ function updateStats(){
   set('ol-stat-assigned',as.length);set('ol-stat-due',due);set('ol-stat-submitted',sub.length);set('ol-stat-average',avg.length?(Math.round(avg.reduce(function(x,y){return x+y},0)/avg.length)+'%'):'—');
 }
 async function loadData(){
-  var sb=client(), id=uid();
+  var sb=client();
   setError('');
-  if(!sb||!id){
-    setError('Your secure session is not ready yet. Please wait for the portal to finish loading, then refresh this module.');
-    return;
-  }
   loading();
   try{
+    if(!sb)throw new Error('The student database client has not finished initializing. Please refresh this section.');
+    var id=await resolveStudentSession(sb);
+    if(!id)throw new Error('Your student sign-in session is not ready. Please sign in again, then refresh this section.');
     /*
      * IMPORTANT:
      * The lecturer dashboard writes to online_assignments and
@@ -764,7 +785,10 @@ async function viewResult(id){
 
 function close(which){var m=document.getElementById(which==='result'?'ol-result-modal':'ol-assignment-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}}
 function bind(){
-  if(state.bound)return;state.bound=true;
+  if(state.bound)return;
+  var hub=document.getElementById('hub-online-learning');
+  if(!hub)return false;
+  state.bound=true;
   ensureAssignmentEnhancementStyles();
   document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(b){b.addEventListener('click',function(){state.tab=this.dataset.olTab;document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(x){x.classList.toggle('active',x===b)});if(state.tab==='research')loadResearch();render()})});
   document.getElementById('ol-search')?.addEventListener('input',render);
@@ -772,12 +796,14 @@ function bind(){
   document.getElementById('ol-refresh')?.addEventListener('click',loadData);
   document.getElementById('ol-submit-btn')?.addEventListener('click',submitCurrent);
   document.querySelectorAll('#hub-online-learning [data-ol-close]').forEach(function(b){b.addEventListener('click',function(){close(this.dataset.olClose)})});
-  document.getElementById('hub-online-learning').addEventListener('click',function(e){
+  hub.addEventListener('click',function(e){
     var del=e.target.closest('[data-ol-delete-submission]');if(del){deleteSubmissionDocument(del.dataset.olDeleteSubmission);return}
     var o=e.target.closest('[data-ol-open]');if(o){var a=state.assignments.find(function(x){return String(x.id)===String(o.dataset.olOpen)});if(a)openModal(a);return}
     var r=e.target.closest('[data-ol-result]');if(r)viewResult(r.dataset.olResult);
   });
   document.querySelectorAll('#hub-online-learning .ol-modal').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m)close(m.id==='ol-result-modal'?'result':'assignment')})});
+  return true;
+}
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){close('assignment');close('result')}});
 }
 
@@ -1686,10 +1712,15 @@ function initResearch(){researchEnsureUI();bindResearch();loadResearch()}
 var _originalRender=render;
 render=function(){if(state.tab==='research'){renderResearch();return}_originalRender.apply(this,arguments)};
 
-function boot(){bind();initResearch();loadData()}
+function boot(){
+  if(!document.getElementById('hub-online-learning'))return;
+  bind();initResearch();loadData();
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-document.addEventListener('appReady',function(){setTimeout(function(){bind();initResearch();loadData()},300)});
+document.addEventListener('appReady',function(){setTimeout(boot,300)});
 window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};
+window.NCHSMStudentOnlineLearning.load=function(){boot()};
+window.NCHSMStudentOnlineLearning.refresh=function(){return loadData()};
 window.NCHSMStudentOnlineLearning.deleteSubmissionDocument=deleteSubmissionDocument;
 window.NCHSMStudentOnlineLearning.viewResult=viewResult;
 // Legacy inline handlers in the student portal call this function by its global name.
