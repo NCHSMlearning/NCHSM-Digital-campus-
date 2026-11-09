@@ -128,20 +128,31 @@
   (function initNchsmPwa() {
     if (!('serviceWorker' in navigator)) return;
 
-    const manifest = document.createElement('link');
-    manifest.rel = 'manifest';
-    manifest.href = '/manifest.json?v=5';
-    document.head.appendChild(manifest);
+    if (!document.querySelector('link[rel="manifest"]')) {
+      const manifest = document.createElement('link');
+      manifest.rel = 'manifest';
+      manifest.href = '/manifest.json?v=6';
+      document.head.appendChild(manifest);
+    }
 
     const theme = document.createElement('meta');
     theme.name = 'theme-color';
     theme.content = '#073b5c';
     document.head.appendChild(theme);
 
+    const INSTALL_FLAG = 'nchsm_pwa_installed_v1';
     const isStandalone = function () {
       return window.matchMedia('(display-mode: standalone)').matches ||
         window.matchMedia('(display-mode: fullscreen)').matches ||
         window.navigator.standalone === true;
+    };
+    const wasInstalled = function () {
+      try { return localStorage.getItem(INSTALL_FLAG) === '1'; }
+      catch (error) { return false; }
+    };
+    const markInstalled = function () {
+      try { localStorage.setItem(INSTALL_FLAG, '1'); } catch (error) {}
+      install.hidden = true;
     };
     const isMobileInstallBrowser = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     const install = document.createElement('button');
@@ -149,14 +160,14 @@
     install.className = 'nchsm-pwa-install';
     install.textContent = 'Install NCHSM';
     install.setAttribute('aria-label', 'Install NCHSM Digital Campus');
-    install.hidden = isStandalone() || !isMobileInstallBrowser;
+    install.hidden = isStandalone() || wasInstalled() || !isMobileInstallBrowser;
     install.style.cssText = 'position:fixed;z-index:2147483645;left:max(16px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));padding:12px 18px;border:0;border-radius:999px;background:#073b5c;color:#fff;font:700 14px system-ui,sans-serif;box-shadow:0 6px 22px rgba(7,35,55,.25);cursor:pointer';
     document.body.appendChild(install);
 
     let deferredInstallPrompt = null;
     function syncInstallVisibility() {
       // Installed users should never see the website install control again.
-      install.hidden = isStandalone() || !isMobileInstallBrowser;
+      install.hidden = isStandalone() || wasInstalled() || !isMobileInstallBrowser;
       if (!install.hidden) install.textContent = 'Install NCHSM';
     }
     window.addEventListener('beforeinstallprompt', function (event) {
@@ -167,7 +178,7 @@
 
     window.addEventListener('appinstalled', function () {
       deferredInstallPrompt = null;
-      install.hidden = true;
+      markInstalled();
     });
     window.addEventListener('pageshow', syncInstallVisibility);
     document.addEventListener('visibilitychange', function () {
@@ -180,7 +191,10 @@
         return;
       }
       if (!deferredInstallPrompt) {
-        window.alert('To install NCHSM Digital Campus, open the browser menu (⋮) and choose “Install app” or “Add to Home screen”.');
+        const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        window.alert(ios
+          ? 'To install NCHSM Digital Campus on iPhone/iPad, tap Share and choose “Add to Home Screen”.'
+          : 'To install NCHSM Digital Campus, open the browser menu (⋮) and choose “Install app” or “Add to Home screen”.');
         return;
       }
       const promptEvent = deferredInstallPrompt;
@@ -190,7 +204,7 @@
       try {
         await promptEvent.prompt();
         const choice = await promptEvent.userChoice;
-        if (choice && choice.outcome === 'accepted') install.hidden = true;
+        if (choice && choice.outcome === 'accepted') markInstalled();
         else {
           install.hidden = false;
           install.textContent = 'Install NCHSM';
