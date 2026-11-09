@@ -802,9 +802,8 @@ function bind(){
     var r=e.target.closest('[data-ol-result]');if(r)viewResult(r.dataset.olResult);
   });
   document.querySelectorAll('#hub-online-learning .ol-modal').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m)close(m.id==='ol-result-modal'?'result':'assignment')})});
-  return true;
-}
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){close('assignment');close('result')}});
+  return true;
 }
 
 /* ============================================================
