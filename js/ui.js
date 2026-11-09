@@ -640,8 +640,9 @@ class UIModule {
         // Mobile menu toggle
         if (this.mobileMenuToggle) {
             try {
-                const newToggle = this.mobileMenuToggle.cloneNode(true);
-                this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
+                const originalToggle = this.mobileMenuToggle;
+                const newToggle = originalToggle.parentNode ? originalToggle.cloneNode(true) : originalToggle;
+                if (newToggle !== originalToggle) originalToggle.parentNode.replaceChild(newToggle, originalToggle);
                 this.mobileMenuToggle = newToggle;
                 this.mobileMenuToggle.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -659,8 +660,9 @@ class UIModule {
         // Overlay click
         if (this.overlay) {
             try {
-                const newOverlay = this.overlay.cloneNode(true);
-                this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
+                const originalOverlay = this.overlay;
+                const newOverlay = originalOverlay.parentNode ? originalOverlay.cloneNode(true) : originalOverlay;
+                if (newOverlay !== originalOverlay) originalOverlay.parentNode.replaceChild(newOverlay, originalOverlay);
                 this.overlay = newOverlay;
                 this.overlay.addEventListener('click', () => {
                     this.closeMenu();
@@ -1784,8 +1786,8 @@ function initPremiumSidebar() {
 
     // Mobile toggle
     if (toggle) {
-        const newToggle = toggle.cloneNode(true);
-        toggle.parentNode.replaceChild(newToggle, toggle);
+        const newToggle = toggle.parentNode ? toggle.cloneNode(true) : toggle;
+        if (newToggle !== toggle) toggle.parentNode.replaceChild(newToggle, toggle);
         
         newToggle.addEventListener('click', function(e) {
             e.preventDefault();
@@ -1819,8 +1821,8 @@ function initPremiumSidebar() {
 
     // Overlay close
     if (overlay) {
-        const newOverlay = overlay.cloneNode(true);
-        overlay.parentNode.replaceChild(newOverlay, overlay);
+        const newOverlay = overlay.parentNode ? overlay.cloneNode(true) : overlay;
+        if (newOverlay !== overlay) overlay.parentNode.replaceChild(newOverlay, overlay);
         
         newOverlay.addEventListener('click', function() {
             if (sidebar.classList.contains('active') || sidebar.classList.contains('open')) {
