@@ -1,7 +1,7 @@
 /* NCHSM Director workspace — authenticated, read-only institutional overview. */
 (function(){
 'use strict';
-const ALLOWED_ROLES=['director','institutional_director','college_director','principal'];
+const ALLOWED_ROLES=['director','institutional_director','college_director'];
 const $=id=>document.getElementById(id);
 const sb=()=>window.supabaseClient||window.sb;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -109,7 +109,7 @@ async function boot(){
  const role=norm(profile?.role||auth.user.app_metadata?.role||auth.user.user_metadata?.role);
  if(!ALLOWED_ROLES.includes(role)){document.body.innerHTML='<main style="font:16px Arial;padding:32px;color:#8b3030">Director access is not enabled for this account. Your current role does not grant access to this workspace. Please contact the Super Admin.</main>';return;}
  state.profile=profile;
- const name=profile.full_name||auth.user.email||'Director';$('userName').textContent=name;$('avatar').textContent=name.trim().charAt(0).toUpperCase();
+ const name=profile?.full_name||auth.user.email||'Director';$('userName').textContent=name;$('avatar').textContent=name.trim().charAt(0).toUpperCase();
  $('logoutBtn').addEventListener('click',async()=>{await client.auth.signOut();location.replace('login.html');});
  document.addEventListener('click',async e=>{const section=e.target.closest('[data-section]');if(section){await showView(section.dataset.section);return;}const action=e.target.closest('[data-action]')?.dataset.action;if(action==='refresh')await refresh();if(action==='export')exportCsv();});
  await refresh();
