@@ -28,7 +28,7 @@ label{display:block;font-size:12px;font-weight:800;margin:17px 0 7px;color:#3341
 (function(){
  const form=document.getElementById('directorLoginForm'),btn=document.getElementById('submitButton'),msg=document.getElementById('message'),email=document.getElementById('email'),password=document.getElementById('password');
  const allowed=['director','institutional_director','college_director'];
- const norm=v=>String(v||'').trim().toLowerCase().replace(/[\\s-]+/g,'_');
+ const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
  function show(text,type){msg.textContent=text;msg.className='message '+type;}
  document.getElementById('togglePassword').addEventListener('click',function(){const reveal=password.type==='password';password.type=reveal?'text':'password';this.textContent=reveal?'HIDE':'SHOW';});
  form.addEventListener('submit',async function(e){
