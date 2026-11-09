@@ -1,4 +1,25 @@
-/* Director authentication boundary. Authorization comes from the protected profile row only. */
-(function(w){'use strict';const ALLOWED=new Set(['director','institutional_director','college_director']);const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
-async function requireDirector(){const client=w.sb||w.supabaseClient;if(!client?.auth?.getUser){location.replace('login.html');throw new Error('Authentication service unavailable.');}const {data,error}=await client.auth.getUser();if(error||!data?.user){location.replace('login.html');throw new Error('Please sign in to continue.');}const user=data.user;const {data:profile,error:pe}=await client.from('consolidated_user_profiles_table').select('user_id,full_name,email,role,department,program,status').eq('user_id',user.id).maybeSingle();if(pe)throw new Error('Unable to verify Director profile: '+pe.message);const role=norm(profile?.role);if(!profile||!ALLOWED.has(role)){document.getElementById('directorContent').innerHTML='<div class="d-card"><h3>Director access not enabled</h3><p class="d-sub">This account does not have an authorised Director role in the institutional profile. Contact the Super Admin.</p></div>';throw new Error('Director role is not assigned.');}if(profile.status&&['inactive','disabled','suspended','blocked'].includes(norm(profile.status)))throw new Error('This institutional account is not active.');return{client,user,profile,role};}
-w.DirectorAuth={requireDirector};})(window);
+/* Director authentication boundary. Fail visibly rather than leaving the workspace in an endless loading state. */
+(function(w){'use strict';
+const ALLOWED=new Set(['director','institutional_director','college_director']);
+const norm=v=>String(v||'').trim().toLowerCase().replace(/[\\s-]+/g,'_');
+function withTimeout(promise,label,ms=15000){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' timed out. Check your connection and refresh the page.')),ms);})]).finally(()=>clearTimeout(timer));}
+function showError(message){const el=document.getElementById('directorContent');if(el)el.innerHTML='<div class="d-card"><h3>Unable to verify Director access</h3><p class="d-sub">'+String(message).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</p><button class="d-btn primary" type="button" onclick="location.reload()">Retry verification</button></div>';}
+async function requireDirector(){
+ const client=w.sb||w.supabaseClient;
+ if(!client?.auth?.getSession||!client?.from){const e=new Error('Supabase client is unavailable. Reload the page and try again.');showError(e.message);throw e;}
+ try{
+  const sessionResult=await withTimeout(client.auth.getSession(),'Supabase session check');
+  if(sessionResult.error)throw sessionResult.error;
+  let user=sessionResult.data?.session?.user||null;
+  if(!user){const e=new Error('No active sign-in session was found. Please sign in again.');showError(e.message);throw e;}
+  const profileResult=await withTimeout(client.from('consolidated_user_profiles_table').select('user_id,full_name,email,role,department,program,status').eq('user_id',user.id).maybeSingle(),'Director profile lookup');
+  if(profileResult.error)throw new Error('Unable to read the institutional profile: '+profileResult.error.message);
+  const profile=profileResult.data;
+  const role=norm(profile?.role);
+  if(!profile||!ALLOWED.has(role)){const e=new Error('This account does not have an authorised Director role in the institutional profile. Contact the Super Admin.');showError(e.message);throw e;}
+  if(profile.status&&['inactive','disabled','suspended','blocked'].includes(norm(profile.status))){const e=new Error('This institutional account is not active. Contact the Super Admin.');showError(e.message);throw e;}
+  return{client,user,profile,role};
+ }catch(error){showError(error?.message||'An unexpected authentication error occurred.');throw error;}
+}
+w.DirectorAuth={requireDirector};
+})(window);
