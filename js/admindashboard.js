@@ -3687,9 +3687,9 @@ window.viewStudentProfile = async function(pid) {
         );
         const studentLabel = student?.student_name || student?.full_name || student?.name || 'this student';
         if (!confirm(
-            'FORCE SUBMIT EXAM\\n\\nStudent: ' + studentLabel +
-            '\\nExam ID: ' + numericExamId +
-            '\\n\\nThis closes the current attempt and removes its active live session. Saved answers are retained. No score will be invented. Continue?'
+            'FORCE SUBMIT EXAM\n\nStudent: ' + studentLabel +
+            '\nExam ID: ' + numericExamId +
+            '\n\nThis closes the current attempt and removes its active live session. Saved answers are retained. No score will be invented. Continue?'
         )) return;
 
         const buttons = [...document.querySelectorAll('button[onclick*="forceSubmitStudent"]')];
@@ -3711,10 +3711,10 @@ window.viewStudentProfile = async function(pid) {
                 ? new Date(result.submitted_at).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })
                 : 'already in a terminal state';
             alert(
-                'Exam submission confirmed.\\n\\nStatus: ' + (result.status || 'SUBMITTED') +
-                '\\nSubmitted: ' + submittedAt +
-                '\\nAttempt: ' + (result.attempt_id || '—') +
-                '\\n\\nThe live session has been closed. Existing saved answers were not deleted. ' +
+                'Exam submission confirmed.\n\nStatus: ' + (result.status || 'SUBMITTED') +
+                '\nSubmitted: ' + submittedAt +
+                '\nAttempt: ' + (result.attempt_id || '—') +
+                '\n\nThe live session has been closed. Existing saved answers were not deleted. ' +
                 (result.score == null ? 'No score was generated; marking/review remains separate.' : 'Existing score: ' + result.score)
             );
 
@@ -3724,7 +3724,7 @@ window.viewStudentProfile = async function(pid) {
             ]);
         } catch (error) {
             console.error('Force-submit failed:', error);
-            alert('Force submission failed. The attempt was not reported as submitted.\\n\\n' + (error?.message || String(error)));
+            alert('Force submission failed. The attempt was not reported as submitted.\n\n' + (error?.message || String(error)));
         } finally {
             buttons.forEach(button => {
                 if (button.dataset.forceSubmitBusy === '1') {
