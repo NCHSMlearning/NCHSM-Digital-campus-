@@ -12,3 +12,28 @@
 .d-progress{height:8px;background:#e5e7eb;border-radius:10px;overflow:hidden}.d-progress span{display:block;height:100%;background:linear-gradient(90deg,#4f46e5,#818cf8);border-radius:10px}.d-muted{color:var(--d-muted)}.d-loading{padding:28px;text-align:center;color:#8195a3;font-size:12px}.d-footer{padding:18px 0 0;color:#91a1ad;font-size:10px;text-align:center}
 @media(max-width:1100px){.d-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.d-module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.d-main{padding:22px}}
 @media(max-width:720px){.d-shell{display:block}.d-sidebar{left:-295px;width:280px;padding:20px 16px}.d-sidebar.open{left:0}.d-main{width:100%;margin-left:0;padding:12px}.d-topbar{min-height:60px;padding:10px 12px;margin-bottom:18px;top:5px}.d-mobile-toggle{display:inline-flex}.d-content{padding:0 0 24px}.d-page-head{align-items:flex-start;flex-direction:column}.d-grid-2{grid-template-columns:1fr}.d-module-grid{grid-template-columns:1fr}.d-kpis{gap:10px}.d-kpi{padding:13px}.d-kpi strong{font-size:24px}.d-user-name{max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.d-topbar .d-user-role{display:none}.d-user{gap:6px}.d-user .d-btn{padding:8px 9px;font-size:10px}}
+
+
+/* Mobile header correction: keep navigation in normal flow and prevent overlap with page content. */
+@media(max-width:720px){
+ .d-main{padding:10px 12px 20px}
+ .d-topbar{position:relative;top:auto;z-index:2;width:100%;min-height:0;display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;margin:0 0 16px;border-radius:12px}
+ .d-topbar>div:first-child{min-width:0;flex:1;gap:9px!important}
+ .d-crumb{min-width:0;font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+ .d-user{min-width:0;flex:0 1 auto;gap:7px}
+ .d-avatar{width:34px;height:34px;min-width:34px;border-radius:9px}
+ .d-user>div:nth-child(2){min-width:0;max-width:105px}
+ .d-user-name{display:block;max-width:105px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .d-user-role{display:none}
+ .d-user .d-btn{white-space:nowrap;padding:8px 9px;font-size:10px}
+ .d-mobile-toggle{flex:0 0 38px;width:38px;height:38px;align-items:center;justify-content:center;padding:0}
+ .d-content{position:relative;z-index:1}
+ .d-sidebar{z-index:1001}
+}
+@media(max-width:390px){
+ .d-user>div:nth-child(2){max-width:76px}
+ .d-user-name{max-width:76px}
+ .d-crumb{font-size:11px}
+ .d-user .d-btn{padding:7px 6px;font-size:9px}
+ .d-topbar{gap:5px;padding:9px 8px}
+}
