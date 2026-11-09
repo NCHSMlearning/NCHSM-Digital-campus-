@@ -12,6 +12,7 @@ const TABLES={
  tickets:'support_tickets',staff:'staff_records',enrollments:'enrollments',studentCourses:'student_courses'
 };
 const cache={};
+const EDITABLE_FIELDS={programs:['program_code','program_name','category','program_type','duration_months','total_credits','description','status'],courses:['course_name','description','target_program','target_semester','status','code','block','intake_year','unit_code'],units:['unit_code','unit_name','program','block','term','year','unit_type','credits','status','hours','assessment_type','description'],calendar:['title','description','event_date','target_block','target_intake_year','event_name','type','target_program','venue','start_time','end_time','organizer','location'],sessions:['session_type','title','session_date','program_type','intake_year','block_term','session_time','session_title','target_program','session_end_time','approval_status','status','is_active','unit_name','unit_code','course_name','block_display','target_block'],registrations:['status','completion_status','completed_at','total_score','grade'],submissions:['title','summary','status','reviewer_comments','reviewed_at'],resources:['title','program_type','intake','block','allow_download','target_program','category','description','resource_type','term','approval_status','unit_name','unit_code'],research:['title','submission_type','abstract','status','feedback','reviewed_at']};
 /* These contain authentication material or private communications/documents and are not exposed in the Director workspace. */
 const RLS_BLOCKED=new Set(['messages','tickets']);
 /* Explicit allow-list: never select password hashes, bank details, national IDs, auth tokens,
@@ -66,5 +67,7 @@ async function count(client,key,filters=[]){
  filters.forEach(f=>{if(!SAFE_COUNT_FILTERS[key].has(f.column))throw new Error('Unsupported count filter for '+table+': '+f.column);if(f.op==='eq')q=q.eq(f.column,f.value);else if(f.op==='in')q=q.in(f.column,f.value);else throw new Error('Unsupported count filter operation: '+f.op);});
  const{count,error}=await q;if(error)throw new Error(table+': '+error.message);return count||0;
 }
-w.DirectorData={TABLES,SELECT_FIELDS,read,count,cache,RLS_BLOCKED};
+
+async function update(client,key,row,changes){const table=TABLES[key],allowed=EDITABLE_FIELDS[key];if(!table||!allowed)throw new Error('Editing is not enabled for this dataset.');const id=row&&row.id;if(id===undefined||id===null)throw new Error('This record has no safe update identifier.');const payload={};Object.entries(changes||{}).forEach(([k,v])=>{if(!allowed.includes(k))throw new Error('Field is not editable: '+k);payload[k]=v===''?null:v;});if(!Object.keys(payload).length)throw new Error('No changes to save.');const{data,error}=await client.from(table).update(payload).eq('id',id).select(SELECT_FIELDS[key]).single();if(error)throw new Error(table+': '+error.message);return data;}
+w.DirectorData={TABLES,SELECT_FIELDS,EDITABLE_FIELDS,read,count,update,cache,RLS_BLOCKED};
 })(window);
