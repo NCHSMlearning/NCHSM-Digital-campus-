@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#082b46">
+<title>NCHSM | Director's Office</title>
+<link rel="icon" href="images/Logo_NCHSM.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--navy:#082b46;--navy2:#0d4264;--blue:#1677b8;--gold:#f2b632;--ink:#18364a;--muted:#718596;--line:#e4ebf0;--bg:#f3f6f9;--card:#fff;--green:#15966b;--amber:#d99016;--red:#cf4d4d;--shadow:0 8px 28px rgba(13,43,66,.06}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"DM Sans",sans-serif}button{font:inherit;cursor:pointer}.shell{min-height:100vh;display:grid;grid-template-columns:258px minmax(0,1fr)}
+.sidebar{background:linear-gradient(180deg,#082b46,#0c3d5d);color:#fff;padding:22px 15px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:auto}.brand{display:flex;align-items:center;gap:11px;padding:2px 9px 24px;border-bottom:1px solid #ffffff20}.brand img{width:47px;height:47px;object-fit:contain}.brand strong{font:800 13px Manrope;line-height:1.25;display:block}.brand small{font-size:9px;letter-spacing:1.2px;color:#c3d7e5;text-transform:uppercase}
+.nav-label{font-size:9px;letter-spacing:1.4px;color:#9db7c9;font-weight:800;margin:24px 11px 9px}.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:#d7e5ee;text-align:left;padding:11px 12px;border-radius:10px;display:flex;gap:12px;align-items:center;font-size:12px;font-weight:600}.nav button i{width:17px;text-align:center;color:#a9c7d9}.nav button.active,.nav button:hover{background:#ffffff17;color:white}.nav button.active{box-shadow:inset 3px 0 var(--gold)}.side-bottom{margin-top:auto;padding:17px 8px 0;border-top:1px solid #ffffff20;color:#bdd0dc;font-size:10px;line-height:1.6}
+.main{min-width:0}.topbar{height:72px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px;position:sticky;top:0;z-index:5}.crumb{font-size:11px;color:var(--muted)}.crumb b{color:var(--ink)}.user{display:flex;align-items:center;gap:10px}.avatar{width:35px;height:35px;border-radius:50%;background:#e6f1f8;color:var(--navy);display:grid;place-items:center;font-weight:800}.user-name{font-size:11px;font-weight:800}.user-role{font-size:9px;color:var(--muted)}.logout{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 11px;color:#526a7b;font-size:10px;margin-left:10px}
+.content{max-width:1500px;margin:auto;padding:29px 30px 44px}.welcome{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:24px}.eyebrow{font-size:9px;color:var(--blue);font-weight:800;letter-spacing:1.6px;text-transform:uppercase}.welcome h1{font:800 clamp(23px,3vw,31px) Manrope;margin:7px 0 5px;color:#102f48}.welcome p{margin:0;color:var(--muted);font-size:12px}.date-pill{padding:10px 13px;border:1px solid var(--line);background:#fff;border-radius:10px;color:#526b7d;font-size:10px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:17px;box-shadow:var(--shadow);min-width:0}.kpi-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:10px;font-weight:700}.kpi-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#eaf3f9;color:var(--blue)}.kpi strong{display:block;font:800 27px Manrope;color:#13344d;margin:12px 0 3px}.kpi small{font-size:9px;color:var(--muted)}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:26px 0 13px}.section-head h2{font:800 15px Manrope;margin:0;color:#173850}.section-head span{font-size:10px;color:var(--muted)}
+.panels{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(270px,.8fr);gap:14px}.panel{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px;min-width:0}.panel h3{font:800 12px Manrope;margin:0 0 5px}.panel .sub{font-size:9px;color:var(--muted);margin:0 0 16px}
+.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:540px}th{text-align:left;color:#7a8d9b;font-size:9px;letter-spacing:.5px;text-transform:uppercase;background:#f7f9fb;padding:10px}td{font-size:10px;padding:12px 10px;border-bottom:1px solid #edf1f4;color:#385267}tbody tr:last-child td{border-bottom:0}.status{display:inline-block;border-radius:20px;padding:4px 8px;font-size:8px;font-weight:800;background:#eef3f6;color:#647b8b}.status.approved{background:#e5f6ef;color:#13845d}.status.submitted,.status.resubmitted,.status.under_review{background:#fff4df;color:#a56b0d}.status.returned,.status.rejected{background:#fdecec;color:#b94747}
+.quick{display:grid;gap:9px}.quick button{display:flex;align-items:center;gap:11px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px;color:#2d4b60}.quick button:hover{border-color:#9cc5dd;background:#f8fcff}.quick i{width:30px;height:30px;display:grid;place-items:center;background:#edf5fa;color:#1c75ad;border-radius:8px}.quick b{display:block;font-size:10px}.quick small{display:block;font-size:9px;color:var(--muted);margin-top:2px}
+.notice{margin-top:15px;padding:12px 14px;border-radius:10px;background:#f1f7fb;border:1px solid #dceaf3;color:#557184;font-size:9px;line-height:1.5}.notice i{color:var(--blue);margin-right:5px}
+.loading{color:#8294a2}.error{color:#b94c4c}.empty{text-align:center;padding:25px;color:#8294a2;font-size:10px}
+@media(max-width:1050px){.shell{grid-template-columns:220px 1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.panels{grid-template-columns:1fr}}
+@media(max-width:700px){.shell{display:block}.sidebar{position:relative;height:auto;padding:12px}.brand{padding:0 5px 10px}.brand img{width:38px;height:38px}.nav-label,.side-bottom{display:none}.nav{display:flex;overflow:auto;padding-top:10px}.nav button{white-space:nowrap;padding:9px 11px}.topbar{height:58px;padding:0 14px}.content{padding:22px 14px 35px}.welcome{align-items:flex-start;flex-direction:column}.date-pill{display:none}.grid{gap:9px}.kpi{padding:13px}.kpi strong{font-size:23px}.kpi-icon{width:30px;height:30px}.panel{padding:13px}.user-name{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+ <div class="brand"><img src="images/Logo_NCHSM.png" alt="NCHSM"><div><strong>NAKURU COLLEGE<br>OF HEALTH SCIENCES</strong><small>Director's Office</small></div></div>
+ <div class="nav-label">INSTITUTIONAL OVERSIGHT</div>
+ <nav class="nav" aria-label="Director navigation">
+  <button class="active" data-section="overview"><i class="fa-solid fa-chart-pie"></i> Executive Overview</button>
+  <button data-section="academics"><i class="fa-solid fa-graduation-cap"></i> Academic Performance</button>
+  <button data-section="teaching"><i class="fa-solid fa-chalkboard-user"></i> Teaching & Learning</button>
+  <button data-section="records"><i class="fa-solid fa-folder-open"></i> Records & Compliance</button>
+  <button data-section="reports"><i class="fa-solid fa-file-chart-column"></i> Reports</button>
+ </nav>
+ <div class="side-bottom">Confidential institutional workspace<br>Access and activity are subject to institutional controls.</div>
+</aside>
+<main class="main">
+ <header class="topbar"><div class="crumb">NCHSM / <b id="crumbTitle">Executive Overview</b></div><div class="user"><div class="avatar" id="avatar">D</div><div><div class="user-name" id="userName">Verifying access…</div><div class="user-role">Director</div></div><button class="logout" id="logoutBtn"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sign out</button></div></header>
+ <div class="content">
+  <section class="welcome"><div><div class="eyebrow">Institutional performance & governance</div><h1 id="welcomeTitle">Director's Overview</h1><p>A consolidated view of academic delivery, teaching activity and institutional records.</p></div><div class="date-pill"><i class="fa-regular fa-calendar"></i> <span id="todayLabel"></span></div></section>
+  <section class="grid" aria-label="Institutional indicators">
+   <article class="kpi"><div class="kpi-top">Enrolled learners <span class="kpi-icon"><i class="fa-solid fa-user-graduate"></i></span></div><strong id="learnersCount" class="loading">—</strong><small>Active student profiles</small></article>
+   <article class="kpi"><div class="kpi-top">Teaching staff <span class="kpi-icon"><i class="fa-solid fa-users"></i></span></div><strong id="staffCount" class="loading">—</strong><small>Lecturer and staff profiles</small></article>
+   <article class="kpi"><div class="kpi-top">Awaiting review <span class="kpi-icon"><i class="fa-solid fa-file-circle-exclamation"></i></span></div><strong id="pendingCount" class="loading">—</strong><small>Teaching records submitted for review</small></article>
+   <article class="kpi"><div class="kpi-top">Published results <span class="kpi-icon"><i class="fa-solid fa-square-poll-vertical"></i></span></div><strong id="publishedCount" class="loading">—</strong><small>Published student mark records</small></article>
+  </section>
+  <div class="section-head"><h2>Institutional activity</h2><span>Live data from NCHSM records</span></div>
+  <section class="panels">
+   <article class="panel"><h3>Recent teaching & learning submissions</h3><p class="sub">Latest lecturer records submitted for institutional review</p><div class="table-wrap"><table><thead><tr><th>Submission</th><th>Lecturer</th><th>Programme</th><th>Status</th><th>Date</th></tr></thead><tbody id="submissionRows"><tr><td colspan="5" class="empty">Loading records…</td></tr></tbody></table></div></article>
+   <article class="panel"><h3>Director workspace</h3><p class="sub">Institutional oversight areas</p><div class="quick">
+    <button data-section="academics"><i class="fa-solid fa-chart-line"></i><span><b>Academic performance</b><small>Review learner and results indicators</small></span></button>
+    <button data-section="teaching"><i class="fa-solid fa-chalkboard-user"></i><span><b>Teaching & learning</b><small>Monitor lecturer submissions and reviews</small></span></button>
+    <button data-section="records"><i class="fa-solid fa-folder-open"></i><span><b>Records & compliance</b><small>Track institutional documentation</small></span></button>
+    <button data-section="reports"><i class="fa-solid fa-file-lines"></i><span><b>Reports</b><small>Institutional reporting workspace</small></span></button>
+   </div><div class="notice"><i class="fa-solid fa-shield-halved"></i> This first release is a read-only oversight view. Approval, publication and financial actions remain in their authorised workflows.</div></article>
+  </section>
+ </div>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="js/director.js"></script>
+</body>
+</html>
