@@ -11,7 +11,7 @@ async function requireDirector(){
   const sessionResult=await withTimeout(client.auth.getSession(),'Supabase session check');
   if(sessionResult.error)throw sessionResult.error;
   let user=sessionResult.data?.session?.user||null;
-  if(!user){const e=new Error('No active sign-in session was found. Please sign in again.');showError(e.message);throw e;}
+  if(!user){location.replace('director-login.html');throw new Error('Redirecting to Director sign-in.');}
   const profileResult=await withTimeout(client.from('consolidated_user_profiles_table').select('user_id,full_name,email,role,department,program,status').eq('user_id',user.id).maybeSingle(),'Director profile lookup');
   if(profileResult.error)throw new Error('Unable to read the institutional profile: '+profileResult.error.message);
   const profile=profileResult.data;
