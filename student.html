@@ -7588,7 +7588,9 @@ render=function(){if(state.tab==='research'){renderResearch();return}_originalRe
 
 var booted=false,loadOnNavigationBound=false;
 function boot(){
-  if(!booted){bind();initResearch();booted=true}
+  if(!booted){bind();booted=true}
+  // Research data also depends on the restored auth session; retry it on appReady.
+  initResearch();
   loadData();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
