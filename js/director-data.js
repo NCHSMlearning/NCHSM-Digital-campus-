@@ -34,7 +34,6 @@ const SELECT_FIELDS={
  sessions:'id,session_type,title,session_date,program_type,intake_year,block_term,session_time,session_title,target_program,session_end_time,approval_status,status,is_active,unit_name,unit_code,course_name,block_display,target_block',
  calendar:'id,title,description,event_date,target_block,target_intake_year,created_at,event_name,type,target_program,venue,start_time,end_time,organizer,location',
  research:'id,student_id,research_group_id,version_number,title,submission_type,supervisor_name,status,reviewed_at,submitted_at,created_at,updated_at',
- finance:'id,student_id,student_name,program,intake_year,current_block,total_fees_due,total_paid,balance,outstanding,last_payment_date,payment_status,updated_at,display_id,program_type,program_level,current_period,academic_year,account_status,intake,total_due,created_at',
  payments:'id,student_id,amount,payment_method,reference,payment_date,period,receipt_no,created_at',
  resources:'id,file_name,title,program_type,created_at,uploaded_by_name,intake,block,allow_download,target_program,category,course_name,file_size,file_type,description,resource_type,pastpaper_year,exam_type,term,approval_status,approved_at,unit_name,unit_code',
  transcripts:'id,student_id,student_name,program,document_type,status,issued_at,transcript_number,transcript_block',
@@ -74,6 +73,7 @@ async function count(client,key,filters=[]){
  const{count,error}=await q;if(error)throw new Error(table+': '+error.message);return count||0;
 }
 
+async function financeSummary(client){const{data,error}=await client.rpc('director_finance_summary');if(error)throw new Error('Finance summary: '+error.message);return Array.isArray(data)?data[0]||null:data||null;}
 async function update(client,key,row,changes){const table=TABLES[key],allowed=EDITABLE_FIELDS[key];if(!table||!allowed)throw new Error('Editing is not enabled for this dataset.');const id=row&&row.id;if(id===undefined||id===null)throw new Error('This record has no safe update identifier.');const payload={};Object.entries(changes||{}).forEach(([k,v])=>{if(!allowed.includes(k))throw new Error('Field is not editable: '+k);payload[k]=v===''?null:v;});if(!Object.keys(payload).length)throw new Error('No changes to save.');const{data,error}=await client.from(table).update(payload).eq('id',id).select(SELECT_FIELDS[key]).single();if(error)throw new Error(table+': '+error.message);return data;}
-w.DirectorData={TABLES,SELECT_FIELDS,EDITABLE_FIELDS,read,count,update,cache,RLS_BLOCKED};
+w.DirectorData={TABLES,SELECT_FIELDS,EDITABLE_FIELDS,read,count,financeSummary,update,cache,RLS_BLOCKED};
 })(window);
