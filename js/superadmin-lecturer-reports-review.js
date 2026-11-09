@@ -2908,35 +2908,42 @@
     }
 
     function removeDashboardTeachingOverview() {
-        // The overview has appeared with different wrappers across dashboard
-        // revisions. Remove it by its distinctive content, not one assumed ID.
-        const known = document.getElementById('nchsmPortfolioOverview');
-        if (known) known.remove();
+        /*
+         * Remove only the duplicate overview from the actual Super Admin
+         * Dashboard. Never search the whole document or remove an ancestor
+         * based on its text: the Teaching Portfolio Review workspace contains
+         * the same Nursing/TVET overview content and must remain intact.
+         */
+        const dashboard = document.querySelector(
+            '#dashboard, #superadmin-dashboard, [data-tab-panel="dashboard"]'
+        );
+        if (!dashboard) return false;
 
-        const headings = Array.from(document.querySelectorAll('h1,h2,h3,h4,[role="heading"]'));
-        const heading = headings.find(el => /teaching\s*&\s*learning\s+overview/i.test(el.textContent || ''));
-        if (heading) {
-            let node = heading;
-            while (node && node !== document.body) {
-                const content = (node.innerText || node.textContent || '').replace(/\s+/g, ' ').trim();
-                if (/teaching\s*&\s*learning\s+overview/i.test(content) &&
-                    /school of nursing/i.test(content) &&
-                    /school of tvet/i.test(content) &&
-                    /open document centre/i.test(content)) {
-                    node.remove();
-                    return true;
-                }
-                node = node.parentElement;
-            }
+        // This is the dedicated duplicate card ID used by the dashboard.
+        // If a future dashboard revision changes the ID, leave the content
+        // untouched rather than risk deleting the Teaching Portfolio module.
+        const duplicate = dashboard.querySelector('#nchsmPortfolioOverview');
+        if (duplicate) {
+            duplicate.remove();
+            return true;
         }
         return false;
     }
 
     function watchForDashboardTeachingOverview() {
+        const dashboard = document.querySelector(
+            '#dashboard, #superadmin-dashboard, [data-tab-panel="dashboard"]'
+        );
+        if (!dashboard) return;
+
+        // Avoid a document-wide observer. The review workspace is outside
+        // this node and is therefore never affected by dashboard cleanup.
+        if (window.__nchsmTeachingOverviewRemovalObserver) {
+            window.__nchsmTeachingOverviewRemovalObserver.disconnect();
+        }
         removeDashboardTeachingOverview();
-        if (window.__nchsmTeachingOverviewRemovalObserver) return;
         const observer = new MutationObserver(() => removeDashboardTeachingOverview());
-        observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(dashboard, { childList: true, subtree: true });
         window.__nchsmTeachingOverviewRemovalObserver = observer;
     }
 
