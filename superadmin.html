@@ -15396,5 +15396,27 @@ console.log('✅ Search function loaded successfully!');
         console.log('✅ All modules initialized!');
     });
 </script>
+<script id="nchsm-easy-sidebar-behavior">
+document.addEventListener('DOMContentLoaded',function(){
+ const side=document.getElementById('sidebar');
+ document.querySelectorAll('#mainNav .nav-dropdown > .dropdown-toggle').forEach(function(toggle){
+  toggle.addEventListener('click',function(e){
+   e.preventDefault();const menu=toggle.nextElementSibling;if(!menu)return;
+   const open=menu.style.display==='block';menu.style.display=open?'none':'block';
+   toggle.setAttribute('aria-expanded',String(!open));
+   const chevron=toggle.querySelector('.fa-chevron-down,.fa-chevron-up');
+   if(chevron){chevron.classList.toggle('fa-chevron-down',open);chevron.classList.toggle('fa-chevron-up',!open);}
+  });
+ });
+ const search=document.getElementById('sidebarSearch');
+ if(search){search.addEventListener('keydown',function(e){if(e.key==='Escape'){search.value='';if(typeof filterSidebarMenus==='function')filterSidebarMenus('');document.getElementById('searchResults')?.style.setProperty('display','none');search.blur();}});}
+ document.querySelectorAll('#mainNav a[data-tab]').forEach(function(a){a.addEventListener('click',function(){
+  document.querySelectorAll('#mainNav a[data-tab]').forEach(x=>x.classList.remove('active'));
+  a.classList.add('active');side?.classList.remove('active');
+ });});
+ const mobile=document.getElementById('mobileNavToggle');
+ if(mobile)mobile.setAttribute('aria-label','Toggle navigation');
+});
+</script>
 </body>
 </html>
