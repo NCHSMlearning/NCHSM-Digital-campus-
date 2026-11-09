@@ -2141,9 +2141,12 @@ window.resetSingleStudent = async function(studentId, examId, studentName, examN
     try {
         const attempt = await authorizeRetakeForStudent(studentId, examId, studentName, 'Student Results');
         showToast(`✅ ${studentName} can continue the same exam attempt from the saved progress.`, 'success');
-        await loadStudentsWithResults();
-        await loadAllExams();
-        await loadAllStudents();
+        await Promise.allSettled([
+            loadStudentsWithResults(),
+            loadAllExams(),
+            loadAllStudents(),
+            typeof window.loadLiveStudents === 'function' ? window.loadLiveStudents() : Promise.resolve()
+        ]);
         updateStats();
     } catch (err) {
         console.error(err);
