@@ -1,7 +1,7 @@
 /* Director authentication boundary. Fail visibly rather than leaving the workspace in an endless loading state. */
 (function(w){'use strict';
 const ALLOWED=new Set(['director','institutional_director','college_director']);
-const norm=v=>String(v||'').trim().toLowerCase().replace(/[\\s-]+/g,'_');
+const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
 function withTimeout(promise,label,ms=15000){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' timed out. Check your connection and refresh the page.')),ms);})]).finally(()=>clearTimeout(timer));}
 function showError(message){const el=document.getElementById('directorContent');if(el)el.innerHTML='<div class="d-card"><h3>Unable to verify Director access</h3><p class="d-sub">'+String(message).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</p><button class="d-btn primary" type="button" onclick="location.reload()">Retry verification</button></div>';}
 async function requireDirector(){
