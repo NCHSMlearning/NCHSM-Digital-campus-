@@ -553,6 +553,11 @@ class UIModule {
                 </div>
             `;
         }
+        // Online Learning is initialized after its panel is mounted and
+        // the authenticated student session has had a chance to restore.
+        if (window.NCHSMStudentOnlineLearning?.load) {
+            window.NCHSMStudentOnlineLearning.load();
+        }
     }
     
     // ============================================================
