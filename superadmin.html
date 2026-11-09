@@ -479,145 +479,6 @@
         }
     }
 </style>
-<style id="nchsm-clinical-admin-style">
-#clinical-placements{padding:clamp(14px,2.5vw,28px);background:var(--background,#f4f7fb);color:var(--text-color,#172554);box-sizing:border-box}
-#clinical-placements .ca-shell{max-width:1600px;margin:0 auto}
-#clinical-placements .ca-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:clamp(20px,3vw,30px);border-radius:18px;background:linear-gradient(125deg,#12395b,#176b87);color:#fff;margin-bottom:16px;box-shadow:0 12px 30px #12395b24}
-#clinical-placements .ca-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.4px;color:#a5f3fc}
-#clinical-placements .ca-hero h2{color:#fff;margin:8px 0;font-size:clamp(22px,2.7vw,31px)}
-#clinical-placements .ca-hero h2 i{color:#5eead4;margin-right:8px}
-#clinical-placements .ca-hero p{margin:0;color:#ffffffd9;max-width:850px;font-size:13px;line-height:1.6}
-#clinical-placements .ca-status{padding:12px 15px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:11px;font-size:12px;margin-bottom:16px;overflow-wrap:anywhere}
-#clinical-placements .ca-status-bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
-#clinical-placements .ca-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
-#clinical-placements .ca-metric,#clinical-placements .ca-card{background:var(--card-bg,#fff);border:1px solid var(--border-color,#e2e8f0);border-radius:15px;box-shadow:0 5px 18px #0f172a08;min-width:0}
-#clinical-placements .ca-metric{padding:16px}
-#clinical-placements .ca-metric span,#clinical-placements .ca-metric small{display:block;color:var(--muted-color,#64748b);font-size:11px}
-#clinical-placements .ca-metric strong{display:block;font-size:27px;margin:6px 0;color:var(--text-color,#17345f)}
-#clinical-placements .ca-card{padding:clamp(14px,2vw,22px);margin-bottom:16px}
-#clinical-placements .ca-card-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:17px}
-#clinical-placements .ca-card-heading h3{margin:0 0 5px;font-size:17px;color:var(--text-color,#17345f)}
-#clinical-placements .ca-card-heading h3 i{color:#0d9488;margin-right:7px}
-#clinical-placements .ca-card-heading p,#clinical-placements .ca-capacity-heading p{margin:0;font-size:12px;color:var(--muted-color,#64748b);line-height:1.5}
-#clinical-placements .ca-tag{font-size:9px;font-weight:800;letter-spacing:.8px;color:#0f766e;background:#ccfbf1;padding:6px 9px;border-radius:99px}
-#clinical-placements .ca-form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
-#clinical-placements .ca-field{display:flex;flex-direction:column;gap:7px;min-width:0}
-#clinical-placements .ca-field>span{font-size:11px;font-weight:750;color:var(--muted-color,#475569)}
-#clinical-placements .ca-span-2{grid-column:span 2}
-#clinical-placements .ca-input{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--border-color,#cbd5e1);border-radius:9px;background:var(--input-bg,#fff);color:var(--text-color,#172554);padding:10px 11px;font:inherit;font-size:12px;outline:none}
-#clinical-placements .ca-input:focus{border-color:#0d9488;box-shadow:0 0 0 3px #0d94881c}
-#clinical-placements .ca-capacity-heading{margin:20px 0 10px}
-#clinical-placements .ca-capacity-heading h4{margin:0 0 4px;font-size:13px}
-#clinical-placements .ca-capacity-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-#clinical-placements .ca-capacity>span i{color:#0d9488;margin-right:5px}
-#clinical-placements .ca-form-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:18px}
-#clinical-placements .ca-form-hint{font-size:11px;color:var(--muted-color,#64748b);flex:1 1 260px}
-#clinical-placements .ca-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:9px;padding:9px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
-#clinical-placements .ca-btn:disabled{opacity:.5;cursor:not-allowed}
-#clinical-placements .ca-btn-primary{background:#0f766e;color:#fff;padding:11px 15px}
-#clinical-placements .ca-btn-green{background:#059669;color:#fff}
-#clinical-placements .ca-btn-amber{background:#d97706;color:#fff}
-#clinical-placements .ca-btn-purple{background:#6d28d9;color:#fff}
-#clinical-placements .ca-btn-light{background:var(--surface-bg,#f1f5f9);color:var(--text-color,#334155);border:1px solid var(--border-color,#e2e8f0)}
-#clinical-placements .ca-btn-hero{background:#ffffff1f;border:1px solid #ffffff5c;color:#fff;padding:11px 14px}
-#clinical-placements .ca-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-#clinical-placements .ca-table{width:100%;border-collapse:collapse;min-width:900px;font-size:11px}
-#clinical-placements .ca-preferences-table{min-width:1300px}
-#clinical-placements .ca-table th{background:var(--surface-bg,#f8fafc);text-align:left;text-transform:uppercase;letter-spacing:.35px;font-size:9px;color:var(--muted-color,#64748b);padding:12px 10px;border-bottom:1px solid var(--border-color,#e2e8f0);white-space:nowrap}
-#clinical-placements .ca-table td{padding:11px 10px;border-bottom:1px solid var(--border-color,#edf0f5);vertical-align:top;color:var(--text-color,#334155)}
-#clinical-placements .ca-table td strong,#clinical-placements .ca-table td small{display:block}
-#clinical-placements .ca-table td small{font-size:10px;color:var(--muted-color,#64748b);margin-top:4px;line-height:1.45}
-#clinical-placements .ca-table tbody tr:hover{background:var(--surface-bg,#f8fafc)}
-#clinical-placements .ca-table tr.ca-selected{background:#ecfeff}
-#clinical-placements .ca-empty{text-align:center;padding:25px!important;color:var(--muted-color,#64748b)!important}
-#clinical-placements .ca-pill{display:inline-flex;padding:4px 7px;border-radius:99px;background:#f1f5f9;color:#475569;font-size:9px;font-weight:800;text-transform:uppercase}
-#clinical-placements .ca-open{background:#dcfce7;color:#166534}#clinical-placements .ca-scheduled{background:#fef3c7;color:#92400e}#clinical-placements .ca-closed{background:#fee2e2;color:#991b1b}#clinical-placements .ca-published,#clinical-placements .ca-allocated{background:#dbeafe;color:#1d4ed8}
-#clinical-placements .ca-actions{display:flex;gap:5px;flex-wrap:wrap}
-#clinical-placements .ca-pref-list{margin:0;padding-left:18px;min-width:130px;line-height:1.8}
-#clinical-placements .ca-assign-fields{display:flex;flex-direction:column;gap:6px;min-width:210px}
-#clinical-placements .ca-date-pair{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-#clinical-placements .ca-allocate{align-self:flex-start}
-#clinical-placements .ca-footer-note{display:flex;align-items:flex-start;gap:10px;color:var(--muted-color,#64748b);font-size:11px;line-height:1.6;padding:5px 3px 15px}
-#clinical-placements .ca-footer-note i{color:#0d9488;margin-top:2px}
-@media(max-width:900px){#clinical-placements .ca-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#clinical-placements .ca-capacity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){#clinical-placements{padding:11px}#clinical-placements .ca-metrics{gap:8px}#clinical-placements .ca-metric{padding:11px}#clinical-placements .ca-metric strong{font-size:22px}#clinical-placements .ca-metric span{font-size:10px}#clinical-placements .ca-form-grid{grid-template-columns:1fr}#clinical-placements .ca-span-2{grid-column:auto}#clinical-placements .ca-capacity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#clinical-placements .ca-hero{padding:18px}#clinical-placements .ca-card-heading h3{font-size:15px}}
-</style>
-<style id="superadmin-marks-result-status">
-#me_marks_table tbody tr[data-result-status="pass"] > td { background-color:#f0fdf4 !important; }
-#me_marks_table tbody tr[data-result-status="fail"] > td { background-color:#fef9c3 !important; }
-#me_marks_table tbody tr[data-result-status="pending"] > td { background-color:#fff !important; }
-#me_marks_table tbody tr[data-result-status="pass"] { border-left:4px solid #16a34a !important; }
-#me_marks_table tbody tr[data-result-status="fail"] { border-left:4px solid #eab308 !important; }
-</style>
-
-<style id="superadmin-premium-shell">
-/* NCHSM Super Admin — responsive visual system; preserves existing module IDs and handlers */
-:root{--sa-ink:#14213d;--sa-muted:#64748b;--sa-line:#e5eaf2;--sa-surface:#fff;--sa-canvas:#f4f7fc;--sa-brand:#173f70;--sa-accent:#0f8b8d;--sa-shadow:0 10px 30px rgba(15,35,65,.07)}
-html{scroll-behavior:smooth}
-body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoothing:antialiased}
-.container{min-height:100vh}
-.main{box-sizing:border-box!important;min-width:0;padding:clamp(18px,2.5vw,38px)!important;background:var(--sa-canvas)!important}
-.main>header{position:relative;background:linear-gradient(120deg,#fff 0%,#f8fbff 100%);border:1px solid var(--sa-line);border-radius:20px;padding:22px 24px;margin:0 0 24px;box-shadow:var(--sa-shadow)}
-.main>header h1{font-size:clamp(22px,2.2vw,30px)!important;letter-spacing:-.7px;line-height:1.2}
-.main>header .subtitle{font-size:13px!important;margin-top:7px}
-.sidebar{border-right:1px solid rgba(255,255,255,.08);box-sizing:border-box;scrollbar-width:thin}
-.sidebar-header img{object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.18))}
-#mainNav{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
-#mainNav a{min-height:42px;box-sizing:border-box}
-#mainNav a:focus-visible,.main button:focus-visible,.main input:focus-visible,.main select:focus-visible,.main textarea:focus-visible{outline:3px solid rgba(15,139,141,.28)!important;outline-offset:2px}
-.main .tab-content{min-width:0;animation:saFadeIn .22s ease both}
-@keyframes saFadeIn{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:none}}
-.main .card,.main .analytics-card,.main .health-card,.main .task-item,.main .unit-card,.main .modal-content,.main .security-settings,.main .error-logs{border:1px solid var(--sa-line);border-radius:16px;box-shadow:var(--sa-shadow)}
-.main .card:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(15,35,65,.11)}
-.main button,.main .btn-action,.main .quick-btn{transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease}
-.main button:hover:not(:disabled){filter:brightness(.98)}
-.main button:active:not(:disabled){transform:translateY(1px)}
-.main input,.main select,.main textarea{max-width:100%;box-sizing:border-box;border-radius:9px}
-.main table{border:1px solid var(--sa-line);border-radius:14px}
-.main th{font-size:11px;letter-spacing:.35px;text-transform:uppercase;color:#52627a;background:#f6f8fc}
-.main td{font-size:13px}
-.main .table-responsive{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.main .modal{padding:16px;box-sizing:border-box}
-.main .modal-content{max-width:min(720px,96vw);max-height:88vh}
-.main img{max-width:100%}
-#toast-container{max-width:min(420px,calc(100vw - 28px))}
-.mobile-nav-toggle{align-items:center;justify-content:center;background:#fff!important;border:1px solid #dce4ef!important;border-radius:12px;box-shadow:0 8px 22px rgba(15,35,65,.14);width:46px;height:46px}
-.mobile-nav-toggle span{background:#173f70!important}
-#superadminSidebarBackdrop{z-index:10030}
-@media(max-width:1100px){.main{padding:22px!important}.main>header{padding:18px;margin-bottom:18px}}
-@media(max-width:768px){
- .main{margin-left:0!important;width:100%;padding:78px 14px 22px!important}
- .main>header{padding:17px 15px;border-radius:15px;margin-bottom:17px}
- .main>header>div{align-items:flex-start!important}
- .main>header h1{font-size:22px!important}
- .main>header .subtitle{font-size:12px!important}
- .main .header-right{width:100%;justify-content:space-between;gap:10px!important;flex-wrap:wrap}
- .mobile-nav-toggle{display:flex!important;top:13px!important;left:13px!important;z-index:10040!important}
- .sidebar{width:min(300px,86vw)!important;max-width:86vw;left:-110%!important;z-index:10035!important;box-shadow:12px 0 38px rgba(3,10,30,.24)!important}
- .sidebar.active,.sidebar.mobile-open{left:0!important}
- body.mobile-sidebar-open{overflow:hidden}
- .main .cards,.main .health-cards,.main .analytics-grid,.main .scheduled-tasks{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px}
- .main .quick-action-buttons{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
- .main .data{font-size:24px}
- .main .inline-form{padding:14px;gap:9px}
- .main .inline-form input,.main .inline-form select,.main .inline-form textarea{width:100%;min-width:0}
- .main .filter-bar,.main .toolbar{gap:9px}
- .main .filter-bar>* ,.main .toolbar>*{min-width:0;max-width:100%}
- .main table{min-width:680px}
- .main .modal{align-items:flex-end}
- .main .modal-content{width:100%;max-width:100%;max-height:88vh;border-radius:18px 18px 0 0}
-}
-@media(max-width:480px){
- .main{padding-left:10px!important;padding-right:10px!important}
- .main>header{padding:15px 12px}
- .main .quick-action-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
- .main .cards,.main .health-cards,.main .analytics-grid,.main .scheduled-tasks{grid-template-columns:1fr}
- .main .card,.main .analytics-card,.main .health-card,.main .task-item{padding:15px}
- .main .data{font-size:22px}
-}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.main .tab-content{animation:none}*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
-</style>
-
 </head>
 <body>
     <div class="container">
@@ -947,25 +808,6 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
                 </li>
 
                 <!-- ======================================== -->
-                <!-- SECTION: TEACHING & LEARNING            -->
-                <!-- ======================================== -->
-                <li class="nav-section" style="padding:16px 12px 8px 12px;margin-top:4px;">
-                    <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.5;font-weight:600;">Teaching & Learning</span>
-                </li>
-                <li style="margin-bottom:2px;">
-                    <a href="#" data-tab="lecturer-reports-review" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:rgba(255,255,255,.88);text-decoration:none;font-size:13px;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,.88)'">
-                        <i class="fas fa-chalkboard-teacher" style="width:18px;text-align:center;font-size:13px;"></i>
-                        <span>Teaching Portfolio Review</span>
-                    </a>
-                </li>
-                <li style="margin-bottom:2px;">
-                    <a href="#" data-tab="lecturer-reports-review" data-lrr-focus="deadlines" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:rgba(255,255,255,.88);text-decoration:none;font-size:13px;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,.88)'">
-                        <i class="fas fa-calendar-check" style="width:18px;text-align:center;font-size:13px;"></i>
-                        <span>Submission Deadlines</span>
-                    </a>
-                </li>
-
-                <!-- ======================================== -->
                 <!-- SECTION 3: ACADEMIC - CURRICULUM        -->
                 <!-- ======================================== -->
                 <li class="nav-section" style="padding: 16px 12px 8px 12px; margin-top: 4px;">
@@ -1255,12 +1097,6 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
                             </a>
                         </li>
                         <li>
-                            <a href="#" data-tab="clinical-placements" style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:13px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.8)'">
-                                <i class="fas fa-hospital-user" style="width:18px;text-align:center;font-size:12px;color:#5eead4;"></i>
-                                <span>Clinical Placements</span>
-                            </a>
-                        </li>
-                        <li>
                             <a href="#" data-tab="calendar" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-calendar" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>System Calendar</span>
@@ -1452,12 +1288,6 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
                     </a>
                     <ul class="dropdown-menu" style="list-style: none; padding: 4px 0 4px 20px; margin: 0; display: none;">
                         <li>
-                            <a href="#" data-tab="lecturer-reports-review" data-lrr-focus="audit" style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:8px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:13px;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.8)'">
-                                <i class="fas fa-clipboard-list" style="width:18px;text-align:center;font-size:12px;"></i>
-                                <span>System Audit Logs</span>
-                            </a>
-                        </li>
-                        <li>
                             <a href="#" data-tab="system-health" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-heartbeat" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>System Health</span>
@@ -1574,6 +1404,12 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
                             </a>
                         </li>
                     </ul>
+                </li>
+                <li style="margin-bottom: 2px;">
+                    <a href="#" data-tab="research-topic-vault" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-book-bookmark" style="width:20px;text-align:center;"></i>
+                        <span>Research Topics Vault</span>
+                    </a>
                 </li>
             </ul>
 <!-- ======================================== -->
@@ -1977,9 +1813,6 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
             </button>
         </div>
     </div>
-
-
-
 
     <!-- ====== PRIMARY METRICS ROW 1 - GLASS CARDS ====== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 18px;">
@@ -6290,18 +6123,6 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
             </div>
         </div>
         
-        <!-- Transcript scope: yearly or cumulative -->
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
-            <label for="transcript_scope_select" style="font-size:12px;font-weight:700;color:#334155;">Transcript scope</label>
-            <select id="transcript_scope_select" style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:12px;">
-                <option value="study_year_1">KRCHN Study Year 1 — Introductory + Block 1</option>
-                <option value="study_year_2">KRCHN Study Year 2 — Block 2 + Block 3</option>
-                <option value="study_year_3">KRCHN Study Year 3 — Block 4 + Block 5 + Block 6 + FQE</option>
-                <option value="cumulative" selected>Cumulative — all study years / all blocks</option>
-            </select>
-            <span style="font-size:11px;color:#64748b;">KRCHN study years follow the official block structure. Cumulative includes all available blocks. Bulk generation creates one combined PDF-ready document.</span>
-        </div>
-
         <!-- Quick Action Buttons -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
             <button onclick="selectAllTranscriptStudents()" style="padding: 5px 14px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
@@ -6310,7 +6131,7 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
             <button onclick="deselectAllTranscriptStudents()" style="padding: 5px 14px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
                 <i class="fas fa-times"></i> Deselect
             </button>
-            <button onclick="generateSelectedTranscriptBatch()" style="padding: 5px 14px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
+            <button onclick="generateSelectedTranscripts()" style="padding: 5px 14px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
                 <i class="fas fa-file-pdf"></i> Generate Selected (<span id="transcriptSelectedCount">0</span>)
             </button>
             <button onclick="exportAllTranscripts()" style="padding: 5px 14px; background: #FDB913; color: #0A3D62; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
@@ -6390,24 +6211,6 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
         </div>
 
         <!-- Transcript Preview -->
-        <!-- Transcript issuance analytics -->
-        <section id="transcriptIssuanceAnalytics" style="margin:0 0 20px;background:#fff;border:1px solid #dbe3ee;border-radius:14px;padding:20px;box-shadow:0 2px 8px rgba(15,23,42,.04);">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-            <div><h3 style="margin:0;color:#0A3D62;font-size:18px;"><i class="fas fa-chart-line"></i> Transcript Issuance & Verification</h3><p style="margin:5px 0 0;color:#64748b;font-size:13px;">Issued transcript records, student counts, transcript numbers and QR verification tokens.</p></div>
-            <button type="button" onclick="window.loadTranscriptIssuanceAnalytics && window.loadTranscriptIssuanceAnalytics()" style="border:1px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:9px 13px;cursor:pointer;color:#0f172a;"><i class="fas fa-sync-alt"></i> Refresh stats</button>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px;">
-            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:15px;"><div style="font-size:12px;color:#64748b;">Transcripts issued</div><strong id="transcriptIssuedCount" style="display:block;font-size:28px;color:#0A3D62;margin-top:5px;">—</strong></div>
-            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:15px;"><div style="font-size:12px;color:#64748b;">Students with transcripts</div><strong id="transcriptStudentCount" style="display:block;font-size:28px;color:#0A3D62;margin-top:5px;">—</strong></div>
-            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:15px;"><div style="font-size:12px;color:#64748b;">QR verification codes</div><strong id="transcriptQrCount" style="display:block;font-size:28px;color:#0A3D62;margin-top:5px;">—</strong></div>
-            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:15px;"><div style="font-size:12px;color:#64748b;">Unique transcript numbers</div><strong id="transcriptNumberCount" style="display:block;font-size:28px;color:#0A3D62;margin-top:5px;">—</strong></div>
-          </div>
-          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:760px;font-size:13px;">
-            <thead><tr style="background:#f1f5f9;text-align:left;"><th style="padding:11px;">Student</th><th style="padding:11px;">Admission No.</th><th style="padding:11px;">Programme</th><th style="padding:11px;">Transcript No.</th><th style="padding:11px;">QR / Verification</th><th style="padding:11px;">Issued</th><th style="padding:11px;">Status</th></tr></thead>
-            <tbody id="transcriptIssuanceRows"><tr><td colspan="7" style="padding:18px;text-align:center;color:#64748b;">Loading transcript issuance records…</td></tr></tbody>
-          </table></div>
-          <p id="transcriptAnalyticsMessage" role="status" style="font-size:12px;color:#64748b;margin:10px 0 0;"></p>
-        </section>
         <div id="transcriptPreviewContainer" style="display: none; background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
                 <h4 style="margin: 0; color: #0A3D62;">
@@ -6553,7 +6356,7 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
         
         <!-- Bulk Actions -->
         <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid #e5e7eb;">
-            <button onclick="generateSelectedTranscriptBatch()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <button onclick="generateSelectedTranscripts()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-file-pdf"></i> Generate Transcripts
             </button>
             <button onclick="generateSelectedCertificates()" class="btn-action" style="background: #10b981; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
@@ -6894,18 +6697,6 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
                     <option value="2026">2026</option>
                     <option value="2027">2027</option>
                     <option value="2028">2028</option>
-                </select>
-            </div>
-            <!-- Intake cohort (separate from academic year) -->
-            <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-users"></i> Intake Cohort
-                </label>
-                <select id="analytics_intake_select" class="form-control" onchange="loadAnalyticsData()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
-                    <option value="all">All Intakes</option>
-                    <option value="2024-03">March 2024</option>
-                    <option value="2025-03">March 2025</option>
-                    <option value="2026-03">March 2026</option>
                 </select>
             </div>
             <!-- Block/Term -->
@@ -10155,51 +9946,7 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
     </div>
 </section>
 
-          <!-- SUPER ADMIN: CLINICAL ROTATION BALLOTING & PLACEMENTS -->
-<section id="clinical-placements" class="tab-content" style="display:none">
-  <div class="ca-shell">
-    <header class="ca-hero">
-      <div><span class="ca-eyebrow">SCHOOL OF NURSING · CLINICAL GOVERNANCE</span><h2><i class="fas fa-hospital-user"></i> Clinical Rotation Management</h2><p>Create and schedule the final clinical rotation ballot, review student preferences, set department capacities, and record final placements.</p></div>
-      <div class="ca-hero-actions"><button type="button" id="ca-export-final" class="ca-btn ca-btn-light"><i class="fas fa-file-excel"></i> Download Excel</button><button type="button" id="ca-print-final" class="ca-btn ca-btn-light"><i class="fas fa-print"></i> Print final copy</button><button type="button" id="ca-refresh" class="ca-btn ca-btn-hero"><i class="fas fa-rotate"></i> Refresh data</button></div>
-    </header>
-    <div class="ca-status" id="clinical-admin-status" role="status">Connecting to clinical placement records…</div>
-    <div class="ca-metrics">
-      <div class="ca-metric"><span>Available ballots</span><strong id="ca-ballot-total">—</strong><small>Scheduled, open and completed</small></div>
-      <div class="ca-metric"><span>Student submissions</span><strong id="ca-pref-total">0</strong><small>For the selected ballot</small></div>
-      <div class="ca-metric"><span>Allocated placements</span><strong id="ca-allocated-total">0</strong><small>For the selected ballot</small></div>
-    </div>
-    <section class="ca-card">
-      <div class="ca-card-heading"><div><h3><i class="fas fa-sliders"></i> Ballot configuration</h3><p>Set eligibility, opening and closing times, and maximum places per department. A capacity of zero means no capacity limit is enforced.</p></div><span class="ca-tag">ADMINISTRATOR</span></div>
-      <form id="ca-ballot-form">
-        <input type="hidden" id="ca-edit-id" value="">
-        <div class="ca-form-grid">
-          <label class="ca-field ca-span-2"><span>Ballot title *</span><input class="ca-input" id="ca-title" required maxlength="150" placeholder="e.g. Block 5 Final Clinical Rotation"></label>
-          <label class="ca-field"><span>Program</span><input class="ca-input" id="ca-program" placeholder="e.g. KRCHN"></label>
-          <label class="ca-field"><span>Eligible block</span><input class="ca-input" id="ca-block" placeholder="e.g. Block 5"></label>
-          <label class="ca-field"><span>Intake year (optional)</span><input class="ca-input" id="ca-intake" placeholder="e.g. 2024"></label>
-          <label class="ca-field"><span>Opens at</span><input class="ca-input" id="ca-opens" type="datetime-local"></label>
-          <label class="ca-field"><span>Closes at</span><input class="ca-input" id="ca-closes" type="datetime-local"></label>
-        </div>
-        <div class="ca-capacity-heading"><div><h4>Department capacities</h4><p>Set the maximum number of students for each department.</p></div></div>
-        <div class="ca-capacity-grid">
-          <label class="ca-field ca-capacity"><span><i class="fas fa-heart-pulse"></i> Medical Ward</span><input class="ca-input" id="ca-cap-0" type="number" min="0" step="1" value="0" aria-label="Medical Ward capacity"></label><label class="ca-field ca-capacity"><span><i class="fas fa-user-doctor"></i> Surgical Ward</span><input class="ca-input" id="ca-cap-1" type="number" min="0" step="1" value="0" aria-label="Surgical Ward capacity"></label><label class="ca-field ca-capacity"><span><i class="fas fa-baby"></i> Maternity</span><input class="ca-input" id="ca-cap-2" type="number" min="0" step="1" value="0" aria-label="Maternity capacity"></label><label class="ca-field ca-capacity"><span><i class="fas fa-child"></i> Paediatric Ward</span><input class="ca-input" id="ca-cap-3" type="number" min="0" step="1" value="0" aria-label="Paediatric Ward capacity"></label>
-        </div>
-        <div class="ca-form-actions"><button type="submit" class="ca-btn ca-btn-primary" id="ca-save-ballot"><i class="fas fa-plus"></i> Create ballot</button><button type="button" class="ca-btn ca-btn-light" id="ca-reset-form">Clear form</button><span class="ca-form-hint">New ballots are created as scheduled. Open them only when ready for students to submit preferences.</span></div>
-      </form>
-    </section>
-    <section class="ca-card">
-      <div class="ca-card-heading"><div><h3><i class="fas fa-calendar-check"></i> Ballots & status</h3><p>Select a ballot to edit its configuration or manage submissions. Closing a ballot prevents further preference changes.</p></div></div>
-      <div class="ca-table-wrap"><table class="ca-table"><thead><tr><th>Ballot / eligibility</th><th>Intake</th><th>Submission window</th><th>Status</th><th>Submissions</th><th>Select</th><th>Actions</th></tr></thead><tbody id="ca-ballots-body"><tr><td colspan="7" class="ca-empty">Loading ballots…</td></tr></tbody></table></div>
-    </section>
-    <section class="ca-card">
-      <div class="ca-card-heading"><div><h3><i class="fas fa-users"></i> Student preferences & allocations</h3><p>Review each student's ranked choices and record the final facility, department, dates and required hours. Capacity warnings are advisory; allocation remains an administrator decision.</p></div><button type="button" class="ca-btn ca-btn-light" id="ca-load-preferences"><i class="fas fa-rotate"></i> Reload submissions</button></div>
-      <div class="ca-table-wrap"><table class="ca-table ca-preferences-table"><thead><tr><th>Student</th><th>Program</th><th>Block</th><th>Ranked preferences</th><th>Submitted</th><th>Placement status</th><th>Allocate / update</th></tr></thead><tbody id="ca-preferences-body"><tr><td colspan="7" class="ca-empty">Select a ballot to review student choices and assign placements.</td></tr></tbody></table></div>
-    </section>
-    <div class="ca-footer-note"><i class="fas fa-shield-halved"></i><span>Student preferences are private to the submitting student and authorized clinical administrators. Verify placement capacity and clinical site approval before finalizing allocations.</span></div>
-  </div>
-</section>
-
-<!-- Attendance Section - COMPLETE TVET SUPPORT -->
+          <!-- Attendance Section - COMPLETE TVET SUPPORT -->
 <section id="attendance" class="tab-content">
     <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px;">
         <h2 style="color: white; margin: 0; display: flex; align-items: center; gap: 12px;">
@@ -12966,7 +12713,7 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
                         </button>
                     </div>
                 </div>
-            <div id="studentReviewDetailModal" role="dialog" aria-modal="true" aria-labelledby="studentReviewDetailTitle" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:100500;background:rgba(15,23,42,.68);padding:20px;overflow-y:auto;align-items:center;justify-content:center;"><div style="width:min(760px,100%);margin:auto;background:var(--card-bg,#fff);color:var(--text-color,#111827);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.28);overflow:hidden;"><div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;background:linear-gradient(135deg,#312e81,#6d28d9);color:#fff;"><h3 id="studentReviewDetailTitle" style="margin:0;font-size:21px;">Full Student Review</h3><button type="button" onclick="closeStudentReviewModal()" aria-label="Close review" style="color:#fff;background:transparent;border:0;font-size:26px;cursor:pointer;">&times;</button></div><div style="padding:24px;"><div id="studentReviewDetailMeta" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:20px;"></div><div style="padding:18px;border:1px solid #e5e7eb;border-radius:14px;"><strong>Full review</strong><div id="studentReviewDetailText" style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75;margin-top:10px;"></div></div><div id="studentReviewExtraDetails" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:14px;"></div><div style="text-align:right;margin-top:20px;"><button type="button" onclick="closeStudentReviewModal()" style="padding:10px 18px;border-radius:9px;border:0;background:#e5e7eb;cursor:pointer;">Close</button></div></div></div></div></section>
+            </section>
                         <!-- ============================================================ -->
 <!-- STUDENT MANAGEMENT MODULE - CHANGE OF PROGRAM & READMISSION & SESSION REPORTING -->
 <!-- ============================================================ -->
@@ -14122,73 +13869,15 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
     </div>
 </div>
 
-        
-<!-- STAFF MANAGEMENT SECTION: connected to staff_records -->
-<section id="staff-management" class="tab-content" style="display:none;padding:24px;min-height:70vh;">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
-    <div><h2 style="margin:0;color:#1e293b;">Staff Management</h2><p style="margin:6px 0 0;color:#64748b;">View and manage staff records registered in the college system.</p></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button type="button" onclick="refreshStaff()" style="border:0;border-radius:8px;padding:10px 14px;background:#e2e8f0;color:#1e293b;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh</button>
-      <button type="button" onclick="exportStaffToCSV()" style="border:0;border-radius:8px;padding:10px 14px;background:#0f766e;color:white;cursor:pointer;"><i class="fas fa-file-csv"></i> Export CSV</button>
-      <button type="button" onclick="openAddStaffModal()" style="border:0;border-radius:8px;padding:10px 14px;background:#4C1D95;color:white;cursor:pointer;"><i class="fas fa-user-plus"></i> Add Staff</button>
-    </div>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;">
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="color:#64748b;font-size:13px;">Total staff</div><strong id="staffManagementTotal" style="font-size:26px;">—</strong></div>
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="color:#64748b;font-size:13px;">Active staff</div><strong id="staffManagementActive" style="font-size:26px;">—</strong></div>
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="color:#64748b;font-size:13px;">Academic staff</div><strong id="staffManagementAcademic" style="font-size:26px;">—</strong></div>
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="color:#64748b;font-size:13px;">Departments</div><strong id="staffManagementDepartments" style="font-size:26px;">—</strong></div>
-  </div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-    <input id="staffManagementSearch" type="search" placeholder="Search name, staff ID, email, department…" style="flex:1;min-width:220px;padding:11px 12px;border:1px solid #cbd5e1;border-radius:8px;">
-    <select id="staffManagementDepartment" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;"><option value="all">All departments</option><option>Nursing</option><option>TVET</option><option>Community Health</option><option>Health Records</option><option>ICT</option><option>Administration</option><option>Front Desk</option><option>Library</option><option>Clinical</option><option>Finance</option></select>
-    <select id="staffManagementStatus" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;"><option value="all">All statuses</option><option value="active">Active</option><option value="pending">Pending</option><option value="inactive">Inactive</option></select>
-  </div>
-  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:auto;">
-    <table style="width:100%;min-width:850px;border-collapse:collapse;">
-      <thead><tr style="background:#f8fafc;text-align:left;"><th style="padding:13px;">Staff</th><th style="padding:13px;">Staff ID</th><th style="padding:13px;">Department / Program</th><th style="padding:13px;">Designation</th><th style="padding:13px;">Status</th><th style="padding:13px;">Actions</th></tr></thead>
-      <tbody id="staffManagementBody"><tr><td colspan="6" style="padding:32px;text-align:center;color:#64748b;">Open Staff Management to load records.</td></tr></tbody>
-    </table>
-  </div>
-</section>
+            <section id="research-topic-vault" class="tab-content" style="padding:0 4px;">
+                <div style="margin-bottom:18px;">
+                    <h2 style="color:#0A3D62;margin:0 0 6px;">Research Topics Vault</h2>
+                    <p style="color:#64748b;margin:0;">College-wide research topic registry, similarity screening and approval workflow.</p>
+                </div>
+                <div id="research-topic-vault-workspace"></div>
+            </section>
 
-<!-- LECTURER REPORTS REVIEW -->
-<section id="lecturer-reports-review" class="tab-content" style="display:none;padding:24px;min-height:70vh;">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
-    <div>
-      <h2 style="margin:0;color:#1e293b;"><i class="fas fa-chalkboard-teacher" style="color:#0f766e;margin-right:8px;"></i>Teaching Portfolio Review</h2>
-      <p style="margin:6px 0 0;color:#64748b;">Review lecturers’ teaching portfolios, required documents, reports and supporting evidence. Preview attachments, track progress and provide formal feedback.</p>
-    </div>
-    <button type="button" onclick="window.LecturerReportsReview?.refresh()" style="border:0;border-radius:9px;padding:10px 14px;background:#4C1D95;color:white;font-weight:700;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh Reports</button>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:18px;">
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;">Total Submissions</div><strong id="lrrTotalCount" style="display:block;font-size:26px;color:#0f172a;margin-top:5px;">0</strong></div>
-    <div style="background:#fff;border:1px solid #dbeafe;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#2563eb;text-transform:uppercase;font-weight:700;">Submitted</div><strong id="lrrSubmittedCount" style="display:block;font-size:26px;color:#2563eb;margin-top:5px;">0</strong></div>
-    <div style="background:#fff;border:1px solid #ede9fe;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#6d28d9;text-transform:uppercase;font-weight:700;">Under Review</div><strong id="lrrUnderReviewCount" style="display:block;font-size:26px;color:#6d28d9;margin-top:5px;">0</strong></div>
-    <div style="background:#fff;border:1px solid #fef3c7;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#b45309;text-transform:uppercase;font-weight:700;">Returned</div><strong id="lrrReturnedCount" style="display:block;font-size:26px;color:#b45309;margin-top:5px;">0</strong></div>
-    <div style="background:#fff;border:1px solid #d1fae5;border-radius:12px;padding:16px;"><div style="font-size:11px;color:#047857;text-transform:uppercase;font-weight:700;">Approved</div><strong id="lrrApprovedCount" style="display:block;font-size:26px;color:#047857;margin-top:5px;">0</strong></div>
-  </div>
-  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px;margin-bottom:14px;">
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <input id="lrrSearch" type="search" placeholder="Search lecturer, report, unit, email…" style="flex:1;min-width:220px;padding:11px 12px;border:1px solid #cbd5e1;border-radius:8px;">
-      <select id="lrrReportTypeFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:145px;"><option value="">All submission types</option></select>
-      <select id="lrrDocumentTypeFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:170px;"><option value="">All Document Types</option><option value="scheme_of_work">Scheme of Work</option></select>
-      <select id="lrrProgramFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:125px;"><option value="">All programs</option></select>
-      <select id="lrrBlockFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:115px;"><option value="">All blocks/classes</option></select>
-      <select id="lrrYearFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:115px;"><option value="">All academic years</option></select>
-      <select id="lrrStatusFilter" style="padding:11px;border:1px solid #cbd5e1;border-radius:8px;min-width:130px;">
-        <option value="">All statuses</option><option value="submitted">Submitted</option><option value="under_review">Under Review</option><option value="resubmitted">Resubmitted</option><option value="returned">Returned</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="draft">Draft</option>
-      </select>
-    </div>
-    <div style="font-size:12px;color:#64748b;margin-top:10px;">Showing <strong id="lrrVisibleCount">0</strong> submissions. Select Review to inspect portfolio evidence, preview documents and record a decision.</div>
-  </div>
-  <div id="lecturerReportsReviewTable" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;min-height:170px;">
-    <div style="padding:40px;text-align:center;color:#64748b;">Loading lecturer reports…</div>
-  </div>
-</section>
-
-
-</main>
+        </main>
     </div>
 
     <!-- MODALS -->
@@ -15096,63 +14785,19 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
     // ============================================================
     // MOBILE NAVIGATION
     // ============================================================
-    // Accessible mobile sidebar: one source of truth for open/closed state.
-    (function initSuperAdminMobileNavigation() {
-        const sidebar = document.getElementById('sidebar');
-        const toggle = document.getElementById('mobileNavToggle');
-        if (!sidebar || !toggle || toggle.dataset.mobileNavBound === 'true') return;
-        toggle.dataset.mobileNavBound = 'true';
-
-        let backdrop = document.getElementById('superadminSidebarBackdrop');
-        if (!backdrop) {
-            backdrop = document.createElement('button');
-            backdrop.type = 'button';
-            backdrop.id = 'superadminSidebarBackdrop';
-            backdrop.setAttribute('aria-label', 'Close navigation menu');
-            backdrop.style.cssText = 'display:none;position:fixed;inset:0;border:0;background:rgba(8,15,40,.52);backdrop-filter:blur(2px);z-index:10030;touch-action:manipulation;';
-            document.body.appendChild(backdrop);
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileToggle = document.getElementById('mobileNavToggle');
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', function() {
+                document.getElementById('sidebar')?.classList.toggle('active');
+            });
         }
-
-        const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
-        const closeMenu = () => {
-            sidebar.classList.remove('active', 'mobile-open');
-            document.body.classList.remove('mobile-sidebar-open');
-            toggle.classList.remove('active');
-            toggle.setAttribute('aria-expanded', 'false');
-            backdrop.style.display = 'none';
-        };
-        const openMenu = () => {
-            sidebar.classList.add('active', 'mobile-open');
-            document.body.classList.add('mobile-sidebar-open');
-            toggle.classList.add('active');
-            toggle.setAttribute('aria-expanded', 'true');
-            backdrop.style.display = 'block';
-        };
-        const toggleMenu = () => {
-            const opened = sidebar.classList.contains('active') || sidebar.classList.contains('mobile-open');
-            if (opened) closeMenu(); else openMenu();
-        };
-
-        toggle.addEventListener('click', function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            toggleMenu();
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.addEventListener('click', function() {
+                document.getElementById('sidebar')?.classList.remove('active');
+            });
         });
-        backdrop.addEventListener('click', closeMenu);
-
-        // Close after a real module selection; do not close when expanding a category.
-        sidebar.addEventListener('click', function(event) {
-            const moduleLink = event.target.closest('#mainNav a[data-tab]');
-            if (moduleLink && isMobile()) closeMenu();
-        }, true);
-
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape' && isMobile()) closeMenu();
-        });
-        window.addEventListener('resize', function() {
-            if (!isMobile()) closeMenu();
-        });
-    })();
+    });
 
     console.log('✅ All scripts loaded successfully');
 </script>
@@ -15173,15 +14818,14 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
 <script src="./js/superadmin-analytics.js"></script>
 
 <!-- 2. SUPER ADMIN TRANSCRIPT GENERATOR MODULE -->
-<script src="./js/superadmin-transcript.js?v=20261104-template-verification-fix-3"></script>
+<script src="./js/superadmin-transcript.js"></script>
 
 <!-- 3. SUPER ADMIN MARKS ENTRY MODULE -->
 <!-- 3. SUPER ADMIN EXAMS / CATS MODULE - EXTERNAL -->
-<script src="./js/superadmin-exams.js?v=20261104-unit-uuid-fix-1"></script>
+<script src="./js/superadmin-exams.js"></script>
 
 <!-- 4. SUPER ADMIN MARKS ENTRY MODULE -->
-<script src="./js/superadmin-marks-entry.js?v=20261104-pass-badge-green-v2"></script>
-<script src="./js/superadmin-marks-approval.js?v=20261027-approval-publication-separation-1"></script>
+<script src="./js/superadmin-marks-entry.js"></script>
 
 <!-- 4. PUBLISHED MARKS MODULE - TVET & Nursing Compatible -->
 <script src="./js/superadmin-published-marks.js"></script>
@@ -15191,33 +14835,8 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
 
 <!-- 6. ✅ STUDENT MANAGEMENT MODULE - NEW -->
 <script src="./js/superadmin-student-management.js"></script>
-<script src="./js/superadmin-staff-management.js"></script>
-<script>
-(function(){
-  function wireStaffManagement(){
-    document.querySelectorAll('[data-tab="staff-management"]').forEach(function(link){
-      if(link.dataset.staffManagementBound==="1") return;
-      link.dataset.staffManagementBound="1";
-      link.addEventListener("click",function(){
-        setTimeout(function(){
-          var section=document.getElementById("staff-management");
-          if(section && (section.classList.contains("active") || section.style.display!=="none")){
-            if(typeof window.initStaffManagement==="function") window.initStaffManagement();
-          }
-        },350);
-      });
-    });
-    var section=document.getElementById("staff-management");
-    if(section && (section.classList.contains("active") || section.style.display!=="none") && typeof window.initStaffManagement==="function") window.initStaffManagement();
-  }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",wireStaffManagement); else wireStaffManagement();
-})();
-</script>
 <!-- 7. 🎓 GRADUATION & CERTIFICATE MODULE -->
-<!-- Load QR generation and scanning libraries before the module uses them. -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<script src="./js/superadmin-graduation.js?v=20261025-qr-fix-1"></script>
+<script src="./js/superadmin-graduation.js"></script>
                        
 <!-- ============================================ -->
 <!-- ✅ DROPDOWN FIX                              -->
@@ -15232,6 +14851,7 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
 <!-- SUPER ADMIN PROFILE MODULE                   -->
 <!-- ============================================ -->
 <script src="js/superadmin-profile.js" defer></script>
+<script src="js/research-topic-vault.js?v=20261109-restore1" defer></script>
 <!-- BUTTON WITH VERIFY FUNCTION                  -->
 <!-- ============================================ -->
 <button 
@@ -15435,67 +15055,46 @@ body{background:var(--sa-canvas)!important;color:var(--sa-ink);-webkit-font-smoo
 <!-- ============================================================ -->
 <script>
 /**
- * Sidebar theme picker: apply to the actual Super Admin sidebar and override
- * legacy CSS declarations. Persist the selection across page reloads.
+ * Change sidebar background color
+ * @param {string} color - CSS gradient or color value
  */
-(function() {
-    const DEFAULT_SIDEBAR_THEME = 'linear-gradient(135deg, #0c1445, #1a237e)';
-    const STORAGE_KEY = 'nchsm_superadmin_sidebar_color';
-
-    function applySidebarTheme(color) {
-        const sidebar = document.getElementById('sidebar');
-        if (!sidebar || !color) return false;
-
-        // Legacy responsive CSS competes with normal inline styles.
-        sidebar.style.setProperty('background', color, 'important');
-        sidebar.style.setProperty('background-image', color, 'important');
-
-        document.querySelectorAll('#sidebar .color-btn').forEach(function(button) {
-            const selected = button.getAttribute('onclick') &&
-                button.getAttribute('onclick').includes(color);
-            button.setAttribute('aria-pressed', selected ? 'true' : 'false');
-            button.style.outline = selected ? '2px solid #fff' : 'none';
-            button.style.outlineOffset = selected ? '3px' : '0';
-        });
-        return true;
+function changeSidebarColor(color) {
+    console.log('🎨 Changing sidebar color to:', color);
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.style.background = color;
+        try {
+            localStorage.setItem('sidebarColor', color);
+        } catch(e) {}
     }
+}
 
-    window.changeSidebarColor = function(color) {
-        if (!applySidebarTheme(color)) {
-            console.warn('Sidebar theme could not be applied: sidebar element not found.');
-            return;
-        }
+/**
+ * Reset sidebar color to default
+ */
+function resetSidebarColor() {
+    console.log('🔄 Resetting sidebar color to default...');
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.style.background = 'linear-gradient(135deg, #0c1445, #1a237e)';
         try {
-            localStorage.setItem(STORAGE_KEY, color);
-            localStorage.setItem('sidebarColor', color); // legacy compatibility
-        } catch (error) {
-            console.warn('Theme applied for this session; browser storage is unavailable.', error);
-        }
-    };
-
-    window.resetSidebarColor = function() {
-        applySidebarTheme(DEFAULT_SIDEBAR_THEME);
-        try {
-            localStorage.removeItem(STORAGE_KEY);
             localStorage.removeItem('sidebarColor');
-        } catch (error) {
-            console.warn('Theme reset for this session; browser storage is unavailable.', error);
+        } catch(e) {}
+    }
+}
+
+// Load saved color preference on page load
+(function loadSavedSidebarColor() {
+    try {
+        const savedColor = localStorage.getItem('sidebarColor');
+        if (savedColor) {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.style.background = savedColor;
+                console.log('✅ Loaded saved sidebar color');
+            }
         }
-    };
-
-    function restoreSidebarTheme() {
-        let savedColor = null;
-        try {
-            savedColor = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sidebarColor');
-        } catch (error) {}
-        applySidebarTheme(savedColor || DEFAULT_SIDEBAR_THEME);
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', restoreSidebarTheme, { once: true });
-    } else {
-        restoreSidebarTheme();
-    }
+    } catch(e) {}
 })();
 
 console.log('✅ Sidebar color functions loaded');
@@ -15763,11 +15362,5 @@ console.log('✅ Search function loaded successfully!');
         console.log('✅ All modules initialized!');
     });
 </script>
-
-<script src="./js/superadmin-lecturer-reports-review.js?v=20261108-individual-progress-1"></script>
-<script src="./js/superadmin-dashboard-reliability.js?v=20261108-systemwide-fix-2"></script>
-<script src="./js/superadmin-rejection-fix.js?v=20261024-1"></script>
-<script src="./js/superadmin-unit-registration-init.js?v=20261025-1"></script>
-<script src="./js/superadmin-clinical-placements.js?v=20261101-final-export-print-2" defer></script>
 </body>
 </html>
