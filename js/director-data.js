@@ -58,7 +58,13 @@ async function read(client,key,{limit=250,order='created_at',ascending=false,fil
 const SAFE_COUNT_FILTERS={
  profiles:new Set(['role','program','department','status']),
  exams:new Set(['status','approval_status','is_published','target_program','program_type']),
- marks:new Set(['published','approval_status','program','block','final_status'])
+ marks:new Set(['published','approval_status','program','block','final_status']),
+ submissions:new Set(['status','program','report_type','report_category','academic_year']),
+ attendance:new Set(['status','date','session_type']),
+ finance:new Set(['payment_status','program','program_type','account_status','intake_year']),
+ cats:new Set(['status','exam_type','target_program','program_type']),
+ attempts:new Set(['status','is_retake']),
+ transcripts:new Set(['status','document_type','program'])
 };
 async function count(client,key,filters=[]){
  const table=TABLES[key];if(!table)throw new Error('Unknown dataset');
