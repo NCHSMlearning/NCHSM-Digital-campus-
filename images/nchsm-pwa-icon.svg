@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="112" fill="#073b5c"/>
+<path d="M256 72 420 132v112c0 103-66 164-164 196C158 408 92 347 92 244V132z" fill="#fff" opacity=".10"/>
+<path d="M150 178h212v18H150zm0 138h212v18H150z" fill="#f2b705"/>
+<path d="M166 214h78v82h-78zm102 0h78v82h-78z" fill="#fff"/>
+<path d="M244 214v82m24-82v82" stroke="#073b5c" stroke-width="8"/>
+<text x="256" y="382" text-anchor="middle" font-family="Arial,sans-serif" font-size="48" font-weight="800" fill="#fff">NCHSM</text>
+</svg>
