@@ -1127,54 +1127,67 @@ const LecturerSessions = {
     // VIEW ATTENDEES
     // ============================================
     async viewAttendees(sessionId) {
-        const session = this.sessions.find(s => s.id === sessionId);
-        if (!session) {
-            window.showNotification('Session not found.', 'error');
-            return;
-        }
-
+        const session = (this.sessions || []).find(s => String(s.id) === String(sessionId));
+        if (!session) { window.showNotification('Session not found.', 'error'); return; }
         const profile = window.lecturerDB?.getCurrentUserProfile();
-        if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
-            window.showNotification('You can only view attendees for your own sessions.', 'warning');
-            return;
+        const currentUserId = this.lecturerUuid || profile?.user_id;
+        if (session.created_by && String(session.created_by) !== String(currentUserId)) {
+            window.showNotification('You can only view attendees for your own sessions.', 'warning'); return;
         }
 
         try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) throw new Error('Database connection not available');
-
-            const { data: rawAttendees, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('session_id', sessionId)
-                .neq('role', 'lecturer')
-                .order('check_in_time', { ascending: false });
-
-            if (error) throw error;
-
-            const attendees = this.chooseEffectiveAttendanceRows(rawAttendees || []);
-
-            if (attendees.length === 0) {
-                window.showNotification('No students have signed in yet.', 'info');
-                return;
+            if (!window.lecturerDB?.supabase) throw new Error('Database connection not available');
+            let register = null;
+            if (window.LecturerAttendance?.getSessionAttendanceRegister) {
+                register = await window.LecturerAttendance.getSessionAttendanceRegister(session, false);
+            }
+            if (!register?.rows) {
+                const { data, error } = await window.lecturerDB.supabase.from('geo_attendance_logs')
+                    .select('*').eq('session_id', sessionId).order('check_in_time', { ascending: false });
+                if (error) throw error;
+                const logs = this.chooseEffectiveAttendanceRows((data || []).filter(a => a.role !== 'lecturer'));
+                register = { rows: logs.map(log => ({student:{name:log.student_name,student_id:log.registration_number || log.student_id},log,status:log.attendance_status || 'Pending'})),
+                    summary:{total:logs.length,present:logs.filter(a=>['present','verified'].includes(String(a.attendance_status||'').toLowerCase())).length,absent:logs.filter(a=>String(a.attendance_status||'').toLowerCase()==='absent').length,pending:logs.filter(a=>String(a.attendance_status||'').toLowerCase()==='pending').length} };
             }
 
-            const attendeeList = attendees.map((a, i) => {
-                const name = a.student_name || 'Unknown';
-                const time = a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
-                const status = a.attendance_status || 'Pending';
-                const distance = a.distance_meters ? `${Math.round(a.distance_meters)}m` : '';
-                return `${i + 1}. ${name} - ${status}${distance ? ' (' + distance + ')' : ''} - ${time}`;
-            }).join('\n');
-
-            alert(`📋 Attendance for: ${session.session_title || session.title}\n\n${attendeeList}\n\nTotal: ${attendees.length} students (unique attendance records)`);
-
-        } catch (error) {
-            console.error('Error viewing attendees:', error);
-            window.showNotification('Failed to load attendees: ' + error.message, 'error');
+            const rows = register.rows || [], summary = register.summary || {};
+            const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+            const dateLabel = session.session_date ? new Date(session.session_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Africa/Nairobi'}) : 'Date not set';
+            const statusStyle = status => { const key=String(status||'').toLowerCase(); return key==='present'?'background:#dcfce7;color:#166534':(['absent','not checked in'].includes(key)?'background:#fee2e2;color:#991b1b':'background:#fef3c7;color:#92400e'); };
+            document.getElementById('sessionAttendeesModal')?.remove();
+            const modal=document.createElement('div'); modal.id='sessionAttendeesModal';
+            modal.innerHTML=`
+                <div data-attendees-backdrop style="position:fixed;inset:0;z-index:1000000;background:rgba(15,23,42,.68);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px;">
+                  <section role="dialog" aria-modal="true" aria-labelledby="sessionAttendeesTitle" style="background:#fff;width:min(960px,100%);max-height:92vh;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden;">
+                    <header style="padding:22px 26px;background:linear-gradient(120deg,#102a43,#145b68);color:white;display:flex;justify-content:space-between;gap:16px;align-items:flex-start;">
+                      <div><div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;opacity:.78;font-weight:700;">Session attendance</div><h2 id="sessionAttendeesTitle" style="font-size:22px;margin:6px 0 4px;">${esc(session.session_title||session.unit_name||session.title||'Class session')}</h2><div style="font-size:13px;opacity:.88;">${esc(session.unit_name||'')} · ${esc(session.target_program||session.program||'')} · ${esc(session.target_block||session.block||'')} · ${dateLabel}</div></div>
+                      <button type="button" data-close-attendees aria-label="Close" style="border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.13);color:#fff;width:36px;height:36px;border-radius:11px;font-size:20px;cursor:pointer;">&times;</button>
+                    </header>
+                    <div style="padding:18px 24px 12px;overflow:auto;">
+                      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:18px;">
+                        <div style="padding:14px;border:1px solid #e2e8f0;border-radius:13px;background:#f8fafc;"><div style="font-size:11px;color:#64748b;">Total roster</div><strong style="font-size:25px;">${Number(summary.total||rows.length)}</strong></div>
+                        <div style="padding:14px;border:1px solid #bbf7d0;border-radius:13px;background:#f0fdf4;"><div style="font-size:11px;color:#166534;">Present</div><strong style="font-size:25px;color:#166534;">${Number(summary.present||0)}</strong></div>
+                        <div style="padding:14px;border:1px solid #fecaca;border-radius:13px;background:#fef2f2;"><div style="font-size:11px;color:#991b1b;">Absent</div><strong style="font-size:25px;color:#991b1b;">${Number(summary.absent||0)}</strong></div>
+                        <div style="padding:14px;border:1px solid #fde68a;border-radius:13px;background:#fffbeb;"><div style="font-size:11px;color:#92400e;">Pending review</div><strong style="font-size:25px;color:#92400e;">${Number(summary.pending||0)}</strong></div>
+                      </div>
+                      <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px;"><strong style="font-size:14px;">Student register <span style="font-size:12px;font-weight:500;color:#64748b;">(${rows.length} students)</span></strong><input id="sessionAttendeesSearch" type="search" placeholder="Search name or admission number…" style="width:min(320px,100%);padding:10px 13px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;"></div>
+                      <div style="overflow:auto;border:1px solid #e2e8f0;border-radius:12px;"><table style="width:100%;border-collapse:collapse;min-width:620px;font-size:13px;"><thead style="background:#f8fafc;"><tr><th style="padding:12px;text-align:left;"># / Student</th><th style="padding:12px;text-align:left;">Admission No.</th><th style="padding:12px;text-align:left;">Check-in</th><th style="padding:12px;text-align:left;">Distance</th><th style="padding:12px;text-align:left;">Status</th></tr></thead><tbody>${rows.map((row,index)=>{const student=row.student||{},log=row.log||{},name=student.name||log.student_name||'Unknown student',reg=student.registration_number||student.student_id||log.registration_number||log.student_id||'—',time=log.check_in_time?new Date(log.check_in_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Nairobi'}):'—',distance=log.distance_meters!==null&&log.distance_meters!==undefined?Math.round(Number(log.distance_meters))+' m':'—',status=row.status||'Not Checked In';return `<tr data-attendee-row data-search="${esc(name+' '+reg).toLowerCase()}" style="border-top:1px solid #eef2f7;"><td style="padding:12px;"><strong>${index+1}. ${esc(name)}</strong></td><td style="padding:12px;color:#64748b;">${esc(reg)}</td><td style="padding:12px;">${time}</td><td style="padding:12px;">${esc(distance)}</td><td style="padding:12px;"><span style="display:inline-flex;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:700;${statusStyle(status)};">${esc(status)}</span>${log.is_verified===false&&String(status).toLowerCase()==='present'?'<div style="font-size:10px;color:#a16207;margin-top:4px;">GPS verification pending</div>':''}</td></tr>`;}).join('')}</tbody></table></div>
+                    </div>
+                    <footer style="padding:14px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#f8fafc;"><span style="font-size:11px;color:#64748b;">Read-only attendance overview.</span><button type="button" data-close-attendees style="padding:10px 18px;background:#123b50;color:#fff;border:0;border-radius:10px;font-weight:700;cursor:pointer;">Close</button></footer>
+                  </section>
+                </div>`;
+            document.body.appendChild(modal);
+            const close=()=>{modal.remove();document.removeEventListener('keydown',onKey);};
+            const onKey=event=>{if(event.key==='Escape')close();};
+            modal.querySelectorAll('[data-close-attendees]').forEach(button=>button.addEventListener('click',close));
+            modal.querySelector('[data-attendees-backdrop]')?.addEventListener('click',event=>{if(event.target===event.currentTarget)close();});
+            modal.querySelector('#sessionAttendeesSearch')?.addEventListener('input',event=>{const query=event.target.value.trim().toLowerCase();modal.querySelectorAll('[data-attendee-row]').forEach(row=>{row.style.display=row.dataset.search.includes(query)?'':'none';});});
+            document.addEventListener('keydown',onKey);
+        } catch(error) {
+            console.error('Error viewing attendees:',error);
+            window.showNotification('Failed to load attendees: '+error.message,'error');
         }
     },
-
     // ============================================
     // OPEN TODAY'S SESSION
     // ============================================
