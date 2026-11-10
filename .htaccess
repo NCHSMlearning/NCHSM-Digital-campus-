@@ -116,10 +116,18 @@ RewriteRule ^student/.+$ student.html [END,QSA]
         Header set Cache-Control "max-age=2592000, public, immutable"
     </FilesMatch>
     
-    <FilesMatch "\.(html|htm)$">
-        Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
-        Header set Pragma "no-cache"
+    # HTML documents must always revalidate; never serve stale portal shells.
+    <FilesMatch "\\.(html|htm)$">
+        Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0, s-maxage=0"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
     </FilesMatch>
+
+    # Explicit debug query-string bypass for diagnostic page loads.
+    SetEnvIfNoCase Query_String "(^|&)debug=1(&|$)" NCHSM_DEBUG_BYPASS
+    Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0, s-maxage=0" env=NCHSM_DEBUG_BYPASS
+    Header always set Pragma "no-cache" env=NCHSM_DEBUG_BYPASS
+    Header always set Expires "0" env=NCHSM_DEBUG_BYPASS
 </IfModule>
 
 # ------------------------------------------------------------------
