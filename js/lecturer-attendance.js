@@ -2654,7 +2654,7 @@ const LecturerAttendance = {
         const radiusFor = log => {
             const value = log?.target_radius ?? session.target_radius ?? 150;
             const radius = Number(value);
-            return Number.isFinite(radius) && radius > 0 ? radius : 150;
+            return Number.isFinite(radius) && radius > 0 ? radius : 100;
         };
 
         for (const student of roster) {
@@ -2727,7 +2727,7 @@ const LecturerAttendance = {
                         attendance_status: 'Absent',
                         is_verified: false,
                         location_type: 'class',
-                        target_radius: session.target_radius || 150,
+                        target_radius: session.target_radius || 100,
                         target_latitude: session.target_latitude || null,
                         target_longitude: session.target_longitude || null,
                         role: 'student',
