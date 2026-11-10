@@ -2696,6 +2696,9 @@ const LecturerAttendance = {
 
         if (finalize && missing.length > 0) {
             const now = new Date().toISOString();
+            const actorProfile = window.lecturerDB?.getCurrentUserProfile?.();
+            const finalizerId = actorProfile?.user_id || this.lecturerUuid || null;
+            if (!finalizerId) throw new Error('Cannot finalize attendance: lecturer authentication ID is unavailable.');
             const inserts = [];
             const updates = [];
 
@@ -2739,7 +2742,9 @@ const LecturerAttendance = {
                         verification_source: 'Automatic Session Finalization',
                         finalization_reason: 'No check-in recorded before session close',
                         finalized_at: now,
-                        finalized_by: this.lecturerUuid || null,
+                        finalized_by: finalizerId,
+                        recorded_by_id: finalizerId,
+                        recorded_by_name: actorProfile?.full_name || 'Lecturer',
                         created_at: now
                     });
                 }
