@@ -102,9 +102,22 @@ function chartDonut(pass,fail,pending){
  const pct=Math.round(pass/total*100);
  return '<div class="d-donut-wrap"><div class="d-donut" style="--pass:'+Math.round(pass/total*100)+'%;--fail:'+Math.round(fail/total*100)+'%"><div><strong>'+pct+'%</strong><small>Pass rate</small></div></div><div class="d-legend"><span><i class="pass"></i>Pass <b>'+fmt(pass)+'</b></span><span><i class="fail"></i>Fail <b>'+fmt(fail)+'</b></span><span><i class="pending"></i>Pending <b>'+fmt(pending)+'</b></span></div></div>';
 }
+function dashboardTrend(rows){
+ const months=[];const now=new Date();
+ for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({key:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),label:d.toLocaleDateString('en-KE',{month:'short'}),value:0});}
+ const map=new Map(months.map(x=>[x.key,x]));
+ rows.forEach(r=>{const raw=r.admission_date||r.created_at||r.updated_at;if(!raw)return;const d=new Date(raw);if(isNaN(d))return;const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(map.has(key))map.get(key).value++;});
+ const max=Math.max(1,...months.map(x=>x.value)),w=640,h=210,left=34,right=16,top=16,bottom=34,innerW=w-left-right,innerH=h-top-bottom;
+ const pts=months.map((x,i)=>({x:left+i*(innerW/Math.max(1,months.length-1)),y:top+innerH-(x.value/max)*innerH,...x}));
+ const path=pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+ const area=path+' L '+pts[pts.length-1].x+' '+(top+innerH)+' L '+pts[0].x+' '+(top+innerH)+' Z';
+ return '<div class="d-trend-wrap"><svg class="d-trend-svg" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Student admission trend for the last six months"><defs><linearGradient id="dTrendFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1685a8" stop-opacity=".24"/><stop offset="1" stop-color="#1685a8" stop-opacity="0"/></linearGradient></defs><path d="'+area+'" fill="url(#dTrendFill)"/><path d="'+path+'" fill="none" stroke="#1685a8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+pts.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#fff" stroke="#1685a8" stroke-width="2"><title>'+esc(p.label)+': '+p.value+'</title></circle><text x="'+p.x+'" y="'+(h-8)+'" text-anchor="middle" font-size="11" fill="#64748b">'+esc(p.label)+'</text>').join('')+'</svg><div class="d-trend-total"><strong>'+fmt(months.reduce((n,x)=>n+x.value,0))+'</strong><span>student records dated in this six-month window</span></div></div>';
+}
 async function renderOverview(){
  const keys=['profiles','marks','exams','submissions','attendance','finance','programs'];await loadSets(keys);
- const p=cache.profiles||[],m=cache.marks||[],e=cache.exams||[],sub=cache.submissions||[],a=cache.attendance||[],f=cache.financeSummary,programs=cache.programs||[];
+ const p=cache.profiles||[],m=cache.marks||[],e=cache.exams||[],sub=cache.submissions||[],f=cache.financeSummary;
+ const students=p.filter(x=>String(x.role).toLowerCase()==='student');
+ const staff=p.filter(x=>['lecturer','staff','hod','nursing_hod','tvet_hod'].includes(String(x.role).toLowerCase()));
  const [studentsExact,staffExact,examsExact,publishedExact,programExact]=await Promise.all([
   w.DirectorData.count(app.client,'profiles',[{op:'eq',column:'role',value:'student'}]).catch(()=>null),
   w.DirectorData.count(app.client,'profiles',[{op:'in',column:'role',value:['lecturer','staff','hod','nursing_hod','tvet_hod']}]).catch(()=>null),
@@ -112,39 +125,59 @@ async function renderOverview(){
   w.DirectorData.count(app.client,'marks',[{op:'eq',column:'published',value:true}]).catch(()=>null),
   w.DirectorData.count(app.client,'programs').catch(()=>null)
  ]);
- const students=p.filter(x=>String(x.role).toLowerCase()==='student'),staff=p.filter(x=>['lecturer','staff','hod','nursing_hod','tvet_hod'].includes(String(x.role).toLowerCase()));
- const pass=m.filter(x=>['pass','passed','credit','distinction'].includes(String(x.final_status||'').toLowerCase())).length;
- const fail=m.filter(x=>['fail','failed'].includes(String(x.final_status||'').toLowerCase())).length;
- const pending=m.filter(x=>['pending','submitted',''].includes(String(x.final_status||'').toLowerCase())).length;
- const pendingReports=sub.filter(x=>['submitted','resubmitted','under_review'].includes(String(x.status).toLowerCase())).length;
- const activeStudents=students.filter(x=>String(x.status).toLowerCase()==='active').length;
  const programOptions=[...new Set(students.map(x=>x.program).filter(Boolean))].sort();
  const intakeOptions=[...new Set(students.map(x=>x.intake_year).filter(Boolean))].sort();
  const blockOptions=[...new Set(students.map(x=>x.block||x.current_block).filter(Boolean))].sort();
  const schoolOptions=[...new Set(students.map(x=>x.program_type).filter(Boolean))].sort();
- const opts=(arr)=>arr.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
- let h=head('Executive Overview','Institution-wide performance, trends and areas requiring executive attention',false);
- h+='<section class="d-dashboard-filters"><div><b><i class="fa-solid fa-sliders"></i> Dashboard filters</b><small>Apply filters to the visible analytics below</small></div><select data-dashboard-filter="school"><option value="">All schools</option>'+opts(schoolOptions)+'</select><select data-dashboard-filter="program"><option value="">All programmes</option>'+opts(programOptions)+'</select><select data-dashboard-filter="intake"><option value="">All intakes</option>'+opts(intakeOptions)+'</select><select data-dashboard-filter="block"><option value="">All blocks</option>'+opts(blockOptions)+'</select><button class="d-btn" type="button" data-dashboard-clear>Reset filters</button></section>';
- h+='<section class="d-kpis">'+kpi('Total students',studentsExact,'fa-user-graduate','Exact database count')+kpi('Active students',activeStudents,'fa-user-check','From latest loaded profiles')+kpi('Staff & lecturers',staffExact,'fa-users','Exact database count')+kpi('Programmes',programExact,'fa-sitemap','Exact database count')+'</section>';
- h+='<section class="d-kpis">'+kpi('Examinations',examsExact,'fa-file-pen','Exact database count')+kpi('Published results',publishedExact,'fa-square-poll-vertical','Exact published-mark count')+kpi('Pending reports',pendingReports,'fa-file-circle-exclamation','Latest loaded submissions')+kpi('Outstanding fees',f?Number(f.outstanding||0).toLocaleString('en-KE',{maximumFractionDigits:0}):null,'fa-wallet','Institutional finance aggregate')+'</section>';
- h+='<div class="d-dashboard-grid"><article class="d-card"><div class="d-chart-head"><div><h3>Student enrolment by programme</h3><p class="d-sub">Distribution of loaded student profiles</p></div><span class="d-chart-tag">Programme</span></div><div id="dash-program-chart">'+chartBars(aggregate(students,'program'),'Programme')+'</div></article><article class="d-card"><div class="d-chart-head"><div><h3>Academic performance</h3><p class="d-sub">Stored final result status in loaded marks</p></div><span class="d-chart-tag">Results</span></div><div id="dash-results-chart">'+chartDonut(pass,fail,pending)+'</div></article><article class="d-card"><div class="d-chart-head"><div><h3>Student distribution by intake</h3><p class="d-sub">Loaded student profile records</p></div><span class="d-chart-tag">Intake</span></div><div id="dash-intake-chart">'+chartBars(aggregate(students,'intake_year'),'Intake')+'</div></article><article class="d-card"><div class="d-chart-head"><div><h3>Marks approval status</h3><p class="d-sub">Latest loaded marks</p></div><span class="d-chart-tag">Workflow</span></div><div id="dash-approval-chart">'+chartBars(aggregate(m,'approval_status'),'Approval')+'</div></article></div>';
- h+='<section class="d-executive-alerts"><div class="d-section-title"><h2>Executive attention</h2><span>Current operational indicators</span></div><div class="d-alert-grid"><article><i class="fa-solid fa-hourglass-half"></i><div><b>'+fmt(m.filter(x=>['pending','submitted'].includes(String(x.approval_status||'').toLowerCase())).length)+'</b><small>Marks awaiting approval</small></div></article><article><i class="fa-solid fa-file-circle-exclamation"></i><div><b>'+fmt(pendingReports)+'</b><small>Lecturer reports pending review</small></div></article><article><i class="fa-solid fa-user-clock"></i><div><b>'+fmt(students.filter(x=>!x.status||!['active','inactive','graduated','deferred'].includes(String(x.status).toLowerCase())).length)+'</b><small>Student profiles requiring status review</small></div></article><article><i class="fa-solid fa-calendar-check"></i><div><b>'+fmt(e.filter(x=>String(x.status).toLowerCase()==='scheduled').length)+'</b><small>Examinations currently scheduled</small></div></article></div></section>';
+ const opts=arr=>arr.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+ let h='<section class="d-exec-hero"><div class="d-exec-hero-copy"><span class="d-exec-kicker"><i class="fa-solid fa-chart-line"></i> INSTITUTIONAL INTELLIGENCE</span><h1>Executive dashboard</h1><p>A live view of student population, academic delivery and institutional operations.</p><div class="d-exec-meta"><span><i class="fa-regular fa-calendar"></i> '+date(new Date())+'</span><span><i class="fa-solid fa-shield-halved"></i> Director overview</span></div></div><div class="d-exec-hero-mark"><img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM crest"></div></section>';
+ h+='<section class="d-dashboard-filters"><div class="d-filter-intro"><b><i class="fa-solid fa-sliders"></i> Refine dashboard</b><small>All matching student and academic charts update together</small></div><select data-dashboard-filter="school" aria-label="Filter by school"><option value="">All schools</option>'+opts(schoolOptions)+'</select><select data-dashboard-filter="program" aria-label="Filter by programme"><option value="">All programmes</option>'+opts(programOptions)+'</select><select data-dashboard-filter="intake" aria-label="Filter by intake"><option value="">All intakes</option>'+opts(intakeOptions)+'</select><select data-dashboard-filter="block" aria-label="Filter by block"><option value="">All blocks</option>'+opts(blockOptions)+'</select><button class="d-btn" type="button" data-dashboard-clear><i class="fa-solid fa-rotate-left"></i> Reset</button></section>';
+ h+='<div class="d-dashboard-scope" id="dash-scope-note">Showing all available records in the current dashboard data window.</div>';
+ h+='<section class="d-exec-kpis" id="dash-kpis"></section>';
+ h+='<div class="d-exec-chart-grid"><article class="d-card d-exec-chart d-exec-chart-wide"><div class="d-chart-head"><div><h3>Student admission trend</h3><p class="d-sub">Monthly profile records, based on admission date or profile creation date</p></div><span class="d-chart-tag">6 MONTHS</span></div><div id="dash-trend-chart"></div></article><article class="d-card d-exec-chart"><div class="d-chart-head"><div><h3>Academic outcomes</h3><p class="d-sub">Filtered stored final result statuses</p></div><span class="d-chart-tag">RESULTS</span></div><div id="dash-results-chart"></div></article><article class="d-card d-exec-chart"><div class="d-chart-head"><div><h3>Student population by programme</h3><p class="d-sub">Filtered student profile records</p></div><span class="d-chart-tag">PROGRAMMES</span></div><div id="dash-program-chart"></div></article><article class="d-card d-exec-chart"><div class="d-chart-head"><div><h3>Intake distribution</h3><p class="d-sub">Filtered student population by intake year</p></div><span class="d-chart-tag">INTAKES</span></div><div id="dash-intake-chart"></div></article><article class="d-card d-exec-chart"><div class="d-chart-head"><div><h3>Marks workflow</h3><p class="d-sub">Approval status across filtered marks</p></div><span class="d-chart-tag">APPROVAL</span></div><div id="dash-approval-chart"></div></article></div>';
+ h+='<section class="d-executive-alerts"><div class="d-section-title"><h2>Executive attention</h2><span>Operational items requiring follow-up</span></div><div class="d-alert-grid" id="dash-alerts"></div></section>';
  h+=panel('exams','Recent examinations')+panel('submissions','Recent lecturer submissions')+errorBlock(keys);
  $('directorContent').innerHTML=h;
  const apply=()=>{
   const f={school:$('directorContent').querySelector('[data-dashboard-filter="school"]')?.value||'',program:$('directorContent').querySelector('[data-dashboard-filter="program"]')?.value||'',intake:$('directorContent').querySelector('[data-dashboard-filter="intake"]')?.value||'',block:$('directorContent').querySelector('[data-dashboard-filter="block"]')?.value||''};
   const rows=students.filter(x=>(!f.school||x.program_type===f.school)&&(!f.program||x.program===f.program)&&(!f.intake||String(x.intake_year)===f.intake)&&(!f.block||String(x.block||x.current_block)===f.block));
   const marks=m.filter(x=>(!f.program||x.program===f.program)&&(!f.block||String(x.block)===f.block));
-  const resultPass=marks.filter(x=>['pass','passed','credit','distinction'].includes(String(x.final_status||'').toLowerCase())).length;
-  const resultFail=marks.filter(x=>['fail','failed'].includes(String(x.final_status||'').toLowerCase())).length;
-  const resultPending=marks.filter(x=>['pending','submitted',''].includes(String(x.final_status||'').toLowerCase())).length;
+  const reports=sub.filter(x=>(!f.program||x.program===f.program));
+  const pass=marks.filter(x=>['pass','passed','credit','distinction'].includes(String(x.final_status||'').toLowerCase())).length;
+  const fail=marks.filter(x=>['fail','failed'].includes(String(x.final_status||'').toLowerCase())).length;
+  const pending=marks.filter(x=>['pending','submitted',''].includes(String(x.final_status||'').toLowerCase())).length;
+  const awaiting=marks.filter(x=>['pending','submitted'].includes(String(x.approval_status||'').toLowerCase())).length;
+  const active=rows.filter(x=>String(x.status||'').toLowerCase()==='active').length;
+  const published=marks.filter(x=>x.published===true).length;
+  const cards=[
+   ['Students in selection',rows.length,'fa-user-graduate','Filtered profile records'],
+   ['Active students',active,'fa-user-check',rows.length?'Within selected population':'No matching profiles'],
+   ['Marks in selection',marks.length,'fa-marker','Filtered academic records'],
+   ['Published marks',published,'fa-square-poll-vertical','Publication is separate from approval'],
+   ['Staff & lecturers',staffExact??staff.length,'fa-users','Institution-wide count'],
+   ['Examinations',examsExact??e.length,'fa-file-pen','Institution-wide count'],
+   ['Programmes',programExact??(cache.programs||[]).length,'fa-sitemap','Institution-wide count'],
+   ['Outstanding fees',f?Number(f.outstanding||0).toLocaleString('en-KE',{maximumFractionDigits:0}):'—','fa-wallet','Institution-wide finance aggregate']
+  ];
+  $('dash-kpis').innerHTML=cards.map((x,i)=>'<article class="d-exec-kpi kpi-tone-'+(i%4)+'"><div class="d-exec-kpi-top"><span>'+esc(x[0])+'</span><i class="fa-solid '+x[2]+'"></i></div><strong>'+esc(x[1])+'</strong><small>'+esc(x[3])+'</small></article>').join('');
+  $('dash-scope-note').textContent='Showing '+fmt(rows.length)+' matching student profiles and '+fmt(marks.length)+' matching marks from the latest loaded records'+(studentsExact!==null?' · '+fmt(studentsExact)+' students institution-wide':'')+'.';
+  $('dash-trend-chart').innerHTML=dashboardTrend(rows);
   $('dash-program-chart').innerHTML=chartBars(aggregate(rows,'program'),'Programme');
   $('dash-intake-chart').innerHTML=chartBars(aggregate(rows,'intake_year'),'Intake');
-  $('dash-results-chart').innerHTML=chartDonut(resultPass,resultFail,resultPending);
+  $('dash-results-chart').innerHTML=chartDonut(pass,fail,pending);
   $('dash-approval-chart').innerHTML=chartBars(aggregate(marks,'approval_status'),'Approval');
+  const pendingReports=reports.filter(x=>['submitted','resubmitted','under_review'].includes(String(x.status||'').toLowerCase())).length;
+  const scheduled=e.filter(x=>String(x.status||'').toLowerCase()==='scheduled').length;
+  $('dash-alerts').innerHTML=[
+   ['fa-hourglass-half',awaiting,'Marks awaiting approval'],
+   ['fa-file-circle-exclamation',pendingReports,'Lecturer reports pending review'],
+   ['fa-user-clock',rows.filter(x=>!x.status||!['active','inactive','graduated','deferred'].includes(String(x.status).toLowerCase())).length,'Student profiles needing status review'],
+   ['fa-calendar-check',scheduled,'Examinations currently scheduled']
+  ].map(x=>'<article><i class="fa-solid '+x[0]+'"></i><div><b>'+fmt(x[1])+'</b><small>'+esc(x[2])+'</small></div></article>').join('');
  };
  $('directorContent').querySelectorAll('[data-dashboard-filter]').forEach(x=>x.addEventListener('change',apply));
  $('directorContent').querySelector('[data-dashboard-clear]')?.addEventListener('click',()=>{$('directorContent').querySelectorAll('[data-dashboard-filter]').forEach(x=>x.value='');apply();});
+ apply();
 }
 async function renderModule(key){const c=cfg[key];if(key==='teaching'){if(!w.DirectorTeachingRecords)throw new Error('Teaching Records controller did not load. Refresh the page and try again.');return w.DirectorTeachingRecords.init(app.client,app.profile);}await loadSets(c.sets);if(key==='overview')return renderOverview();let h=head(c.title,c.desc);
 if(key==='marks'){const m=cache.marks||[];h+='<section class="d-kpis">'+kpi('Loaded mark records',cache.marks===null?null:m.length,'fa-marker','Latest records')+kpi('Pending approval',m.filter(x=>['pending','submitted'].includes(String(x.approval_status||'').toLowerCase())).length,'fa-hourglass-half','Awaiting approval')+kpi('Approved',m.filter(x=>String(x.approval_status).toLowerCase()==='approved').length,'fa-check','Approval status')+kpi('Published',m.filter(x=>x.published===true).length,'fa-share','Publication is separate')+'</section>';}
