@@ -117,7 +117,7 @@ function editRecord(k,id){
  if(!row||!fields.length)return;
  const host=document.createElement('div');host.id='directorEditModal';host.className='d-edit-overlay';
  const inputFor=f=>{
-  const value=row[f]??'',isBool=typeof value==='boolean',isNum=typeof value==='number'||/^(duration_months|total_credits|credits|hours|intake_year|total_marks|pass_mark|marks_out_of|week_number|total_score)$/.test(f),isDate=/(^date$|_date$|_at$)/.test(f)&&/^\\d{4}-\\d{2}-\\d{2}/.test(String(value)),isLong=/description|summary|instructions/i.test(f);
+  const value=row[f]??'',isBool=typeof value==='boolean',isNum=typeof value==='number'||/^(duration_months|total_credits|credits|hours|intake_year|total_marks|pass_mark|marks_out_of|week_number|total_score)$/.test(f),isDate=/(^date$|_date$|_at$)/.test(f)&&/^\d{4}-\d{2}-\d{2}/.test(String(value)),isLong=/description|summary|instructions/i.test(f);
   const type=isBool?'checkbox':isNum?'number':isDate?'date':'text';
   const val=isDate?String(value).slice(0,10):String(value);
   return '<div class="d-edit-field '+(isBool?'is-check':'')+'"><label for="edit-'+esc(f)+'">'+esc(f.replace(/_/g,' '))+'</label>'+(isBool?'<input id="edit-'+esc(f)+'" data-edit-field="'+esc(f)+'" type="checkbox" '+(value?'checked':'')+'>':isLong?'<textarea id="edit-'+esc(f)+'" data-edit-field="'+esc(f)+'" rows="4">'+esc(val)+'</textarea>':'<input id="edit-'+esc(f)+'" data-edit-field="'+esc(f)+'" type="'+type+'" '+(isNum?'step="any"':'')+' value="'+esc(val)+'">')+'</div>';
