@@ -110,7 +110,16 @@ if(key==='registrations'){const r=cache.registrations||[];h+='<section class="d-
 
 for(const k of c.sets){if(k==='finance'){const f=cache.financeSummary;h+='<div class="d-section-title"><h2>Finance summary</h2><span>Aggregate only</span></div><div class="d-card">'+(f?'<p>Institutional account totals are shown above. Individual student balances and payment details remain restricted.</p>':'<div class="d-empty">Finance summary unavailable. See access message below.</div>')+'</div>';continue;}const rows=cache[k];h+='<div class="d-section-title"><h2>'+esc(labelSet(k))+'</h2><span>'+(rows===null?'Unavailable':fmt(rows?.length||0)+' rows loaded')+'</span></div><div class="d-card"><div id="table-tools-'+k+'">'+filterToolbar(k,rows||[])+'</div><button class="d-btn" data-export="'+k+'" '+(!rows?.length?'disabled':'')+'><i class="fa-solid fa-file-csv"></i> Export filtered CSV</button><div id="table-'+k+'">'+(rows===null?'<div class="d-empty">Unable to load this dataset. See permission error below.</div>':tableHtml(k,rows))+'</div></div>';}
 h+=errorBlock(c.sets);$('directorContent').innerHTML=h;}
+function showToast(message,type='success'){
+ let host=document.getElementById('directorToastStack');
+ if(!host){host=document.createElement('div');host.id='directorToastStack';host.className='d-toast-stack';host.setAttribute('aria-live','polite');host.setAttribute('aria-atomic','false');document.body.appendChild(host);}
+ const item=document.createElement('div');item.className='d-toast '+(type==='success'?'success':'error');
+ item.innerHTML='<span class="d-toast-icon"><i class="fa-solid '+(type==='success'?'fa-check':'fa-xmark')+'"></i></span><span class="d-toast-message"></span><button type="button" class="d-toast-close" aria-label="Dismiss notification"><i class="fa-solid fa-xmark"></i></button>';
+ item.querySelector('.d-toast-message').textContent=message;host.appendChild(item);
+ item.querySelector('button').onclick=()=>item.remove();setTimeout(()=>{item.classList.add('leaving');setTimeout(()=>item.remove(),220);},4200);
+}
 function editRecord(k,id){
+ if(['profiles','staff'].includes(k)){showToast('This personnel and student information is view-only in the Director workspace.','error');return;}
  const row=(cache[k]||[]).find(x=>String(x.id)===String(id));
  const selected=(w.DirectorData.SELECT_FIELDS[k]||'').split(',').map(x=>x.trim());
  const fields=(w.DirectorData.EDITABLE_FIELDS[k]||[]).filter(f=>selected.includes(f));
@@ -132,8 +141,8 @@ function editRecord(k,id){
   e.preventDefault();const changes={};
   host.querySelectorAll('[data-edit-field]').forEach(x=>{changes[x.dataset.editField]=x.type==='checkbox'?x.checked:x.type==='number'?(x.value===''?null:Number(x.value)):x.value;});
   const save=host.querySelector('button[type=submit]'),feedback=$('directorEditFeedback');save.disabled=true;save.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Saving…';feedback.textContent='Saving your changes…';feedback.className='d-edit-feedback';
-  try{const updated=await w.DirectorData.update(app.client,k,row,changes);const i=cache[k].findIndex(x=>String(x.id)===String(id));if(i>=0)cache[k][i]=updated;feedback.textContent='Changes saved successfully.';feedback.className='d-edit-feedback success';save.innerHTML='<i class="fa-solid fa-check"></i> Saved';setTimeout(async()=>{close();document.removeEventListener('keydown',onKey);await show(app.view);},450);}
-  catch(err){feedback.textContent='Unable to save: '+err.message;feedback.className='d-edit-feedback error';save.disabled=false;save.innerHTML='<i class="fa-solid fa-floppy-disk"></i> Save changes';}
+  try{const updated=await w.DirectorData.update(app.client,k,row,changes);const i=cache[k].findIndex(x=>String(x.id)===String(id));if(i>=0)cache[k][i]=updated;feedback.textContent='Changes saved successfully.';feedback.className='d-edit-feedback success';showToast('Changes saved successfully.','success');save.innerHTML='<i class="fa-solid fa-check"></i> Saved';setTimeout(async()=>{close();document.removeEventListener('keydown',onKey);await show(app.view);},450);}
+  catch(err){feedback.textContent='Unable to save: '+err.message;feedback.className='d-edit-feedback error';showToast('Save failed: '+err.message,'error');save.disabled=false;save.innerHTML='<i class="fa-solid fa-floppy-disk"></i> Save changes';}
  };
  const first=host.querySelector('[data-edit-field]');if(first)first.focus();
 }
