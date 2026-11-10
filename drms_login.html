@@ -26,5 +26,5 @@ async function validateAndEnter(user){
 }
 document.getElementById('loginForm').addEventListener('submit',async e=>{e.preventDefault();const b=document.getElementById('loginButton');document.getElementById('errorMsg').style.display='none';b.disabled=true;b.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Signing in...';try{const {data,error}=await sb.auth.signInWithPassword({email:document.getElementById('email').value.trim(),password:document.getElementById('password').value});if(error)throw new Error('Invalid email or password. Use your NCHSM portal credentials.');await validateAndEnter(data.user);}catch(err){showError(err.message||'Unable to sign in.');b.disabled=false;b.innerHTML='<i class="fa-solid fa-right-to-bracket"></i> Sign in with my NCHSM account';}});
 (async()=>{const {data:{user},error}=await sb.auth.getUser();if(!error&&user){try{await validateAndEnter(user);}catch(e){await sb.auth.signOut();}}})();
-</script><script src="js/login-maintenance.js?v=20261111"></script>
+</script><script src="js/login-maintenance.js?v=20261112"></script>
 </body></html>
