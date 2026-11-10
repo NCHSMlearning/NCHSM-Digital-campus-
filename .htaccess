@@ -32,6 +32,13 @@ RewriteRule ^(.*)/$ /$1 [L,R=301]
 </FilesMatch>
 
 # ------------------------------------------------------------------
+# CANONICAL CLEAN URLS: redirect direct .html requests to extensionless URLs.
+# This is applied before individual portal aliases.
+# ------------------------------------------------------------------
+RewriteCond %{THE_REQUEST} \\s/+(.+?)\\.html(?:[\\s?]) [NC]
+RewriteRule ^(.+)\\.html$ /$1 [R=301,L,NE]
+
+# ------------------------------------------------------------------
 # 🔥 FIX: ALLOW LOGIN PAGES DIRECT ACCESS
 # ------------------------------------------------------------------
 RewriteRule ^login\.html$ - [L]
@@ -83,6 +90,13 @@ RewriteRule ^api/(.*)$ - [L]
 # ASSETS & STATIC FILES
 # ------------------------------------------------------------------
 RewriteRule ^(css|js|images|fonts|assets|vendor)/ - [L]
+
+# Resolve extensionless page requests to matching .html files.
+# Explicit routes above retain priority; static assets are excluded by their directories.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+RewriteRule ^(.+?)/?$ $1.html [END,QSA]
 
 # ------------------------------------------------------------------
 # EXISTING FILES - Serve directly
