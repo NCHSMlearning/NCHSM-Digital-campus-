@@ -851,7 +851,7 @@
             setTimeout(() => {
                 let role = safeProfile.role?.toLowerCase() || 'staff';
                 if (role === 'lecturer') {
-                    window.location.href = 'lecturer.html';
+                    window.location.href = 'lecturerexams.html';
                 } else {
                     // All non-lecturer accounts using adminlogin go to the Admin Exams portal.
                     window.location.href = 'adminexams.html';
@@ -1098,7 +1098,7 @@
                     if (hoursDiff < 24) {
                         let role = data.role?.toLowerCase() || 'staff';
                         if (role === 'lecturer') {
-                            window.location.href = 'lecturer.html';
+                            window.location.href = 'lecturerexams.html';
                         } else {
                             // Keep existing admin sessions on the Admin Exams portal.
                             window.location.href = 'adminexams.html';
