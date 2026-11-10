@@ -53,7 +53,7 @@ const specs={
  messages:{label:'Messages',order:'created_at',cols:[['sender_role','Sender role'],['recipient_role','Recipient role'],['target_program','Programme'],['subject','Subject'],['approval_status','Status'],['created_at','Date']]},
  notifications:{label:'Notifications',order:'created_at',cols:[['title','Title'],['message_type','Type'],['target_program','Programme'],['is_read','Read'],['created_at','Date']]},
  tickets:{label:'Support tickets',order:'created_at',cols:[['ticket_number','Ticket'],['subject','Subject'],['category','Category'],['priority','Priority'],['status','Status'],['created_at','Opened'],['closed_at','Closed']]},
- staff:{label:'Staff records',order:'created_at',cols:[['title','Title'],['first_name','First name'],['other_names','Other names'],['email','Email'],['phone','Phone'],['department','Department'],['designation','Designation'],['email','Email'],['program','Programme'],['status','Status']]},
+ staff:{label:'Staff records',order:'created_at',cols:[['id','Staff ID'],['title','Title'],['first_name','First name'],['other_names','Other names'],['email','Email'],['phone','Phone'],['department','Department'],['designation','Designation'],['program','Programme'],['status','Status'],['login_enabled','Login enabled']]},
  enrollments:{label:'Course enrolments',order:'enrolled_at',cols:[['student_id','Student ID'],['course_id','Course ID'],['unit_catalog_id','Unit catalogue ID'],['enrolled_at','Enrolled']]}
 };
 const cache={},errors={};let app={client:null,profile:null,view:'overview'};
