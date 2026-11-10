@@ -2,7 +2,7 @@
 // ✅ FILE VERSION TRACKING
 // ============================================================
 console.log('📄 superadmin-marks-entry.js loaded');
-console.log('   📅 Version: 2026-11-04-loading-optimization-v1');
+console.log('   📅 Version: 2026-11-10-retake-effective-result-v2');
 console.log('   🔧 isTVETProgram should have NO parameters');
 console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
 
