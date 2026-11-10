@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const message = 'Portal logins are temporarily disabled for maintenance. Only Super Admin access is available.';
+  const message = 'Portal logins are temporarily disabled for maintenance. Please try again later.';
   function blockSupabasePasswordLogin() {
     ['supabaseClient', 'sb', 'supabase'].forEach(function (key) {
       const client = window[key];
