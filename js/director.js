@@ -132,7 +132,7 @@ async function renderOverview(){
  h+=panel('exams','Recent examinations')+panel('submissions','Recent lecturer submissions')+errorBlock(keys);
  $('directorContent').innerHTML=h;
  const apply=()=>{
-  const f={school:$('[data-dashboard-filter="school"]')?.value||'',program:$('[data-dashboard-filter="program"]')?.value||'',intake:$('[data-dashboard-filter="intake"]')?.value||'',block:$('[data-dashboard-filter="block"]')?.value||''};
+  const f={school:$('directorContent').querySelector('[data-dashboard-filter="school"]')?.value||'',program:$('directorContent').querySelector('[data-dashboard-filter="program"]')?.value||'',intake:$('directorContent').querySelector('[data-dashboard-filter="intake"]')?.value||'',block:$('directorContent').querySelector('[data-dashboard-filter="block"]')?.value||''};
   const rows=students.filter(x=>(!f.school||x.program_type===f.school)&&(!f.program||x.program===f.program)&&(!f.intake||String(x.intake_year)===f.intake)&&(!f.block||String(x.block||x.current_block)===f.block));
   const marks=m.filter(x=>(!f.program||x.program===f.program)&&(!f.block||String(x.block)===f.block));
   const resultPass=marks.filter(x=>['pass','passed','credit','distinction'].includes(String(x.final_status||'').toLowerCase())).length;
