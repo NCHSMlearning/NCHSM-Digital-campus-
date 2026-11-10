@@ -3322,6 +3322,8 @@
 
         // ========== LOGIN FUNCTION ==========
         async function handleLogin() {
+            showToast('Portal logins are temporarily disabled for maintenance. Only Super Admin access is available.', 'warning');
+            return;
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             if (!email || !password) { showToast('Enter email and password', 'error'); return; }
