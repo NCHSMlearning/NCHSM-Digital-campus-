@@ -2696,13 +2696,12 @@ const LecturerAttendance = {
 
         if (finalize && missing.length > 0) {
             const now = new Date().toISOString();
-            const actorProfile = window.lecturerDB?.getCurrentUserProfile?.();
-            const finalizerId = actorProfile?.user_id || this.lecturerUuid || null;
-            if (!finalizerId) throw new Error('Cannot finalize attendance: lecturer authentication ID is unavailable.');
-            const inserts = [];
             const updates = [];
 
-            for (const { student, existingLog } of missing) {
+            for (const { existingLog } of missing) {
+                // Only update a check-in row that already exists. Students who never
+                // checked in remain represented as Absent in the session register;
+                // do not fabricate geo_attendance_logs rows for them.
                 if (existingLog?.id) {
                     updates.push(
                         supabase.from('geo_attendance_logs')
@@ -2710,43 +2709,12 @@ const LecturerAttendance = {
                                 attendance_status: 'Absent',
                                 is_verified: false,
                                 finalized_at: now,
-                                finalized_by: this.lecturerUuid || null,
+                                finalized_by: window.lecturerDB?.getCurrentUserProfile?.()?.user_id || this.lecturerUuid || null,
                                 verification_source: 'Automatic Session Finalization',
                                 finalization_reason: 'No valid in-radius check-in for this session'
                             })
                             .eq('id', existingLog.id)
                     );
-                } else {
-                    inserts.push({
-                        user_id: student.user_id,
-                        student_id: student.student_id,
-                        registration_number: student.registration_number || student.student_id,
-                        student_name: student.name,
-                        block: student.block,
-                        intake_year: student.intake_year,
-                        program: student.program,
-                        check_in_time: now,
-                        session_type: session.session_type || 'Class',
-                        target_id: session.id,
-                        session_id: session.id,
-                        target_name: session.location_name || session.session_title || session.title || 'Class',
-                        unit_name: session.unit_name || session.course_name || 'General',
-                        attendance_status: 'Absent',
-                        is_verified: false,
-                        location_type: 'class',
-                        target_radius: session.target_radius || 100,
-                        target_latitude: session.target_latitude || null,
-                        target_longitude: session.target_longitude || null,
-                        role: 'student',
-                        is_manual_entry: false,
-                        verification_source: 'Automatic Session Finalization',
-                        finalization_reason: 'No check-in recorded before session close',
-                        finalized_at: now,
-                        finalized_by: finalizerId,
-                        recorded_by_id: finalizerId,
-                        recorded_by_name: actorProfile?.full_name || 'Lecturer',
-                        created_at: now
-                    });
                 }
             }
 
@@ -2755,20 +2723,9 @@ const LecturerAttendance = {
                 const failed = results.find(r => r.error);
                 if (failed?.error) throw failed.error;
             }
-            if (inserts.length) {
-                // Idempotent finalization: another close attempt or concurrent request may
-                // have inserted the same (user_id, session_id) after the read above.
-                // Preserve the existing attendance row; never overwrite a check-in.
-                const { error: insertError } = await supabase
-                    .from('geo_attendance_logs')
-                    .upsert(inserts, {
-                        onConflict: 'user_id,session_id',
-                        ignoreDuplicates: true
-                    });
-                if (insertError) throw insertError;
-            }
-
-            return await this.getSessionAttendanceRegister(session, false);
+            // Continue to return the computed register below. Missing students are
+            // included as Absent there without an INSERT that would fail RLS or
+            // create synthetic GPS/check-in timestamps.
         }
 
         const summary = {
