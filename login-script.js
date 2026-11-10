@@ -678,12 +678,6 @@ window.NCHSMLogin = {
         });
 
         try {
-            const loginRole = String(profileData?.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-            if (!['student', 'lecturer'].includes(loginRole)) {
-                try { await this.supabase?.auth?.signOut(); } catch (_) {}
-                this.showError('This portal is temporarily out of service. Please try again later.');
-                return;
-            }
             const userIdForSession = profileData.user_id;
 
             const safeProfile = {
@@ -2541,16 +2535,6 @@ executeLogin: async function(identifier, password) {
         // Preserve explicit HOD roles even when the account is also marked as staff.
         if (role === 'staff') role = 'lecturer';
 
-        if (!['student', 'lecturer'].includes(role)) {
-            try { this.supabase?.auth?.signOut(); } catch (_) {}
-            localStorage.removeItem('userProfile');
-            localStorage.removeItem('adminSession');
-            sessionStorage.removeItem('userProfile');
-            sessionStorage.removeItem('currentUserId');
-            this.showError('This portal is temporarily out of service. Please try again later.');
-            return;
-        }
-
         const hodRoles = ['hod', 'nursing_hod', 'tvet_hod'];
         const roleRedirects = {
             admin: 'admin.html',
@@ -2787,14 +2771,6 @@ executeLogin: async function(identifier, password) {
                 return;
             }
             
-            const loginRole = String(profile.role || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-            if (!['student', 'lecturer'].includes(loginRole)) {
-                await this.supabase.auth.signOut();
-                this.showError('This portal is temporarily out of service. Please try again later.');
-                if (loginButton) { loginButton.disabled = false; buttonText.textContent = 'Sign In'; }
-                return;
-            }
-
             const validStatuses = ['approved', 'active'];
             if (!validStatuses.includes(profile.status?.toLowerCase())) {
                 this.showError('Account pending approval. Please wait.');
