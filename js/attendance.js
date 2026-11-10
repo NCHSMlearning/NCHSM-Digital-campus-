@@ -46,9 +46,9 @@
         MAX_DRIFT: 20,
         MAX_MOVEMENT_SPEED: 2,
         CLINICAL_RADIUS: 300,
-        CLASSROOM_RADIUS: 150,
-        LAB_RADIUS: 150,
-        TUTORIAL_RADIUS: 150,
+        CLASSROOM_RADIUS: 100,
+        LAB_RADIUS: 100,
+        TUTORIAL_RADIUS: 100,
         MAX_STUDENTS_PER_DEVICE: 1
     };
 
@@ -1073,7 +1073,7 @@
                 type: sessionType,
                 latitude: unit.latitude || CAMPUS_COORDINATES.latitude,
                 longitude: unit.longitude || CAMPUS_COORDINATES.longitude,
-                radius: unit.radius || 50
+                radius: unit.radius || 100
             }));
             console.log(`📚 Found ${options.length} units`);
         }
@@ -2254,7 +2254,7 @@
             if (selectedTarget.type === 'class' ||
                 selectedTarget.type === 'lab' ||
                 selectedTarget.type === 'tutorial') {
-                radius = ACCURACY_CONFIG.CLASSROOM_RADIUS;
+                radius = ACCURACY_CONFIG.CLASSROOM_RADIUS; // Standard classroom geofence: 100 metres
             }
 
             const accuracy = location.accuracy || 0;
