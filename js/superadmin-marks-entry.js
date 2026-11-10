@@ -2,7 +2,7 @@
 // ✅ FILE VERSION TRACKING
 // ============================================================
 console.log('📄 superadmin-marks-entry.js loaded');
-console.log('   📅 Version: 2026-11-10-retake-effective-result-v2');
+console.log('   📅 Version: 2026-11-10-nursing-pass-green-v3');
 console.log('   🔧 isTVETProgram should have NO parameters');
 console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
 
@@ -1877,20 +1877,35 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
     const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
     
-    // Inject locally scoped styles so theme/global table CSS cannot hide result row colours.
+    // Always refresh the injected styles. Older versions of this page created this
+    // style element once and left stale yellow PASS rules in the DOM after updates.
     const resultStyleId = 'me-result-row-status-styles';
-    if (!document.getElementById(resultStyleId)) {
-        const resultStyles = document.createElement('style');
+    let resultStyles = document.getElementById(resultStyleId);
+    if (!resultStyles) {
+        resultStyles = document.createElement('style');
         resultStyles.id = resultStyleId;
-        resultStyles.textContent = `
-            #me_marks_table tbody tr[data-result-status="pass"] > td { background-color: #f0fdf4 !important; }
-            #me_marks_table tbody tr[data-result-status="fail"] > td { background-color: #fef9c3 !important; }
-            #me_marks_table tbody tr[data-result-status="pending"] > td { background-color: #ffffff !important; }
-            #me_marks_table tbody tr[data-result-status="pass"] { border-left: 4px solid #16a34a !important; }
-            #me_marks_table tbody tr[data-result-status="fail"] { border-left: 4px solid #eab308 !important; }
-        `;
         document.head.appendChild(resultStyles);
     }
+    resultStyles.textContent = `
+        #me_marks_table tbody tr[data-result-status="pass"] > td {
+            background-color: #dcfce7 !important;
+            background-image: none !important;
+        }
+        #me_marks_table tbody tr[data-result-status="fail"] > td {
+            background-color: #fef9c3 !important;
+            background-image: none !important;
+        }
+        #me_marks_table tbody tr[data-result-status="pending"] > td {
+            background-color: #ffffff !important;
+            background-image: none !important;
+        }
+        #me_marks_table tbody tr[data-result-status="pass"] {
+            border-left: 4px solid #16a34a !important;
+        }
+        #me_marks_table tbody tr[data-result-status="fail"] {
+            border-left: 4px solid #eab308 !important;
+        }
+    `;
 
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
