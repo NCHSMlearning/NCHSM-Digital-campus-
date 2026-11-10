@@ -8,8 +8,8 @@ const cfg={
  governance:{title:'Institutional Governance',desc:'Institutional operating indicators and oversight records.',sets:['profiles','programs','submissions','calendar']},
  quality:{title:'Quality Assurance & Compliance',desc:'Monitor lecturer evidence, research records, quality activity and outstanding submissions.',sets:['submissions','research','resources','programs']},
  planning:{title:'Strategic Plans & Work Plans',desc:'Institutional planning and implementation records available in the campus database.',sets:['calendar','programs','submissions']},
- students:{title:'Student Population & Progression',desc:'Student population, programme distribution and academic progression indicators.',sets:['profiles','registrations','marks','attendance']},
- staff:{title:'Staff & Human Resources Overview',desc:'Staff establishment and academic staffing distribution. Sensitive HR and payroll fields are excluded.',sets:['profiles','staff','submissions']},
+ students:{title:'Student Population & Progression',desc:'View and manage student profiles, programme distribution and academic progression records.',sets:['profiles','registrations','marks','attendance']},
+ staff:{title:'Staff & Human Resources Overview',desc:'View and manage institutional staff records and academic staffing information.',sets:['profiles','staff','submissions']},
  welfare:{title:'Student Welfare & Discipline',desc:'Student support requests and welfare-related cases visible to the institution.',sets:['tickets','messages','notifications']},
  programmes:{title:'Programmes & Departments',desc:'Programme catalogue and institutional programme distribution.',sets:['programs','profiles']},
  curriculum:{title:'Curriculum & Unit Catalogue',desc:'Approved programme and unit catalogue overview.',sets:['units','courses','programs']},
@@ -30,7 +30,7 @@ const cfg={
  system:{title:'System & Operational Monitoring',desc:'Read-only view of operational records and data availability.',sets:['profiles','exams','attempts','proctoring','notifications','tickets']}
 };
 const specs={
- profiles:{label:'User profiles',order:'created_at',cols:[['full_name','Name'],['admission_number','Admission No.'],['role','Role'],['program','Programme'],['program_type','School'],['department','Department'],['intake_year','Intake'],['block','Block'],['current_block','Current block'],['status','Status'],['created_at','Created']] },
+ profiles:{label:'User profiles',order:'created_at',cols:[['full_name','Name'],['email','Email'],['phone','Phone'],['admission_number','Admission No.'],['role','Role'],['program','Programme'],['program_type','School'],['department','Department'],['intake_year','Intake'],['block','Block'],['current_block','Current block'],['status','Status'],['created_at','Created']] },
  transcripts:{label:'Transcript verification registry',order:'issued_at',cols:[['transcript_number','Transcript No.'],['student_name','Student'],['student_id','Admission / Student ID'],['program','Programme'],['document_type','Document type'],['transcript_block','Block'],['status','Status'],['issued_at','Issued']]},
  marks:{label:'Student marks',order:'created_at',cols:[['student_name','Student'],['admission_number','Admission No.'],['program','Programme'],['block','Block'],['subject_name','Unit'],['assessment_type','Assessment'],['final_score','Final score'],['grade','Grade'],['final_grade','Final grade'],['final_status','Final status'],['points','Points'],['approval_status','Approval'],['published','Published'],['published_at','Published date']]},
  exams:{label:'Examinations',order:'created_at',cols:[['title','Exam title'],['exam_name','Exam name'],['target_program','Programme'],['intake_year','Intake'],['block','Block'],['exam_type','Type'],['exam_date','Exam date'],['status','Status'],['approval_status','Approval'],['is_published','Published']]},
@@ -53,7 +53,7 @@ const specs={
  messages:{label:'Messages',order:'created_at',cols:[['sender_role','Sender role'],['recipient_role','Recipient role'],['target_program','Programme'],['subject','Subject'],['approval_status','Status'],['created_at','Date']]},
  notifications:{label:'Notifications',order:'created_at',cols:[['title','Title'],['message_type','Type'],['target_program','Programme'],['is_read','Read'],['created_at','Date']]},
  tickets:{label:'Support tickets',order:'created_at',cols:[['ticket_number','Ticket'],['subject','Subject'],['category','Category'],['priority','Priority'],['status','Status'],['created_at','Opened'],['closed_at','Closed']]},
- staff:{label:'Staff records',order:'created_at',cols:[['title','Title'],['first_name','First name'],['other_names','Other names'],['department','Department'],['designation','Designation'],['email','Email'],['program','Programme'],['status','Status']]},
+ staff:{label:'Staff records',order:'created_at',cols:[['title','Title'],['first_name','First name'],['other_names','Other names'],['email','Email'],['phone','Phone'],['department','Department'],['designation','Designation'],['email','Email'],['program','Programme'],['status','Status']]},
  enrollments:{label:'Course enrolments',order:'enrolled_at',cols:[['student_id','Student ID'],['course_id','Course ID'],['unit_catalog_id','Unit catalogue ID'],['enrolled_at','Enrolled']]}
 };
 const cache={},errors={};let app={client:null,profile:null,view:'overview'};
@@ -119,7 +119,7 @@ function showToast(message,type='success'){
  item.querySelector('button').onclick=()=>item.remove();setTimeout(()=>{item.classList.add('leaving');setTimeout(()=>item.remove(),220);},4200);
 }
 function editRecord(k,id){
- if(['profiles','staff'].includes(k)){showToast('This personnel and student information is view-only in the Director workspace.','error');return;}
+ 
  const row=(cache[k]||[]).find(x=>String(x.id)===String(id));
  const selected=(w.DirectorData.SELECT_FIELDS[k]||'').split(',').map(x=>x.trim());
  const fields=(w.DirectorData.EDITABLE_FIELDS[k]||[]).filter(f=>selected.includes(f));
