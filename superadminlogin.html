@@ -513,7 +513,7 @@ async function handleLogin(event){
     const role=String(profile.role||"").trim().toLowerCase().replace(/[\s-]+/g,"_");
     const status=String(profile.status||"").trim().toLowerCase();
 
-    if(!["superadmin","super_admin","admin","administrator"].includes(role)){
+    if(!["superadmin","super_admin"].includes(role)){
       await supabase.auth.signOut();
       throw new Error("This account is not authorized for the Super Admin Portal.");
     }
@@ -611,7 +611,7 @@ function init(){
      const profile=await fetchProfile(session.user.id);
      const role=String(profile.role||"").trim().toLowerCase().replace(/[\s-]+/g,"_");
      const status=String(profile.status||"").trim().toLowerCase();
-     if(["superadmin","super_admin","admin","administrator"].includes(role)&&["approved","active"].includes(status)){
+     if(["superadmin","super_admin"].includes(role)&&["approved","active"].includes(status)){
        showMessage("Active administrator session found. Opening console…","success");
        window.location.replace("superadmin.html");
      }
