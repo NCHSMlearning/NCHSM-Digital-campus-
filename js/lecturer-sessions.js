@@ -30,7 +30,7 @@ const LecturerSessions = {
     // Lookup is case-insensitive + substring + "LH6" alias.
     // ============================================
     CAMPUS_LOCATIONS: {
-        'lecture hall 6':   { lat: -0.261366, lng: 36.011125, radius: 50 },
+        'lecture hall 6':   { lat: -0.261366, lng: 36.011125, radius: 100 },
         // 'lecture hall 1': { lat: 0, lng: 0, radius: 50 },
         // 'lecture hall 2': { lat: 0, lng: 0, radius: 50 },
         // 'lecture hall 3': { lat: 0, lng: 0, radius: 50 },
@@ -852,7 +852,7 @@ const LecturerSessions = {
                     } else {
                         updateData.target_latitude  = null;
                         updateData.target_longitude = null;
-                        updateData.target_radius    = 150;
+                        updateData.target_radius    = 100;
                     }
                 }
 
@@ -1586,7 +1586,7 @@ const LecturerSessions = {
                 // ✅ NEW: geo target
                 target_latitude:  locationCoords ? locationCoords.lat    : null,
                 target_longitude: locationCoords ? locationCoords.lng    : null,
-                target_radius:    locationCoords ? locationCoords.radius : 150,
+                target_radius:    locationCoords ? locationCoords.radius : 100,
 
                 created_by: lecturerUuid,
                 lecturer_id: this.lecturerUuid || lecturerUuid,
