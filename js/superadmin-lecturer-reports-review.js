@@ -2601,59 +2601,59 @@
         `;
     }
 
+    let mammothLoaderPromise = null;
+    function loadMammoth() {
+        if (window.mammoth) return Promise.resolve(window.mammoth);
+        if (!mammothLoaderPromise) mammothLoaderPromise = new Promise((resolve,reject)=>{
+            const script=document.createElement('script');
+            script.src='https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
+            script.onload=()=>window.mammoth?resolve(window.mammoth):reject(new Error('Word preview engine did not initialise.'));
+            script.onerror=()=>reject(new Error('Could not load the internal Word preview engine. Download the file instead.'));
+            document.head.appendChild(script);
+        });
+        return mammothLoaderPromise;
+    }
+    async function renderInlineFile(container,url,file) {
+        const mime=String(file.mime_type||'').toLowerCase(),name=String(file.file_name||'').toLowerCase();
+        const ext=(name.split('.').pop()||'').toLowerCase();
+        container.innerHTML='';
+        if(mime.includes('pdf')||ext==='pdf'){
+            const frame=document.createElement('iframe');frame.title='PDF document preview';frame.src=url+'#toolbar=1&navpanes=0';frame.style.cssText='width:100%;height:65vh;min-height:360px;border:0;background:#fff';container.appendChild(frame);return;
+        }
+        if(mime.startsWith('image/')||/\.(png|jpe?g|gif|webp|bmp)$/i.test(name)){
+            const img=document.createElement('img');img.alt=file.file_name||'Uploaded image';img.src=url;img.style.cssText='display:block;max-width:100%;max-height:65vh;object-fit:contain;margin:auto';container.appendChild(img);return;
+        }
+        if(mime.startsWith('text/')||/\.(txt|csv)$/i.test(name)){
+            const response=await fetch(url);if(!response.ok)throw new Error('Could not retrieve the text document.');
+            const pre=document.createElement('pre');pre.textContent=await response.text();pre.style.cssText='white-space:pre-wrap;overflow:auto;max-height:65vh;padding:18px;width:100%;box-sizing:border-box';container.appendChild(pre);return;
+        }
+        if(ext==='docx'||mime.includes('wordprocessingml')){
+            const engine=await loadMammoth();const response=await fetch(url);if(!response.ok)throw new Error('Could not retrieve the Word document.');
+            const result=await engine.convertToHtml({arrayBuffer:await response.arrayBuffer()});
+            const article=document.createElement('article');article.className='nchsm-docx-preview';article.innerHTML=result.value;
+            article.style.cssText='width:min(850px,100%);min-height:500px;margin:18px auto;padding:42px 50px;background:#fff;color:#1f2937;box-shadow:0 2px 12px #0f172a12;box-sizing:border-box;font:14px/1.65 Arial,sans-serif;overflow-wrap:anywhere';
+            container.style.cssText='display:block;max-height:65vh;overflow:auto;background:#e5e7eb;padding:12px';
+            container.appendChild(article);return;
+        }
+        const note=document.createElement('div');note.style.cssText='padding:24px;text-align:center;color:#475569';
+        note.textContent=ext==='doc'?'Legacy .doc files cannot be rendered safely in this browser. Use Download, or upload a .docx copy for inline preview.':'This file format does not have an inline renderer. You can download the original file.';
+        const link=document.createElement('a');link.href=url;link.download=file.file_name||'document';link.textContent='Download document';link.style.cssText='display:inline-block;margin:10px;padding:9px 14px;border-radius:8px;background:#4C1D95;color:white;font-weight:700;text-decoration:none';
+        note.appendChild(document.createElement('br'));note.appendChild(link);container.appendChild(note);
+    }
     async function openAttachment(id) {
-        const file = state.selectedAttachments.find(item => String(item.id) === String(id) || String(item.storage_path) === String(id));
-
-        if (!file) {
-            showModuleToast('Attachment not found.', 'error');
-            return;
-        }
-
-        const client = getSupabaseClient();
-
-        if (!client?.storage?.from) {
-            showModuleToast('Supabase Storage is not available.', 'error');
-            return;
-        }
-
-        try {
-            const { data, error } = await client
-                .storage
-                .from(STORAGE_BUCKET)
-                .createSignedUrl(file.storage_path, 60 * 10);
-
-            if (error) throw error;
-
-            if (!data?.signedUrl) {
-                throw new Error('A signed URL could not be generated.');
-            }
-
-            const preview = getElement('lrrInlinePreview');
-            const previewBody = getElement('lrrInlinePreviewBody');
-            const previewTitle = getElement('lrrInlinePreviewTitle');
-            if (!preview || !previewBody) { window.open(data.signedUrl, '_blank', 'noopener,noreferrer'); return; }
-            const mime = String(file.mime_type || '').toLowerCase();
-            const name = String(file.file_name || '').toLowerCase();
-            if (previewTitle) previewTitle.textContent = file.file_name || 'Document Preview';
-            const safeUrl = escapeAttr(data.signedUrl);
-            if (mime.includes('pdf') || name.endsWith('.pdf')) {
-                previewBody.innerHTML = `<iframe title="Lecturer document preview" src="${safeUrl}#toolbar=1&navpanes=0" style="width:100%;height:60vh;min-height:320px;border:0;background:white;"></iframe>`;
-            } else if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(name)) {
-                previewBody.innerHTML = `<img alt="${escapeAttr(file.file_name || 'Uploaded image')}" src="${safeUrl}" style="display:block;max-width:100%;max-height:60vh;object-fit:contain;margin:auto;">`;
-            } else if (mime.startsWith('text/') || /\.(txt|csv)$/i.test(name)) {
-                previewBody.innerHTML = `<iframe title="Text document preview" src="${safeUrl}" style="width:100%;height:50vh;border:0;background:white;"></iframe>`;
-            } else {
-                previewBody.innerHTML = `<div style="padding:24px;text-align:center;color:#475569;"><i class="fas fa-file-word" style="font-size:36px;color:#6d28d9;"></i><p>Inline preview is not supported for this file type.</p><a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:#6d28d9;font-weight:700;">Open or download document</a></div>`;
-            }
-            preview.style.display = 'block';
-            preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        } catch (error) {
-            console.error(`[${MODULE}] Attachment open failed`, error);
-            showModuleToast(
-                error?.message || 'Unable to open attachment.',
-                'error'
-            );
-        }
+        const file=state.selectedAttachments.find(item=>String(item.id)===String(id)||String(item.storage_path)===String(id));
+        if(!file){showModuleToast('Attachment not found.','error');return;}
+        const client=getSupabaseClient();if(!client?.storage?.from){showModuleToast('Supabase Storage is not available.','error');return;}
+        try{
+            const {data,error}=await client.storage.from(STORAGE_BUCKET).createSignedUrl(file.storage_path,600);
+            if(error)throw error;if(!data?.signedUrl)throw new Error('A secure preview link could not be generated.');
+            const preview=getElement('lrrInlinePreview'),body=getElement('lrrInlinePreviewBody'),title=getElement('lrrInlinePreviewTitle');
+            if(!preview||!body)throw new Error('The inline preview panel is unavailable.');
+            if(title)title.textContent=file.file_name||'Document Preview';
+            body.innerHTML='<div style="padding:20px;color:#64748b">Preparing inline preview…</div>';
+            preview.style.display='block';preview.scrollIntoView({behavior:'smooth',block:'nearest'});
+            await renderInlineFile(body,data.signedUrl,file);
+        }catch(error){console.error('Super Admin attachment preview failed',error);showModuleToast(error.message||'Unable to preview attachment.','error');}
     }
 
     function getReviewComment() {
