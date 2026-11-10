@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const message = 'Portal logins are temporarily disabled for maintenance. Please try again later.';
+  const message = 'Our portal is temporarily out of service. We apologize for the inconvenience and appreciate your patience. Please try again later.';
   function blockSupabasePasswordLogin() {
     ['supabaseClient', 'sb', 'supabase'].forEach(function (key) {
       const client = window[key];
