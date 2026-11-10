@@ -9,7 +9,7 @@ const dt=v=>{if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime
 const TABLE={
  submissions:'lecturer_report_submissions',reviews:'lecturer_report_reviews',attachments:'lecturer_report_attachments',
  deadlines:'lecturer_report_deadlines',requirements:'lecturer_report_requirements',versions:'lecturer_report_document_versions',
- assignments:'lecturer_subject_assignments'
+ assignments:'lecturer_subject_assignments',audit:'audit_logs',backups:'lecturer_report_backup_history'
 };
 const SELECT={
  submissions:'id,lecturer_user_id,lecturer_id,lecturer_name,lecturer_email,report_type,report_category,document_type,title,summary,unit_name,subject_code,program,block,academic_year,week_number,period_start,period_end,recipient_role,include_attendance,include_grades,include_activities,include_challenges,status,reviewer_user_id,reviewer_name,reviewer_comments,submitted_at,reviewed_at,approved_at,attachment_count,created_at,updated_at,attachment_name,attachment_type,attachment_size,class_block,document_title',
@@ -18,9 +18,9 @@ const SELECT={
  deadlines:'id,school,document_type,unit_code,due_at,program,term,block,academic_year,unit_name,intake_year,created_at',
  requirements:'id,school,program,intake_year,block,term,document_type,unit_code,unit_name,due_at,is_required,created_at,updated_at',
  versions:'id,submission_id,attachment_id,version_number,file_name,mime_type,file_size,created_at',
- assignments:'id,lecturer_id,lecturer_name,program,block,subject_name,subject_code,academic_year,department,created_at'
+ assignments:'id,lecturer_id,lecturer_name,program,block,subject_name,subject_code,academic_year,department,created_at',audit:'id,timestamp,created_at,actor_name,user_role,role,action_type,module,target_table,target_id,description,status,source,request_id',backups:'id,created_by,created_at,backup_file_name,backup_format,record_counts,attachment_count,attachment_bytes,status'
 };
-const state={client:null,profile:null,rows:[],reviews:[],deadlines:[],requirements:[],assignments:[],activeTab:'submissions',filters:{q:'',status:'',program:'',school:'',type:'',from:'',to:''},selected:null,detail:{reviews:[],attachments:[],versions:[]},loading:false};
+const state={client:null,profile:null,rows:[],reviews:[],deadlines:[],requirements:[],assignments:[],audit:[],backups:[],activeTab:'submissions',filters:{q:'',status:'',program:'',school:'',type:'',from:'',to:''},selected:null,detail:{reviews:[],attachments:[],versions:[]},loading:false};
 const $=id=>document.getElementById(id);
 function toast(message,type='info'){
  if(typeof w.DirectorToast==='function')return w.DirectorToast(message,type);
@@ -36,9 +36,9 @@ async function load(){
  state.loading=true;
  const results=await Promise.allSettled([
   read('submissions','submitted_at'),read('deadlines','due_at'),read('requirements','created_at'),
-  read('assignments','created_at'),read('reviews','created_at')
+  read('assignments','created_at'),read('reviews','created_at'),read('audit','timestamp'),read('backups','created_at')
  ]);
- const keys=['rows','deadlines','requirements','assignments','reviews'];
+ const keys=['rows','deadlines','requirements','assignments','reviews','audit','backups'];
  results.forEach((r,i)=>{if(r.status==='fulfilled')state[keys[i]]=r.value;else{state[keys[i]]=[];console.warn('[DirectorTeachingRecords]',keys[i],r.reason);}});
  state.loading=false;
 }
@@ -63,7 +63,7 @@ function kpi(label,n,sub){return '<article class="dtr-kpi"><span>'+esc(label)+'<
 function options(values,first){return '<option value="">'+first+'</option>'+values.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');}
 function unique(key,rows=state.rows){return [...new Set(rows.map(r=>r[key]).filter(Boolean).map(String))].sort();}
 function header(){return '<div class="d-page-head"><div><div class="d-eyebrow">Academic delivery oversight</div><h1>Teaching Records</h1><p>Institutional view of lecturer reports, teaching evidence, compliance and reporting deadlines.</p></div><div class="d-head-actions"><button class="d-btn" data-dtr-refresh><i class="fa-solid fa-rotate"></i> Refresh</button><button class="d-btn primary" data-dtr-export><i class="fa-solid fa-file-csv"></i> Export filtered CSV</button></div></div>';}
-function tabs(){return '<nav class="dtr-tabs" aria-label="Teaching records sections">'+[['submissions','Lecturer submissions'],['compliance','Lecturer compliance'],['requirements','Requirements'],['deadlines','Deadlines'],['analytics','Analytics']].map(([id,label])=>'<button type="button" data-dtr-tab="'+id+'" class="'+(state.activeTab===id?'active':'')+'">'+label+'</button>').join('')+'</nav>';}
+function tabs(){return '<nav class="dtr-tabs" aria-label="Teaching records sections">'+[['submissions','Lecturer submissions'],['compliance','Lecturer compliance'],['requirements','Requirements'],['deadlines','Deadlines'],['analytics','Analytics'],['audit','Audit trail'],['backups','Backup history']].map(([id,label])=>'<button type="button" data-dtr-tab="'+id+'" class="'+(state.activeTab===id?'active':'')+'">'+label+'</button>').join('')+'</nav>';}
 function renderSubmissions(){
  const rows=filtered();
  const filters='<div class="dtr-filters"><input type="search" id="dtr-q" placeholder="Search lecturer, unit, title or programme" value="'+esc(state.filters.q)+'"><select id="dtr-status">'+options(unique('status'),'All statuses')+'</select><select id="dtr-program">'+options(unique('program'),'All programmes')+'</select><select id="dtr-school">'+options([...new Set(state.rows.map(school))].sort(),'All schools')+'</select><select id="dtr-type">'+options([...new Set(state.rows.map(r=>r.report_type||r.document_type).filter(Boolean).map(String))].sort(),'All report types')+'</select><label>From <input id="dtr-from" type="date" value="'+esc(state.filters.from)+'"></label><label>To <input id="dtr-to" type="date" value="'+esc(state.filters.to)+'"></label><button class="d-btn" data-dtr-clear>Clear</button></div>';
@@ -86,6 +86,8 @@ function renderDeadlines(){
  const rows=state.deadlines;
  return '<section class="dtr-panel"><div class="dtr-panel-head"><div><h2>Reporting deadlines</h2><p>'+fmt(rows.length)+' deadline records</p></div></div>'+(rows.length?'<div class="d-table-wrap"><table class="d-table"><thead><tr><th>School</th><th>Programme</th><th>Document</th><th>Unit</th><th>Block / Term</th><th>Academic year</th><th>Due date</th><th>Position</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(r.school||'—')+'</td><td>'+esc(r.program||'—')+'</td><td>'+esc(r.document_type||'—')+'</td><td>'+esc([r.unit_code,r.unit_name].filter(Boolean).join(' · ')||'—')+'</td><td>'+esc([r.block,r.term].filter(Boolean).join(' / ')||'—')+'</td><td>'+esc(r.academic_year||r.intake_year||'—')+'</td><td>'+esc(dt(r.due_at))+'</td><td>'+status(dueState(r.due_at))+'</td></tr>').join('')+'</tbody></table></div>':'<div class="dtr-empty">No reporting deadlines are visible.</div>')+'</section>';
 }
+function renderAudit(){const rows=state.audit.filter(r=>['lecturer_report_submissions','lecturer_report_reviews','lecturer_report_attachments','lecturer_report_deadlines','lecturer_report_requirements','lecturer_report_document_versions','lecturer_report_backup_history'].includes(String(r.target_table||''))||/lecturer.?report|teaching/i.test(String(r.module||'')));return '<section class="dtr-panel"><div class="dtr-panel-head"><div><h2>Teaching records audit trail</h2><p>'+fmt(rows.length)+' matching audit events. Network addresses and device identifiers are intentionally excluded.</p></div></div>'+(rows.length?'<div class="d-table-wrap"><table class="d-table"><thead><tr><th>Time</th><th>Actor</th><th>Role</th><th>Action</th><th>Module / Table</th><th>Record</th><th>Description</th><th>Status</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(dt(r.timestamp||r.created_at))+'</td><td>'+esc(r.actor_name||'—')+'</td><td>'+esc(r.user_role||r.role||'—')+'</td><td>'+esc(r.action_type||'—')+'</td><td>'+esc(r.module||r.target_table||'—')+'</td><td>'+esc(r.target_id||'—')+'</td><td>'+esc(r.description||'—')+'</td><td>'+status(r.status)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="dtr-empty">No teaching-specific audit events are available.</div>')+'</section>';}
+function renderBackups(){const rows=state.backups;return '<section class="dtr-panel"><div class="dtr-panel-head"><div><h2>Teaching records backup history</h2><p>'+fmt(rows.length)+' backup history entries. This is a monitoring view; creating, downloading, restoring or deleting backups is not enabled here.</p></div></div>'+(rows.length?'<div class="d-table-wrap"><table class="d-table"><thead><tr><th>Created</th><th>Backup file</th><th>Format</th><th>Records</th><th>Attachments</th><th>Attachment size</th><th>Status</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(dt(r.created_at))+'</td><td>'+esc(r.backup_file_name||'—')+'</td><td>'+esc(r.backup_format||'—')+'</td><td><code>'+esc(JSON.stringify(r.record_counts||{}))+'</code></td><td>'+fmt(r.attachment_count)+'</td><td>'+fmt(Math.round(Number(r.attachment_bytes||0)/1024))+' KB</td><td>'+status(r.status)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="dtr-empty">No backup history is available.</div>')+'</section>';}
 function renderAnalytics(){
  const rows=filtered(),stats=countBy(rows,'status'),programs=countBy(rows,'program');
  const bars=(items)=>items.length?items.slice(0,8).map(([n,v])=>'<div class="dtr-bar-row"><span>'+esc(n)+'</span><b>'+fmt(v)+'</b><i><em style="width:'+Math.max(3,v/Math.max(...items.map(x=>x[1]))*100)+'%"></em></i></div>').join(''):'<div class="dtr-empty">No data for this selection.</div>';
@@ -97,7 +99,7 @@ function render(){
  const approved=state.rows.filter(r=>String(r.status).toLowerCase()==='approved').length;
  const overdue=state.deadlines.filter(r=>dueState(r.due_at)==='Overdue').length;
  let html=header()+'<section class="dtr-kpis">'+kpi('Total submissions',state.rows.length,'All records visible to Director')+kpi('Awaiting review',pending,'Submitted, resubmitted or under review')+kpi('Approved reports',approved,'Existing workflow status only')+kpi('Overdue deadlines',overdue,'Based on configured due dates')+'</section>'+tabs();
- html+=state.activeTab==='submissions'?renderSubmissions():state.activeTab==='compliance'?renderCompliance():state.activeTab==='requirements'?renderRequirements():state.activeTab==='deadlines'?renderDeadlines():renderAnalytics();
+ html+=state.activeTab==='submissions'?renderSubmissions():state.activeTab==='compliance'?renderCompliance():state.activeTab==='requirements'?renderRequirements():state.activeTab==='deadlines'?renderDeadlines():state.activeTab==='audit'?renderAudit():state.activeTab==='backups'?renderBackups():renderAnalytics();
  html+='<p class="dtr-footnote"><i class="fa-solid fa-shield-halved"></i> Director access is institutional oversight and read-only. Approval, rejection, return-for-correction, backup and restore actions remain in their authorised workflows.</p>';
  root.innerHTML=html;
  const set=(id,key)=>{const el=$(id);if(el)el.value=state.filters[key];};
