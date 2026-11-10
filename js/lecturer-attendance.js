@@ -2652,7 +2652,7 @@ const LecturerAttendance = {
         const rows = [];
         const missing = [];
         const radiusFor = log => {
-            const value = log?.target_radius ?? session.target_radius ?? 150;
+            const value = log?.target_radius ?? session.target_radius ?? 100;
             const radius = Number(value);
             return Number.isFinite(radius) && radius > 0 ? radius : 100;
         };
