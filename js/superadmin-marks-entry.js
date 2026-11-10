@@ -1828,6 +1828,34 @@ async function refreshMarksTable() {
 // RENDER MARKS ENTRY TABLE - COMPLETELY FIXED
 // ============================================================
 
+
+// Effective result used for display, statistics and exports.
+// A successful retake becomes the final result; original CAT/exam inputs remain
+// untouched so the first-attempt record and retake history remain auditable.
+function getEffectiveMarksEntryResult(mark, assessmentType) {
+    const originalTotal = calculateMarksEntryTotal(
+        parseFloat(mark.cat1) || 0,
+        parseFloat(mark.cat2) || 0,
+        parseFloat(mark.exam) || 0,
+        assessmentType || mark.assessmentType || 'full'
+    );
+    const retakeScore = mark.retakeScore === null || mark.retakeScore === undefined || mark.retakeScore === ''
+        ? null : Number(mark.retakeScore);
+    const retakePassed = String(mark.retakeStatus || '').toUpperCase() === 'PASS' &&
+        Number.isFinite(retakeScore);
+    const effectiveTotal = retakePassed ? retakeScore : originalTotal;
+    const gradeInfo = getMarksEntryGrade(effectiveTotal);
+    return {
+        originalTotal,
+        total: effectiveTotal,
+        gradeInfo,
+        isRetakeResult: retakePassed,
+        retakeScore,
+        retakeStatus: String(mark.retakeStatus || '').toUpperCase(),
+        status: effectiveTotal <= 0 ? 'pending' : (effectiveTotal >= getPassingThreshold() ? 'PASS' : 'FAIL')
+    };
+}
+
 function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     const container = document.getElementById('me_marks_container');
     if (!container) return;
@@ -1922,24 +1950,24 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         const exam = parseFloat(m.exam) || 0;
         
         // ✅ total is DEFINED here
-        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-        const gradeInfo = getMarksEntryGrade(total);
-        const isPassing = total >= passingThreshold;
-        const displayTotal = total > 0 ? total : '--';
-        const displayGrade = total > 0 ? gradeInfo.grade : '--';
-        const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
-        
         const retakeHistory = m.retakeHistory || [];
         const hasRetake = m.hasRetake || false;
         const retakeCount = m.retakeCount || 0;
         const retakeScore = m.retakeScore;
-        const retakeStatus = m.retakeStatus;
-        const isRetakePassing = retakeStatus === 'PASS';
+        const retakeStatus = String(m.retakeStatus || '').toUpperCase();
+        const effectiveResult = getEffectiveMarksEntryResult(m, assessmentType);
+        const total = effectiveResult.total;
+        const gradeInfo = effectiveResult.gradeInfo;
+        const isPassing = total >= passingThreshold;
+        const displayTotal = total > 0 ? total : '--';
+        const displayGrade = total > 0 ? gradeInfo.grade : '--';
+        const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
+        const isRetakePassing = effectiveResult.isRetakeResult;
         
-        const needsRetake = total > 0 && total < 60 && retakeCount < MAX_RETAKES;
-        const maxRetakesReached = total > 0 && total < 60 && retakeCount >= MAX_RETAKES;
+        const needsRetake = total > 0 && total < passingThreshold && retakeCount < MAX_RETAKES;
+        const maxRetakesReached = total > 0 && total < passingThreshold && retakeCount >= MAX_RETAKES;
         // A current score of 60 or above must never show a retake badge or retake controls.
-        const showRetakeHistory = total > 0 && total < 60 && hasRetake;
+        const showRetakeHistory = hasRetake;
         
         // Consistent result status colours: PASS = pale green, FAIL = light yellow.
         // Determine pass/fail using the programme's official threshold (Nursing 60, TVET 50).
@@ -1994,7 +2022,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                     </span>
                 `;
             }
-        } else if (total > 0 && total < 60) {
+        } else if (total > 0 && total < passingThreshold) {
             retakeActionsHtml = `
                 <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
                         style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
@@ -2037,7 +2065,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                 <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${examMaxDisplay}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
                 <span style="font-size: 9px; color: #94a3b8; display: block;">Max: ${examMaxDisplay}</span>
             </td>` : ''}
-            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
+            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}${effectiveResult.isRetakeResult ? '<span style="display:block;margin-top:3px;font-size:9px;color:#047857;font-weight:700;">RETAKE FINAL</span>' : ''}</td>
             <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color};">${displayGrade}</td>
             <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color};">${displayPoints}</td>
             <td id="me_rating_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">
@@ -2157,13 +2185,12 @@ function updateMarksEntryStats(marks, assessmentType) {
     
     const totalEnrolled = marks.length;
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
-    const passing = marks.filter(m => {
-        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total >= passingThreshold;
-    });
+    const passing = marks.filter(m => getEffectiveMarksEntryResult(m, assessmentType).total >= passingThreshold);
     
-    const avg = withScores.length > 0 ? 
-        withScores.reduce((sum, m) => sum + calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType), 0) / withScores.length : 0;
+    const effectiveScored = marks.filter(m => getEffectiveMarksEntryResult(m, assessmentType).total > 0);
+    const avg = effectiveScored.length > 0
+        ? effectiveScored.reduce((sum, m) => sum + getEffectiveMarksEntryResult(m, assessmentType).total, 0) / effectiveScored.length
+        : 0;
     
     // Count retakes
     const withRetakes = marks.filter(m => m.hasRetake);
@@ -2183,7 +2210,7 @@ function updateMarksEntryStats(marks, assessmentType) {
     if (avgEl) avgEl.textContent = Math.round(avg) + '%';
     
     const atRisk = marks.filter(m => {
-        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
+        const total = getEffectiveMarksEntryResult(m, assessmentType).total;
         return total > 0 && total < passingThreshold;
     });
     if (atRiskEl) atRiskEl.textContent = atRisk.length;
@@ -2422,13 +2449,14 @@ function exportMarksEntry() {
     
     const assessmentType = me_currentAssessmentType;
     const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating', 
-                     'Has Retake', 'Retake Count', 'Retake Score', 'Retake Grade', 'Retake Status'];
+                     'Has Retake', 'Retake Count', 'Retake Score', 'Retake Grade', 'Retake Status', 'Effective Result Source'];
     const rows = marks.map(m => {
         const cat1 = m.cat1 || 0;
         const cat2 = m.cat2 || 0;
         const exam = m.exam || 0;
-        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-        const gradeInfo = getMarksEntryGrade(total);
+        const effective = getEffectiveMarksEntryResult(m, assessmentType);
+        const total = effective.total;
+        const gradeInfo = effective.gradeInfo;
         return [
             m.admission || '',
             m.name || '',
@@ -2441,9 +2469,10 @@ function exportMarksEntry() {
             total > 0 ? gradeInfo.rating : '',
             m.hasRetake ? 'Yes' : 'No',
             m.retakeCount || 0,
-            m.retakeScore || '',
+            m.retakeScore ?? '',
             m.retakeGrade || '',
-            m.retakeStatus || ''
+            m.retakeStatus || '',
+            effective.isRetakeResult ? 'Retake result' : 'Original result'
         ];
     });
     
