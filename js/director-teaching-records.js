@@ -102,8 +102,7 @@ function render(){
  html+=state.activeTab==='submissions'?renderSubmissions():state.activeTab==='compliance'?renderCompliance():state.activeTab==='requirements'?renderRequirements():state.activeTab==='deadlines'?renderDeadlines():state.activeTab==='audit'?renderAudit():state.activeTab==='backups'?renderBackups():renderAnalytics();
  html+='<p class="dtr-footnote"><i class="fa-solid fa-shield-halved"></i> Director access is institutional oversight and read-only. Approval, rejection, return-for-correction, backup and restore actions remain in their authorised workflows.</p>';
  root.innerHTML=html;
- const set=(id,key)=>{const el=$(id);if(el)el.value=state.filters[key];};
- set('dtr-status','status');set('dtr-program','program');set('dtr-school','school');set('dtr-type','type');
+ ['status','program','school','type'].forEach(key=>{const el=$('dtr-'+key);if(el)el.value=state.filters[key];});
 }
 function bindFilters(){
  const bind=(id,key)=>{const el=$(id);if(el)el.addEventListener('input',()=>{state.filters[key]=el.value;render();});};
