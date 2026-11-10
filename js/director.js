@@ -141,7 +141,8 @@ async function renderOverview(){
  const apply=()=>{
   const f={school:$('directorContent').querySelector('[data-dashboard-filter="school"]')?.value||'',program:$('directorContent').querySelector('[data-dashboard-filter="program"]')?.value||'',intake:$('directorContent').querySelector('[data-dashboard-filter="intake"]')?.value||'',block:$('directorContent').querySelector('[data-dashboard-filter="block"]')?.value||''};
   const rows=students.filter(x=>(!f.school||x.program_type===f.school)&&(!f.program||x.program===f.program)&&(!f.intake||String(x.intake_year)===f.intake)&&(!f.block||String(x.block||x.current_block)===f.block));
-  const marks=m.filter(x=>(!f.program||x.program===f.program)&&(!f.block||String(x.block)===f.block));
+  const selectedKeys=new Set(rows.flatMap(x=>[x.id,x.admission_number].filter(Boolean).map(String)));
+  const marks=m.filter(x=>(!f.program||x.program===f.program)&&(!f.block||String(x.block)===f.block)&&(!f.school&&!f.intake||selectedKeys.has(String(x.student_id??''))||selectedKeys.has(String(x.admission_number??''))));
   const reports=sub.filter(x=>(!f.program||x.program===f.program));
   const pass=marks.filter(x=>['pass','passed','credit','distinction'].includes(String(x.final_status||'').toLowerCase())).length;
   const fail=marks.filter(x=>['fail','failed'].includes(String(x.final_status||'').toLowerCase())).length;
