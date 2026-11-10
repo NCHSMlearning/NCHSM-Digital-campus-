@@ -2676,13 +2676,11 @@ const LecturerAttendance = {
             const withinRadius = manual || (hasDistance && Number(log.distance_meters) <= radiusFor(log));
             const hasCheckIn = !!log?.check_in_time;
             const validStatus = status === 'present' || status === 'verified' || log?.is_verified === true;
-            const validPresent = !!log && !['absent'].includes(status) && hasCheckIn && validStatus && withinRadius;
-
-            // A recorded check-in inside the geofence but with insufficient GPS
-            // quality remains Pending for review; do not turn it into Absent.
-            const needsGpsReview = !!log && hasCheckIn && status === 'pending' && withinRadius;
-            let finalStatus = validPresent ? 'Present' :
-                (needsGpsReview ? 'Pending' : (log ? 'Absent' : 'Not Checked In'));
+            // Attendance presence is determined by an actual check-in within the
+            // session geofence. GPS verification quality remains a separate flag.
+            const validPresent = !!log && status !== 'absent' && hasCheckIn && withinRadius &&
+                (validStatus || status === 'pending');
+            let finalStatus = validPresent ? 'Present' : (log ? 'Absent' : 'Not Checked In');
 
             if (finalize && finalStatus !== 'Present' && finalStatus !== 'Pending') {
                 missing.push({ student, existingLog: log });
