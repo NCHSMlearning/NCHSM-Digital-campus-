@@ -2,7 +2,7 @@
 // ✅ FILE VERSION TRACKING
 // ============================================================
 console.log('📄 superadmin-marks-entry.js loaded');
-console.log('   📅 Version: 2026-11-10-nursing-pass-green-v3');
+console.log('   📅 Version: 2026-11-10-nursing-threshold-normalized-v4');
 console.log('   🔧 isTVETProgram should have NO parameters');
 console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
 
@@ -1860,17 +1860,25 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     const container = document.getElementById('me_marks_container');
     if (!container) return;
     
-    // ✅ Use passed program, fallback to me_currentProgram or select element
-    let currentProgram = program || me_currentProgram || '';
-    if (!currentProgram) {
-        const select = document.getElementById('me_program_select');
-        currentProgram = select?.value || '';
-    }
-    
-    const isTVET = currentProgram !== 'KRCHN' && currentProgram !== 'nursing' && currentProgram !== 'Nursing';
+    // Resolve the programme once, normalising whitespace/case so KRCHN
+    // can never accidentally inherit a TVET or stale global pass threshold.
+    let currentProgram = program || document.getElementById('me_program_select')?.value || me_currentProgram || window.me_currentProgram || '';
+    const normalizedProgram = String(currentProgram).trim().toUpperCase();
+    const isNursing = normalizedProgram === 'KRCHN' || normalizedProgram === 'NURSING';
+    const isTVET = !isNursing;
     const examMaxDisplay = isTVET ? 100 : 70;
-    const passingThreshold = isTVET ? 50 : 60; // Match the official programme grading threshold
-    const programLabel = isTVET ? '📘 TVET' : '📕 NURSING';
+    const passingThreshold = isNursing ? 60 : 50;
+    const programLabel = isNursing ? '📕 NURSING' : '📘 TVET';
+
+    // Keep every downstream grade/threshold helper aligned with this table's
+    // selected programme rather than a stale window/global selection.
+    if (isNursing) {
+        me_currentProgram = 'KRCHN';
+        window.me_currentProgram = 'KRCHN';
+    } else if (currentProgram) {
+        me_currentProgram = currentProgram;
+        window.me_currentProgram = currentProgram;
+    }
     const isAdmin = isUserAdmin();
     
     const showCat1 = assessmentType !== 'exam_only';
