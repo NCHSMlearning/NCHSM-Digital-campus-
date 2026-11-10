@@ -2673,9 +2673,13 @@ const LecturerAttendance = {
             const validStatus = status === 'present' || status === 'verified' || log?.is_verified === true;
             const validPresent = !!log && !['absent'].includes(status) && hasCheckIn && validStatus && withinRadius;
 
-            let finalStatus = validPresent ? 'Present' : (log ? 'Absent' : 'Not Checked In');
+            // A recorded check-in inside the geofence but with insufficient GPS
+            // quality remains Pending for review; do not turn it into Absent.
+            const needsGpsReview = !!log && hasCheckIn && status === 'pending' && withinRadius;
+            let finalStatus = validPresent ? 'Present' :
+                (needsGpsReview ? 'Pending' : (log ? 'Absent' : 'Not Checked In'));
 
-            if (finalize && finalStatus !== 'Present') {
+            if (finalize && finalStatus !== 'Present' && finalStatus !== 'Pending') {
                 missing.push({ student, existingLog: log });
                 finalStatus = 'Absent';
             }
@@ -2766,7 +2770,7 @@ const LecturerAttendance = {
             total: rows.length,
             present: rows.filter(r => r.status === 'Present').length,
             absent: rows.filter(r => r.status === 'Absent').length,
-            pending: rows.filter(r => r.status === 'Not Checked In').length,
+            pending: rows.filter(r => r.status === 'Pending' || r.status === 'Not Checked In').length,
             notCheckedIn: rows.filter(r => r.status === 'Not Checked In').length
         };
         summary.rate = summary.total ? Math.round((summary.present / summary.total) * 100) : 0;
