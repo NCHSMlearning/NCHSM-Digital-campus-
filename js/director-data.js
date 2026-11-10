@@ -38,7 +38,7 @@ const SELECT_FIELDS={
  resources:'id,file_name,title,program_type,created_at,uploaded_by_name,intake,block,allow_download,target_program,category,course_name,file_size,file_type,description,resource_type,pastpaper_year,exam_type,term,approval_status,approved_at,unit_name,unit_code',
  transcripts:'id,student_id,student_name,program,document_type,status,issued_at,transcript_number,transcript_block',
  notifications:'id,title,is_read,created_at,message_type,subject,target_program,read_at',
- staff:'id,title,first_name,other_names,email,phone,department,designation,program,national_id,gender,bank_name,bank_account,shif_number,nsrf_number,tax_pin,login_enabled,status,guardian_phone,basic_salary,allowances,total_pay,created_at,updated_at',
+ staff:'id,title,first_name,other_names,email,phone,department,designation,program,national_id,gender,bank_name,bank_account,shif_number,nsrf_number,tax_pin,login_enabled,status,guardian_phone,basic_salary,allowances,total_pay,created_by,password_hash_algorithm,last_password_change,created_at,updated_at',
  enrollments:'id,student_id,course_id,enrolled_at,unit_catalog_id',
  studentCourses:'id,student_id,course_id,status,created_at,unit_catalog_id'
 };
