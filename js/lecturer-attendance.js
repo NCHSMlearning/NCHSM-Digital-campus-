@@ -2608,13 +2608,22 @@ const LecturerAttendance = {
             return { roster: [], logs: [], rows: [], summary: { total: 0, present: 0, absent: 0, pending: 0, notCheckedIn: 0, rate: 0 } };
         }
 
-        const roster = await this.getSessionRoster(session);
+        const rawRoster = await this.getSessionRoster(session);
+        // A roster can contain repeated profile rows for the same auth user.
+        // Keep one canonical row per user before creating absent records.
+        const rosterByUser = new Map();
+        (rawRoster || []).forEach(student => {
+            const key = String(student?.user_id || '').trim();
+            if (key && !rosterByUser.has(key)) rosterByUser.set(key, student);
+        });
+        const roster = [...rosterByUser.values()];
 
         const { data: logs, error } = await supabase
             .from('geo_attendance_logs')
             .select('*')
             .eq('session_id', session.id)
-            .neq('role', 'lecturer')
+            // Include legacy rows whose role is NULL; SQL neq('lecturer') excludes NULL.
+            .or('role.is.null,role.neq.lecturer')
             .order('check_in_time', { ascending: true });
 
         if (error) throw error;
@@ -2738,7 +2747,15 @@ const LecturerAttendance = {
                 if (failed?.error) throw failed.error;
             }
             if (inserts.length) {
-                const { error: insertError } = await supabase.from('geo_attendance_logs').insert(inserts);
+                // Idempotent finalization: another close attempt or concurrent request may
+                // have inserted the same (user_id, session_id) after the read above.
+                // Preserve the existing attendance row; never overwrite a check-in.
+                const { error: insertError } = await supabase
+                    .from('geo_attendance_logs')
+                    .upsert(inserts, {
+                        onConflict: 'user_id,session_id',
+                        ignoreDuplicates: true
+                    });
                 if (insertError) throw insertError;
             }
 
