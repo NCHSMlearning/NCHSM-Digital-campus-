@@ -661,13 +661,8 @@ if (window.location.pathname.endsWith('.html')) {
             const data = JSON.parse(session);
             lecturerSessionData = data;
             const role = (data.role || data.user_role || '').toLowerCase();
-            if (['lecturer','instructor','teacher'].includes(role)) {
-                // Lecturer exam access is temporarily disabled. Keep lecturers in the main academic portal.
-                window.location.replace('lecturer.html');
-                return false;
-            }
-            if (!['admin','superadmin','administrator'].includes(role)) {
-                window.location.replace('login.html');
+            if (!['lecturer','instructor','teacher','admin','superadmin','administrator'].includes(role)) {
+                window.location.href = 'login.html';
                 return false;
             }
             const name = data.name || data.full_name || 'Lecturer';
