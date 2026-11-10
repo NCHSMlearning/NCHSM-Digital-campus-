@@ -1106,7 +1106,9 @@ const LecturerSessions = {
                     closed_at: new Date().toISOString()
                 })
                 .eq('id', sessionId)
-                .eq('created_by', this.lecturerUuid);
+                // Use the actual owner UUID from the row after validating it above.
+                // This also supports profiles where lecturerUuid is not initialized.
+                .eq('created_by', session.created_by);
 
             if (error) throw error;
 
