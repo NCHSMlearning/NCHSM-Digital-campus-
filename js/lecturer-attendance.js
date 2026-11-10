@@ -2652,9 +2652,14 @@ const LecturerAttendance = {
         const rows = [];
         const missing = [];
         const radiusFor = log => {
-            const value = log?.target_radius ?? session.target_radius ?? 100;
-            const radius = Number(value);
-            return Number.isFinite(radius) && radius > 0 ? radius : 100;
+            // The session's current configured geofence is authoritative. Older
+            // check-in rows may still carry the previous 50m radius in metadata.
+            const sessionRadius = Number(session.target_radius);
+            const logRadius = Number(log?.target_radius);
+            const configuredRadius = Number.isFinite(sessionRadius) && sessionRadius > 0
+                ? sessionRadius
+                : (Number.isFinite(logRadius) && logRadius > 0 ? logRadius : 100);
+            return configuredRadius;
         };
 
         for (const student of roster) {
