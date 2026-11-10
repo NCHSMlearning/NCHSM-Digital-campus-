@@ -1,4 +1,4 @@
-/* Read-only data gateway: Director policies are enforced in Supabase RLS. */
+/* Executive data gateway: all Director writes are constrained by Supabase RLS and audit triggers. */
 (function(w){
 'use strict';
 const TABLES={
@@ -12,8 +12,8 @@ const TABLES={
  tickets:'support_tickets',staff:'staff_records',enrollments:'enrollments',studentCourses:'student_courses'
 };
 const cache={};
-const EDITABLE_FIELDS={programs:['program_code','program_name','category','program_type','duration_months','total_credits','description','status'],courses:['course_name','description','target_program','target_semester','status','code','block','intake_year','unit_code'],units:['unit_code','unit_name','program','block','term','year','unit_type','credits','status','hours','assessment_type','description'],calendar:['title','description','event_date','target_block','target_intake_year','event_name','type','target_program','venue','start_time','end_time','organizer','location'],sessions:['session_type','title','session_date','program_type','intake_year','block_term','session_time','session_title','target_program','session_end_time','approval_status','status','is_active','unit_name','unit_code','course_name','block_display','target_block'],registrations:['status','completion_status','completed_at','total_score','grade'],submissions:['title','summary','status','reviewer_comments','reviewed_at'],resources:['title','program_type','intake','block','allow_download','target_program','category','description','resource_type','term','approval_status','unit_name','unit_code'],research:['title','submission_type','abstract','status','feedback','reviewed_at']};
-/* These contain authentication material or private communications/documents and are not exposed in the Director workspace. */
+const EDITABLE_FIELDS={programs:['program_code','program_name','category','program_type','duration_months','total_credits','status'],courses:['course_name','description','target_program','target_semester','status','code','block','intake_year','unit_code'],units:['unit_code','unit_name','program','block','term','year','unit_type','credits','status','hours','assessment_type'],calendar:['title','description','event_date','target_block','target_intake_year','event_name','type','target_program','venue','start_time','end_time','organizer','location'],sessions:['session_type','title','session_date','program_type','intake_year','block_term','session_time','session_title','target_program','session_end_time','approval_status','status','is_active','unit_name','unit_code','course_name','block_display','target_block'],registrations:['status','completion_status','completed_at','total_score','grade'],submissions:['title','summary','status','reviewed_at'],resources:['title','program_type','intake','block','allow_download','target_program','category','description','resource_type','term','approval_status','unit_name','unit_code'],research:['title','submission_type','status','reviewed_at']};
+/* Private communications remain withheld pending a dedicated executive-safe projection. */
 const RLS_BLOCKED=new Set(['messages','tickets']);
 /* Explicit allow-list: never select password hashes, bank details, national IDs, auth tokens,
    proctoring images, raw IP/device identifiers, transcript tokens or document storage paths. */
