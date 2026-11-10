@@ -5,7 +5,19 @@
 (function () {
   'use strict';
   const message = 'Portal logins are temporarily disabled for maintenance. Only Super Admin access is available.';
+  function blockSupabasePasswordLogin() {
+    ['supabaseClient', 'sb', 'supabase'].forEach(function (key) {
+      const client = window[key];
+      if (!client || !client.auth || client.auth.__nchsmMaintenanceWrapped) return;
+      const auth = client.auth;
+      if (typeof auth.signInWithPassword === 'function') {
+        auth.signInWithPassword = async function () { throw new Error(message); };
+      }
+      auth.__nchsmMaintenanceWrapped = true;
+    });
+  }
   function install() {
+    blockSupabasePasswordLogin();
     const forms = document.querySelectorAll(
       'form#loginForm, form#login-form, form#studentLoginForm, form#financeLoginForm, form#directorLoginForm, form[data-login-mode]'
     );
@@ -29,4 +41,5 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
   else install();
+  window.addEventListener('load', blockSupabasePasswordLogin);
 })();
