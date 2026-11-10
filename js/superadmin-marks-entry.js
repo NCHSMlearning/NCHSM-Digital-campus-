@@ -2,7 +2,7 @@
 // ✅ FILE VERSION TRACKING
 // ============================================================
 console.log('📄 superadmin-marks-entry.js loaded');
-console.log('   📅 Version: 2026-11-10-nursing-threshold-normalized-v4');
+console.log('   📅 Version: 2026-11-10-krchn-label-detection-v5');
 console.log('   🔧 isTVETProgram should have NO parameters');
 console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
 
@@ -1864,7 +1864,11 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     // can never accidentally inherit a TVET or stale global pass threshold.
     let currentProgram = program || document.getElementById('me_program_select')?.value || me_currentProgram || window.me_currentProgram || '';
     const normalizedProgram = String(currentProgram).trim().toUpperCase();
-    const isNursing = normalizedProgram === 'KRCHN' || normalizedProgram === 'NURSING';
+    // Programme selectors may supply either a short code (KRCHN) or a full
+    // programme label (e.g. "KRCHN - Kenya Registered Community Health Nursing").
+    const isNursing = normalizedProgram.includes('KRCHN') ||
+        normalizedProgram.includes('NURSING') ||
+        normalizedProgram === 'KRN';
     const isTVET = !isNursing;
     const examMaxDisplay = isTVET ? 100 : 70;
     const passingThreshold = isNursing ? 60 : 50;
@@ -1995,11 +1999,10 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         // Consistent result status colours: PASS = pale green, FAIL = light yellow.
         // Determine pass/fail using the programme's official threshold (Nursing 60, TVET 50).
         const resultStatus = total <= 0 ? 'pending' : (isPassing ? 'pass' : 'fail');
-        const resultBackground = resultStatus === 'pass' ? '#f0fdf4' : (resultStatus === 'fail' ? '#fef9c3' : '');
         const resultBorder = resultStatus === 'pass' ? '#16a34a' : (resultStatus === 'fail' ? '#eab308' : '#e2e8f0');
-        let rowStyle = resultBackground
-            ? `background-color: ${resultBackground} !important; border-left: 4px solid ${resultBorder};`
-            : '';
+        // Background is controlled only by the status stylesheet. Avoid inline
+        // !important background declarations which can override refreshed CSS.
+        const rowStyle = resultStatus === 'pending' ? '' : `border-left: 4px solid ${resultBorder};`;
         
         const approvalBadge = {
             'pending': '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:10px;">⏳ Pending</span>',
