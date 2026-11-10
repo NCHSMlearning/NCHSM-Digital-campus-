@@ -401,6 +401,7 @@
     closeDocumentPreview();
     const ext=(String(fileName||'').split('.').pop()||'').toLowerCase();
     const isPdf=ext==='pdf';
+    const isWord=['doc','docx'].includes(ext);
     const modal=document.createElement('div');
     modal.id='tdsDocumentPreview';
     modal.setAttribute('role','dialog');
@@ -408,25 +409,39 @@
     modal.setAttribute('aria-label','Document preview');
     modal.style.cssText='position:fixed;inset:0;z-index:100500;background:rgba(15,23,42,.78);display:flex;align-items:center;justify-content:center;padding:clamp(6px,2vw,24px);';
     const panel=document.createElement('section');
-    panel.style.cssText='width:min(1180px,100%);height:min(92vh,900px);background:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.35);';
+    panel.style.cssText='width:min(1420px,100%);height:min(94vh,1000px);background:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.35);';
     const header=document.createElement('header');
-    header.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid #e2e8f0;background:#f8fafc;flex-wrap:wrap;';
+    header.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid #e2e8f0;background:#f8fafc;flex-wrap:wrap;flex:0 0 auto;';
     const title=document.createElement('strong');title.textContent=fileName||'Document preview';title.style.cssText='font-size:13px;color:#172033;overflow-wrap:anywhere;flex:1;min-width:120px;';
-    const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;align-items:center;';
-    const download=document.createElement('a');download.href=url;download.target='_blank';download.rel='noopener';download.textContent='Download';download.style.cssText='padding:8px 12px;border-radius:8px;background:#e2e8f0;color:#334155;text-decoration:none;font-size:12px;font-weight:800;';
-    const close=document.createElement('button');close.type='button';close.textContent='✕ Close';close.style.cssText='padding:8px 12px;border:0;border-radius:8px;background:#0f4c75;color:#fff;font-weight:800;cursor:pointer;';
+    const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap;';
+    const download=document.createElement('a');download.href=url;download.target='_blank';download.rel='noopener noreferrer';download.download=fileName||'';download.textContent='Download';download.style.cssText='padding:9px 13px;border-radius:8px;background:#e2e8f0;color:#334155;text-decoration:none;font-size:12px;font-weight:800;';
+    const close=document.createElement('button');close.type='button';close.textContent='✕ Close';close.style.cssText='padding:9px 13px;border:0;border-radius:8px;background:#0f4c75;color:#fff;font-weight:800;cursor:pointer;';
     close.addEventListener('click',closeDocumentPreview);
     actions.append(download,close);header.append(title,actions);
     const frame=document.createElement('iframe');
     frame.title='Inline document preview';
-    frame.style.cssText='display:block;width:100%;height:100%;flex:1;border:0;background:#f1f5f9;';
-    frame.referrerPolicy='no-referrer';
+    frame.style.cssText='display:block;width:100%;height:100%;flex:1;min-height:0;border:0;background:#f1f5f9;';
     frame.allow='fullscreen';
-    frame.src=isPdf?url:'https://docs.google.com/gview?embedded=1&url='+encodeURIComponent(url);
+    const viewerBar=document.createElement('div');
+    viewerBar.style.cssText='display:none;flex:0 0 auto;padding:12px 16px;background:#fff7ed;border-top:1px solid #fed7aa;color:#9a3412;font-size:12px;line-height:1.5;';
+    const viewerText=document.createElement('div');
+    viewerText.textContent='The online Word viewer has not loaded the document. The file is still available to download, or you can try the alternative viewer.';
+    const viewerActions=document.createElement('div');
+    viewerActions.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:9px;';
+    const makeViewerButton=(label,handler)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.style.cssText='padding:8px 11px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;font-weight:800;cursor:pointer;';b.addEventListener('click',handler);return b;};
+    const googleButton=makeViewerButton('Try Google viewer',()=>{viewerBar.style.display='none';frame.src='https://docs.google.com/gview?embedded=1&url='+encodeURIComponent(url);armFallback();});
+    const officeButton=makeViewerButton('Try Microsoft viewer',()=>{viewerBar.style.display='none';frame.src='https://view.officeapps.live.com/op/embed.aspx?src='+encodeURIComponent(url);armFallback();});
+    const openButton=makeViewerButton('Open file in new tab',()=>window.open(url,'_blank','noopener'));
+    viewerActions.append(googleButton,officeButton,openButton);
+    viewerBar.append(viewerText,viewerActions);
+    function armFallback(){clearTimeout(frame.__tdsFallbackTimer);frame.__tdsFallbackTimer=setTimeout(()=>{if(document.getElementById('tdsDocumentPreview')===modal)viewerBar.style.display='block';},15000);}
+    if(isPdf){frame.src=url;}
+    else if(isWord){frame.src='https://view.officeapps.live.com/op/embed.aspx?src='+encodeURIComponent(url);armFallback();}
+    else{frame.src=url;}
     const note=document.createElement('div');
-    note.textContent=isPdf?'PDF preview':'Word document preview is provided by the embedded document viewer. If it does not load, use Download.';
-    note.style.cssText='padding:7px 12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:11px;background:#fff;';
-    panel.append(header,frame,note);modal.append(panel);
+    note.textContent=isPdf?'PDF preview':isWord?'Word preview · If the viewer cannot access this file, use Download or try the alternative viewer.':'Document preview';
+    note.style.cssText='padding:7px 12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:11px;background:#fff;flex:0 0 auto;';
+    panel.append(header,frame,note,viewerBar);modal.append(panel);
     modal.addEventListener('click',event=>{if(event.target===modal)closeDocumentPreview();});
     const onKey=event=>{if(event.key==='Escape'){closeDocumentPreview();document.removeEventListener('keydown',onKey);}};
     document.addEventListener('keydown',onKey);
