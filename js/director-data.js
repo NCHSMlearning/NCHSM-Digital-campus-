@@ -18,7 +18,7 @@ const RLS_BLOCKED=new Set(['messages','tickets']);
 /* Explicit allow-list: never select password hashes, bank details, national IDs, auth tokens,
    proctoring images, raw IP/device identifiers, transcript tokens or document storage paths. */
 const SELECT_FIELDS={
- profiles:'id,full_name,email,phone,role,department,program,program_type,admission_number,intake_year,block,current_block,status,created_at',
+ profiles:'id,user_id,full_name,email,phone,role,department,program,program_type,admission_number,intake_year,block,current_block,status,created_at',
  marks:'id,student_id,student_name,admission_number,program,block,subject_name,assessment_type,final_score,grade,final_grade,final_status,points,approval_status,published,published_at,created_at,submitted_at',
  exams:'id,title,exam_name,target_program,intake_year,block,exam_type,exam_date,status,approval_status,is_published,created_at',
  cats:'id,title,exam_name,target_program,intake_year,block_term,exam_type,exam_date,status,created_at',
