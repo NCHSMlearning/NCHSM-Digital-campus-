@@ -180,6 +180,7 @@ if (typeof module !== 'undefined' && module.exports) {
     window.__NCHSM_SESSION_SHUTDOWN_CHECK__ = true;
 
     let shutdownStarted = false;
+    let checkInProgress = false;
     function showShutdownNotice() {
         if (document.getElementById('nchsm-session-shutdown')) return;
         const overlay = document.createElement('div');
@@ -202,7 +203,8 @@ if (typeof module !== 'undefined' && module.exports) {
     }
 
     async function validateBrowserSession() {
-        if (shutdownStarted) return;
+        if (shutdownStarted || checkInProgress) return;
+        checkInProgress = true;
         try {
             const result = await client.auth.getSession();
             const session = result && result.data && result.data.session;
@@ -233,13 +235,15 @@ if (typeof module !== 'undefined' && module.exports) {
         } catch (error) {
             // Network interruptions must not sign out a valid user.
             if (!window.__LOGS_DISABLED) console.warn('NCHSM session validation deferred:', error);
+        } finally {
+            checkInProgress = false;
         }
     }
 
     if (client.auth.onAuthStateChange) {
         client.auth.onAuthStateChange(function (event, session) {
             if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
-                validateBrowserSession();
+                Promise.resolve().then(validateBrowserSession);
             }
         });
     }
