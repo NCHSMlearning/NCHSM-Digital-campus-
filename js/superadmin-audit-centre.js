@@ -16,6 +16,14 @@
   };
   const time = (v) => v ? new Intl.DateTimeFormat('en-KE', {dateStyle:'medium',timeStyle:'medium',timeZone:'Africa/Nairobi'}).format(new Date(v)) : '—';
   const actionLabel = (v) => String(v || 'EVENT').replace(/[_-]+/g,' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+  function actorDisplay(r) {
+    const systemEvent = !r.actor_id && ['database_trigger','system','scheduled_job','edge_function'].includes(String(r.source || '').toLowerCase());
+    return {
+      name: r.actor_name || r.actor_email || (systemEvent ? 'System-generated event' : 'Actor not identified'),
+      email: r.actor_email || (systemEvent ? 'No human account associated' : 'No email captured'),
+      role: r.actor_role || (systemEvent ? 'Automated system' : 'Role not recorded')
+    };
+  }
   function shell() {
     const root = $('auditSecurityCenter');
     if (!root) return;
@@ -39,7 +47,7 @@
         <div class="audit-panel"><h3>Activity investigation</h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <input id="acSearch" type="search" placeholder="Search user, role, IP, action or record…" style="flex:1;min-width:200px;padding:10px;border:1px solid #cbd5e1;border-radius:8px">
-            <select id="acAction" style="padding:10px;border:1px solid #cbd5e1;border-radius:8px"><option value="">All event types</option><option value="login">Login</option><option value="logout">Logout</option><option value="login_failed">Failed login</option><option value="update">Record update</option><option value="insert">Record creation</option><option value="delete">Record deletion</option></select>
+            <select id="acAction" style="padding:10px;border:1px solid #cbd5e1;border-radius:8px"><option value="">All event types</option><option value="login">Login</option><option value="logout">Logout</option><option value="LOGIN_FAILED">Failed login</option><option value="update">Record update</option><option value="insert">Record creation</option><option value="delete">Record deletion</option></select>
             <button id="acApply" style="padding:10px 14px;border:0;border-radius:8px;background:#0f766e;color:white">Search</button>
           </div>
           <p style="font-size:12px;color:#64748b;margin:10px 0 0">Times are displayed in East Africa Time (EAT). Search covers the latest 500 matching records.</p>
@@ -55,10 +63,10 @@
           <thead style="background:#f1f5f9"><tr><th class="ac-th">Time (EAT)</th><th class="ac-th">User / Role</th><th class="ac-th">Event</th><th class="ac-th">Module / Source</th><th class="ac-th">Status</th><th class="ac-th">IP / Device</th><th class="ac-th">Details</th></tr></thead>
           <tbody id="acRows"><tr><td colspan="7" style="padding:28px;text-align:center;color:#64748b">Loading…</td></tr></tbody>
         </table></div>
-        <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center"><span id="acPageInfo" style="font-size:12px;color:#64748b"></span><div style="display:flex;gap:8px"><button id="acPrev" class="ac-page">Previous</button><button id="acNext" class="ac-page">Next</button></div></div>
+        <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span id="acPageInfo" style="font-size:12px;color:#64748b"></span><div style="display:flex;gap:8px"><button id="acPrev" class="ac-page">Previous</button><button id="acNext" class="ac-page">Next</button></div></div>
       </div>`;
     const style = document.createElement('style');
-    style.textContent = '.audit-kpi,.audit-panel{background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:14px;box-shadow:0 1px 2px #0f172a0a}.audit-kpi small{display:block;color:#64748b;font-size:11px;text-transform:uppercase}.audit-kpi strong{display:block;font-size:25px;color:#0f3b53;margin-top:5px}.audit-panel h3{font-size:15px;margin:0 0 12px;color:#0f3b53}.ac-th{text-align:left;padding:12px;color:#475569;white-space:nowrap}.ac-page{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer}#acRows td{padding:11px 12px;border-top:1px solid #e2e8f0;vertical-align:top;color:#334155}';
+    style.textContent = '.audit-kpi,.audit-panel{background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:14px;box-shadow:0 1px 2px #0f172a0a}.audit-kpi small{display:block;color:#64748b;font-size:11px;text-transform:uppercase}.audit-kpi strong{display:block;font-size:25px;color:#0f3b53;margin-top:5px}.audit-panel h3{font-size:15px;margin:0 0 12px;color:#0f3b53}.ac-th{text-align:left;padding:12px;color:#475569;white-space:nowrap}.ac-page{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:8px 12px;cursor:pointer;min-height:38px}.ac-page:disabled{cursor:not-allowed;opacity:.45}#acRows td{padding:11px 12px;border-top:1px solid #e2e8f0;vertical-align:top;color:#334155;overflow-wrap:anywhere}@media(max-width:700px){#auditSecurityCenter .audit-panel{border-radius:10px}#auditSecurityCenter .audit-kpi{min-width:0}#auditSecurityCenter .audit-kpi strong{font-size:21px}#auditSecurityCenter .ac-th{padding:9px 8px}#auditSecurityCenter #acPageInfo{max-width:55%;line-height:1.5}#auditSecurityCenter .ac-page{padding:8px 10px}}';
     root.appendChild(style);
     $('auditCentreRefresh').onclick = load;
     $('acApply').onclick = () => { state.search = $('acSearch').value.trim(); state.action = $('acAction').value; state.page = 0; load(); };
@@ -75,11 +83,11 @@
       const target = [details.target_table,details.target_id].filter(Boolean).join(' / ');
       const status = String(r.status||'UNKNOWN').toUpperCase();
       const color = status==='SUCCESS'?'#047857':status==='FAILURE'?'#b91c1c':'#64748b';
-      return '<tr><td>'+esc(time(r.event_time))+'</td><td><strong>'+esc(r.actor_name||r.actor_email||'Unidentified user')+'</strong><br><span style="color:#64748b">'+esc(r.actor_email||'No email captured')+'</span><br><small>'+esc(r.actor_role||'Role unavailable')+'</small></td><td><strong>'+esc(actionLabel(r.action))+'</strong></td><td>'+esc(r.module||'—')+'<br><small style="color:#64748b">'+esc(r.source||'—')+'</small></td><td><strong style="color:'+color+'">'+esc(status)+'</strong></td><td>'+esc(r.ip_address||'IP unavailable')+'<br><small>'+esc(r.user_agent||'Device details unavailable')+'</small></td><td>'+esc(description||'No description recorded')+(target?'<br><small>Target: '+esc(target)+'</small>':'')+'</td></tr>';
+      const actor = actorDisplay(r);
+      return '<tr><td>'+esc(time(r.event_time))+'</td><td><strong>'+esc(actor.name)+'</strong><br><span style="color:#64748b">'+esc(actor.email)+'</span><br><small>'+esc(actor.role)+'</small></td><td><strong>'+esc(actionLabel(r.action))+'</strong></td><td>'+esc(r.module||'—')+'<br><small style="color:#64748b">'+esc(r.source||'—')+'</small></td><td><strong style="color:'+color+'">'+esc(status)+'</strong></td><td>'+esc(r.ip_address||'IP unavailable')+'<br><small>'+esc(r.user_agent||'Device details unavailable')+'</small></td><td>'+esc(description||'No description recorded')+(target?'<br><small>Target: '+esc(target)+'</small>':'')+'</td></tr>';
     }).join('') : '<tr><td colspan="7" style="padding:28px;text-align:center;color:#64748b">No matching audit events were returned.</td></tr>';
     $('acPageInfo').textContent = 'Showing '+(state.rows.length?start+1:0)+'–'+Math.min(start+page.length,state.rows.length)+' of '+state.rows.length+' loaded events';
     $('acPrev').disabled=state.page===0; $('acNext').disabled=start+state.pageSize>=state.rows.length;
-    $('acPrev').style.opacity=$('acPrev').disabled?'.45':'1'; $('acNext').style.opacity=$('acNext').disabled?'.45':'1';
   }
   function exportCsv() {
     const cols=['event_time','actor_email','actor_name','actor_role','action','source','status','ip_address','user_agent','module','details'];
@@ -93,9 +101,7 @@
     if(!db){notice.textContent='Secure database client was not found on this page. Audit feed could not be loaded.';return;}
     notice.textContent='Loading protected audit records…';
     try {
-      const {data,error}=await db.rpc('get_superadmin_audit_events',{
-        p_limit:500,p_offset:0,p_action:state.action||null,p_search:state.search||null
-      });
+      const {data,error}=await db.rpc('get_superadmin_audit_events',{p_limit:500,p_offset:0,p_action:state.action||null,p_search:state.search||null});
       if(error) throw error;
       state.rows=Array.isArray(data)?data:[];
       const rows=state.rows;
@@ -109,9 +115,8 @@
       let sessions='—';
       try { const q=await db.from('user_sessions').select('id',{count:'exact',head:true}).eq('is_active',true); if(!q.error) sessions=(q.count||0).toLocaleString(); } catch(_){}
       $('acSessions').textContent=sessions;
-      notice.textContent='Secure feed loaded. '+rows.length+' events returned from application, Supabase authentication and failed-login records. Missing fields are shown as unavailable.';
+      notice.textContent='Secure feed loaded. '+rows.length+' events returned. System-generated events are distinguished from signed-in users; missing identity fields are not guessed.';
       render();
-      // Keep legacy controls operational where they exist.
       const total=$('auditTotalEvents'); if(total) total.textContent=rows.length.toLocaleString();
       const failedEl=$('auditFailedAttempts'); if(failedEl) failedEl.textContent=failed.toLocaleString();
       const updated=$('auditLastUpdated'); if(updated) updated.textContent=time(new Date().toISOString());
