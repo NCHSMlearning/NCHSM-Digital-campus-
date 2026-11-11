@@ -165,3 +165,87 @@ if (!window.__LOGS_DISABLED) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = window.APP_CONFIG;
 }
+
+
+// ============================================================
+// TEMPORARY ACCESS SHUTDOWN — CLEAR REVOKED BROWSER SESSIONS
+// The database rejects revoked sessions. This check detects that
+// rejection and clears the local Supabase session on the device.
+// Valid Super Admin sessions continue to work.
+// ============================================================
+(function () {
+    'use strict';
+    const client = window.sb || window.supabaseClient;
+    if (!client || !client.auth || window.__NCHSM_SESSION_SHUTDOWN_CHECK__) return;
+    window.__NCHSM_SESSION_SHUTDOWN_CHECK__ = true;
+
+    let shutdownStarted = false;
+    function showShutdownNotice() {
+        if (document.getElementById('nchsm-session-shutdown')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'nchsm-session-shutdown';
+        overlay.setAttribute('role', 'alertdialog');
+        overlay.setAttribute('aria-live', 'assertive');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(10,20,35,.94);font-family:system-ui,sans-serif;';
+        const card = document.createElement('div');
+        card.style.cssText = 'max-width:440px;width:100%;padding:30px 24px;border-radius:16px;background:#fff;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);';
+        const heading = document.createElement('h2');
+        heading.textContent = 'Session ended';
+        heading.style.cssText = 'margin:0 0 12px;color:#10243a;font-size:22px;';
+        const body = document.createElement('p');
+        body.textContent = 'System is temporarily disabled. Please try again later.';
+        body.style.cssText = 'margin:0;color:#475569;font-size:15px;line-height:1.6;';
+        card.appendChild(heading);
+        card.appendChild(body);
+        overlay.appendChild(card);
+        (document.body || document.documentElement).appendChild(overlay);
+    }
+
+    async function validateBrowserSession() {
+        if (shutdownStarted) return;
+        try {
+            const result = await client.auth.getSession();
+            const session = result && result.data && result.data.session;
+            if (!session || !session.access_token) return;
+
+            // PostgREST's pre-request hook rejects revoked auth.sessions IDs.
+            // A zero-row read still passes through the same server-side check.
+            const probe = await client.from('user_sessions').select('*', { head: true, count: 'exact' }).limit(0);
+            const errorText = String(probe && probe.error && (
+                probe.error.message || probe.error.details || probe.error.hint
+            ) || '');
+            if (!/session revoked|session invalid|sign in again/i.test(errorText)) return;
+
+            shutdownStarted = true;
+            showShutdownNotice();
+            try { await client.auth.signOut({ scope: 'local' }); } catch (_) {}
+            // Remove only this project's Supabase auth entries; preserve unrelated app data.
+            try {
+                Object.keys(localStorage).forEach(function (key) {
+                    if (/^sb-.*-auth-token$/i.test(key) || key === 'supabase.auth.token') {
+                        localStorage.removeItem(key);
+                    }
+                });
+            } catch (_) {}
+            setTimeout(function () {
+                window.location.replace('/login.html?maintenance=1');
+            }, 900);
+        } catch (error) {
+            // Network interruptions must not sign out a valid user.
+            if (!window.__LOGS_DISABLED) console.warn('NCHSM session validation deferred:', error);
+        }
+    }
+
+    if (client.auth.onAuthStateChange) {
+        client.auth.onAuthStateChange(function (event, session) {
+            if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
+                validateBrowserSession();
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', validateBrowserSession, { once: true });
+    } else {
+        validateBrowserSession();
+    }
+})();
