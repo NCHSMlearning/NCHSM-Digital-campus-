@@ -3,7 +3,7 @@
  */
 (function () {
   'use strict';
-  const message = 'Temporarily disabled. Please try again later.';
+  const message = 'System is temporarily disabled. Please try again later.';
   function recordAttempt(form, attemptType) {
     const field = form.querySelector('input[type="email"], input[name="email"], input[name="identifier"], input#email, input#username, input[name="username"], input[name="staff_id"]');
     const identifier = String(field && field.value || '').trim();
