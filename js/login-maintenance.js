@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const message = 'Temporarily disabled. Please try again later.';
+  const message = 'System is temporarily disabled. Please try again later.';
   function blockSupabasePasswordLogin() {
     ['supabaseClient', 'sb', 'supabase'].forEach(function (key) {
       const client = window[key];
