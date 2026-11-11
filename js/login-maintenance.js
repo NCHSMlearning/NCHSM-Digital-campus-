@@ -1,10 +1,25 @@
-/* NCHSM TEMPORARY LOGIN MAINTENANCE — 2026-11-10
- * All portal login entry points are paused except superadminlogin.html.
- * This is a frontend maintenance gate; enforce the same rule server-side for full security.
+/* NCHSM TEMPORARY LOGIN MAINTENANCE — audit every submitted attempt.
+ * Records the attempt before the client-side gate prevents authentication.
  */
 (function () {
   'use strict';
-  const message = 'System is temporarily disabled. Please try again later.';
+  const message = 'Temporarily disabled. Please try again later.';
+  function recordAttempt(form, attemptType) {
+    const field = form.querySelector('input[type="email"], input[name="email"], input[name="identifier"], input#email, input#username, input[name="username"], input[name="staff_id"]');
+    const identifier = String(field && field.value || '').trim();
+    const client = window.NCHSMLogin && window.NCHSMLogin.supabase;
+    if (!identifier || !client || !client.functions) return;
+    client.functions.invoke('record-failed-login', {
+      body: {
+        identifier: identifier,
+        attempt_type: attemptType,
+        page_path: window.location.pathname,
+        details: { gate: 'login_maintenance', blocked_before_authentication: true }
+      }
+    }).then(function (result) {
+      if (result.error) console.warn('Login-attempt audit could not be recorded:', result.error.message);
+    }).catch(function (error) { console.warn('Login-attempt audit request failed:', error); });
+  }
   function blockSupabasePasswordLogin() {
     ['supabaseClient', 'sb', 'supabase'].forEach(function (key) {
       const client = window[key];
@@ -25,6 +40,7 @@
       if (form.dataset.nchsmMaintenanceGate === '1') return;
       form.dataset.nchsmMaintenanceGate = '1';
       form.addEventListener('submit', function (event) {
+        recordAttempt(form, 'maintenance_blocked');
         event.preventDefault();
         event.stopImmediatePropagation();
         let notice = form.querySelector('[data-nchsm-maintenance-notice]');
