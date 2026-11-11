@@ -2025,7 +2025,7 @@ executeLogin: async function(identifier, password) {
         if (authError) {
             // Persist failed authentication centrally; never send or store the password.
             this.supabase.functions.invoke('record-failed-login', {
-                body: { identifier: String(identifier || '').trim() }
+                body: { identifier: String(identifier || '').trim(), attempt_type: 'invalid_credentials', page_path: window.location.pathname, details: { stage: 'supabase_authentication' } }
             }).then(({ error }) => {
                 if (error) console.warn('Failed-login audit event could not be recorded:', error.message);
             }).catch(error => console.warn('Failed-login audit request failed:', error));
