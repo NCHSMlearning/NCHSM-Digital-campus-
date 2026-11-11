@@ -54,6 +54,19 @@
         notice.textContent = message;
       }, true);
     });
+    if (new URLSearchParams(window.location.search).get('maintenance') === '1') {
+      forms.forEach(function (form) {
+        let notice = form.querySelector('[data-nchsm-maintenance-notice]');
+        if (!notice) {
+          notice = document.createElement('div');
+          notice.dataset.nchsmMaintenanceNotice = '1';
+          notice.setAttribute('role', 'alert');
+          notice.style.cssText = 'margin:12px 0;padding:12px 14px;border:1px solid #f0c36d;border-radius:10px;background:#fff8e7;color:#704b00;font:600 13px/1.45 system-ui,sans-serif;';
+          form.prepend(notice);
+        }
+        notice.textContent = message;
+      });
+    }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
   else install();
