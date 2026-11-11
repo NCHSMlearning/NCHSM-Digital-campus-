@@ -288,6 +288,13 @@
                 });
 
                 if (authError) {
+                    // Record only the attempted identifier; never transmit the password.
+                    supabaseClient.functions.invoke('record-failed-login', {
+                        body: { identifier: String(identifier || '').trim() }
+                    }).then(({ error }) => {
+                        if (error) console.warn('Failed-login audit event could not be recorded:', error.message);
+                    }).catch(error => console.warn('Failed-login audit request failed:', error));
+
                     console.error('❌ Auth error:', authError);
                     showError(authError.message || 'Invalid credentials');
                     loginBtn.disabled = false;
