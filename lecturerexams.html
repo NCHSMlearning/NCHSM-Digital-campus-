@@ -6,6 +6,7 @@
     <title>NCHSM Lecturer Dashboard</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/config.js?v=20261112-force-relogin-1"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -2247,6 +2248,7 @@ window.viewLecturerStudentProgress = async function(studentId, studentName, exam
 
 <script src="/js/exam-coordinator.js?v=1" defer></script>
 <script src="/js/nchsm-mobile-enhancements.js?v=7" defer></script>
+<script src="/js/lecturer-exams-access-audit.js?v=20261112-1" defer></script>
 
 <script>(function(){function updateLecturerClock(){const n=new Date();const e=document.getElementById('lecturerCommandDate');if(e)e.textContent=new Intl.DateTimeFormat('en-KE',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).format(n);}updateLecturerClock();})();</script>
 </body>
