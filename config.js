@@ -194,7 +194,7 @@ if (typeof module !== 'undefined' && module.exports) {
         heading.textContent = 'Session ended';
         heading.style.cssText = 'margin:0 0 12px;color:#10243a;font-size:22px;';
         const body = document.createElement('p');
-        body.textContent = 'System is temporarily disabled. Please try again later.';
+        body.textContent = 'The site has been updated. Please log in again to continue.';
         body.style.cssText = 'margin:0;color:#475569;font-size:15px;line-height:1.6;';
         card.appendChild(heading);
         card.appendChild(body);
@@ -230,7 +230,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 });
             } catch (_) {}
             setTimeout(function () {
-                window.location.replace('/login.html?maintenance=1');
+                window.location.replace('/login.html?updated=1');
             }, 900);
         } catch (error) {
             // Network interruptions must not sign out a valid user.
