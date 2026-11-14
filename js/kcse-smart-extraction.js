@@ -50,7 +50,7 @@
     const data = { name:'', indexNumber:'', school:'', year:'', subjects:[], grades:{}, overallGrade:'', confidence:'review' };
 
     const namePatterns = [
-      /(?:CANDIDATE\s+)?NAME\s*[:\-]?\s*([A-Z][A-Z .'-]{4,})(?=\s+(?:INDEX|SCHOOL|CENTRE|CENTER|YEAR|SEX|GENDER|MEAN|SUBJECT|DATE)\b)/i,
+      /(?:CANDIDATE\s+)?NAME\s*[:\-]?\s*([A-Z][A-Z .'-]{4,})(?=\s+(?:INDEX|SCHOOL|CENTRE|CENTER|YEAR|EXAMINATION|SEX|GENDER|MEAN|SUBJECT|DATE)\b)/i,
       /CANDIDATE\s*[:\-]?\s*([A-Z][A-Z .'-]{4,})(?=\s+(?:INDEX|SCHOOL|CENTRE|YEAR)\b)/i
     ];
     for (const re of namePatterns) {
@@ -64,7 +64,7 @@
     const yearMatch = flat.match(/(?:EXAMINATION\s+)?YEAR\s*[:\-]?\s*(20\d{2})/i) || flat.match(/\b(20\d{2})\b/);
     if (yearMatch) data.year = yearMatch[1];
 
-    const schoolMatch = flat.match(/(?:SCHOOL|CENTRE|CENTER)\s*(?:NAME)?\s*[:\-]?\s*([A-Z0-9 &'().-]{3,}?)(?=\s+(?:INDEX|CANDIDATE|YEAR|SEX|GENDER|MEAN|SUBJECT|DATE)\b)/i);
+    const schoolMatch = flat.match(/(?:SCHOOL|CENTRE|CENTER)\s*(?:NAME)?\s*[:\-]?\s*([A-Z0-9 &'().-]{3,}?)(?=\s+(?:INDEX|CANDIDATE|YEAR|EXAMINATION|SEX|GENDER|MEAN|SUBJECT|DATE)\b)/i);
     if (schoolMatch) data.school = schoolMatch[1].trim();
 
     const meanMatch = flat.match(/(?:MEAN\s+GRADE|OVERALL\s+GRADE|AGGREGATE\s+GRADE)\s*[:\-]?\s*([A-E]\s*[+\-]?)/i);
