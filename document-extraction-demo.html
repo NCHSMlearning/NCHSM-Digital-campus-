@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NCHSM | ID & KCSE Extraction Demo</title>
+<meta name="description" content="NCHSM document extraction demo for Kenyan National ID and KCSE certificates.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#102b4e;--navy2:#173e68;--teal:#0f9b91;--gold:#e7b33e;--ink:#172b43;--muted:#718096;--line:#e4eaf0;--paper:#f4f7fa;--white:#fff;--green:#16845b;--red:#c23e4b}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);font-family:"DM Sans",Arial,sans-serif;color:var(--ink)}
+.top{background:linear-gradient(120deg,#102b4e,#174c70);color:#fff;padding:25px 20px 52px}.top-inner{max-width:1050px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:43px;height:43px;border-radius:12px;background:#fff;color:var(--navy);display:grid;place-items:center;font-weight:900;font-size:17px}.brand strong{display:block;font-size:15px;letter-spacing:.04em}.brand small{display:block;color:#c8d8e7;font-size:11px;margin-top:3px}.demo-pill{border:1px solid #ffffff55;border-radius:30px;padding:7px 11px;font-size:11px;color:#e4eef6}
+main{max-width:940px;margin:-30px auto 55px;padding:0 18px}.intro{margin-bottom:19px;color:#fff}.intro h1{font-size:clamp(23px,4vw,32px);margin:0 0 7px;letter-spacing:-.04em}.intro p{margin:0;color:#d5e1ec;font-size:13px}
+.workspace{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 14px 40px #102b4e12;overflow:hidden}.tabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);padding:8px;gap:8px;background:#fbfcfd}.tab{border:0;background:transparent;border-radius:11px;padding:13px 10px;font:700 14px inherit;color:#62748a;cursor:pointer}.tab.active{background:var(--navy);color:#fff;box-shadow:0 4px 12px #102b4e24}.tab span{display:block;font-size:10px;font-weight:500;opacity:.8;margin-top:3px}
+.panel{padding:22px;display:none}.panel.active{display:block}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:17px}.section-head h2{font-size:18px;margin:0 0 4px;color:var(--navy)}.section-head p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}.privacy{font-size:10px;color:#42725f;background:#edf8f2;border:1px solid #d5eee0;padding:7px 9px;border-radius:8px;white-space:nowrap}
+.upload{border:1.5px dashed #b8c8d8;border-radius:14px;background:#f9fbfd;padding:24px 16px;text-align:center;cursor:pointer;transition:.2s}.upload:hover,.upload.drag{border-color:var(--teal);background:#f1fbfa}.upload .ico{width:42px;height:42px;border-radius:12px;background:#e7f4f3;color:#0a8179;display:grid;place-items:center;margin:0 auto 10px;font-size:20px}.upload strong{display:block;color:var(--navy);font-size:13px}.upload small{display:block;color:var(--muted);font-size:11px;margin-top:5px}.upload input{display:none}.fileline{font-size:11px;color:var(--muted);margin-top:9px;min-height:15px}
+.actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:13px}.btn{border:0;border-radius:9px;padding:11px 16px;font:700 12px inherit;cursor:pointer}.btn.primary{background:var(--teal);color:#fff}.btn.secondary{background:#edf2f7;color:#40556c}.btn:disabled{opacity:.45;cursor:not-allowed}
+.status{margin-top:12px;font-size:12px;color:var(--muted);min-height:18px}.progress{height:6px;border-radius:20px;background:#edf1f5;overflow:hidden;margin-top:7px;display:none}.progress>div{height:100%;width:0;background:var(--teal);transition:width .2s}
+.results{display:none;margin-top:22px;border-top:1px solid var(--line);padding-top:19px}.results.show{display:block}.results-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}.results-head h3{margin:0;font-size:15px;color:var(--navy)}.review{font-size:9px;font-weight:800;letter-spacing:.08em;color:#936a12;background:#fff6df;border:1px solid #f2dfad;border-radius:30px;padding:6px 9px}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field label{display:block;font-size:10px;font-weight:700;color:#53667c;margin-bottom:5px}.field input,.field select{width:100%;border:1px solid #dce4ec;border-radius:8px;padding:10px 11px;font:500 12px inherit;color:var(--ink);background:#fff;outline:none}.field input:focus,.field select:focus{border-color:var(--teal);box-shadow:0 0 0 3px #0f9b9118}.full{grid-column:1/-1}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin-top:14px}.subjects{width:100%;border-collapse:collapse;min-width:310px}.subjects th{text-align:left;background:#f6f8fa;color:#607186;font-size:10px;padding:10px}.subjects td{padding:7px 9px;border-top:1px solid #edf1f4}.subjects input,.subjects select{width:100%;padding:8px;border:1px solid #dce4ec;border-radius:7px;font:12px inherit}
+.addrow{margin-top:9px;border:1px solid #d7e4e8;color:#137f78;background:#f1fbfa;padding:8px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer}
+.notice{font-size:10px;color:#68798d;line-height:1.6;margin-top:12px;background:#f6f8fa;padding:10px 12px;border-radius:9px}.success{color:var(--green)!important}.error{color:var(--red)!important}
+.footer{text-align:center;color:#8190a1;font-size:10px;margin:18px 0}.hidden{display:none!important}
+@media(max-width:600px){.top{padding:19px 16px 48px}.top-inner{align-items:flex-start}.demo-pill{font-size:9px}.panel{padding:16px}.section-head{display:block}.privacy{display:inline-block;margin-top:9px}.fields{grid-template-columns:1fr}.full{grid-column:auto}.tab{font-size:12px}.upload{padding:21px 12px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-inner"><div class="brand"><div class="brand-mark">N</div><div><strong>NCHSM</strong><small>DOCUMENT EXTRACTION LAB</small></div></div><div class="demo-pill">STANDALONE DEMO · NOT LIVE ADMISSIONS</div></div></header>
+<main>
+<div class="intro"><h1>Document extraction</h1><p>Upload a National ID or KCSE certificate. Review the extracted information before using it.</p></div>
+<section class="workspace">
+<nav class="tabs" aria-label="Document type">
+<button class="tab active" data-tab="id">National ID<span>Personal details extraction</span></button>
+<button class="tab" data-tab="kcse">KCSE Certificate<span>Academic results extraction</span></button>
+</nav>
+<section class="panel active" id="panel-id">
+<div class="section-head"><div><h2>National ID extraction</h2><p>Upload a clear image or PDF of the front of the Kenyan National ID.</p></div><span class="privacy">Processed in this browser</span></div>
+<label class="upload" id="drop-id" for="file-id"><span class="ico">▧</span><strong>Choose National ID document</strong><small>JPG, PNG or PDF · Maximum 12 MB</small><input id="file-id" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"></label>
+<div class="fileline" id="file-name-id">No document selected</div>
+<div class="actions"><button class="btn primary" id="scan-id" disabled>Extract ID details</button><button class="btn secondary" id="clear-id">Clear</button></div>
+<div class="status" id="status-id" aria-live="polite"></div><div class="progress" id="progress-id"><div></div></div>
+<div class="results" id="results-id"><div class="results-head"><h3>Extracted ID information</h3><span class="review">PLEASE VERIFY</span></div>
+<div class="fields">
+<div class="field full"><label for="id-name">Full name</label><input id="id-name" autocomplete="off"></div>
+<div class="field"><label for="id-number">National ID number</label><input id="id-number" inputmode="numeric"></div>
+<div class="field"><label for="id-dob">Date of birth (as printed)</label><input id="id-dob" placeholder="DD/MM/YYYY"></div>
+<div class="field"><label for="id-sex">Sex (if detected)</label><input id="id-sex"></div>
+<div class="field"><label for="id-serial">Serial / document number (if detected)</label><input id="id-serial"></div>
+</div><div class="notice">OCR can misread letters and numbers. Compare every value with the original ID. This demo does not authenticate an ID or verify it against government records.</div>
+<div class="actions"><button class="btn secondary" id="copy-id">Copy extracted details</button></div></div>
+</section>
+<section class="panel" id="panel-kcse">
+<div class="section-head"><div><h2>KCSE certificate extraction</h2><p>Upload a clear certificate or result slip. The demo scans up to three PDF pages.</p></div><span class="privacy">Processed in this browser</span></div>
+<label class="upload" id="drop-kcse" for="file-kcse"><span class="ico">▤</span><strong>Choose KCSE document</strong><small>JPG, PNG or PDF · Maximum 12 MB</small><input id="file-kcse" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"></label>
+<div class="fileline" id="file-name-kcse">No document selected</div>
+<div class="actions"><button class="btn primary" id="scan-kcse" disabled>Extract KCSE results</button><button class="btn secondary" id="clear-kcse">Clear</button></div>
+<div class="status" id="status-kcse" aria-live="polite"></div><div class="progress" id="progress-kcse"><div></div></div>
+<div class="results" id="results-kcse"><div class="results-head"><h3>Extracted KCSE information</h3><span class="review">PLEASE VERIFY</span></div>
+<div class="fields">
+<div class="field full"><label for="kcse-name">Candidate name</label><input id="kcse-name"></div>
+<div class="field"><label for="kcse-index">Index number</label><input id="kcse-index" inputmode="numeric"></div>
+<div class="field"><label for="kcse-school">School / examination centre</label><input id="kcse-school"></div>
+<div class="field"><label for="kcse-year">Examination year</label><input id="kcse-year" inputmode="numeric"></div>
+<div class="field"><label for="kcse-mean">Official mean grade</label><select id="kcse-mean"><option value="">Not detected / select manually</option><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option><option>C+</option><option>C</option><option>C-</option><option>D+</option><option>D</option><option>D-</option><option>E</option></select></div>
+</div>
+<div class="table-wrap"><table class="subjects"><thead><tr><th>SUBJECT</th><th style="width:120px">GRADE</th><th style="width:44px"></th></tr></thead><tbody id="kcse-subject-rows"><tr><td colspan="3" style="font-size:11px;color:#8290a0">No subjects extracted yet.</td></tr></tbody></table></div>
+<button class="addrow" id="add-subject" type="button">+ Add subject</button>
+<div class="notice">The official mean grade is read from the document where possible. It is not calculated by averaging the visible subject grades. OCR results must be checked against the original certificate.</div>
+<div class="actions"><button class="btn secondary" id="copy-kcse">Copy extracted details</button></div></div>
+</section>
+</section>
+<div class="footer">Nakuru College of Health Science & Management · Extraction prototype</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const gradeOptions=['A','A-','B+','B','B-','C+','C','C-','D+','D','D-','E'];
+let files={id:null,kcse:null};
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
+ document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===btn));
+ document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id==='panel-'+btn.dataset.tab));
+}));
+function setStatus(type,msg,kind){$('status-'+type).textContent=msg;$('status-'+type).className='status '+(kind||'');}
+function setProgress(type,p){const el=$('progress-'+type);el.style.display=p===null?'none':'block';if(p!==null)el.firstElementChild.style.width=Math.round(p*100)+'%';}
+function choose(type,file){
+ if(!file)return;
+ const allowed=['image/jpeg','image/png','application/pdf'];
+ if(!allowed.includes(file.type)){setStatus(type,'Please select a JPG, PNG or PDF file.','error');return;}
+ if(file.size>12*1024*1024){setStatus(type,'File exceeds the 12 MB limit.','error');return;}
+ files[type]=file;$('file-name-'+type).textContent=file.name+' · '+(file.size/1024/1024).toFixed(2)+' MB';
+ $('scan-'+type).disabled=false;setStatus(type,'Document ready to scan.');$('results-'+type).classList.remove('show');
+}
+['id','kcse'].forEach(type=>{
+ $('file-'+type).addEventListener('change',e=>choose(type,e.target.files[0]));
+ const drop=$('drop-'+type);
+ ['dragenter','dragover'].forEach(evt=>drop.addEventListener(evt,e=>{e.preventDefault();drop.classList.add('drag');}));
+ ['dragleave','drop'].forEach(evt=>drop.addEventListener(evt,e=>{e.preventDefault();drop.classList.remove('drag');}));
+ drop.addEventListener('drop',e=>choose(type,e.dataTransfer.files[0]));
+});
+async function filePages(file,type){
+ if(file.type!=='application/pdf')return [{data:file,name:file.name}];
+ if(!window.pdfjsLib)throw new Error('PDF reader could not load. Try a JPG or PNG image.');
+ const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+ const max=Math.min(pdf.numPages,type==='kcse'?3:1),pages=[];
+ for(let n=1;n<=max;n++){
+  setStatus(type,'Preparing PDF page '+n+' of '+max+'…');
+  const page=await pdf.getPage(n),viewport=page.getViewport({scale:2.1});
+  const canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;
+  await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+  pages.push({data:canvas.toDataURL('image/png'),name:'Page '+n});
+ }
+ return pages;
+}
+async function runOCR(type){
+ const file=files[type];if(!file)return;
+ $('scan-'+type).disabled=true;$('results-'+type).classList.remove('show');setProgress(type,0);
+ try{
+  if(!window.Tesseract)throw new Error('OCR engine could not load. Refresh the page and try again.');
+  const pages=await filePages(file,type);let allText='';
+  const worker=await Tesseract.createWorker('eng',1,{logger:m=>{
+   if(m.status==='recognizing text'){const p=(m.progress||0);setProgress(type,p);setStatus(type,'Reading '+(type==='kcse'?'KCSE':'ID')+' document… '+Math.round(p*100)+'%');}
+  }});
+  try{
+   for(let i=0;i<pages.length;i++){
+    setStatus(type,'Extracting text from '+pages[i].name+'…');
+    const result=await worker.recognize(pages[i].data);
+    allText+='\\n'+result.data.text;
+    setProgress(type,(i+1)/pages.length);
+   }
+  }finally{await worker.terminate();}
+  if(!allText.trim())throw new Error('No readable text found. Upload a sharper, well-lit image.');
+  type==='id'?renderID(parseID(allText)):renderKCSE(parseKCSE(allText));
+  $('results-'+type).classList.add('show');setStatus(type,'Extraction complete. Review and correct the highlighted information before use.','success');
+ }catch(err){console.error(err);setStatus(type,err.message||'Extraction failed. Please try another image.','error');}
+ finally{$('scan-'+type).disabled=!files[type];setProgress(type,null);}
+}
+$('scan-id').addEventListener('click',()=>runOCR('id'));$('scan-kcse').addEventListener('click',()=>runOCR('kcse'));
+function clean(s){return String(s||'').replace(/\\s+/g,' ').trim();}
+function capture(text,patterns){for(const re of patterns){const m=text.match(re);if(m&&m[1])return clean(m[1]).replace(/[|]/g,'I');}return '';}
+function parseID(text){
+ const t=clean(text).toUpperCase();
+ let number=capture(t,[/(?:IDENTITY\\s+CARD|ID\\s*(?:NO|NUMBER)|SERIAL\\s*NO)\\s*[:#-]?\\s*(\\d{6,9})/i,/(?:^|\\s)(\\d{7,9})(?=\\s|$)/]);
+ let dob=capture(t,[/(?:DATE\\s+OF\\s+BIRTH|D\\.O\\.B|DOB|BIRTH)\\s*[:#-]?\\s*(\\d{1,2}[/. -]\\d{1,2}[/. -]\\d{2,4})/i]);
+ let name=capture(t,[/(?:FULL\\s+NAMES?|NAME)\\s*[:#-]?\\s*([A-Z][A-Z .'-]{4,}?)(?=\\s+(?:ID|IDENTITY|SERIAL|SEX|DATE|D\\.O\\.B|DOB|DISTRICT|PLACE|HOLDER)\\b)/i]);
+ if(!name){const lines=text.split(/\\n/).map(clean).filter(x=>x.length>5);const candidate=lines.find(x=>/^[A-Z][A-Z .'-]{5,}$/.test(x.toUpperCase())&&!/REPUBLIC|KENYA|IDENTITY|NATIONAL|SERIAL|DISTRICT|HOLDER|BIRTH/.test(x.toUpperCase()));if(candidate)name=clean(candidate);}
+ const sex=capture(t,[/(?:SEX|GENDER)\\s*[:#-]?\\s*(MALE|FEMALE|M|F)\\b/i]);
+ const serial=capture(t,[/(?:SERIAL\\s*(?:NO|NUMBER)?|CARD\\s*NO)\\s*[:#-]?\\s*(\\d{5,12})/i]);
+ return {name,number,dob,sex,serial};
+}
+function renderID(d){$('id-name').value=d.name;$('id-number').value=d.number;$('id-dob').value=d.dob;$('id-sex').value=d.sex;$('id-serial').value=d.serial;}
+const subjects=[
+ ['101','English',['ENGLISH']],['102','Kiswahili',['KISWAHILI','KISW']],['121','Mathematics',['MATHEMATICS','MATHS']],
+ ['231','Biology',['BIOLOGY','BIO']],['232','Physics',['PHYSICS','PHYS']],['233','Chemistry',['CHEMISTRY','CHEM']],
+ ['311','History and Government',['HISTORY AND GOVERNMENT','HISTORY']],['312','Geography',['GEOGRAPHY']],
+ ['313','Christian Religious Education',['CHRISTIAN RELIGIOUS EDUCATION','CRE']],['314','Islamic Religious Education',['ISLAMIC RELIGIOUS EDUCATION','IRE']],
+ ['443','Agriculture',['AGRICULTURE']],['444','Home Science',['HOME SCIENCE']],['565','Business Studies',['BUSINESS STUDIES','BUSINESS']],
+ ['451','Computer Studies',['COMPUTER STUDIES','COMPUTER']],['501','French',['FRENCH']],['502','German',['GERMAN']],['503','Arabic',['ARABIC']]
+];
+const gradeRe='(A\\\\s*[+-]?|B\\\\s*[+-]?|C\\\\s*[+-]?|D\\\\s*[+-]?|E)';
+function normGrade(g){return clean(g).replace(/\\s/g,'').toUpperCase();}
+function parseKCSE(text){
+ const t=String(text||'').replace(/\\r/g,'\\n'),flat=clean(t).toUpperCase();
+ const data={
+  name:capture(flat,[/(?:CANDIDATE\\s+)?NAME\\s*[:#-]?\\s*([A-Z][A-Z .'-]{4,}?)(?=\\s+(?:INDEX|SCHOOL|CENTRE|CENTER|YEAR|SEX|MEAN|SUBJECT|DATE)\\b)/i]),
+  index:capture(flat,[/(?:INDEX\\s*(?:NO|NUMBER)?|CANDIDATE\\s*NO)\\s*[:#-]?\\s*(\\d{8,12})/i]),
+  school:capture(flat,[/(?:SCHOOL|CENTRE|CENTER)\\s*(?:NAME)?\\s*[:#-]?\\s*([A-Z0-9 &'().-]{3,}?)(?=\\s+(?:INDEX|CANDIDATE|YEAR|EXAMINATION|SEX|MEAN|SUBJECT|DATE)\\b)/i]),
+  year:capture(flat,[/(?:EXAMINATION\\s+)?YEAR\\s*[:#-]?\\s*(20\\d{2})/i]) ,
+  mean:normGrade(capture(flat,[/(?:MEAN\\s+GRADE|OVERALL\\s+GRADE|AGGREGATE\\s+GRADE)\\s*[:#-]?\\s*([A-E]\\s*[+-]?)/i])),
+  rows:[]
+ };
+ const lines=t.split('\\n').map(clean).filter(Boolean),seen=new Set();
+ for(const line of lines){
+  const upper=line.toUpperCase();let match=null;
+  const code=upper.match(/\\b(\\d{3})\\b/);
+  if(code){const item=subjects.find(s=>s[0]===code[1]);if(item){const g=upper.match(new RegExp(gradeRe+'(?![A-Z0-9])','i'));if(g)match={name:item[1],grade:normGrade(g[1])};}}
+  if(!match){
+   for(const item of subjects){for(const alias of item[2]){
+    const escaped=alias.replace(/[.*+?^\${}()|[\\]\\\\]/g,'\\\\$&');
+    if(new RegExp('(?:^|[^A-Z])'+escaped+'(?:[^A-Z]|$)','i').test(upper)){
+     const g=upper.match(new RegExp(gradeRe+'(?![A-Z0-9])','i'));if(g)match={name:item[1],grade:normGrade(g[1])};break;
+    }
+   }if(match)break;}
+  }
+  if(match&&!seen.has(match.name)){seen.add(match.name);data.rows.push(match);}
+ }
+ if(!data.year){const y=flat.match(/\\b(20\\d{2})\\b/);if(y)data.year=y[1];}
+ return data;
+}
+function renderKCSE(d){
+ $('kcse-name').value=d.name;$('kcse-index').value=d.index;$('kcse-school').value=d.school;$('kcse-year').value=d.year;$('kcse-mean').value=d.mean;
+ $('kcse-subject-rows').innerHTML='';
+ if(!d.rows.length){addRow('','');}else d.rows.forEach(r=>addRow(r.name,r.grade));
+}
+function addRow(name,grade){
+ const body=$('kcse-subject-rows');if(body.children.length===1&&body.querySelector('td[colspan]'))body.innerHTML='';
+ const tr=document.createElement('tr');
+ const td1=document.createElement('td'),input=document.createElement('input');input.value=name;input.placeholder='Subject name';input.className='subject-name';td1.appendChild(input);
+ const td2=document.createElement('td'),select=document.createElement('select');select.className='subject-grade';
+ const blank=document.createElement('option');blank.value='';blank.textContent='Select';select.appendChild(blank);
+ gradeOptions.forEach(g=>{const o=document.createElement('option');o.value=g;o.textContent=g;if(g===grade)o.selected=true;select.appendChild(o);});td2.appendChild(select);
+ const td3=document.createElement('td'),del=document.createElement('button');del.type='button';del.textContent='×';del.setAttribute('aria-label','Remove subject');del.style.cssText='border:0;background:#fff0f0;color:#b53d48;border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:17px';del.addEventListener('click',()=>tr.remove());td3.appendChild(del);
+ tr.append(td1,td2,td3);body.appendChild(tr);
+}
+$('add-subject').addEventListener('click',()=>addRow('',''));
+function collect(type){
+ if(type==='id')return {'Full name':$('id-name').value,'National ID number':$('id-number').value,'Date of birth':$('id-dob').value,'Sex':$('id-sex').value,'Serial number':$('id-serial').value};
+ return {'Candidate name':$('kcse-name').value,'Index number':$('kcse-index').value,'School':$('kcse-school').value,'Examination year':$('kcse-year').value,'Official mean grade':$('kcse-mean').value,'Subjects':Array.from(document.querySelectorAll('#kcse-subject-rows tr')).map(tr=>({subject:tr.querySelector('.subject-name')?.value||'',grade:tr.querySelector('.subject-grade')?.value||''})).filter(x=>x.subject||x.grade)};
+}
+function copy(type){const obj=collect(type);const text=Object.entries(obj).map(([k,v])=>k+': '+(Array.isArray(v)?v.map(x=>x.subject+' '+x.grade).join(', '):v)).join('\\n');if(navigator.clipboard?.writeText){navigator.clipboard.writeText(text).then(()=>setStatus(type,'Extracted details copied.','success')).catch(()=>setStatus(type,'Copy unavailable in this browser.'));}else setStatus(type,'Copy unavailable in this browser.');}
+$('copy-id').addEventListener('click',()=>copy('id'));$('copy-kcse').addEventListener('click',()=>copy('kcse'));
+function clear(type){
+ files[type]=null;$('file-'+type).value='';$('file-name-'+type).textContent='No document selected';$('scan-'+type).disabled=true;$('results-'+type).classList.remove('show');setStatus(type,'');setProgress(type,null);
+ if(type==='id')['id-name','id-number','id-dob','id-sex','id-serial'].forEach(id=>$(id).value='');
+ else {['kcse-name','kcse-index','kcse-school','kcse-year'].forEach(id=>$(id).value='');$('kcse-mean').value='';$('kcse-subject-rows').innerHTML='<tr><td colspan="3" style="font-size:11px;color:#8290a0">No subjects extracted yet.</td></tr>';}
+}
+$('clear-id').addEventListener('click',()=>clear('id'));$('clear-kcse').addEventListener('click',()=>clear('kcse'));
+})();
+</script>
+</body>
+</html>
