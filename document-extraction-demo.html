@@ -24,6 +24,68 @@ main{max-width:940px;margin:-30px auto 55px;padding:0 18px}.intro{margin-bottom:
 .notice{font-size:10px;color:#68798d;line-height:1.6;margin-top:12px;background:#f6f8fa;padding:10px 12px;border-radius:9px}.success{color:var(--green)!important}.error{color:var(--red)!important}
 .footer{text-align:center;color:#8190a1;font-size:10px;margin:18px 0}.hidden{display:none!important}
 @media(max-width:600px){.top{padding:19px 16px 48px}.top-inner{align-items:flex-start}.demo-pill{font-size:9px}.panel{padding:16px}.section-head{display:block}.privacy{display:inline-block;margin-top:9px}.fields{grid-template-columns:1fr}.full{grid-column:auto}.tab{font-size:12px}.upload{padding:21px 12px}}
+
+/* Premium responsive refresh */
+:root{--navy:#092b4a;--navy2:#10466b;--teal:#079b91;--gold:#e8b64b;--paper:#eef3f7;--ink:#132d46;--muted:#6d7f91;--line:#e1e9ef}
+body{background:radial-gradient(circle at 12% 8%,#dcefeb 0,transparent 27%),linear-gradient(180deg,#0b3558 0,#123f60 260px,#eef3f7 260px);min-height:100vh}
+.top{background:linear-gradient(120deg,#082744 0%,#104a70 62%,#087e80 100%);padding:27px 22px 66px;position:relative;overflow:hidden}
+.top:after{content:"";position:absolute;width:340px;height:340px;border:1px solid #ffffff18;border-radius:50%;right:-110px;top:-220px;box-shadow:0 0 0 35px #ffffff08,0 0 0 75px #ffffff05}
+.top-inner{position:relative;z-index:1}
+.brand-mark{width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,#fff,#dcecf0);box-shadow:0 8px 20px #001b323d}
+.brand strong{font-size:16px;letter-spacing:.1em}.brand small{letter-spacing:.14em;font-size:9px}
+.demo-pill{background:#ffffff12;backdrop-filter:blur(8px);border-color:#ffffff36;padding:9px 13px}
+main{max-width:900px;margin:-43px auto 60px;position:relative;z-index:2}
+.intro{padding:0 5px 22px}.intro h1{font-size:clamp(28px,5vw,39px);font-weight:800;letter-spacing:-.055em;text-shadow:0 2px 12px #001b3230}.intro p{font-size:14px;max-width:600px;line-height:1.6;color:#e0ebf2}
+.workspace{border:1px solid #e0e8ee;border-radius:22px;box-shadow:0 24px 70px #092b4a20;overflow:hidden}
+.tabs{padding:11px;background:#f7fafc;gap:10px}
+.tab{padding:15px 12px;border-radius:13px;font-family:inherit;font-size:14px;transition:all .2s}
+.tab.active{background:linear-gradient(135deg,#0b3153,#155878);box-shadow:0 7px 18px #0b31532c}
+.tab span{font-size:10px;letter-spacing:.02em;margin-top:5px}
+.panel{padding:clamp(18px,4vw,32px)}
+.section-head{align-items:center;margin-bottom:20px}
+.section-head h2{font-size:21px;letter-spacing:-.03em}
+.section-head p{font-size:13px;line-height:1.65;max-width:520px}
+.privacy{font-size:10px;font-weight:700;letter-spacing:.02em;border-radius:30px;padding:9px 12px}
+.upload{display:block;border:1.5px dashed #a8c2d0;border-radius:17px;background:linear-gradient(145deg,#f9fcfd,#f2f8fa);padding:30px 18px;transition:transform .2s,border-color .2s,box-shadow .2s}
+.upload:hover,.upload.drag{border-color:var(--teal);background:#effaf8;box-shadow:0 10px 26px #079b9112;transform:translateY(-1px)}
+.upload .ico{width:54px;height:54px;border-radius:17px;background:linear-gradient(145deg,#dff4f0,#eaf2fb);font-size:25px;margin-bottom:13px}
+.upload strong{font-size:15px;letter-spacing:-.02em}.upload small{font-size:12px;margin-top:7px}
+.fileline{margin-top:11px;padding:0 3px;font-size:12px;overflow-wrap:anywhere}
+.actions{gap:10px;margin-top:16px}
+.btn{font-family:inherit;font-size:13px;padding:13px 18px;border-radius:11px;transition:transform .18s,box-shadow .18s}
+.btn:not(:disabled):active{transform:scale(.98)}
+.btn.primary{background:linear-gradient(135deg,#079b91,#087e7a);box-shadow:0 6px 15px #079b912b}
+.btn.primary:hover{box-shadow:0 9px 22px #079b913d;transform:translateY(-1px)}
+.btn.secondary{background:#edf2f6;border:1px solid #e2e9ef}
+.status{font-size:13px;line-height:1.5;margin-top:14px}
+.progress{height:8px;border-radius:20px;background:#e8eef2;margin-top:10px}
+.progress>div{border-radius:20px;background:linear-gradient(90deg,#079b91,#42c4ae)}
+.results{margin-top:25px;padding-top:24px;border-top:1px solid #e6edf1}
+.results-head{margin-bottom:19px}.results-head h3{font-size:19px;letter-spacing:-.025em}
+.review{font-size:10px;padding:8px 12px}
+.fields{gap:16px}
+.field label{font-size:11px;margin-bottom:7px;color:#435a70}
+.field input,.field select{min-height:47px;padding:12px 13px;border-radius:11px;font-family:inherit;font-size:14px;box-shadow:0 1px 2px #102b4e06}
+.field input:focus,.field select:focus{box-shadow:0 0 0 4px #0f9b9118}
+.table-wrap{border-radius:13px;margin-top:19px}
+.subjects th{font-size:11px;padding:13px}.subjects td{padding:9px}
+.subjects input,.subjects select{min-height:43px;font-family:inherit;font-size:13px;border-radius:9px}
+.addrow{font-family:inherit;font-size:12px;padding:10px 14px;border-radius:10px;margin-top:12px}
+.notice{font-size:11px;padding:14px 15px;border:1px solid #e8edf1;border-radius:12px;line-height:1.65}
+.footer{font-size:11px;color:#71869a;margin:23px 0}
+@media(max-width:600px){
+ body{background:linear-gradient(180deg,#0b3558 0,#123f60 245px,#eef3f7 245px)}
+ .top{padding:18px 16px 57px}.top-inner{align-items:center}.demo-pill{max-width:145px;text-align:center;white-space:normal;line-height:1.4;font-size:8px}
+ main{margin:-38px auto 35px;padding:0 12px}
+ .intro{padding:0 5px 17px}.intro h1{font-size:28px}.intro p{font-size:12px}
+ .workspace{border-radius:17px}.tabs{padding:8px;gap:6px}.tab{padding:12px 7px;font-size:12px}.tab span{font-size:9px}
+ .panel{padding:17px 15px}.section-head{display:flex;align-items:flex-start;gap:9px}.section-head h2{font-size:18px}.section-head p{font-size:12px}
+ .privacy{font-size:9px;padding:7px 8px;white-space:normal;text-align:center;max-width:112px}
+ .upload{padding:25px 12px}.upload strong{font-size:14px}.upload small{font-size:11px}
+ .actions .btn{flex:1;min-width:130px}.fields{grid-template-columns:1fr;gap:13px}.full{grid-column:auto}
+ .results-head h3{font-size:17px}.review{font-size:9px}
+}
+
 </style>
 </head>
 <body>
@@ -52,7 +114,7 @@ main{max-width:940px;margin:-30px auto 55px;padding:0 18px}.intro{margin-bottom:
 <div class="actions"><button class="btn secondary" id="copy-id">Copy extracted details</button></div></div>
 </section>
 <section class="panel" id="panel-kcse">
-<div class="section-head"><div><h2>KCSE certificate extraction</h2><p>Upload a clear certificate or result slip. The demo scans up to three PDF pages.</p></div><span class="privacy">Processed in this browser</span></div>
+<div class="section-head"><div><h2>KCSE certificate extraction</h2><p>Upload a clear certificate or result slip. PDF text and up to 20 pages are scanned.</p></div><span class="privacy">Processed in this browser</span></div>
 <label class="upload" id="drop-kcse" for="file-kcse"><span class="ico">▤</span><strong>Choose KCSE document</strong><small>JPG, PNG or PDF · Maximum 12 MB</small><input id="file-kcse" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"></label>
 <div class="fileline" id="file-name-kcse">No document selected</div>
 <div class="actions"><button class="btn primary" id="scan-kcse" disabled>Extract KCSE results</button><button class="btn secondary" id="clear-kcse">Clear</button></div>
