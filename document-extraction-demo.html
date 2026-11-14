@@ -117,6 +117,20 @@ async function filePages(file,type){
  }
  return pages;
 }
+async function enhancedImage(dataUrl){
+ const img=new Image();
+ await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=dataUrl;});
+ const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+ const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
+ const frame=ctx.getImageData(0,0,canvas.width,canvas.height),px=frame.data;
+ for(let i=0;i<px.length;i+=4){
+  const gray=0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
+  const contrast=Math.max(0,Math.min(255,(gray-128)*1.55+128));
+  const value=contrast>174?255:contrast<105?0:contrast;
+  px[i]=px[i+1]=px[i+2]=value;
+ }
+ ctx.putImageData(frame,0,0);return canvas.toDataURL('image/png');
+}
 async function runOCR(type){
  const file=files[type];if(!file)return;
  $('scan-'+type).disabled=true;$('results-'+type).classList.remove('show');setProgress(type,0);
@@ -128,29 +142,28 @@ async function runOCR(type){
   }});
   try{
    for(let i=0;i<pages.length;i++){
-    setStatus(type,'Reading '+pages[i].name+' (layout scan 1 of 2)…');
-    await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});
-    const standard=await worker.recognize(pages[i].data);
-    setStatus(type,'Reading '+pages[i].name+' (layout scan 2 of 2)…');
-    await worker.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'});
-    const sparse=await worker.recognize(pages[i].data);
-    allText+='\n'+(standard.data.text||'')+'\n'+(sparse.data.text||'');
+    const enhanced=await enhancedImage(pages[i].data);
+    const passes=[{image:pages[i].data,mode:'6',label:'original layout'},{image:enhanced,mode:'6',label:'enhanced text'},{image:enhanced,mode:'11',label:'sparse layout'}];
+    for(let p=0;p<passes.length;p++){
+     setStatus(type,'Reading '+pages[i].name+' ('+passes[p].label+')…');
+     await worker.setParameters({tessedit_pageseg_mode:passes[p].mode,preserve_interword_spaces:'1'});
+     const result=await worker.recognize(passes[p].image);
+     allText+='\n'+(result.data.text||'');
+    }
     setProgress(type,(i+1)/pages.length);
    }
   }finally{await worker.terminate();}
   if(!allText.trim())throw new Error('No readable text found. Upload a sharper, well-lit image.');
   if(type==='id'){
-   const extracted=parseID(allText);
-   renderID(extracted);
+   const extracted=parseID(allText);renderID(extracted);
    const count=Object.values(extracted).filter(Boolean).length;
    $('results-id').classList.add('show');
    setStatus('id',count?'Read '+count+' possible ID field(s). Verify every value against the original ID.':'Text was read, but no ID fields were recognized. Try a clearer, straight-on image.',count?'success':'error');
   }else{
-   const extracted=parseKCSE(allText);
-   renderKCSE(extracted);
+   const extracted=parseKCSE(allText);renderKCSE(extracted);
    const count=[extracted.name,extracted.index,extracted.school,extracted.year,extracted.mean].filter(Boolean).length+extracted.rows.length;
    $('results-kcse').classList.add('show');
-   setStatus('kcse',count?'Read '+count+' possible KCSE item(s). Verify every value against the original certificate.':'Text was read, but no KCSE details or subject grades were recognized. Try a sharper scan with the full certificate visible.',count?'success':'error');
+   setStatus('kcse',count>=3?'Read '+count+' possible KCSE item(s). Verify every value against the original certificate.':count?'Only '+count+' possible KCSE item(s) were recognized. This is an incomplete extraction; check the document quality or enter the missing details manually.':'No reliable KCSE details were recognized. Try a sharper scan with the full certificate visible.',count>=3?'success':'error');
   }
  }catch(err){console.error(err);setStatus(type,err.message||'Extraction failed. Please try another image.','error');}
  finally{$('scan-'+type).disabled=!files[type];setProgress(type,null);}
@@ -248,6 +261,11 @@ function parseKCSE(text){
   const s=lines.find(x=>/\b(SCHOOL|SECONDARY|ACADEMY|HIGH SCHOOL)\b/i.test(x)&&x.length>5);
   if(s)data.school=s.replace(/^(?:SCHOOL|CENTRE|CENTER)\s*[:#-]?\s*/i,'');
  }
+ // Reject obvious OCR noise rather than presenting it as a candidate name.
+ const nameWords=String(data.name||'').trim().split(/\s+/).filter(Boolean);
+ if(nameWords.length<2||nameWords.some(w=>w.length<2)||!/^[A-Z][A-Z .,'-]+$/i.test(data.name))data.name='';
+ if(data.index&&!/^\d{8,12}$/.test(data.index))data.index='';
+ if(data.school&&data.school.length<5)data.school='';
  return data;
 }
 function renderKCSE(d){
