@@ -104,16 +104,21 @@ function choose(type,file){
  drop.addEventListener('drop',e=>choose(type,e.dataTransfer.files[0]));
 });
 async function filePages(file,type){
- if(file.type!=='application/pdf')return [{data:file,name:file.name}];
+ if(file.type!=='application/pdf')return [{data:file,name:file.name,pdfText:''}];
  if(!window.pdfjsLib)throw new Error('PDF reader could not load. Try a JPG or PNG image.');
  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
- const max=Math.min(pdf.numPages,type==='kcse'?3:1),pages=[];
+ const max=Math.min(pdf.numPages,20),pages=[];
+ if(pdf.numPages>20)setStatus(type,'PDF has '+pdf.numPages+' pages. Scanning the first 20 pages in this demo…');
  for(let n=1;n<=max;n++){
-  setStatus(type,'Preparing PDF page '+n+' of '+max+'…');
-  const page=await pdf.getPage(n),viewport=page.getViewport({scale:type==='kcse'?3.2:2.8});
+  setStatus(type,'Reading PDF text layer: page '+n+' of '+max+'…');
+  const page=await pdf.getPage(n);
+  const textContent=await page.getTextContent();
+  const textItems=(textContent.items||[]).filter(x=>x.str&&x.str.trim());
+  const pdfText=textItems.map(x=>x.str).join(' ');
+  const viewport=page.getViewport({scale:3.0});
   const canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;
   await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-  pages.push({data:canvas.toDataURL('image/png'),name:'Page '+n});
+  pages.push({data:canvas.toDataURL('image/png'),name:'Page '+n,pdfText});
  }
  return pages;
 }
@@ -142,6 +147,9 @@ async function runOCR(type){
   }});
   try{
    for(let i=0;i<pages.length;i++){
+    if(pages[i].pdfText&&pages[i].pdfText.trim().length>25){
+     allText+='\n'+pages[i].pdfText;
+    }
     const enhanced=await enhancedImage(pages[i].data);
     const passes=[{image:pages[i].data,mode:'6',label:'original layout'},{image:enhanced,mode:'6',label:'enhanced text'},{image:enhanced,mode:'11',label:'sparse layout'}];
     for(let p=0;p<passes.length;p++){
