@@ -89,14 +89,14 @@
       const codeMatch = upper.match(/\b(\d{3})\b/);
       if (codeMatch && subjectByCode.has(codeMatch[1])) {
         const item = subjectByCode.get(codeMatch[1]);
-        const gradeMatch = upper.match(/\b(A\s*[+\-]?|B\s*[+\-]?|C\s*[+\-]?|D\s*[+\-]?|E)\b/);
+        const gradeMatch = upper.match(/\b(A\s*[+\-]?|B\s*[+\-]?|C\s*[+\-]?|D\s*[+\-]?|E)(?![A-Z0-9])/);
         if (gradeMatch) addSubject(item[1], gradeMatch[1], item[0]);
       }
       for (const item of aliases) {
         const escaped = item.alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g,'\\s+');
         const re = new RegExp('(?:^|[^A-Z])' + escaped + '(?:[^A-Z]|$)', 'i');
         if (!re.test(upper)) continue;
-        const gradeMatch = upper.match(/\b(A\s*[+\-]?|B\s*[+\-]?|C\s*[+\-]?|D\s*[+\-]?|E)\b/);
+        const gradeMatch = upper.match(/\b(A\s*[+\-]?|B\s*[+\-]?|C\s*[+\-]?|D\s*[+\-]?|E)(?![A-Z0-9])/);
         if (gradeMatch) { addSubject(item.name, gradeMatch[1], item.code); break; }
       }
     }
