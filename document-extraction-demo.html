@@ -110,7 +110,7 @@ async function filePages(file,type){
  const max=Math.min(pdf.numPages,type==='kcse'?3:1),pages=[];
  for(let n=1;n<=max;n++){
   setStatus(type,'Preparing PDF page '+n+' of '+max+'…');
-  const page=await pdf.getPage(n),viewport=page.getViewport({scale:2.1});
+  const page=await pdf.getPage(n),viewport=page.getViewport({scale:type==='kcse'?3.2:2.8});
   const canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;
   await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
   pages.push({data:canvas.toDataURL('image/png'),name:'Page '+n});
@@ -128,9 +128,13 @@ async function runOCR(type){
   }});
   try{
    for(let i=0;i<pages.length;i++){
-    setStatus(type,'Extracting text from '+pages[i].name+'…');
-    const result=await worker.recognize(pages[i].data);
-    allText+='\\n'+result.data.text;
+    setStatus(type,'Reading '+pages[i].name+' (layout scan 1 of 2)…');
+    await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});
+    const standard=await worker.recognize(pages[i].data);
+    setStatus(type,'Reading '+pages[i].name+' (layout scan 2 of 2)…');
+    await worker.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'});
+    const sparse=await worker.recognize(pages[i].data);
+    allText+='\n'+(standard.data.text||'')+'\n'+(sparse.data.text||'');
     setProgress(type,(i+1)/pages.length);
    }
   }finally{await worker.terminate();}
@@ -140,13 +144,13 @@ async function runOCR(type){
    renderID(extracted);
    const count=Object.values(extracted).filter(Boolean).length;
    $('results-id').classList.add('show');
-   setStatus('id',count?'Extracted '+count+' field(s). Review every value against the original ID.':'Text was read, but no ID fields were recognized. Try a clearer, straight-on image.',count?'success':'error');
+   setStatus('id',count?'Read '+count+' possible ID field(s). Verify every value against the original ID.':'Text was read, but no ID fields were recognized. Try a clearer, straight-on image.',count?'success':'error');
   }else{
    const extracted=parseKCSE(allText);
    renderKCSE(extracted);
    const count=[extracted.name,extracted.index,extracted.school,extracted.year,extracted.mean].filter(Boolean).length+extracted.rows.length;
    $('results-kcse').classList.add('show');
-   setStatus('kcse',count?'Extracted '+count+' KCSE item(s). Review every value against the original certificate.':'Text was read, but no KCSE details or subject grades were recognized. Try a sharper scan with the full certificate visible.',count?'success':'error');
+   setStatus('kcse',count?'Read '+count+' possible KCSE item(s). Verify every value against the original certificate.':'Text was read, but no KCSE details or subject grades were recognized. Try a sharper scan with the full certificate visible.',count?'success':'error');
   }
  }catch(err){console.error(err);setStatus(type,err.message||'Extraction failed. Please try another image.','error');}
  finally{$('scan-'+type).disabled=!files[type];setProgress(type,null);}
