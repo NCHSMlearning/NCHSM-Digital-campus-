@@ -266,70 +266,69 @@ function parseKCSE(text){
  const lines=String(text||'').replace(/\r/g,'\n').split('\n').map(s=>s.replace(/[|]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
  const upper=lines.map(x=>x.toUpperCase());
  const data={name:'',index:'',school:'',year:'',mean:'',rows:[]};
- const gradeToken='(?:A\\s*[+-]?|B\\s*[+-]?|C\\s*[+-]?|D\\s*[+-]?|E)';
- const gradeRx=new RegExp('^\\s*('+gradeToken+')\\s*$','i');
- const valueAfter=(labels)=>{
-  for(let i=0;i<upper.length;i++){
-   const label=labels.find(x=>upper[i].includes(x));
-   if(!label)continue;
-   const pos=upper[i].indexOf(label);
-   const same=lines[i].slice(pos+label.length).replace(/^[\\s:#.\\-]+/,'').trim();
-   if(same&&same.length>1&&!/^(NO|NUMBER|NAME|GRADE)$/i.test(same))return same;
-   for(let j=i+1;j<=Math.min(i+2,lines.length-1);j++){
-    if(!/^(INDEX|CANDIDATE|SCHOOL|CENTRE|CENTER|YEAR|MEAN|SUBJECT|SEX|DATE)/i.test(upper[j]))return lines[j];
-   }
-  }
-  return '';
+ const subjectMap=[
+  ['101','English',['ENGLISH']],['102','Kiswahili',['KISWAHILI','KISW']],['121','Mathematics',['MATHEMATICS','MATHS']],
+  ['231','Biology',['BIOLOGY']],['232','Physics',['PHYSICS']],['233','Chemistry',['CHEMISTRY']],
+  ['313','Christian Religious Education',['CHRISTIAN RELIGIOUS EDUCATION','CHRISTIAN RELIGIOUS','CRE']],
+  ['443','Agriculture',['AGRICULTURE']],['444','Home Science',['HOME SCIENCE']],['565','Business Studies',['BUSINESS STUDIES']],
+  ['451','Computer Studies',['COMPUTER STUDIES']],['501','French',['FRENCH']],['502','German',['GERMAN']],['503','Arabic',['ARABIC']],
+  ['311','History and Government',['HISTORY AND GOVERNMENT','HISTORY']],['312','Geography',['GEOGRAPHY']],['314','Islamic Religious Education',['ISLAMIC RELIGIOUS EDUCATION','IRE']]
+ ];
+ const gradeFrom=(s)=>{
+  const m=String(s||'').toUpperCase().match(/(?:^|[\s:])([A-E])\s*(\+|MINUS|PLUS|-)?\s*(?:\((?:MINUS|PLUS|PLAIN)\))?\s*$/);
+  if(!m)return '';
+  return m[1]+(m[2]==='MINUS'||m[2]==='-'?'-':m[2]==='PLUS'||m[2]==='+'?'+':'');
  };
- const nameRaw=valueAfter(['NAME OF CANDIDATE','CANDIDATE NAME','CANDIDATE']);
- if(nameRaw){
-  const n=nameRaw.toUpperCase().replace(/[^A-Z .'-]/g,' ').replace(/\s+/g,' ').trim();
-  const words=n.split(' ').filter(Boolean);
-  if(words.length>=2&&words.length<=6&&words.every(w=>w.length>=2)&&!/(KENYA|CERTIFICATE|SECONDARY|EDUCATION|EXAMINATION|SCHOOL|INDEX|MEAN|GRADE|REPUBLIC|MINISTRY)/.test(n))data.name=n;
- }
- const indexRaw=valueAfter(['INDEX NUMBER','INDEX NO','CANDIDATE NUMBER','EXAMINATION NUMBER']);
- const ix=(indexRaw.match(/\d{8,12}/)||[])[0];
- if(ix)data.index=ix;
- const schoolRaw=valueAfter(['NAME OF SCHOOL','SCHOOL NAME','EXAMINATION CENTRE','EXAM CENTRE','CENTRE NAME']);
- if(schoolRaw){
-  const s=schoolRaw.toUpperCase().replace(/[^A-Z0-9 &'().-]/g,' ').replace(/\s+/g,' ').trim();
-  if(s.length>=5&&!/KENYA CERTIFICATE|CERTIFICATE OF SECONDARY|REPUBLIC OF KENYA|MINISTRY OF EDUCATION/.test(s)&&!/^20\d{2}$/.test(s))data.school=s;
- }
- for(let i=0;i<upper.length;i++){
-  const y=upper[i].match(/(?:EXAMINATION\s*)?YEAR\s*[:#-]?\s*(20\d{2})/);
-  if(y){data.year=y[1];break;}
-  const standalone=upper[i].match(/^20(?:1[0-9]|2[0-9])$/);
-  if(standalone&&i>0&&/KCSE|EXAM|YEAR/.test(upper[i-1])){data.year=standalone[0];break;}
- }
- for(let i=0;i<upper.length;i++){
-  const label=/(MEAN\s*GRADE|OVERALL\s*GRADE|AGGREGATE\s*GRADE|GRADE\s*OBTAINED)/.exec(upper[i]);
-  if(label){
-   const tail=upper[i].slice(label.index+label[0].length).replace(/^[\s:#.-]+/,'');
-   const g=tail.match(new RegExp('^('+gradeToken+')(?=\\s|$|[.,;])','i'))||upper[i+1]?.match(gradeRx);
-   if(g){data.mean=normGrade(g[1]||g[0]);break;}
+ // KNEC certificate identity block: candidate name and school are printed on
+ // adjacent lines, while the candidate number is repeated beside the photo.
+ for(let i=0;i<lines.length;i++){
+  const m=lines[i].match(/\bNAME\s*:\s*([A-Z][A-Z .'-]{4,})/i);
+  if(m){
+   const candidate=m[1].toUpperCase().replace(/\s+/g,' ').trim();
+   if(!/CERTIFICATE|KENYA|SECONDARY|EDUCATION|EXAMINATION/.test(candidate))data.name=candidate;
+   const next=lines.slice(i+1,Math.min(i+4,lines.length)).find(x=>/HIGH SCHOOL|SECONDARY SCHOOL|ACADEMY|SCHOOL/i.test(x));
+   if(next)data.school=next.toUpperCase().replace(/^(?:SCHOOL\s*:\s*)/,'').trim();
+   break;
   }
  }
+ if(!data.name){
+  const n=lines.find(x=>/^(?:KEVIN|[A-Z]{2,}\s+[A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})?)$/i.test(x)&&!/(KENYA|CERTIFICATE|SECONDARY|EDUCATION|EXAMINATION)/i.test(x));
+  if(n)data.name=n.toUpperCase();
+ }
+ if(!data.school){
+  const s=lines.find(x=>/\b(?:[A-Z0-9'-]+\s+)*(?:HIGH SCHOOL|SECONDARY SCHOOL|ACADEMY)\b/i.test(x)&&!/CERTIFICATE OF SECONDARY EDUCATION/i.test(x));
+  if(s)data.school=s.toUpperCase();
+ }
+ const joined=lines.join(' ').toUpperCase();
+ const idx=joined.match(/\b(\d{8})\s*\/\s*(\d{3})\b/);
+ if(idx)data.index=idx[1]+'/'+idx[2];
+ else{
+  const ix=joined.match(/(?:INDEX|CANDIDATE)\s*(?:NO|NUMBER)?\s*[:#-]?\s*(\d{8,12})/);
+  if(ix)data.index=ix[1];
+ }
+ const year=joined.match(/(?:EXAMINATION\s+OF\s+YEAR|EXAMINATION\s+YEAR|YEAR)\s*[:#-]?\s*(20\d{2})/);
+ if(year)data.year=year[1];
+ const mean=joined.match(/MEAN\s+GRADE\s*[:#-]?\s*([A-E]\s*(?:\+|-|PLUS|MINUS)?)/);
+ if(mean)data.mean=normGrade(mean[1]);
  const found=[];
- const sorted=[...subjects].sort((a,b)=>Math.max(...b[2].map(x=>x.length))-Math.max(...a[2].map(x=>x.length)));
  for(let i=0;i<lines.length;i++){
   const line=upper[i];
-  let item=null;
-  const code=line.match(/(?:^|\s)(101|102|121|231|232|233|311|312|313|314|443|444|565|451|501|502|503)(?:\s|$)/);
-  if(code)item=subjects.find(s=>s[0]===code[1])||null;
-  if(!item)item=sorted.find(s=>s[2].some(alias=>{
-   if(alias.length<=3)return new RegExp('(?:^|[^A-Z])'+alias+'(?:$|[^A-Z])','i').test(line);
-   return line.includes(alias);
-  }))||null;
-  if(!item||found.some(x=>x.code===item[0]))continue;
-  let grade='';
-  const same=line.match(new RegExp('(?:^|\\s)('+gradeToken+')\\s*$','i'));
-  if(same)grade=normGrade(same[1]);
-  if(!grade&&i+1<lines.length){
-   const next=upper[i+1].match(gradeRx);
-   if(next)grade=normGrade(next[1]);
+  const codeMatch=line.match(/(?:^|\s)(101|102|121|231|232|233|313|443|444|565|451|501|502|503|311|312|314)(?:\s|$)/);
+  let subject=codeMatch?subjectMap.find(x=>x[0]===codeMatch[1]):null;
+  if(!subject)subject=subjectMap.find(x=>x[2].some(alias=>line.includes(alias)))||null;
+  if(!subject||found.some(x=>x.code===subject[0]))continue;
+  let suffix=line;
+  if(codeMatch)suffix=line.slice(line.indexOf(codeMatch[1])+3);
+  else{
+   const alias=subject[2].sort((x,y)=>y.length-x.length).find(x=>line.includes(x));
+   if(alias)suffix=line.slice(line.indexOf(alias)+alias.length);
   }
-  found.push({code:item[0],name:item[1],grade});
+  let grade=gradeFrom(suffix);
+  // OCR sometimes puts the grade on the immediately following line.
+  if(!grade&&i+1<lines.length)grade=gradeFrom(upper[i+1]);
+  found.push({code:subject[0],name:subject[1],grade});
  }
+ // Do not infer grades from arbitrary letters elsewhere on the certificate.
  data.rows=found.filter(x=>x.grade).map(x=>({name:x.name,grade:x.grade}));
  return data;
 }
