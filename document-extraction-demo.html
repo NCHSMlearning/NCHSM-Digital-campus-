@@ -302,8 +302,10 @@ function parseKCSE(text){
   if(standalone&&i>0&&/KCSE|EXAM|YEAR/.test(upper[i-1])){data.year=standalone[0];break;}
  }
  for(let i=0;i<upper.length;i++){
-  if(/MEAN\s*GRADE|OVERALL\s*GRADE|AGGREGATE\s*GRADE|GRADE\s*OBTAINED/.test(upper[i])){
-   const g=upper[i].match(new RegExp(gradeToken,'i'))||upper[i+1]?.match(gradeRx);
+  const label=/(MEAN\s*GRADE|OVERALL\s*GRADE|AGGREGATE\s*GRADE|GRADE\s*OBTAINED)/.exec(upper[i]);
+  if(label){
+   const tail=upper[i].slice(label.index+label[0].length).replace(/^[\s:#.-]+/,'');
+   const g=tail.match(new RegExp('^('+gradeToken+')(?=\\s|$|[.,;])','i'))||upper[i+1]?.match(gradeRx);
    if(g){data.mean=normGrade(g[1]||g[0]);break;}
   }
  }
