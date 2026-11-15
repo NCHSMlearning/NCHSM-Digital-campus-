@@ -114,7 +114,7 @@ main{max-width:900px;margin:-43px auto 60px;position:relative;z-index:2}
 <div class="actions"><button class="btn secondary" id="copy-id">Copy extracted details</button></div></div>
 </section>
 <section class="panel" id="panel-kcse">
-<div class="section-head"><div><h2>KCSE certificate extraction</h2><p>Upload a clear certificate or result slip. PDF text and up to 20 pages are scanned.</p></div><span class="privacy">Processed in this browser</span></div>
+<div class="section-head"><div><h2>KCSE certificate extraction</h2><p>Upload a clear KNEC certificate or result slip. The scanner reads the candidate, school, index, year, mean grade and separate subject and grade columns.</p></div><span class="privacy">Processed in this browser</span></div>
 <label class="upload" id="drop-kcse" for="file-kcse"><span class="ico">▤</span><strong>Choose KCSE document</strong><small>JPG, PNG or PDF · Maximum 12 MB</small><input id="file-kcse" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"></label>
 <div class="fileline" id="file-name-kcse">No document selected</div>
 <div class="actions"><button class="btn primary" id="scan-kcse" disabled>Extract KCSE results</button><button class="btn secondary" id="clear-kcse">Clear</button></div>
@@ -198,43 +198,98 @@ async function enhancedImage(dataUrl){
  }
  ctx.putImageData(frame,0,0);return canvas.toDataURL('image/png');
 }
+async function cropDataUrl(dataUrl,x,y,w,h){
+ const img=new Image();
+ await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=dataUrl;});
+ const sx=Math.round(img.naturalWidth*x),sy=Math.round(img.naturalHeight*y);
+ const sw=Math.round(img.naturalWidth*w),sh=Math.round(img.naturalHeight*h);
+ const canvas=document.createElement('canvas');canvas.width=sw;canvas.height=sh;
+ canvas.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
+ return enhancedImage(canvas.toDataURL('image/png'));
+}
+function parseKCSELayout(details,indexText,subjectText,gradeText,meanText){
+ const data={name:'',index:'',school:'',year:'',mean:'',rows:[]};
+ const d=String(details||'').split('\n').map(x=>x.trim()).filter(Boolean);
+ const nameLine=d.find(x=>/^NAME\s*:/i.test(x));
+ if(nameLine)data.name=nameLine.replace(/^NAME\s*:\s*/i,'').replace(/\s+[|Il]{1,2}$/,'').replace(/\s+/g,' ').trim();
+ data.school=d.find(x=>/HIGH SCHOOL|SECONDARY SCHOOL|ACADEMY|SCHOOL/i.test(x)&&!/^NAME/i.test(x))||'';
+ const ix=String(indexText||'').match(/\b\d{8}\s*\/\s*\d{3}\b/);
+ if(ix)data.index=ix[0].replace(/\s/g,'');
+ const year=String(meanText||'').match(/EXAMINATION\s+OF\s+YEAR\s+(20\d{2})/i);
+ if(year)data.year=year[1];
+ const mean=String(meanText||'').match(/MEAN\s+GRADE\s+([A-E]\s*[+-]?)/i);
+ if(mean)data.mean=normGrade(mean[1]);
+ const codeMap=new Map(subjects.map(s=>[s[0],s[1]]));
+ const left=[];
+ for(const line of String(subjectText||'').split('\n')){
+  const m=line.trim().match(/^(101|102|121|231|232|233|313|443)\.?\s+(.+)$/);
+  if(m&&codeMap.has(m[1]))left.push({code:m[1],name:codeMap.get(m[1])});
+ }
+ const grades=[];
+ for(const line of String(gradeText||'').split('\n')){
+  const m=line.trim().match(/^([A-E])\s*(\+|-)?(?:\s*\((?:MINUS|PLUS|PLAIN)\))?/i);
+  if(m)grades.push((m[1]+(m[2]||'')).toUpperCase());
+ }
+ data.rows=left.slice(0,Math.min(left.length,grades.length)).map((s,i)=>({name:s.name,grade:grades[i]}));
+ return data;
+}
+async function runKCSELayout(pages,worker){
+ let detail='',index='',subject='',grade='',mean='';
+ for(let i=0;i<pages.length;i++){
+  setStatus('kcse','Reading certificate layout on '+pages[i].name+'…');
+  const regions=[
+   ['details',.08,.43,.58,.06],
+   ['index',.70,.43,.26,.06],
+   ['subjects',.09,.49,.54,.15],
+   ['grades',.70,.49,.24,.15],
+   ['mean',.24,.64,.56,.08]
+  ];
+  const results={};
+  for(const [key,x,y,w,h] of regions){
+   const image=await cropDataUrl(pages[i].data,x,y,w,h);
+   await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});
+   const result=await worker.recognize(image);
+   results[key]=result.data.text||'';
+  }
+  detail+='\n'+results.details;index+='\n'+results.index;
+  subject+='\n'+results.subjects;grade+='\n'+results.grades;mean+='\n'+results.mean;
+  setProgress('kcse',(i+1)/pages.length);
+ }
+ return parseKCSELayout(detail,index,subject,grade,mean);
+}
 async function runOCR(type){
  const file=files[type];if(!file)return;
  $('scan-'+type).disabled=true;$('results-'+type).classList.remove('show');setProgress(type,0);
  try{
   if(!window.Tesseract)throw new Error('OCR engine could not load. Refresh the page and try again.');
-  const pages=await filePages(file,type);let allText='';
+  const pages=await filePages(file,type);
   const worker=await Tesseract.createWorker('eng',1,{logger:m=>{
    if(m.status==='recognizing text'){const p=(m.progress||0);setProgress(type,p);setStatus(type,'Reading '+(type==='kcse'?'KCSE':'ID')+' document… '+Math.round(p*100)+'%');}
   }});
+  let extracted;
   try{
-   for(let i=0;i<pages.length;i++){
-    if(pages[i].pdfText&&pages[i].pdfText.trim().length>25){
-     allText+='\n'+pages[i].pdfText;
+   if(type==='kcse'){
+    extracted=await runKCSELayout(pages,worker);
+    const count=[extracted.name,extracted.index,extracted.school,extracted.year,extracted.mean].filter(Boolean).length+extracted.rows.length;
+    renderKCSE(extracted);$('results-kcse').classList.add('show');
+    setStatus('kcse',count>=10?'Read '+count+' KCSE fields using certificate layout recognition. Verify all values against the original.':count?'Only '+count+' KCSE fields were confidently read. Check the remaining fields manually.':'No reliable KCSE fields were recognized.',''+(count>=10?'success':'error'));
+   }else{
+    let allText='';
+    for(let i=0;i<pages.length;i++){
+     const enhanced=await enhancedImage(pages[i].data);
+     for(const pass of [{image:pages[i].data,mode:'6'},{image:enhanced,mode:'6'},{image:enhanced,mode:'11'}]){
+      await worker.setParameters({tessedit_pageseg_mode:pass.mode,preserve_interword_spaces:'1'});
+      const result=await worker.recognize(pass.image);allText+='\n'+(result.data.text||'');
+     }
+     setProgress(type,(i+1)/pages.length);
     }
-    const enhanced=await enhancedImage(pages[i].data);
-    const passes=[{image:pages[i].data,mode:'6',label:'original layout'},{image:enhanced,mode:'6',label:'enhanced text'},{image:enhanced,mode:'11',label:'sparse layout'}];
-    for(let p=0;p<passes.length;p++){
-     setStatus(type,'Reading '+pages[i].name+' ('+passes[p].label+')…');
-     await worker.setParameters({tessedit_pageseg_mode:passes[p].mode,preserve_interword_spaces:'1'});
-     const result=await worker.recognize(passes[p].image);
-     allText+='\n'+(result.data.text||'');
-    }
-    setProgress(type,(i+1)/pages.length);
+    if(!allText.trim())throw new Error('No readable text found. Upload a sharper, well-lit image.');
+    extracted=parseID(allText);renderID(extracted);
+    const count=Object.values(extracted).filter(Boolean).length;
+    $('results-id').classList.add('show');
+    setStatus('id',count?'Read '+count+' possible ID field(s). Verify every value against the original ID.':'Text was read, but no ID fields were recognized. Try a clearer, straight-on image.',count?'success':'error');
    }
   }finally{await worker.terminate();}
-  if(!allText.trim())throw new Error('No readable text found. Upload a sharper, well-lit image.');
-  if(type==='id'){
-   const extracted=parseID(allText);renderID(extracted);
-   const count=Object.values(extracted).filter(Boolean).length;
-   $('results-id').classList.add('show');
-   setStatus('id',count?'Read '+count+' possible ID field(s). Verify every value against the original ID.':'Text was read, but no ID fields were recognized. Try a clearer, straight-on image.',count?'success':'error');
-  }else{
-   const extracted=parseKCSE(allText);renderKCSE(extracted);
-   const count=[extracted.name,extracted.index,extracted.school,extracted.year,extracted.mean].filter(Boolean).length+extracted.rows.length;
-   $('results-kcse').classList.add('show');
-   setStatus('kcse',count>=3?'Read '+count+' possible KCSE item(s). Verify every value against the original certificate.':count?'Only '+count+' possible KCSE item(s) were recognized. This is an incomplete extraction; check the document quality or enter the missing details manually.':'No reliable KCSE details were recognized. Try a sharper scan with the full certificate visible.',count>=3?'success':'error');
-  }
  }catch(err){console.error(err);setStatus(type,err.message||'Extraction failed. Please try another image.','error');}
  finally{$('scan-'+type).disabled=!files[type];setProgress(type,null);}
 }
