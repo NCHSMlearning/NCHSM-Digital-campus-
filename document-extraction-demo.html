@@ -199,8 +199,12 @@ async function enhancedImage(dataUrl){
  ctx.putImageData(frame,0,0);return canvas.toDataURL('image/png');
 }
 async function cropDataUrl(dataUrl,x,y,w,h){
+ let source=dataUrl;
+ if(dataUrl instanceof Blob){
+  source=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(dataUrl);});
+ }
  const img=new Image();
- await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=dataUrl;});
+ await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=source;});
  const sx=Math.round(img.naturalWidth*x),sy=Math.round(img.naturalHeight*y);
  const sw=Math.round(img.naturalWidth*w),sh=Math.round(img.naturalHeight*h);
  const canvas=document.createElement('canvas');canvas.width=sw;canvas.height=sh;
