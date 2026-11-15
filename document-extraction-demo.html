@@ -263,79 +263,72 @@ const subjects=[
 const gradeRe='(A\\\\s*[+-]?|B\\\\s*[+-]?|C\\\\s*[+-]?|D\\\\s*[+-]?|E)';
 function normGrade(g){return clean(g).replace(/\\s/g,'').toUpperCase();}
 function parseKCSE(text){
- const raw=String(text||'').replace(/\r/g,'\n');
- const lines=raw.split('\n').map(s=>s.replace(/[|]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
- const flat=lines.join(' ').toUpperCase();
+ const lines=String(text||'').replace(/\r/g,'\n').split('\n').map(s=>s.replace(/[|]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+ const upper=lines.map(x=>x.toUpperCase());
  const data={name:'',index:'',school:'',year:'',mean:'',rows:[]};
- const first=(patterns)=>capture(flat,patterns);
- data.name=first([
-  /(?:CANDIDATE\s*NAME|CANDIDATE|FULL\s*NAME|NAME)\s*[:#\-]?\s*([A-Z][A-Z .,'-]{3,}?)(?=\s+(?:INDEX|SCHOOL|CENTRE|CENTER|YEAR|SEX|MEAN|SUBJECT|DATE|KCSE)\b)/i,
-  /(?:CANDIDATE\s*NAME|FULL\s*NAME|NAME)\s*[:#\-]\s*([A-Z][A-Z .,'-]{4,})/i
- ]);
- data.index=first([
-  /(?:INDEX\s*(?:NO|NUMBER)?|CANDIDATE\s*(?:NO|NUMBER)|EXAMINATION\s*NUMBER)\s*[:#\-]?\s*(\d{3,5}\s*\/\s*\d{1,4}\s*\/?\s*\d{0,4}|\d{8,12})/i,
-  /\b(\d{8,12})\b/
- ]).replace(/\s/g,'');
- data.school=first([
-  /(?:SCHOOL|EXAMINATION\s*CENTRE|EXAM\s*CENTRE|CENTRE|CENTER)\s*(?:NAME)?\s*[:#\-]?\s*([A-Z0-9 &'().-]{3,}?)(?=\s+(?:INDEX|CANDIDATE|YEAR|EXAMINATION|SEX|MEAN|SUBJECT|DATE|KCSE)\b)/i
- ]);
- data.year=first([/(?:EXAMINATION\s*)?YEAR\s*[:#\-]?\s*(20\d{2})/i,/\b(20(?:0[0-9]|1[0-9]|2[0-9]))\b/]);
- data.mean=normGrade(first([
-  /(?:MEAN\s*GRADE|OVERALL\s*GRADE|AGGREGATE\s*GRADE|GRADE\s*OBTAINED)\s*[:#\-]?\s*([A-E]\s*[+-]?)/i,
-  /\bMEAN\s+([A-E]\s*[+-]?)\b/i
- ]));
- const found=[];
- for(let i=0;i<lines.length;i++){
-  const upper=lines[i].toUpperCase();
-  let item=null;
-  const code=upper.match(/\b(\d{3})\b/);
-  if(code)item=subjects.find(s=>s[0]===code[1])||null;
-  if(!item){
-   const ordered=[...subjects].sort((a,b)=>Math.max(...b[2].map(x=>x.length))-Math.max(...a[2].map(x=>x.length)));
-   item=ordered.find(s=>s[2].some(alias=>{
-    const escaped=alias.replace(/[.*+?^\$\{\}()|[\]\\]/g,'\\$&');
-    return new RegExp('(?:^|[^A-Z])'+escaped+'(?:[^A-Z]|$)','i').test(upper);
-   }))||null;
+ const gradeToken='(?:A\\s*[+-]?|B\\s*[+-]?|C\\s*[+-]?|D\\s*[+-]?|E)';
+ const gradeRx=new RegExp('^\\s*('+gradeToken+')\\s*$','i');
+ const valueAfter=(labels)=>{
+  for(let i=0;i<upper.length;i++){
+   const label=labels.find(x=>upper[i].includes(x));
+   if(!label)continue;
+   const pos=upper[i].indexOf(label);
+   const same=lines[i].slice(pos+label.length).replace(/^[\\s:#.\\-]+/,'').trim();
+   if(same&&same.length>1&&!/^(NO|NUMBER|NAME|GRADE)$/i.test(same))return same;
+   for(let j=i+1;j<=Math.min(i+2,lines.length-1);j++){
+    if(!/^(INDEX|CANDIDATE|SCHOOL|CENTRE|CENTER|YEAR|MEAN|SUBJECT|SEX|DATE)/i.test(upper[j]))return lines[j];
+   }
   }
+  return '';
+ };
+ const nameRaw=valueAfter(['NAME OF CANDIDATE','CANDIDATE NAME','CANDIDATE']);
+ if(nameRaw){
+  const n=nameRaw.toUpperCase().replace(/[^A-Z .'-]/g,' ').replace(/\s+/g,' ').trim();
+  const words=n.split(' ').filter(Boolean);
+  if(words.length>=2&&words.length<=6&&words.every(w=>w.length>=2)&&!/(KENYA|CERTIFICATE|SECONDARY|EDUCATION|EXAMINATION|SCHOOL|INDEX|MEAN|GRADE|REPUBLIC|MINISTRY)/.test(n))data.name=n;
+ }
+ const indexRaw=valueAfter(['INDEX NUMBER','INDEX NO','CANDIDATE NUMBER','EXAMINATION NUMBER']);
+ const ix=(indexRaw.match(/\d{8,12}/)||[])[0];
+ if(ix)data.index=ix;
+ const schoolRaw=valueAfter(['NAME OF SCHOOL','SCHOOL NAME','EXAMINATION CENTRE','EXAM CENTRE','CENTRE NAME']);
+ if(schoolRaw){
+  const s=schoolRaw.toUpperCase().replace(/[^A-Z0-9 &'().-]/g,' ').replace(/\s+/g,' ').trim();
+  if(s.length>=5&&!/KENYA CERTIFICATE|CERTIFICATE OF SECONDARY|REPUBLIC OF KENYA|MINISTRY OF EDUCATION/.test(s)&&!/^20\d{2}$/.test(s))data.school=s;
+ }
+ for(let i=0;i<upper.length;i++){
+  const y=upper[i].match(/(?:EXAMINATION\s*)?YEAR\s*[:#-]?\s*(20\d{2})/);
+  if(y){data.year=y[1];break;}
+  const standalone=upper[i].match(/^20(?:1[0-9]|2[0-9])$/);
+  if(standalone&&i>0&&/KCSE|EXAM|YEAR/.test(upper[i-1])){data.year=standalone[0];break;}
+ }
+ for(let i=0;i<upper.length;i++){
+  if(/MEAN\s*GRADE|OVERALL\s*GRADE|AGGREGATE\s*GRADE|GRADE\s*OBTAINED/.test(upper[i])){
+   const g=upper[i].match(new RegExp(gradeToken,'i'))||upper[i+1]?.match(gradeRx);
+   if(g){data.mean=normGrade(g[1]||g[0]);break;}
+  }
+ }
+ const found=[];
+ const sorted=[...subjects].sort((a,b)=>Math.max(...b[2].map(x=>x.length))-Math.max(...a[2].map(x=>x.length)));
+ for(let i=0;i<lines.length;i++){
+  const line=upper[i];
+  let item=null;
+  const code=line.match(/(?:^|\s)(101|102|121|231|232|233|311|312|313|314|443|444|565|451|501|502|503)(?:\s|$)/);
+  if(code)item=subjects.find(s=>s[0]===code[1])||null;
+  if(!item)item=sorted.find(s=>s[2].some(alias=>{
+   if(alias.length<=3)return new RegExp('(?:^|[^A-Z])'+alias+'(?:$|[^A-Z])','i').test(line);
+   return line.includes(alias);
+  }))||null;
   if(!item||found.some(x=>x.code===item[0]))continue;
   let grade='';
-  const gradePattern=new RegExp('(?:^|\\s)'+gradeRe+'(?=\\s|$|[.,;:])','i');
-  for(let j=i;j<=Math.min(i+2,lines.length-1)&&!grade;j++){
-   const candidate=lines[j].toUpperCase().match(gradePattern);
-   if(candidate)grade=normGrade(candidate[1]);
+  const same=line.match(new RegExp('(?:^|\\s)('+gradeToken+')\\s*$','i'));
+  if(same)grade=normGrade(same[1]);
+  if(!grade&&i+1<lines.length){
+   const next=upper[i+1].match(gradeRx);
+   if(next)grade=normGrade(next[1]);
   }
   found.push({code:item[0],name:item[1],grade});
  }
- const ungraded=found.filter(x=>!x.grade);
- if(ungraded.length){
-  const gradeTokens=[];
-  for(const line of lines){
-   const u=line.toUpperCase();
-   if(/MEAN|OVERALL|AGGREGATE|GRADE\s+OBTAINED/.test(u))continue;
-   const matches=u.match(new RegExp('\\b'+gradeRe+'\\b','gi'))||[];
-   for(const g of matches)gradeTokens.push(normGrade(g));
-  }
-  let cursor=0;
-  for(const row of found){
-   if(row.grade)continue;
-   while(cursor<gradeTokens.length&&found.some(x=>x.grade===gradeTokens[cursor]))cursor++;
-   if(cursor<gradeTokens.length)row.grade=gradeTokens[cursor++];
-  }
- }
  data.rows=found.filter(x=>x.grade).map(x=>({name:x.name,grade:x.grade}));
- if(!data.name){
-  const n=lines.find(x=>/^[A-Z][A-Z .,'-]{5,}$/.test(x.toUpperCase())&&!/REPUBLIC|KENYA|CERTIFICATE|EDUCATION|EXAMINATION|CANDIDATE|INDEX|SCHOOL|CENTRE|SUBJECT|GRADE|MEAN|MINISTRY/.test(x.toUpperCase()));
-  if(n)data.name=n;
- }
- if(!data.school){
-  const s=lines.find(x=>/\b(SCHOOL|SECONDARY|ACADEMY|HIGH SCHOOL)\b/i.test(x)&&x.length>5);
-  if(s)data.school=s.replace(/^(?:SCHOOL|CENTRE|CENTER)\s*[:#-]?\s*/i,'');
- }
- // Reject obvious OCR noise rather than presenting it as a candidate name.
- const nameWords=String(data.name||'').trim().split(/\s+/).filter(Boolean);
- if(nameWords.length<2||nameWords.some(w=>w.length<2)||!/^[A-Z][A-Z .,'-]+$/i.test(data.name))data.name='';
- if(data.index&&!/^\d{8,12}$/.test(data.index))data.index='';
- if(data.school&&data.school.length<5)data.school='';
  return data;
 }
 function renderKCSE(d){
