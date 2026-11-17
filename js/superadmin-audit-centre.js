@@ -78,7 +78,7 @@
   function render() {
     const start=state.page*state.pageSize, page=state.rows.slice(start,start+state.pageSize);
     $('acRows').innerHTML = page.length ? page.map(r => {
-      const details = r.details || {};
+      const details = typeof r.details === 'string' ? (()=>{try{return JSON.parse(r.details)||{};}catch(_){return {details:r.details};}})() : (r.details || {});
       const description = details.description || details.details || details.failure_reason || '';
       const target = [details.target_table,details.target_id].filter(Boolean).join(' / ');
       const before = details.old_data || null;
