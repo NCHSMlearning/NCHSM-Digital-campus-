@@ -9,7 +9,7 @@
     ['export_marks','Export / print marks'],['view_gpa','View GPA and progression'],
     ['generate_transcripts','Generate / view transcripts'],['delete_marks','Delete marks records']
   ];
-  let sb = null, owner = false, state = null, saving = false;
+  let sb = null, owner = false, state = null, saving = false, navObserver = null;
 
   function getClient(){return window.supabaseClient||window.sb||window.NCHSMLogin?.supabase||null;}
   function notify(m,t){if(typeof window.showNotification==='function')window.showNotification(m,t||'info');else if(typeof window.showFeedback==='function')window.showFeedback(m,t||'info');else console.info('[Academic Access]',m);}
@@ -187,7 +187,18 @@
       document.getElementById('superadmin-nav')||
       sidebar?.querySelector('nav, ul, .sidebar-nav, .sidebar-menu, [role="navigation"]');
     const host=nav||sidebar;
-    if(!host){console.error('Primary owner access: sidebar container not found');return;}
+    if(!host){
+      console.warn('Primary owner access: sidebar not ready; waiting for navigation render.');
+      if(!navObserver&&document.body&&window.MutationObserver){
+        navObserver=new MutationObserver(()=>{
+          const ready=document.getElementById('mainNav')||document.getElementById('superadmin-nav')||document.querySelector('#sidebar, aside.sidebar, .sidebar');
+          if(ready){navObserver.disconnect();navObserver=null;injectOwnerButton();}
+        });
+        navObserver.observe(document.body,{childList:true,subtree:true});
+        setTimeout(()=>{if(navObserver){navObserver.disconnect();navObserver=null;}},12000);
+      }
+      return;
+    }
     const button=document.createElement('a');
     button.id='ownerAcademicAccessButton';
     button.href='#';
