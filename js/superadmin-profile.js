@@ -146,6 +146,8 @@ async function loadProfileData() {
         };
         try { localStorage.setItem('profileData', JSON.stringify(profileData)); } catch (_) {}
         updateProfileUI();
+        profileSetupSections();
+        profileLoadSessions();
         loadProfileStats();
         loadRecentActivity();
         loadLoginHistory();
@@ -782,14 +784,14 @@ async function saveProfileChanges() {
     const oldLabel = submit?.innerHTML;
     if (submit) { submit.disabled = true; submit.textContent = 'Saving…'; }
     try {
-        const { error } = await supabase
+        const { data: updatedProfile, error } = await supabase
             .from('consolidated_user_profiles_table')
             .update({ full_name: name, phone, department, address: location, updated_at: new Date().toISOString() })
             .eq('user_id', userId)
             .select('user_id')
             .maybeSingle();
         if (error) throw error;
-        if (!data?.user_id) throw new Error('No profile row was updated. Check your profile record and update permissions.');
+        if (!updatedProfile?.user_id) throw new Error('No profile row was updated. Check your profile record and update permissions.');
 
         profileData.name = name;
         profileData.phone = phone;
@@ -965,11 +967,165 @@ function previewEditProfilePhoto(event) {
 }
 
 // ============================================================
+// PROFILE CENTRE: SESSIONS, PREFERENCES, NOTIFICATIONS & NAVIGATION
+// ============================================================
+let profileCurrentSessionRowId = null;
+
+function profileSetupSections() {
+    const root=document.getElementById('profile');if(!root)return;
+    const info=root.querySelector('div[style*="grid-template-columns: 2fr 1fr"] > div:first-child');
+    if(info)info.id='profilePersonalInfoPanel';
+    const recent=document.getElementById('profileRecentActivity');
+    const recentCard=recent?.parentElement;
+    if(recentCard)recentCard.id='profileActivityPanel';
+    const stats=root.querySelector('div[style*="repeat(auto-fit, minmax(160px, 1fr))"]');
+    if(stats)stats.id='profileOverviewStats';
+    profileLoadPreferences();
+}
+
+function profileNavigateSection(section) {
+    const targets={
+      overview:document.getElementById('profile')?.querySelector('> div:first-child'),
+      personal:document.getElementById('profilePersonalInfoPanel'),
+      security:document.getElementById('profileSecurityPanel'),
+      activity:document.getElementById('profileActivityPanel'),
+      notifications:document.getElementById('profileNotificationsPanel'),
+      preferences:document.getElementById('profilePreferencesPanel')
+    };
+    const target=targets[section];if(!target)return;
+    target.scrollIntoView({behavior:'smooth',block:'start'});
+    document.querySelectorAll('[data-profile-section]').forEach(button=>{
+      const active=button.dataset.profileSection===section;
+      button.setAttribute('aria-current',active?'location':'false');
+      button.style.background=active?'#4C1D95':'#fff';
+      button.style.color=active?'#fff':'#334155';
+      button.style.borderColor=active?'#4C1D95':'#e2e8f0';
+    });
+}
+
+async function profileLoadSessions() {
+    const container=document.getElementById('profileSessionsList');if(!container)return;
+    const sb=profileGetSupabase(),userId=profileData.id;
+    if(!sb||!userId){container.innerHTML=profileActivityEmpty('Your authenticated session is unavailable.',true);return;}
+    container.innerHTML='<div style="padding:18px;text-align:center;color:#64748b"><i class="fas fa-spinner fa-spin"></i> Loading your sessions…</div>';
+    try {
+      const [{data:authData,error:authError},{data,error}]=await Promise.all([
+        sb.auth.getSession(),
+        sb.from('user_sessions').select('id,user_id,session_token,ip_address,user_agent,device_info,login_time,last_activity,expires_at,is_active,login_type').eq('user_id',userId).eq('is_active',true).order('last_activity',{ascending:false}).limit(30)
+      ]);
+      if(authError)throw authError;if(error)throw error;
+      const accessToken=authData?.session?.access_token||'';
+      profileCurrentSessionRowId=(data||[]).find(row=>row.session_token&&accessToken&&row.session_token===accessToken)?.id||null;
+      const rows=data||[];
+      if(!rows.length){container.innerHTML=profileActivityEmpty('No active sessions are recorded for this account.');return;}
+      const safe=value=>profileEscapeHtml(value||'Not recorded');
+      container.innerHTML=rows.map(row=>{
+        const current=row.id===profileCurrentSessionRowId;
+        const device=row.device_info||profileParseDeviceFromUA(row.user_agent);
+        const browser=profileExtractBrowser(row.user_agent||row.device_info);
+        const when=row.last_activity||row.login_time;
+        const time=when&&!Number.isNaN(new Date(when).getTime())?new Date(when).toLocaleString():'Time unavailable';
+        return '<article style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid #e9eef4;min-width:0;">'+
+          '<div style="width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:#eff6ff;color:#1d4ed8;display:grid;place-items:center;"><i class="fas '+profileGetDeviceIcon(device)+'"></i></div>'+
+          '<div style="flex:1;min-width:0;"><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;"><strong style="font-size:13px;color:#1e293b">'+safe(device)+'</strong>'+
+          (current?'<span style="font-size:10px;background:#dcfce7;color:#166534;border-radius:20px;padding:3px 7px;font-weight:700">Current device</span>':'')+
+          '</div><div style="font-size:11px;color:#64748b;margin-top:4px;overflow-wrap:anywhere">'+safe(browser)+' · '+safe(row.ip_address)+'</div>'+
+          '<div style="font-size:11px;color:#94a3b8;margin-top:4px">Last active: '+safe(time)+'</div>'+
+          (!current&&profileCurrentSessionRowId?'<button type="button" data-revoke-session="'+safe(row.id)+'" style="margin-top:8px;border:1px solid #fecaca;background:#fff7f7;color:#b91c1c;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:700">Revoke session</button>':'')+
+          '</div></article>';
+      }).join('');
+      if(!profileCurrentSessionRowId){
+        container.insertAdjacentHTML('afterbegin','<div style="padding:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;color:#9a3412;font-size:11px;margin-bottom:10px">The current browser session could not be matched safely. Session revocation is disabled to avoid signing you out unexpectedly.</div>');
+      }
+      container.querySelectorAll('[data-revoke-session]').forEach(button=>button.addEventListener('click',()=>profileRevokeSession(button.dataset.revokeSession)));
+    }catch(e){console.error('Session list failed:',e);container.innerHTML=profileActivityEmpty(e.message||'Unable to load active sessions. Check session access permissions.',true);}
+}
+
+async function profileRevokeSession(sessionId) {
+    if(!sessionId||sessionId===profileCurrentSessionRowId)return;
+    if(!confirm('Revoke this session? The device will need to sign in again.'))return;
+    const sb=profileGetSupabase();
+    try {
+      const {data,error}=await sb.from('user_sessions').update({
+        is_active:false,terminated_at:new Date().toISOString(),terminated_by:profileData.email,termination_reason:'Revoked by account owner'
+      }).eq('id',sessionId).eq('user_id',profileData.id).eq('is_active',true).select('id').maybeSingle();
+      if(error)throw error;if(!data?.id)throw new Error('Session was not revoked. It may already be inactive or you may not have permission.');
+      await profileWriteAudit('SESSION_REVOKED','security','user_sessions',sessionId,'Revoked an active account session');
+      if(typeof showFeedback==='function')showFeedback('Session revoked.','success');
+      profileLoadSessions();
+    }catch(e){console.error('Session revocation failed:',e);if(typeof showFeedback==='function')showFeedback(e.message||'Could not revoke session.','error');}
+}
+
+async function profileWriteAudit(action,module,targetTable,targetId,description) {
+    const sb=profileGetSupabase();if(!sb||!profileData.id)return;
+    try {
+      const {error}=await sb.from('audit_logs').insert({
+        user_id:profileData.id,user_email:profileData.email,actor_name:profileData.name,
+        role:profileData.role,user_role:profileData.role,action_type:action,module,
+        target_table:targetTable,target_id:String(targetId||''),description,details:description,
+        status:'success',source:'superadmin_profile'
+      });
+      if(error)console.warn('Profile audit event could not be written:',error.message);
+    }catch(e){console.warn('Profile audit event failed:',e);}
+}
+
+function profileLoadPreferences() {
+    let prefs={};
+    try{prefs=JSON.parse(localStorage.getItem('nchsm_superadmin_profile_preferences')||'{}')||{};}catch(_){}
+    const theme=prefs.theme||'light';
+    document.body.classList.toggle('profile-dark-mode',theme==='dark');
+    const themeSelect=document.getElementById('profileThemePreference');if(themeSelect)themeSelect.value=theme;
+    const dateSelect=document.getElementById('profileDateFormat');if(dateSelect)dateSelect.value=prefs.dateFormat||'local';
+    const timezone=document.getElementById('profileTimezone');if(timezone)timezone.value=prefs.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'Africa/Nairobi';
+    const email=document.getElementById('profileEmailAlerts');if(email)email.checked=!!prefs.emailSecurityAlerts;
+    const inApp=document.getElementById('profileInAppAlerts');if(inApp)inApp.checked=prefs.inAppSecurityAlerts!==false;
+    const browser=document.getElementById('profileBrowserAlerts');if(browser)browser.checked=!!prefs.browserNotifications;
+    const browserStatus=document.getElementById('profileBrowserAlertStatus');
+    if(browserStatus)browserStatus.textContent=Notification.permission==='granted'?'Browser notifications permitted':Notification.permission==='denied'?'Browser notifications blocked by browser':'Permission not yet granted';
+}
+
+function profileSavePreferences() {
+    const prefs={
+      theme:document.getElementById('profileThemePreference')?.value||'light',
+      dateFormat:document.getElementById('profileDateFormat')?.value||'local',
+      timezone:document.getElementById('profileTimezone')?.value||Intl.DateTimeFormat().resolvedOptions().timeZone,
+      emailSecurityAlerts:!!document.getElementById('profileEmailAlerts')?.checked,
+      inAppSecurityAlerts:!!document.getElementById('profileInAppAlerts')?.checked,
+      browserNotifications:!!document.getElementById('profileBrowserAlerts')?.checked
+    };
+    try{localStorage.setItem('nchsm_superadmin_profile_preferences',JSON.stringify(prefs));}
+    catch(e){if(typeof showFeedback==='function')showFeedback('Preferences could not be saved in this browser.','error');return;}
+    document.body.classList.toggle('profile-dark-mode',prefs.theme==='dark');
+    const status=document.getElementById('profilePreferencesSaveStatus');
+    if(status)status.textContent='Preferences saved on this device.';
+    if(typeof showFeedback==='function')showFeedback('Profile preferences saved.','success');
+    profileLoadPreferences();
+}
+
+async function profileRequestBrowserNotifications() {
+    if(!('Notification' in window)){if(typeof showFeedback==='function')showFeedback('This browser does not support notifications.','error');return;}
+    try {
+      const permission=await Notification.requestPermission();
+      profileLoadPreferences();
+      if(permission==='granted'&&document.getElementById('profileBrowserAlerts')?.checked){
+        new Notification('NCHSM Super Admin',{body:'Browser security notifications are enabled on this device.'});
+      }
+      if(typeof showFeedback==='function')showFeedback(permission==='granted'?'Browser notification permission granted.':permission==='denied'?'Notifications were blocked in browser settings.':'Notification permission was not granted.',permission==='granted'?'success':'info');
+    }catch(e){if(typeof showFeedback==='function')showFeedback(e.message||'Could not request notification permission.','error');}
+}
+
+function profileHandlePreferenceChange() {
+    profileSavePreferences();
+    if(document.getElementById('profileBrowserAlerts')?.checked&&'Notification' in window&&Notification.permission==='default')profileRequestBrowserNotifications();
+}
+
+// ============================================================
 // MISC
 // ============================================================
 function refreshProfile() {
     loadProfileData();
     loadLoginHistory();
+    profileLoadSessions();
     update2FAUI();
     if (typeof showFeedback === 'function') showFeedback('Profile refreshed', 'info');
 }
@@ -1054,6 +1210,12 @@ window.previewEditProfilePhoto = previewEditProfilePhoto;
 window.refreshProfile = refreshProfile;
 window.viewAuditLogs = viewAuditLogs;
 window.exportProfileData = exportProfileData;
+window.profileNavigateSection = profileNavigateSection;
+window.profileLoadSessions = profileLoadSessions;
+window.profileRevokeSession = profileRevokeSession;
+window.profileSavePreferences = profileSavePreferences;
+window.profileHandlePreferenceChange = profileHandlePreferenceChange;
+window.profileRequestBrowserNotifications = profileRequestBrowserNotifications;
 window.initProfile = initProfile;
 
 // 2FA globals
@@ -1068,7 +1230,7 @@ window.profileCopyBackupCodes = profileCopyBackupCodes;
 window.profileDownloadBackupCodes = profileDownloadBackupCodes;
 window.verifyTOTP = profileVerifyTOTP;
 
-console.log('✅ Enhanced Super Admin Profile module loaded (otplib 2FA + Login History)');
+console.log('✅ Enhanced Super Admin Profile Centre loaded (MFA, sessions, audit, notifications and preferences)');
 
 // Auto-init
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
