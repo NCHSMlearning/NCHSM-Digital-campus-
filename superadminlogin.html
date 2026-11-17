@@ -427,8 +427,6 @@ async function sendLoginNotification(profile){
 }
 
 async function saveAdminSession(profile){
- const bytes=crypto.getRandomValues(new Uint8Array(32));
- const token=Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
  const clean={
   user_id:profile.user_id,email:profile.email,full_name:profile.full_name||"Administrator",
   role:String(profile.role||"").toLowerCase(),program:profile.program||profile.department||"",
@@ -438,16 +436,16 @@ async function saveAdminSession(profile){
  localStorage.setItem("userProfile",JSON.stringify(clean));
  localStorage.setItem("currentUserId",profile.user_id);
  localStorage.setItem("userEmail",profile.email);
-
- try{
-   const {data}=await supabase.from("user_sessions").insert({
-     user_id:profile.user_id,session_token:token,user_agent:navigator.userAgent||"Unknown",
-     login_time:new Date().toISOString(),last_activity:new Date().toISOString(),
-     expires_at:new Date(Date.now()+24*60*60*1000).toISOString(),
-     is_active:true,login_type:"staff",created_at:new Date().toISOString()
-   }).select().maybeSingle();
-   if(data?.id)localStorage.setItem("session_id",data.id);
- }catch(e){console.warn("Session audit record could not be created.")}
+ const {data:sessionData,error:sessionError}=await supabase.auth.getSession();
+ if(sessionError||!sessionData?.session?.access_token)throw new Error("Authenticated session could not be verified for security logging.");
+ const {data,error}=await supabase.functions.invoke("record-admin-session",{body:{}});
+ if(error||!data?.success||!data?.session_id){
+  console.error("Secure admin session registration failed:",error||data);
+  throw new Error(data?.error||"Secure device and IP audit registration failed. Please try signing in again.");
+ }
+ localStorage.setItem("session_id",data.session_id);
+ localStorage.setItem("session_started_at",data.login_time||new Date().toISOString());
+ return data;
 }
 
 async function completeAdminLogin(profile){
