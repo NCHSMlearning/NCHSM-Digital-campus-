@@ -182,16 +182,32 @@
 
   function injectOwnerButton(){
     if(!owner||document.getElementById('ownerAcademicAccessButton'))return;
-    const nav=document.getElementById('mainNav')||document.getElementById('superadmin-nav')||document.querySelector('#sidebar nav, .sidebar-nav, .sidebar nav, aside nav');
-    if(!nav){console.warn('Primary owner access: #mainNav navigation container not found');return;}
-    const sample=nav.querySelector('a[data-tab], a'),item=document.createElement('li'),button=document.createElement('a');
-    item.id='ownerAcademicAccessNavItem';
-    if(sample?.parentElement?.tagName==='LI')item.className=sample.parentElement.className||'';
-    button.id='ownerAcademicAccessButton';button.href='#';button.setAttribute('data-tab','owner-academic-access');
-    button.className=sample?.className||'nav-link';button.style.cursor='pointer';
-    button.innerHTML='<i class="fas fa-shield-halved"></i><span>Academic Data Access</span>';
+    const sidebar=document.getElementById('sidebar')||document.querySelector('aside.sidebar, .sidebar');
+    const nav=document.getElementById('mainNav')||
+      document.getElementById('superadmin-nav')||
+      sidebar?.querySelector('nav, ul, .sidebar-nav, .sidebar-menu, [role="navigation"]');
+    const host=nav||sidebar;
+    if(!host){console.error('Primary owner access: sidebar container not found');return;}
+    const button=document.createElement('a');
+    button.id='ownerAcademicAccessButton';
+    button.href='#';
+    button.setAttribute('data-tab','owner-academic-access');
+    button.setAttribute('role','button');
+    button.style.cssText='display:flex;align-items:center;gap:12px;padding:12px 14px;margin:8px 10px;border:1px solid rgba(255,255,255,.24);border-radius:12px;background:linear-gradient(110deg,rgba(34,211,238,.22),rgba(99,102,241,.25));color:#fff;font-weight:700;text-decoration:none;position:relative;z-index:5;cursor:pointer;';
+    button.innerHTML='<i class="fas fa-shield-halved" aria-hidden="true"></i><span>Academic Data Access</span>';
     button.addEventListener('click',e=>{e.preventDefault();loadState();});
-    item.appendChild(button);nav.insertBefore(item,nav.firstChild);
+    if(host.tagName==='UL'){
+      const item=document.createElement('li');item.id='ownerAcademicAccessNavItem';item.appendChild(button);host.insertBefore(item,host.firstChild);
+    }else if(nav){
+      const item=document.createElement('div');item.id='ownerAcademicAccessNavItem';item.appendChild(button);nav.insertBefore(item,nav.firstChild);
+    }else{
+      const item=document.createElement('div');item.id='ownerAcademicAccessNavItem';
+      const search=sidebar.querySelector('.search-container, .search-wrapper');
+      if(search?.parentElement===sidebar)search.insertAdjacentElement('afterend',item);
+      else sidebar.insertBefore(item,sidebar.children[1]||null);
+      item.appendChild(button);
+    }
+    console.info('Primary owner Academic Data Access control inserted.',{host:host.id||host.className||host.tagName});
   }
 
   async function boot(){
