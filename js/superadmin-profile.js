@@ -543,6 +543,10 @@ function clearLoginHistory() {
 // ============================================================
 // RECENT ACTIVITY
 // ============================================================
+let profileRecentActivityRows = [];
+let profileRecentActivityFilter = 'all';
+let profileRecentActivitySearch = '';
+
 function loadRecentActivity() {
     const container = document.getElementById('profileRecentActivity');
     if (!container) return;
@@ -551,84 +555,99 @@ function loadRecentActivity() {
         container.innerHTML = profileActivityEmpty('No recent activity is available for this account.');
         return;
     }
-    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:9px;padding:24px;color:#64748b;font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Loading recent activity…</div>';
-
+    container.innerHTML = '<div style="padding:22px;text-align:center;color:#64748b"><i class="fas fa-spinner fa-spin"></i> Loading audit activity…</div>';
     supabase.from('audit_logs')
-        .select('action_type,details,status,timestamp,user_email')
+        .select('id,timestamp,created_at,user_id,user_email,actor_name,role,user_role,action_type,module,target_table,target_id,description,status,ip_address,device_info,user_agent,details,old_data,new_data,source,request_id')
         .eq('user_email', profileData.email)
         .order('timestamp', { ascending: false })
-        .limit(60)
-        .then(({ data, error }) => {
-            if (error) {
-                console.error('Recent activity query failed:', error);
-                container.innerHTML = profileActivityEmpty('Activity could not be loaded. Please refresh and try again.', true);
+        .limit(100)
+        .then(({data,error}) => {
+            if(error) {
+                console.error('Recent activity query failed:',error);
+                container.innerHTML=profileActivityEmpty('Activity could not be loaded. Please refresh and try again.',true);
                 return;
             }
-            if (!Array.isArray(data) || data.length === 0) {
-                container.innerHTML = profileActivityEmpty('No recent activity recorded yet.');
-                return;
-            }
-
-            // Database audit triggers may emit one row per affected record.
-            // Group the same operation/table within a short window into one item.
-            const grouped = [];
-            data.forEach(row => {
-                const action = String(row.action_type || 'activity').trim().toLowerCase();
-                const details = String(row.details || '').trim();
-                const status = String(row.status || 'recorded').trim().toLowerCase();
-                const tableMatch = details.match(/\b(?:in|on)\s+([a-z][a-z0-9_]*)\s*$/i);
-                const table = tableMatch ? tableMatch[1].toLowerCase() : '';
-                const stamp = row.timestamp ? new Date(row.timestamp).getTime() : NaN;
-                const previous = grouped[grouped.length - 1];
-                const sameOperation = previous &&
-                    previous.action === action &&
-                    previous.table === table &&
-                    previous.status === status &&
-                    Number.isFinite(stamp) &&
-                    Number.isFinite(previous.latestTime) &&
-                    Math.abs(previous.latestTime - stamp) <= 10000;
-                if (sameOperation) {
-                    previous.count += 1;
-                    previous.latestTime = stamp;
-                    if (row.timestamp) previous.timestamp = row.timestamp;
-                } else {
-                    grouped.push({ action, details, table, status, timestamp: row.timestamp, latestTime: stamp, count: 1 });
-                }
-            });
-
-            container.innerHTML = grouped.slice(0, 12).map(item => {
-                const actionLabel = profileFormatActivityAction(item.action);
-                const detailsLabel = profileFormatActivityDetails(item.details);
-                const successful = ['success', 'succeeded', 'completed', 'approved', 'successful'].includes(item.status);
-                const failed = ['failed', 'failure', 'error', 'denied', 'blocked'].includes(item.status);
-                const stateColor = successful ? '#059669' : (failed ? '#dc2626' : '#64748b');
-                const stateLabel = successful ? 'Successful' : (failed ? 'Failed' : 'Recorded');
-                const stateIcon = successful ? 'fa-check-circle' : (failed ? 'fa-exclamation-circle' : 'fa-info-circle');
-                const color = profileGetActionColor(item.action.toUpperCase());
-                const icon = profileGetActionIcon(item.action.toUpperCase());
-                const date = item.timestamp && !Number.isNaN(new Date(item.timestamp).getTime())
-                    ? new Intl.DateTimeFormat(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(item.timestamp))
-                    : 'Time not recorded';
-                const count = item.count > 1
-                    ? '<span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;background:#eef2ff;color:#4338ca;font-size:10px;font-weight:700;white-space:nowrap;">' + item.count + ' related records</span>'
-                    : '';
-                return '<article style="display:flex;align-items:flex-start;gap:11px;padding:14px 2px;border-bottom:1px solid #edf1f5;width:100%;box-sizing:border-box;min-width:0;">' +
-                    '<div style="width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:' + color + '18;display:flex;align-items:center;justify-content:center;margin-top:1px;">' +
-                    '<i class="fas ' + icon + '" style="color:' + color + ';font-size:15px;"></i></div>' +
-                    '<div style="flex:1;min-width:0;max-width:100%;">' +
-                    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:5px;min-width:0;">' +
-                    '<strong style="font-size:13px;color:#1e293b;overflow-wrap:anywhere;">' + profileEscapeHtml(actionLabel) + '</strong>' + count + '</div>' +
-                    '<div style="font-size:12px;line-height:1.55;color:#64748b;white-space:normal;overflow-wrap:anywhere;word-break:break-word;">' + profileEscapeHtml(detailsLabel) + '</div>' +
-                    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px;">' +
-                    '<span style="font-size:11px;color:#94a3b8;white-space:normal;"><i class="far fa-clock" style="margin-right:4px;"></i>' + profileEscapeHtml(date) + '</span>' +
-                    '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:' + stateColor + ';white-space:nowrap;"><i class="fas ' + stateIcon + '"></i>' + stateLabel + '</span>' +
-                    '</div></div></article>';
-            }).join('');
+            profileRecentActivityRows=Array.isArray(data)?data:[];
+            profileRenderRecentActivity();
         })
         .catch(error => {
-            console.error('Recent activity loading error:', error);
-            container.innerHTML = profileActivityEmpty('Activity could not be loaded. Please refresh and try again.', true);
+            console.error('Recent activity loading error:',error);
+            container.innerHTML=profileActivityEmpty('Activity could not be loaded. Please refresh and try again.',true);
         });
+}
+
+function profileRenderRecentActivity() {
+    const container=document.getElementById('profileRecentActivity');if(!container)return;
+    const rows=profileRecentActivityRows;
+    const filters=[
+      ['all','All activity'],['success','Successful'],['failed','Failed'],['login','Logins'],['update','Updates'],['insert','Created'],['delete','Deleted']
+    ];
+    const filtered=rows.filter(row=>{
+      const action=String(row.action_type||'').toLowerCase(),status=String(row.status||'').toLowerCase();
+      const matchFilter=profileRecentActivityFilter==='all'||
+        (profileRecentActivityFilter==='success'&&['success','succeeded','completed','approved','successful'].includes(status))||
+        (profileRecentActivityFilter==='failed'&&['failed','failure','error','denied','blocked'].includes(status))||
+        (profileRecentActivityFilter==='login'&&action.includes('login'))||
+        action===profileRecentActivityFilter;
+      const haystack=[row.action_type,row.module,row.target_table,row.target_id,row.description,row.details,row.status,row.actor_name,row.ip_address].join(' ').toLowerCase();
+      return matchFilter&&haystack.includes(profileRecentActivitySearch);
+    });
+    const esc=value=>profileEscapeHtml(value===null||value===undefined||value===''?'Not recorded':String(value));
+    const fmt=value=>{if(!value)return 'Time not recorded';const d=new Date(value);return Number.isNaN(d.getTime())?'Time not recorded':new Intl.DateTimeFormat(undefined,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d);};
+    const json=value=>value&&typeof value==='object'?JSON.stringify(value,null,2):'No change snapshot was stored for this event.';
+    const toolbar='<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:9px;margin:0 0 14px;">'+
+      '<input id="profileActivitySearch" type="search" value="'+esc(profileRecentActivitySearch===''?'':profileRecentActivitySearch)+'" placeholder="Search actions, tables, records, IP…" aria-label="Search audit activity" style="width:100%;box-sizing:border-box;border:1px solid #dbe2ea;border-radius:10px;padding:11px 12px;font-size:13px;background:#fff;">'+
+      '<div style="display:flex;gap:7px;overflow-x:auto;padding:2px 0 5px;">'+filters.map(([v,label])=>'<button type="button" data-activity-filter="'+v+'" style="white-space:nowrap;border:1px solid '+(profileRecentActivityFilter===v?'#4C1D95':'#dbe2ea')+';background:'+(profileRecentActivityFilter===v?'#f3e8ff':'#fff')+';color:'+(profileRecentActivityFilter===v?'#4C1D95':'#475569')+';border-radius:20px;padding:7px 11px;font-size:11px;font-weight:700;">'+label+'</button>').join('')+'</div>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;"><span style="font-size:11px;color:#64748b">'+filtered.length+' of '+rows.length+' recent records</span><button type="button" id="profileActivityExport" style="border:1px solid #0f766e;background:#ecfdf5;color:#0f766e;border-radius:8px;padding:8px 11px;font-size:11px;font-weight:700;"><i class="fas fa-file-csv"></i> Export CSV</button></div></div>';
+    const cards=filtered.map(row=>{
+      const action=String(row.action_type||'activity'),upper=action.toUpperCase(),status=String(row.status||'recorded').toLowerCase();
+      const success=['success','succeeded','completed','approved','successful'].includes(status),failed=['failed','failure','error','denied','blocked'].includes(status);
+      const state=success?'Successful':failed?'Failed':'Recorded',stateColor=success?'#059669':failed?'#dc2626':'#64748b';
+      const color=profileGetActionColor(upper),icon=profileGetActionIcon(upper);
+      const actor=row.actor_name||row.user_email||'Unknown actor',role=row.role||row.user_role||'Not recorded';
+      const table=row.target_table||'Not specified',target=row.target_id||'Not specified';
+      const description=row.description||row.details||'No description was supplied for this event.';
+      const oldData=json(row.old_data),newData=json(row.new_data);
+      const detailId='activity-detail-'+String(row.id||Math.random()).replace(/[^a-zA-Z0-9_-]/g,'');
+      const metadata=[
+        ['Actor',actor],['Role',role],['Module',row.module],['Target table',table],['Target record ID',target],
+        ['IP address',row.ip_address],['Device',row.device_info],['User agent',row.user_agent],['Source',row.source],['Request ID',row.request_id],['Audit record ID',row.id]
+      ];
+      return '<article style="display:flex;gap:10px;padding:13px 1px;border-bottom:1px solid #edf1f5;min-width:0;">'+
+        '<div style="width:36px;height:36px;flex:0 0 36px;border-radius:50%;background:'+color+'18;display:flex;align-items:center;justify-content:center;"><i class="fas '+icon+'" style="color:'+color+'"></i></div>'+
+        '<div style="flex:1;min-width:0;">'+
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><strong style="font-size:13px;color:#1e293b">'+esc(profileFormatActivityAction(action))+'</strong><span style="font-size:10px;font-weight:700;color:'+stateColor+'">'+state+'</span></div>'+
+        '<div style="font-size:12px;line-height:1.5;color:#64748b;overflow-wrap:anywhere;margin-top:3px">'+esc(description)+'</div>'+
+        '<div style="font-size:11px;color:#94a3b8;margin-top:6px"><i class="far fa-clock"></i> '+esc(fmt(row.timestamp||row.created_at))+'</div>'+
+        '<details style="margin-top:8px;"><summary style="cursor:pointer;color:#4C1D95;font-size:11px;font-weight:700;padding:5px 0;">View full audit details</summary>'+
+        '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:10px;margin-top:6px;">'+
+        metadata.map(([label,value])=>'<div style="display:flex;gap:8px;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e9eef4;font-size:11px;"><span style="color:#64748b;flex:0 0 38%">'+label+'</span><strong style="color:#334155;text-align:right;overflow-wrap:anywhere;min-width:0">'+esc(value)+'</strong></div>').join('')+
+        '<div style="font-size:11px;font-weight:700;color:#334155;margin:10px 0 4px;">Previous data</div><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto;background:#fff;padding:8px;border-radius:6px;font-size:10px;color:#475569">'+esc(oldData)+'</pre>'+
+        '<div style="font-size:11px;font-weight:700;color:#334155;margin:10px 0 4px;">New data</div><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto;background:#fff;padding:8px;border-radius:6px;font-size:10px;color:#475569">'+esc(newData)+'</pre>'+
+        '</div></details></div></article>';
+    }).join('');
+    container.innerHTML=toolbar+(cards||profileActivityEmpty(rows.length?'No records match these filters.':'No recent activity recorded yet.'));
+    const search=document.getElementById('profileActivitySearch');
+    if(search)search.addEventListener('input',event=>{profileRecentActivitySearch=event.target.value.toLowerCase().trim();profileRenderRecentActivity();const next=document.getElementById('profileActivitySearch');if(next){next.focus();next.setSelectionRange(next.value.length,next.value.length);}});
+    container.querySelectorAll('[data-activity-filter]').forEach(button=>button.addEventListener('click',()=>{profileRecentActivityFilter=button.dataset.activityFilter;profileRenderRecentActivity();}));
+    document.getElementById('profileActivityExport')?.addEventListener('click',profileExportRecentActivity);
+}
+
+function profileExportRecentActivity() {
+    const rows=profileRecentActivityRows.filter(row=>{
+      const action=String(row.action_type||'').toLowerCase(),status=String(row.status||'').toLowerCase();
+      const match=profileRecentActivityFilter==='all'||
+        (profileRecentActivityFilter==='success'&&['success','succeeded','completed','approved','successful'].includes(status))||
+        (profileRecentActivityFilter==='failed'&&['failed','failure','error','denied','blocked'].includes(status))||
+        (profileRecentActivityFilter==='login'&&action.includes('login'))||action===profileRecentActivityFilter;
+      const text=[row.action_type,row.module,row.target_table,row.target_id,row.description,row.details,row.status,row.actor_name,row.ip_address].join(' ').toLowerCase();
+      return match&&text.includes(profileRecentActivitySearch);
+    });
+    const fields=['id','timestamp','user_email','actor_name','role','user_role','action_type','module','target_table','target_id','description','status','ip_address','device_info','user_agent','source','request_id','details','old_data','new_data'];
+    const quote=value=>'"'+String(value===null||value===undefined?'':typeof value==='object'?JSON.stringify(value):value).replace(/"/g,'""')+'"';
+    const csv=[fields.join(','),...rows.map(row=>fields.map(field=>quote(row[field])).join(','))].join('\r\n');
+    const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='super-admin-audit-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
 }
 
 function profileActivityEmpty(message, isError) {
