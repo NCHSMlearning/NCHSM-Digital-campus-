@@ -151,6 +151,8 @@ async function loadProfileData() {
         updateProfileUI();
         profileSetupSections();
         profileLoadSessions();
+        profileLoadPasswordChangedAt();
+        profileLoadStoredPreferences();
         loadProfileStats();
         loadRecentActivity();
         loadLoginHistory();
@@ -944,6 +946,10 @@ async function handlePasswordChange() {
         if (submit) submit.textContent = 'Updating password…';
         const { error: updateError } = await supabase.auth.updateUser({ password: newPass });
         if (updateError) throw updateError;
+        const changedAt=new Date().toISOString();
+        await profileWriteAudit('PASSWORD_CHANGED','security','auth.users',profileData.id,'Changed Super Admin account password',{password_changed_at:changedAt});
+        profileData.passwordChangedAt=changedAt;
+        profileRenderPasswordChangedAt(changedAt);
         showPasswordFeedback('Password changed successfully.', true);
         document.getElementById('changePasswordForm')?.reset();
         if (typeof showFeedback === 'function') showFeedback('Password changed successfully.', 'success');
@@ -1225,6 +1231,43 @@ async function profileWriteAudit(action,module,targetTable,targetId,description,
     }catch(e){console.warn('Profile audit event failed:',e);return false;}
 }
 
+async function profileLoadPasswordChangedAt(){
+    const sb=profileGetSupabase();if(!sb||!profileData.id)return;
+    try{
+      const {data,error}=await sb.from('audit_logs').select('timestamp,created_at')
+        .eq('user_id',profileData.id).eq('action_type','PASSWORD_CHANGED')
+        .order('timestamp',{ascending:false}).limit(1).maybeSingle();
+      if(error)throw error;
+      profileRenderPasswordChangedAt(data?.timestamp||data?.created_at||null);
+    }catch(e){console.warn('Password change date unavailable:',e.message);}
+}
+function profileRenderPasswordChangedAt(value){
+    let el=document.getElementById('profilePasswordLastChanged');
+    const panel=document.getElementById('profileSecurityPanel');
+    if(!el&&panel){
+      el=document.createElement('p');el.id='profilePasswordLastChanged';
+      el.style.cssText='font-size:12px;color:#64748b;margin:8px 0 14px';
+      const heading=panel.querySelector('h3,h4');
+      if(heading?.parentNode)heading.parentNode.insertBefore(el,heading.nextSibling);else panel.prepend(el);
+    }
+    if(el)el.textContent='Password last changed: '+(value?profileFormatDateTime(value):'No password-change event recorded yet');
+}
+
+async function profileLoadStoredPreferences(){
+    const sb=profileGetSupabase();if(!sb||!profileData.id)return;
+    try{
+      const {data,error}=await sb.from('superadmin_profile_preferences').select('preferences')
+        .eq('user_id',profileData.id).maybeSingle();
+      if(error)throw error;
+      if(data?.preferences){
+        const local=(()=>{try{return JSON.parse(localStorage.getItem('nchsm_superadmin_profile_preferences')||'{}')||{};}catch(_){return {};}})();
+        const merged={...local,...data.preferences};
+        localStorage.setItem('nchsm_superadmin_profile_preferences',JSON.stringify(merged));
+        profileLoadPreferences();
+      }
+    }catch(e){console.warn('Cloud profile preferences unavailable; using this device:',e.message);}
+}
+
 function profileLoadPreferences() {
     let prefs={};
     try{prefs=JSON.parse(localStorage.getItem('nchsm_superadmin_profile_preferences')||'{}')||{};}catch(_){}
@@ -1257,7 +1300,7 @@ function profileFormatDateTime(value,includeSeconds=false) {
     return new Intl.DateTimeFormat(undefined,options).format(date);
 }
 
-function profileSavePreferences() {
+async function profileSavePreferences() {
     const prefs={
       theme:document.getElementById('profileThemePreference')?.value||'light',
       dateFormat:document.getElementById('profileDateFormat')?.value||'local',
@@ -1269,8 +1312,13 @@ function profileSavePreferences() {
     try{localStorage.setItem('nchsm_superadmin_profile_preferences',JSON.stringify(prefs));}
     catch(e){if(typeof showFeedback==='function')showFeedback('Preferences could not be saved in this browser.','error');return;}
     document.body.classList.toggle('profile-dark-mode',prefs.theme==='dark');
+    const sb=profileGetSupabase();
+    if(sb&&profileData.id){
+      const {error}=await sb.from('superadmin_profile_preferences').upsert({user_id:profileData.id,preferences:prefs,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+      if(error){console.error('Cloud preference save failed:',error);const status=document.getElementById('profilePreferencesSaveStatus');if(status)status.textContent='Saved on this device only. Cloud sync failed: '+error.message;if(typeof showFeedback==='function')showFeedback('Preferences saved on this device, but cloud sync failed.','warning');return;}
+    }
     const status=document.getElementById('profilePreferencesSaveStatus');
-    if(status)status.textContent='Preferences saved on this device.';
+    if(status)status.textContent='Preferences saved securely to your account and this device.';
     if(typeof showFeedback==='function')showFeedback('Profile preferences saved.','success');
     profileLoadPreferences();
 }
