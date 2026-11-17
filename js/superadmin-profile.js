@@ -125,7 +125,7 @@ async function loadProfileData() {
         const metadata = authUser.user_metadata || {};
         const name = dbProfile.full_name || metadata.full_name || metadata.name || authUser.email?.split('@')[0] || 'Super Admin';
         const photo = dbProfile.profile_photo_url || dbProfile.avatar_url || metadata.avatar_url || localStorage.getItem('profilePhoto') || '';
-        const accountStatus = authUser.email_confirmed_at ? 'Active' : 'Pending verification';
+        const accountStatus = dbProfile.status || (authUser.email_confirmed_at ? 'Email verified' : 'Email not verified');
         const createdAt = authUser.created_at || dbProfile.created_at || null;
         const lastSignIn = authUser.last_sign_in_at || null;
         profileData = {
@@ -197,7 +197,7 @@ function updateProfileUI() {
     const accountStatus = document.getElementById('profileAccountStatus');
     if (accountStatus) {
         accountStatus.textContent = profileData.accountStatus || 'Status unavailable';
-        accountStatus.style.color = profileData.accountStatus === 'Active' ? '#059669' : '#b45309';
+        accountStatus.style.color = ['active','approved'].includes(String(profileData.accountStatus || '').toLowerCase()) ? '#059669' : '#b45309';
     }
     const avatarText = document.getElementById('profileAvatarText');
     if (avatarText) avatarText.textContent = profileData.avatarInitials || 'SA';
