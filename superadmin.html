@@ -13461,6 +13461,25 @@
 <!-- ============================================================ -->
 
 <style id="nchsm-superadmin-profile-responsive">
+#profileSectionNav button{transition:background .18s ease,color .18s ease;flex:0 0 auto}
+#profile .profile-extra-panel{scroll-margin-top:90px}
+body.profile-dark-mode #profile .profile-extra-panel,
+body.profile-dark-mode #profilePersonalInfoPanel,
+body.profile-dark-mode #profileActivityPanel{background:#172b42!important;border-color:#334155!important;color:#e2e8f0}
+body.profile-dark-mode #profile .profile-extra-panel h3,
+body.profile-dark-mode #profile .profile-extra-panel h4{color:#e2e8f0!important}
+body.profile-dark-mode #profile .profile-extra-panel p,
+body.profile-dark-mode #profile .profile-extra-panel small{color:#cbd5e1!important}
+body.profile-dark-mode #profile .profile-extra-panel [style*="background:#f8fafc"]{background:#20364f!important;border-color:#475569!important}
+body.profile-dark-mode #profile .profile-extra-panel input,
+body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!important;color:#f8fafc!important;border-color:#475569!important}
+@media(max-width:640px){
+ #profileSectionNav{margin-left:-2px;margin-right:-2px}
+ #profile .profile-extra-panel{padding:15px!important;border-radius:13px!important}
+ #profile .profile-extra-panel label{min-width:0}
+ #profile .profile-extra-panel label span{min-width:0}
+}
+
 #profile{width:100%;max-width:1480px;margin:0 auto;min-width:0}
 #profile>div[style*="grid-template-columns: 2fr 1fr"]{align-items:start}
 #profile [id^="profile"]{overflow-wrap:anywhere}
@@ -13764,7 +13783,17 @@
         </div>
     </div>
 
-    <!-- ===== PROFILE CONTENT GRID ===== -->
+    <!-- PROFILE CENTRE NAVIGATION -->
+    <nav id="profileSectionNav" aria-label="Profile sections" style="display:flex;gap:8px;overflow-x:auto;padding:4px 2px 14px;margin:0 0 18px;scrollbar-width:thin;">
+      <button type="button" data-profile-section="overview" aria-current="location" onclick="profileNavigateSection('overview')" style="white-space:nowrap;border:1px solid #4C1D95;background:#4C1D95;color:#fff;border-radius:22px;padding:10px 14px;font-size:12px;font-weight:700;"><i class="fas fa-th-large"></i> Overview</button>
+      <button type="button" data-profile-section="personal" onclick="profileNavigateSection('personal')" style="white-space:nowrap;border:1px solid #e2e8f0;background:#fff;color:#334155;border-radius:22px;padding:10px 14px;font-size:12px;font-weight:700;"><i class="fas fa-user"></i> Personal</button>
+      <button type="button" data-profile-section="security" onclick="profileNavigateSection('security')" style="white-space:nowrap;border:1px solid #e2e8f0;background:#fff;color:#334155;border-radius:22px;padding:10px 14px;font-size:12px;font-weight:700;"><i class="fas fa-shield-alt"></i> Security & Access</button>
+      <button type="button" data-profile-section="activity" onclick="profileNavigateSection('activity')" style="white-space:nowrap;border:1px solid #e2e8f0;background:#fff;color:#334155;border-radius:22px;padding:10px 14px;font-size:12px;font-weight:700;"><i class="fas fa-history"></i> Activity & Audit</button>
+      <button type="button" data-profile-section="notifications" onclick="profileNavigateSection('notifications')" style="white-space:nowrap;border:1px solid #e2e8f0;background:#fff;color:#334155;border-radius:22px;padding:10px 14px;font-size:12px;font-weight:700;"><i class="fas fa-bell"></i> Notifications</button>
+      <button type="button" data-profile-section="preferences" onclick="profileNavigateSection('preferences')" style="white-space:nowrap;border:1px solid #e2e8f0;background:#fff;color:#334155;border-radius:22px;padding:10px 14px;font-size:12px;font-weight:700;"><i class="fas fa-sliders-h"></i> Preferences</button>
+    </nav>
+
+<!-- ===== PROFILE CONTENT GRID ===== -->
     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
         
         <!-- LEFT COLUMN: PROFILE DETAILS -->
@@ -13952,6 +13981,59 @@
             </div>
         </div>
     </div>
+
+    <!-- SECURITY & ACCESS -->
+    <section id="profileSecurityPanel" class="profile-extra-panel" style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px;margin:20px 0;box-shadow:0 1px 3px rgba(0,0,0,.04);scroll-margin-top:90px;">
+      <h3 style="margin:0 0 6px;color:#0A3D62;display:flex;align-items:center;gap:9px;"><i class="fas fa-shield-alt" style="color:#4C1D95"></i> Security & Access</h3>
+      <p style="margin:0 0 16px;color:#64748b;font-size:12px;">Manage authenticator protection and review devices currently associated with your account.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:15px;">
+          <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;">Authenticator 2FA</div>
+          <div id="twoFactorStatus" style="font-size:19px;font-weight:800;color:#b45309;margin:6px 0;">Checking…</div>
+          <p style="font-size:11px;color:#64748b;margin:0 0 12px;">Use an authenticator app to protect Super Admin sign-ins.</p>
+          <button id="twoFactorToggleBtn" type="button" onclick="enable2FA()" style="background:#059669;color:#fff;border:0;border-radius:9px;padding:10px 13px;font-weight:700;font-size:12px;">Enable 2FA</button>
+          <div id="twoFactorSetupDate" style="font-size:10px;color:#94a3b8;margin-top:9px;"></div>
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:15px;">
+          <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;">Password protection</div>
+          <div style="font-size:15px;font-weight:800;color:#1e293b;margin:6px 0;">Update your password</div>
+          <p style="font-size:11px;color:#64748b;margin:0 0 12px;">Verify your current password before setting a new one.</p>
+          <button type="button" onclick="changePassword()" style="background:#0A3D62;color:#fff;border:0;border-radius:9px;padding:10px 13px;font-weight:700;font-size:12px;">Change password</button>
+        </div>
+      </div>
+      <div style="margin-top:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+          <h4 style="margin:0;color:#0A3D62;font-size:14px;">Active sessions</h4>
+          <button type="button" onclick="profileLoadSessions()" style="border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;"><i class="fas fa-sync-alt"></i> Refresh sessions</button>
+        </div>
+        <div id="profileSessionsList" style="min-width:0;"><div style="padding:16px;text-align:center;color:#94a3b8;font-size:12px;">Sessions will appear after your profile loads.</div></div>
+      </div>
+      <div style="margin-top:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:11px;color:#9a3412;font-size:11px;">Session revocation is enabled only when this browser's current session can be identified safely. Institutional account lockdown and role changes remain under Super Admin governance.</div>
+    </section>
+
+    <!-- NOTIFICATIONS -->
+    <section id="profileNotificationsPanel" class="profile-extra-panel" style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px;margin:20px 0;box-shadow:0 1px 3px rgba(0,0,0,.04);scroll-margin-top:90px;">
+      <h3 style="margin:0 0 6px;color:#0A3D62;display:flex;align-items:center;gap:9px;"><i class="fas fa-bell" style="color:#FDB913"></i> Notifications</h3>
+      <p style="margin:0 0 16px;color:#64748b;font-size:12px;">Choose which alerts this browser and your profile should prefer.</p>
+      <div style="display:grid;gap:12px;">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;"><span><strong style="display:block;font-size:13px;color:#1e293b;">In-app security alerts</strong><small style="color:#64748b;">Preference for security notices inside the portal.</small></span><input id="profileInAppAlerts" type="checkbox" onchange="profileHandlePreferenceChange()" style="width:20px;height:20px;accent-color:#4C1D95;"></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;"><span><strong style="display:block;font-size:13px;color:#1e293b;">Email security alerts</strong><small style="color:#64748b;">Save your preference for future email alert delivery.</small></span><input id="profileEmailAlerts" type="checkbox" onchange="profileHandlePreferenceChange()" style="width:20px;height:20px;accent-color:#4C1D95;"></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;"><span><strong style="display:block;font-size:13px;color:#1e293b;">Browser notifications</strong><small style="color:#64748b;">Allow this browser to display supported security notifications.</small><small id="profileBrowserAlertStatus" style="display:block;color:#94a3b8;margin-top:3px;"></small></span><input id="profileBrowserAlerts" type="checkbox" onchange="profileHandlePreferenceChange()" style="width:20px;height:20px;accent-color:#4C1D95;"></label>
+      </div>
+      <p style="font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:10px;margin:14px 0 0;">Email and in-app alert choices are stored as preferences on this device. Actual email delivery and centralized in-app alert routing require the institution's notification service to be connected.</p>
+    </section>
+
+    <!-- PREFERENCES -->
+    <section id="profilePreferencesPanel" class="profile-extra-panel" style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px;margin:20px 0;box-shadow:0 1px 3px rgba(0,0,0,.04);scroll-margin-top:90px;">
+      <h3 style="margin:0 0 6px;color:#0A3D62;display:flex;align-items:center;gap:9px;"><i class="fas fa-sliders-h" style="color:#0d9488"></i> Preferences</h3>
+      <p style="margin:0 0 16px;color:#64748b;font-size:12px;">Personal display and regional settings for this browser.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px;">
+        <label style="font-size:12px;font-weight:700;color:#475569;">Appearance<select id="profileThemePreference" onchange="profileHandlePreferenceChange()" style="display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#1e293b;"><option value="light">Light mode</option><option value="dark">Dark mode</option></select></label>
+        <label style="font-size:12px;font-weight:700;color:#475569;">Date format<select id="profileDateFormat" onchange="profileHandlePreferenceChange()" style="display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#1e293b;"><option value="local">Browser default</option><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option><option value="iso">YYYY-MM-DD</option></select></label>
+        <label style="font-size:12px;font-weight:700;color:#475569;">Time zone<select id="profileTimezone" onchange="profileHandlePreferenceChange()" style="display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#1e293b;"><option value="Africa/Nairobi">Africa/Nairobi (EAT)</option><option value="UTC">UTC</option><option value="Africa/Kampala">Africa/Kampala</option><option value="Africa/Dar_es_Salaam">Africa/Dar es Salaam</option><option value="Europe/London">Europe/London</option></select></label>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;"><button type="button" onclick="profileSavePreferences()" style="background:#0A3D62;color:#fff;border:0;border-radius:9px;padding:10px 15px;font-size:12px;font-weight:700;">Save preferences</button><span id="profilePreferencesSaveStatus" style="font-size:11px;color:#64748b;"></span></div>
+    </section>
 </section>
                         <!-- ============================================================ -->
 <!-- ✏️ EDIT PROFILE MODAL                                         -->
@@ -15060,7 +15142,7 @@
  <!-- ============================================ -->
 <!-- SUPER ADMIN PROFILE MODULE                   -->
 <!-- ============================================ -->
-<script src="js/superadmin-profile.js?v=20261117-audit-details" defer></script>
+<script src="js/superadmin-profile.js?v=20261117-profile-centre" defer></script>
 <script src="js/superadmin-audit-centre.js?v=20261111-mobile-grid-fix" defer></script>
 <script src="js/superadmin-lecturer-reports-review.js?v=20261109-portfolio1" defer></script>
 <script src="js/research-topic-vault.js?v=20261109-restore1" defer></script>
