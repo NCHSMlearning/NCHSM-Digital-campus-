@@ -556,6 +556,14 @@
 #sidebar::-webkit-scrollbar-thumb{background:rgba(148,163,184,.32);border-radius:9px}
 .mobile-nav-toggle{display:none!important}
 @media(max-width:768px){
+  .container{width:100%!important;max-width:100%!important}
+  .main{margin-left:0!important;width:100%!important;max-width:100%!important;padding:68px 14px 24px!important;box-sizing:border-box!important}
+  main.main{min-width:0!important}
+  #sidebar{left:-285px!important;width:270px!important;max-width:calc(100vw - 48px)!important;z-index:1200!important}
+  #sidebar.active{left:0!important}
+  .mobile-nav-toggle{display:flex!important}
+}
+@media(max-width:768px){
   #sidebar{left:-285px!important;width:270px!important;max-width:calc(100vw - 48px)!important;z-index:1200!important;transition:left .25s ease!important}
   #sidebar.active{left:0!important}
   .mobile-nav-toggle{
@@ -14851,22 +14859,7 @@
         }
     })();
 
-    // ============================================================
-    // MOBILE NAVIGATION
-    // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
-        const mobileToggle = document.getElementById('mobileNavToggle');
-        if (mobileToggle) {
-            mobileToggle.addEventListener('click', function() {
-                document.getElementById('sidebar')?.classList.toggle('active');
-            });
-        }
-        document.querySelectorAll('.nav a').forEach(link => {
-            link.addEventListener('click', function() {
-                document.getElementById('sidebar')?.classList.remove('active');
-            });
-        });
-    });
+    // Mobile navigation is managed by the single delegated controller below.
 
     console.log('✅ All scripts loaded successfully');
 </script>
@@ -15468,23 +15461,29 @@ document.addEventListener('DOMContentLoaded',function(){
     toggle.setAttribute('aria-expanded',String(open));
     toggle.setAttribute('aria-label',open?'Close navigation':'Open navigation');
   }
-  toggle.addEventListener('click',function(){requestAnimationFrame(sync);});
+  function closeDrawer(){
+    sidebar.classList.remove('active');
+    sync();
+  }
+  // One toggle handler only: avoids the previous double-toggle race.
+  toggle.addEventListener('click',function(event){
+    event.preventDefault();
+    event.stopPropagation();
+    sidebar.classList.toggle('active');
+    sync();
+  });
+  // The module's existing delegated click handler runs first and switches content.
   document.addEventListener('click',function(event){
     if(window.innerWidth>768||!sidebar.classList.contains('active'))return;
     const moduleLink=event.target.closest('#mainNav a[data-tab]');
     if(moduleLink){
-      // Let the existing tab handler render the selected module, then close the drawer.
       requestAnimationFrame(function(){
-        sidebar.classList.remove('active');
-        sync();
+        closeDrawer();
         window.scrollTo({top:0,behavior:'smooth'});
       });
       return;
     }
-    if(!sidebar.contains(event.target)&&!toggle.contains(event.target)){
-      sidebar.classList.remove('active');
-      sync();
-    }
+    if(!sidebar.contains(event.target)&&!toggle.contains(event.target))closeDrawer();
   });
   document.addEventListener('keydown',function(event){
     if(event.key==='Escape'&&sidebar.classList.contains('active')){
