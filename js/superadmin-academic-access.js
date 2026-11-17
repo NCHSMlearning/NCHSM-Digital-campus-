@@ -191,7 +191,7 @@
     button.className=sample?.className||'nav-link';button.style.cursor='pointer';
     button.innerHTML='<i class="fas fa-shield-halved"></i><span>Academic Data Access</span>';
     button.addEventListener('click',e=>{e.preventDefault();loadState();});
-    item.appendChild(button);nav.appendChild(item);
+    item.appendChild(button);nav.insertBefore(item,nav.firstChild);
   }
 
   async function boot(){
