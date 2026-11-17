@@ -3531,7 +3531,7 @@ console.log('   - 🔒 NO AUTO-PUBLISH - All actions require confirmation');
 
 /* Ensure the primary-owner access control is loaded on the actual Super Admin page. */
 (function loadPrimaryOwnerAcademicAccess(){
-  const src='js/superadmin-academic-access.js?v=20261118c';
+  const src='js/superadmin-academic-access.js?v=20261118d';
   const inject=()=>{
     if(document.querySelector('script[data-nchsm-owner-academic-access]'))return;
     const script=document.createElement('script');
