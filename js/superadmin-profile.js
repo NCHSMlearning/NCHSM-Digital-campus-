@@ -1150,7 +1150,31 @@ async function profileLoadSessions() {
         container.insertAdjacentHTML('afterbegin','<div style="padding:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;color:#9a3412;font-size:11px;margin-bottom:10px">The current browser session could not be matched safely. Session revocation is disabled to avoid signing you out unexpectedly.</div>');
       }
       container.querySelectorAll('[data-revoke-session]').forEach(button=>button.addEventListener('click',()=>profileRevokeSession(button.dataset.revokeSession)));
+      if(profileCurrentSessionRowId){
+        const signOutOthers=document.createElement('button');
+        signOutOthers.type='button';signOutOthers.textContent='Sign out all other devices';
+        signOutOthers.style.cssText='margin:0 0 12px;border:1px solid #fecaca;background:#fff7f7;color:#b91c1c;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer';
+        signOutOthers.addEventListener('click',profileSignOutOtherSessions);
+        container.prepend(signOutOthers);
+      }
     }catch(e){console.error('Session list failed:',e);container.innerHTML=profileActivityEmpty(e.message||'Unable to load active sessions. Check session access permissions.',true);}
+}
+
+async function profileSignOutOtherSessions(){
+    if(!profileCurrentSessionRowId){if(typeof showFeedback==='function')showFeedback('Current session could not be matched; no sessions were changed.','warning');return;}
+    if(!confirm('Sign out all other devices and browsers? This device will remain signed in.'))return;
+    const sb=profileGetSupabase();if(!sb)return;
+    try{
+      const {error}=await sb.auth.signOut({scope:'others'});
+      if(error)throw error;
+      const {error:updateError}=await sb.from('user_sessions').update({
+        is_active:false,terminated_at:new Date().toISOString(),terminated_by:profileData.email,termination_reason:'Other sessions revoked by account owner'
+      }).eq('user_id',profileData.id).eq('is_active',true).neq('id',profileCurrentSessionRowId);
+      if(updateError)console.warn('Auth sessions revoked, but the local session ledger could not be synchronised:',updateError.message);
+      await profileWriteAudit('OTHER_SESSIONS_REVOKED','security','user_sessions',profileCurrentSessionRowId,'Signed out all other devices and browsers',{session_scope:'others'});
+      if(typeof showFeedback==='function')showFeedback('Other sessions have been signed out.','success');
+      await profileLoadSessions();
+    }catch(e){console.error('Could not sign out other sessions:',e);if(typeof showFeedback==='function')showFeedback(e.message||'Could not sign out other sessions.','error');}
 }
 
 async function profileRevokeSession(sessionId) {
