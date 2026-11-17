@@ -15471,10 +15471,19 @@ document.addEventListener('DOMContentLoaded',function(){
   toggle.addEventListener('click',function(){requestAnimationFrame(sync);});
   document.addEventListener('click',function(event){
     if(window.innerWidth>768||!sidebar.classList.contains('active'))return;
+    const moduleLink=event.target.closest('#mainNav a[data-tab]');
+    if(moduleLink){
+      // Let the existing tab handler render the selected module, then close the drawer.
+      requestAnimationFrame(function(){
+        sidebar.classList.remove('active');
+        sync();
+        window.scrollTo({top:0,behavior:'smooth'});
+      });
+      return;
+    }
     if(!sidebar.contains(event.target)&&!toggle.contains(event.target)){
-      sidebar.classList.remove('active');sync();
-    }else if(event.target.closest('#mainNav a[data-tab]')){
-      requestAnimationFrame(sync);
+      sidebar.classList.remove('active');
+      sync();
     }
   });
   document.addEventListener('keydown',function(event){
