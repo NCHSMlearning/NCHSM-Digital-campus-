@@ -2344,6 +2344,7 @@ async function saveMarksEntry() {
         return;
     }
 
+    if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit('MARKS_EDIT_ATTEMPTED',{description:'Attempted to save/edit student marks',record_count:marksData.length,filters:{program:me_currentProgram,block,unit,academic_year:year}},'attempted');
     console.log(`📋 Preparing ${marksData.length} marks...`);
     showLoading(`Saving ${marksData.length} marks...`);
 
@@ -2465,6 +2466,7 @@ async function saveMarksEntry() {
     }
 
     console.log(`✅ Marks save complete: ${saved} saved, ${errors} failed`);
+    if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit('MARKS_UPDATED',{description:errors?'Marks save completed with failures':'Marks saved and submitted for approval',record_count:saved,failed_count:errors,filters:{program:me_currentProgram,block,unit,academic_year:year}},errors?'failure':'success');
 
     if (errors > 0) {
         const first = errorDetails[0];
