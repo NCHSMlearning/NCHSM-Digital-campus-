@@ -595,7 +595,7 @@ function profileRenderRecentActivity() {
       return matchFilter&&haystack.includes(profileRecentActivitySearch);
     });
     const esc=value=>profileEscapeHtml(value===null||value===undefined||value===''?'Not recorded':String(value));
-    const fmt=value=>{if(!value)return 'Time not recorded';const d=new Date(value);return Number.isNaN(d.getTime())?'Time not recorded':new Intl.DateTimeFormat(undefined,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d);};
+    const fmt=value=>profileFormatDateTime(value,true);
     const json=value=>value&&typeof value==='object'?JSON.stringify(value,null,2):'No change snapshot was stored for this event.';
     const toolbar='<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:9px;margin:0 0 14px;">'+
       '<input id="profileActivitySearch" type="search" value="'+esc(profileRecentActivitySearch===''?'':profileRecentActivitySearch)+'" placeholder="Search actions, tables, records, IP…" aria-label="Search audit activity" style="width:100%;box-sizing:border-box;border:1px solid #dbe2ea;border-radius:10px;padding:11px 12px;font-size:13px;background:#fff;">'+
@@ -985,7 +985,7 @@ function profileSetupSections() {
 
 function profileNavigateSection(section) {
     const targets={
-      overview:document.getElementById('profile')?.querySelector('> div:first-child'),
+      overview:document.querySelector('#profile > div:first-child'),
       personal:document.getElementById('profilePersonalInfoPanel'),
       security:document.getElementById('profileSecurityPanel'),
       activity:document.getElementById('profileActivityPanel'),
@@ -1024,7 +1024,7 @@ async function profileLoadSessions() {
         const device=row.device_info||profileParseDeviceFromUA(row.user_agent);
         const browser=profileExtractBrowser(row.user_agent||row.device_info);
         const when=row.last_activity||row.login_time;
-        const time=when&&!Number.isNaN(new Date(when).getTime())?new Date(when).toLocaleString():'Time unavailable';
+        const time=profileFormatDateTime(when)||'Time unavailable';
         return '<article style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid #e9eef4;min-width:0;">'+
           '<div style="width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:#eff6ff;color:#1d4ed8;display:grid;place-items:center;"><i class="fas '+profileGetDeviceIcon(device)+'"></i></div>'+
           '<div style="flex:1;min-width:0;"><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;"><strong style="font-size:13px;color:#1e293b">'+safe(device)+'</strong>'+
@@ -1081,7 +1081,24 @@ function profileLoadPreferences() {
     const inApp=document.getElementById('profileInAppAlerts');if(inApp)inApp.checked=prefs.inAppSecurityAlerts!==false;
     const browser=document.getElementById('profileBrowserAlerts');if(browser)browser.checked=!!prefs.browserNotifications;
     const browserStatus=document.getElementById('profileBrowserAlertStatus');
-    if(browserStatus)browserStatus.textContent=Notification.permission==='granted'?'Browser notifications permitted':Notification.permission==='denied'?'Browser notifications blocked by browser':'Permission not yet granted';
+    if(browserStatus){const permission=('Notification' in window)?Notification.permission:'unsupported';browserStatus.textContent=permission==='granted'?'Browser notifications permitted':permission==='denied'?'Browser notifications blocked by browser':permission==='unsupported'?'Not supported by this browser':'Permission not yet granted';}
+}
+
+function profileFormatDateTime(value,includeSeconds=false) {
+    if(!value)return 'Time not recorded';
+    const date=new Date(value);if(Number.isNaN(date.getTime()))return 'Time not recorded';
+    let prefs={};try{prefs=JSON.parse(localStorage.getItem('nchsm_superadmin_profile_preferences')||'{}')||{};}catch(_){}
+    const timezone=prefs.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const dateFormat=prefs.dateFormat||'local';
+    const options={timeZone:timezone,day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'};
+    if(includeSeconds)options.second='2-digit';
+    if(dateFormat==='dmy'||dateFormat==='mdy'||dateFormat==='iso'){
+      const parts=new Intl.DateTimeFormat('en-GB',{timeZone:timezone,day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',...(includeSeconds?{second:'2-digit'}:{})}).formatToParts(date);
+      const part=type=>parts.find(p=>p.type===type)?.value||'';
+      const datePart=dateFormat==='iso'?part('year')+'-'+part('month')+'-'+part('day'):dateFormat==='mdy'?part('month')+'/'+part('day')+'/'+part('year'):part('day')+'/'+part('month')+'/'+part('year');
+      return datePart+' '+part('hour')+':'+part('minute')+(includeSeconds?':'+part('second'):'');
+    }
+    return new Intl.DateTimeFormat(undefined,options).format(date);
 }
 
 function profileSavePreferences() {
