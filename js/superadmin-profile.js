@@ -1158,6 +1158,8 @@ async function profileWriteAudit(action,module,targetTable,targetId,description,
       const {data:sessionData}=await sb.auth.getSession();
       const session=sessionData?.session;
       const ua=navigator.userAgent||'';
+      let ipAddress=null;
+      try{const {data:sessionRow}=await sb.from('user_sessions').select('ip_address').eq('user_id',profileData.id).order('last_activity',{ascending:false}).limit(1).maybeSingle();ipAddress=sessionRow?.ip_address||null;}catch(_){}
       const device=/iPad|Tablet/i.test(ua)?'Tablet':/iPhone|Android.*Mobile|Mobile/i.test(ua)?'Mobile':/Android/i.test(ua)?'Android device':/Windows/i.test(ua)?'Windows computer':/Macintosh|Mac OS/i.test(ua)?'Mac computer':'Desktop / unknown';
       const details={
         description:String(description||action),
@@ -1175,7 +1177,7 @@ async function profileWriteAudit(action,module,targetTable,targetId,description,
         target_table:targetTable||null,target_id:targetId==null?null:String(targetId),
         description:String(description||action),details,
         status:'success',source:'superadmin_profile',
-        user_agent:ua,device_info:device,
+        user_agent:ua,device_info:device,ip_address:ipAddress,page_path:location.pathname+location.search,
         request_id:details.request_id
       });
       if(error){console.warn('Profile audit event could not be written:',error.message);return false;}
