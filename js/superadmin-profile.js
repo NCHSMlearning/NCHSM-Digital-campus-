@@ -76,13 +76,13 @@ function profileGetDeviceIcon(device) {
 // PROFILE DATA
 // ============================================================
 let profileData = {
-    id: 'SA-001',
+    id: '',
     name: 'Super Admin',
-    email: 'admin@nchsm.ac.ke',
-    phone: '+254 700 000 000',
-    employeeId: 'SA-001',
-    department: 'Administration',
-    location: 'Nairobi, Kenya',
+    email: '',
+    phone: '',
+    employeeId: '',
+    department: '',
+    location: '',
     role: 'superadmin',
     memberSince: '2024',
     avatarInitials: 'SA',
@@ -1361,6 +1361,15 @@ function previewEditProfilePhoto(event) {
             preview.style.backgroundSize = 'cover';
             preview.style.backgroundPosition = 'center';
             preview.innerHTML = '';
+        }
+        profileData.photo = e.target.result;
+        try { localStorage.setItem('profilePhoto', e.target.result); } catch (_) {}
+        const avatar = document.getElementById('profileAvatar');
+        if (avatar) {
+            avatar.style.backgroundImage = 'url("' + e.target.result + '")';
+            avatar.style.backgroundSize = 'cover';
+            avatar.style.backgroundPosition = 'center';
+            avatar.innerHTML = '';
         }
     };
     reader.readAsDataURL(file);
