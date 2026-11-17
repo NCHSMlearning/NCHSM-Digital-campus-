@@ -136,7 +136,7 @@ async function loadProfileData() {
             phone: dbProfile.phone || dbProfile.phone_number || metadata.phone || '',
             employeeId: dbProfile.staff_id || dbProfile.employee_id || '',
             department: dbProfile.department || dbProfile.program || '',
-            location: dbProfile.location || '',
+            location: dbProfile.address || '',
             role: dbProfile.role || 'superadmin',
             memberSince: createdAt ? new Date(createdAt).toLocaleDateString(undefined,{year:'numeric',month:'short'}) : 'Not available',
             lastLogin: lastSignIn ? new Date(lastSignIn).toLocaleString() : 'Not available',
@@ -1220,9 +1220,12 @@ async function saveProfileChanges() {
     try {
         const { error } = await supabase
             .from('consolidated_user_profiles_table')
-            .update({ full_name: name, phone, department, location, updated_at: new Date().toISOString() })
-            .eq('user_id', userId);
+            .update({ full_name: name, phone, department, address: location, updated_at: new Date().toISOString() })
+            .eq('user_id', userId)
+            .select('user_id')
+            .maybeSingle();
         if (error) throw error;
+        if (!data?.user_id) throw new Error('No profile row was updated. Check your profile record and update permissions.');
 
         profileData.name = name;
         profileData.phone = phone;
@@ -1315,38 +1318,60 @@ async function handlePasswordChange() {
 // ============================================================
 // PROFILE PHOTO
 // ============================================================
-function uploadProfilePhoto(event) {
-    const file = event.target.files[0];
+async function uploadProfilePhoto(event) {
+    const file = event?.target?.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-        if (typeof showFeedback === 'function') showFeedback('Please select an image file', 'error');
+    if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
+        if (typeof showFeedback === 'function') showFeedback('Use a JPG, PNG or WebP image.', 'error');
+        event.target.value = '';
         return;
     }
-
     if (file.size > 2 * 1024 * 1024) {
-        if (typeof showFeedback === 'function') showFeedback('Image must be less than 2MB', 'error');
+        if (typeof showFeedback === 'function') showFeedback('Profile photo must be 2MB or smaller.', 'error');
+        event.target.value = '';
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const avatar = document.getElementById('profileAvatar');
-        if (avatar) {
-            avatar.style.backgroundImage = `url(${e.target.result})`;
-            avatar.style.backgroundSize = 'cover';
-            avatar.style.backgroundPosition = 'center';
-            avatar.innerHTML = '';
-        }
+    const supabase = profileGetSupabase();
+    const { data: authData, error: authError } = await supabase?.auth?.getUser?.() || {};
+    const userId = authData?.user?.id;
+    if (authError || !userId || userId !== profileData.id || !supabase?.storage) {
+        if (typeof showFeedback === 'function') showFeedback('Your secure session could not be verified. Please sign in again.', 'error');
+        return;
+    }
 
-        try {
-            localStorage.setItem('profilePhoto', e.target.result);
-            if (typeof showFeedback === 'function') showFeedback('Photo uploaded successfully!', 'success');
-        } catch (err) {
-            if (typeof showFeedback === 'function') showFeedback('Error saving photo', 'error');
-        }
-    };
-    reader.readAsDataURL(file);
+    const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const objectPath = userId + '/profile-' + Date.now() + '.' + extension;
+    try {
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(objectPath, file, {
+            cacheControl: '3600',
+            contentType: file.type,
+            upsert: false
+        });
+        if (uploadError) throw uploadError;
+        const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(objectPath);
+        const photoUrl = publicData?.publicUrl;
+        if (!photoUrl) throw new Error('Photo uploaded but its public URL could not be created.');
+
+        const { data: saved, error: saveError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .update({ profile_photo_url: photoUrl, updated_at: new Date().toISOString() })
+            .eq('user_id', userId)
+            .select('user_id')
+            .maybeSingle();
+        if (saveError) throw saveError;
+        if (!saved?.user_id) throw new Error('Photo uploaded, but the profile record was not updated.');
+
+        profileData.photo = photoUrl;
+        updateProfileUI();
+        try { localStorage.setItem('profileData', JSON.stringify(profileData)); } catch (_) {}
+        if (typeof showFeedback === 'function') showFeedback('Profile photo saved to your account.', 'success');
+    } catch (error) {
+        console.error('Profile photo upload failed:', error);
+        if (typeof showFeedback === 'function') showFeedback('Photo could not be saved: ' + (error.message || 'Upload failed'), 'error');
+    } finally {
+        event.target.value = '';
+    }
 }
 
 function previewEditProfilePhoto(event) {
