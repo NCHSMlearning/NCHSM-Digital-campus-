@@ -30,7 +30,7 @@ create or replace function public.log_marks_security_event(
 )
 returns void
 language plpgsql
-security definer
+security invoker
 set search_path = public, auth
 as $$
 declare
@@ -106,3 +106,33 @@ $$;
 
 revoke all on function public.log_marks_security_event(text,text,text,text,text,jsonb) from public, anon;
 grant execute on function public.log_marks_security_event(text,text,text,text,text,jsonb) to authenticated;
+
+
+drop policy if exists "audit_logs_insert_self_marks_profile" on public.audit_logs;
+create policy "audit_logs_insert_self_marks_profile"
+on public.audit_logs for insert to authenticated
+with check (
+  user_id = auth.uid()
+  and user_email = (select p.email from public.consolidated_user_profiles_table p where p.user_id = auth.uid() limit 1)
+  and (
+    (
+      source = 'marks_security_rpc'
+      and module = 'Marks & Results'
+      and action_type = any(array[
+        'MARKS_VIEWED','MARKS_SEARCHED','MARKS_EXPORT_REQUESTED','MARKS_EXPORTED',
+        'MARKS_EXPORT_FAILED','MARKS_EDIT_ATTEMPTED','MARKS_UPDATED',
+        'MARKS_DELETE_ATTEMPTED','MARKS_DELETED','MARKS_BULK_UPDATE_ATTEMPTED',
+        'MARKS_APPROVED','MARKS_REJECTED','RESULTS_PUBLISHED',
+        'RESULTS_UNPUBLISHED','MARKS_ACCESS_BLOCKED','MARKS_DOWNLOAD_REQUESTED'
+      ])
+    )
+    or (
+      source = 'superadmin_profile'
+      and exists (
+        select 1 from public.consolidated_user_profiles_table p
+        where p.user_id = auth.uid()
+          and lower(coalesce(p.role,'')) in ('super_admin','superadmin')
+      )
+    )
+  )
+);
