@@ -1,3 +1,23 @@
+/* Centralised audit bridge for Super Admin marks views and exports. */
+(function(){
+  if(window.NCHSMMarksAudit)return;
+  window.NCHSMMarksAudit=async function(action,details,status){
+    try{
+      const db=window.sb||window.supabaseClient||window.NCHSMLogin?.supabase;
+      if(!db?.rpc)return false;
+      const d=details||{};
+      const {error}=await db.rpc('log_marks_security_event',{
+        p_action:action,p_target_table:'student_marks',
+        p_target_id:d.target_id||null,
+        p_description:d.description||action,
+        p_status:status||'success',
+        p_details:{...d,page_path:location.pathname,device_info:/Mobile|Android|iPhone/i.test(navigator.userAgent)?'Mobile':'Desktop'}
+      });
+      if(error){console.warn('[Marks audit] Event was not recorded:',error.message);return false;}
+      return true;
+    }catch(e){console.warn('[Marks audit] Event failed:',e);return false;}
+  };
+})();
 // ============================================================
 // PUBLISHED MARKS - SMART VERSION (30 per page)
 // TVET & KRCHN Nursing with Retake Support
@@ -1025,6 +1045,7 @@ async function loadPublishedMarks() {
         
         // ✅ Store ALL marks (not filtered)
         PUBLISHED_STATE.marks = processedMarks;
+        if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit('MARKS_VIEWED',{description:'Viewed published marks register',record_count:processedMarks.length,filters:{program:document.getElementById('pm_program_filter')?.value||'all',block:document.getElementById('pm_block_filter')?.value||'all'}});
         PUBLISHED_STATE.userProgram = user?.program || 'all';
         
         console.log('📊 Final loaded count:', PUBLISHED_STATE.marks.length);
@@ -3172,8 +3193,9 @@ async function confirmPublishMarks() {
 // EXPORT TO CSV WITH RETAKE DATA
 // ============================================================
 
-function exportPublishedMarksToCSV() {
+async function exportPublishedMarksToCSV() {
     var marks = PUBLISHED_STATE.filtered;
+    if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit('MARKS_EXPORT_REQUESTED',{description:'Requested CSV export of published marks',record_count:marks?.length||0,format:'CSV',filters:{program:document.getElementById('pm_program_filter')?.value||'all',block:document.getElementById('pm_block_filter')?.value||'all'}});
     if (!marks || marks.length === 0) {
         if (typeof window.showNotification === 'function') {
             window.showNotification('No marks to export', 'warning');
@@ -3216,6 +3238,7 @@ function exportPublishedMarksToCSV() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit('MARKS_EXPORTED',{description:'Exported published marks to CSV',record_count:marks.length,format:'CSV'});
     
     if (typeof window.showNotification === 'function') {
         window.showNotification('✅ Exported ' + marks.length + ' marks to CSV', 'success');
