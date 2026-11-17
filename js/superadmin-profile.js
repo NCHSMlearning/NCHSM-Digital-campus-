@@ -1166,7 +1166,7 @@ async function profileWriteAudit(action,module,targetTable,targetId,description,
         page_path:location.pathname+location.search,
         user_agent:ua,
         device_info:device,
-        request_id:(crypto?.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2)),
+        request_id:(window.crypto?.randomUUID?window.crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2)),
         ...extra
       };
       const {error}=await sb.from('audit_logs').insert({
