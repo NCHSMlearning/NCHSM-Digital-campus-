@@ -125,6 +125,7 @@ async function loadProfileData() {
         const metadata = authUser.user_metadata || {};
         const name = dbProfile.full_name || metadata.full_name || metadata.name || authUser.email?.split('@')[0] || 'Super Admin';
         const photo = dbProfile.profile_photo_url || dbProfile.avatar_url || metadata.avatar_url || localStorage.getItem('profilePhoto') || '';
+        const accountStatus = authUser.email_confirmed_at ? 'Active' : 'Pending verification';
         const createdAt = authUser.created_at || dbProfile.created_at || null;
         const lastSignIn = authUser.last_sign_in_at || null;
         profileData = {
@@ -140,7 +141,8 @@ async function loadProfileData() {
             memberSince: createdAt ? new Date(createdAt).toLocaleDateString(undefined,{year:'numeric',month:'short'}) : 'Not available',
             lastLogin: lastSignIn ? new Date(lastSignIn).toLocaleString() : 'Not available',
             avatarInitials: name.split(/\\s+/).filter(Boolean).map(part=>part[0]).join('').toUpperCase().slice(0,2) || 'SA',
-            photo
+            photo,
+            accountStatus
         };
         try { localStorage.setItem('profileData', JSON.stringify(profileData)); } catch (_) {}
         updateProfileUI();
@@ -180,6 +182,23 @@ function updateProfileUI() {
         if (el) el.textContent = elements[id];
     });
 
+    const avatar = document.getElementById('profileAvatar');
+    if (avatar) {
+        if (profileData.photo) {
+            avatar.style.backgroundImage = 'url("' + String(profileData.photo).replace(/["\\\\]/g, '') + '")';
+            avatar.style.backgroundSize = 'cover';
+            avatar.style.backgroundPosition = 'center';
+        } else {
+            avatar.style.backgroundImage = '';
+            avatar.style.backgroundSize = '';
+            avatar.style.backgroundPosition = '';
+        }
+    }
+    const accountStatus = document.getElementById('profileAccountStatus');
+    if (accountStatus) {
+        accountStatus.textContent = profileData.accountStatus || 'Status unavailable';
+        accountStatus.style.color = profileData.accountStatus === 'Active' ? '#059669' : '#b45309';
+    }
     const avatarText = document.getElementById('profileAvatarText');
     if (avatarText) avatarText.textContent = profileData.avatarInitials || 'SA';
 
@@ -271,6 +290,11 @@ async function update2FAUI() {
         : !!profileData.twoFactorEnabled;
 
     profileData.twoFactorEnabled = enabled;
+    const profile2FAStat = document.getElementById('profileStat2FA');
+    if (profile2FAStat) {
+        profile2FAStat.textContent = enabled ? 'Enabled' : 'Disabled';
+        profile2FAStat.style.color = enabled ? '#059669' : '#b45309';
+    }
     if (remote) {
         profileData.twoFactorSecret = remote.two_factor_secret || profileData.twoFactorSecret;
         profileData.twoFactorVerified = !!remote.two_factor_verified;
