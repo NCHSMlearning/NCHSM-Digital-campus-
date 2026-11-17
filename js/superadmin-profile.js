@@ -1073,7 +1073,7 @@ async function profileLoadSessions() {
       ]);
       if(authError)throw authError;if(error)throw error;
       const accessToken=authData?.session?.access_token||'';
-      profileCurrentSessionRowId=(data||[]).find(row=>row.session_token&&accessToken&&row.session_token===accessToken)?.id||null;
+      const storedSessionId=localStorage.getItem('session_id');\n      profileCurrentSessionRowId=(data||[]).find(row=>storedSessionId&&row.id===storedSessionId)?.id||null;
       const rows=data||[];
       if(!rows.length){container.innerHTML=profileActivityEmpty('No active sessions are recorded for this account.');return;}
       const safe=value=>profileEscapeHtml(value||'Not recorded');
