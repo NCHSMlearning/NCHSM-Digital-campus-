@@ -92,12 +92,12 @@ begin
 
   insert into public.audit_logs (
     "timestamp", created_at, user_id, user_email, actor_name, role, user_role,
-    action_type, action, module, target_table, target_id, description,
+    action_type, module, target_table, target_id, description,
     status, details, ip_address, user_agent, device_info, request_id, source
   ) values (
     now(), now(), v_actor, v_email, v_name, v_role, v_role,
-    v_action, v_action, 'Marks & Results', coalesce(p_target_table,'student_marks'),
-    p_target_id, coalesce(p_description,v_action), v_status, v_details,
+    v_action, 'Marks & Results', coalesce(p_target_table,'student_marks'),
+    p_target_id, coalesce(p_description,v_action), v_status, v_details::text,
     v_ip, v_ua, p_details->>'device_info', v_details->>'request_id',
     'marks_security_rpc'
   );
