@@ -214,7 +214,13 @@
     sb=getClient();if(!sb?.auth?.getUser)return;
     try{
       const r=await sb.auth.getUser(),user=r.data?.user;if(r.error||!user)return;
-      const role=String(window.currentSuperAdmin?.profile?.role||'').toLowerCase().replace(/[- ]/g,'_');
+      let profileRole=window.currentSuperAdmin?.profile?.role||window.currentAdmin?.role||'';
+      if(!profileRole){
+        const p=await sb.from('consolidated_user_profiles_table').select('role').eq('user_id',user.id).maybeSingle();
+        if(p.error)throw p.error;
+        profileRole=p.data?.role||'';
+      }
+      const role=String(profileRole).toLowerCase().replace(/[- ]/g,'_');
       const isAdmin=role==='superadmin'||role==='super_admin';
       owner=isAdmin&&user.id===OWNER_ID&&String(user.email||'').toLowerCase()===OWNER_EMAIL;
       if(owner)injectOwnerButton();
