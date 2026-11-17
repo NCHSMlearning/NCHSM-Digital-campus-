@@ -522,17 +522,13 @@ async function handleLogin(event){
       throw new Error("Administrator account is not active.");
     }
 
-    if(profile.two_factor_enabled&&profile.two_factor_secret){
-      sessionStorage.setItem("superadmin_pending_profile",JSON.stringify(profile));
-      $("twoFactorPanel").classList.add("active");
-      $("superAdminOTP").value="";
-      $("superAdminOTP").focus();
-      $("adminPassword").value="";
-      showMessage("Two-factor authentication is required to continue.","success");
-      setBusy(false);
-      return;
+    const {data:factorData,error:factorError}=await supabase.auth.mfa.listFactors();
+    if(factorError)throw factorError;
+    if((factorData?.totp||[]).some(f=>f.status==="verified")){
+      sessionStorage.setItem("superadmin_pending_profile",JSON.stringify({user_id:profile.user_id,email:profile.email,role:profile.role,status:profile.status}));
+      $("twoFactorPanel").classList.add("active");$("superAdminOTP").value="";$("superAdminOTP").focus();$("adminPassword").value="";
+      showMessage("Enter the code from your authenticator app to continue.","success");setBusy(false);return;
     }
-
     await completeAdminLogin(profile);
   }catch(error){
     console.error("Super Admin login failed:",error);
@@ -551,28 +547,16 @@ function togglePassword(){
 }
 
 async function verify2FA(){
- const code=$("superAdminOTP").value.trim();
- if(!/^\d{6}$/.test(code)){showMessage("Enter the 6-digit authentication code.");return}
-
- let pending=null;
- try{pending=JSON.parse(sessionStorage.getItem("superadmin_pending_profile")||"null")}catch(_){}
- if(!pending?.two_factor_secret){showMessage("The administrator authentication session has expired.");return}
-
- const btn=$("verifySuperAdmin2FA");
- btn.disabled=true;btn.textContent="Verifying…";
-
+ const code=$("superAdminOTP").value.trim();if(!/^\d{6}$/.test(code)){showMessage("Enter the 6-digit authentication code.");return}
+ let pending=null;try{pending=JSON.parse(sessionStorage.getItem("superadmin_pending_profile")||"null")}catch(_){}
+ if(!pending?.user_id){showMessage("Authentication session expired. Sign in again.");return}
+ const btn=$("verifySuperAdmin2FA");btn.disabled=true;btn.textContent="Verifying…";
  try{
-   if(!window.otplib?.verify)throw new Error("Two-factor verification service is unavailable. Please refresh and try again.");
-   const result=await window.otplib.verify({secret:pending.two_factor_secret,token:code});
-   if(!result?.valid)throw new Error("Invalid authentication code. Please try again.");
-
-   await completeAdminLogin(pending);
-   sessionStorage.removeItem("superadmin_pending_profile");
-   $("twoFactorPanel").classList.remove("active");
- }catch(error){
-   showMessage(error.message||"Two-factor verification failed.");
-   btn.disabled=false;btn.textContent="Verify & Continue →";
- }
+  const {data,error}=await supabase.auth.mfa.listFactors();if(error)throw error;
+  const factor=(data?.totp||[]).find(f=>f.status==="verified");if(!factor)throw new Error("No verified authenticator is enrolled.");
+  const {error:verifyError}=await supabase.auth.mfa.challengeAndVerify({factorId:factor.id,code});if(verifyError)throw verifyError;
+  sessionStorage.removeItem("superadmin_pending_profile");$("twoFactorPanel").classList.remove("active");await completeAdminLogin(pending);
+ }catch(e){console.error("Super Admin MFA failed",e);showMessage(e.message||"Verification failed. Try again.");btn.disabled=false;btn.textContent="Verify & Continue →";$("superAdminOTP").value="";$("superAdminOTP").focus();}
 }
 
 function initSSO(){
@@ -612,8 +596,9 @@ function init(){
      const role=String(profile.role||"").trim().toLowerCase().replace(/[\s-]+/g,"_");
      const status=String(profile.status||"").trim().toLowerCase();
      if(["superadmin","super_admin"].includes(role)&&["approved","active"].includes(status)){
-       showMessage("Active administrator session found. Opening console…","success");
-       window.location.replace("superadmin.html");
+       const {data:aal,error:aalError}=await supabase.auth.mfa.getAuthenticatorAssuranceLevel();if(aalError)throw aalError;
+       if(aal?.nextLevel!=="aal2"||aal?.currentLevel==="aal2"){showMessage("Active administrator session found. Opening console…","success");window.location.replace("superadmin.html");}
+       else{sessionStorage.setItem("superadmin_pending_profile",JSON.stringify({user_id:profile.user_id,email:profile.email,role:profile.role,status:profile.status}));$("twoFactorPanel").classList.add("active");showMessage("Complete authenticator verification to continue.","success");}
      }
    }catch(_){}
  });
