@@ -1464,4 +1464,22 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
     document.addEventListener('DOMContentLoaded', initProfile);
 }
 
+
+/* Primary-owner academic access control loader.
+   This profile module is already part of the Super Admin portal bundle. */
+(function loadPrimaryOwnerAcademicAccess(){
+    const src='js/superadmin-academic-access.js?v=20261118c';
+    const inject=()=>{
+        if(document.querySelector('script[data-nchsm-owner-academic-access]'))return;
+        const script=document.createElement('script');
+        script.src=src;
+        script.async=false;
+        script.dataset.nchsmOwnerAcademicAccess='true';
+        script.onerror=()=>console.error('[NCHSM] Could not load Primary Owner Academic Data Access module:',src);
+        document.head.appendChild(script);
+    };
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(inject,250),{once:true});
+    else setTimeout(inject,250);
+})();
+
 })(); // END IIFE
