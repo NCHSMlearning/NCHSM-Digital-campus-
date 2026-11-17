@@ -548,66 +548,120 @@ function loadRecentActivity() {
     if (!container) return;
 
     const supabase = profileGetSupabase();
-    if (!supabase) {
-        container.innerHTML = `
-            <div style="text-align:center;color:#94a3b8;padding:20px;">
-                <i class="fas fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;"></i>
-                No recent activity
-            </div>`;
+    if (!supabase || !profileData.email) {
+        container.innerHTML = profileActivityEmpty('No recent activity is available for this account.');
         return;
     }
 
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:9px;padding:24px;color:#64748b;font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Loading recent activity…</div>';
+
     supabase
         .from('audit_logs')
-        .select('*')
+        .select('action_type,details,status,timestamp,user_email')
         .eq('user_email', profileData.email)
         .order('timestamp', { ascending: false })
-        .limit(5)
-        .then(({ data: actions, error }) => {
-            if (error || !actions || actions.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align:center;color:#94a3b8;padding:20px;">
-                        <i class="fas fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;"></i>
-                        No recent activity
-                    </div>`;
+        .limit(40)
+        .then(({ data, error }) => {
+            if (error) {
+                console.error('Recent activity query failed:', error);
+                container.innerHTML = profileActivityEmpty('Activity could not be loaded. Please refresh and try again.', true);
+                return;
+            }
+            if (!Array.isArray(data) || data.length === 0) {
+                container.innerHTML = profileActivityEmpty('No recent activity recorded yet.');
                 return;
             }
 
-            container.innerHTML = actions
-                .map((action) => {
-                    const time = action.timestamp
-                        ? new Date(action.timestamp).toLocaleString()
-                        : '';
-                    const icon = profileGetActionIcon(action.action_type);
-                    const color = profileGetActionColor(action.action_type);
-                    const statusColor = action.status === 'SUCCESS' ? '#10b981' : '#dc2626';
-                    const statusText = action.status === 'SUCCESS' ? '✅' : '❌';
+            // Audit triggers can write one row per affected record. Collapse identical
+            // events generated within two seconds into one readable activity item.
+            const grouped = [];
+            data.forEach((row) => {
+                const action = String(row.action_type || 'activity').trim().toLowerCase();
+                const details = String(row.details || '').trim();
+                const status = String(row.status || 'unknown').trim().toLowerCase();
+                const stamp = row.timestamp ? new Date(row.timestamp).getTime() : NaN;
+                const previous = grouped[grouped.length - 1];
+                const sameEvent = previous &&
+                    previous.action === action &&
+                    previous.details === details &&
+                    previous.status === status &&
+                    Number.isFinite(stamp) &&
+                    Number.isFinite(previous.latestTime) &&
+                    Math.abs(previous.latestTime - stamp) <= 2000;
+                if (sameEvent) {
+                    previous.count += 1;
+                    previous.latestTime = Math.max(previous.latestTime, stamp);
+                    previous.timestamp = previous.timestamp || row.timestamp;
+                } else {
+                    grouped.push({ action, details, status, timestamp: row.timestamp, latestTime: stamp, count: 1 });
+                }
+            });
 
-                    return `
-                    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
-                        <div style="width:30px;height:30px;border-radius:50%;background:${color}20;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fas ${icon}" style="color:${color};font-size:12px;"></i>
-                        </div>
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-size:12px;color:#1e293b;font-weight:500;">
-                                ${profileEscapeHtml(action.action_type || 'Activity')}
-                                <span style="font-weight:400;color:#94a3b8;font-size:11px;">
-                                    ${profileEscapeHtml(action.details || '').substring(0, 30)}
-                                </span>
-                                <span style="color:${statusColor};font-size:10px;">${statusText}</span>
-                            </div>
-                            <div style="font-size:10px;color:#94a3b8;">${time}</div>
-                        </div>
-                    </div>`;
-                })
-                .join('');
+            container.innerHTML = grouped.slice(0, 12).map((item) => {
+                const actionLabel = profileFormatActivityAction(item.action);
+                const detailsLabel = profileFormatActivityDetails(item.details);
+                const isSuccess = ['success', 'succeeded', 'completed', 'approved'].includes(item.status);
+                const isFailure = ['failed', 'failure', 'error', 'denied', 'blocked'].includes(item.status);
+                const stateColor = isSuccess ? '#059669' : (isFailure ? '#dc2626' : '#64748b');
+                const stateLabel = isSuccess ? 'Successful' : (isFailure ? 'Failed' : 'Recorded');
+                const stateIcon = isSuccess ? 'fa-check-circle' : (isFailure ? 'fa-times-circle' : 'fa-info-circle');
+                const color = profileGetActionColor(item.action.toUpperCase());
+                const icon = profileGetActionIcon(item.action.toUpperCase());
+                const date = item.timestamp && !Number.isNaN(new Date(item.timestamp).getTime())
+                    ? new Intl.DateTimeFormat(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(item.timestamp))
+                    : 'Time not recorded';
+                const count = item.count > 1
+                    ? '<span style="display:inline-flex;align-items:center;margin-left:6px;padding:2px 7px;border-radius:20px;background:#eef2ff;color:#4338ca;font-size:10px;font-weight:700;">' + item.count + ' records</span>'
+                    : '';
+                return '<article style="display:flex;align-items:flex-start;gap:12px;padding:13px 2px;border-bottom:1px solid #edf1f5;">' +
+                    '<div style="width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:' + color + '18;display:flex;align-items:center;justify-content:center;margin-top:1px;">' +
+                    '<i class="fas ' + icon + '" style="color:' + color + ';font-size:15px;"></i></div>' +
+                    '<div style="flex:1;min-width:0;">' +
+                    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:4px;">' +
+                    '<strong style="font-size:13px;color:#1e293b;">' + profileEscapeHtml(actionLabel) + '</strong>' + count + '</div>' +
+                    '<div style="font-size:12px;line-height:1.5;color:#64748b;overflow-wrap:anywhere;">' + profileEscapeHtml(detailsLabel) + '</div>' +
+                    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:7px;">' +
+                    '<span style="font-size:11px;color:#94a3b8;"><i class="far fa-clock" style="margin-right:4px;"></i>' + profileEscapeHtml(date) + '</span>' +
+                    '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:' + stateColor + ';"><i class="fas ' + stateIcon + '"></i>' + stateLabel + '</span>' +
+                    '</div></div></article>';
+            }).join('');
         })
-        .catch(() => {
-            container.innerHTML = `
-                <div style="text-align:center;color:#94a3b8;padding:20px;">
-                    <i class="fas fa-exclamation-circle"></i> Could not load activity
-                </div>`;
+        .catch((error) => {
+            console.error('Recent activity loading error:', error);
+            container.innerHTML = profileActivityEmpty('Activity could not be loaded. Please refresh and try again.', true);
         });
+}
+
+function profileActivityEmpty(message, isError) {
+    const icon = isError ? 'fa-exclamation-circle' : 'fa-inbox';
+    const color = isError ? '#dc2626' : '#94a3b8';
+    return '<div style="text-align:center;color:' + color + ';padding:24px 12px;font-size:13px;"><i class="fas ' + icon + '" style="font-size:22px;display:block;margin-bottom:8px;"></i>' + profileEscapeHtml(message) + '</div>';
+}
+
+function profileFormatActivityAction(action) {
+    const labels = {
+        update: 'Record updated', insert: 'Record created', delete: 'Record deleted',
+        login: 'Signed in', logout: 'Signed out', select: 'Record viewed',
+        user_created: 'User created', user_updated: 'User updated', user_deleted: 'User deleted',
+        marks_entry: 'Marks entered', marks_approved: 'Marks approved',
+        resource_uploaded: 'Resource uploaded', system_maintenance: 'System maintenance',
+        admin_action: 'Administrator action', '2fa_enabled': 'Two-factor authentication enabled',
+        '2fa_disabled': 'Two-factor authentication disabled'
+    };
+    return labels[String(action || '').toLowerCase()] ||
+        String(action || 'Activity').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function profileFormatActivityDetails(details) {
+    if (!details) return 'An action was recorded on your account.';
+    return String(details)
+        .replace(/consolidated_user_profiles_table/gi, 'your profile')
+        .replace(/student_marks/gi, 'student marks')
+        .replace(/user_sessions/gi, 'login sessions')
+        .replace(/admin_notifications/gi, 'administrator notifications')
+        .replace(/[_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 // ============================================================
