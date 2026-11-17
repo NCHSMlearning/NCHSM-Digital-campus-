@@ -13,6 +13,11 @@ async function boot(){
  const role=String(profile.data?.role||'').toLowerCase().replace(/[- ]/g,'_');
  if(profile.error||!['superadmin','super_admin'].includes(role)){alert('Super Admin access required.');location.replace('login.html');return;}
  window.currentSuperAdmin={user:auth.data.user,profile:profile.data||{}};
+ const accessScript=document.createElement('script');
+ accessScript.src='js/superadmin-academic-access.js?v=20261117';
+ accessScript.async=true;
+ accessScript.onerror=()=>console.error('Primary Super Admin academic access module failed to load.');
+ document.head.appendChild(accessScript);
  document.querySelectorAll('[data-view]').forEach(link=>link.addEventListener('click',e=>{
   e.preventDefault();const id=link.dataset.view;
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));
