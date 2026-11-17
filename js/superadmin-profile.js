@@ -874,6 +874,8 @@ async function saveProfileChanges() {
         profileData.phone = phone;
         profileData.department = department;
         profileData.location = location;
+        profileData.lastProfileUpdate = new Date().toISOString();
+        await profileWriteAudit('PROFILE_UPDATED','profile','consolidated_user_profiles_table',userId,'Updated Super Admin personal information',{changed_fields:['full_name','phone','department','address']});
         profileData.avatarInitials = name.split(/\\s+/).filter(Boolean).map(part=>part[0]).join('').toUpperCase().slice(0,2);
         try { localStorage.setItem('profileData', JSON.stringify(profileData)); } catch (_) {}
         updateProfileUI();
@@ -1010,6 +1012,8 @@ async function uploadProfilePhoto(event) {
         if (!saved?.user_id) throw new Error('Photo uploaded, but the profile record was not updated.');
 
         profileData.photo = photoUrl;
+        profileData.lastProfileUpdate = new Date().toISOString();
+        await profileWriteAudit('PROFILE_PHOTO_UPDATED','profile','consolidated_user_profiles_table',userId,'Updated Super Admin profile photo',{photo_path:objectPath});
         updateProfileUI();
         try { localStorage.setItem('profileData', JSON.stringify(profileData)); } catch (_) {}
         if (typeof showFeedback === 'function') showFeedback('Profile photo saved to your account.', 'success');
