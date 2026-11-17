@@ -249,591 +249,83 @@ function loadProfileStats() {
 }
 
 // ============================================================
-// 2FA — otplib + Supabase (matches login system)
 // ============================================================
-
-async function profileFetch2FAStatus() {
-    const supabase = profileGetSupabase();
-    const userId = profileGetCurrentUserId();
-    if (!supabase || !userId || userId === 'SA-001') return null;
-
-    try {
-        const { data, error } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select(
-                'two_factor_enabled, two_factor_secret, two_factor_verified, two_factor_setup_date'
-            )
-            .eq('user_id', userId)
-            .maybeSingle();
-
-        if (error) {
-            console.warn('2FA fetch error:', error.message);
-            return null;
-        }
-        return data;
-    } catch (e) {
-        console.warn('2FA fetch exception:', e);
-        return null;
-    }
-}
-
-async function update2FAUI() {
-    const statusEl = document.getElementById('twoFactorStatus');
-    const toggleBtn = document.getElementById('twoFactorToggleBtn');
-    const setupSection = document.getElementById('twoFactorSetupSection');
-    const enabledSection = document.getElementById('twoFactorEnabledSection');
-    const setupDateEl = document.getElementById('twoFactorSetupDate');
-
-    const remote = await profileFetch2FAStatus();
-    const enabled = remote
-        ? !!remote.two_factor_enabled
-        : !!profileData.twoFactorEnabled;
-
-    profileData.twoFactorEnabled = enabled;
-    const profile2FAStat = document.getElementById('profileStat2FA');
-    if (profile2FAStat) {
-        profile2FAStat.textContent = enabled ? 'Enabled' : 'Disabled';
-        profile2FAStat.style.color = enabled ? '#059669' : '#b45309';
-    }
-    if (remote) {
-        profileData.twoFactorSecret = remote.two_factor_secret || profileData.twoFactorSecret;
-        profileData.twoFactorVerified = !!remote.two_factor_verified;
-    }
-
-    if (statusEl) {
-        statusEl.textContent = enabled ? 'Enabled' : 'Disabled';
-        statusEl.style.color = enabled ? '#10b981' : '#dc2626';
-    }
-
-    if (toggleBtn) {
-        toggleBtn.textContent = enabled ? 'Disable 2FA' : 'Enable 2FA';
-        toggleBtn.style.background = enabled ? '#dc2626' : '#10b981';
-        toggleBtn.onclick = enabled ? disable2FA : show2FASetupModal;
-    }
-
-    if (setupSection) setupSection.style.display = enabled ? 'none' : 'block';
-    if (enabledSection) enabledSection.style.display = enabled ? 'block' : 'none';
-
-    if (setupDateEl && remote?.two_factor_setup_date) {
-        setupDateEl.textContent = 'Enabled on ' + new Date(remote.two_factor_setup_date).toLocaleString();
-    }
-}
-
-async function profileGenerate2FASecret() {
-    const supabase = profileGetSupabase();
-    const userId = profileGetCurrentUserId();
-
-    let secret;
-    if (typeof otplib !== 'undefined' && typeof otplib.generateSecret === 'function') {
-        secret = otplib.generateSecret();
-    } else {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        secret = '';
-        for (let i = 0; i < 32; i++) {
-            secret += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-    }
-
-    if (supabase && userId && userId !== 'SA-001') {
-        const { error } = await supabase
-            .from('consolidated_user_profiles_table')
-            .update({
-                two_factor_secret: secret,
-                two_factor_enabled: false,
-                two_factor_verified: false,
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
-
-        if (error) console.warn('Could not save 2FA secret:', error.message);
-    }
-
-    return secret;
-}
-
-async function profileVerifyTOTP(secret, token) {
-    try {
-        if (typeof otplib === 'undefined' || typeof otplib.verify !== 'function') {
-            console.error('OTPLib unavailable — cannot verify TOTP');
-            return false;
-        }
-        const result = await otplib.verify({ secret, token });
-        return result === true || result?.valid === true;
-    } catch (error) {
-        console.error('Error verifying TOTP:', error);
-        return false;
-    }
-}
-
-async function show2FASetupModal() {
-    const supabase = profileGetSupabase();
-    const userId = profileGetCurrentUserId();
-    const userEmail = profileData.email;
-
-    let secret = profileData.twoFactorSecret;
-    if (supabase && userId && userId !== 'SA-001') {
-        const remote = await profileFetch2FAStatus();
-        if (remote?.two_factor_secret) secret = remote.two_factor_secret;
-    }
-
-    if (!secret) secret = await profileGenerate2FASecret();
-
-    if (!secret) {
-        if (typeof showFeedback === 'function') {
-            showFeedback('Could not generate 2FA secret', 'error');
-        } else {
-            alert('Could not generate 2FA secret');
-        }
-        return;
-    }
-
-    profileData.twoFactorSecret = secret;
-
-    const appName = 'NCHSM Portal';
-    const otpauth = `otpauth://totp/${encodeURIComponent(appName)}:${encodeURIComponent(
-        userEmail
-    )}?secret=${secret}&issuer=${encodeURIComponent(appName)}`;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-        otpauth
-    )}`;
-
-    let modal = document.getElementById('twoFactorModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'twoFactorModal';
-        modal.className = 'modal-overlay';
-        modal.style.cssText = `
-            display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,0.55); z-index: 10000;
-            justify-content: center; align-items: center; padding: 20px;
-        `;
-        modal.innerHTML = `
-            <div style="background:white;border-radius:16px;padding:28px;max-width:480px;width:100%;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 25px 50px rgba(0,0,0,0.25);">
-                <button onclick="close2FAModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1;">&times;</button>
-                <div id="twoFactorModalContent"></div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-
-    const content = document.getElementById('twoFactorModalContent');
-    const formattedSecret = secret.replace(/(.{4})/g, '$1 ').trim();
-
-    content.innerHTML = `
-        <div style="text-align:center;margin-bottom:18px;">
-            <div style="width:56px;height:56px;border-radius:50%;background:#f3e8ff;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-                <i class="fas fa-shield-alt" style="font-size:26px;color:#7c3aed;"></i>
-            </div>
-            <h2 style="font-size:19px;font-weight:600;color:#1e293b;margin:0 0 4px;">Set Up Two-Factor Authentication</h2>
-            <p style="font-size:13px;color:#64748b;margin:0;">Scan the QR code with your authenticator app</p>
-        </div>
-
-        <div style="text-align:center;margin-bottom:16px;">
-            <img src="${qrUrl}" alt="QR Code"
-                 style="width:200px;height:200px;border:1px solid #e2e8f0;border-radius:12px;padding:8px;background:#fff;">
-        </div>
-
-        <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:16px;">
-            <p style="font-size:11px;color:#64748b;margin:0 0 6px;font-weight:600;letter-spacing:0.5px;">MANUAL ENTRY KEY</p>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <code id="secretKeyDisplay" style="flex:1;background:#fff;padding:8px 10px;border-radius:6px;font-size:12px;letter-spacing:1.5px;color:#1e293b;border:1px solid #e2e8f0;word-break:break-all;">${formattedSecret}</code>
-                <button onclick="copySecretKey('${secret}')" style="background:#4C1D95;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:12px;">
-                    <i class="fas fa-copy"></i>
-                </button>
-            </div>
-        </div>
-
-        <div style="margin-bottom:14px;">
-            <label style="font-size:13px;font-weight:500;color:#1e293b;display:block;margin-bottom:8px;">
-                Enter the 6-digit code from your app:
-            </label>
-            <div style="display:flex;gap:8px;justify-content:center;" id="setupOtpRow">
-                ${Array.from({ length: 6 }, (_, i) => `
-                    <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]"
-                        class="setup-otp" data-index="${i}"
-                        style="width:44px;height:52px;text-align:center;font-size:22px;font-weight:600;font-family:monospace;border:2px solid #e2e8f0;border-radius:10px;outline:none;transition:border-color 0.2s;">
-                `).join('')}
-            </div>
-            <div id="twoFactorError" style="display:none;color:#dc2626;font-size:12px;margin-top:8px;text-align:center;"></div>
-        </div>
-
-        <div style="display:flex;gap:10px;">
-            <button onclick="close2FAModal()" style="flex:1;padding:11px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13px;color:#64748b;">
-                Cancel
-            </button>
-            <button id="verifyEnableBtn" onclick="verifyAndEnable2FA()" style="flex:2;padding:11px;border:none;background:#4C1D95;color:#fff;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;">
-                <i class="fas fa-check-circle"></i> Verify & Enable
-            </button>
-        </div>
-
-        <div style="margin-top:14px;padding:10px 12px;background:#fef3c7;border-radius:8px;">
-            <p style="font-size:11px;color:#92400e;margin:0;line-height:1.5;">
-                <i class="fas fa-info-circle"></i>
-                Don't have an authenticator? Get <strong>Google Authenticator</strong>, <strong>Authy</strong>, or <strong>Microsoft Authenticator</strong>.
-            </p>
-        </div>
-    `;
-
-    sessionStorage.setItem('2fa_setup_secret', secret);
-    sessionStorage.setItem('2fa_setup_user', userId || '');
-
-    modal.style.display = 'flex';
-    profileWireSetupOtpInputs();
-
-    if (typeof trackGALogin === 'function') {
-        trackGALogin('2fa_setup_started', {
-            event_category: 'Security',
-            user_id: userId
-        });
-    }
-}
-
-function profileWireSetupOtpInputs() {
-    const inputs = document.querySelectorAll('#twoFactorModal .setup-otp');
-    inputs.forEach((input, index) => {
-        input.addEventListener('input', function () {
-            this.value = this.value.replace(/[^0-9]/g, '');
-            this.style.borderColor = this.value ? '#4C1D95' : '#e2e8f0';
-            if (this.value.length === 1 && index < inputs.length - 1) {
-                inputs[index + 1].focus();
-            }
-            const allFilled = Array.from(inputs).every((inp) => inp.value.length === 1);
-            if (allFilled) setTimeout(() => verifyAndEnable2FA(), 300);
-        });
-
-        input.addEventListener('keydown', function (e) {
-            if (e.key === 'Backspace' && !this.value && index > 0) {
-                inputs[index - 1].focus();
-                inputs[index - 1].value = '';
-                inputs[index - 1].style.borderColor = '#e2e8f0';
-            }
-            if (e.key === 'ArrowLeft' && index > 0) inputs[index - 1].focus();
-            if (e.key === 'ArrowRight' && index < inputs.length - 1) inputs[index + 1].focus();
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                verifyAndEnable2FA();
-            }
-        });
-
-        input.addEventListener('paste', function (e) {
-            const paste = (e.clipboardData || window.clipboardData).getData('text');
-            if (paste && /^\d{6}$/.test(paste)) {
-                e.preventDefault();
-                inputs.forEach((inp, i) => {
-                    inp.value = paste[i] || '';
-                    inp.style.borderColor = inp.value ? '#4C1D95' : '#e2e8f0';
-                });
-                setTimeout(() => verifyAndEnable2FA(), 300);
-            }
-        });
-
-        input.addEventListener('focus', function () {
-            this.select();
-        });
-    });
-
-    setTimeout(() => inputs[0]?.focus(), 150);
-}
-
-async function verifyAndEnable2FA() {
-    const inputs = document.querySelectorAll('#twoFactorModal .setup-otp');
-    let code = '';
-    inputs.forEach((inp) => (code += inp.value));
-
-    const errorEl = document.getElementById('twoFactorError');
-    const verifyBtn = document.getElementById('verifyEnableBtn');
-
-    if (code.length !== 6) {
-        if (errorEl) {
-            errorEl.textContent = 'Please enter all 6 digits';
-            errorEl.style.display = 'block';
-        }
-        return;
-    }
-
-    const supabase = profileGetSupabase();
-    const userId = profileGetCurrentUserId();
-    let secret = sessionStorage.getItem('2fa_setup_secret') || profileData.twoFactorSecret;
-
-    if (!secret && supabase && userId && userId !== 'SA-001') {
-        const remote = await profileFetch2FAStatus();
-        secret = remote?.two_factor_secret;
-    }
-
-    if (!secret) {
-        if (errorEl) {
-            errorEl.textContent = 'No 2FA secret found. Close and reopen.';
-            errorEl.style.display = 'block';
-        }
-        return;
-    }
-
-    const originalText = verifyBtn?.innerHTML;
-    if (verifyBtn) {
-        verifyBtn.disabled = true;
-        verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-    }
-
-    const isValid = await profileVerifyTOTP(secret, code);
-
-    if (!isValid) {
-        if (errorEl) {
-            errorEl.textContent = 'Invalid code. Check your device clock and try again.';
-            errorEl.style.display = 'block';
-        }
-        inputs.forEach((inp) => {
-            inp.value = '';
-            inp.style.borderColor = '#e2e8f0';
-        });
-        inputs[0]?.focus();
-
-        if (verifyBtn) {
-            verifyBtn.disabled = false;
-            verifyBtn.innerHTML = originalText;
-        }
-
-        if (typeof trackGALogin === 'function') {
-            trackGALogin('2fa_setup_failed', {
-                event_category: 'Security',
-                user_id: userId
-            });
-        }
-        return;
-    }
-
-    const updatePayload = {
-        two_factor_enabled: true,
-        two_factor_verified: true,
-        two_factor_setup_date: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    };
-
-    if (supabase && userId && userId !== 'SA-001') {
-        const { error } = await supabase
-            .from('consolidated_user_profiles_table')
-            .update(updatePayload)
-            .eq('user_id', userId);
-
-        if (error) {
-            console.error('Failed to enable 2FA in DB:', error);
-            if (errorEl) {
-                errorEl.textContent = 'Could not save 2FA settings. Please try again.';
-                errorEl.style.display = 'block';
-            }
-            if (verifyBtn) {
-                verifyBtn.disabled = false;
-                verifyBtn.innerHTML = originalText;
-            }
-            return;
-        }
-    }
-
-    profileData.twoFactorEnabled = true;
-    profileData.twoFactorVerified = true;
-
-    const settings = {
-        enabled: true,
-        secret: profileData.twoFactorSecret,
-        backupCodes: profileData.twoFactorBackupCodes || [],
-        enabledAt: new Date().toISOString()
-    };
-    localStorage.setItem('twoFactorSettings', JSON.stringify(settings));
-    localStorage.setItem('profileData', JSON.stringify(profileData));
-
-    if (typeof trackGALogin === 'function') {
-        trackGALogin('2fa_enabled', {
-            event_category: 'Security',
-            user_id: userId
-        });
-    }
-
-    profileShow2FASuccessScreen();
-    update2FAUI();
-
-    if (typeof showFeedback === 'function') {
-        showFeedback('✅ Two-factor authentication enabled!', 'success');
-    }
-}
-
-function profileShow2FASuccessScreen() {
-    const content = document.getElementById('twoFactorModalContent');
-    if (!content) return;
-
-    const backupCodes = [];
-    for (let i = 0; i < 8; i++) {
-        let code = '';
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        for (let j = 0; j < 8; j++) code += chars.charAt(Math.floor(Math.random() * chars.length));
-        backupCodes.push(code.slice(0, 4) + '-' + code.slice(4));
-    }
-
-    profileData.twoFactorBackupCodes = backupCodes;
-    localStorage.setItem('twoFactorBackupCodes', JSON.stringify(backupCodes));
-
-    const supabase = profileGetSupabase();
-    const userId = profileGetCurrentUserId();
-    if (supabase && userId && userId !== 'SA-001') {
-        supabase
-            .from('consolidated_user_profiles_table')
-            .update({ two_factor_backup_codes: backupCodes })
-            .eq('user_id', userId)
-            .then(() => {})
-            .catch(() => {});
-    }
-
-    content.innerHTML = `
-        <div style="text-align:center;margin-bottom:18px;">
-            <div style="width:56px;height:56px;border-radius:50%;background:#ecfdf5;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-                <i class="fas fa-check-circle" style="font-size:28px;color:#10b981;"></i>
-            </div>
-            <h2 style="font-size:19px;font-weight:600;color:#1e293b;margin:0 0 4px;">2FA Enabled Successfully</h2>
-            <p style="font-size:13px;color:#64748b;margin:0;">Save your backup codes in a safe place</p>
-        </div>
-
-        <div style="background:#fef3c7;border-radius:10px;padding:12px;margin-bottom:16px;">
-            <p style="font-size:12px;color:#92400e;margin:0;line-height:1.5;">
-                <i class="fas fa-exclamation-triangle"></i>
-                Each code can be used once. If you lose your device, you'll need these to sign in.
-            </p>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-            ${backupCodes.map((c) => `
-                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px;text-align:center;">
-                    <code style="font-family:monospace;font-size:13px;letter-spacing:1.5px;color:#1e293b;">${c}</code>
-                </div>
-            `).join('')}
-        </div>
-
-        <div style="display:flex;gap:8px;margin-bottom:12px;">
-            <button onclick="profileCopyBackupCodes()" style="flex:1;padding:11px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13px;color:#4C1D95;">
-                <i class="fas fa-copy"></i> Copy Codes
-            </button>
-            <button onclick="profileDownloadBackupCodes()" style="flex:1;padding:11px;border:1px solid #e2e8f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13px;color:#4C1D95;">
-                <i class="fas fa-download"></i> Download
-            </button>
-        </div>
-
-        <button onclick="close2FAModal()" style="width:100%;padding:12px;border:none;background:#4C1D95;color:#fff;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;">
-            <i class="fas fa-check"></i> I've Saved My Codes
-        </button>
-    `;
-}
-
-function copySecretKey(secret) {
-    navigator.clipboard
-        .writeText(secret)
-        .then(() => {
-            if (typeof showFeedback === 'function') showFeedback('Secret copied', 'success');
-        })
-        .catch(() => {
-            const ta = document.createElement('textarea');
-            ta.value = secret;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-            if (typeof showFeedback === 'function') showFeedback('Secret copied', 'success');
-        });
-}
-
-function profileCopyBackupCodes() {
-    const codes = profileData.twoFactorBackupCodes || [];
-    navigator.clipboard
-        .writeText(codes.join('\n'))
-        .then(() => {
-            if (typeof showFeedback === 'function') showFeedback('Backup codes copied', 'success');
-        })
-        .catch(() => {
-            const ta = document.createElement('textarea');
-            ta.value = codes.join('\n');
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-            if (typeof showFeedback === 'function') showFeedback('Backup codes copied', 'success');
-        });
-}
-
-function profileDownloadBackupCodes() {
-    const codes = profileData.twoFactorBackupCodes || [];
-    const text = `NCHSM Portal — 2FA Backup Codes
-Generated: ${new Date().toLocaleString()}
-Email: ${profileData.email}
-
-${codes.join('\n')}
-
-Keep these safe. Each code works once.`;
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `2fa-backup-codes-${new Date().toISOString().slice(0, 10)}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    if (typeof showFeedback === 'function') showFeedback('Backup codes downloaded', 'success');
-}
-
-async function disable2FA() {
-    if (
-        !confirm(
-            'Are you sure you want to disable two-factor authentication? This will make your account less secure.'
-        )
-    )
-        return;
-
-    const supabase = profileGetSupabase();
-    const userId = profileGetCurrentUserId();
-
-    if (supabase && userId && userId !== 'SA-001') {
-        const { error } = await supabase
-            .from('consolidated_user_profiles_table')
-            .update({
-                two_factor_enabled: false,
-                two_factor_secret: null,
-                two_factor_verified: false,
-                two_factor_backup_codes: null,
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
-
-        if (error) {
-            console.error('Failed to disable 2FA:', error);
-            if (typeof showFeedback === 'function')
-                showFeedback('Could not disable 2FA. Try again.', 'error');
-            return;
-        }
-    }
-
-    profileData.twoFactorEnabled = false;
-    profileData.twoFactorVerified = false;
-    profileData.twoFactorSecret = null;
-    profileData.twoFactorBackupCodes = [];
-
-    localStorage.removeItem('twoFactorSettings');
-    localStorage.removeItem('twoFactorBackupCodes');
-    localStorage.setItem('profileData', JSON.stringify(profileData));
-
-    update2FAUI();
-
-    if (typeof trackGALogin === 'function') {
-        trackGALogin('2fa_disabled', {
-            event_category: 'Security',
-            user_id: userId
-        });
-    }
-
-    if (typeof showFeedback === 'function') showFeedback('2FA disabled', 'info');
-}
-
-function close2FAModal() {
-    const modal = document.getElementById('twoFactorModal');
-    if (modal) modal.style.display = 'none';
-}
-
+// SUPABASE AUTHENTICATOR MFA — native TOTP
 // ============================================================
+let profileMfaEnrollment=null;
+async function profileGetMfaFactors(){
+ const sb=profileGetSupabase();if(!sb?.auth?.mfa?.listFactors)throw new Error('Supabase Auth MFA is unavailable.');
+ const {data,error}=await sb.auth.mfa.listFactors();if(error)throw error;return data?.totp||[];
+}
+async function update2FAUI(){
+ const status=document.getElementById('twoFactorStatus'),toggle=document.getElementById('twoFactorToggleBtn');
+ const setup=document.getElementById('twoFactorSetupSection'),enabledBox=document.getElementById('twoFactorEnabledSection');
+ try{
+  const factors=await profileGetMfaFactors(),verified=factors.filter(f=>f.status==='verified'),active=verified.length>0;
+  profileData.twoFactorEnabled=active;profileData.twoFactorVerified=active;profileData.twoFactorFactorId=verified[0]?.id||null;
+  const stat=document.getElementById('profileStat2FA');if(stat){stat.textContent=active?'Enabled':'Disabled';stat.style.color=active?'#059669':'#b45309';}
+  if(status){status.textContent=active?'Enabled':'Disabled';status.style.color=active?'#059669':'#dc2626';}
+  if(toggle){toggle.textContent=active?'Disable 2FA':'Enable 2FA';toggle.style.background=active?'#dc2626':'#059669';toggle.onclick=active?disable2FA:show2FASetupModal;}
+  if(setup)setup.style.display=active?'none':'block';if(enabledBox)enabledBox.style.display=active?'block':'none';
+  const date=document.getElementById('twoFactorSetupDate');if(date&&active)date.textContent='Managed securely by Supabase Auth';
+ }catch(e){console.error('MFA status error',e);if(status){status.textContent='Unavailable';status.style.color='#b45309';}if(typeof showFeedback==='function')showFeedback(e.message||'Unable to load 2FA status.','error');}
+}
+function profileEnsure2FAModal(){
+ let m=document.getElementById('twoFactorModal');if(m)return m;
+ m=document.createElement('div');m.id='twoFactorModal';m.style.cssText='display:none;position:fixed;inset:0;background:rgba(2,18,35,.68);z-index:100000;justify-content:center;align-items:center;padding:16px;box-sizing:border-box;';
+ m.innerHTML='<div style="background:#fff;border-radius:18px;padding:24px;width:min(100%,460px);max-height:92vh;overflow:auto;position:relative;box-shadow:0 24px 70px rgba(0,0,0,.28);box-sizing:border-box"><button type="button" onclick="close2FAModal()" style="position:absolute;right:14px;top:12px;border:0;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:22px">&times;</button><div id="twoFactorModalContent"></div></div>';document.body.appendChild(m);return m;
+}
+async function show2FASetupModal(){
+ const sb=profileGetSupabase();if(!sb?.auth?.mfa?.enroll){if(typeof showFeedback==='function')showFeedback('Supabase Auth MFA is unavailable.','error');return;}
+ const modal=profileEnsure2FAModal(),content=document.getElementById('twoFactorModalContent');content.innerHTML='<p style="text-align:center;padding:28px">Preparing secure authenticator setup…</p>';modal.style.display='flex';
+ try{
+  const existing=await profileGetMfaFactors();for(const f of existing.filter(x=>x.status!=='verified')){const {error}=await sb.auth.mfa.unenroll({factorId:f.id});if(error)throw error;}
+  const {data,error}=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'NCHSM Super Admin Authenticator'});if(error)throw error;
+  if(!data?.id||!data?.totp?.qr_code||!data?.totp?.secret)throw new Error('Supabase did not return an authenticator QR code.');
+  profileMfaEnrollment={factorId:data.id};sessionStorage.setItem('nchsm_mfa_enrollment_factor',data.id);
+  const qr=data.totp.qr_code,secret=data.totp.secret;
+  content.innerHTML=[
+   '<div style="text-align:center"><h2 style="color:#0A3D62">Set up two-factor authentication</h2>',
+   '<p style="color:#64748b;font-size:13px">Scan with Google Authenticator, Microsoft Authenticator, Authy or another TOTP app.</p>',
+   '<img alt="Authenticator QR code" src="',qr,'" style="width:210px;height:210px;max-width:100%;object-fit:contain;border:1px solid #e2e8f0;border-radius:12px;padding:8px">',
+   '<div style="background:#f8fafc;border-radius:10px;padding:12px;text-align:left;margin:12px 0"><b style="font-size:11px;color:#64748b">MANUAL SETUP KEY</b><code style="display:block;overflow-wrap:anywhere;margin:8px 0">',profileEscapeHtml(secret),'</code><button onclick="copySecretKey(\\'',secret.replace(/'/g,"\\\\'"),'\\')">Copy key</button></div>',
+   '<label for="twoFactorNativeCode">Enter the 6-digit code from your authenticator</label><input id="twoFactorNativeCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="width:100%;box-sizing:border-box;padding:14px;border:1px solid #cbd5e1;border-radius:10px;text-align:center;font-size:24px;letter-spacing:8px">',
+   '<div id="twoFactorError" role="alert" style="display:none;color:#dc2626;font-size:12px;margin-top:8px"></div>',
+   '<div style="display:flex;gap:10px;margin-top:16px"><button onclick="close2FAModal()" style="flex:1;padding:12px">Cancel</button><button id="verifyEnableBtn" onclick="verifyAndEnable2FA()" style="flex:2;padding:12px;background:#4C1D95;color:white;border:0;border-radius:9px">Verify & Enable</button></div></div>'
+  ].join('');
+  document.getElementById('twoFactorNativeCode')?.focus();
+ }catch(e){console.error('MFA enrollment failed',e);content.innerHTML='<p style="color:#b91c1c">Could not start 2FA setup: '+profileEscapeHtml(e.message)+'</p><button onclick="close2FAModal()">Close</button>';}
+}
+async function verifyAndEnable2FA(){
+ const sb=profileGetSupabase(),code=(document.getElementById('twoFactorNativeCode')?.value||'').replace(/\D/g,''),err=document.getElementById('twoFactorError'),btn=document.getElementById('verifyEnableBtn');
+ const factorId=profileMfaEnrollment?.factorId||sessionStorage.getItem('nchsm_mfa_enrollment_factor');
+ if(!/^\d{6}$/.test(code)){if(err){err.textContent='Enter all six digits.';err.style.display='block';}return;}
+ if(!factorId){if(err){err.textContent='Setup expired. Start again.';err.style.display='block';}return;}
+ const old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='Verifying…';}
+ try{
+  const {data:ch,error:ce}=await sb.auth.mfa.challenge({factorId});if(ce)throw ce;
+  const {error}=await sb.auth.mfa.verify({factorId,challengeId:ch.id,code});if(error)throw error;
+  profileMfaEnrollment=null;sessionStorage.removeItem('nchsm_mfa_enrollment_factor');await update2FAUI();
+  document.getElementById('twoFactorModalContent').innerHTML='<div style="text-align:center;padding:20px"><h2 style="color:#059669">2FA enabled successfully</h2><p>Your account is now protected by Supabase Auth. You will be asked for an authenticator code when signing in.</p><p style="font-size:12px;color:#92400e;background:#fef3c7;padding:10px;border-radius:8px">For recovery, enrol a second authenticator device and store it securely. Supabase Auth does not issue recovery codes in this flow.</p><button onclick="close2FAModal()">Done</button></div>';
+  if(typeof showFeedback==='function')showFeedback('Two-factor authentication enabled.','success');
+ }catch(e){console.error('MFA verify failed',e);if(err){err.textContent=e.message||'Code verification failed. Check device time.';err.style.display='block';}const input=document.getElementById('twoFactorNativeCode');if(input){input.value='';input.focus();}if(btn){btn.disabled=false;btn.textContent=old||'Verify & Enable';}}
+}
+async function disable2FA(){
+ if(!confirm('Disable authenticator two-factor authentication?'))return;const sb=profileGetSupabase();
+ try{
+  const {data:aal,error:ae}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(ae)throw ae;
+  if(aal?.currentLevel!=='aal2')throw new Error('Sign in again and complete your authenticator code before disabling 2FA.');
+  const factors=await profileGetMfaFactors();for(const f of factors.filter(x=>x.status==='verified')){const {error}=await sb.auth.mfa.unenroll({factorId:f.id});if(error)throw error;}
+  await sb.auth.refreshSession();await update2FAUI();if(typeof showFeedback==='function')showFeedback('Two-factor authentication disabled.','success');
+ }catch(e){console.error('MFA disable failed',e);if(typeof showFeedback==='function')showFeedback(e.message||'Could not disable 2FA.','error');}
+}
+function close2FAModal(){const m=document.getElementById('twoFactorModal');if(m)m.style.display='none';profileMfaEnrollment=null;sessionStorage.removeItem('nchsm_mfa_enrollment_factor');}
+function profileWireSetupOtpInputs(){}
+function profileShow2FASuccessScreen(){update2FAUI();}
+function profileVerifyTOTP(){return false;}
+function copySecretKey(secret){const f=()=>{const t=document.createElement('textarea');t.value=secret;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();};if(navigator.clipboard?.writeText)navigator.clipboard.writeText(secret).catch(f);else f();}
+function profileCopyBackupCodes(){if(typeof showFeedback==='function')showFeedback('Supabase Auth does not issue recovery codes. Enrol a second authenticator device.','info');}
+function profileDownloadBackupCodes(){profileCopyBackupCodes();}
 // LOGIN HISTORY
 // ============================================================
 function loadLoginHistory() {
@@ -1494,6 +986,7 @@ window.initProfile = initProfile;
 
 // 2FA globals
 window.show2FASetupModal = show2FASetupModal;
+window.enable2FA = show2FASetupModal;
 window.verifyAndEnable2FA = verifyAndEnable2FA;
 window.disable2FA = disable2FA;
 window.close2FAModal = close2FAModal;
