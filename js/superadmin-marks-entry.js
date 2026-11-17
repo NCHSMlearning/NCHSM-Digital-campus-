@@ -1,3 +1,23 @@
+/* Centralised audit bridge for Super Admin marks views and exports. */
+(function(){
+  if(window.NCHSMMarksAudit)return;
+  window.NCHSMMarksAudit=async function(action,details,status){
+    try{
+      const db=window.sb||window.supabaseClient||window.NCHSMLogin?.supabase;
+      if(!db?.rpc)return false;
+      const d=details||{};
+      const {error}=await db.rpc('log_marks_security_event',{
+        p_action:action,p_target_table:'student_marks',
+        p_target_id:d.target_id||null,
+        p_description:d.description||action,
+        p_status:status||'success',
+        p_details:{...d,page_path:location.pathname,device_info:/Mobile|Android|iPhone/i.test(navigator.userAgent)?'Mobile':'Desktop'}
+      });
+      if(error){console.warn('[Marks audit] Event was not recorded:',error.message);return false;}
+      return true;
+    }catch(e){console.warn('[Marks audit] Event failed:',e);return false;}
+  };
+})();
 // ============================================================
 // ✅ FILE VERSION TRACKING
 // ============================================================
@@ -1483,6 +1503,7 @@ async function loadMarksEntry() {
             .eq('program', program).eq('block', block)
             .eq('subject_name', unit).eq('academic_year', parseInt(year, 10));
         if (marksError) throw marksError;
+        if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit('MARKS_VIEWED',{description:'Viewed marks entry register',record_count:(marks||[]).length,filters:{program,block,unit,academic_year:year}});
         if (!isCurrentRequest()) return;
 
         const rows = marks || [];
@@ -2466,8 +2487,9 @@ async function saveMarksEntry() {
 // EXPORT MARKS TO CSV WITH RETAKE DATA
 // ============================================================
 
-function exportMarksEntry() {
+async function exportMarksEntry() {
     const marks = me_currentMarks;
+    if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit('MARKS_EXPORT_REQUESTED',{description:'Requested marks entry CSV export',record_count:marks?.length||0,format:'CSV',filters:{program:me_currentProgram,block:me_currentBlock,unit:me_currentUnit,academic_year:me_currentYear}});
     if (!marks || marks.length === 0) {
         if (typeof showNotification === 'function') showNotification('No data to export', 'warning');
         return;
@@ -2508,6 +2530,7 @@ function exportMarksEntry() {
     });
     
     downloadCSV(csv, `marks_${me_currentUnit}_${me_currentBlock}_${me_currentYear}.csv`);
+    if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit('MARKS_EXPORTED',{description:'Exported marks entry to CSV',record_count:marks.length,format:'CSV',filters:{program:me_currentProgram,block:me_currentBlock,unit:me_currentUnit,academic_year:me_currentYear}});
     if (typeof showNotification === 'function') showNotification('✅ Marks exported!', 'success');
 }
 
