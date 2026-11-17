@@ -495,6 +495,83 @@
 #sidebar .color-btn{width:17px!important;height:17px!important}
 @media(max-width:768px){#sidebar{left:-290px!important;width:280px!important;z-index:1200!important}#sidebar.active{left:0!important}body.sidebar-open:after{content:"";position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:1100}}
 </style>
+
+<style id="nchsm-superadmin-sidebar-refresh">
+/* NCHSM Digital Campus — Super Admin navigation refresh */
+:root{--nchsm-sidebar:#082f49;--nchsm-sidebar-deep:#06263b;--nchsm-teal:#0f766e;--nchsm-gold:#eab54b}
+#sidebar{
+  box-sizing:border-box!important;width:260px!important;height:100dvh!important;
+  padding:18px 13px 14px!important;gap:0!important;
+  background:linear-gradient(180deg,var(--nchsm-sidebar) 0%,var(--nchsm-sidebar-deep) 100%)!important;
+  color:#f8fafc!important;border-right:1px solid rgba(255,255,255,.08);
+  box-shadow:8px 0 30px rgba(2,20,35,.16)!important;
+  overflow-x:hidden!important;overflow-y:auto!important;scrollbar-width:thin;
+  scrollbar-color:rgba(148,163,184,.38) transparent;
+}
+#sidebar .sidebar-header{
+  min-height:58px;padding:2px 9px 15px!important;margin:0 0 13px!important;
+  border-bottom:1px solid rgba(226,232,240,.13)!important;gap:11px!important;
+}
+#sidebar .sidebar-header img{width:42px!important;height:42px!important;border-radius:11px!important}
+#sidebar .sidebar-header h2{font-size:15px!important;letter-spacing:.1px}
+#sidebar .sidebar-header span{font-size:9px!important;letter-spacing:.7px;text-transform:uppercase}
+#sidebarThemePicker{display:none!important}
+#sidebar .search-container{padding:0 5px 13px!important;margin:0 0 9px!important;border-bottom:1px solid rgba(226,232,240,.12)!important}
+#sidebar .search-wrapper{min-height:42px;border:1px solid rgba(203,213,225,.17)!important;border-radius:10px!important;background:rgba(255,255,255,.075)!important}
+#sidebar .search-wrapper:focus-within{background:rgba(255,255,255,.12)!important;border-color:rgba(94,234,212,.65)!important;box-shadow:0 0 0 3px rgba(45,212,191,.10)}
+#sidebar #sidebarSearch{font-size:12px!important;min-width:0!important}
+#sidebar #sidebarSearch::placeholder{color:rgba(226,232,240,.58)}
+#sidebar #searchResults{top:calc(100% + 5px)!important;left:0!important;right:0!important;width:100%!important;max-height:320px!important;border:1px solid #dbe5ec!important;border-radius:11px!important;box-shadow:0 14px 35px rgba(2,20,35,.24)!important}
+#mainNav{min-height:0!important;padding:0 2px 18px!important;overflow-x:hidden!important;overflow-y:visible!important}
+#mainNav .nav-section{padding:15px 10px 6px!important;margin:2px 0 3px!important}
+#mainNav .nav-section span{font-size:9px!important;letter-spacing:1.25px!important;font-weight:800!important;color:#9fb9c9!important;opacity:1!important}
+#mainNav li{min-width:0}
+#mainNav > li:not(.nav-section){margin:0 0 3px!important}
+#mainNav a{
+  box-sizing:border-box;min-height:39px!important;padding:9px 11px!important;gap:10px!important;
+  border:1px solid transparent!important;border-left:3px solid transparent!important;
+  border-radius:9px!important;color:#d9e7ef!important;font-size:12.5px!important;
+  font-weight:550!important;line-height:1.35;transition:background .16s ease,border-color .16s ease,color .16s ease;
+}
+#mainNav a>i:first-child{width:18px!important;min-width:18px;text-align:center;color:#a9c6d6}
+#mainNav a:hover{background:rgba(255,255,255,.075)!important;color:#fff!important}
+#mainNav a:hover>i:first-child{color:#5eead4}
+#mainNav a.active{background:rgba(20,184,166,.17)!important;border-color:rgba(94,234,212,.13)!important;border-left-color:#5eead4!important;color:#fff!important;font-weight:750!important}
+#mainNav a.active>i:first-child{color:#5eead4!important}
+#mainNav .nav-dropdown{margin-bottom:3px!important}
+#mainNav .nav-dropdown>a{min-height:41px!important}
+#mainNav .nav-dropdown>a .fa-chevron-down{font-size:10px!important;color:#9fb9c9}
+#mainNav .nav-dropdown.open>a{background:rgba(255,255,255,.065)!important;color:#fff!important}
+#mainNav .dropdown-menu{
+  width:auto!important;margin:4px 0 7px 13px!important;padding:4px 0 4px 8px!important;
+  background:rgba(2,22,36,.25)!important;border:0!important;border-left:1px solid rgba(94,234,212,.32)!important;
+  border-radius:0 8px 8px 0!important;
+}
+#mainNav .dropdown-menu a{min-height:34px!important;padding:7px 9px!important;font-size:11.5px!important;color:#c5d7e2!important}
+#mainNav .dropdown-menu a>i:first-child{font-size:11px!important}
+#mainNav .dropdown-menu a:hover{background:rgba(45,212,191,.10)!important;color:#fff!important}
+#mainNav .dropdown-menu a.active{background:rgba(20,184,166,.16)!important;border-left-color:#5eead4!important}
+#sidebar .sidebar-footer,#sidebar .sidebar-bottom{flex-shrink:0}
+#sidebar::-webkit-scrollbar,#mainNav::-webkit-scrollbar{width:5px}
+#sidebar::-webkit-scrollbar-thumb{background:rgba(148,163,184,.32);border-radius:9px}
+.mobile-nav-toggle{display:none!important}
+@media(max-width:768px){
+  #sidebar{left:-285px!important;width:270px!important;max-width:calc(100vw - 48px)!important;z-index:1200!important;transition:left .25s ease!important}
+  #sidebar.active{left:0!important}
+  .mobile-nav-toggle{
+    display:flex!important;position:fixed!important;top:12px!important;left:12px!important;
+    width:43px;height:43px;align-items:center;justify-content:center;gap:5px;
+    border:1px solid #d6e2e9!important;border-radius:11px!important;
+    background:#fff!important;box-shadow:0 5px 18px rgba(2,20,35,.16);z-index:1300!important;
+  }
+  .mobile-nav-toggle span{background:#082f49!important;width:19px!important;height:2px!important;margin:0!important}
+  body.sidebar-open:before{content:"";position:fixed;inset:0;background:rgba(2,15,27,.56);backdrop-filter:blur(2px);z-index:1100}
+  #mainNav a{min-height:42px!important}
+  #mainNav .dropdown-menu a{min-height:38px!important}
+}
+@media(min-width:769px){.container{margin-left:260px!important}}
+@media(prefers-reduced-motion:reduce){#sidebar,#mainNav a{transition:none!important}}
+</style>
 </head>
 <body>
     <div class="container">
@@ -692,7 +769,7 @@
     style="
         display: none;
         position: absolute;
-        top: 100%;  <!-- THIS IS THE KEY FIX - puts it below the input -->
+        top: calc(100% + 4px);
         left: 0;
         right: 0;
         background: white;
@@ -15419,6 +15496,37 @@ document.addEventListener('DOMContentLoaded',function(){
  const mobile=document.getElementById('mobileNavToggle');
  if(mobile)mobile.setAttribute('aria-label','Toggle navigation');
 });
+</script>
+
+<script id="nchsm-sidebar-mobile-behavior">
+(function(){
+  'use strict';
+  const sidebar=document.getElementById('sidebar');
+  const toggle=document.getElementById('mobileNavToggle');
+  if(!sidebar||!toggle)return;
+  function sync(){
+    const open=sidebar.classList.contains('active');
+    document.body.classList.toggle('sidebar-open',open);
+    toggle.setAttribute('aria-expanded',String(open));
+    toggle.setAttribute('aria-label',open?'Close navigation':'Open navigation');
+  }
+  toggle.addEventListener('click',function(){requestAnimationFrame(sync);});
+  document.addEventListener('click',function(event){
+    if(window.innerWidth>768||!sidebar.classList.contains('active'))return;
+    if(!sidebar.contains(event.target)&&!toggle.contains(event.target)){
+      sidebar.classList.remove('active');sync();
+    }else if(event.target.closest('#mainNav a[data-tab]')){
+      requestAnimationFrame(sync);
+    }
+  });
+  document.addEventListener('keydown',function(event){
+    if(event.key==='Escape'&&sidebar.classList.contains('active')){
+      sidebar.classList.remove('active');sync();toggle.focus();
+    }
+  });
+  window.addEventListener('resize',function(){if(window.innerWidth>768){sidebar.classList.remove('active');sync();}});
+  sync();
+})();
 </script>
 </body>
 </html>
