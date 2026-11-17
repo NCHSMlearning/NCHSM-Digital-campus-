@@ -1033,18 +1033,54 @@ let profileCurrentSessionRowId = null;
 function profileSetupSections() {
     const root=document.getElementById('profile');if(!root)return;
     const info=root.querySelector('div[style*="grid-template-columns: 2fr 1fr"] > div:first-child');
-    if(info)info.id='profilePersonalInfoPanel';
+    if(info&&!info.id)info.id='profilePersonalInfoPanel';
     const recent=document.getElementById('profileRecentActivity');
     const recentCard=recent?.parentElement;
-    if(recentCard)recentCard.id='profileActivityPanel';
+    if(recentCard&&!recentCard.id)recentCard.id='profileActivityPanel';
     const stats=root.querySelector('div[style*="repeat(auto-fit, minmax(160px, 1fr))"]');
-    if(stats)stats.id='profileOverviewStats';
+    if(stats&&!stats.id)stats.id='profileOverviewStats';
+    const locatePanel=(id,childId)=>{
+      const existing=document.getElementById(id);if(existing)return existing;
+      const child=document.getElementById(childId);if(!child)return null;
+      let node=child;
+      for(let i=0;i<5&&node&&node.parentElement!==root;i++)node=node.parentElement;
+      if(node&&node!==root){node.id=id;return node;}return null;
+    };
+    locatePanel('profileSecurityPanel','twoFactorStatus')||locatePanel('profileSecurityPanel','profileSessionsList');
+    locatePanel('profileNotificationsPanel','profileEmailAlerts')||locatePanel('profileNotificationsPanel','profileInAppAlerts');
+    locatePanel('profilePreferencesPanel','profileThemePreference')||locatePanel('profilePreferencesPanel','profileTimezone');
+    profileBuildSectionNavigation(root);
     profileLoadPreferences();
+}
+
+function profileBuildSectionNavigation(root){
+    if(!root||root.querySelector('#profileSectionNavigation'))return;
+    const nav=document.createElement('nav');nav.id='profileSectionNavigation';nav.setAttribute('aria-label','Super Admin profile sections');
+    nav.style.cssText='display:flex;gap:8px;overflow-x:auto;padding:10px 14px;margin:0 0 18px;position:sticky;top:0;z-index:20;background:rgba(248,250,252,.96);border-bottom:1px solid #e2e8f0;backdrop-filter:blur(10px);-webkit-overflow-scrolling:touch';
+    const sections=[
+      ['overview','Overview','#profileOverviewStats'],
+      ['personal','Personal information','#profilePersonalInfoPanel'],
+      ['security','Security & access','#profileSecurityPanel'],
+      ['activity','Activity & audit','#profileActivityPanel'],
+      ['notifications','Notifications','#profileNotificationsPanel'],
+      ['preferences','Preferences','#profilePreferencesPanel']
+    ];
+    sections.forEach(([key,label,selector])=>{
+      const target=root.querySelector(selector);if(!target)return;
+      const button=document.createElement('button');button.type='button';button.dataset.profileSection=key;button.textContent=label;
+      button.style.cssText='flex:0 0 auto;border:1px solid #dbe3ed;border-radius:999px;padding:9px 13px;background:#fff;color:#334155;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap';
+      button.addEventListener('click',()=>profileNavigateSection(key));nav.appendChild(button);
+    });
+    const header=root.querySelector('.profile-header')||root.firstElementChild;
+    if(header?.parentNode)header.parentNode.insertBefore(nav,header.nextSibling);else root.prepend(nav);
+    const style=document.createElement('style');style.id='profileCentreResponsiveStyles';
+    style.textContent='#profile{min-width:0}#profileSectionNavigation button:focus-visible{outline:3px solid #0f766e;outline-offset:2px}#profile .profile-dark-mode{color-scheme:dark}@media(max-width:640px){#profileSectionNavigation{margin-left:-8px;margin-right:-8px;padding-left:10px;padding-right:10px}#profile .profile-header{align-items:flex-start}#profile .profile-header h2{font-size:1.35rem}}';
+    document.head.appendChild(style);
 }
 
 function profileNavigateSection(section) {
     const targets={
-      overview:document.querySelector('#profile > div:first-child'),
+      overview:document.getElementById('profileOverviewStats')||document.querySelector('#profile > div:first-child'),
       personal:document.getElementById('profilePersonalInfoPanel'),
       security:document.getElementById('profileSecurityPanel'),
       activity:document.getElementById('profileActivityPanel'),
@@ -1053,12 +1089,12 @@ function profileNavigateSection(section) {
     };
     const target=targets[section];if(!target)return;
     target.scrollIntoView({behavior:'smooth',block:'start'});
-    document.querySelectorAll('[data-profile-section]').forEach(button=>{
+    document.querySelectorAll('#profileSectionNavigation [data-profile-section]').forEach(button=>{
       const active=button.dataset.profileSection===section;
       button.setAttribute('aria-current',active?'location':'false');
-      button.style.background=active?'#4C1D95':'#fff';
+      button.style.background=active?'#0f3b53':'#fff';
       button.style.color=active?'#fff':'#334155';
-      button.style.borderColor=active?'#4C1D95':'#e2e8f0';
+      button.style.borderColor=active?'#0f3b53':'#dbe3ed';
     });
 }
 
@@ -1116,17 +1152,35 @@ async function profileRevokeSession(sessionId) {
     }catch(e){console.error('Session revocation failed:',e);if(typeof showFeedback==='function')showFeedback(e.message||'Could not revoke session.','error');}
 }
 
-async function profileWriteAudit(action,module,targetTable,targetId,description) {
-    const sb=profileGetSupabase();if(!sb||!profileData.id)return;
+async function profileWriteAudit(action,module,targetTable,targetId,description,extra={}) {
+    const sb=profileGetSupabase();if(!sb||!profileData.id)return false;
     try {
+      const {data:sessionData}=await sb.auth.getSession();
+      const session=sessionData?.session;
+      const ua=navigator.userAgent||'';
+      const device=/iPad|Tablet/i.test(ua)?'Tablet':/iPhone|Android.*Mobile|Mobile/i.test(ua)?'Mobile':/Android/i.test(ua)?'Android device':/Windows/i.test(ua)?'Windows computer':/Macintosh|Mac OS/i.test(ua)?'Mac computer':'Desktop / unknown';
+      const details={
+        description:String(description||action),
+        target_table:targetTable||null,
+        target_id:targetId==null?null:String(targetId),
+        page_path:location.pathname+location.search,
+        user_agent:ua,
+        device_info:device,
+        request_id:(crypto?.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2)),
+        ...extra
+      };
       const {error}=await sb.from('audit_logs').insert({
         user_id:profileData.id,user_email:profileData.email,actor_name:profileData.name,
         role:profileData.role,user_role:profileData.role,action_type:action,module,
-        target_table:targetTable,target_id:String(targetId||''),description,details:description,
-        status:'success',source:'superadmin_profile'
+        target_table:targetTable||null,target_id:targetId==null?null:String(targetId),
+        description:String(description||action),details,
+        status:'success',source:'superadmin_profile',
+        user_agent:ua,device_info:device,
+        request_id:details.request_id
       });
-      if(error)console.warn('Profile audit event could not be written:',error.message);
-    }catch(e){console.warn('Profile audit event failed:',e);}
+      if(error){console.warn('Profile audit event could not be written:',error.message);return false;}
+      return true;
+    }catch(e){console.warn('Profile audit event failed:',e);return false;}
 }
 
 function profileLoadPreferences() {
