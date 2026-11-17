@@ -3527,3 +3527,19 @@ console.log('   - ✅ Publish history tracking');
 console.log('   - ✅ Filter state save/load');
 console.log('   - ✅ All functions working!');
 console.log('   - 🔒 NO AUTO-PUBLISH - All actions require confirmation');
+
+
+/* Ensure the primary-owner access control is loaded on the actual Super Admin page. */
+(function loadPrimaryOwnerAcademicAccess(){
+  const src='js/superadmin-academic-access.js?v=20261118c';
+  const inject=()=>{
+    if(document.querySelector('script[data-nchsm-owner-academic-access]'))return;
+    const script=document.createElement('script');
+    script.src=src;script.async=false;
+    script.dataset.nchsmOwnerAcademicAccess='true';
+    script.onerror=()=>console.error('[NCHSM] Primary Owner Academic Data Access module failed to load:',src);
+    document.head.appendChild(script);
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(inject,250),{once:true});
+  else setTimeout(inject,250);
+})();
