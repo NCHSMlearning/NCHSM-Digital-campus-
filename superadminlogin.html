@@ -525,7 +525,7 @@ async function handleLogin(event){
     const {data:factorData,error:factorError}=await supabase.auth.mfa.listFactors();
     if(factorError)throw factorError;
     if((factorData?.totp||[]).some(f=>f.status==="verified")){
-      sessionStorage.setItem("superadmin_pending_profile",JSON.stringify({user_id:profile.user_id,email:profile.email,role:profile.role,status:profile.status}));
+      sessionStorage.setItem("superadmin_pending_profile",JSON.stringify(profile));
       $("twoFactorPanel").classList.add("active");$("superAdminOTP").value="";$("superAdminOTP").focus();$("adminPassword").value="";
       showMessage("Enter the code from your authenticator app to continue.","success");setBusy(false);return;
     }
@@ -555,7 +555,7 @@ async function verify2FA(){
   const {data,error}=await supabase.auth.mfa.listFactors();if(error)throw error;
   const factor=(data?.totp||[]).find(f=>f.status==="verified");if(!factor)throw new Error("No verified authenticator is enrolled.");
   const {error:verifyError}=await supabase.auth.mfa.challengeAndVerify({factorId:factor.id,code});if(verifyError)throw verifyError;
-  sessionStorage.removeItem("superadmin_pending_profile");$("twoFactorPanel").classList.remove("active");await completeAdminLogin(pending);
+  sessionStorage.removeItem("superadmin_pending_profile");$("twoFactorPanel").classList.remove("active");pending.two_factor_enabled=true;pending.two_factor_verified=true;await completeAdminLogin(pending);
  }catch(e){console.error("Super Admin MFA failed",e);showMessage(e.message||"Verification failed. Try again.");btn.disabled=false;btn.textContent="Verify & Continue →";$("superAdminOTP").value="";$("superAdminOTP").focus();}
 }
 
