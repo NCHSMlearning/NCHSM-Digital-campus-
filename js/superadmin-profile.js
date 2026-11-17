@@ -546,21 +546,18 @@ function clearLoginHistory() {
 function loadRecentActivity() {
     const container = document.getElementById('profileRecentActivity');
     if (!container) return;
-
     const supabase = profileGetSupabase();
     if (!supabase || !profileData.email) {
         container.innerHTML = profileActivityEmpty('No recent activity is available for this account.');
         return;
     }
-
     container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:9px;padding:24px;color:#64748b;font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Loading recent activity…</div>';
 
-    supabase
-        .from('audit_logs')
+    supabase.from('audit_logs')
         .select('action_type,details,status,timestamp,user_email')
         .eq('user_email', profileData.email)
         .order('timestamp', { ascending: false })
-        .limit(40)
+        .limit(60)
         .then(({ data, error }) => {
             if (error) {
                 console.error('Recent activity query failed:', error);
@@ -572,61 +569,63 @@ function loadRecentActivity() {
                 return;
             }
 
-            // Audit triggers can write one row per affected record. Collapse identical
-            // events generated within two seconds into one readable activity item.
+            // Database audit triggers may emit one row per affected record.
+            // Group the same operation/table within a short window into one item.
             const grouped = [];
-            data.forEach((row) => {
+            data.forEach(row => {
                 const action = String(row.action_type || 'activity').trim().toLowerCase();
                 const details = String(row.details || '').trim();
-                const status = String(row.status || 'unknown').trim().toLowerCase();
+                const status = String(row.status || 'recorded').trim().toLowerCase();
+                const tableMatch = details.match(/\b(?:in|on)\s+([a-z][a-z0-9_]*)\s*$/i);
+                const table = tableMatch ? tableMatch[1].toLowerCase() : '';
                 const stamp = row.timestamp ? new Date(row.timestamp).getTime() : NaN;
                 const previous = grouped[grouped.length - 1];
-                const sameEvent = previous &&
+                const sameOperation = previous &&
                     previous.action === action &&
-                    previous.details === details &&
+                    previous.table === table &&
                     previous.status === status &&
                     Number.isFinite(stamp) &&
                     Number.isFinite(previous.latestTime) &&
-                    Math.abs(previous.latestTime - stamp) <= 2000;
-                if (sameEvent) {
+                    Math.abs(previous.latestTime - stamp) <= 10000;
+                if (sameOperation) {
                     previous.count += 1;
-                    previous.latestTime = Math.max(previous.latestTime, stamp);
-                    previous.timestamp = previous.timestamp || row.timestamp;
+                    previous.latestTime = stamp;
+                    if (row.timestamp) previous.timestamp = row.timestamp;
                 } else {
-                    grouped.push({ action, details, status, timestamp: row.timestamp, latestTime: stamp, count: 1 });
+                    grouped.push({ action, details, table, status, timestamp: row.timestamp, latestTime: stamp, count: 1 });
                 }
             });
 
-            container.innerHTML = grouped.slice(0, 12).map((item) => {
+            container.innerHTML = grouped.slice(0, 12).map(item => {
                 const actionLabel = profileFormatActivityAction(item.action);
                 const detailsLabel = profileFormatActivityDetails(item.details);
-                const isSuccess = ['success', 'succeeded', 'completed', 'approved'].includes(item.status);
-                const isFailure = ['failed', 'failure', 'error', 'denied', 'blocked'].includes(item.status);
-                const stateColor = isSuccess ? '#059669' : (isFailure ? '#dc2626' : '#64748b');
-                const stateLabel = isSuccess ? 'Successful' : (isFailure ? 'Failed' : 'Recorded');
-                const stateIcon = isSuccess ? 'fa-check-circle' : (isFailure ? 'fa-times-circle' : 'fa-info-circle');
+                const successful = ['success', 'succeeded', 'completed', 'approved', 'successful'].includes(item.status);
+                const failed = ['failed', 'failure', 'error', 'denied', 'blocked'].includes(item.status);
+                const stateColor = successful ? '#059669' : (failed ? '#dc2626' : '#64748b');
+                const stateLabel = successful ? 'Successful' : (failed ? 'Failed' : 'Recorded');
+                const stateIcon = successful ? 'fa-check-circle' : (failed ? 'fa-exclamation-circle' : 'fa-info-circle');
                 const color = profileGetActionColor(item.action.toUpperCase());
                 const icon = profileGetActionIcon(item.action.toUpperCase());
                 const date = item.timestamp && !Number.isNaN(new Date(item.timestamp).getTime())
                     ? new Intl.DateTimeFormat(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(item.timestamp))
                     : 'Time not recorded';
                 const count = item.count > 1
-                    ? '<span style="display:inline-flex;align-items:center;margin-left:6px;padding:2px 7px;border-radius:20px;background:#eef2ff;color:#4338ca;font-size:10px;font-weight:700;">' + item.count + ' records</span>'
+                    ? '<span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;background:#eef2ff;color:#4338ca;font-size:10px;font-weight:700;white-space:nowrap;">' + item.count + ' related records</span>'
                     : '';
-                return '<article style="display:flex;align-items:flex-start;gap:12px;padding:13px 2px;border-bottom:1px solid #edf1f5;">' +
+                return '<article style="display:flex;align-items:flex-start;gap:11px;padding:14px 2px;border-bottom:1px solid #edf1f5;width:100%;box-sizing:border-box;min-width:0;">' +
                     '<div style="width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:' + color + '18;display:flex;align-items:center;justify-content:center;margin-top:1px;">' +
                     '<i class="fas ' + icon + '" style="color:' + color + ';font-size:15px;"></i></div>' +
-                    '<div style="flex:1;min-width:0;">' +
-                    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:4px;">' +
-                    '<strong style="font-size:13px;color:#1e293b;">' + profileEscapeHtml(actionLabel) + '</strong>' + count + '</div>' +
-                    '<div style="font-size:12px;line-height:1.5;color:#64748b;overflow-wrap:anywhere;">' + profileEscapeHtml(detailsLabel) + '</div>' +
-                    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:7px;">' +
-                    '<span style="font-size:11px;color:#94a3b8;"><i class="far fa-clock" style="margin-right:4px;"></i>' + profileEscapeHtml(date) + '</span>' +
-                    '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:' + stateColor + ';"><i class="fas ' + stateIcon + '"></i>' + stateLabel + '</span>' +
+                    '<div style="flex:1;min-width:0;max-width:100%;">' +
+                    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:5px;min-width:0;">' +
+                    '<strong style="font-size:13px;color:#1e293b;overflow-wrap:anywhere;">' + profileEscapeHtml(actionLabel) + '</strong>' + count + '</div>' +
+                    '<div style="font-size:12px;line-height:1.55;color:#64748b;white-space:normal;overflow-wrap:anywhere;word-break:break-word;">' + profileEscapeHtml(detailsLabel) + '</div>' +
+                    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px;">' +
+                    '<span style="font-size:11px;color:#94a3b8;white-space:normal;"><i class="far fa-clock" style="margin-right:4px;"></i>' + profileEscapeHtml(date) + '</span>' +
+                    '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:' + stateColor + ';white-space:nowrap;"><i class="fas ' + stateIcon + '"></i>' + stateLabel + '</span>' +
                     '</div></div></article>';
             }).join('');
         })
-        .catch((error) => {
+        .catch(error => {
             console.error('Recent activity loading error:', error);
             container.innerHTML = profileActivityEmpty('Activity could not be loaded. Please refresh and try again.', true);
         });
