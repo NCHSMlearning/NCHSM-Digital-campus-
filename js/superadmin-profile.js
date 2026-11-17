@@ -1175,7 +1175,7 @@ async function profileWriteAudit(action,module,targetTable,targetId,description,
         user_id:profileData.id,user_email:profileData.email,actor_name:profileData.name,
         role:profileData.role,user_role:profileData.role,action_type:action,module,
         target_table:targetTable||null,target_id:targetId==null?null:String(targetId),
-        description:String(description||action),details,
+        description:String(description||action),details:JSON.stringify(details),
         status:'success',source:'superadmin_profile',
         user_agent:ua,device_info:device,ip_address:ipAddress,page_path:location.pathname+location.search,
         request_id:details.request_id
