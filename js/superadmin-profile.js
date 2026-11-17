@@ -97,124 +97,63 @@ let profileData = {
 // ============================================================
 // LOAD PROFILE DATA
 // ============================================================
-function loadProfileData() {
-    console.log('📋 Loading profile data...');
+async function loadProfileData() {
+    console.log('Loading authenticated Super Admin profile...');
     try {
-        let user = null;
-
-        try {
-            const s = JSON.parse(sessionStorage.getItem('user') || 'null');
-            if (s) user = s;
-        } catch (e) {}
-
-        if (!user) {
-            try {
-                const l = JSON.parse(localStorage.getItem('user') || 'null');
-                if (l) user = l;
-            } catch (e) {}
+        const supabase = profileGetSupabase();
+        let authUser = window.currentUser || null;
+        if (supabase?.auth?.getUser) {
+            const { data, error } = await supabase.auth.getUser();
+            if (error) throw error;
+            authUser = data?.user || authUser;
+        }
+        if (!authUser?.id) {
+            throw new Error('Your authenticated session could not be verified. Please sign in again.');
         }
 
-        if (!user) {
-            try {
-                const s = JSON.parse(localStorage.getItem('supabase.auth.token') || 'null');
-                if (s?.currentSession?.user) user = s.currentSession.user;
-            } catch (e) {}
+        let dbProfile = {};
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', authUser.id)
+                .maybeSingle();
+            if (error) console.warn('Profile record could not be loaded:', error.message);
+            dbProfile = data || {};
         }
 
-        if (!user && window.currentUser) user = window.currentUser;
-
-        if (!user && typeof getCurrentUser === 'function') {
-            try { user = getCurrentUser(); } catch (e) {}
-        }
-
-        const loginProfile = profileGetCurrentUserProfile();
-
-        if (!user && loginProfile?.user_id) {
-            user = {
-                id: loginProfile.user_id,
-                user_id: loginProfile.user_id,
-                email: loginProfile.email,
-                full_name: loginProfile.full_name,
-                role: loginProfile.role,
-                staff_id: loginProfile.staff_id,
-                department: loginProfile.program || loginProfile.department,
-                two_factor_enabled: loginProfile.two_factor_enabled,
-                two_factor_verified: loginProfile.two_factor_verified
-            };
-        }
-
-        try {
-            const saved2FA = JSON.parse(localStorage.getItem('twoFactorSettings') || 'null');
-            if (saved2FA) {
-                profileData.twoFactorEnabled = !!saved2FA.enabled;
-                profileData.twoFactorSecret = saved2FA.secret || null;
-                profileData.twoFactorBackupCodes = saved2FA.backupCodes || [];
-            }
-        } catch (e) {}
-
-        if (!user) {
-            try {
-                const saved = JSON.parse(localStorage.getItem('profileData') || 'null');
-                if (saved) {
-                    profileData = { ...profileData, ...saved };
-                    updateProfileUI();
-                    loadRecentActivity();
-                    loadLoginHistory();
-                    loadProfileStats();
-                    update2FAUI();
-                    console.log('✅ Profile loaded from saved data:', profileData.name);
-                    return;
-                }
-            } catch (e) {}
-        }
-
-        if (user) {
-            const name =
-                user.full_name ||
-                user.user_metadata?.full_name ||
-                user.email?.split('@')[0] ||
-                'Super Admin';
-            const email = user.email || 'admin@nchsm.ac.ke';
-
-            profileData.email = email;
-            profileData.name = name;
-            profileData.avatarInitials = name
-                .split(' ')
-                .map((n) => n[0])
-                .join('')
-                .toUpperCase()
-                .slice(0, 2);
-
-            if (user.id || user.user_id) profileData.id = user.id || user.user_id;
-            if (user.staff_id || user.student_id) {
-                profileData.employeeId = user.staff_id || user.student_id;
-            }
-            if (user.department) profileData.department = user.department;
-            if (user.program && !user.department) profileData.department = user.program;
-            if (user.role) profileData.role = user.role;
-            if (user.phone) profileData.phone = user.phone;
-            if (user.location) profileData.location = user.location;
-            if (user.two_factor_enabled !== undefined) {
-                profileData.twoFactorEnabled = !!user.two_factor_enabled;
-            }
-            if (user.two_factor_verified !== undefined) {
-                profileData.twoFactorVerified = !!user.two_factor_verified;
-            }
-
-            localStorage.setItem('profileData', JSON.stringify(profileData));
-        }
-
+        const metadata = authUser.user_metadata || {};
+        const name = dbProfile.full_name || metadata.full_name || metadata.name || authUser.email?.split('@')[0] || 'Super Admin';
+        const photo = dbProfile.profile_photo_url || dbProfile.avatar_url || metadata.avatar_url || localStorage.getItem('profilePhoto') || '';
+        const createdAt = authUser.created_at || dbProfile.created_at || null;
+        const lastSignIn = authUser.last_sign_in_at || null;
+        profileData = {
+            ...profileData,
+            id: authUser.id,
+            name,
+            email: authUser.email || dbProfile.email || '',
+            phone: dbProfile.phone || dbProfile.phone_number || metadata.phone || '',
+            employeeId: dbProfile.staff_id || dbProfile.employee_id || '',
+            department: dbProfile.department || dbProfile.program || '',
+            location: dbProfile.location || '',
+            role: dbProfile.role || 'superadmin',
+            memberSince: createdAt ? new Date(createdAt).toLocaleDateString(undefined,{year:'numeric',month:'short'}) : 'Not available',
+            lastLogin: lastSignIn ? new Date(lastSignIn).toLocaleString() : 'Not available',
+            avatarInitials: name.split(/\\s+/).filter(Boolean).map(part=>part[0]).join('').toUpperCase().slice(0,2) || 'SA',
+            photo
+        };
+        try { localStorage.setItem('profileData', JSON.stringify(profileData)); } catch (_) {}
         updateProfileUI();
-        loadRecentActivity();
         loadProfileStats();
+        loadRecentActivity();
         loadLoginHistory();
-        update2FAUI();
-
-        console.log('✅ Profile loaded:', profileData.name);
+        await update2FAUI();
+        console.log('Authenticated profile loaded.');
     } catch (error) {
-        console.error('Error loading profile:', error);
-        updateProfileUI();
-        update2FAUI();
+        console.error('Profile load failed:', error);
+        const nameEl = document.getElementById('profileDisplayName');
+        if (nameEl) nameEl.textContent = 'Profile unavailable';
+        if (typeof showFeedback === 'function') showFeedback(error.message || 'Unable to load profile', 'error');
     }
 }
 
@@ -1228,70 +1167,53 @@ function closeEditProfileModal() {
     if (modal) modal.style.display = 'none';
 }
 
-function saveProfileChanges() {
-    const nameEl = document.getElementById('editProfileName');
-    const emailEl = document.getElementById('editProfileEmail');
-    const phoneEl = document.getElementById('editProfilePhone');
-    const empEl = document.getElementById('editProfileEmployeeId');
-    const deptEl = document.getElementById('editProfileDepartment');
-    const locEl = document.getElementById('editProfileLocation');
-
-    const name = nameEl?.value.trim() || '';
-    const email = emailEl?.value.trim() || '';
-    const phone = phoneEl?.value.trim() || '';
-    const employeeId = empEl?.value.trim() || '';
-    const department = deptEl?.value || 'Administration';
-    const location = locEl?.value.trim() || '';
-
-    if (!name || !email) {
-        if (typeof showFeedback === 'function') showFeedback('Name and email are required', 'error');
-        else alert('Name and email are required');
+async function saveProfileChanges() {
+    const name = document.getElementById('editProfileName')?.value.trim() || '';
+    const phone = document.getElementById('editProfilePhone')?.value.trim() || '';
+    const department = document.getElementById('editProfileDepartment')?.value.trim() || '';
+    const location = document.getElementById('editProfileLocation')?.value.trim() || '';
+    if (!name) {
+        if (typeof showFeedback === 'function') showFeedback('Full name is required', 'error');
+        else alert('Full name is required');
         return;
     }
 
+    const supabase = profileGetSupabase();
+    if (!supabase?.auth?.getUser) {
+        if (typeof showFeedback === 'function') showFeedback('Secure connection unavailable. Please refresh and sign in again.', 'error');
+        return;
+    }
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
+    if (authError || !userId || userId !== profileData.id) {
+        if (typeof showFeedback === 'function') showFeedback('Your session could not be verified. Please sign in again.', 'error');
+        return;
+    }
+
+    const submit = document.querySelector('#editProfileForm button[type="submit"]');
+    const oldLabel = submit?.innerHTML;
+    if (submit) { submit.disabled = true; submit.textContent = 'Saving…'; }
     try {
-        const supabase = profileGetSupabase();
-        const userId = profileGetCurrentUserId();
-        if (supabase && userId && userId !== 'SA-001') {
-            supabase
-                .from('consolidated_user_profiles_table')
-                .update({
-                    full_name: name,
-                    email: email,
-                    phone: phone,
-                    department: department,
-                    location: location,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', userId)
-                .then(({ error }) => {
-                    if (error) console.warn('Database update failed:', error);
-                })
-                .catch(() => {});
-        }
+        const { error } = await supabase
+            .from('consolidated_user_profiles_table')
+            .update({ full_name: name, phone, department, location, updated_at: new Date().toISOString() })
+            .eq('user_id', userId);
+        if (error) throw error;
 
         profileData.name = name;
-        profileData.email = email;
         profileData.phone = phone;
-        profileData.employeeId = employeeId;
         profileData.department = department;
         profileData.location = location;
-        profileData.avatarInitials = name
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
-
-        localStorage.setItem('profileData', JSON.stringify(profileData));
+        profileData.avatarInitials = name.split(/\\s+/).filter(Boolean).map(part=>part[0]).join('').toUpperCase().slice(0,2);
+        try { localStorage.setItem('profileData', JSON.stringify(profileData)); } catch (_) {}
         updateProfileUI();
         closeEditProfileModal();
-
-        if (typeof showFeedback === 'function') showFeedback('Profile updated successfully!', 'success');
+        if (typeof showFeedback === 'function') showFeedback('Profile updated successfully.', 'success');
     } catch (error) {
-        console.error('Error saving profile:', error);
-        if (typeof showFeedback === 'function')
-            showFeedback('Error saving profile: ' + error.message, 'error');
+        console.error('Profile update failed:', error);
+        if (typeof showFeedback === 'function') showFeedback('Profile was not saved: ' + (error.message || 'Database error'), 'error');
+    } finally {
+        if (submit) { submit.disabled = false; submit.innerHTML = oldLabel || 'Save Changes'; }
     }
 }
 
@@ -1318,83 +1240,51 @@ function closeChangePasswordModal() {
     if (modal) modal.style.display = 'none';
 }
 
-function handlePasswordChange() {
+async function handlePasswordChange() {
     const current = document.getElementById('currentPassword')?.value || '';
     const newPass = document.getElementById('newPassword')?.value || '';
     const confirm = document.getElementById('confirmPassword')?.value || '';
     const feedback = document.getElementById('passwordFeedback');
-
     if (!feedback) return;
-
-    if (!current) {
-        feedback.textContent = 'Please enter your current password';
-        feedback.style.background = '#fee2e2';
-        feedback.style.color = '#991b1b';
+    const showPasswordFeedback = (message, success=false) => {
+        feedback.textContent = message;
+        feedback.style.background = success ? '#d1fae5' : '#fee2e2';
+        feedback.style.color = success ? '#065f46' : '#991b1b';
         feedback.style.display = 'block';
-        return;
+    };
+    if (!current) return showPasswordFeedback('Enter your current password to continue.');
+    if (newPass.length < 8) return showPasswordFeedback('New password must be at least 8 characters.');
+    if (!/[A-Z]/.test(newPass) || !/[a-z]/.test(newPass) || !/[0-9]/.test(newPass)) {
+        return showPasswordFeedback('Use at least one uppercase letter, one lowercase letter and one number.');
     }
-
-    if (newPass.length < 6) {
-        feedback.textContent = 'New password must be at least 6 characters';
-        feedback.style.background = '#fee2e2';
-        feedback.style.color = '#991b1b';
-        feedback.style.display = 'block';
-        return;
-    }
-
-    if (newPass !== confirm) {
-        feedback.textContent = 'Passwords do not match';
-        feedback.style.background = '#fee2e2';
-        feedback.style.color = '#991b1b';
-        feedback.style.display = 'block';
-        return;
-    }
-
-    const submitBtn = document.querySelector('#changePasswordForm button[type="submit"]');
-    const originalText = submitBtn?.textContent || 'Update Password';
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Updating...';
-    }
+    if (newPass !== confirm) return showPasswordFeedback('The new passwords do not match.');
+    if (newPass === current) return showPasswordFeedback('Choose a password different from your current password.');
 
     const supabase = profileGetSupabase();
-    if (supabase?.auth?.updateUser) {
-        supabase.auth
-            .updateUser({ password: newPass })
-            .then(({ error }) => {
-                if (error) {
-                    feedback.textContent = '❌ ' + error.message;
-                    feedback.style.background = '#fee2e2';
-                    feedback.style.color = '#991b1b';
-                    feedback.style.display = 'block';
-                } else {
-                    feedback.textContent = '✅ Password changed successfully!';
-                    feedback.style.background = '#d1fae5';
-                    feedback.style.color = '#065f46';
-                    feedback.style.display = 'block';
-                    if (typeof showFeedback === 'function')
-                        showFeedback('Password changed successfully!', 'success');
-                    setTimeout(() => closeChangePasswordModal(), 1500);
-                }
-            })
-            .catch((err) => {
-                feedback.textContent = '❌ ' + err.message;
-                feedback.style.background = '#fee2e2';
-                feedback.style.color = '#991b1b';
-                feedback.style.display = 'block';
-            })
-            .finally(() => {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
-                }
-            });
-    } else {
-        feedback.textContent = '✅ Password update request sent. Check your email.';
-        feedback.style.background = '#dbeafe';
-        feedback.style.color = '#1e40af';
-        feedback.style.display = 'block';
-        setTimeout(() => closeChangePasswordModal(), 2000);
+    if (!supabase?.auth?.signInWithPassword || !supabase?.auth?.updateUser) {
+        return showPasswordFeedback('Secure password service is unavailable. Please refresh and try again.');
+    }
+    const submit = document.querySelector('#changePasswordForm button[type="submit"]');
+    const original = submit?.innerHTML;
+    if (submit) { submit.disabled = true; submit.textContent = 'Verifying…'; }
+    try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        const email = authData?.user?.email;
+        if (authError || !email) throw new Error('Your signed-in account could not be verified. Sign in again.');
+        const { error: verifyError } = await supabase.auth.signInWithPassword({ email, password: current });
+        if (verifyError) throw new Error('Your current password is incorrect.');
+        if (submit) submit.textContent = 'Updating password…';
+        const { error: updateError } = await supabase.auth.updateUser({ password: newPass });
+        if (updateError) throw updateError;
+        showPasswordFeedback('Password changed successfully.', true);
+        document.getElementById('changePasswordForm')?.reset();
+        if (typeof showFeedback === 'function') showFeedback('Password changed successfully.', 'success');
+        setTimeout(() => closeChangePasswordModal(), 1400);
+    } catch (error) {
+        console.error('Password update failed:', error);
+        showPasswordFeedback(error.message || 'Password could not be changed.');
+    } finally {
+        if (submit) { submit.disabled = false; submit.innerHTML = original || 'Update Password'; }
     }
 }
 
@@ -1494,38 +1384,31 @@ function exportProfileData() {
 // INIT
 // ============================================================
 function initProfile() {
-    console.log('👤 Initializing Profile module...');
-
-    const profileTab = document.querySelector('[data-tab="profile"]');
-    if (profileTab) {
-        profileTab.addEventListener('click', function () {
-            setTimeout(() => {
-                loadProfileData();
-                loadLoginHistory();
-                update2FAUI();
-            }, 300);
-        });
-    }
-
-    const activeTab = document.querySelector('.tab-content.active');
-    if (activeTab && activeTab.id === 'profile') {
-        setTimeout(() => {
+    if (window.__nchsmSuperAdminProfileInit) return;
+    window.__nchsmSuperAdminProfileInit = true;
+    console.log('Initializing Super Admin profile module.');
+    const profileSection = document.getElementById('profile');
+    const loadWhenVisible = () => {
+        if (profileSection?.classList.contains('active')) {
             loadProfileData();
-            loadLoginHistory();
-        }, 500);
-    }
-
-    setTimeout(() => {
-        loadProfileData();
-        loadLoginHistory();
-        update2FAUI();
-
-        if (typeof logLoginAttempt === 'function') {
-            logLoginAttempt('SUCCESS');
         }
-    }, 1000);
-
-    console.log('✅ Profile module initialized');
+    };
+    document.addEventListener('click', function(event) {
+        if (event.target.closest('#mainNav a[data-tab="profile"], .sidebar-profile-link')) {
+            setTimeout(loadWhenVisible, 80);
+        }
+    });
+    if (profileSection?.classList.contains('active')) loadProfileData();
+    const emailInput = document.getElementById('editProfileEmail');
+    if (emailInput) {
+        emailInput.readOnly = true;
+        emailInput.title = 'Account email is managed by secure sign-in settings.';
+    }
+    const employeeInput = document.getElementById('editProfileEmployeeId');
+    if (employeeInput) {
+        employeeInput.readOnly = true;
+        employeeInput.title = 'Employee ID is managed by the institution.';
+    }
 }
 
 // ============================================================
