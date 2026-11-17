@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const state = { rows: [], page: 0, pageSize: 50, search: '', action: '' };
+  const state = { rows: [], page: 0, pageSize: 50, search: '', action: '', hasMore: false, loadingMore: false };
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const client = () => {
     try {
@@ -47,7 +47,7 @@
         <div class="audit-panel"><h3>Activity investigation</h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <input id="acSearch" type="search" placeholder="Search user, role, IP, action or record…" style="flex:1;min-width:200px;padding:10px;border:1px solid #cbd5e1;border-radius:8px">
-            <select id="acAction" style="padding:10px;border:1px solid #cbd5e1;border-radius:8px"><option value="">All event types</option><option value="login">Login</option><option value="logout">Logout</option><option value="LOGIN_FAILED">Failed login</option><option value="update">Record update</option><option value="insert">Record creation</option><option value="delete">Record deletion</option></select>
+            <select id="acAction" style="padding:10px;border:1px solid #cbd5e1;border-radius:8px"><option value="">All event types</option><option value="login">Login</option><option value="logout">Logout</option><option value="LOGIN_FAILED">Failed login</option><option value="update">Record update</option><option value="insert">Record creation</option><option value="delete">Record deletion</option><optgroup label="Marks & Results"><option value="MARKS_VIEWED">Marks viewed</option><option value="MARKS_SEARCHED">Marks searched</option><option value="MARKS_EXPORT_REQUESTED">Marks export requested</option><option value="MARKS_EXPORTED">Marks exported</option><option value="MARKS_EDIT_ATTEMPTED">Marks edit attempted</option><option value="MARKS_UPDATED">Marks updated</option><option value="MARKS_DELETED">Marks deleted</option><option value="MARKS_ACCESS_BLOCKED">Marks access blocked</option><option value="MARKS_APPROVED">Marks approved</option><option value="MARKS_REJECTED">Marks rejected</option><option value="RESULTS_PUBLISHED">Results published</option><option value="RESULTS_UNPUBLISHED">Results unpublished</option></optgroup></select>
             <button id="acApply" style="padding:10px 14px;border:0;border-radius:8px;background:#0f766e;color:white">Search</button>
           </div>
           <p style="font-size:12px;color:#64748b;margin:10px 0 0">Times are displayed in East Africa Time (EAT). Search covers the latest 500 matching records.</p>
@@ -72,7 +72,7 @@
     $('acApply').onclick = () => { state.search = $('acSearch').value.trim(); state.action = $('acAction').value; state.page = 0; load(); };
     $('acSearch').addEventListener('keydown', e => { if(e.key==='Enter') $('acApply').click(); });
     $('acPrev').onclick = () => { if(state.page>0){state.page--;render();} };
-    $('acNext').onclick = () => { if((state.page+1)*state.pageSize<state.rows.length){state.page++;render();} };
+    $('acNext').onclick = async () => { if((state.page+1)*state.pageSize<state.rows.length){state.page++;render();return;} if(state.hasMore&&!state.loadingMore) await loadMore(); };
     $('acExport').onclick = exportCsv;
   }
   function render() {
@@ -81,19 +81,41 @@
       const details = r.details || {};
       const description = details.description || details.details || details.failure_reason || '';
       const target = [details.target_table,details.target_id].filter(Boolean).join(' / ');
+      const before = details.old_data || null;
+      const after = details.new_data || null;
+      const fieldLabels = {cat1_score:'CAT 1',cat2_score:'CAT 2',exam_score:'Exam',final_score:'Final score',grade:'Grade',points:'Grade points',approval_status:'Approval',published:'Published',published_at:'Published at',approved_by:'Approved by'};
+      const changed = [];
+      if(before||after) Object.keys(fieldLabels).forEach(key=>{
+        const oldValue=before?.[key],newValue=after?.[key];
+        if(JSON.stringify(oldValue)!==JSON.stringify(newValue)) changed.push(fieldLabels[key]+': '+(oldValue===undefined?'—':String(oldValue))+' → '+(newValue===undefined?'—':String(newValue)));
+      });
+      const student = [after?.student_name||before?.student_name,after?.admission_number||before?.admission_number].filter(Boolean).join(' · ');
+      const unit = [after?.subject_name||before?.subject_name,after?.block||before?.block,after?.program||before?.program].filter(Boolean).join(' / ');
       const status = String(r.status||'UNKNOWN').toUpperCase();
       const color = status==='SUCCESS'?'#047857':status==='FAILURE'?'#b91c1c':'#64748b';
       const actor = actorDisplay(r);
-      return '<tr><td>'+esc(time(r.event_time))+'</td><td><strong>'+esc(actor.name)+'</strong><br><span style="color:#64748b">'+esc(actor.email)+'</span><br><small>'+esc(actor.role)+'</small></td><td><strong>'+esc(actionLabel(r.action))+'</strong></td><td>'+esc(r.module||'—')+'<br><small style="color:#64748b">'+esc(r.source||'—')+'</small></td><td><strong style="color:'+color+'">'+esc(status)+'</strong></td><td>'+esc(r.ip_address||'IP unavailable')+'<br><small>'+esc(r.user_agent||'Device details unavailable')+'</small></td><td>'+esc(description||'No description recorded')+(target?'<br><small>Target: '+esc(target)+'</small>':'')+'</td></tr>';
+      return '<tr><td>'+esc(time(r.event_time))+'</td><td><strong>'+esc(actor.name)+'</strong><br><span style="color:#64748b">'+esc(actor.email)+'</span><br><small>'+esc(actor.role)+'</small></td><td><strong>'+esc(actionLabel(r.action))+'</strong></td><td>'+esc(r.module||'—')+'<br><small style="color:#64748b">'+esc(r.source||'—')+'</small></td><td><strong style="color:'+color+'">'+esc(status)+'</strong></td><td>'+esc(r.ip_address||'IP unavailable')+'<br><small>'+esc(r.user_agent||'Device details unavailable')+'</small></td><td>'+(student?'<strong>'+esc(student)+'</strong><br>':'')+(unit?'<small>'+esc(unit)+'</small><br>':'')+esc(description||'No description recorded')+(changed.length?'<div style="margin-top:7px;padding:7px;background:#f8fafc;border-radius:6px"><strong>Before → after</strong><br>'+changed.map(esc).join('<br>')+'</div>':'')+(target?'<br><small>Target: '+esc(target)+'</small>':'')+'</td></tr>';
     }).join('') : '<tr><td colspan="7" style="padding:28px;text-align:center;color:#64748b">No matching audit events were returned.</td></tr>';
     $('acPageInfo').textContent = 'Showing '+(state.rows.length?start+1:0)+'–'+Math.min(start+page.length,state.rows.length)+' of '+state.rows.length+' loaded events';
-    $('acPrev').disabled=state.page===0; $('acNext').disabled=start+state.pageSize>=state.rows.length;
+    $('acPrev').disabled=state.page===0; $('acNext').disabled=start+state.pageSize>=state.rows.length&&!state.hasMore;
   }
   function exportCsv() {
-    const cols=['event_time','actor_email','actor_name','actor_role','action','source','status','ip_address','user_agent','module','details'];
-    const csv=[cols.join(','),...state.rows.map(r=>cols.map(k=>{let v=k==='details'?JSON.stringify(r[k]||{}):(r[k]??'');return '"'+String(v).replace(/"/g,'""')+'"';}).join(','))].join('\r\n');
+    const cols=['event_time','actor_email','actor_name','actor_role','action','source','status','ip_address','user_agent','module','target_table','target_id','description','old_data','new_data','details'];
+    const csv=[cols.join(','),...state.rows.map(r=>cols.map(k=>{const d=r.details||{};let v=k==='details'?JSON.stringify(d):k==='old_data'?JSON.stringify(d.old_data||''):k==='new_data'?JSON.stringify(d.new_data||''):k==='target_table'?d.target_table||'':k==='target_id'?d.target_id||'':k==='description'?d.description||d.details||'':(r[k]??'');return '"'+String(v).replace(/"/g,'""')+'"';}).join(','))].join('\r\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
     const a=document.createElement('a');a.href=url;a.download='nchsm-audit-events.csv';a.click();URL.revokeObjectURL(url);
+  }
+  async function loadMore(){
+    const db=client();if(!db||state.loadingMore)return;
+    state.loadingMore=true;
+    const next=$('acNext');if(next){next.disabled=true;next.textContent='Loading…';}
+    try{
+      const {data,error}=await db.rpc('get_superadmin_audit_events',{p_limit:500,p_offset:state.rows.length,p_action:state.action||null,p_search:state.search||null});
+      if(error)throw error;
+      const batch=Array.isArray(data)?data:[];
+      state.rows=state.rows.concat(batch);state.hasMore=batch.length===500;render();
+    }catch(e){console.error('Could not load older audit events:',e);if($('auditCentreNotice'))$('auditCentreNotice').textContent='Older audit events could not be loaded: '+(e.message||'Unknown error');}
+    finally{state.loadingMore=false;if(next)next.textContent='Next';}
   }
   async function load() {
     const db=client();
@@ -104,6 +126,7 @@
       const {data,error}=await db.rpc('get_superadmin_audit_events',{p_limit:500,p_offset:0,p_action:state.action||null,p_search:state.search||null});
       if(error) throw error;
       state.rows=Array.isArray(data)?data:[];
+      state.hasMore=state.rows.length===500;
       const rows=state.rows;
       const logins=rows.filter(r=>['login','user_signedup'].includes(String(r.action||'').toLowerCase())&&String(r.status).toUpperCase()==='SUCCESS').length;
       const failed=rows.filter(r=>String(r.status).toUpperCase()==='FAILURE'||String(r.action||'').toLowerCase().includes('fail')).length;
