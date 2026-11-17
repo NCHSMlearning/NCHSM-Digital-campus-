@@ -1,3 +1,23 @@
+/* Centralised audit bridge for Super Admin marks views and exports. */
+(function(){
+  if(window.NCHSMMarksAudit)return;
+  window.NCHSMMarksAudit=async function(action,details,status){
+    try{
+      const db=window.sb||window.supabaseClient||window.NCHSMLogin?.supabase;
+      if(!db?.rpc)return false;
+      const d=details||{};
+      const {error}=await db.rpc('log_marks_security_event',{
+        p_action:action,p_target_table:'student_marks',
+        p_target_id:d.target_id||null,
+        p_description:d.description||action,
+        p_status:status||'success',
+        p_details:{...d,page_path:location.pathname,device_info:/Mobile|Android|iPhone/i.test(navigator.userAgent)?'Mobile':'Desktop'}
+      });
+      if(error){console.warn('[Marks audit] Event was not recorded:',error.message);return false;}
+      return true;
+    }catch(e){console.warn('[Marks audit] Event failed:',e);return false;}
+  };
+})();
 /* NCHSM Marks Approval
  * Approval is deliberately independent from publication.
  * This module never writes published, published_at, or published_by.
@@ -118,6 +138,7 @@
         .order('submitted_at', { ascending: true });
       if (result.error) throw result.error;
       pendingMarks = result.data || [];
+      if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit('MARKS_VIEWED',{description:'Viewed pending marks approval queue',record_count:pendingMarks.length});
       populateFilter('marksApprovalSubjectFilter', [...new Set(pendingMarks.map(m => m.subject_name).filter(Boolean))].sort(), 'All Subjects');
       populateFilter('marksApprovalBlockFilter', [...new Set(pendingMarks.map(m => m.block).filter(Boolean))].sort(), 'All Blocks');
       renderMarksApprovals();
@@ -151,6 +172,7 @@
       .eq('id', id).eq('approval_status', 'pending').select('id');
     if (result.error) throw result.error;
     if (!result.data?.length) throw new Error('This mark is no longer pending. Refresh and try again.');
+    if (window.NCHSMMarksAudit) await window.NCHSMMarksAudit(status==='approved'?'MARKS_APPROVED':'MARKS_REJECTED',{description:status==='approved'?'Approved student mark':'Rejected student mark',target_id:id,reason:reason||null});
   }
 
   window.approvePendingMark = async function (id) {
