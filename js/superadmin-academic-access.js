@@ -182,11 +182,16 @@
 
   function injectOwnerButton(){
     if(!owner||document.getElementById('ownerAcademicAccessButton'))return;
-    const nav=document.getElementById('superadmin-nav')||document.querySelector('.sidebar-nav, .sidebar nav, aside nav');
-    if(!nav){console.warn('Super Admin navigation container not found');return;}
-    const sample=nav.querySelector('a'),button=document.createElement('a');button.id='ownerAcademicAccessButton';button.href='#';button.className=sample?.className||'nav-link';button.style.cursor='pointer';
+    const nav=document.getElementById('mainNav')||document.getElementById('superadmin-nav')||document.querySelector('#sidebar nav, .sidebar-nav, .sidebar nav, aside nav');
+    if(!nav){console.warn('Primary owner access: #mainNav navigation container not found');return;}
+    const sample=nav.querySelector('a[data-tab], a'),item=document.createElement('li'),button=document.createElement('a');
+    item.id='ownerAcademicAccessNavItem';
+    if(sample?.parentElement?.tagName==='LI')item.className=sample.parentElement.className||'';
+    button.id='ownerAcademicAccessButton';button.href='#';button.setAttribute('data-tab','owner-academic-access');
+    button.className=sample?.className||'nav-link';button.style.cursor='pointer';
     button.innerHTML='<i class="fas fa-shield-halved"></i><span>Academic Data Access</span>';
-    button.addEventListener('click',e=>{e.preventDefault();loadState();});nav.appendChild(button);
+    button.addEventListener('click',e=>{e.preventDefault();loadState();});
+    item.appendChild(button);nav.appendChild(item);
   }
 
   async function boot(){
