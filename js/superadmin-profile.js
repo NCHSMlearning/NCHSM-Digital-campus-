@@ -142,7 +142,10 @@ async function loadProfileData() {
             lastLogin: lastSignIn ? new Date(lastSignIn).toLocaleString() : 'Not available',
             avatarInitials: name.split(/\\s+/).filter(Boolean).map(part=>part[0]).join('').toUpperCase().slice(0,2) || 'SA',
             photo,
-            accountStatus
+            accountStatus,
+            emailVerified: !!authUser.email_confirmed_at,
+            phoneVerified: !!authUser.phone_confirmed_at,
+            lastProfileUpdate: dbProfile.updated_at || authUser.updated_at || null
         };
         try { localStorage.setItem('profileData', JSON.stringify(profileData)); } catch (_) {}
         updateProfileUI();
@@ -203,6 +206,19 @@ function updateProfileUI() {
     }
     const avatarText = document.getElementById('profileAvatarText');
     if (avatarText) avatarText.textContent = profileData.avatarInitials || 'SA';
+    let verification=document.getElementById('profileVerificationBadges');
+    if(!verification){
+      verification=document.createElement('div');verification.id='profileVerificationBadges';
+      verification.style.cssText='display:flex;gap:7px;flex-wrap:wrap;margin-top:7px';
+      const nameNode=document.getElementById('profileDisplayName');
+      if(nameNode?.parentNode)nameNode.parentNode.insertBefore(verification,nameNode.nextSibling);
+    }
+    if(verification){
+      const badge=(label,ok)=>'<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;background:'+(ok?'#dcfce7':'#fff7ed')+';color:'+(ok?'#166534':'#9a3412')+'"><i class="fas '+(ok?'fa-check-circle':'fa-exclamation-circle')+'"></i>'+label+'</span>';
+      verification.innerHTML=badge(profileData.emailVerified?'Email verified':'Email not verified',profileData.emailVerified)+badge(profileData.phoneVerified?'Phone verified':'Phone not verified',profileData.phoneVerified);
+    }
+    const updatedEl=document.getElementById('profileLastUpdated');
+    if(updatedEl)updatedEl.textContent=profileData.lastProfileUpdate?new Date(profileData.lastProfileUpdate).toLocaleString():'Not available';
 
     const editAvatarText = document.getElementById('editProfileAvatarText');
     if (editAvatarText) editAvatarText.textContent = profileData.avatarInitials || 'SA';
