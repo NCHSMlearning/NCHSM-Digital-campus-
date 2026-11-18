@@ -93,6 +93,8 @@
     const filtered = institutions.filter(i => [i.name,i.short_code,i.slug,i.contact_email,i.portal_domain]
       .some(v => String(v || "").toLowerCase().includes(query)));
     $("cnInstitutionCount").textContent = String(institutions.length);
+    const navBadge = $("cnInstitutionNavBadge");
+    if (navBadge) navBadge.textContent = String(institutions.length);
     $("cnInstitutionActive").textContent = String(institutions.filter(i => i.status === "active").length);
     $("cnInstitutionSuspended").textContent = String(institutions.filter(i => i.status === "suspended").length);
     if (!filtered.length) {
