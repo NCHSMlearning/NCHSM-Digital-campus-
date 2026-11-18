@@ -11,7 +11,23 @@
   ];
   let sb = null, owner = false, state = null, saving = false, navObserver = null;
 
-  function getClient(){return window.supabaseClient||window.sb||window.NCHSMLogin?.supabase||null;}
+  function getClient(){
+    const candidates=[window.supabaseClient,window.sb,window.db?.supabase,window.NCHSMLogin?.supabase,window.supabase];
+    const existing=candidates.find(client=>client&&typeof client.from==='function'&&client.auth?.getUser);
+    if(existing)return existing;
+    // The real /superadmin page loads the Supabase CDN but may not expose the
+    // shared client under a global name. Create a compatible client as fallback.
+    if(window.supabase&&typeof window.supabase.createClient==='function'){
+      if(!window.__nchsmAcademicAccessClient){
+        window.__nchsmAcademicAccessClient=window.supabase.createClient(
+          'https://lwhtjozfsmbyihenfunw.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsd2h0am96ZnNtYnllaGVuZnVudyIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzU5NjU4MTI3LCJleHAiOjIwNzUyMzQxMjN9.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk'
+        );
+      }
+      return window.__nchsmAcademicAccessClient;
+    }
+    return null;
+  }
   function notify(m,t){if(typeof window.showNotification==='function')window.showNotification(m,t||'info');else if(typeof window.showFeedback==='function')window.showFeedback(m,t||'info');else console.info('[Academic Access]',m);}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
