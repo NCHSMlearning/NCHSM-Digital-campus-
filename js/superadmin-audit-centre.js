@@ -119,7 +119,8 @@
     return true;
   }
   async function loadMore(){
-    if(hideGlobalAuditForTenantScope())return;\n    const db=client();if(!db||state.loadingMore)return;
+    if(hideGlobalAuditForTenantScope())return;
+    const db=client();if(!db||state.loadingMore)return;
     state.loadingMore=true;
     const next=$('acNext');if(next){next.disabled=true;next.textContent='Loading…';}
     try{
