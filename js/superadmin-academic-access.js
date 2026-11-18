@@ -225,16 +225,20 @@
     sb=getClient();if(!sb?.auth?.getUser)return;
     try{
       const r=await sb.auth.getUser(),user=r.data?.user;if(r.error||!user)return;
-      let profileRole=window.currentSuperAdmin?.profile?.role||window.currentAdmin?.role||'';
-      if(!profileRole){
-        const p=await sb.from('consolidated_user_profiles_table').select('role').eq('user_id',user.id).maybeSingle();
-        if(p.error)throw p.error;
-        profileRole=p.data?.role||'';
+      // The immutable Supabase Auth UUID and verified email are the owner identity.
+      // Do not depend on page-specific profile globals or role hydration to show the owner control.
+      owner=user.id===OWNER_ID&&String(user.email||'').trim().toLowerCase()===OWNER_EMAIL;
+      if(owner){
+        injectOwnerButton();
+        // Re-check while the large portal sidebar finishes rendering.
+        let attempts=0;
+        const retry=setInterval(()=>{
+          attempts++;
+          if(document.getElementById('ownerAcademicAccessButton')){clearInterval(retry);return;}
+          injectOwnerButton();
+          if(attempts>=30)clearInterval(retry);
+        },500);
       }
-      const role=String(profileRole).toLowerCase().replace(/[- ]/g,'_');
-      const isAdmin=role==='superadmin'||role==='super_admin';
-      owner=isAdmin&&user.id===OWNER_ID&&String(user.email||'').toLowerCase()===OWNER_EMAIL;
-      if(owner)injectOwnerButton();
       installGuards();
       if(isAdmin&&!owner&&!(await can('view_marks')))console.info('Academic marks access is restricted by the Primary Super Admin.');
     }catch(e){console.error('Academic access module initialization failed',e);}
