@@ -157,7 +157,7 @@
     setPlatform("audits",fmt((audits.data||[]).length),"Recorded platform actions");
     const select=$("cnGlobalInstitutionFilter");
     if(select){
-      const saved=localStorage.getItem(SCOPE_KEY);
+      let saved=null;try{saved=localStorage.getItem(SCOPE_KEY);}catch(_){}
       const current=saved||select.value||"all";
       select.innerHTML='<option value="all">All institutions</option>'+rows.map(row =>
         '<option value="'+row.id.replace(/"/g,"")+'">'+
