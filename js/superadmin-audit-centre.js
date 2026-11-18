@@ -105,8 +105,21 @@
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
     const a=document.createElement('a');a.href=url;a.download='nchsm-audit-events.csv';a.click();URL.revokeObjectURL(url);
   }
+  function selectedInstitutionScope() {
+    return window.CampusNexusScope?.getInstitutionId?.() || null;
+  }
+  function hideGlobalAuditForTenantScope() {
+    if (!selectedInstitutionScope()) return false;
+    state.rows=[];state.hasMore=false;
+    const notice=$('auditCentreNotice');
+    if(notice) notice.textContent='Institution selected. The protected audit service currently returns platform-wide events and has no institution filter. The global feed is hidden here to prevent cross-institution audit exposure.';
+    const rows=$('acRows');
+    if(rows) rows.innerHTML='<tr><td colspan="7" style="padding:28px;color:#64748b;text-align:center">Institution-specific audit filtering is not yet available. No cross-institution records are shown.</td></tr>';
+    ['acTotal','acLogins','acFailed','acUsers','acSessions','auditTotalEvents','auditFailedAttempts'].forEach(id=>{const el=$(id);if(el)el.textContent='—';});
+    return true;
+  }
   async function loadMore(){
-    const db=client();if(!db||state.loadingMore)return;
+    if(hideGlobalAuditForTenantScope())return;\n    const db=client();if(!db||state.loadingMore)return;
     state.loadingMore=true;
     const next=$('acNext');if(next){next.disabled=true;next.textContent='Loading…';}
     try{
@@ -159,6 +172,6 @@
   window.changeAuditPage=()=>{};
   window.sortAuditTable=()=>{};
   window.manualCleanAuditLogs=()=>{ if(window.showNotification) window.showNotification('Audit records are retained as evidence. Automatic deletion is disabled.','info'); else alert('Audit records are retained as evidence. Automatic deletion is disabled.'); };
-  function init(){ shell(); load(); }
+  function init(){ shell(); load(); window.addEventListener("campusnexus:institution-change",()=>{if(document.getElementById("audit")?.classList.contains("active"))load();}); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
