@@ -423,21 +423,7 @@ function profileLoadLocalLoginHistory() {
     } catch (e) {
         history = [];
     }
-
-    if (history.length === 0) {
-        history = [
-            {
-                login_time: new Date().toISOString(),
-                ip_address: '—',
-                device: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
-                browser: profileGetBrowserName(),
-                status: 'SUCCESS',
-                location: 'Nairobi, Kenya'
-            }
-        ];
-        localStorage.setItem('loginHistory', JSON.stringify(history));
-    }
-
+    // Never manufacture a login event or infer a location.
     renderLoginHistory(history);
 }
 
@@ -518,7 +504,7 @@ function logLoginAttempt(status, details = {}) {
             (navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'),
         browser: profileGetBrowserName(),
         status: status,
-        location: details.location || 'Nairobi, Kenya',
+        location: details.location || 'Not recorded',
         user_agent: navigator.userAgent
     };
 
@@ -533,31 +519,10 @@ function logLoginAttempt(status, details = {}) {
 }
 
 function clearLoginHistory() {
-    if (!confirm('Are you sure you want to clear your login history?')) return;
-
-    localStorage.removeItem('loginHistory');
-
-    const supabase = profileGetSupabase();
-    const userId = profileGetCurrentUserId();
-    if (supabase && userId && userId !== 'SA-001') {
-        supabase
-            .from('user_sessions')
-            .delete()
-            .eq('user_id', userId)
-            .then(() => {})
-            .catch(() => {});
-    }
-
-    const container = document.getElementById('loginHistoryList');
-    if (container) {
-        container.innerHTML = `
-            <div style="text-align:center;color:#94a3b8;padding:20px;">
-                <i class="fas fa-check-circle" style="color:#10b981;font-size:24px;display:block;margin-bottom:8px;"></i>
-                Login history cleared
-            </div>`;
-    }
-
-    if (typeof showFeedback === 'function') showFeedback('Login history cleared', 'success');
+    // Retain login/security evidence. Session revocation remains available separately.
+    const message='Login and security history is retained for audit integrity. Revoke active sessions from Security & Access instead.';
+    if (typeof showFeedback === 'function') showFeedback(message, 'info');
+    else alert(message);
 }
 
 // ============================================================
