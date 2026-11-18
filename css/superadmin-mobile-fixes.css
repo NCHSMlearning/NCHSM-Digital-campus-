@@ -1,0 +1,119 @@
+/* Campus Nexus Super Admin — mobile layout hardening
+   Keeps the desktop shell unchanged. */
+@media (max-width: 768px) {
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip !important;
+    -webkit-text-size-adjust: 100%;
+  }
+  body { min-width: 0 !important; }
+  .main, main.main, .tab-content, .section-content,
+  .dashboard-content, .content-wrapper {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .main { padding: 76px 12px calc(104px + env(safe-area-inset-bottom, 0px)) !important; }
+  .main > *, main.main > *, .tab-content > * { min-width: 0; max-width: 100%; }
+  /* Tables remain full data tables and get their own horizontal scroll area. */
+  .table-responsive, .table-container, .table-wrapper,
+  .table-scroll, .data-table-wrapper, .dataTables_wrapper,
+  .dataTables_scroll, .dataTables_scrollBody {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #eef2f7;
+  }
+  table, table.data-table, table.dataTable {
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  table th, table td {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  /* Tables without an existing wrapper still scroll inside the viewport. */
+  .tab-content table:not(.calendar-table),
+  .section-content table:not(.calendar-table) {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  #cnPlatformOverview {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 14px !important;
+    border-radius: 16px !important;
+  }
+  #cnPlatformOverview .cn-platform-head { gap: 12px !important; }
+  #cnPlatformOverview .cn-platform-head > div { min-width: 0; max-width: 100%; }
+  #cnPlatformOverview .cn-platform-head > div:last-child {
+    width: 100%;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  #cnPlatformMetricsUpdated { flex: 1 1 100%; min-width: 100%; }
+  #cnPlatformOverview .cn-platform-head button {
+    min-height: 42px;
+    flex: 1 1 auto;
+    white-space: normal;
+  }
+  #cnPlatformOverview .cn-platform-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+  #cnPlatformOverview .cn-platform-card {
+    min-width: 0 !important;
+    padding: 13px 12px !important;
+    overflow-wrap: anywhere;
+  }
+  #cnPlatformOverview .cn-platform-card small {
+    font-size: 10px !important;
+    line-height: 1.45 !important;
+    min-height: 2.9em;
+  }
+  #cnPlatformOverview .cn-platform-card strong { font-size: 25px !important; }
+  #cnPlatformOverview .cn-platform-card em { font-size: 10px !important; line-height: 1.45; }
+  #cnPlatformOverview .cn-platform-lower { grid-template-columns: minmax(0,1fr) !important; }
+  #chatbotToggle {
+    width: 46px !important;
+    height: 46px !important;
+    right: 12px !important;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+    font-size: 22px !important;
+    z-index: 900 !important;
+  }
+  #chatbotWindow {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    max-height: min(68dvh, 620px) !important;
+    height: min(68dvh, 620px) !important;
+    z-index: 950 !important;
+  }
+}
+@media (max-width: 380px) {
+  #cnPlatformOverview .cn-platform-grid { grid-template-columns: 1fr !important; }
+  #cnPlatformOverview .cn-platform-head button { flex-basis: 100%; }
+}
