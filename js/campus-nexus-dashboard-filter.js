@@ -193,7 +193,7 @@
     const add=(key,promise)=>jobs.push([key,promise]);
     if(userIds.length){
       add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("is_active",true));
-      add("attendance",client.from("geo_attendance_logs").select("id,created_at",{count:"exact"}).in("user_id",userIds));
+      add("attendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).in("user_id",userIds));
       add("todayAttendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).in("user_id",userIds).gte("created_at",todayIso));
       add("courses",client.from("courses").select("id",{count:"exact",head:true}).in("created_by",userIds));
       add("resources",client.from("resources").select("id",{count:"exact",head:true}).in("uploaded_by",userIds));
@@ -268,7 +268,7 @@
   function init() {
     buildUnifiedMetrics();
     // Capture the legacy NCHSM dashboard figures after its original loaders run.
-    setTimeout(rememberLegacyMetrics,1600);
+    setTimeout(rememberLegacyMetrics,2400);
     $("cnInstitutionFilter")?.addEventListener("change",refresh);
     $("cnPlatformRefresh")?.addEventListener("click",refresh);
     refresh();
