@@ -1960,57 +1960,23 @@ main.main>header{width:100%;max-width:100%;min-width:0}
         </div>
     </div>
 
-    <!-- CAMPUS NEXUS: CROSS-INSTITUTION PORTFOLIO -->
-    <section id="cnPlatformOverview" aria-labelledby="cnPlatformOverviewTitle" style="margin:0 0 22px;padding:20px;background:#fff;border:1px solid #dbe5ec;border-radius:18px;box-shadow:0 5px 20px rgba(8,47,73,.055);">
-      <style>
-        #cnPlatformOverview .cn-platform-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
-        #cnPlatformOverview h3{margin:0;color:#082f49;font-size:16px;font-weight:800}
-        #cnPlatformOverview .cn-platform-sub{margin:5px 0 0;color:#64748b;font-size:11px}
-        #cnPlatformOverview .cn-platform-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
-        #cnPlatformOverview .cn-platform-card{padding:13px 14px;border:1px solid #e2e8f0;border-radius:12px;background:linear-gradient(145deg,#fff,#f8fafc);min-width:0}
-        #cnPlatformOverview .cn-platform-card small{display:block;color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.07em;font-weight:800}
-        #cnPlatformOverview .cn-platform-card strong{display:block;color:#082f49;font-size:24px;font-weight:850;margin-top:5px;font-variant-numeric:tabular-nums}
-        #cnPlatformOverview .cn-platform-card em{display:block;color:#94a3b8;font-size:9px;font-style:normal;margin-top:3px}
-        #cnPlatformOverview .cn-platform-lower{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(250px,.8fr);gap:14px;margin-top:14px}
-        #cnPlatformOverview .cn-platform-list{border:1px solid #e2e8f0;border-radius:12px;padding:12px}
-        #cnPlatformOverview .cn-platform-list h4{margin:0 0 8px;color:#334155;font-size:11px}
-        #cnPlatformOverview .cn-platform-institution{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #f1f5f9}
-        #cnPlatformOverview .cn-platform-institution strong{display:block;font-size:11px;color:#1e293b}
-        #cnPlatformOverview .cn-platform-institution small{display:block;font-size:9px;color:#94a3b8;margin-top:2px}
-        #cnPlatformOverview .cn-platform-status{font-size:9px;font-weight:800;text-transform:capitalize;padding:4px 8px;border-radius:20px;background:#f1f5f9;color:#475569;white-space:nowrap}
-        #cnPlatformOverview .cn-platform-status.active{background:#dcfce7;color:#166534}
-        #cnPlatformOverview .cn-platform-status.suspended{background:#fee2e2;color:#991b1b}
-        #cnPlatformOverview .cn-platform-status.pending{background:#fef3c7;color:#92400e}
-        #cnPlatformOverview .cn-platform-warning{margin-top:12px;padding:11px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:10px;line-height:1.5}
-        #cnPlatformOverview .cn-platform-empty{padding:10px 0;color:#94a3b8;font-size:10px}
-        #cnPlatformOverview button{border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:8px 11px;color:#0f766e;font-size:10px;font-weight:800;cursor:pointer}
-        #cnPlatformOverview button:disabled{opacity:.55;cursor:wait}
-        @media(max-width:700px){#cnPlatformOverview{padding:14px!important}#cnPlatformOverview .cn-platform-lower{grid-template-columns:1fr}#cnPlatformOverview .cn-platform-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-      </style>
-      <div class="cn-platform-head">
-        <div><div style="font-size:9px;letter-spacing:.12em;color:#0f766e;font-weight:900;margin-bottom:5px">CAMPUS NEXUS · GLOBAL OPERATIONS</div>
-          <h3 id="cnPlatformOverviewTitle"><i class="fas fa-globe" style="color:#0f766e;margin-right:7px"></i>Platform Portfolio</h3>
-          <p class="cn-platform-sub">Cross-institution operating picture, subscriptions, access and service configuration.</p></div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span id="cnPlatformMetricsUpdated" style="font-size:9px;color:#94a3b8">Loading platform figures…</span>
-          <button type="button" id="cnPlatformRefresh"><i class="fas fa-sync-alt"></i> Refresh</button>
-          <button type="button" onclick="showTab('institutions')"><i class="fas fa-building"></i> Manage institutions</button>
+    <!-- CAMPUS NEXUS: GLOBAL INSTITUTION FILTER -->
+    <section id="cnPlatformOverview" aria-label="Global institution filter">
+      <div class="cn-global-filter">
+        <div class="cn-global-filter-copy">
+          <span class="cn-global-eyebrow"><i class="fas fa-globe"></i> CAMPUS NEXUS · GLOBAL OPERATIONS</span>
+          <strong id="cnDashboardScopeTitle">All institutions</strong>
+          <small id="cnDashboardScopeDescription">Consolidated view across every institution on the platform.</small>
         </div>
-      </div>
-      <div class="cn-platform-grid">
-        <div class="cn-platform-card"><small>Registered institutions</small><strong id="cnPlatformInstitutionTotal">—</strong><em>All registered tenants</em></div>
-        <div class="cn-platform-card"><small>Active institutions</small><strong id="cnPlatformInstitutionActive">—</strong><em>Currently enabled</em></div>
-        <div class="cn-platform-card"><small>Suspended institutions</small><strong id="cnPlatformInstitutionSuspended">—</strong><em>Access should be reviewed</em></div>
-        <div class="cn-platform-card"><small>Pending setup</small><strong id="cnPlatformInstitutionPending">—</strong><em>Onboarding / status pending</em></div>
-        <div class="cn-platform-card"><small>Institution user assignments</small><strong id="cnPlatformAssignedUsers">—</strong><em>Membership records</em></div>
-        <div class="cn-platform-card"><small>Enabled institution modules</small><strong id="cnPlatformEnabledModules">—</strong><em>Configured service modules</em></div>
-        <div class="cn-platform-card"><small>Subscription records</small><strong id="cnPlatformSubscriptions">—</strong><em>Billing configuration records</em></div>
-        <div class="cn-platform-card"><small>Platform audit events</small><strong id="cnPlatformAuditEvents">—</strong><em>Recorded platform actions</em></div>
-        <div class="cn-platform-card"><small>Existing user profiles</small><strong id="cnPlatformUserProfiles">—</strong><em>Global / legacy directory count</em></div>
-      </div>
-      <div class="cn-platform-lower">
-        <div class="cn-platform-list"><h4>Institution status overview</h4><div id="cnPlatformInstitutionStatusList"><div class="cn-platform-empty">Loading institutions…</div></div></div>
-        <div class="cn-platform-list"><h4>Platform data boundary</h4><p style="margin:0;color:#64748b;font-size:10px;line-height:1.55">Institution totals and configuration are platform-wide. Existing academic metrics below still represent the legacy NCHSM environment until student, marks, finance, attendance and related records are assigned to institution tenants.</p><div id="cnPlatformTenantWarning" class="cn-platform-warning" hidden></div></div>
+        <label class="cn-global-select-wrap" for="cnInstitutionFilter">
+          <span><i class="fas fa-filter"></i> Institution</span>
+          <select id="cnInstitutionFilter" aria-label="Filter dashboard by institution">
+            <option value="all">All institutions</option>
+          </select>
+        </label>
+        <span id="cnPlatformMetricsUpdated" class="cn-global-updated" aria-live="polite">Loading institution data…</span>
+        <button type="button" id="cnPlatformRefresh" class="cn-global-refresh"><i class="fas fa-sync-alt"></i> Refresh</button>
+        <button type="button" class="cn-global-manage" onclick="showTab('institutions')"><i class="fas fa-building"></i> Manage institutions</button>
       </div>
     </section>
 
@@ -15155,6 +15121,7 @@ body.profile-dark-mode #profile .profile-extra-panel select{background:#20364f!i
 <script type="module" src="script.js" defer></script>
 <script type="module" src="js/campus-nexus-institutions.js?v=20261118-institutions-v1"></script>
 <script type="module" src="js/campus-nexus-platform-overview.js?v=20261118-platform-v1"></script>
+<script type="module" src="js/campus-nexus-dashboard-filter.js?v=20261118-filter-v1"></script>
 <!-- ============================================ -->
  <!-- ============================================ -->
 <!-- SUPER ADMIN PROFILE MODULE                   -->
