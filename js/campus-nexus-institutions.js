@@ -271,6 +271,10 @@
         if (profileError) throw profileError;
         const target = profiles?.[0];
         if (target?.user_id) {
+          const {error:promoteProfileError} = await sb.from("consolidated_user_profiles_table").update({
+            role:"admin",status:"active",institution_id:saved.id,updated_at:new Date().toISOString()
+          }).eq("user_id",target.user_id);
+          if (promoteProfileError) throw promoteProfileError;
           const {error:removeOldAdminsError} = await sb.from("institution_users").delete().eq("institution_id",saved.id).eq("role","institution_admin").neq("user_id",target.user_id);
           if (removeOldAdminsError) throw removeOldAdminsError;
           const {error:membershipError} = await sb.from("institution_users").upsert({
