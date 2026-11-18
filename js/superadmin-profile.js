@@ -1465,6 +1465,21 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 }
 
 
+/* Mobile table horizontal scrolling helper for the actual /superadmin portal. */
+(function loadSuperAdminMobileTables(){
+  const src='js/superadmin-mobile-tables.js?v=20261118a';
+  const inject=()=>{
+    if(document.querySelector('script[data-nchsm-mobile-tables]'))return;
+    const script=document.createElement('script');
+    script.src=src;
+    script.dataset.nchsmMobileTables='true';
+    script.onerror=()=>console.error('[NCHSM] Mobile table scrolling helper failed to load.');
+    document.head.appendChild(script);
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',inject,{once:true});
+  else inject();
+})();
+
 /* Primary-owner academic access control loader.
    This profile module is already part of the Super Admin portal bundle. */
 (function loadPrimaryOwnerAcademicAccess(){
