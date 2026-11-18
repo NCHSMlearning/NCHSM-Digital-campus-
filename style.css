@@ -3311,3 +3311,89 @@ a:focus-visible {
 @media(max-width:768px){
   table{display:table!important;overflow:visible!important;}
 }
+
+
+/* ============================================================
+   SUPER ADMIN DESKTOP LAYOUT RECOVERY — 2026-11-18
+   Keep the fixed sidebar and main workspace in one predictable
+   desktop grid. Scoped to the Super Admin page only.
+   Mobile drawer/table rules below remain untouched.
+   ============================================================ */
+@media (min-width: 769px) {
+  body:has(#sidebarSearch) {
+    overflow-x: hidden !important;
+  }
+
+  body:has(#sidebarSearch) .container {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+
+  body:has(#sidebarSearch) #sidebar:has(#sidebarSearch) {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    box-sizing: border-box !important;
+    z-index: 10040 !important;
+  }
+
+  body:has(#sidebarSearch) .main {
+    display: block !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    width: calc(100% - 280px) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 100vh !important;
+    margin: 0 0 0 280px !important;
+    padding: 34px clamp(22px, 3vw, 54px) 48px !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+  }
+
+  body:has(#sidebarSearch) #main-content {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body:has(#sidebarSearch) .tab-content.active {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  body:has(#sidebarSearch) .main > *,
+  body:has(#sidebarSearch) #main-content > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* Restore the mobile layout to the existing off-canvas drawer behaviour. */
+@media (max-width: 768px) {
+  body:has(#sidebarSearch) .container {
+    display: block !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+  body:has(#sidebarSearch) .main {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+}
