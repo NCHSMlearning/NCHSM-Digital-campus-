@@ -234,13 +234,13 @@
     const jobs=[];
     const add=(key,promise)=>jobs.push([key,promise]);
     if(userIds.length){
-      add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("is_active",true));
-      add("attendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).in("user_id",userIds));
-      add("todayAttendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).in("user_id",userIds).gte("created_at",todayIso));
-      add("courses",client.from("courses").select("id",{count:"exact",head:true}).in("created_by",userIds));
-      add("resources",client.from("resources").select("id",{count:"exact",head:true}).in("uploaded_by",userIds));
+      add("sessions",client.from("user_sessions").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("institution_id",id).eq("is_active",true));
+      add("attendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("institution_id",id));
+      add("todayAttendance",client.from("geo_attendance_logs").select("id",{count:"exact",head:true}).in("user_id",userIds).eq("institution_id",id).gte("created_at",todayIso));
+      add("courses",client.from("courses").select("id",{count:"exact",head:true}).in("created_by",userIds).eq("institution_id",id));
+      add("resources",client.from("resources").select("id",{count:"exact",head:true}).in("uploaded_by",userIds).eq("institution_id",id));
     }
-    if(profileIds.length) add("tickets",client.from("support_tickets").select("id,status,priority").in("student_id",userIds));
+    if(profileIds.length) add("tickets",client.from("support_tickets").select("id,status,priority").in("student_id",userIds).eq("institution_id",id));
     const results={};
     for(const [key,promise] of jobs){
       const result=await promise;
