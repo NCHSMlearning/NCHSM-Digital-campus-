@@ -344,6 +344,15 @@ async function sendApprovalEmailFallback(email, userName, role, programDisplay, 
 // 🚀 LOAD ALL USERS - OPTIMIZED WITH PAGINATION
 // ============================================
 
+async function getCampusNexusScopedUserIds(supabase) {
+    const institutionId = window.CampusNexusScope?.getInstitutionId?.();
+    if (!institutionId) return null;
+    const { data, error } = await supabase.from('institution_users')
+        .select('user_id').eq('institution_id', institutionId).eq('status', 'active');
+    if (error) throw error;
+    return [...new Set((data || []).map(row => row.user_id).filter(Boolean))];
+}
+
 async function loadAllUsers(page = 1, filters = {}) {
     const startTime = performance.now();
     console.log('🚀 Loading users (optimized)...');
@@ -370,7 +379,17 @@ async function loadAllUsers(page = 1, filters = {}) {
             await populateUserFilterDropdownsIfEmpty();
         }
         
+        const scopedUserIds = await getCampusNexusScopedUserIds(supabase);
+        if (scopedUserIds && scopedUserIds.length === 0) {
+            USERS_STATE.total = 0;
+            USERS_STATE.page = 1;
+            renderUsersTable([]);
+            renderUserPagination(0, 1);
+            updateUserStats([], 0);
+            return { users: [], total: 0 };
+        }
         let query = supabase.from(USER_PROFILE_TABLE).select('*', { count: 'exact' });
+        if (scopedUserIds) query = query.in('user_id', scopedUserIds);
         
         if (filters.role && filters.role !== 'all') {
             query = query.eq('role', filters.role);
@@ -3668,3 +3687,12 @@ console.log('✅ Fixed: Document status read from profile directly');
 console.log('✅ Fixed: Intake month passed to getDisplayIntake');
 console.log('✅ Fixed: updatePendingStats added');
 console.log('✅ Fixed: getDisplayIntake no longer hardcoded to March');
+
+
+// Reload user management when the global institution context changes.
+window.addEventListener('campusnexus:institution-change', () => {
+    if (document.getElementById('users-table-body') &&
+        document.getElementById('users')?.classList.contains('active')) {
+        loadAllUsers(1, USERS_STATE.filters || {});
+    }
+});
