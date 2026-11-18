@@ -2,32 +2,6 @@
  * Uses the existing authenticated Supabase client. Database RLS is authoritative.
  */
 (() => {
-  // Phone-width fallback for browsers requesting a desktop layout viewport.
-  // Uses physical screen width (not CSS viewport width), so desktop screens
-  // are never affected by this fallback.
-  (() => {
-    const phoneWidth = Math.min(window.screen?.width || Infinity, window.screen?.availWidth || Infinity);
-    if (phoneWidth > 768) return;
-    const styleId = "cn-superadmin-physical-mobile-layout";
-    if (document.getElementById(styleId)) return;
-    const style = document.createElement("style");
-    style.id = styleId;
-    style.textContent = `
-      .container { display: block !important; width: 100% !important; min-width: 0 !important; }
-      .mobile-header { display: flex !important; position: sticky !important; top: 0 !important; z-index: 1006 !important; width: 100% !important; }
-      .sidebar { position: fixed !important; top: 0 !important; left: 0 !important; bottom: 0 !important; width: min(85vw, 340px) !important; max-width: 340px !important; height: 100dvh !important; max-height: 100dvh !important; overflow-y: auto !important; transform: translateX(-105%) !important; z-index: 1005 !important; }
-      .sidebar.open { transform: translateX(0) !important; }
-      .main { display: block !important; box-sizing: border-box !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 12px !important; }
-      .tab-content { box-sizing: border-box !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 12px !important; }
-      #institutions { box-sizing: border-box !important; width: 100% !important; max-width: 100% !important; min-height: 0 !important; margin: 0 !important; padding-top: 8px !important; }
-      #institutions .cn-institutions-hero, #institutions .institution-hero, #institutions .cn-hero { margin-top: 0 !important; }
-      #institutions .cn-institution-table-wrap, #institutions .institution-table-wrap { max-width: 100% !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-      .overlay { z-index: 1004 !important; }
-      .chatbot-container, #chatbot-container, .chat-widget, #chat-widget { right: 12px !important; bottom: 76px !important; max-width: 72px !important; }
-    `;
-    document.head.appendChild(style);
-  })();
-
   const MODULES = [
     ["student_management", "Student management"],
     ["learning_management", "Learning management system"],
