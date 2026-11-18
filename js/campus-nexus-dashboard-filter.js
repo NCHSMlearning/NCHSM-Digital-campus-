@@ -8,7 +8,7 @@
   const $ = (id) => document.getElementById(id);
   const db = () => window.sb || window.supabaseClient || window.supabase || null;
   const fmt = (n) => Number(n || 0).toLocaleString("en-KE");
-  const state = { institutions: [], snapshot: null, busy: false, refreshQueued: false };
+  const state = { institutions: [], moduleMap: {}, snapshot: null, busy: false, refreshQueued: false };
 
   const metricDefs = [
     ["institutions","Registered institutions","0","All registered tenants","fa-building","#0f766e","#f0fdfa"],
@@ -146,6 +146,11 @@
     ]);
     [institutions,members,modules,subscriptions,audits].forEach(result => { if(result.error) throw result.error; });
     state.institutions = institutions.data || [];
+    state.moduleMap = {};
+    (modules.data || []).forEach(row => {
+      if (!state.moduleMap[row.institution_id]) state.moduleMap[row.institution_id] = [];
+      if (row.enabled) state.moduleMap[row.institution_id].push(row.module_key);
+    });
     const rows = state.institutions;
     setPlatform("institutions",fmt(rows.length),"All registered tenants");
     setPlatform("active",fmt(rows.filter(x=>x.status==="active").length),"Currently enabled");
@@ -180,9 +185,59 @@
     const id=selectedInstitutionId();
     return state.institutions.find(x=>x.id===id)||null;
   }
+  function applyGlobalSidebarScope(detail) {
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+    const institution = detail?.institution || null;
+    const nav = sidebar.querySelector("#mainNav, #navMenu, nav");
+    const header = sidebar.querySelector(".sidebar-header, .brand, .sidebar-brand");
+    if (header) {
+      let scopeLabel = header.querySelector("[data-cn-sidebar-scope]");
+      if (!scopeLabel) {
+        scopeLabel = document.createElement("small");
+        scopeLabel.dataset.cnSidebarScope = "true";
+        scopeLabel.style.cssText = "display:block;margin-top:6px;font-size:11px;opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
+        header.appendChild(scopeLabel);
+      }
+      scopeLabel.textContent = institution?.name || "All institutions";
+      scopeLabel.title = scopeLabel.textContent;
+    }
+    if (!nav) return;
+    const enabled = detail?.enabledModules;
+    const moduleHints = [
+      ["finance",/finance|payment|fee|invoice/i],
+      ["human_resources",/human resource|staff management|payroll|leave/i],
+      ["learning_management",/learning|course|resource|classroom|lms/i],
+      ["examinations",/exam|assessment|question bank|results/i],
+      ["proctoring",/proctor|invigilation/i],
+      ["transcripts_certificates",/transcript|certificate|graduation/i],
+      ["analytics_reports",/analytic|report|performance/i],
+      ["student_management",/student|admission|enrol|registration/i]
+    ];
+    nav.querySelectorAll("a,button,[role='menuitem']").forEach(item => {
+      if (!item.dataset.cnOriginalDisplay) item.dataset.cnOriginalDisplay = item.style.display || "";
+      let moduleKey = item.dataset.cnModule || "";
+      if (!moduleKey) {
+        const label = (item.textContent || "").trim();
+        moduleKey = moduleHints.find(([key,pattern]) => pattern.test(label))?.[0] || "";
+        if (moduleKey) item.dataset.cnModule = moduleKey;
+      }
+      if (!moduleKey) { item.style.display = item.dataset.cnOriginalDisplay; return; }
+      item.style.display = !institution || !Array.isArray(enabled) || enabled.includes(moduleKey)
+        ? item.dataset.cnOriginalDisplay : "none";
+      item.setAttribute("aria-hidden", item.style.display === "none" ? "true" : "false");
+    });
+    nav.querySelectorAll(".nav-group, .menu-group").forEach(group => {
+      const items = [...group.querySelectorAll("a,button,[role='menuitem']")];
+      if (items.length) group.style.display = items.some(item => item.style.display !== "none") ? "" : "none";
+    });
+    sidebar.dataset.cnInstitutionScope = institution?.id || "all";
+  }
+
   function publishScope() {
     const institution=selectedInstitution();
-    const detail={institutionId:institution?.id||null,institution:institution||null,allInstitutions:!institution};
+    const detail={institutionId:institution?.id||null,institution:institution||null,allInstitutions:!institution,
+      enabledModules:institution?(state.moduleMap[institution.id]||[]):null};
     window.CampusNexusScope = Object.assign(window.CampusNexusScope||{}, {
       getInstitutionId:()=>selectedInstitutionId()==="all"?null:selectedInstitutionId(),
       getInstitution:()=>selectedInstitution(),
@@ -204,6 +259,7 @@
       }
     });
     window.dispatchEvent(new CustomEvent("campusnexus:institution-change",{detail}));
+    applyGlobalSidebarScope(detail);
     document.documentElement.dataset.cnInstitutionScope=institution?.id||"all";
     document.querySelectorAll("[data-cn-scope-label]").forEach(el=>{
       el.textContent=institution?.name||"All institutions";
@@ -322,6 +378,7 @@
   }
 
   function init() {
+    window.addEventListener("campusnexus:institution-change", event => applyGlobalSidebarScope(event.detail || {}));
     buildUnifiedMetrics();
     // Capture the legacy NCHSM dashboard figures after its original loaders run.
     setTimeout(rememberLegacyMetrics,2400);
