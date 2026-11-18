@@ -3256,3 +3256,58 @@ a:focus-visible {
 @media (prefers-reduced-motion: reduce) {
     #sidebar:has(#sidebarSearch) { transition: none !important; }
 }
+
+
+/* NCHSM MOBILE TABLE HORIZONTAL SCROLL FIX — 2026-11-18 */
+/* Keep native table layout. The scrolling belongs to the wrapper, never the table. */
+.nchsm-table-scroll{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-x:contain;
+  touch-action:pan-x pan-y;
+  scrollbar-width:thin;
+  scrollbar-color:#94a3b8 #e2e8f0;
+  position:relative;
+}
+.nchsm-table-scroll>table,
+.nchsm-table-scroll>div>table{
+  display:table!important;
+  width:max-content!important;
+  min-width:100%!important;
+  max-width:none!important;
+  table-layout:auto!important;
+  margin:0 0 12px!important;
+}
+.nchsm-table-scroll th,
+.nchsm-table-scroll td{
+  white-space:nowrap!important;
+}
+@media(max-width:768px){
+  .nchsm-table-scroll{
+    width:100%!important;
+    max-width:calc(100vw - 32px)!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    border:1px solid #e2e8f0;
+    border-radius:10px;
+    background:#fff;
+  }
+  .nchsm-table-scroll>table,
+  .nchsm-table-scroll>div>table{
+    min-width:680px!important;
+    font-size:12px!important;
+  }
+  .nchsm-table-scroll th,
+  .nchsm-table-scroll td{
+    padding:8px 10px!important;
+  }
+}
+/* Override legacy mobile rule that turns tables themselves into scroll blocks. */
+@media(max-width:768px){
+  table{display:table!important;overflow:visible!important;}
+}
