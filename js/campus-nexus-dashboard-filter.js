@@ -220,13 +220,14 @@
 
   async function applyInstitutionScope(client,institution,platform) {
     const id=institution.id;
-    const members=platform.members.filter(x=>x.institution_id===id);
-    const userIds=[...new Set(members.map(x=>x.user_id).filter(Boolean))];
-    const profileResult=userIds.length
-      ? await client.from("consolidated_user_profiles_table").select("id,user_id,role").in("user_id",userIds)
-      : {data:[],error:null};
+    // Profiles are the authoritative tenant-owned roster. This includes legacy
+    // profile rows that predate or no longer have an auth.users membership.
+    const profileResult=await client.from("consolidated_user_profiles_table")
+      .select("id,user_id,role,status").eq("institution_id",id);
     if(profileResult.error) throw profileResult.error;
     const profiles=profileResult.data||[];
+    const members=profiles;
+    const userIds=[...new Set(profiles.map(x=>x.user_id).filter(Boolean))];
     const profileIds=profiles.map(x=>x.id).filter(Boolean);
     const today=new Date(); today.setHours(0,0,0,0);
     const todayIso=today.toISOString();
