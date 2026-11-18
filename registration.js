@@ -1614,9 +1614,23 @@ document.getElementById('register-form').addEventListener('submit', async functi
         // The registration URL carries an institution-specific code. The database trigger
         // resolves this code against institution_registration_links and assigns the tenant.
         const registrationParams = new URLSearchParams(window.location.search);
-        const institutionCode = String(
-            registrationParams.get('institution_code') || registrationParams.get('institution') || 'nchsm'
+        let institutionCode = String(
+            registrationParams.get('institution_code') || registrationParams.get('institution') || ''
         ).trim().toLowerCase();
+
+        // A school custom domain (for example nyanchwa.co.ke/register) resolves
+        // to its active registration code without requiring a query-string token.
+        if (!institutionCode && window.location.hostname) {
+            const { data: resolvedCode, error: resolveError } = await sb.rpc(
+                'resolve_institution_registration_code',
+                { p_host: window.location.hostname }
+            );
+            if (resolveError) throw resolveError;
+            institutionCode = String(resolvedCode || '').trim().toLowerCase();
+        }
+        if (!institutionCode && ['localhost','127.0.0.1'].includes(window.location.hostname)) {
+            institutionCode = 'nchsm';
+        }
         if (!institutionCode || !/^[a-z0-9_-]{2,80}$/.test(institutionCode)) {
             throw new Error('This institution registration link is invalid. Please use the link provided by your institution.');
         }
