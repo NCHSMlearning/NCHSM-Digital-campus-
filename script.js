@@ -26115,6 +26115,6 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('campusnexus:institution-change', () => {
     if (document.getElementById('users')?.classList.contains('active') &&
         typeof window.loadAllUsers === 'function') {
-        window.loadAllUsers(1, window.USERS_STATE?.filters || {});
+        loadAllUsers(1, USERS_STATE.filters || {});
     }
 });
