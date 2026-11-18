@@ -497,16 +497,49 @@
 </style>
 
 <style id="nchsm-superadmin-sidebar-refresh">
-/* NCHSM Digital Campus — Super Admin navigation refresh */
-:root{--nchsm-sidebar:#082f49;--nchsm-sidebar-deep:#06263b;--nchsm-teal:#0f766e;--nchsm-gold:#eab54b}
+/* Single source of truth for Super Admin shell sizing.
+   Sidebar and main content share one measured width; the container itself
+   never receives a second left offset. */
+:root{
+  --nchsm-sidebar:#082f49;
+  --nchsm-sidebar-deep:#06263b;
+  --nchsm-teal:#0f766e;
+  --nchsm-gold:#eab54b;
+  --admin-sidebar-width:clamp(232px, 22vw, 280px);
+}
+html,body{width:100%;max-width:100%;min-height:100%;margin:0}
+body{overflow-x:hidden}
+.container{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-height:100vh;
+  margin:0!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+}
 #sidebar{
-  box-sizing:border-box!important;width:260px!important;height:100dvh!important;
-  padding:18px 13px 14px!important;gap:0!important;
+  box-sizing:border-box!important;
+  position:fixed!important;
+  inset:0 auto 0 0!important;
+  width:var(--admin-sidebar-width)!important;
+  min-width:0!important;
+  height:100vh!important;
+  height:100dvh!important;
+  padding:18px 13px 14px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
   background:linear-gradient(180deg,var(--nchsm-sidebar) 0%,var(--nchsm-sidebar-deep) 100%)!important;
-  color:#f8fafc!important;border-right:1px solid rgba(255,255,255,.08);
+  color:#f8fafc!important;
+  border-right:1px solid rgba(255,255,255,.08);
   box-shadow:8px 0 30px rgba(2,20,35,.16)!important;
-  overflow-x:hidden!important;overflow-y:auto!important;scrollbar-width:thin;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  scrollbar-width:thin;
   scrollbar-color:rgba(148,163,184,.38) transparent;
+  z-index:1000!important;
+  transition:left .24s ease,transform .24s ease;
 }
 #sidebar .sidebar-header{
   min-height:58px;padding:2px 9px 15px!important;margin:0 0 13px!important;
@@ -522,16 +555,17 @@
 #sidebar #sidebarSearch{font-size:12px!important;min-width:0!important}
 #sidebar #sidebarSearch::placeholder{color:rgba(226,232,240,.58)}
 #sidebar #searchResults{top:calc(100% + 5px)!important;left:0!important;right:0!important;width:100%!important;max-height:320px!important;border:1px solid #dbe5ec!important;border-radius:11px!important;box-shadow:0 14px 35px rgba(2,20,35,.24)!important}
-#mainNav{min-height:0!important;padding:0 2px 18px!important;overflow-x:hidden!important;overflow-y:visible!important}
+#mainNav{flex:1 1 auto!important;min-height:0!important;padding:0 2px 18px!important;overflow-x:hidden!important;overflow-y:visible!important}
 #mainNav .nav-section{padding:15px 10px 6px!important;margin:2px 0 3px!important}
 #mainNav .nav-section span{font-size:9px!important;letter-spacing:1.25px!important;font-weight:800!important;color:#9fb9c9!important;opacity:1!important}
 #mainNav li{min-width:0}
-#mainNav > li:not(.nav-section){margin:0 0 3px!important}
+#mainNav>li:not(.nav-section){margin:0 0 3px!important}
 #mainNav a{
   box-sizing:border-box;min-height:39px!important;padding:9px 11px!important;gap:10px!important;
   border:1px solid transparent!important;border-left:3px solid transparent!important;
   border-radius:9px!important;color:#d9e7ef!important;font-size:12.5px!important;
-  font-weight:550!important;line-height:1.35;transition:background .16s ease,border-color .16s ease,color .16s ease;
+  font-weight:550!important;line-height:1.35;
+  transition:background .16s ease,border-color .16s ease,color .16s ease;
 }
 #mainNav a>i:first-child{width:18px!important;min-width:18px;text-align:center;color:#a9c6d6}
 #mainNav a:hover{background:rgba(255,255,255,.075)!important;color:#fff!important}
@@ -554,31 +588,65 @@
 #sidebar .sidebar-footer,#sidebar .sidebar-bottom{flex-shrink:0}
 #sidebar::-webkit-scrollbar,#mainNav::-webkit-scrollbar{width:5px}
 #sidebar::-webkit-scrollbar-thumb{background:rgba(148,163,184,.32);border-radius:9px}
+.sidebar-account-footer{flex:0 0 auto;margin-top:auto}
+.main{
+  box-sizing:border-box!important;
+  display:block!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  margin:0 0 0 var(--admin-sidebar-width)!important;
+  padding:clamp(20px,2.5vw,40px)!important;
+  min-height:100vh;
+}
+main.main>header{width:100%;max-width:100%;min-width:0}
 .mobile-nav-toggle{display:none!important}
 @media(max-width:768px){
-  .container{width:100%!important;max-width:100%!important}
-  .main{margin-left:0!important;width:100%!important;max-width:100%!important;padding:68px 14px 24px!important;box-sizing:border-box!important}
-  main.main{min-width:0!important}
-  #sidebar{left:-285px!important;width:270px!important;max-width:calc(100vw - 48px)!important;z-index:1200!important}
+  .container{display:block!important;margin:0!important;width:100%!important}
+  #sidebar{
+    left:calc(-1 * min(280px, 86vw))!important;
+    right:auto!important;
+    width:min(280px,86vw)!important;
+    max-width:86vw!important;
+    height:100vh!important;height:100dvh!important;
+    z-index:1200!important;
+    box-shadow:10px 0 35px rgba(2,20,35,.28)!important;
+  }
   #sidebar.active{left:0!important}
-  .mobile-nav-toggle{display:flex!important}
-}
-@media(max-width:768px){
-  #sidebar{left:-285px!important;width:270px!important;max-width:calc(100vw - 48px)!important;z-index:1200!important;transition:left .25s ease!important}
-  #sidebar.active{left:0!important}
+  .main{
+    width:100%!important;max-width:100%!important;min-width:0!important;
+    margin:0!important;
+    padding:76px 14px 24px!important;
+  }
+  main.main>header{margin-top:0!important}
   .mobile-nav-toggle{
     display:flex!important;position:fixed!important;top:12px!important;left:12px!important;
-    width:43px;height:43px;align-items:center;justify-content:center;gap:5px;
+    width:43px!important;height:43px!important;padding:0!important;
+    align-items:center!important;justify-content:center!important;flex-direction:column!important;gap:5px!important;
     border:1px solid #d6e2e9!important;border-radius:11px!important;
-    background:#fff!important;box-shadow:0 5px 18px rgba(2,20,35,.16);z-index:1300!important;
+    background:#fff!important;box-shadow:0 5px 18px rgba(2,20,35,.16)!important;z-index:1300!important;
   }
-  .mobile-nav-toggle span{background:#082f49!important;width:19px!important;height:2px!important;margin:0!important}
-  body.sidebar-open:before{content:"";position:fixed;inset:0;background:rgba(2,15,27,.56);backdrop-filter:blur(2px);z-index:1100}
-  #mainNav a{min-height:42px!important}
-  #mainNav .dropdown-menu a{min-height:38px!important}
+  .mobile-nav-toggle span{display:block!important;background:#082f49!important;width:19px!important;height:2px!important;margin:0!important}
+  body.sidebar-open:before{content:"";position:fixed;inset:0;background:rgba(2,15,27,.52);backdrop-filter:blur(2px);z-index:1100}
+  body.sidebar-open:after{display:none!important}
 }
-@media(min-width:769px){.container{margin-left:260px!important}}
-@media(prefers-reduced-motion:reduce){#sidebar,#mainNav a{transition:none!important}}
+@media(min-width:769px){
+  #sidebar{left:0!important;transform:none!important}
+  .main{margin-left:var(--admin-sidebar-width)!important}
+}
+@media(min-width:769px) and (max-width:1100px){
+  :root{--admin-sidebar-width:240px}
+  .main{padding:22px!important}
+}
+@media(min-width:1101px) and (max-width:1399px){
+  :root{--admin-sidebar-width:260px}
+}
+@media(min-width:1400px){
+  :root{--admin-sidebar-width:280px}
+}
+@media(prefers-reduced-motion:reduce){
+  #sidebar,#mainNav a,.mobile-nav-toggle{transition:none!important}
+}
 </style>
 
 <style id="nchsm-sidebar-account-layout">
