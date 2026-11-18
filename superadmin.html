@@ -15910,7 +15910,7 @@ document.addEventListener('DOMContentLoaded',function(){
  if(search){search.addEventListener('keydown',function(e){if(e.key==='Escape'){search.value='';if(typeof filterSidebarMenus==='function')filterSidebarMenus('');document.getElementById('searchResults')?.style.setProperty('display','none');search.blur();}});}
  document.querySelectorAll('#mainNav a[data-tab]').forEach(function(a){a.addEventListener('click',function(){
   document.querySelectorAll('#mainNav a[data-tab]').forEach(x=>x.classList.remove('active'));
-  a.classList.add('active');side?.classList.remove('active');
+  a.classList.add('active');side?.classList.remove('active');document.body.classList.remove('sidebar-open');document.getElementById('mobileNavToggle')?.setAttribute('aria-expanded','false');
  });});
  const mobile=document.getElementById('mobileNavToggle');
  if(mobile)mobile.setAttribute('aria-label','Toggle navigation');
