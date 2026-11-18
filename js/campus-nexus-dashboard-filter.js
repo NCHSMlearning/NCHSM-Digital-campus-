@@ -239,7 +239,7 @@
       add("courses",client.from("courses").select("id",{count:"exact",head:true}).in("created_by",userIds));
       add("resources",client.from("resources").select("id",{count:"exact",head:true}).in("uploaded_by",userIds));
     }
-    if(profileIds.length) add("tickets",client.from("support_tickets").select("id,status,priority").in("student_id",profileIds));
+    if(profileIds.length) add("tickets",client.from("support_tickets").select("id,status,priority").in("student_id",userIds));
     const results={};
     for(const [key,promise] of jobs){
       const result=await promise;
