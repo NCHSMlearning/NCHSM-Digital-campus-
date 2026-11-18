@@ -155,17 +155,58 @@
     setPlatform("modules",fmt((modules.data||[]).filter(x=>x.enabled).length),"Configured service modules");
     setPlatform("subscriptions",fmt((subscriptions.data||[]).length),"Billing configuration records");
     setPlatform("audits",fmt((audits.data||[]).length),"Recorded platform actions");
-    const select=$("cnInstitutionFilter");
+    const select=$("cnGlobalInstitutionFilter");
     if(select){
-      const current=select.value||"all";
+      const saved=localStorage.getItem(SCOPE_KEY);
+      const current=select.value||saved||"all";
       select.innerHTML='<option value="all">All institutions</option>'+rows.map(row =>
         '<option value="'+row.id.replace(/"/g,"")+'">'+
         String(row.name||"Unnamed institution").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+
         (row.short_code?" ("+String(row.short_code)+")":"")+'</option>'
       ).join("");
       select.value=rows.some(x=>x.id===current)?current:"all";
+      try{localStorage.setItem(SCOPE_KEY,select.value);}catch(_){}
     }
     return {members:members.data||[],modules:modules.data||[],subscriptions:subscriptions.data||[],audits:audits.data||[]};
+  }
+
+
+  const SCOPE_KEY = "campusNexus.selectedInstitution";
+  function selectedInstitutionId() {
+    return $("cnGlobalInstitutionFilter")?.value || "all";
+  }
+  function selectedInstitution() {
+    const id=selectedInstitutionId();
+    return state.institutions.find(x=>x.id===id)||null;
+  }
+  function publishScope() {
+    const institution=selectedInstitution();
+    const detail={institutionId:institution?.id||null,institution:institution||null,allInstitutions:!institution};
+    window.CampusNexusScope = Object.assign(window.CampusNexusScope||{}, {
+      getInstitutionId:()=>selectedInstitutionId()==="all"?null:selectedInstitutionId(),
+      getInstitution:()=>selectedInstitution(),
+      isGlobal:()=>selectedInstitutionId()==="all",
+      subscribe:(callback)=>{
+        if(typeof callback!=="function") return ()=>{};
+        const handler=event=>callback(event.detail||{});
+        window.addEventListener("campusnexus:institution-change",handler);
+        return ()=>window.removeEventListener("campusnexus:institution-change",handler);
+      },
+      apply:(query,column="institution_id")=>{
+        const id=selectedInstitutionId();
+        return id==="all"?query:query.eq(column,id);
+      },
+      requireSelection:()=>{
+        const id=selectedInstitutionId();
+        if(id==="all") throw new Error("Select an institution before loading institution-specific records.");
+        return id;
+      }
+    });
+    window.dispatchEvent(new CustomEvent("campusnexus:institution-change",{detail}));
+    document.documentElement.dataset.cnInstitutionScope=institution?.id||"all";
+    document.querySelectorAll("[data-cn-scope-label]").forEach(el=>{
+      el.textContent=institution?.name||"All institutions";
+    });
   }
 
   function updateScopeText(institution) {
@@ -250,9 +291,10 @@
     try{
       const client=await getAdminDb();
       const platform=await loadPlatform(client);
-      const selected=$("cnInstitutionFilter")?.value||"all";
+      const selected=$("cnGlobalInstitutionFilter")?.value||"all";
       const institution=state.institutions.find(x=>x.id===selected);
       updateScopeText(institution||null);
+      publishScope();
       if(institution) await applyInstitutionScope(client,institution,platform);
       else restoreLegacyMetrics();
       if(updated) updated.textContent="Updated "+new Intl.DateTimeFormat("en-KE",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Nairobi"}).format(new Date());
@@ -269,7 +311,7 @@
     buildUnifiedMetrics();
     // Capture the legacy NCHSM dashboard figures after its original loaders run.
     setTimeout(rememberLegacyMetrics,2400);
-    $("cnInstitutionFilter")?.addEventListener("change",refresh);
+    $("cnGlobalInstitutionFilter")?.addEventListener("change",refresh);
     $("cnPlatformRefresh")?.addEventListener("click",refresh);
     refresh();
   }
