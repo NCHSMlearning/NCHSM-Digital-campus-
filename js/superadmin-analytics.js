@@ -349,27 +349,15 @@ const client = window.sb || window.supabase;
     try {
         // 1. GET STUDENTS
         const selectedInstitutionId = window.CampusNexusScope?.getInstitutionId?.();
-        let institutionUserIds = null;
-        if (selectedInstitutionId) {
-            const { data: memberships, error: membershipError } = await client
-                .from('institution_users').select('user_id')
-                .eq('institution_id', selectedInstitutionId).eq('status', 'active');
-            if (membershipError) throw membershipError;
-            institutionUserIds = [...new Set((memberships || []).map(row => row.user_id).filter(Boolean))];
-        }
         let studentQuery = client
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('role', 'student')
             .eq('status', 'approved');
-        if (institutionUserIds) {
-            if (!institutionUserIds.length) {
-                ['analytics_total_students','analytics_pass_rate','analytics_avg_score','analytics_active_subjects','analytics_at_risk','analytics_improvement','analytics_failing_units']
-                    .forEach(id => { const el=document.getElementById(id); if(el) el.textContent='0'; });
-                window.showAnalyticsLoading(false);
-                return;
-            }
-            studentQuery = studentQuery.in('user_id', institutionUserIds);
+        // Institution ownership is stored on the profile itself. Do not rely only
+        // on active membership rows: historical profiles can predate auth accounts.
+        if (selectedInstitutionId) {
+            studentQuery = studentQuery.eq('institution_id', selectedInstitutionId);
         }
         
         if (program !== 'all') {
@@ -420,6 +408,7 @@ const client = window.sb || window.supabase;
             .from('student_marks')
             .select('*')
             .eq('academic_year', year);
+        if (selectedInstitutionId) marksQuery = marksQuery.eq('institution_id', selectedInstitutionId);
 
         if (block !== 'all') marksQuery = marksQuery.eq('block', block);
         if (program !== 'all' && program !== 'TVET') marksQuery = marksQuery.eq('program', program);
@@ -533,6 +522,7 @@ const client = window.sb || window.supabase;
                 .from('student_marks')
                 .select('*')
                 .eq('academic_year', year);
+            if (selectedInstitutionId) progressionQuery = progressionQuery.eq('institution_id', selectedInstitutionId);
             if (program !== 'all' && program !== 'TVET') progressionQuery = progressionQuery.eq('program', program);
             if (program === 'TVET') progressionQuery = progressionQuery.neq('program', 'KRCHN');
 
