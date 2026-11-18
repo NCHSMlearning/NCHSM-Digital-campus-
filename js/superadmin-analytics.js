@@ -348,11 +348,29 @@ const client = window.sb || window.supabase;
     
     try {
         // 1. GET STUDENTS
+        const selectedInstitutionId = window.CampusNexusScope?.getInstitutionId?.();
+        let institutionUserIds = null;
+        if (selectedInstitutionId) {
+            const { data: memberships, error: membershipError } = await client
+                .from('institution_users').select('user_id')
+                .eq('institution_id', selectedInstitutionId).eq('status', 'active');
+            if (membershipError) throw membershipError;
+            institutionUserIds = [...new Set((memberships || []).map(row => row.user_id).filter(Boolean))];
+        }
         let studentQuery = client
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('role', 'student')
             .eq('status', 'approved');
+        if (institutionUserIds) {
+            if (!institutionUserIds.length) {
+                ['analytics_total_students','analytics_pass_rate','analytics_avg_score','analytics_active_subjects','analytics_at_risk','analytics_improvement','analytics_failing_units']
+                    .forEach(id => { const el=document.getElementById(id); if(el) el.textContent='0'; });
+                window.showAnalyticsLoading(false);
+                return;
+            }
+            studentQuery = studentQuery.in('user_id', institutionUserIds);
+        }
         
         if (program !== 'all') {
             if (program === 'TVET') {
@@ -2387,3 +2405,12 @@ console.log('   - scrollToSection(sectionId)');
 console.log('   - renderConsolidatedMarksheet()');
 console.log('   - exportConsolidatedMarksheet()');
 console.log('   - printConsolidatedMarksheet()');
+
+
+// Refresh analytics whenever the global institution scope changes.
+window.addEventListener('campusnexus:institution-change', () => {
+    if (document.getElementById('analytics-module')?.classList.contains('active') &&
+        typeof window.loadAnalyticsData === 'function') {
+        window.loadAnalyticsData();
+    }
+});
