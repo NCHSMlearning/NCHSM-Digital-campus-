@@ -2,6 +2,36 @@
  * Uses the existing authenticated Supabase client. Database RLS is authoritative.
  */
 (() => {
+  // Use the actual phone viewport so the responsive admin layout activates.
+  (() => {
+    let viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      viewport = document.createElement("meta");
+      viewport.name = "viewport";
+      document.head.appendChild(viewport);
+    }
+    viewport.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+    const styleId = "campus-nexus-institution-mobile-fix";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        @media (max-width: 768px) {
+          html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+          .main { width: 100% !important; max-width: 100% !important; margin-left: 0 !important; }
+          #institutions { margin-top: 0 !important; padding-top: 12px !important; min-height: 0 !important; }
+          #institutions > * { max-width: 100%; }
+          #institutions .cn-institutions-hero,
+          #institutions .institution-hero,
+          #institutions .cn-hero { margin-top: 0 !important; }
+          #institutions .cn-institution-table-wrap,
+          #institutions .institution-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  })();
+
   const MODULES = [
     ["student_management", "Student management"],
     ["learning_management", "Learning management system"],
