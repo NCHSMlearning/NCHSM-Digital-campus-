@@ -90,8 +90,12 @@
     const host = $("cnInstitutionRows");
     if (!host) return;
     const query = ($("cnInstitutionSearch")?.value || "").trim().toLowerCase();
-    const filtered = institutions.filter(i => [i.name,i.short_code,i.slug,i.contact_email,i.portal_domain]
-      .some(v => String(v || "").toLowerCase().includes(query)));
+    const statusFilter = $("cnInstitutionFilter")?.value || "all";
+    const filtered = institutions.filter(i =>
+      (statusFilter === "all" || i.status === statusFilter) &&
+      [i.name,i.short_code,i.slug,i.contact_email,i.admin_email,i.portal_domain]
+        .some(v => String(v || "").toLowerCase().includes(query))
+    );
     $("cnInstitutionCount").textContent = String(institutions.length);
     const navBadge = $("cnInstitutionNavBadge");
     if (navBadge) navBadge.textContent = String(institutions.length);
@@ -110,11 +114,32 @@
         '<td>' + esc(i._subscription?.plan_name || "—") + '<small class="cn-subline">' +
         (i._subscription ? esc(i._subscription.currency) + " " + Number(i._subscription.amount).toLocaleString() + " / " + esc(i._subscription.billing_cycle) : "Not configured") + '</small></td>' +
         '<td>' + esc(i.contact_email || "—") + '</td><td>' + esc(i.portal_domain || "Not configured") + '</td>' +
-        '<td><button class="cn-row-action" type="button" data-edit="' + esc(i.id) + '">Manage</button></td></tr>';
+        '<td><div class="cn-row-actions"><button class="cn-row-action" type="button" data-edit="' + esc(i.id) + '">Manage</button>' +
+        (i.status === "suspended" ? '<button class="cn-row-action" type="button" data-status="' + esc(i.id) + '" data-next="active">Activate</button>' :
+        '<button class="cn-row-action cn-row-secondary" type="button" data-status="' + esc(i.id) + '" data-next="suspended">Suspend</button>') +
+        '</div></td></tr>';
     }).join("");
     host.querySelectorAll("[data-edit]").forEach(button => button.addEventListener("click", () => {
       const item = institutions.find(i => i.id === button.dataset.edit);
       if (item) fillForm(item);
+    }));
+    host.querySelectorAll("[data-status]").forEach(button => button.addEventListener("click", async () => {
+      const item = institutions.find(i => i.id === button.dataset.status);
+      if (!item) return;
+      const nextStatus = button.dataset.next;
+      const verb = nextStatus === "suspended" ? "suspend" : "activate";
+      if (!window.confirm("Are you sure you want to " + verb + " " + item.name + "?")) return;
+      button.disabled = true;
+      try {
+        const {error} = await sb.from("institutions").update({status:nextStatus,updated_at:new Date().toISOString()}).eq("id",item.id);
+        if (error) throw error;
+        await writeAudit(item.id,"institution_" + nextStatus,{previous_status:item.status,new_status:nextStatus});
+        notify(item.name + " has been " + (nextStatus === "active" ? "activated." : "suspended."),"success");
+        await loadInstitutions();
+      } catch (error) {
+        notify(error.message || "Unable to change institution status.","error");
+        button.disabled = false;
+      }
     }));
   }
 
@@ -234,6 +259,7 @@
     renderModuleOptions(["student_management","learning_management","examinations","proctoring","finance","transcripts_certificates","analytics_reports"]);
     $("cnInstitutionCancel").addEventListener("click",resetForm);
     $("cnInstitutionSearch").addEventListener("input",renderRows);
+    $("cnInstitutionFilter").addEventListener("change",renderRows);
     $("cnInstitutionForm").addEventListener("submit",saveInstitution);
     $("cnInstitutionName").addEventListener("input",() => {
       if (editingId) return;
