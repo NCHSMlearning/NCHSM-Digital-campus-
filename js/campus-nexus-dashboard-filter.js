@@ -8,7 +8,7 @@
   const $ = (id) => document.getElementById(id);
   const db = () => window.sb || window.supabaseClient || window.supabase || null;
   const fmt = (n) => Number(n || 0).toLocaleString("en-KE");
-  const state = { institutions: [], snapshot: null, busy: false };
+  const state = { institutions: [], snapshot: null, busy: false, refreshQueued: false };
 
   const metricDefs = [
     ["institutions","Registered institutions","0","All registered tenants","fa-building","#0f766e","#f0fdfa"],
@@ -157,8 +157,9 @@
     setPlatform("audits",fmt((audits.data||[]).length),"Recorded platform actions");
     const select=$("cnGlobalInstitutionFilter");
     if(select){
+      const live=select.value||"all";
       let saved=null;try{saved=localStorage.getItem(SCOPE_KEY);}catch(_){}
-      const current=saved||select.value||"all";
+      const current=live!=="all"?live:(saved||live);
       select.innerHTML='<option value="all">All institutions</option>'+rows.map(row =>
         '<option value="'+row.id.replace(/"/g,"")+'">'+
         String(row.name||"Unnamed institution").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+
@@ -287,7 +288,7 @@
   }
 
   async function refresh() {
-    if(state.busy) return;
+    if(state.busy) { state.refreshQueued=true; return; }
     state.busy=true;
     const button=$("cnPlatformRefresh");
     if(button){button.disabled=true;button.classList.add("is-loading");}
@@ -309,14 +310,26 @@
     }finally{
       state.busy=false;
       if(button){button.disabled=false;button.classList.remove("is-loading");}
+      if(state.refreshQueued){state.refreshQueued=false;queueMicrotask(refresh);}
     }
+  }
+
+  function handleInstitutionChange(event) {
+    const selected=event?.target?.value || "all";
+    try { localStorage.setItem(SCOPE_KEY,selected); } catch(_) {}
+    publishScope();
+    refresh();
   }
 
   function init() {
     buildUnifiedMetrics();
     // Capture the legacy NCHSM dashboard figures after its original loaders run.
     setTimeout(rememberLegacyMetrics,2400);
-    $("cnGlobalInstitutionFilter")?.addEventListener("change",refresh);
+    const institutionSelect=$("cnGlobalInstitutionFilter");
+    if(institutionSelect){
+      try{const saved=localStorage.getItem(SCOPE_KEY);if(saved&&[...institutionSelect.options].some(o=>o.value===saved))institutionSelect.value=saved;}catch(_){}
+      institutionSelect.addEventListener("change",handleInstitutionChange);
+    }
     $("cnPlatformRefresh")?.addEventListener("click",refresh);
     refresh();
   }
