@@ -14,7 +14,7 @@ async function boot(){
  if(profile.error||!['superadmin','super_admin'].includes(role)){alert('Super Admin access required.');location.replace('login.html');return;}
  window.currentSuperAdmin={user:auth.data.user,profile:profile.data||{}};
  const accessScript=document.createElement('script');
- accessScript.src='js/superadmin-academic-access.js?v=20261118e';
+ accessScript.src='js/superadmin-academic-access.js?v=20261118f';
  accessScript.async=true;
  accessScript.onerror=()=>console.error('Primary Super Admin academic access module failed to load.');
  document.head.appendChild(accessScript);
