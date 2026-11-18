@@ -236,10 +236,15 @@
         .select("id,code").eq("institution_id",saved.id).eq("is_active",true).order("created_at",{ascending:false}).limit(1);
       if (linkReadError) throw linkReadError;
       let registrationCode = existingLinks?.[0]?.code || "";
-      if (!registrationCode) {
+      if (!registrationCode || registrationCode.length < 40) {
         const bytes = new Uint8Array(24);
         crypto.getRandomValues(bytes);
         registrationCode = Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+        if (existingLinks?.[0]?.id) {
+          const {error:deactivateError} = await sb.from("institution_registration_links")
+            .update({is_active:false}).eq("id",existingLinks[0].id);
+          if (deactivateError) throw deactivateError;
+        }
         const {error:linkCreateError} = await sb.from("institution_registration_links").insert({
           institution_id:saved.id,code:registrationCode,label:saved.name + " public registration",
           is_active:true,created_by:currentUser.id
